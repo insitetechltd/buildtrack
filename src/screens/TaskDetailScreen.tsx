@@ -833,29 +833,46 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
             {/* Photos */}
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-2">Photos</Text>
-              <Pressable
-                onPress={handleAddPhotos}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-white items-center"
-              >
-                <Ionicons name="camera-outline" size={32} color="#6b7280" />
-                <Text className="text-gray-600 mt-2">Add photos to document progress</Text>
-              </Pressable>
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-semibold text-gray-900">Photos</Text>
+                <Pressable
+                  onPress={handleAddPhotos}
+                  className="flex-row items-center bg-blue-600 px-3 py-2 rounded-lg"
+                >
+                  <Ionicons name="add" size={18} color="white" />
+                  <Text className="text-white font-medium ml-1">Add</Text>
+                </Pressable>
+              </View>
               
-              {updateForm.photos.length > 0 && (
-                <View className="mt-4">
-                  <Text className="text-sm text-gray-600 mb-2">
-                    {updateForm.photos.length} photo{updateForm.photos.length > 1 ? "s" : ""} selected
-                  </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View className="flex-row">
-                      {updateForm.photos.map((_photo, index) => (
-                        <View key={index} className="mr-3 bg-gray-100 rounded-lg p-4">
-                          <Ionicons name="image-outline" size={32} color="#6b7280" />
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
+              {updateForm.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row">
+                    {updateForm.photos.map((photo, index) => (
+                      <View key={index} className="mr-3 relative">
+                        <Image
+                          source={{ uri: photo }}
+                          className="w-24 h-24 rounded-lg"
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => {
+                            setUpdateForm(prev => ({
+                              ...prev,
+                              photos: prev.photos.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
+                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
+                  <Text className="text-gray-400 text-sm mt-1">No photos added</Text>
                 </View>
               )}
             </View>

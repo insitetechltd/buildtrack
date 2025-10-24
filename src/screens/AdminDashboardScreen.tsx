@@ -541,43 +541,45 @@ export default function AdminDashboardScreen({
 
             {/* Banner Image Upload */}
             <View className="mb-6">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">
-                Banner Image (Optional)
-              </Text>
-              <Text className="text-xs text-gray-600 mb-3">
-                Upload a custom banner image to replace the text banner. Recommended size: 1200x225px
-              </Text>
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-gray-700">
+                    Banner Image (Optional)
+                  </Text>
+                  <Text className="text-xs text-gray-500 mt-1">
+                    Recommended size: 1200x225px
+                  </Text>
+                </View>
+                {bannerForm.imageUri && (
+                  <Pressable
+                    onPress={removeBannerImage}
+                    className="w-8 h-8 bg-red-500 rounded-full items-center justify-center ml-2"
+                  >
+                    <Ionicons name="trash-outline" size={16} color="white" />
+                  </Pressable>
+                )}
+              </View>
               
               {bannerForm.imageUri ? (
-                <View className="bg-white rounded-lg border border-gray-300 p-3">
+                <Pressable onPress={pickBannerImage}>
                   <Image
                     source={{ uri: bannerForm.imageUri }}
-                    className="w-full h-20 rounded mb-3"
+                    className="w-full h-32 rounded-lg"
                     resizeMode="cover"
                   />
-                  <View className="flex-row space-x-2">
-                    <Pressable
-                      onPress={pickBannerImage}
-                      className="flex-1 bg-blue-600 rounded-lg py-2 items-center"
-                    >
-                      <Text className="text-white font-medium text-sm">Change Image</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={removeBannerImage}
-                      className="flex-1 bg-red-600 rounded-lg py-2 items-center"
-                    >
-                      <Text className="text-white font-medium text-sm">Remove Image</Text>
-                    </Pressable>
+                  <View className="absolute inset-0 bg-black/20 rounded-lg items-center justify-center">
+                    <View className="bg-white/90 px-3 py-2 rounded-lg">
+                      <Text className="text-gray-900 font-medium text-sm">Tap to change</Text>
+                    </View>
                   </View>
-                </View>
+                </Pressable>
               ) : (
                 <Pressable
                   onPress={pickBannerImage}
-                  className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-6 items-center"
+                  className="bg-white rounded-lg border border-dashed border-gray-300 p-4 items-center"
                 >
-                  <Ionicons name="cloud-upload-outline" size={40} color="#9ca3af" />
-                  <Text className="text-gray-700 font-medium mt-2">Upload Banner Image</Text>
-                  <Text className="text-gray-500 text-xs mt-1">Tap to select from gallery</Text>
+                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
+                  <Text className="text-gray-400 text-sm mt-1">Tap to add banner image</Text>
                 </Pressable>
               )}
             </View>

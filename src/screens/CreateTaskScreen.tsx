@@ -729,41 +729,45 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           )}
 
           {/* Attachments */}
-          <InputField label="Attachments" required={false}>
-            <Pressable
-              onPress={handlePickImages}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-white items-center"
-            >
-              <Ionicons name="cloud-upload-outline" size={32} color="#6b7280" />
-              <Text className="text-gray-600 mt-2">
-                Tap to add photos or documents
-              </Text>
-            </Pressable>
-          </InputField>
-
-          {/* Attachment Preview */}
-          {formData.attachments.length > 0 && (
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
-                Selected Files ({formData.attachments.length})
-              </Text>
+          <View className="mb-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-base font-medium text-gray-700">Attachments</Text>
+              <Pressable
+                onPress={handlePickImages}
+                className="flex-row items-center bg-blue-600 px-3 py-2 rounded-lg"
+              >
+                <Ionicons name="add" size={18} color="white" />
+                <Text className="text-white font-medium ml-1">Add</Text>
+              </Pressable>
+            </View>
+            
+            {formData.attachments.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className="flex-row">
-                  {formData.attachments.map((_attachment, index) => (
-                    <View key={index} className="mr-3 bg-white border border-gray-300 rounded-lg p-2 relative">
-                      <Ionicons name="document-outline" size={24} color="#6b7280" />
+                  {formData.attachments.map((attachment, index) => (
+                    <View key={index} className="mr-3 relative">
+                      <Image
+                        source={{ uri: attachment }}
+                        className="w-24 h-24 rounded-lg"
+                        resizeMode="cover"
+                      />
                       <Pressable
                         onPress={() => removeAttachment(index)}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
                       >
-                        <Ionicons name="close" size={12} color="white" />
+                        <Ionicons name="close" size={14} color="white" />
                       </Pressable>
                     </View>
                   ))}
                 </View>
               </ScrollView>
-            </View>
-          )}
+            ) : (
+              <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
+                <Ionicons name="images-outline" size={24} color="#9ca3af" />
+                <Text className="text-gray-400 text-sm mt-1">No photos added</Text>
+              </View>
+            )}
+          </View>
 
           {/* Bottom Spacing */}
           <View className="h-20" />

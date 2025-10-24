@@ -425,10 +425,44 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Task Description */}
           {task.description && (
-            <View>
+            <View className="mb-4">
               <Text className="text-base text-gray-700 leading-6">
                 {task.description}
               </Text>
+            </View>
+          )}
+
+          {/* Task Attachments */}
+          {task.attachments && task.attachments.length > 0 && (
+            <View className="border-t border-gray-200 pt-4">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-sm font-semibold text-gray-900">Attachments</Text>
+                <View className="bg-blue-100 px-2 py-1 rounded-full">
+                  <Text className="text-blue-700 text-xs font-medium">
+                    {task.attachments.length}
+                  </Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
+                <View className="flex-row space-x-3">
+                  {task.attachments.map((attachment: string, index: number) => (
+                    <Pressable
+                      key={index}
+                      className="rounded-lg overflow-hidden border border-gray-200"
+                      onPress={() => {
+                        // TODO: Open full-screen image viewer
+                        Alert.alert("Attachment", "Full-screen viewer coming soon!");
+                      }}
+                    >
+                      <Image
+                        source={{ uri: attachment }}
+                        style={{ width: 120, height: 120 }}
+                        resizeMode="cover"
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              </ScrollView>
             </View>
           )}
         </View>

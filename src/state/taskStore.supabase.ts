@@ -73,7 +73,10 @@ export const useTaskStore = create<TaskStore>()(
         try {
           const { data, error } = await supabase
             .from('tasks')
-            .select('*')
+            .select(`
+              *,
+              sub_tasks (*)
+            `)
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -98,7 +101,26 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: [],
-            subTasks: [],
+            subTasks: (task.sub_tasks || []).map((st: any) => ({
+              id: st.id,
+              parentTaskId: st.parent_task_id,
+              parentSubTaskId: st.parent_sub_task_id,
+              projectId: st.project_id,
+              title: st.title,
+              description: st.description,
+              priority: st.priority,
+              category: st.category,
+              dueDate: st.due_date,
+              currentStatus: st.current_status,
+              completionPercentage: st.completion_percentage,
+              assignedTo: st.assigned_to || [],
+              assignedBy: st.assigned_by,
+              accepted: st.accepted,
+              declineReason: st.decline_reason,
+              createdAt: st.created_at,
+              updatedAt: st.updated_at,
+              updates: [],
+            })),
           }));
 
           console.log('✅ Fetched tasks from Supabase:', transformedTasks.length);
@@ -134,7 +156,10 @@ export const useTaskStore = create<TaskStore>()(
         try {
           const { data, error } = await supabase
             .from('tasks')
-            .select('*')
+            .select(`
+              *,
+              sub_tasks (*)
+            `)
             .eq('project_id', projectId)
             .order('created_at', { ascending: false });
 
@@ -160,7 +185,26 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: [],
-            subTasks: [],
+            subTasks: (task.sub_tasks || []).map((st: any) => ({
+              id: st.id,
+              parentTaskId: st.parent_task_id,
+              parentSubTaskId: st.parent_sub_task_id,
+              projectId: st.project_id,
+              title: st.title,
+              description: st.description,
+              priority: st.priority,
+              category: st.category,
+              dueDate: st.due_date,
+              currentStatus: st.current_status,
+              completionPercentage: st.completion_percentage,
+              assignedTo: st.assigned_to || [],
+              assignedBy: st.assigned_by,
+              accepted: st.accepted,
+              declineReason: st.decline_reason,
+              createdAt: st.created_at,
+              updatedAt: st.updated_at,
+              updates: [],
+            })),
           }));
 
           set({ 
@@ -187,7 +231,10 @@ export const useTaskStore = create<TaskStore>()(
         try {
           const { data, error } = await supabase
             .from('tasks')
-            .select('*')
+            .select(`
+              *,
+              sub_tasks (*)
+            `)
             .contains('assigned_to', [userId])
             .order('created_at', { ascending: false });
 
@@ -213,7 +260,26 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: [],
-            subTasks: [],
+            subTasks: (task.sub_tasks || []).map((st: any) => ({
+              id: st.id,
+              parentTaskId: st.parent_task_id,
+              parentSubTaskId: st.parent_sub_task_id,
+              projectId: st.project_id,
+              title: st.title,
+              description: st.description,
+              priority: st.priority,
+              category: st.category,
+              dueDate: st.due_date,
+              currentStatus: st.current_status,
+              completionPercentage: st.completion_percentage,
+              assignedTo: st.assigned_to || [],
+              assignedBy: st.assigned_by,
+              accepted: st.accepted,
+              declineReason: st.decline_reason,
+              createdAt: st.created_at,
+              updatedAt: st.updated_at,
+              updates: [],
+            })),
           }));
 
           set({ 

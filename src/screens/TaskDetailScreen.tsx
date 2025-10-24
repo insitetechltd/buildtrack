@@ -460,10 +460,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         {/* Task Status, Priority, and Due Date */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           {/* Due Date and Badges Row */}
-          <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-row items-center">
+          <View className="flex-row items-center flex-wrap mb-4">
+            <View className="flex-row items-center mr-3 mb-2">
               <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-              <Text className="text-sm text-gray-600 ml-2 mr-2">Due Date:</Text>
+              <Text className="text-sm text-gray-600 ml-2 mr-1">Due:</Text>
               <Text className={cn("text-sm font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
                 {new Date(task.dueDate).toLocaleDateString()}
                 {isOverdue && " (Overdue)"}
@@ -471,17 +471,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
             
             {/* Status and Priority Badges */}
-            <View className="flex-row items-center">
-              <View className={cn("px-3 py-1.5 rounded-full mr-2", getStatusColor(task.currentStatus))}>
-                <Text className="text-sm font-medium capitalize">
-                  {task.currentStatus.replace("_", " ")}
-                </Text>
-              </View>
-              <View className={cn("px-3 py-1.5 rounded-full border", getPriorityColor(task.priority))}>
-                <Text className="text-sm font-medium capitalize">
-                  {task.priority} Priority
-                </Text>
-              </View>
+            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
+              <Text className="text-xs font-medium capitalize">
+                {task.currentStatus.replace("_", " ")}
+              </Text>
+            </View>
+            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
+              <Text className="text-xs font-medium capitalize">
+                {task.priority}
+              </Text>
             </View>
           </View>
 

@@ -483,16 +483,6 @@ export default function ProjectsTasksScreen({
         title="Tasks"
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
-        rightElement={
-          user.role !== "admin" ? (
-            <Pressable
-              onPress={onNavigateToCreateTask}
-              className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
-            >
-              <Ionicons name="add" size={24} color="white" />
-            </Pressable>
-          ) : undefined
-        }
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
@@ -564,6 +554,21 @@ export default function ProjectsTasksScreen({
         )}
         </View>
       </ScrollView>
+
+      {/* Floating Action Button - New Task */}
+      <Pressable
+        onPress={onNavigateToCreateTask}
+        className="absolute bottom-8 right-6 w-14 h-14 bg-orange-500 rounded-full items-center justify-center shadow-lg"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <Ionicons name="add" size={28} color="white" />
+      </Pressable>
     </SafeAreaView>
   );
 }

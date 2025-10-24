@@ -459,6 +459,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       <ScrollView className="flex-1">
         {/* Task Status, Priority, and Due Date */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
+          {/* Task Description */}
+          {task.description && (
+            <View className="mb-4">
+              <Text className="text-base text-gray-700 leading-6">
+                {task.description}
+              </Text>
+            </View>
+          )}
+
           {/* Status and Priority Row */}
           <View className="flex-row items-center mb-3">
             <View className={cn("px-3 py-1.5 rounded-full mr-3", getStatusColor(task.currentStatus))}>

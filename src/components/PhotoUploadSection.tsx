@@ -148,7 +148,10 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
               const imageUri = await Clipboard.getImageAsync({ format: 'png' });
               
               if (imageUri && imageUri.data) {
-                const uri = `data:image/png;base64,${imageUri.data}`;
+                // Check if data already has the data URI prefix
+                const uri = imageUri.data.startsWith('data:') 
+                  ? imageUri.data 
+                  : `data:image/png;base64,${imageUri.data}`;
                 const updatedPhotos = [...photos, uri];
                 
                 // Respect max photos limit

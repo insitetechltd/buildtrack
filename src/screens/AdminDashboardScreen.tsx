@@ -564,11 +564,31 @@ export default function AdminDashboardScreen({
                 <Pressable onPress={pickBannerImage}>
                   <Image
                     source={{ uri: bannerForm.imageUri }}
-                    className="w-full h-32 rounded-lg"
+                    style={{ 
+                      width: '100%', 
+                      height: 128, 
+                      borderRadius: 8,
+                      backgroundColor: '#f3f4f6'
+                    }}
                     resizeMode="cover"
                   />
-                  <View className="absolute inset-0 bg-black/20 rounded-lg items-center justify-center">
-                    <View className="bg-white/90 px-3 py-2 rounded-lg">
+                  <View style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: 8,
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <View style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 8
+                    }}>
                       <Text className="text-gray-900 font-medium text-sm">Tap to change</Text>
                     </View>
                   </View>

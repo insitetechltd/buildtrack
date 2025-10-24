@@ -745,15 +745,30 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View className="flex-row">
                   {formData.attachments.map((attachment, index) => (
-                    <View key={index} className="mr-3 relative">
+                    <View key={index} className="mr-3" style={{ position: 'relative' }}>
                       <Image
                         source={{ uri: attachment }}
-                        className="w-24 h-24 rounded-lg"
+                        style={{ 
+                          width: 96, 
+                          height: 96, 
+                          borderRadius: 8,
+                          backgroundColor: '#f3f4f6'
+                        }}
                         resizeMode="cover"
                       />
                       <Pressable
                         onPress={() => removeAttachment(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        style={{
+                          position: 'absolute',
+                          top: -8,
+                          right: -8,
+                          width: 24,
+                          height: 24,
+                          backgroundColor: '#ef4444',
+                          borderRadius: 12,
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
                       >
                         <Ionicons name="close" size={14} color="white" />
                       </Pressable>

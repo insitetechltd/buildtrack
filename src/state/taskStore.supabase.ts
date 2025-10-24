@@ -71,18 +71,33 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
+          // Fetch tasks
+          const { data: tasksData, error: tasksError } = await supabase
             .from('tasks')
-            .select(`
-              *,
-              sub_tasks (*)
-            `)
+            .select('*')
             .order('created_at', { ascending: false });
 
-          if (error) throw error;
+          if (tasksError) throw tasksError;
+
+          // Fetch all subtasks
+          const { data: subTasksData, error: subTasksError } = await supabase
+            .from('sub_tasks')
+            .select('*');
+
+          if (subTasksError) throw subTasksError;
+
+          // Group subtasks by parent_task_id
+          const subTasksByParentId: { [key: string]: any[] } = {};
+          (subTasksData || []).forEach((st: any) => {
+            const parentId = st.parent_task_id;
+            if (!subTasksByParentId[parentId]) {
+              subTasksByParentId[parentId] = [];
+            }
+            subTasksByParentId[parentId].push(st);
+          });
 
           // Transform Supabase data to match local interface
-          const transformedTasks = (data || []).map(task => ({
+          const transformedTasks = (tasksData || []).map(task => ({
             id: task.id,
             projectId: task.project_id,
             title: task.title,
@@ -101,7 +116,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: [],
-            subTasks: (task.sub_tasks || []).map((st: any) => ({
+            subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
               parentSubTaskId: st.parent_sub_task_id,
@@ -154,19 +169,35 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
+          // Fetch tasks for this project
+          const { data: tasksData, error: tasksError } = await supabase
             .from('tasks')
-            .select(`
-              *,
-              sub_tasks (*)
-            `)
+            .select('*')
             .eq('project_id', projectId)
             .order('created_at', { ascending: false });
 
-          if (error) throw error;
+          if (tasksError) throw tasksError;
+
+          // Fetch subtasks for this project
+          const { data: subTasksData, error: subTasksError } = await supabase
+            .from('sub_tasks')
+            .select('*')
+            .eq('project_id', projectId);
+
+          if (subTasksError) throw subTasksError;
+
+          // Group subtasks by parent_task_id
+          const subTasksByParentId: { [key: string]: any[] } = {};
+          (subTasksData || []).forEach((st: any) => {
+            const parentId = st.parent_task_id;
+            if (!subTasksByParentId[parentId]) {
+              subTasksByParentId[parentId] = [];
+            }
+            subTasksByParentId[parentId].push(st);
+          });
 
           // Transform Supabase data to match local interface
-          const transformedTasks = (data || []).map(task => ({
+          const transformedTasks = (tasksData || []).map(task => ({
             id: task.id,
             projectId: task.project_id,
             title: task.title,
@@ -185,7 +216,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: [],
-            subTasks: (task.sub_tasks || []).map((st: any) => ({
+            subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
               parentSubTaskId: st.parent_sub_task_id,

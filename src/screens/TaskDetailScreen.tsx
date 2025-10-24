@@ -1085,6 +1085,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {selectedUpdate && (
             <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
               <View className="p-6">
+                {/* Debug: Log selected update */}
+                {console.log('🖼️ Selected Update:', selectedUpdate)}
+                {console.log('🖼️ Photos in update:', selectedUpdate.photos)}
+                {console.log('🖼️ Photos type:', typeof selectedUpdate.photos)}
+                {console.log('🖼️ Photos length:', selectedUpdate.photos?.length)}
+                
                 {/* User and Timestamp */}
                 <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
                   <View className="flex-row items-center justify-between mb-3">

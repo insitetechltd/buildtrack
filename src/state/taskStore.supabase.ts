@@ -86,6 +86,14 @@ export const useTaskStore = create<TaskStore>()(
 
           if (subTasksError) throw subTasksError;
 
+          // Fetch all task updates
+          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
+            .from('task_updates')
+            .select('*')
+            .order('created_at', { ascending: true });
+
+          if (taskUpdatesError) throw taskUpdatesError;
+
           // Group subtasks by parent_task_id
           const subTasksByParentId: { [key: string]: any[] } = {};
           (subTasksData || []).forEach((st: any) => {
@@ -94,6 +102,24 @@ export const useTaskStore = create<TaskStore>()(
               subTasksByParentId[parentId] = [];
             }
             subTasksByParentId[parentId].push(st);
+          });
+
+          // Group task updates by task_id
+          const updatesByTaskId: { [key: string]: any[] } = {};
+          (taskUpdatesData || []).forEach((update: any) => {
+            const taskId = update.task_id;
+            if (!updatesByTaskId[taskId]) {
+              updatesByTaskId[taskId] = [];
+            }
+            updatesByTaskId[taskId].push({
+              id: update.id,
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completion_percentage,
+              status: update.status,
+              timestamp: update.created_at,
+              userId: update.user_id,
+            });
           });
 
           // Transform Supabase data to match local interface
@@ -115,7 +141,7 @@ export const useTaskStore = create<TaskStore>()(
             declineReason: task.decline_reason,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
@@ -134,7 +160,7 @@ export const useTaskStore = create<TaskStore>()(
               declineReason: st.decline_reason,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
-              updates: [],
+              updates: updatesByTaskId[task.id] || [],
             })),
           }));
 
@@ -186,6 +212,16 @@ export const useTaskStore = create<TaskStore>()(
 
           if (subTasksError) throw subTasksError;
 
+          // Fetch task updates for tasks in this project
+          const taskIds = (tasksData || []).map(t => t.id);
+          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
+            .from('task_updates')
+            .select('*')
+            .in('task_id', taskIds)
+            .order('created_at', { ascending: true });
+
+          if (taskUpdatesError) throw taskUpdatesError;
+
           // Group subtasks by parent_task_id
           const subTasksByParentId: { [key: string]: any[] } = {};
           (subTasksData || []).forEach((st: any) => {
@@ -194,6 +230,24 @@ export const useTaskStore = create<TaskStore>()(
               subTasksByParentId[parentId] = [];
             }
             subTasksByParentId[parentId].push(st);
+          });
+
+          // Group task updates by task_id
+          const updatesByTaskId: { [key: string]: any[] } = {};
+          (taskUpdatesData || []).forEach((update: any) => {
+            const taskId = update.task_id;
+            if (!updatesByTaskId[taskId]) {
+              updatesByTaskId[taskId] = [];
+            }
+            updatesByTaskId[taskId].push({
+              id: update.id,
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completion_percentage,
+              status: update.status,
+              timestamp: update.created_at,
+              userId: update.user_id,
+            });
           });
 
           // Transform Supabase data to match local interface
@@ -215,7 +269,7 @@ export const useTaskStore = create<TaskStore>()(
             declineReason: task.decline_reason,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
@@ -234,7 +288,7 @@ export const useTaskStore = create<TaskStore>()(
               declineReason: st.decline_reason,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
-              updates: [],
+              updates: updatesByTaskId[task.id] || [],
             })),
           }));
 
@@ -271,6 +325,34 @@ export const useTaskStore = create<TaskStore>()(
 
           if (error) throw error;
 
+          // Fetch task updates for these tasks
+          const taskIds = (data || []).map(t => t.id);
+          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
+            .from('task_updates')
+            .select('*')
+            .in('task_id', taskIds)
+            .order('created_at', { ascending: true });
+
+          if (taskUpdatesError) throw taskUpdatesError;
+
+          // Group task updates by task_id
+          const updatesByTaskId: { [key: string]: any[] } = {};
+          (taskUpdatesData || []).forEach((update: any) => {
+            const taskId = update.task_id;
+            if (!updatesByTaskId[taskId]) {
+              updatesByTaskId[taskId] = [];
+            }
+            updatesByTaskId[taskId].push({
+              id: update.id,
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completion_percentage,
+              status: update.status,
+              timestamp: update.created_at,
+              userId: update.user_id,
+            });
+          });
+
           // Transform Supabase data to match local interface
           const transformedTasks = (data || []).map(task => ({
             id: task.id,
@@ -290,7 +372,7 @@ export const useTaskStore = create<TaskStore>()(
             declineReason: task.decline_reason,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             subTasks: (task.sub_tasks || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
@@ -309,7 +391,7 @@ export const useTaskStore = create<TaskStore>()(
               declineReason: st.decline_reason,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
-              updates: [],
+              updates: updatesByTaskId[task.id] || [],
             })),
           }));
 
@@ -409,7 +491,7 @@ export const useTaskStore = create<TaskStore>()(
             ...taskData,
             id: Date.now().toString(),
             createdAt: new Date().toISOString(),
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             currentStatus: "not_started",
             completionPercentage: 0,
             delegationHistory: [],
@@ -465,7 +547,7 @@ export const useTaskStore = create<TaskStore>()(
             declineReason: data.decline_reason,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             subTasks: [],
           };
 
@@ -716,7 +798,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             currentStatus: "not_started",
             completionPercentage: 0,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };
@@ -784,7 +866,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             currentStatus: "not_started",
             completionPercentage: 0,
-            updates: [],
+            updates: updatesByTaskId[task.id] || [],
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };

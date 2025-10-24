@@ -96,10 +96,36 @@ export default function ProjectForm({
     [companyUsers]
   );
 
+  // Reset form data when mode or project changes
+  useEffect(() => {
+    console.log('🔄 ProjectForm: Resetting form data', { mode, projectId: project?.id });
+    setFormData({
+      name: project?.name || "",
+      description: project?.description || "",
+      status: project?.status || "planning",
+      startDate: project?.startDate ? new Date(project.startDate) : new Date(),
+      endDate: project?.endDate ? new Date(project.endDate) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
+      location: project?.location || {
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+      },
+      clientInfo: project?.clientInfo || {
+        name: "",
+        email: "",
+        phone: "",
+      },
+      selectedLeadPM: "",
+    });
+    setErrors({});
+  }, [mode, project?.id]);
+
   // Set initial Lead PM for edit mode
   useEffect(() => {
     if (mode === "edit" && project) {
       const currentLeadPM = getLeadPMForProject(project.id);
+      console.log('📋 ProjectForm: Setting Lead PM for project', project.id, currentLeadPM);
       setFormData(prev => ({ ...prev, selectedLeadPM: currentLeadPM || "" }));
     }
   }, [mode, project, getLeadPMForProject]);

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -69,7 +69,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     ? parentTask.subTasks?.find(st => st.id === parentSubTaskId) 
     : null;
 
-  const [formData, setFormData] = useState({
+  // Initial form data
+  const getInitialFormData = () => ({
     title: "",
     description: "",
     priority: "medium" as Priority,
@@ -79,6 +80,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     attachments: [] as string[],
     projectId: "",
   });
+
+  const [formData, setFormData] = useState(getInitialFormData());
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -91,6 +94,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  
+  // Track if form has been initialized
+  const isInitialized = useRef(false);
 
   // All hooks must be called before any early returns
   const userProjects = getProjectsByUser(user?.id || "");
@@ -150,9 +156,26 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     );
   }, [allAssignableUsers, userSearchQuery]);
 
+  // Reset form when component mounts (but not for subtasks)
+  React.useEffect(() => {
+    if (!isInitialized.current) {
+      isInitialized.current = true;
+      
+      // Only reset if NOT creating a subtask
+      if (!parentTaskId) {
+        console.log('🔄 Resetting CreateTaskScreen form');
+        setFormData(getInitialFormData());
+        setSelectedUsers([]);
+        setErrors({});
+        setUserSearchQuery("");
+      }
+    }
+  }, [parentTaskId]);
+
   // Inherit parent task title and description when creating sub-task
   React.useEffect(() => {
     if (parentTaskId && parentTask && (formData.title === "" || formData.description === "")) {
+      console.log('📋 Copying parent task data to subtask form');
       setFormData(prev => ({
         ...prev,
         title: parentTask.title,

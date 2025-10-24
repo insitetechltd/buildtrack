@@ -46,7 +46,7 @@ const InputField = ({
   children: React.ReactNode;
 }) => (
   <View className="mb-4">
-    <Text className="text-base font-medium text-gray-700 mb-2">
+    <Text className="text-sm font-semibold text-gray-700 mb-2">
       {label} {required && <Text className="text-red-500">*</Text>}
     </Text>
     {children}
@@ -465,7 +465,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <InputField label="Title" error={errors.title}>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-gray-900 bg-white",
+                  "border rounded-lg px-3 py-3 text-base text-gray-900 bg-white",
                   errors.title ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Enter task title (e.g., Fix Roof Leak)"
@@ -481,7 +481,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <InputField label="Description" error={errors.description}>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-gray-900 bg-white",
+                  "border rounded-lg px-3 py-3 text-base text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Describe the task in detail..."
@@ -506,7 +506,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               )}
             >
               <Text className={cn(
-                "flex-1",
+                "flex-1 text-base",
                 formData.projectId ? "text-gray-900" : "text-gray-500"
               )}>
                 {formData.projectId 
@@ -524,7 +524,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => setShowPriorityPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-gray-900 capitalize flex-1">
+              <Text className="text-base text-gray-900 capitalize flex-1">
                 {formData.priority}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
@@ -537,7 +537,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => setShowCategoryPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-gray-900 capitalize flex-1">
+              <Text className="text-base text-gray-900 capitalize flex-1">
                 {formData.category}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
@@ -554,7 +554,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               )}
             >
               <Text className={cn(
-                "font-medium",
+                "text-base",
                 showDatePicker ? "text-blue-600" : "text-gray-900"
               )}>
                 {formData.dueDate.toLocaleDateString("en-US", { 
@@ -608,7 +608,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 errors.assignedTo ? "border-red-300" : "border-gray-300"
               )}
             >
-              <Text className="text-gray-900">
+              <Text className="text-base text-gray-900">
                 {selectedUsers.length > 0 
                   ? `${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} selected`
                   : "Select users to assign"
@@ -675,7 +675,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
               Select Priority
             </Text>
           </View>
@@ -702,7 +702,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   )}
                 </View>
                 <Text className={cn(
-                  "font-semibold capitalize flex-1",
+                  "text-base font-medium capitalize flex-1",
                   formData.priority === priority ? "text-blue-900" : "text-gray-900"
                 )}>
                   {priority}
@@ -737,7 +737,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
               Select Category
             </Text>
           </View>
@@ -764,7 +764,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   )}
                 </View>
                 <Text className={cn(
-                  "font-semibold capitalize flex-1",
+                  "text-base font-medium capitalize flex-1",
                   formData.category === category ? "text-blue-900" : "text-gray-900"
                 )}>
                   {category}
@@ -806,7 +806,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
               Select Project
             </Text>
           </View>
@@ -834,7 +834,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 </View>
                 <View className="flex-1">
                   <Text className={cn(
-                    "font-semibold",
+                    "text-base font-medium",
                     formData.projectId === project.id ? "text-blue-900" : "text-gray-900"
                   )} numberOfLines={1}>
                     {project.name}
@@ -884,7 +884,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
               Assign To
             </Text>
             <Text className="text-sm text-blue-600 font-medium">

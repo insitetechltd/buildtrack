@@ -286,7 +286,8 @@ export default function TasksScreen({
         title="Tasks"
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <View className="flex-1">
+        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Search Bar */}
         <View className="flex-row items-center bg-gray-100 rounded-lg px-4 py-3 mb-4">
           <Ionicons name="search-outline" size={24} color="#6b7280" />
@@ -394,10 +395,11 @@ export default function TasksScreen({
             </Text>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
 
-      {/* Floating Action Button - New Task */}
-      {user.role !== "admin" && (
+        {/* Floating Action Button - New Task */}
+        {console.log('TasksScreen - User role:', user.role)}
+        {console.log('TasksScreen - Show FAB:', user.role !== "admin")}
         <Pressable
           onPress={onNavigateToCreateTask}
           className="absolute bottom-8 right-6 w-14 h-14 bg-orange-500 rounded-full items-center justify-center shadow-lg"
@@ -411,7 +413,7 @@ export default function TasksScreen({
         >
           <Ionicons name="add" size={28} color="white" />
         </Pressable>
-      )}
+      </View>
     </SafeAreaView>
   );
 }// Force reload 1759505833

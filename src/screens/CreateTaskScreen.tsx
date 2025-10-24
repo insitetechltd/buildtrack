@@ -9,14 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as ImagePicker from "expo-image-picker";
-import * as Clipboard from "expo-clipboard";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
@@ -27,6 +24,7 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
+import { PhotoUploadSection } from "../components/PhotoUploadSection";
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -380,113 +378,6 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     }
   };
 
-  const handlePickImages = async () => {
-    Alert.alert(
-      "Add Attachment",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              // Request camera permissions
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                return;
-              }
-
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                quality: 0.8,
-                allowsEditing: false,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newAttachments = result.assets.map(asset => asset.uri);
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, ...newAttachments],
-                }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to take photo");
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              // Request media library permissions
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
-                return;
-              }
-
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsMultipleSelection: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newAttachments = result.assets.map(asset => asset.uri);
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, ...newAttachments],
-                }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to pick images");
-            }
-          },
-        },
-        {
-          text: "Paste from Clipboard",
-          onPress: async () => {
-            try {
-              const hasImage = await Clipboard.hasImageAsync();
-              
-              if (!hasImage) {
-                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
-                return;
-              }
-
-              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
-              
-              if (imageUri && imageUri.data) {
-                // Convert base64 to URI format
-                const uri = `data:image/png;base64,${imageUri.data}`;
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, uri],
-                }));
-                Alert.alert("Success", "Image pasted from clipboard!");
-              } else {
-                Alert.alert("Error", "Could not paste image from clipboard");
-              }
-            } catch (error) {
-              console.error("Clipboard paste error:", error);
-              Alert.alert("Error", "Failed to paste from clipboard");
-            }
-          },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
-  };
-
-  const removeAttachment = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      attachments: prev.attachments.filter((_, i) => i !== index),
-    }));
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -729,60 +620,12 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           )}
 
           {/* Attachments */}
-          <View className="mb-4">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-base font-medium text-gray-700">Attachments</Text>
-              <Pressable
-                onPress={handlePickImages}
-                className="flex-row items-center bg-blue-600 px-3 py-2 rounded-lg"
-              >
-                <Ionicons name="add" size={18} color="white" />
-                <Text className="text-white font-medium ml-1">Add</Text>
-              </Pressable>
-            </View>
-            
-            {formData.attachments.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="flex-row">
-                  {formData.attachments.map((attachment, index) => (
-                    <View key={index} className="mr-3" style={{ position: 'relative' }}>
-                      <Image
-                        source={{ uri: attachment }}
-                        style={{ 
-                          width: 96, 
-                          height: 96, 
-                          borderRadius: 8,
-                          backgroundColor: '#f3f4f6'
-                        }}
-                        resizeMode="cover"
-                      />
-                      <Pressable
-                        onPress={() => removeAttachment(index)}
-                        style={{
-                          position: 'absolute',
-                          top: -8,
-                          right: -8,
-                          width: 24,
-                          height: 24,
-                          backgroundColor: '#ef4444',
-                          borderRadius: 12,
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <Ionicons name="close" size={14} color="white" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            ) : (
-              <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
-                <Ionicons name="images-outline" size={24} color="#9ca3af" />
-                <Text className="text-gray-400 text-sm mt-1">No photos added</Text>
-              </View>
-            )}
-          </View>
+          <PhotoUploadSection
+            photos={formData.attachments}
+            onPhotosChange={(attachments) => setFormData(prev => ({ ...prev, attachments }))}
+            title="Attachments"
+            emptyMessage="No attachments added"
+          />
 
           {/* Bottom Spacing */}
           <View className="h-20" />

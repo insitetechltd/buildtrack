@@ -14,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
+import * as Clipboard from "expo-clipboard";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
@@ -282,6 +283,36 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               }
             } catch (error) {
               Alert.alert("Error", "Failed to pick images");
+            }
+          },
+        },
+        {
+          text: "Paste from Clipboard",
+          onPress: async () => {
+            try {
+              const hasImage = await Clipboard.hasImageAsync();
+              
+              if (!hasImage) {
+                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
+                return;
+              }
+
+              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
+              
+              if (imageUri && imageUri.data) {
+                // Convert base64 to URI format
+                const uri = `data:image/png;base64,${imageUri.data}`;
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, uri],
+                }));
+                Alert.alert("Success", "Image pasted from clipboard!");
+              } else {
+                Alert.alert("Error", "Could not paste image from clipboard");
+              }
+            } catch (error) {
+              console.error("Clipboard paste error:", error);
+              Alert.alert("Error", "Failed to paste from clipboard");
             }
           },
         },
@@ -745,53 +776,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {/* Photos */}
-            <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-2">Photos</Text>
-              <Pressable
-                onPress={handleAddPhotos}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-white items-center"
-              >
-                <Ionicons name="camera-outline" size={32} color="#6b7280" />
-                <Text className="text-gray-600 mt-2">Add photos to document progress</Text>
-              </Pressable>
-              
-              {updateForm.photos.length > 0 && (
-                <View className="mt-4">
-                  <Text className="text-sm text-gray-600 mb-2">
-                    {updateForm.photos.length} photo{updateForm.photos.length > 1 ? "s" : ""} selected
-                  </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View className="flex-row">
-                      {updateForm.photos.map((_photo, index) => (
-                        <View key={index} className="mr-3 bg-gray-100 rounded-lg p-4">
-                          <Ionicons name="image-outline" size={32} color="#6b7280" />
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-
-            {/* Description */}
-            <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-2">
-                Update Description
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-white"
-                placeholder="Describe what you've accomplished..."
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                maxLength={500}
-                style={{ height: 120 }}
-              />
-            </View>
-
             {/* Progress Slider - Compact */}
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-2">
@@ -827,6 +811,53 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   vertical={true}
                 />
               </View>
+            </View>
+
+            {/* Description */}
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-gray-900 mb-2">
+                Update Description
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-white"
+                placeholder="Describe what you've accomplished..."
+                value={updateForm.description}
+                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                maxLength={500}
+                style={{ height: 120 }}
+              />
+            </View>
+
+            {/* Photos */}
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-gray-900 mb-2">Photos</Text>
+              <Pressable
+                onPress={handleAddPhotos}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-6 bg-white items-center"
+              >
+                <Ionicons name="camera-outline" size={32} color="#6b7280" />
+                <Text className="text-gray-600 mt-2">Add photos to document progress</Text>
+              </Pressable>
+              
+              {updateForm.photos.length > 0 && (
+                <View className="mt-4">
+                  <Text className="text-sm text-gray-600 mb-2">
+                    {updateForm.photos.length} photo{updateForm.photos.length > 1 ? "s" : ""} selected
+                  </Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View className="flex-row">
+                      {updateForm.photos.map((_photo, index) => (
+                        <View key={index} className="mr-3 bg-gray-100 rounded-lg p-4">
+                          <Ionicons name="image-outline" size={32} color="#6b7280" />
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
             </View>
           </ScrollView>
         </SafeAreaView>

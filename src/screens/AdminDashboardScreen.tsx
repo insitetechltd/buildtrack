@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as Clipboard from "expo-clipboard";
 import { useAuthStore } from "../state/authStore";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
@@ -289,6 +290,33 @@ export default function AdminDashboardScreen({
               }
             } catch (error) {
               Alert.alert("Error", "Failed to pick image. Please try again.");
+            }
+          },
+        },
+        {
+          text: "Paste from Clipboard",
+          onPress: async () => {
+            try {
+              const hasImage = await Clipboard.hasImageAsync();
+              
+              if (!hasImage) {
+                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
+                return;
+              }
+
+              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
+              
+              if (imageUri && imageUri.data) {
+                // Convert base64 to URI format
+                const uri = `data:image/png;base64,${imageUri.data}`;
+                setBannerForm(prev => ({ ...prev, imageUri: uri }));
+                Alert.alert("Success", "Image pasted from clipboard!");
+              } else {
+                Alert.alert("Error", "Could not paste image from clipboard");
+              }
+            } catch (error) {
+              console.error("Clipboard paste error:", error);
+              Alert.alert("Error", "Failed to paste from clipboard");
             }
           },
         },

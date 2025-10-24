@@ -459,6 +459,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       <ScrollView className="flex-1">
         {/* Task Status, Priority, and Due Date */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
+          {/* Due Date Row */}
+          <View className="flex-row items-center mb-4">
+            <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+            <Text className="text-sm text-gray-600 ml-2 mr-2">Due Date:</Text>
+            <Text className={cn("text-sm font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
+              {new Date(task.dueDate).toLocaleDateString()}
+              {isOverdue && " (Overdue)"}
+            </Text>
+          </View>
+
           {/* Task Description */}
           {task.description && (
             <View className="mb-4">
@@ -469,7 +479,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           )}
 
           {/* Status and Priority Row */}
-          <View className="flex-row items-center mb-3">
+          <View className="flex-row items-center">
             <View className={cn("px-3 py-1.5 rounded-full mr-3", getStatusColor(task.currentStatus))}>
               <Text className="text-sm font-medium capitalize">
                 {task.currentStatus.replace("_", " ")}
@@ -480,16 +490,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 {task.priority} Priority
               </Text>
             </View>
-          </View>
-          
-          {/* Due Date Row */}
-          <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-            <Text className="text-sm text-gray-600 ml-2 mr-2">Due Date:</Text>
-            <Text className={cn("text-sm font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
-              {new Date(task.dueDate).toLocaleDateString()}
-              {isOverdue && " (Overdue)"}
-            </Text>
           </View>
         </View>
 

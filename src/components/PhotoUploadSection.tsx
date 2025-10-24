@@ -185,6 +185,10 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
 
   return (
     <View className="mb-6">
+      {/* Debug logging */}
+      {console.log('PhotoUploadSection - photos:', photos)}
+      {console.log('PhotoUploadSection - photos.length:', photos.length)}
+      
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
           <Text className="text-lg font-semibold text-gray-900">{title}</Text>
@@ -211,45 +215,55 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
           contentContainerStyle={{ paddingVertical: 10 }}
         >
           <View className="flex-row" style={{ overflow: 'visible' }}>
-            {photos.map((photo, index) => (
-              <View 
-                key={index} 
-                className="mr-3" 
-                style={{ position: 'relative', overflow: 'visible' }}
-              >
-                <Image
-                  source={{ uri: photo }}
-                  style={{ 
-                    width: 96, 
-                    height: 96, 
-                    borderRadius: 8,
-                    backgroundColor: '#f3f4f6'
-                  }}
-                  resizeMode="cover"
-                />
-                <Pressable
-                  onPress={() => handleRemovePhoto(index)}
-                  style={{
-                    position: 'absolute',
-                    top: -8,
-                    right: -8,
-                    width: 24,
-                    height: 24,
-                    backgroundColor: '#ef4444',
-                    borderRadius: 12,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 3.84,
-                    elevation: 5,
-                  }}
+            {photos.map((photo, index) => {
+              console.log(`Photo ${index}:`, photo);
+              return (
+                <View 
+                  key={index} 
+                  className="mr-3" 
+                  style={{ position: 'relative', overflow: 'visible' }}
                 >
-                  <Ionicons name="close" size={14} color="white" />
-                </Pressable>
-              </View>
-            ))}
+                  <Image
+                    source={{ uri: photo }}
+                    style={{ 
+                      width: 96, 
+                      height: 96, 
+                      borderRadius: 8,
+                      backgroundColor: '#f3f4f6'
+                    }}
+                    resizeMode="cover"
+                    onError={(error) => {
+                      console.error(`Image ${index} load error:`, error.nativeEvent.error);
+                      console.error(`Failed to load photo URI:`, photo);
+                    }}
+                    onLoad={() => {
+                      console.log(`Image ${index} loaded successfully:`, photo);
+                    }}
+                  />
+                  <Pressable
+                    onPress={() => handleRemovePhoto(index)}
+                    style={{
+                      position: 'absolute',
+                      top: -8,
+                      right: -8,
+                      width: 24,
+                      height: 24,
+                      backgroundColor: '#ef4444',
+                      borderRadius: 12,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                      elevation: 5,
+                    }}
+                  >
+                    <Ionicons name="close" size={14} color="white" />
+                  </Pressable>
+                </View>
+              );
+            })}
           </View>
         </ScrollView>
       ) : (

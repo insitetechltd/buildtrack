@@ -840,17 +840,20 @@ export const useTaskStore = create<TaskStore>()(
 
       // Task read status management
       markTaskAsRead: async (userId, taskId) => {
+        // Update local state immediately (optimistic update)
+        set(state => ({
+          taskReadStatuses: [
+            ...state.taskReadStatuses.filter(s => !(s.userId === userId && s.taskId === taskId)),
+            { userId, taskId, readAt: new Date().toISOString() }
+          ]
+        }));
+
+        // If no Supabase, just keep the local state
         if (!supabase) {
-          // Fallback to local tracking
-          set(state => ({
-            taskReadStatuses: [
-              ...state.taskReadStatuses.filter(s => !(s.userId === userId && s.taskId === taskId)),
-              { userId, taskId, readAt: new Date().toISOString() }
-            ]
-          }));
           return;
         }
 
+        // Try to sync with Supabase in background, but don't block or crash on errors
         try {
           const { error } = await supabase
             .from('task_read_status')
@@ -860,9 +863,13 @@ export const useTaskStore = create<TaskStore>()(
               read_at: new Date().toISOString(),
             });
 
-          if (error) throw error;
+          if (error) {
+            // Log warning but don't crash - read status is not critical
+            console.warn('Failed to sync task read status to Supabase:', error.message);
+          }
         } catch (error: any) {
-          console.error('Error marking task as read:', error);
+          // Catch network errors silently - local state is already updated
+          console.warn('Network error syncing task read status (non-critical):', error.message || 'Unknown error');
         }
       },
 

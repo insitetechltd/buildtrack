@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { cacheManager, uploadQueue } from "./src/services/cache";
 
 // VERSION CONTROL - Increment this to force a fresh app state
-const APP_VERSION = "12.0";
+const APP_VERSION = "13.0";
 const VERSION_KEY = "@app_version";
 
 /*
@@ -29,7 +29,7 @@ const openai_api_key = Constants.expoConfig.extra.apikey;
 //don't use expo-constants, its depreicated
 
 🔥 REAL-TIME DATA SYNC - All users receive updates immediately! ✅
-Last Updated: v12.0
+Last Updated: v13.0
 */
 
 export default function App() {
@@ -95,4 +95,4 @@ export default function App() {
   );
 }
 
-// FORCE RELOAD v12.0 - REAL-TIME DATA SYNC SYSTEM
+// FORCE RELOAD v13.0 - REAL-TIME DATA SYNC SYSTEM

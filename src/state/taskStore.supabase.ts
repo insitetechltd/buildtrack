@@ -491,7 +491,7 @@ export const useTaskStore = create<TaskStore>()(
             ...taskData,
             id: Date.now().toString(),
             createdAt: new Date().toISOString(),
-            updates: updatesByTaskId[task.id] || [],
+            updates: [], // New task has no updates yet
             currentStatus: "not_started",
             completionPercentage: 0,
             delegationHistory: [],
@@ -547,7 +547,7 @@ export const useTaskStore = create<TaskStore>()(
             declineReason: data.decline_reason,
             createdAt: data.created_at,
             updatedAt: data.updated_at,
-            updates: updatesByTaskId[task.id] || [],
+            updates: [], // New task has no updates yet
             subTasks: [],
           };
 
@@ -798,7 +798,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             currentStatus: "not_started",
             completionPercentage: 0,
-            updates: updatesByTaskId[task.id] || [],
+            updates: [], // New subtask has no updates yet
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };
@@ -866,7 +866,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             currentStatus: "not_started",
             completionPercentage: 0,
-            updates: updatesByTaskId[task.id] || [],
+            updates: [], // New nested subtask has no updates yet
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };

@@ -7,6 +7,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -61,6 +62,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedUsersForReassign, setSelectedUsersForReassign] = useState<string[]>([]);
   const [reassignSearchQuery, setReassignSearchQuery] = useState("");
+  const [selectedUpdate, setSelectedUpdate] = useState<any>(null);
+  const [showUpdateDetailModal, setShowUpdateDetailModal] = useState(false);
 
   // Get the parent task
   const parentTask = tasks.find(t => t.id === taskId);
@@ -570,7 +573,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {task.updates.map((update) => {
                 const updateUser = getUserById(update.userId);
                 return (
-                  <View key={update.id} className="border-l-4 border-blue-200 pl-4">
+                  <Pressable 
+                    key={update.id} 
+                    className="border-l-4 border-blue-200 pl-4 active:bg-gray-50"
+                    onPress={() => {
+                      setSelectedUpdate(update);
+                      setShowUpdateDetailModal(true);
+                    }}
+                  >
                     <View className="flex-row items-center justify-between mb-2">
                       <Text className="font-medium text-gray-900">
                         {updateUser?.name || "Unknown User"}
@@ -579,18 +589,30 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         {new Date(update.timestamp).toLocaleString()}
                       </Text>
                     </View>
-                    <Text className="text-gray-700 mb-2">{update.description}</Text>
-                    <View className="flex-row items-center space-x-4">
-                      <Text className="text-sm text-gray-500">
-                        Progress: {update.completionPercentage}%
-                      </Text>
-                      <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                        <Text className="text-xs capitalize">
-                          {update.status.replace("_", " ")}
+                    <Text className="text-gray-700 mb-2" numberOfLines={2}>
+                      {update.description}
+                    </Text>
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center space-x-4">
+                        <Text className="text-sm text-gray-500">
+                          Progress: {update.completionPercentage}%
                         </Text>
+                        <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
+                          <Text className="text-xs capitalize">
+                            {update.status.replace("_", " ")}
+                          </Text>
+                        </View>
                       </View>
+                      {update.photos && update.photos.length > 0 && (
+                        <View className="flex-row items-center">
+                          <Ionicons name="images" size={16} color="#6b7280" />
+                          <Text className="text-xs text-gray-500 ml-1">
+                            {update.photos.length}
+                          </Text>
+                        </View>
+                      )}
                     </View>
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -1034,6 +1056,118 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {selectedUsersForReassign.length} user(s) selected
             </Text>
           </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Update Detail Modal */}
+      <Modal
+        visible={showUpdateDetailModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowUpdateDetailModal(false)}
+      >
+        <SafeAreaView className="flex-1 bg-gray-50">
+          <ModalHandle />
+          
+          {/* Header */}
+          <View className="flex-row items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable 
+              onPress={() => setShowUpdateDetailModal(false)}
+              className="mr-4"
+            >
+              <Text className="text-blue-600 font-medium">Close</Text>
+            </Pressable>
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
+              Update Details
+            </Text>
+          </View>
+
+          {selectedUpdate && (
+            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+              <View className="p-6">
+                {/* User and Timestamp */}
+                <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+                  <View className="flex-row items-center justify-between mb-3">
+                    <View>
+                      <Text className="text-sm text-gray-500 mb-1">Updated by</Text>
+                      <Text className="text-lg font-semibold text-gray-900">
+                        {getUserById(selectedUpdate.userId)?.name || "Unknown User"}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text className="text-sm text-gray-500 mb-1">Date</Text>
+                      <Text className="text-base text-gray-900">
+                        {new Date(selectedUpdate.timestamp).toLocaleDateString()}
+                      </Text>
+                      <Text className="text-xs text-gray-500">
+                        {new Date(selectedUpdate.timestamp).toLocaleTimeString()}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {/* Progress and Status */}
+                  <View className="flex-row items-center space-x-3">
+                    <View className="flex-1 bg-gray-50 rounded-lg p-3">
+                      <Text className="text-xs text-gray-500 mb-1">Progress</Text>
+                      <Text className="text-2xl font-bold text-blue-600">
+                        {selectedUpdate.completionPercentage}%
+                      </Text>
+                    </View>
+                    <View className="flex-1 bg-gray-50 rounded-lg p-3">
+                      <Text className="text-xs text-gray-500 mb-1">Status</Text>
+                      <View className={cn("px-3 py-1.5 rounded-lg self-start", getStatusColor(selectedUpdate.status))}>
+                        <Text className="text-sm font-medium capitalize">
+                          {selectedUpdate.status.replace("_", " ")}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Description */}
+                <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+                  <Text className="text-base font-semibold text-gray-900 mb-3">Description</Text>
+                  <Text className="text-gray-700 leading-6">
+                    {selectedUpdate.description}
+                  </Text>
+                </View>
+
+                {/* Photos */}
+                {selectedUpdate.photos && selectedUpdate.photos.length > 0 && (
+                  <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+                    <View className="flex-row items-center justify-between mb-3">
+                      <Text className="text-base font-semibold text-gray-900">Photos</Text>
+                      <View className="bg-blue-100 px-2 py-1 rounded-full">
+                        <Text className="text-blue-700 text-xs font-medium">
+                          {selectedUpdate.photos.length}
+                        </Text>
+                      </View>
+                    </View>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View className="flex-row space-x-3">
+                        {selectedUpdate.photos.map((photo: string, index: number) => (
+                          <Pressable
+                            key={index}
+                            className="rounded-lg overflow-hidden border border-gray-200"
+                            onPress={() => {
+                              // TODO: Open full-screen image viewer
+                              Alert.alert("Photo", "Full-screen viewer coming soon!");
+                            }}
+                          >
+                            <Image
+                              source={{ uri: photo }}
+                              style={{ width: 150, height: 150 }}
+                              resizeMode="cover"
+                            />
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          )}
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

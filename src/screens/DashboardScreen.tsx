@@ -47,12 +47,16 @@ export default function DashboardScreen({
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
 
-  // Set default to empty string (no project selected) - users should explicitly choose a project
+  // Validate and clear selected project if user is not part of it
   useEffect(() => {
-    if (!selectedProjectId) {
-      setSelectedProject("");
+    if (selectedProjectId && user) {
+      const isUserInProject = userProjects.some(p => p.id === selectedProjectId);
+      if (!isUserInProject) {
+        console.log(`⚠️ User ${user.name} is not assigned to selected project ${selectedProjectId}, clearing selection`);
+        setSelectedProject("");
+      }
     }
-  }, [selectedProjectId, setSelectedProject]);
+  }, [selectedProjectId, userProjects, user, setSelectedProject]);
 
   // Fetch tasks when Dashboard mounts
   useEffect(() => {

@@ -204,10 +204,19 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
       </View>
       
       {photos.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row">
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={{ overflow: 'visible' }}
+          contentContainerStyle={{ paddingVertical: 10 }}
+        >
+          <View className="flex-row" style={{ overflow: 'visible' }}>
             {photos.map((photo, index) => (
-              <View key={index} className="mr-3" style={{ position: 'relative' }}>
+              <View 
+                key={index} 
+                className="mr-3" 
+                style={{ position: 'relative', overflow: 'visible' }}
+              >
                 <Image
                   source={{ uri: photo }}
                   style={{ 

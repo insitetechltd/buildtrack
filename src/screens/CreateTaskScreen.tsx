@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
@@ -94,9 +95,6 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
-  
-  // Track if form has been initialized
-  const isInitialized = useRef(false);
 
   // All hooks must be called before any early returns
   const userProjects = getProjectsByUser(user?.id || "");
@@ -156,21 +154,24 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     );
   }, [allAssignableUsers, userSearchQuery]);
 
-  // Reset form when component mounts (but not for subtasks)
-  React.useEffect(() => {
-    if (!isInitialized.current) {
-      isInitialized.current = true;
-      
+  // Reset form every time screen comes into focus (but not for subtasks)
+  useFocusEffect(
+    useCallback(() => {
       // Only reset if NOT creating a subtask
       if (!parentTaskId) {
-        console.log('🔄 Resetting CreateTaskScreen form');
+        console.log('🔄 Resetting CreateTaskScreen form on focus');
         setFormData(getInitialFormData());
         setSelectedUsers([]);
         setErrors({});
         setUserSearchQuery("");
+        setShowUserPicker(false);
+        setShowPriorityPicker(false);
+        setShowCategoryPicker(false);
+        setShowProjectPicker(false);
+        setShowDatePicker(false);
       }
-    }
-  }, [parentTaskId]);
+    }, [parentTaskId])
+  );
 
   // Inherit parent task title and description when creating sub-task
   React.useEffect(() => {

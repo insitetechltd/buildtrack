@@ -144,7 +144,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
   const isTaskCreator = task.assignedBy === user.id;
 
-  const canUpdateProgress = isAssignedToMe || isTaskCreator;
+  // Users can only update if:
+  // 1. They created the task, OR
+  // 2. They are assigned AND have accepted the task
+  const canUpdateProgress = isTaskCreator || (isAssignedToMe && task.accepted === true);
+  
+  // Users can only create subtasks if:
+  // 1. They created the task, OR
+  // 2. They are assigned AND have accepted the task
+  const canCreateSubTask = isTaskCreator || (isAssignedToMe && task.accepted === true);
 
   const handleAcceptTask = () => {
     Alert.alert(
@@ -666,7 +674,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
 
         {/* Add Sub-Task Button */}
-        {(isAssignedToMe || isTaskCreator) && (
+        {canCreateSubTask && (
           <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
             <Pressable
               onPress={() => {
@@ -687,6 +695,18 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 Add {isViewingSubTask ? "Nested Sub-Task" : "Sub-Task"}
               </Text>
             </Pressable>
+          </View>
+        )}
+
+        {/* Show message when user cannot create subtask */}
+        {!canCreateSubTask && isAssignedToMe && !task.accepted && (
+          <View className="bg-amber-50 border border-amber-200 rounded-xl mx-4 mb-3 p-4">
+            <View className="flex-row items-center">
+              <Ionicons name="lock-closed" size={20} color="#f59e0b" />
+              <Text className="text-sm text-amber-700 ml-2 flex-1">
+                Accept this task to create subtasks and add updates
+              </Text>
+            </View>
           </View>
         )}
       </ScrollView>

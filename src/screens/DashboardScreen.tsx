@@ -27,13 +27,15 @@ interface DashboardScreenProps {
   onNavigateToCreateTask: () => void;
   onNavigateToProfile: () => void;
   onNavigateToReports?: () => void;
+  onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;
 }
 
 export default function DashboardScreen({ 
   onNavigateToTasks, 
   onNavigateToCreateTask, 
   onNavigateToProfile,
-  onNavigateToReports
+  onNavigateToReports,
+  onNavigateToTaskDetail
 }: DashboardScreenProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
@@ -539,8 +541,9 @@ export default function DashboardScreen({
                     <Pressable
                       key={task.id}
                       onPress={() => {
-                        // Navigate to task detail (you'll need to add this prop)
-                        console.log('Open task:', task.id);
+                        if (onNavigateToTaskDetail) {
+                          onNavigateToTaskDetail(task.id);
+                        }
                       }}
                       className="bg-white border-2 border-yellow-400 rounded-lg p-3"
                     >

@@ -19,6 +19,7 @@ import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
 import { PhotoUploadSection } from "../components/PhotoUploadSection";
+import FullScreenImageViewer from "../components/FullScreenImageViewer";
 import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -64,6 +65,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [reassignSearchQuery, setReassignSearchQuery] = useState("");
   const [selectedUpdate, setSelectedUpdate] = useState<any>(null);
   const [showUpdateDetailModal, setShowUpdateDetailModal] = useState(false);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [imageViewerImages, setImageViewerImages] = useState<string[]>([]);
+  const [imageViewerInitialIndex, setImageViewerInitialIndex] = useState(0);
 
   // Get the parent task
   const parentTask = tasks.find(t => t.id === taskId);
@@ -450,8 +454,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       key={index}
                       className="rounded-lg overflow-hidden border border-gray-200"
                       onPress={() => {
-                        // TODO: Open full-screen image viewer
-                        Alert.alert("Attachment", "Full-screen viewer coming soon!");
+                        setImageViewerImages(task.attachments);
+                        setImageViewerInitialIndex(index);
+                        setShowImageViewer(true);
                       }}
                     >
                       <Image
@@ -1184,8 +1189,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             key={index}
                             className="rounded-lg overflow-hidden border border-gray-200"
                             onPress={() => {
-                              // TODO: Open full-screen image viewer
-                              Alert.alert("Photo", "Full-screen viewer coming soon!");
+                              setImageViewerImages(selectedUpdate.photos);
+                              setImageViewerInitialIndex(index);
+                              setShowImageViewer(true);
                             }}
                           >
                             <Image
@@ -1204,6 +1210,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           )}
         </SafeAreaView>
       </Modal>
+
+      {/* Full Screen Image Viewer */}
+      <FullScreenImageViewer
+        visible={showImageViewer}
+        images={imageViewerImages}
+        initialIndex={imageViewerInitialIndex}
+        onClose={() => setShowImageViewer(false)}
+      />
     </SafeAreaView>
   );
 }

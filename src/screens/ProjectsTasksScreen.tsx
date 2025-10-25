@@ -354,84 +354,86 @@ export default function ProjectsTasksScreen({
           </View>
         )}
         
-        {/* Line 1: Title and Priority */}
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center flex-1 mr-2">
-            {/* NEW badge */}
-            {isNew && (
-              <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
-                <Text className="text-white text-xs font-bold">NEW</Text>
+        {/* Main content: Photo on left, Text on right */}
+        <View className="flex-row">
+          {/* Photo on the left (only first photo) */}
+          {task.attachments && task.attachments.length > 0 && (
+            <View className="mr-3">
+              <Image
+                source={{ uri: task.attachments[0] }}
+                className="w-20 h-20 rounded-lg"
+                resizeMode="cover"
+              />
+              {task.attachments.length > 1 && (
+                <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
+                  <Text className="text-white text-xs font-semibold">
+                    +{task.attachments.length - 1}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Text content on the right */}
+          <View className="flex-1">
+            {/* Line 1: Title and Priority */}
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1 mr-2">
+                {/* NEW badge */}
+                {isNew && (
+                  <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
+                    <Text className="text-white text-xs font-bold">NEW</Text>
+                  </View>
+                )}
+                <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
+                  {task.title}
+                </Text>
               </View>
+              <View className="flex-row items-center gap-2">
+                {/* Edit button for task creator or assignee */}
+                {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
+                  <Pressable
+                    onPress={(e) => {
+                      e.stopPropagation(); // Prevent card navigation
+                      if (isSubTask) {
+                        onNavigateToTaskDetail(task.parentTaskId, task.id);
+                      } else {
+                        onNavigateToTaskDetail(task.id);
+                      }
+                    }}
+                    className="w-6 h-6 items-center justify-center bg-blue-50 rounded"
+                  >
+                    <Ionicons name="pencil" size={12} color="#3b82f6" />
+                  </Pressable>
+                )}
+                <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+                  <Text className="text-xs font-bold capitalize">
+                    {task.priority}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Task Description */}
+            {task.description && (
+              <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+                {task.description}
+              </Text>
             )}
-            <Text className="font-semibold text-gray-900 flex-1">
-              {task.title}
-            </Text>
-          </View>
-          <View className="flex-row items-center gap-2">
-            {/* Edit button for task creator or assignee */}
-            {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent card navigation
-                  if (isSubTask) {
-                    onNavigateToTaskDetail(task.parentTaskId, task.id);
-                  } else {
-                    onNavigateToTaskDetail(task.id);
-                  }
-                }}
-                className="w-6 h-6 items-center justify-center bg-blue-50 rounded"
-              >
-                <Ionicons name="pencil" size={12} color="#3b82f6" />
-              </Pressable>
-            )}
-            <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-              <Text className="text-xs font-bold capitalize">
-                {task.priority}
+            
+            {/* Line 2: Due Date and Status */}
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                <Text className="text-sm text-gray-600 ml-1">
+                  {new Date(task.dueDate).toLocaleDateString()}
+                </Text>
+              </View>
+              <Text className="text-sm text-gray-500">
+                {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
               </Text>
             </View>
           </View>
-        </View>
-        
-        {/* Photo Preview (up to 3 photos) */}
-        {task.attachments && task.attachments.length > 0 && (
-          <View className="flex-row gap-2 my-2">
-            {task.attachments.slice(0, 3).map((photo: string, index: number) => (
-              <View key={index} className="flex-1 max-w-[100px]">
-                <Image
-                  source={{ uri: photo }}
-                  className="w-full h-20 rounded-lg"
-                  resizeMode="cover"
-                />
-              </View>
-            ))}
-            {task.attachments.length > 3 && (
-              <View className="w-20 h-20 bg-gray-100 rounded-lg items-center justify-center">
-                <Text className="text-gray-600 text-xs font-semibold">
-                  +{task.attachments.length - 3}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
-        
-        {/* Task Description */}
-        {task.description && (
-          <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-            {task.description}
-          </Text>
-        )}
-        
-        {/* Line 2: Due Date and Status */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-            <Text className="text-sm text-gray-600 ml-1">
-              {new Date(task.dueDate).toLocaleDateString()}
-            </Text>
-          </View>
-          <Text className="text-sm text-gray-500">
-            {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
-          </Text>
         </View>
       </Pressable>
     );

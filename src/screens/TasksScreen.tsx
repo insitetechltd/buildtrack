@@ -228,67 +228,70 @@ export default function TasksScreen({
             onNavigateToTaskDetail(task.id);
           }
         }}
-        className="bg-white border border-gray-200 rounded-lg p-3 mb-2"
+        className="bg-white border border-gray-200 rounded-lg mb-2 overflow-hidden"
       >
-        {/* Line 1: Title and Priority */}
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center flex-1 mr-2">
-            {/* Sub-task indicator */}
-            {isSubTask && (
-              <View className="mr-2">
-                <Ionicons name="git-branch-outline" size={12} color="#7c3aed" />
-              </View>
-            )}
-            {/* NEW badge */}
-            {isNew && (
-              <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
-                <Text className="text-white text-xs font-bold">NEW</Text>
-              </View>
-            )}
-            <Text className="font-semibold text-gray-900 flex-1">
-              {task.title}
-            </Text>
-          </View>
-          <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-            <Text className="text-xs font-bold capitalize">
-              {task.priority}
-            </Text>
-          </View>
-        </View>
-        
-        {/* Photo Preview (up to 3 photos) */}
-        {task.attachments && task.attachments.length > 0 && (
-          <View className="flex-row gap-2 my-2">
-            {task.attachments.slice(0, 3).map((photo: string, index: number) => (
-              <View key={index} className="flex-1 max-w-[100px]">
-                <Image
-                  source={{ uri: photo }}
-                  className="w-full h-20 rounded-lg"
-                  resizeMode="cover"
-                />
-              </View>
-            ))}
-            {task.attachments.length > 3 && (
-              <View className="w-20 h-20 bg-gray-100 rounded-lg items-center justify-center">
-                <Text className="text-gray-600 text-xs font-semibold">
-                  +{task.attachments.length - 3}
+        {/* Main Content: Photo Left (20%) + Content Right (80%) */}
+        <View className="flex-row">
+          {/* Left Side: Single Photo (20% width) */}
+          {task.attachments && task.attachments.length > 0 && (
+            <View className="w-[20%] relative bg-gray-100">
+              <Image
+                source={{ uri: task.attachments[0] }}
+                className="w-full h-full"
+                style={{ minHeight: 110 }}
+                resizeMode="cover"
+              />
+              {task.attachments.length > 1 && (
+                <View className="absolute bottom-1 right-1 bg-black/70 px-1.5 py-0.5 rounded">
+                  <Text className="text-white text-[10px] font-bold">
+                    +{task.attachments.length - 1}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Right Side: All Content (80% width) */}
+          <View className={cn("flex-1 p-3", task.attachments && task.attachments.length > 0 ? "" : "w-full")}>
+            {/* Title and Priority */}
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center flex-1 mr-2">
+                {/* Sub-task indicator */}
+                {isSubTask && (
+                  <View className="mr-2">
+                    <Ionicons name="git-branch-outline" size={12} color="#7c3aed" />
+                  </View>
+                )}
+                {/* NEW badge */}
+                {isNew && (
+                  <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
+                    <Text className="text-white text-xs font-bold">NEW</Text>
+                  </View>
+                )}
+                <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
+                  {task.title}
                 </Text>
               </View>
-            )}
+              <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+                <Text className="text-xs font-bold capitalize">
+                  {task.priority}
+                </Text>
+              </View>
+            </View>
+            
+            {/* Due Date and Status */}
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                <Text className="text-sm text-gray-600 ml-1">
+                  {new Date(task.dueDate).toLocaleDateString()}
+                </Text>
+              </View>
+              <Text className="text-sm text-gray-500">
+                {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
+              </Text>
+            </View>
           </View>
-        )}
-        
-        {/* Line 2: Due Date and Status */}
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-            <Text className="text-sm text-gray-600 ml-1">
-              {new Date(task.dueDate).toLocaleDateString()}
-            </Text>
-          </View>
-          <Text className="text-sm text-gray-500">
-            {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
-          </Text>
         </View>
       </Pressable>
     );

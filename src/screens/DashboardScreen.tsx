@@ -40,23 +40,66 @@ export default function DashboardScreen({
   const { fetchTasks } = taskStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
-  const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter } = useProjectFilterStore();
+  const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const t = useTranslation();
 
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
 
-  // Validate and clear selected project if user is not part of it
+  // Smart project selection logic
   useEffect(() => {
-    if (selectedProjectId && user) {
+    if (!user) return;
+    
+    const userProjectCount = userProjects.length;
+    
+    console.log(`🎯 Smart Project Selection for ${user.name}:`);
+    console.log(`   - User projects: ${userProjectCount}`);
+    console.log(`   - Current selection: ${selectedProjectId || 'none'}`);
+    
+    // Case 1: User has no projects → Clear selection
+    if (userProjectCount === 0) {
+      console.log(`   → No projects assigned, clearing selection`);
+      setSelectedProject(null, user.id);
+      return;
+    }
+    
+    // Case 2: Check if current selection is still valid
+    if (selectedProjectId) {
       const isUserInProject = userProjects.some(p => p.id === selectedProjectId);
-      if (!isUserInProject) {
-        console.log(`⚠️ User ${user.name} is not assigned to selected project ${selectedProjectId}, clearing selection`);
-        setSelectedProject("");
+      if (isUserInProject) {
+        console.log(`   → Current selection is valid, keeping it`);
+        return; // Keep current selection
+      } else {
+        console.log(`   → Current selection invalid, will auto-select`);
       }
     }
-  }, [selectedProjectId, userProjects, user, setSelectedProject]);
+    
+    // Case 3: User has exactly 1 project → Auto-select it
+    if (userProjectCount === 1) {
+      const singleProject = userProjects[0];
+      console.log(`   → Only 1 project, auto-selecting: ${singleProject.name}`);
+      setSelectedProject(singleProject.id, user.id);
+      return;
+    }
+    
+    // Case 4: User has multiple projects → Use last selected for this user
+    if (userProjectCount > 1) {
+      const lastSelected = getLastSelectedProject(user.id);
+      
+      // Verify last selected is still valid for this user
+      const isLastSelectedValid = lastSelected && userProjects.some(p => p.id === lastSelected);
+      
+      if (isLastSelectedValid) {
+        console.log(`   → Multiple projects, using last selected for user`);
+        setSelectedProject(lastSelected, user.id);
+      } else {
+        console.log(`   → Multiple projects, no valid last selection`);
+        console.log(`   → User must manually select from picker`);
+        setSelectedProject(null, user.id);
+      }
+    }
+  }, [user, userProjects, selectedProjectId, setSelectedProject, getLastSelectedProject]);
 
   // Fetch tasks when Dashboard mounts
   useEffect(() => {
@@ -454,8 +497,18 @@ export default function DashboardScreen({
               <Ionicons name="business-outline" size={28} color="#3b82f6" />
               <View className="ml-3 flex-1">
                 <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                  {selectedProject ? selectedProject.name : userProjects.length === 0 ? "No Projects Assigned" : "---"}
+                  {selectedProject 
+                    ? selectedProject.name 
+                    : userProjects.length === 0 
+                      ? "No Projects Assigned" 
+                      : "---"
+                  }
                 </Text>
+                {!selectedProject && userProjects.length > 0 && (
+                  <Text className="text-xs text-gray-500 mt-0.5">
+                    Tap to select a project
+                  </Text>
+                )}
               </View>
             </View>
             <Ionicons name="chevron-down" size={28} color="#6b7280" />
@@ -758,7 +811,7 @@ export default function DashboardScreen({
             {userProjects.length === 0 && (
               <Pressable
                 onPress={() => {
-                  setSelectedProject("");
+                  setSelectedProject(null, user.id);
                   setShowProjectPicker(false);
                 }}
                 className={cn(
@@ -793,7 +846,7 @@ export default function DashboardScreen({
               <Pressable
                 key={project.id}
                 onPress={() => {
-                  setSelectedProject(project.id);
+                  setSelectedProject(project.id, user.id);
                   setShowProjectPicker(false);
                 }}
                 className={cn(

@@ -3,25 +3,41 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ProjectFilterState {
-  selectedProjectId: string | null; // Now persists the last selected project
+  selectedProjectId: string | null;
   sectionFilter: "my_tasks" | "inbox" | "outbox" | null;
   statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | null;
-  setSelectedProject: (projectId: string | null) => void;
+  
+  // Per-user last selected projects
+  lastSelectedProjects: Record<string, string>; // userId -> projectId
+  
+  setSelectedProject: (projectId: string | null, userId?: string) => void;
   setSectionFilter: (section: "my_tasks" | "inbox" | "outbox") => void;
   setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue") => void;
   clearSectionFilter: () => void;
   clearStatusFilter: () => void;
+  getLastSelectedProject: (userId: string) => string | null;
 }
 
 export const useProjectFilterStore = create<ProjectFilterState>()(
   persist(
-    (set) => ({
-      selectedProjectId: null, // Will be set on first load to first available project
+    (set, get) => ({
+      selectedProjectId: null,
       sectionFilter: null,
       statusFilter: null,
+      lastSelectedProjects: {}, // Store last selected project per user
       
-      setSelectedProject: (projectId: string | null) => {
+      setSelectedProject: (projectId: string | null, userId?: string) => {
         set({ selectedProjectId: projectId });
+        
+        // Save as last selected for this user
+        if (userId && projectId) {
+          set(state => ({
+            lastSelectedProjects: {
+              ...state.lastSelectedProjects,
+              [userId]: projectId,
+            },
+          }));
+        }
       },
       
       setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | null) => {
@@ -38,6 +54,10 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       
       clearStatusFilter: () => {
         set({ statusFilter: null });
+      },
+      
+      getLastSelectedProject: (userId: string) => {
+        return get().lastSelectedProjects[userId] || null;
       },
     }),
     {

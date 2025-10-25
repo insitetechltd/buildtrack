@@ -521,8 +521,6 @@ export default function DashboardScreen({
           const starredTasks = getStarredTasks(user.id);
           const hasStarredTasks = starredTasks.length > 0;
           
-          if (!hasStarredTasks) return null;
-          
           return (
             <View className="px-6 pt-2 pb-4">
               <View className="flex-row items-center mb-3">
@@ -532,8 +530,9 @@ export default function DashboardScreen({
                 </Text>
               </View>
               
-              <View className="space-y-2">
-                {starredTasks.map((task: Task) => {
+              {hasStarredTasks ? (
+                <View className="space-y-2">
+                  {starredTasks.map((task: Task) => {
                   const isStarred = task.starredByUsers?.includes(user.id) || false;
                   
                   return (
@@ -622,7 +621,18 @@ export default function DashboardScreen({
                     </Pressable>
                   );
                 })}
-              </View>
+                </View>
+              ) : (
+                <View className="bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-lg p-6 items-center">
+                  <Ionicons name="star-outline" size={32} color="#d97706" />
+                  <Text className="text-gray-600 text-sm mt-2 text-center">
+                    No tasks starred for today
+                  </Text>
+                  <Text className="text-gray-500 text-xs mt-1 text-center">
+                    Tap the star icon on any task to add it here
+                  </Text>
+                </View>
+              )}
             </View>
           );
         })()}

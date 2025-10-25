@@ -3,10 +3,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { cacheManager, uploadQueue } from "./src/services/cache";
 
 // VERSION CONTROL - Increment this to force a fresh app state
-const APP_VERSION = "13.0";
+const APP_VERSION = "14.0";
 const VERSION_KEY = "@app_version";
 
 /*
@@ -59,31 +58,7 @@ export default function App() {
       }
     };
     
-    const initializeCache = async () => {
-      try {
-        console.log("📦 Initializing file cache system...");
-        
-        // Initialize cache manager (includes crash recovery)
-        await cacheManager.initialize();
-        
-        // Process any pending uploads from previous session
-        const pending = await uploadQueue.getPendingUploads();
-        if (pending.length > 0) {
-          console.log(`📤 Found ${pending.length} pending uploads, resuming...`);
-          for (const file of pending) {
-            await uploadQueue.addToQueue(file);
-          }
-        }
-        
-        console.log("✅ File cache system ready");
-      } catch (error) {
-        console.error("❌ Failed to initialize file cache:", error);
-      }
-    };
-    
-    // Run both initialization tasks
     checkVersion();
-    initializeCache();
   }, []);
 
   return (
@@ -95,4 +70,4 @@ export default function App() {
   );
 }
 
-// FORCE RELOAD v13.0 - REAL-TIME DATA SYNC SYSTEM
+// FORCE RELOAD v12.0 - REAL-TIME DATA SYNC SYSTEM

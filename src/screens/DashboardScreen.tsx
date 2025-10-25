@@ -531,45 +531,97 @@ export default function DashboardScreen({
                 </Text>
               </View>
               
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingRight: 24 }}
-              >
-                {starredTasks.map((task: Task) => (
-                  <View
-                    key={task.id}
-                    className="bg-white border-2 border-yellow-400 rounded-lg p-3 mr-3 w-64"
-                  >
-                    <View className="flex-row items-start justify-between mb-2">
-                      <View className="flex-1 mr-2">
-                        <Text className="font-semibold text-gray-900 text-sm" numberOfLines={2}>
-                          {task.title}
-                        </Text>
+              <View className="space-y-2">
+                {starredTasks.map((task: Task) => {
+                  const isStarred = task.starredByUsers?.includes(user.id) || false;
+                  
+                  return (
+                    <Pressable
+                      key={task.id}
+                      onPress={() => {
+                        // Navigate to task detail (you'll need to add this prop)
+                        console.log('Open task:', task.id);
+                      }}
+                      className="bg-white border-2 border-yellow-400 rounded-lg p-3"
+                    >
+                      {/* Main content: Photo on left, Text on right */}
+                      <View className="flex-row">
+                        {/* Photo on the left (only first photo) */}
+                        {task.attachments && task.attachments.length > 0 && (
+                          <View className="mr-3">
+                            <Image
+                              source={{ uri: task.attachments[0] }}
+                              className="w-20 h-20 rounded-lg"
+                              resizeMode="cover"
+                            />
+                            {task.attachments.length > 1 && (
+                              <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
+                                <Text className="text-white text-xs font-semibold">
+                                  +{task.attachments.length - 1}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                        
+                        {/* Text content on the right */}
+                        <View className="flex-1">
+                          {/* Line 1: Title and Priority */}
+                          <View className="flex-row items-center justify-between mb-2">
+                            <View className="flex-row items-center flex-1 mr-2">
+                              <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
+                                {task.title}
+                              </Text>
+                            </View>
+                            <View className="flex-row items-center gap-2">
+                              {/* Star button */}
+                              <Pressable
+                                onPress={(e) => {
+                                  e.stopPropagation();
+                                  toggleTaskStar(task.id, user.id);
+                                }}
+                                className="p-1"
+                              >
+                                <Ionicons 
+                                  name={isStarred ? "star" : "star-outline"} 
+                                  size={18} 
+                                  color={isStarred ? "#f59e0b" : "#9ca3af"} 
+                                />
+                              </Pressable>
+                              {/* Priority badge */}
+                              <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+                                <Text className="text-xs font-bold capitalize">
+                                  {task.priority}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+                          
+                          {/* Task Description */}
+                          {task.description && (
+                            <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+                              {task.description}
+                            </Text>
+                          )}
+                          
+                          {/* Line 2: Due Date and Status */}
+                          <View className="flex-row items-center justify-between">
+                            <View className="flex-row items-center">
+                              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                              <Text className="text-sm text-gray-600 ml-1">
+                                {new Date(task.dueDate).toLocaleDateString()}
+                              </Text>
+                            </View>
+                            <Text className="text-sm text-gray-500">
+                              {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                      <Pressable
-                        onPress={() => toggleTaskStar(task.id, user.id)}
-                        className="p-1"
-                      >
-                        <Ionicons name="star" size={20} color="#f59e0b" />
-                      </Pressable>
-                    </View>
-                    <Text className="text-xs text-gray-600 mb-2" numberOfLines={1}>
-                      {task.description}
-                    </Text>
-                    <View className="flex-row items-center justify-between">
-                      <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-                        <Text className="text-xs font-semibold capitalize">
-                          {task.priority}
-                        </Text>
-                      </View>
-                      <Text className="text-xs text-gray-500">
-                        {task.completionPercentage}% done
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
           );
         })()}

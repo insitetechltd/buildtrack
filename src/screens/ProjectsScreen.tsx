@@ -39,7 +39,7 @@ export default function ProjectsScreen({
   onNavigateBack
 }: ProjectsScreenProps) {
   const { user } = useAuthStore();
-  const projectStore = useProjectStoreWithCompanyInit(user.companyId);
+  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByCompany, getProjectsByUser, getProjectStats, updateProject, getProjectUserAssignments, assignUserToProject, getLeadPMForProject } = projectStore;
   const userStore = useUserStoreWithInit();
   const { getUserById, getUsersByCompany } = userStore;

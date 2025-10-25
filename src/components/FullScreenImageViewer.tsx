@@ -82,13 +82,13 @@ export default function FullScreenImageViewer({
       onRequestClose={onClose}
     >
       <StatusBar style="light" />
-      <SafeAreaView className="flex-1 bg-black">
+      <SafeAreaView className="flex-1 bg-black" edges={['left', 'right', 'bottom']}>
         {/* Header */}
-        <View className="absolute top-0 left-0 right-0 z-10 bg-black/80 px-4 py-3" style={{ paddingTop: Platform.OS === 'ios' ? 0 : RNStatusBar.currentHeight }}>
+        <View className="absolute top-0 left-0 right-0 z-10 bg-black/80 px-4 py-3" style={{ paddingTop: Platform.OS === 'ios' ? 50 : (RNStatusBar.currentHeight || 0) + 16 }}>
           <View className="flex-row items-center justify-between">
             <Pressable
               onPress={onClose}
-              className="flex-row items-center"
+              className="flex-row items-center p-2 -ml-2"
             >
               <Ionicons name="close" size={28} color="white" />
               <Text className="text-white text-base font-medium ml-2">Close</Text>

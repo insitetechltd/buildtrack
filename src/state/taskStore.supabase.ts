@@ -90,7 +90,7 @@ export const useTaskStore = create<TaskStore>()(
           const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
             .from('task_updates')
             .select('*')
-            .order('created_at', { ascending: true });
+            .order('timestamp', { ascending: true });
 
           if (taskUpdatesError) throw taskUpdatesError;
 
@@ -117,7 +117,7 @@ export const useTaskStore = create<TaskStore>()(
               photos: update.photos || [],
               completionPercentage: update.completion_percentage,
               status: update.status,
-              timestamp: update.created_at,
+              timestamp: update.timestamp,
               userId: update.user_id,
             });
           });
@@ -245,7 +245,7 @@ export const useTaskStore = create<TaskStore>()(
               photos: update.photos || [],
               completionPercentage: update.completion_percentage,
               status: update.status,
-              timestamp: update.created_at,
+              timestamp: update.timestamp,
               userId: update.user_id,
             });
           });
@@ -348,7 +348,7 @@ export const useTaskStore = create<TaskStore>()(
               photos: update.photos || [],
               completionPercentage: update.completion_percentage,
               status: update.status,
-              timestamp: update.created_at,
+              timestamp: update.timestamp,
               userId: update.user_id,
             });
           });

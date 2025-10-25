@@ -37,7 +37,7 @@ export default function DashboardScreen({
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const tasks = taskStore.tasks;
-  const { fetchTasks } = taskStore;
+  const { fetchTasks, getStarredTasks, toggleTaskStar } = taskStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
@@ -515,6 +515,65 @@ export default function DashboardScreen({
           </Pressable>
         </View>
         
+        {/* Today's Tasks Section */}
+        {(() => {
+          const starredTasks = getStarredTasks(user.id);
+          const hasStarredTasks = starredTasks.length > 0;
+          
+          if (!hasStarredTasks) return null;
+          
+          return (
+            <View className="px-6 pt-2 pb-4">
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="star" size={20} color="#f59e0b" />
+                <Text className="text-lg font-bold text-gray-900 ml-2">
+                  Today's Tasks ({starredTasks.length})
+                </Text>
+              </View>
+              
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingRight: 24 }}
+              >
+                {starredTasks.map((task: Task) => (
+                  <View
+                    key={task.id}
+                    className="bg-white border-2 border-yellow-400 rounded-lg p-3 mr-3 w-64"
+                  >
+                    <View className="flex-row items-start justify-between mb-2">
+                      <View className="flex-1 mr-2">
+                        <Text className="font-semibold text-gray-900 text-sm" numberOfLines={2}>
+                          {task.title}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => toggleTaskStar(task.id, user.id)}
+                        className="p-1"
+                      >
+                        <Ionicons name="star" size={20} color="#f59e0b" />
+                      </Pressable>
+                    </View>
+                    <Text className="text-xs text-gray-600 mb-2" numberOfLines={1}>
+                      {task.description}
+                    </Text>
+                    <View className="flex-row items-center justify-between">
+                      <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+                        <Text className="text-xs font-semibold capitalize">
+                          {task.priority}
+                        </Text>
+                      </View>
+                      <Text className="text-xs text-gray-500">
+                        {task.completionPercentage}% done
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          );
+        })()}
+        
         {/* Quick Overview */}
         <View className="px-6 py-4">
           <View className="flex-row items-center justify-between mb-4">
@@ -536,10 +595,16 @@ export default function DashboardScreen({
             {/* Section 1: My Tasks - Self-assigned tasks */}
             <View>
               {/* Title */}
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
-                <Text className="text-base font-semibold text-gray-900 ml-2">
-                  My Tasks ({myAllTasks.length})
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
+                  <Text className="text-base font-semibold text-gray-900 ml-2">
+                    My Tasks ({myAllTasks.length})
+                  </Text>
+                </View>
+                {/* Info text about starring */}
+                <Text className="text-xs text-gray-500 italic">
+                  Tap star in Tasks screen
                 </Text>
               </View>
               
@@ -618,11 +683,13 @@ export default function DashboardScreen({
             {/* Section 2: Inbox - Tasks assigned to me by others */}
             <View>
               {/* Title */}
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="mail-outline" size={20} color="#3b82f6" />
-                <Text className="text-base font-semibold text-gray-900 ml-2">
-                  Inbox ({inboxAllTasks.length})
-                </Text>
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="mail-outline" size={20} color="#3b82f6" />
+                  <Text className="text-base font-semibold text-gray-900 ml-2">
+                    Inbox ({inboxAllTasks.length})
+                  </Text>
+                </View>
               </View>
               
               {/* 5 Status Categories in Single Row */}
@@ -700,11 +767,13 @@ export default function DashboardScreen({
             {/* Section 3: Outbox - Tasks I assigned to others */}
             <View>
               {/* Title */}
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="send-outline" size={20} color="#7c3aed" />
-                <Text className="text-base font-semibold text-gray-900 ml-2">
-                  Outbox ({outboxAllTasks.length})
-                </Text>
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="send-outline" size={20} color="#7c3aed" />
+                  <Text className="text-base font-semibold text-gray-900 ml-2">
+                    Outbox ({outboxAllTasks.length})
+                  </Text>
+                </View>
               </View>
               
               {/* 5 Status Categories in Single Row */}

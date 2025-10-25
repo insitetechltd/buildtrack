@@ -313,6 +313,14 @@ export default function ProjectsTasksScreen({
     );
     const isNew = !readStatus || !readStatus.isRead;
 
+    // Check if task is starred by current user
+    const isStarred = task.starredByUsers?.includes(user.id) || false;
+
+    const handleStarPress = (e: any) => {
+      e.stopPropagation(); // Prevent opening task detail
+      taskStore.toggleTaskStar(task.id, user.id);
+    };
+
     return (
       <Pressable
         onPress={() => {
@@ -384,6 +392,17 @@ export default function ProjectsTasksScreen({
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
+                {/* Star button for Today's Tasks */}
+                <Pressable
+                  onPress={handleStarPress}
+                  className="p-1"
+                >
+                  <Ionicons 
+                    name={isStarred ? "star" : "star-outline"} 
+                    size={18} 
+                    color={isStarred ? "#f59e0b" : "#9ca3af"} 
+                  />
+                </Pressable>
                 {/* Edit button for task creator or assignee */}
                 {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
                   <Pressable

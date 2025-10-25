@@ -309,13 +309,23 @@ export interface SubTask {
   };
   assignedTo: string[];
   assignedBy: string;
+  originalAssignedBy?: string; // Original creator before any delegation
   createdAt: string;
   updates: TaskUpdate[]; // Add updates
   currentStatus: TaskStatus;
   completionPercentage: number;
   accepted?: boolean;
+  acceptedBy?: string; // User ID who accepted the subtask
+  acceptedAt?: string; // When the subtask was accepted
   declineReason?: string;
   subTasks?: SubTask[]; // Recursive nesting
+  delegationHistory?: Array<{ // Track subtask delegation
+    fromUserId: string;
+    toUserId: string;
+    reason?: string;
+    timestamp: string;
+  }>;
+  starredByUsers?: string[]; // Array of user IDs who starred this subtask
 }
 
 export interface Task {
@@ -334,13 +344,22 @@ export interface Task {
   };
   assignedTo: string[];
   assignedBy: string;
+  originalAssignedBy?: string; // Original creator before any delegation
   createdAt: string;
   updates: TaskUpdate[];
   currentStatus: TaskStatus;
   completionPercentage: number;
   accepted?: boolean;
+  acceptedBy?: string; // User ID who accepted the task
+  acceptedAt?: string; // When the task was accepted
   declineReason?: string;
   subTasks?: SubTask[]; // Add subtasks array
+  delegationHistory?: Array<{ // Track task delegation
+    fromUserId: string;
+    toUserId: string;
+    reason?: string;
+    timestamp: string;
+  }>;
   
   // Today's Tasks feature - track which users starred this task
   starredByUsers?: string[]; // Array of user IDs who starred this for today

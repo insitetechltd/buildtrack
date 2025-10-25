@@ -26,6 +26,10 @@ interface TaskStore {
   acceptTask: (taskId: string, userId: string) => Promise<void>;
   declineTask: (taskId: string, userId: string, reason: string) => Promise<void>;
   
+  // Today's Tasks (starring)
+  toggleTaskStar: (taskId: string, userId: string) => Promise<void>;
+  getStarredTasks: (userId: string) => Task[];
+  
   // Progress tracking
   addTaskUpdate: (taskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
   addSubTaskUpdate: (taskId: string, subTaskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
@@ -137,6 +141,7 @@ export const useTaskStore = create<TaskStore>()(
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
+            starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
             createdAt: task.created_at,
@@ -265,6 +270,7 @@ export const useTaskStore = create<TaskStore>()(
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
+            starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
             createdAt: task.created_at,
@@ -368,6 +374,7 @@ export const useTaskStore = create<TaskStore>()(
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
+            starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
             createdAt: task.created_at,
@@ -596,6 +603,7 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.declineReason) updateData.decline_reason = updates.declineReason;
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
+          if (updates.starredByUsers !== undefined) updateData.starred_by_users = updates.starredByUsers;
 
           const { error } = await supabase
             .from('tasks')
@@ -676,6 +684,31 @@ export const useTaskStore = create<TaskStore>()(
           accepted: false, 
           declineReason: reason,
           currentStatus: "rejected"
+        });
+      },
+
+      // Today's Tasks - Star/Unstar functionality
+      toggleTaskStar: async (taskId, userId) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const starredByUsers = task.starredByUsers || [];
+        const isCurrentlyStarred = starredByUsers.includes(userId);
+
+        // Toggle: Add or remove user from starred array
+        const newStarredByUsers = isCurrentlyStarred
+          ? starredByUsers.filter(id => id !== userId)
+          : [...starredByUsers, userId];
+
+        await get().updateTask(taskId, {
+          starredByUsers: newStarredByUsers
+        });
+      },
+
+      getStarredTasks: (userId) => {
+        return get().tasks.filter(task => {
+          const starredByUsers = task.starredByUsers || [];
+          return starredByUsers.includes(userId);
         });
       },
 

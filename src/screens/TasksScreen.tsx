@@ -213,6 +213,14 @@ export default function TasksScreen({
     );
     const isNew = !readStatus || !readStatus.isRead;
 
+    // Check if task is starred by current user
+    const isStarred = task.starredByUsers?.includes(user.id) || false;
+
+    const handleStarPress = (e: any) => {
+      e.stopPropagation(); // Prevent opening task detail
+      taskStore.toggleTaskStar(task.id, user.id);
+    };
+
     return (
       <Pressable
         onPress={() => {
@@ -270,10 +278,24 @@ export default function TasksScreen({
                   {task.title}
                 </Text>
               </View>
-              <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-                <Text className="text-xs font-bold capitalize">
-                  {task.priority}
-                </Text>
+              <View className="flex-row items-center">
+                {/* Star button for Today's Tasks */}
+                <Pressable
+                  onPress={handleStarPress}
+                  className="mr-2 p-1"
+                >
+                  <Ionicons 
+                    name={isStarred ? "star" : "star-outline"} 
+                    size={20} 
+                    color={isStarred ? "#f59e0b" : "#9ca3af"} 
+                  />
+                </Pressable>
+                {/* Priority badge */}
+                <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+                  <Text className="text-xs font-bold capitalize">
+                    {task.priority}
+                  </Text>
+                </View>
               </View>
             </View>
             

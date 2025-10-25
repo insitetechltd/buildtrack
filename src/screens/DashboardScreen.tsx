@@ -530,19 +530,21 @@ export default function DashboardScreen({
             </Pressable>
           </View>
 
-          {/* Section 1: My Tasks - Self-assigned tasks */}
-          <View className="mb-4">
-              <View className="bg-white rounded-lg p-4 border border-gray-200">
-                {/* Title */}
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
-                  <Text className="text-base font-semibold text-gray-900 ml-2">
-                    My Tasks ({myAllTasks.length})
-                  </Text>
-                </View>
-                
-                {/* 5 Status Categories in Single Row */}
-                <View className="flex-row gap-2">
+          {/* Combined Task Overview Box */}
+          <View className="bg-white rounded-lg p-4 border border-gray-200">
+            
+            {/* Section 1: My Tasks - Self-assigned tasks */}
+            <View>
+              {/* Title */}
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
+                <Text className="text-base font-semibold text-gray-900 ml-2">
+                  My Tasks ({myAllTasks.length})
+                </Text>
+              </View>
+              
+              {/* 5 Status Categories in Single Row */}
+              <View className="flex-row gap-2">
                   {/* New */}
                   <Pressable 
                     className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
@@ -608,22 +610,23 @@ export default function DashboardScreen({
                     <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Rejected</Text>
                   </Pressable>
                 </View>
-              </View>
             </View>
 
-          {/* Section 2: Inbox - Tasks assigned to me by others */}
-          <View className="mb-4">
-              <View className="bg-white rounded-lg p-4 border border-gray-200">
-                {/* Title */}
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="mail-outline" size={20} color="#3b82f6" />
-                  <Text className="text-base font-semibold text-gray-900 ml-2">
-                    Inbox ({inboxAllTasks.length})
-                  </Text>
-                </View>
-                
-                {/* 5 Status Categories in Single Row */}
-                <View className="flex-row gap-2">
+            {/* Divider */}
+            <View className="h-px bg-gray-200 my-4" />
+
+            {/* Section 2: Inbox - Tasks assigned to me by others */}
+            <View>
+              {/* Title */}
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="mail-outline" size={20} color="#3b82f6" />
+                <Text className="text-base font-semibold text-gray-900 ml-2">
+                  Inbox ({inboxAllTasks.length})
+                </Text>
+              </View>
+              
+              {/* 5 Status Categories in Single Row */}
+              <View className="flex-row gap-2">
                   {/* New */}
                   <Pressable 
                     className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
@@ -689,22 +692,23 @@ export default function DashboardScreen({
                     <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Rejected</Text>
                   </Pressable>
                 </View>
-              </View>
             </View>
 
-          {/* Section 3: Outbox - Tasks I assigned to others */}
-          <View className="mb-4">
-              <View className="bg-white rounded-lg p-4 border border-gray-200">
-                {/* Title */}
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="send-outline" size={20} color="#7c3aed" />
-                  <Text className="text-base font-semibold text-gray-900 ml-2">
-                    Outbox ({outboxAllTasks.length})
-                  </Text>
-                </View>
-                
-                {/* 5 Status Categories in Single Row */}
-                <View className="flex-row gap-2">
+            {/* Divider */}
+            <View className="h-px bg-gray-200 my-4" />
+
+            {/* Section 3: Outbox - Tasks I assigned to others */}
+            <View>
+              {/* Title */}
+              <View className="flex-row items-center mb-3">
+                <Ionicons name="send-outline" size={20} color="#7c3aed" />
+                <Text className="text-base font-semibold text-gray-900 ml-2">
+                  Outbox ({outboxAllTasks.length})
+                </Text>
+              </View>
+              
+              {/* 5 Status Categories in Single Row */}
+              <View className="flex-row gap-2">
                   {/* New */}
                   <Pressable 
                     className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
@@ -770,8 +774,9 @@ export default function DashboardScreen({
                     <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Rejected</Text>
                   </Pressable>
                 </View>
-              </View>
             </View>
+            
+          </View>
         </View>
 
       </ScrollView>

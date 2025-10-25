@@ -341,6 +341,9 @@ export interface Task {
   accepted?: boolean;
   declineReason?: string;
   subTasks?: SubTask[]; // Add subtasks array
+  
+  // Today's Tasks feature - track which users starred this task
+  starredByUsers?: string[]; // Array of user IDs who starred this for today
 }
 
 export interface AuthState {

@@ -379,12 +379,6 @@ export default function ProjectsTasksScreen({
             {/* Line 1: Title and Priority */}
             <View className="flex-row items-center justify-between mb-2">
               <View className="flex-row items-center flex-1 mr-2">
-                {/* NEW badge */}
-                {isNew && (
-                  <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
-                    <Text className="text-white text-xs font-bold">NEW</Text>
-                  </View>
-                )}
                 <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
                   {task.title}
                 </Text>

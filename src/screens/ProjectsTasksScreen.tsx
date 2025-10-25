@@ -392,6 +392,28 @@ export default function ProjectsTasksScreen({
           </View>
         </View>
         
+        {/* Photo Preview (up to 3 photos) */}
+        {task.attachments && task.attachments.length > 0 && (
+          <View className="flex-row gap-2 my-2">
+            {task.attachments.slice(0, 3).map((photo: string, index: number) => (
+              <View key={index} className="flex-1 max-w-[100px]">
+                <Image
+                  source={{ uri: photo }}
+                  className="w-full h-20 rounded-lg"
+                  resizeMode="cover"
+                />
+              </View>
+            ))}
+            {task.attachments.length > 3 && (
+              <View className="w-20 h-20 bg-gray-100 rounded-lg items-center justify-center">
+                <Text className="text-gray-600 text-xs font-semibold">
+                  +{task.attachments.length - 3}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+        
         {/* Task Description */}
         {task.description && (
           <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>

@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   Image,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -68,6 +69,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [imageViewerImages, setImageViewerImages] = useState<string[]>([]);
   const [imageViewerInitialIndex, setImageViewerInitialIndex] = useState(0);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   // Get the parent task
   const parentTask = tasks.find(t => t.id === taskId);
@@ -400,6 +402,53 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
+      {/* Photo Slider (Full Width, 20% Screen Height) */}
+      {task.attachments && task.attachments.length > 0 && (
+        <View style={{ height: Dimensions.get('window').height * 0.2 }}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(event) => {
+              const contentOffsetX = event.nativeEvent.contentOffset.x;
+              const newIndex = Math.round(contentOffsetX / Dimensions.get('window').width);
+              setCurrentPhotoIndex(newIndex);
+            }}
+            scrollEventThrottle={16}
+          >
+            {task.attachments.map((attachment: string, index: number) => (
+              <Pressable
+                key={index}
+                style={{ width: Dimensions.get('window').width }}
+                onPress={() => {
+                  setImageViewerImages(task.attachments);
+                  setImageViewerInitialIndex(currentPhotoIndex);
+                  setShowImageViewer(true);
+                }}
+              >
+                <Image
+                  source={{ uri: attachment }}
+                  style={{ 
+                    width: Dimensions.get('window').width, 
+                    height: Dimensions.get('window').height * 0.2 
+                  }}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            ))}
+          </ScrollView>
+          
+          {/* Photo Counter Badge */}
+          {task.attachments.length > 1 && (
+            <View className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-full">
+              <Text className="text-white text-xs font-medium">
+                {currentPhotoIndex + 1} / {task.attachments.length}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       <ScrollView className="flex-1">
         {/* Task Status, Priority, and Due Date */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
@@ -429,45 +478,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Task Description */}
           {task.description && (
-            <View className="mb-4">
+            <View>
               <Text className="text-base text-gray-700 leading-6">
                 {task.description}
               </Text>
-            </View>
-          )}
-
-          {/* Task Attachments */}
-          {task.attachments && task.attachments.length > 0 && (
-            <View className="border-t border-gray-200 pt-4">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-sm font-semibold text-gray-900">Attachments</Text>
-                <View className="bg-blue-100 px-2 py-1 rounded-full">
-                  <Text className="text-blue-700 text-xs font-medium">
-                    {task.attachments.length}
-                  </Text>
-                </View>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 4 }}>
-                <View className="flex-row space-x-3">
-                  {task.attachments.map((attachment: string, index: number) => (
-                    <Pressable
-                      key={index}
-                      className="rounded-lg overflow-hidden border border-gray-200"
-                      onPress={() => {
-                        setImageViewerImages(task.attachments);
-                        setImageViewerInitialIndex(index);
-                        setShowImageViewer(true);
-                      }}
-                    >
-                      <Image
-                        source={{ uri: attachment }}
-                        style={{ width: 120, height: 120 }}
-                        resizeMode="cover"
-                      />
-                    </Pressable>
-                  ))}
-                </View>
-              </ScrollView>
             </View>
           )}
         </View>

@@ -701,7 +701,20 @@ export default function DashboardScreen({
               
               {/* 4 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 1.1 WIP - ORANGE */}
+                  {/* 1.1 Rejected - YELLOW */}
+                  <Pressable 
+                    className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
+                    onPress={() => {
+                      setSectionFilter("outbox");
+                      setStatusFilter("rejected");
+                      onNavigateToTasks();
+                    }}
+                  >
+                    <Text className="text-2xl font-bold text-yellow-700 mb-1">{myRejectedTasks.length}</Text>
+                    <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Rejected</Text>
+                  </Pressable>
+                  
+                  {/* 1.2 WIP - ORANGE */}
                   <Pressable 
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -714,7 +727,7 @@ export default function DashboardScreen({
                     <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
-                  {/* 1.2 Done - BLUE */}
+                  {/* 1.3 Done - BLUE */}
                   <Pressable 
                     className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -727,30 +740,17 @@ export default function DashboardScreen({
                     <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
-                  {/* 1.3 Overdue - GREEN */}
+                  {/* 1.4 Overdue - RED */}
                   <Pressable 
-                    className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
+                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("overdue" as any);
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-green-700 mb-1">{myOverdueTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Overdue</Text>
-                  </Pressable>
-                  
-                  {/* 1.4 Rejected - RED */}
-                  <Pressable 
-                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox"); // Changed from "my_tasks" to "outbox"
-                      setStatusFilter("rejected");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-red-700 mb-1">{myRejectedTasks.length}</Text>
-                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Rejected</Text>
+                    <Text className="text-2xl font-bold text-red-700 mb-1">{myOverdueTasks.length}</Text>
+                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
                   </Pressable>
                 </View>
             </View>

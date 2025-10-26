@@ -26,7 +26,7 @@ interface ProfileScreenProps {
 }
 
 export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { getCompanyBanner } = useCompanyStore();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -35,21 +35,6 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
   if (!user) return null;
 
   const banner = getCompanyBanner(user.companyId);
-
-  const handleLogout = () => {
-    Alert.alert(
-      t.auth.logout,
-      t.auth.logoutConfirm,
-      [
-        { text: t.common.cancel, style: "cancel" },
-        { 
-          text: t.auth.logout, 
-          style: "destructive",
-          onPress: logout 
-        },
-      ]
-    );
-  };
 
   const handleLanguageChange = (newLanguage: Language) => {
     if (newLanguage === language) {

@@ -225,12 +225,15 @@ export default function DashboardScreen({
     !task.accepted && task.currentStatus !== "rejected"
   );
   
-  // 1.2 WIP: Tasks I've accepted OR self-assigned tasks, under 100%, not overdue
+  // 1.2 WIP: Tasks I've accepted, either in progress OR completed but not submitted for review
   const myWIPTasks = myAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage < 100 && 
     !isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    task.currentStatus !== "rejected" &&
+    (
+      task.completionPercentage < 100 || // Still in progress
+      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
+    )
   );
   
   // 1.3 Reviewing: Tasks at 100% that I've submitted for review (pending approval)
@@ -283,12 +286,15 @@ export default function DashboardScreen({
     !task.accepted && task.currentStatus !== "rejected"
   );
   
-  // 2.2 WIP: Tasks I've accepted, under 100%, not overdue
+  // 2.2 WIP: Tasks I've accepted, either in progress OR completed but not submitted for review
   const inboxWIPTasks = inboxAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage < 100 && 
     !isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    task.currentStatus !== "rejected" &&
+    (
+      task.completionPercentage < 100 || // Still in progress
+      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
+    )
   );
   
   // 2.3 Reviewing: Tasks at 100% submitted for review (pending approval)
@@ -340,12 +346,15 @@ export default function DashboardScreen({
     !task.accepted && task.currentStatus !== "rejected"
   );
   
-  // 3.2 WIP: Tasks assignee has accepted, under 100%, not overdue
+  // 3.2 WIP: Tasks assignee has accepted, either in progress OR completed but not submitted for review
   const outboxWIPTasks = outboxAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage < 100 && 
     !isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    task.currentStatus !== "rejected" &&
+    (
+      task.completionPercentage < 100 || // Still in progress
+      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
+    )
   );
   
   // 3.3 Reviewing: Tasks at 100% submitted for my review (pending my approval)

@@ -6,6 +6,7 @@ import { AuthState, User, UserRole } from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
 
 interface AuthStore extends AuthState {
+  isInitialized: boolean;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (data: {
@@ -27,6 +28,7 @@ export const useAuthStore = create<AuthStore>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialized: false,
 
       login: async (username: string, password: string) => {
         set({ isLoading: true });
@@ -347,6 +349,11 @@ export const useAuthStore = create<AuthStore>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isInitialized = true;
+        }
+      },
     }
   )
 );

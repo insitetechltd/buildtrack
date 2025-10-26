@@ -413,9 +413,10 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized } = useAuthStore();
 
-  if (isLoading) {
+  // Wait for store rehydration before showing anything
+  if (!isInitialized || isLoading) {
     // TODO: Add proper loading screen
     return null;
   }

@@ -447,10 +447,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     Linking.openURL(`tel:${assignedBy.phone}`);
                   }
                 }}
-                className="flex-row items-center"
+                className="flex-row items-center bg-blue-50 border border-blue-200 rounded-lg p-2 active:bg-blue-100"
               >
                 <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
-                  <Ionicons name="person" size={20} color="#3b82f6" />
+                  <Ionicons name="call" size={18} color="#3b82f6" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
@@ -459,15 +459,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
                     {assignedBy?.role || "Unknown"}
                   </Text>
-                  <Pressable onPress={() => {
-                    if (assignedBy?.phone) {
-                      Linking.openURL(`tel:${assignedBy.phone}`);
-                    }
-                  }}>
-                    <Text className="text-xs text-blue-600" numberOfLines={1}>
-                      {assignedBy?.phone || "No phone"}
-                    </Text>
-                  </Pressable>
+                  <Text className="text-xs text-blue-600 font-medium" numberOfLines={1}>
+                    📞 {assignedBy?.phone || "No phone"}
+                  </Text>
                 </View>
               </Pressable>
             </View>
@@ -493,10 +487,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           Linking.openURL(`tel:${assignedUser.phone}`);
                         }
                       }}
-                      className="flex-row items-center"
+                      className="flex-row items-center bg-green-50 border border-green-200 rounded-lg p-2 mb-1 active:bg-green-100"
                     >
                       <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="person" size={20} color="#10b981" />
+                        <Ionicons name="call" size={18} color="#10b981" />
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
@@ -505,8 +499,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
                           {assignedUser.role}
                         </Text>
-                        <Text className="text-xs text-blue-600" numberOfLines={1}>
-                          {assignedUser.phone || "No phone"}
+                        <Text className="text-xs text-green-700 font-medium" numberOfLines={1}>
+                          📞 {assignedUser.phone || "No phone"}
                         </Text>
                       </View>
                     </Pressable>

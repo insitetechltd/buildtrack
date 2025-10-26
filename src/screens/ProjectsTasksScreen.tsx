@@ -51,23 +51,35 @@ export default function ProjectsTasksScreen({
   const [localStatusFilter, setLocalStatusFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Apply filters from store on mount
+  // Apply filters from store on mount or when they change
+  // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
   useEffect(() => {
-    if (sectionFilter) {
+    if (sectionFilter && statusFilter) {
+      // Both filters set together - apply both immediately
       setLocalSectionFilter(sectionFilter);
-      setLocalStatusFilter("all"); // Reset status filter when section changes
-      clearSectionFilter(); // Clear it after applying so it doesn't persist
-    }
-    if (statusFilter) {
       setLocalStatusFilter(statusFilter);
-      clearStatusFilter(); // Clear it after applying so it doesn't persist
+      clearSectionFilter();
+      clearStatusFilter();
+    } else if (sectionFilter) {
+      // Only section filter set - apply section, reset status
+      setLocalSectionFilter(sectionFilter);
+      setLocalStatusFilter("all");
+      clearSectionFilter();
+    } else if (statusFilter) {
+      // Only status filter set - apply status only
+      setLocalStatusFilter(statusFilter);
+      clearStatusFilter();
     }
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
-  // Reset status filter when section filter changes
+  // Reset status filter when section filter changes manually (not from store)
   useEffect(() => {
-    setLocalStatusFilter("all");
-  }, [localSectionFilter]);
+    // Only reset if section filter changed manually (not from store navigation)
+    // This effect should NOT interfere with store-based filter application
+    if (!sectionFilter && localSectionFilter !== "all") {
+      setLocalStatusFilter("all");
+    }
+  }, [localSectionFilter, sectionFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);

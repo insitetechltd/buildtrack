@@ -315,7 +315,8 @@ export default function DashboardScreen({
     const isCreatedByMe = task.assignedBy === user.id;
     
     // Include if created by me but NOT assigned to me (assigned to others)
-    return isCreatedByMe && !isAssignedToMe;
+    // Exclude rejected tasks (they auto-reassign to creator and show in My Tasks)
+    return isCreatedByMe && !isAssignedToMe && task.currentStatus !== "rejected";
   });
 
   const outboxSubTasks = projectFilteredTasks.flatMap(task => {
@@ -323,7 +324,9 @@ export default function DashboardScreen({
     return collectSubTasksAssignedBy(task.subTasks, user.id)
       .filter(subTask => {
         const assignedTo = subTask.assignedTo || [];
-        return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+        const isAssignedToMe = !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+        // Exclude rejected subtasks (they auto-reassign to creator and show in My Tasks)
+        return isAssignedToMe && subTask.currentStatus !== "rejected";
       })
       .map(subTask => ({ ...subTask, isSubTask: true as const }));
   });

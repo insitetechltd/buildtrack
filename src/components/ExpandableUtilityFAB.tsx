@@ -40,13 +40,8 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
     setIsExpanded(!isExpanded);
   };
 
-  const handleQuickPress = () => {
-    // Quick press - create new task
-    onCreateTask();
-  };
-
-  const handleLongPress = () => {
-    // Long press - expand menu
+  const handlePress = () => {
+    // Short press - toggle expand/collapse
     toggleExpand();
   };
 
@@ -85,7 +80,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             { scale: scaleAnim2 },
             { translateY: scaleAnim2.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -80]
+              outputRange: [0, -130]
             })}
           ],
           opacity: scaleAnim2,
@@ -94,7 +89,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       >
         <Pressable
           onPress={handleLogout}
-          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg mb-3"
+          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg mb-2"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -114,7 +109,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             { scale: scaleAnim1 },
             { translateY: scaleAnim1.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -80]
+              outputRange: [0, -70]
             })}
           ],
           opacity: scaleAnim1,
@@ -123,7 +118,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       >
         <Pressable
           onPress={handleCreateTask}
-          className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg mb-3"
+          className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg mb-2"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -138,9 +133,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
 
       {/* Main Utility FAB */}
       <Pressable
-        onPress={handleQuickPress}
-        onLongPress={handleLongPress}
-        delayLongPress={500}
+        onPress={handlePress}
         className="w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
         style={{
           shadowColor: '#000',

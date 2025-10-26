@@ -807,7 +807,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
-                      setStatusFilter("pending" as any);
+                      setStatusFilter("wip");
                       onNavigateToTasks();
                     }}
                   >
@@ -820,7 +820,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
-                      setStatusFilter("completed");
+                      setStatusFilter("done");
                       onNavigateToTasks();
                     }}
                   >
@@ -833,7 +833,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
-                      setStatusFilter("overdue" as any);
+                      setStatusFilter("overdue");
                       onNavigateToTasks();
                     }}
                   >
@@ -865,7 +865,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("inbox");
-                      setStatusFilter("not_started");
+                      setStatusFilter("received");
                       onNavigateToTasks();
                     }}
                   >
@@ -878,7 +878,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("inbox");
-                      setStatusFilter("pending" as any);
+                      setStatusFilter("wip");
                       onNavigateToTasks();
                     }}
                   >
@@ -891,7 +891,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("inbox");
-                      setStatusFilter("pending" as any);
+                      setStatusFilter("reviewing");
                       onNavigateToTasks();
                     }}
                   >
@@ -904,7 +904,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("inbox");
-                      setStatusFilter("completed");
+                      setStatusFilter("done");
                       onNavigateToTasks();
                     }}
                   >
@@ -917,7 +917,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("inbox");
-                      setStatusFilter("overdue" as any);
+                      setStatusFilter("overdue");
                       onNavigateToTasks();
                     }}
                   >
@@ -949,7 +949,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("outbox");
-                      setStatusFilter("not_started");
+                      setStatusFilter("assigned");
                       onNavigateToTasks();
                     }}
                   >
@@ -962,7 +962,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("outbox");
-                      setStatusFilter("pending" as any);
+                      setStatusFilter("wip");
                       onNavigateToTasks();
                     }}
                   >
@@ -975,7 +975,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("outbox");
-                      setStatusFilter("pending" as any);
+                      setStatusFilter("reviewing");
                       onNavigateToTasks();
                     }}
                   >
@@ -988,7 +988,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("outbox");
-                      setStatusFilter("completed");
+                      setStatusFilter("done");
                       onNavigateToTasks();
                     }}
                   >
@@ -1001,7 +1001,7 @@ export default function DashboardScreen({
                     className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("outbox");
-                      setStatusFilter("overdue" as any);
+                      setStatusFilter("overdue");
                       onNavigateToTasks();
                     }}
                   >

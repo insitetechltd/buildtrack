@@ -60,7 +60,7 @@ const InputField = ({
 
 export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId }: CreateTaskScreenProps) {
   const { user } = useAuthStore();
-  const { createTask, createSubTask, createNestedSubTask, tasks } = useTaskStore();
+  const { createTask, createSubTask, createNestedSubTask, updateTask, tasks } = useTaskStore();
   const { getUsersByRole, getUserById } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;

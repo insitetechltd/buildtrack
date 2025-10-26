@@ -359,15 +359,35 @@ export default function DashboardScreen({
   );
   
   // Section 3: Outbox - Tasks I assigned to others
-  // These are tasks where I created them and assigned them to others (not myself)
+  // These are tasks where I created them and assigned them to others
+  // Note: Even if I'm also assigned, if I created it, it shows in Outbox
   const outboxTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     
-    // Include if created by me but NOT assigned to me (assigned to others)
+    // Include if created by me (regardless of whether I'm also assigned)
     // Exclude rejected tasks (they auto-reassign to creator and show in My Tasks)
-    return isCreatedByMe && !isAssignedToMe && task.currentStatus !== "rejected";
+    // Only exclude if it's ONLY assigned to me (self-assigned only)
+    const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+    
+    // Debug logging for Tristan
+    if (user?.name === "Tristan" && task.readyForReview === true) {
+      console.log(`🔍 [Outbox Debug] Task "${task.title}":`, {
+        assignedTo: assignedTo,
+        isAssignedToMe: isAssignedToMe,
+        isCreatedByMe: isCreatedByMe,
+        isSelfAssignedOnly: isSelfAssignedOnly,
+        taskAssignedBy: task.assignedBy,
+        userId: user.id,
+        readyForReview: task.readyForReview,
+        projectId: task.projectId,
+        selectedProjectId: selectedProjectId,
+        willInclude: isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"
+      });
+    }
+    
+    return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
   });
 
   const outboxSubTasks = projectFilteredTasks.flatMap(task => {

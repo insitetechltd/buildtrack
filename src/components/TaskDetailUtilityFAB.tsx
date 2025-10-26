@@ -77,7 +77,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
   return (
     <View className="absolute bottom-6 right-6">
       {/* Edit Task Button - appears when expanded */}
-      {/* Position: Center at -108px */}
+      {/* Position: Center at -108px - YELLOW for Edit */}
       <Animated.View
         style={{
           transform: [
@@ -87,14 +87,14 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
               outputRange: [0, -108]
             })}
           ],
-          opacity: scaleAnim3,
+          opacity: 1, // Always fully opaque
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
       >
         <Pressable
           onPress={handleEdit}
           disabled={!canEdit}
-          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canEdit ? 'bg-green-600' : 'bg-gray-400'}`}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canEdit ? 'bg-yellow-500' : 'bg-gray-400'}`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
@@ -108,7 +108,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
       </Animated.View>
 
       {/* Update Button - appears when expanded (only if user can update) */}
-      {/* Position: Center at -72px */}
+      {/* Position: Center at -72px - GREEN for Update */}
       {canUpdate && (
         <Animated.View
           style={{
@@ -119,13 +119,13 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
                 outputRange: [0, -72]
               })}
             ],
-            opacity: scaleAnim2,
+            opacity: 1, // Always fully opaque
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
         >
           <Pressable
             onPress={handleUpdate}
-            className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"
+            className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -140,7 +140,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
       )}
 
       {/* Camera Update Button - appears when expanded (only if user can update) */}
-      {/* Position: Center at -36px */}
+      {/* Position: Center at -36px - BLUE for Camera */}
       {canUpdate && (
         <Animated.View
           style={{
@@ -151,13 +151,13 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
                 outputRange: [0, -36]
               })}
             ],
-            opacity: scaleAnim1,
+            opacity: 1, // Always fully opaque - NOT transparent
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
         >
           <Pressable
             onPress={handleCameraUpdate}
-            className="w-12 h-12 bg-amber-500 rounded-full items-center justify-center shadow-lg"
+            className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },

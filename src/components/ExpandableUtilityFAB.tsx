@@ -74,14 +74,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
   return (
     <View className="absolute bottom-8 right-6">
       {/* Logout Button - appears when expanded */}
-      {/* Spacing: Main button (56px) + 2px gap + Create button (48px) + 2px gap + Logout button (48px) */}
+      {/* Gap = 48px (1 button size). Main radius 28 + gap 48 + Create 48 + gap 48 + Logout radius 24 = 196px */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim2 },
             { translateY: scaleAnim2.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -104]
+              outputRange: [0, -196]
             })}
           ],
           opacity: scaleAnim2,
@@ -97,7 +97,6 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
-            marginBottom: 2,
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="white" />
@@ -105,14 +104,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       </Animated.View>
 
       {/* Create Task Button - appears when expanded */}
-      {/* Spacing: Main button (56px) + 2px gap + Create button (48px) */}
+      {/* Gap = 48px (1 button size). Main radius 28 + gap 48 + Create radius 24 = 100px */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim1 },
             { translateY: scaleAnim1.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -54]
+              outputRange: [0, -100]
             })}
           ],
           opacity: scaleAnim1,
@@ -128,7 +127,6 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
-            marginBottom: 2,
           }}
         >
           <Ionicons name="add" size={24} color="white" />

@@ -507,24 +507,24 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
 
           {/* Due Date and Badges Row */}
-          <View className="flex-row items-center flex-wrap mb-3">
-            <View className="flex-row items-center mr-3 mb-2">
-              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-              <Text className="text-sm text-gray-600 ml-2 mr-1">Due:</Text>
+          <View className="flex-row items-center flex-wrap mb-2">
+            <View className="flex-row items-center mr-2 mb-1">
+              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+              <Text className="text-sm text-gray-600 ml-1 mr-1">Due:</Text>
               <Text className={cn("text-sm font-semibold", isOverdue ? "text-red-600" : "text-gray-900")}>
                 {new Date(task.dueDate).toLocaleDateString()}
                 {isOverdue && " (Overdue)"}
               </Text>
             </View>
             
-            {/* Status and Priority Badges */}
-            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
-              <Text className="text-sm font-medium capitalize">
+            {/* Status and Priority Badges - Smaller */}
+            <View className={cn("px-2 py-1 rounded-full mr-2 mb-1", getStatusColor(task.currentStatus))}>
+              <Text className="text-xs font-medium capitalize">
                 {task.currentStatus.replace("_", " ")}
               </Text>
             </View>
-            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
-              <Text className="text-sm font-medium capitalize">
+            <View className={cn("px-2 py-1 rounded-full border mb-1", getPriorityColor(task.priority))}>
+              <Text className="text-xs font-medium capitalize">
                 {task.priority}
               </Text>
             </View>

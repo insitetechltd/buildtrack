@@ -626,12 +626,12 @@ export default function DashboardScreen({
                 })}
                 </View>
               ) : (
-                <View className="bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-lg p-6 items-center">
-                  <Ionicons name="star-outline" size={32} color="#d97706" />
-                  <Text className="text-gray-600 text-sm mt-2 text-center">
+                <View className="bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-lg p-3 items-center">
+                  <Ionicons name="star-outline" size={24} color="#d97706" />
+                  <Text className="text-gray-600 text-sm mt-1 text-center">
                     No tasks starred for today
                   </Text>
-                  <Text className="text-gray-500 text-xs mt-1 text-center">
+                  <Text className="text-gray-500 text-xs mt-0.5 text-center">
                     Tap the star icon on any task to add it here
                   </Text>
                 </View>

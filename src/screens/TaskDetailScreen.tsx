@@ -700,12 +700,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         visible={showUpdateModal}
         animationType="slide"
         presentationStyle="pageSheet"
+        onRequestClose={() => setShowUpdateModal(false)}
       >
         <SafeAreaView className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
-            <Text className="text-lg font-semibold text-gray-900 flex-1 text-center">
+            <Text className="text-lg font-semibold text-gray-900">
               Progress Update
             </Text>
             <Pressable

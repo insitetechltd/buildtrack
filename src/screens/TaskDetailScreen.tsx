@@ -558,6 +558,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 </View>
               </View>
             )}
+            </View>
           </View>
         </View>
 

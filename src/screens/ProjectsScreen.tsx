@@ -23,7 +23,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
-import LogoutFAB from "../components/LogoutFAB";
+import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
 import ModalHandle from "../components/ModalHandle";
 
 interface ProjectsScreenProps {

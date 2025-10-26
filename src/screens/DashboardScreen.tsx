@@ -21,7 +21,7 @@ import { cn } from "../utils/cn";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import LogoutFAB from "../components/LogoutFAB";
+import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
 
 interface DashboardScreenProps {
   onNavigateToTasks: () => void;
@@ -1037,23 +1037,8 @@ export default function DashboardScreen({
         </SafeAreaView>
       </Modal>
 
-      {/* Floating Action Button */}
-      <Pressable
-        onPress={onNavigateToCreateTask}
-        className="absolute bottom-8 right-6 w-14 h-14 bg-orange-500 rounded-full items-center justify-center shadow-lg"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.3,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
-      >
-        <Ionicons name="add" size={28} color="white" />
-      </Pressable>
-
-      {/* Logout FAB */}
-      <LogoutFAB />
+      {/* Expandable Utility FAB */}
+      <ExpandableUtilityFAB onCreateTask={onNavigateToCreateTask} />
     </SafeAreaView>
   );
 }

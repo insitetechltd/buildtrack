@@ -22,7 +22,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import LogoutFAB from "../components/LogoutFAB";
+import LogoutFAB from "../components/LogoutFAB"; // Keep for admin screens
 
 interface AdminDashboardScreenProps {
   onNavigateToProjects: () => void;

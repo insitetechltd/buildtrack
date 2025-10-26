@@ -26,7 +26,7 @@ import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
 import { PhotoUploadSection } from "../components/PhotoUploadSection";
-import LogoutFAB from "../components/LogoutFAB";
+import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;

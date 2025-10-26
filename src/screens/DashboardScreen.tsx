@@ -478,7 +478,6 @@ export default function DashboardScreen({
       {/* Standard Header */}
       <StandardHeader 
         title={t.nav.dashboard}
-        onRefresh={handleRefresh}
         rightElement={
           <View className="flex-row items-center">
             <Text className="text-base font-medium text-gray-700 mr-2">

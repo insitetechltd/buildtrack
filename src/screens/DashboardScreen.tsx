@@ -76,6 +76,16 @@ export default function DashboardScreen({
     }
   };
 
+  // Fetch user project assignments on mount
+  useEffect(() => {
+    if (!user) return;
+    
+    console.log('🔄 [Dashboard] Fetching user project assignments for:', user.name);
+    fetchUserProjectAssignments(user.id).catch(error => {
+      console.error('❌ [Dashboard] Failed to fetch user project assignments:', error);
+    });
+  }, [user?.id, fetchUserProjectAssignments]);
+
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
 

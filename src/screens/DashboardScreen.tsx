@@ -6,6 +6,7 @@ import {
   Pressable,
   Modal,
   Image,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -22,6 +23,7 @@ import { LoadingIndicator } from "../components/LoadingIndicator";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
+import { useUserStore } from "../state/userStore.supabase";
 
 interface DashboardScreenProps {
   onNavigateToTasks: () => void;
@@ -46,7 +48,33 @@ export default function DashboardScreen({
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const t = useTranslation();
+  const { fetchUsers } = useUserStore();
+
+  // Pull-to-refresh handler
+  const handleRefresh = async () => {
+    if (!user) return;
+    
+    setIsRefreshing(true);
+    console.log('🔄 [Pull-to-Refresh] Syncing all data...');
+    
+    try {
+      // Sync all data in parallel
+      await Promise.all([
+        fetchTasks(),
+        fetchProjects(),
+        fetchUserProjectAssignments(user.id),
+        fetchUsers(),
+      ]);
+      
+      console.log('✅ [Pull-to-Refresh] Sync completed');
+    } catch (error) {
+      console.error('❌ [Pull-to-Refresh] Sync failed:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
@@ -517,7 +545,18 @@ export default function DashboardScreen({
         }
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#3b82f6"
+            colors={["#3b82f6"]}
+          />
+        }
+      >
         {/* Project Filter Picker */}
         <View className="px-6 pt-4 pb-2">
           <Pressable

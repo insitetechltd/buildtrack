@@ -477,14 +477,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         <Ionicons name="person" size={20} color="#10b981" />
                       </View>
                       <View className="flex-1">
-                        <View className="flex-row items-center justify-between">
-                          <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                            {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
-                          </Text>
-                          <Text className="text-sm font-semibold text-blue-600">
-                            {userProgress}%
-                          </Text>
-                        </View>
+                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                          {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
+                        </Text>
                         <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
                           {assignedUser.role}
                         </Text>

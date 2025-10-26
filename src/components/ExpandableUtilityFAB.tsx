@@ -80,7 +80,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             { scale: scaleAnim2 },
             { translateY: scaleAnim2.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -130]
+              outputRange: [0, -150]
             })}
           ],
           opacity: scaleAnim2,
@@ -89,13 +89,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       >
         <Pressable
           onPress={handleLogout}
-          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg mb-2"
+          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
+            marginBottom: 50,
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="white" />
@@ -109,7 +110,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             { scale: scaleAnim1 },
             { translateY: scaleAnim1.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -70]
+              outputRange: [0, -75]
             })}
           ],
           opacity: scaleAnim1,
@@ -118,13 +119,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       >
         <Pressable
           onPress={handleCreateTask}
-          className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg mb-2"
+          className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
+            marginBottom: 50,
           }}
         >
           <Ionicons name="add" size={24} color="white" />

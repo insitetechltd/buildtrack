@@ -233,7 +233,9 @@ export default function DashboardScreen({
   
   const myCompletedTasks = myAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage === 100
+    task.completionPercentage === 100 &&
+    // Only count as "Done" if review has been accepted (or no review required for self-assigned)
+    (task.reviewAccepted === true || task.readyForReview === false)
   );
   
   const myOverdueTasks = myAllTasks.filter(task => 
@@ -281,7 +283,9 @@ export default function DashboardScreen({
   
   const inboxCompletedTasks = inboxAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage === 100
+    task.completionPercentage === 100 &&
+    // Only count as "Done" if review has been accepted (or no review required for self-assigned)
+    (task.reviewAccepted === true || task.readyForReview === false)
   );
   
   const inboxOverdueTasks = inboxAllTasks.filter(task => 
@@ -332,7 +336,9 @@ export default function DashboardScreen({
   
   const outboxCompletedTasks = outboxAllTasks.filter(task => 
     task.accepted && 
-    task.completionPercentage === 100
+    task.completionPercentage === 100 &&
+    // Only count as "Done" if review has been accepted (or no review required for self-assigned)
+    (task.reviewAccepted === true || task.readyForReview === false)
   );
   
   const outboxOverdueTasks = outboxAllTasks.filter(task => 

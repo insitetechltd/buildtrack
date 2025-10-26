@@ -436,31 +436,30 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
           {/* Assignment Section - Moved to Top */}
-          <View className="mb-4 pb-4 border-b border-gray-200">
-            <View className="flex-row gap-3">
-              {/* Assigned By */}
-              <View style={{ maxWidth: '50%' }}>
-                <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
-                    <Ionicons name="person" size={20} color="#3b82f6" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                      {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
-                    </Text>
-                    <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
-                      {assignedBy?.role || "Unknown"}
-                    </Text>
-                    <Text className="text-xs text-gray-400" numberOfLines={1}>
-                      {assignedBy?.email || ""}
-                    </Text>
-                  </View>
+          <View className="flex-row mb-4 pb-4 border-b border-gray-200">
+            {/* Assigned By - 50% width */}
+            <View style={{ width: '50%' }} className="pr-2">
+              <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
+                  <Ionicons name="person" size={20} color="#3b82f6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                    {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
+                  </Text>
+                  <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
+                    {assignedBy?.role || "Unknown"}
+                  </Text>
+                  <Text className="text-xs text-gray-400" numberOfLines={1}>
+                    {assignedBy?.email || ""}
+                  </Text>
                 </View>
               </View>
+            </View>
 
-              {/* Assigned To */}
-              <View style={{ maxWidth: '50%' }}>
+            {/* Assigned To - 50% width */}
+            <View style={{ width: '50%' }} className="pl-2">
               <Text className="text-sm font-medium text-gray-600 mb-1">Assigned To</Text>
             {assignedUsers.length > 0 ? (
               <View className="space-y-2">
@@ -509,7 +508,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 </View>
               </View>
             )}
-              </View>
             </View>
           </View>
 

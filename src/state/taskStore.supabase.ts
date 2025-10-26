@@ -721,10 +721,39 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       declineTask: async (taskId, userId, reason) => {
+        // Get the task to find the creator
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        // Get user who is rejecting to include their name in update
+        const rejectingUser = await (async () => {
+          try {
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', userId)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
+        // Re-assign task to creator and mark as rejected
         await get().updateTask(taskId, { 
           accepted: false, 
           declineReason: reason,
-          currentStatus: "rejected"
+          currentStatus: "rejected",
+          assignedTo: [task.assignedBy], // Re-assign to creator
+        });
+
+        // Create an update entry documenting the rejection
+        await get().addTaskUpdate(taskId, {
+          userId: task.assignedBy, // Update is on behalf of the creator
+          description: `Task rejected by ${rejectingUser}. Reason: ${reason}`,
+          photos: [],
+          completionPercentage: task.completionPercentage,
+          status: "rejected"
         });
       },
 
@@ -1131,10 +1160,54 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       declineSubTask: async (taskId, subTaskId, userId, reason) => {
+        // Get the parent task and find the subtask
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        const findSubTask = (subTasks: any[] | undefined, id: string): any => {
+          if (!subTasks) return null;
+          for (const st of subTasks) {
+            if (st.id === id) return st;
+            if (st.subTasks) {
+              const found = findSubTask(st.subTasks, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const subTask = findSubTask(task.subTasks, subTaskId);
+        if (!subTask) return;
+
+        // Get user who is rejecting to include their name in update
+        const rejectingUser = await (async () => {
+          try {
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', userId)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
+        // Re-assign subtask to creator and mark as rejected
         await get().updateSubTask(taskId, subTaskId, { 
           accepted: false, 
           declineReason: reason,
-          currentStatus: "rejected"
+          currentStatus: "rejected",
+          assignedTo: [subTask.assignedBy], // Re-assign to creator
+        });
+
+        // Create an update entry documenting the rejection
+        await get().addSubTaskUpdate(taskId, subTaskId, {
+          userId: subTask.assignedBy, // Update is on behalf of the creator
+          description: `Sub-task rejected by ${rejectingUser}. Reason: ${reason}`,
+          photos: [],
+          completionPercentage: subTask.completionPercentage,
+          status: "rejected"
         });
       },
 

@@ -51,7 +51,7 @@ export default function DashboardScreen({
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
 
-  // Smart project selection logic
+  // Smart project selection logic - Run only on mount or when user/projects change
   useEffect(() => {
     if (!user) return;
     
@@ -64,7 +64,9 @@ export default function DashboardScreen({
     // Case 1: User has no projects → Clear selection
     if (userProjectCount === 0) {
       console.log(`   → No projects assigned, clearing selection`);
-      setSelectedProject(null, user.id);
+      if (selectedProjectId !== null) {
+        setSelectedProject(null, user.id);
+      }
       return;
     }
     
@@ -82,8 +84,10 @@ export default function DashboardScreen({
     // Case 3: User has exactly 1 project → Auto-select it
     if (userProjectCount === 1) {
       const singleProject = userProjects[0];
-      console.log(`   → Only 1 project, auto-selecting: ${singleProject.name}`);
-      setSelectedProject(singleProject.id, user.id);
+      if (selectedProjectId !== singleProject.id) {
+        console.log(`   → Only 1 project, auto-selecting: ${singleProject.name}`);
+        setSelectedProject(singleProject.id, user.id);
+      }
       return;
     }
     
@@ -94,16 +98,16 @@ export default function DashboardScreen({
       // Verify last selected is still valid for this user
       const isLastSelectedValid = lastSelected && userProjects.some(p => p.id === lastSelected);
       
-      if (isLastSelectedValid) {
+      if (isLastSelectedValid && selectedProjectId !== lastSelected) {
         console.log(`   → Multiple projects, using last selected for user`);
         setSelectedProject(lastSelected, user.id);
-      } else {
+      } else if (!isLastSelectedValid && selectedProjectId !== null) {
         console.log(`   → Multiple projects, no valid last selection`);
         console.log(`   → User must manually select from picker`);
         setSelectedProject(null, user.id);
       }
     }
-  }, [user, userProjects, selectedProjectId, setSelectedProject, getLastSelectedProject]);
+  }, [user?.id, userProjects.length]); // Only depend on user ID and project count to avoid infinite loop
 
   // Fetch tasks when Dashboard mounts
   useEffect(() => {

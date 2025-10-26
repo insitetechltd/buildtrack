@@ -97,7 +97,7 @@ const LOGIN_USERS = [
   },
   {
     id: '4',
-    email: 'dennis@buildtrack.com',
+    email: 'peter@buildtrack.com',
     name: 'Peter',
     role: 'worker',
     companyId: 'comp-1',
@@ -429,7 +429,7 @@ async function main() {
     console.log('  - manager@buildtrack.com (John Manager - Manager)');
     console.log('  - worker@buildtrack.com (Sarah Worker - Worker)');
     console.log('  - admin@buildtrack.com (Alex Administrator - Admin)');
-    console.log('  - dennis@buildtrack.com (Dennis - Worker)');
+    console.log('  - peter@buildtrack.com (Peter - Worker)');
     console.log('\nElite Electric Co.:');
     console.log('  - lisa@eliteelectric.com (Lisa Martinez - Worker)');
     console.log('  - admin@eliteelectric.com (Mike Johnson - Admin)');

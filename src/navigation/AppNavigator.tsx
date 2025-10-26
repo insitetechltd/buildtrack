@@ -141,17 +141,24 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         
         console.log('🚀 Navigation called to CreateTaskFromTask');
       }}
+      onNavigateToEditTask={(editTaskId) => {
+        console.log('✏️ Navigating to edit task:', editTaskId);
+        navigation.navigate("CreateTaskFromTask", { 
+          editTaskId
+        });
+      }}
     />
   );
 }
 
 function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigation: any }) {
-  const { parentTaskId, parentSubTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
     />
   );
 }
@@ -200,12 +207,13 @@ function CreateTaskStack() {
 }
 
 function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { parentTaskId, parentSubTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
     />
   );
 }

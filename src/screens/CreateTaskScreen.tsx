@@ -32,6 +32,7 @@ interface CreateTaskScreenProps {
   onNavigateBack: () => void;
   parentTaskId?: string;
   parentSubTaskId?: string;
+  editTaskId?: string; // For editing an existing task
 }
 
 // InputField component defined outside to prevent re-creation
@@ -57,7 +58,7 @@ const InputField = ({
   </View>
 );
 
-export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId }: CreateTaskScreenProps) {
+export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId }: CreateTaskScreenProps) {
   const { user } = useAuthStore();
   const { createTask, createSubTask, createNestedSubTask, tasks } = useTaskStore();
   const { getUsersByRole, getUserById } = useUserStoreWithInit();
@@ -71,24 +72,44 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     ? parentTask.subTasks?.find(st => st.id === parentSubTaskId) 
     : null;
 
+  // Get task for editing
+  const editTask = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
+
   // Initial form data
-  const getInitialFormData = () => ({
-    title: "",
-    description: "",
-    priority: "medium" as Priority,
-    category: "general" as TaskCategory,
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 1 week from now
-    assignedTo: [] as string[],
-    attachments: [] as string[],
-    projectId: "",
-  });
+  const getInitialFormData = () => {
+    // If editing, pre-fill with existing task data
+    if (editTask) {
+      return {
+        title: editTask.title,
+        description: editTask.description,
+        priority: editTask.priority,
+        category: editTask.category,
+        dueDate: new Date(editTask.dueDate),
+        assignedTo: editTask.assignedTo || [],
+        attachments: editTask.attachments || [],
+        projectId: editTask.projectId,
+      };
+    }
+    
+    // Default form data for new tasks
+    return {
+      title: "",
+      description: "",
+      priority: "medium" as Priority,
+      category: "general" as TaskCategory,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 1 week from now
+      assignedTo: [] as string[],
+      attachments: [] as string[],
+      projectId: "",
+    };
+  };
 
   const [formData, setFormData] = useState(getInitialFormData());
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>(editTask?.assignedTo || []);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -330,7 +351,21 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       let taskId: string;
       let successMessage: string;
 
-      if (parentTaskId) {
+      if (editTaskId) {
+        // Editing existing task
+        await updateTask(editTaskId, {
+          title: formData.title,
+          description: formData.description,
+          priority: formData.priority,
+          category: formData.category,
+          dueDate: formData.dueDate.toISOString(),
+          assignedTo: selectedUsers,
+          attachments: formData.attachments,
+          projectId: formData.projectId,
+        });
+        successMessage = "Task updated successfully.";
+        taskId = editTaskId;
+      } else if (parentTaskId) {
         // Creating a sub-task
         const subTaskPayload = {
           title: formData.title,
@@ -370,8 +405,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         successMessage = "Task created successfully and assigned to the selected users.";
       }
 
-      console.log('=== TASK CREATION DEBUG ===');
-      console.log('- Task created with ID:', taskId);
+      console.log(`=== TASK ${editTaskId ? 'UPDATE' : 'CREATION'} DEBUG ===`);
+      console.log('- Task ID:', taskId);
       console.log('- Assigned to users:', selectedUsers);
       console.log('- Project ID:', formData.projectId);
       console.log('- Assigned by:', user.id);
@@ -379,11 +414,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       console.log('- Parent Sub-Task ID:', parentSubTaskId);
       console.log('===========================');
 
-      // Notify all users about the new task
+      // Notify all users about the task change
       notifyDataMutation('task');
 
       Alert.alert(
-        parentTaskId ? "Sub-Task Created" : "Task Created",
+        editTaskId ? "Task Updated" : (parentTaskId ? "Sub-Task Created" : "Task Created"),
         successMessage,
         [
           {
@@ -395,7 +430,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     } catch (error) {
       Alert.alert(
         "Error",
-        "Failed to create task. Please try again.",
+        `Failed to ${editTaskId ? 'update' : 'create'} task. Please try again.`,
         [{ text: "OK" }]
       );
     } finally {
@@ -411,13 +446,15 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       {/* Standard Header */}
       <StandardHeader 
         title={
-          parentTaskId 
-            ? parentSubTaskId && parentSubTask
-              ? `Nested Sub-Task`
-              : parentTask
-                ? `Sub-Task`
-                : "Create Sub-Task"
-            : "Create New Task"
+          editTaskId
+            ? "Edit Task"
+            : parentTaskId 
+              ? parentSubTaskId && parentSubTask
+                ? `Nested Sub-Task`
+                : parentTask
+                  ? `Sub-Task`
+                  : "Create Sub-Task"
+              : "Create New Task"
         }
         showBackButton={true}
         onBackPress={onNavigateBack}

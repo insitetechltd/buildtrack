@@ -26,15 +26,17 @@ import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
+import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 
 interface TaskDetailScreenProps {
   taskId: string;
   subTaskId?: string; // Optional: if provided, show only this subtask
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string) => void;
+  onNavigateToEditTask?: (taskId: string) => void; // For editing the task
 }
 
-export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask }: TaskDetailScreenProps) {
+export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToEditTask }: TaskDetailScreenProps) {
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
@@ -1234,30 +1236,26 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         onClose={() => setShowImageViewer(false)}
       />
 
-      {/* Floating Action Button - Update Task */}
-      {canUpdateProgress && (
-        <Pressable
-          onPress={() => {
-            setUpdateForm({
-              description: "",
-              photos: [],
-              completionPercentage: task.completionPercentage,
-              status: task.currentStatus,
-            });
-            setShowUpdateModal(true);
-          }}
-          className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}
-        >
-          <Ionicons name="create-outline" size={24} color="white" />
-        </Pressable>
-      )}
+      {/* Task Detail Utility FAB - Update & Edit */}
+      <TaskDetailUtilityFAB
+        canUpdate={canUpdateProgress}
+        onUpdate={() => {
+          setUpdateForm({
+            description: "",
+            photos: [],
+            completionPercentage: task.completionPercentage,
+            status: task.currentStatus,
+          });
+          setShowUpdateModal(true);
+        }}
+        onEdit={() => {
+          if (onNavigateToEditTask) {
+            onNavigateToEditTask(taskId);
+          } else {
+            Alert.alert('Error', 'Edit function is not available. Please try again.');
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }

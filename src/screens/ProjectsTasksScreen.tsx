@@ -185,22 +185,30 @@ export default function ProjectsTasksScreen({
       
       const inboxTasks = [...inboxParentTasks, ...inboxSubTasks];
       
-      // Get outbox tasks (tasks assigned by me to OTHERS, not to myself)
+      // Get outbox tasks (tasks assigned by me to OTHERS)
+      // Note: Even if I'm also assigned, if I created it, it shows in Outbox
       const assignedParentTasks = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isDirectlyAssignedByMe = task.assignedBy === user.id;
         const hasSubtasksAssignedByMe = collectSubTasksAssignedBy(task.subTasks, user.id).length > 0;
-        // Include if created by me, not assigned to me, and has no subtasks assigned by me
-        return isDirectlyAssignedByMe && !isAssignedToMe && !hasSubtasksAssignedByMe;
+        
+        // Include if created by me (regardless of whether I'm also assigned)
+        // Only exclude if it's ONLY assigned to me (self-assigned only)
+        const isSelfAssignedOnly = isDirectlyAssignedByMe && isAssignedToMe && assignedTo.length === 1;
+        
+        // Include if created by me, not self-assigned only, and has no subtasks assigned by me
+        return isDirectlyAssignedByMe && !isSelfAssignedOnly && !hasSubtasksAssignedByMe && task.currentStatus !== "rejected";
       });
       
       const assignedSubTasks = projectTasks.flatMap(task => 
         collectSubTasksAssignedBy(task.subTasks, user.id)
           .filter(subTask => {
             const assignedTo = subTask.assignedTo || [];
-            // Only include subtasks NOT assigned to me
-            return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+            const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+            // Only exclude if self-assigned only (no others assigned)
+            const isSelfAssignedOnly = isAssignedToMe && assignedTo.length === 1;
+            return !isSelfAssignedOnly && subTask.currentStatus !== "rejected";
           })
           .map(subTask => ({ ...subTask, isSubTask: true as const }))
       );

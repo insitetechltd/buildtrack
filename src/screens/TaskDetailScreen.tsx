@@ -441,29 +441,50 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             {/* Assigned By - 50% width */}
             <View style={{ width: '50%' }} className="pr-2">
               <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
-              <Pressable
-                onPress={() => {
-                  if (assignedBy?.phone) {
-                    Linking.openURL(`tel:${assignedBy.phone}`);
-                  }
-                }}
-                className="flex-row items-center bg-blue-50 border border-blue-200 rounded-lg p-2 active:bg-blue-100"
-              >
-                <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
-                  <Ionicons name="call" size={18} color="#3b82f6" />
+              {assignedBy?.id === user.id ? (
+                // Not clickable if it's me
+                <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg p-2">
+                  <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-2">
+                    <Ionicons name="person" size={18} color="#6b7280" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                      {assignedBy?.name || "Unknown"} (me)
+                    </Text>
+                    <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
+                      {assignedBy?.role || "Unknown"}
+                    </Text>
+                    <Text className="text-xs text-gray-400" numberOfLines={1}>
+                      {assignedBy?.phone || "No phone"}
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                    {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
-                  </Text>
-                  <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
-                    {assignedBy?.role || "Unknown"}
-                  </Text>
-                  <Text className="text-xs text-blue-600 font-medium" numberOfLines={1}>
-                    📞 {assignedBy?.phone || "No phone"}
-                  </Text>
-                </View>
-              </Pressable>
+              ) : (
+                // Clickable to call
+                <Pressable
+                  onPress={() => {
+                    if (assignedBy?.phone) {
+                      Linking.openURL(`tel:${assignedBy.phone}`);
+                    }
+                  }}
+                  className="flex-row items-center bg-blue-50 border border-blue-200 rounded-lg p-2 active:bg-blue-100"
+                >
+                  <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
+                    <Ionicons name="call" size={18} color="#3b82f6" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                      {assignedBy?.name || "Unknown"}
+                    </Text>
+                    <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
+                      {assignedBy?.role || "Unknown"}
+                    </Text>
+                    <Text className="text-xs text-blue-600 font-medium" numberOfLines={1}>
+                      📞 {assignedBy?.phone || "No phone"}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
             </View>
 
             {/* Assigned To - 50% width */}
@@ -479,7 +500,31 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   const latestUpdate = userUpdates[userUpdates.length - 1];
                   const userProgress = latestUpdate?.completionPercentage || 0;
                   
-                  return (
+                  const isMe = assignedUser.id === user.id;
+                  
+                  return isMe ? (
+                    // Not clickable if it's me
+                    <View
+                      key={assignedUser.id}
+                      className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg p-2 mb-1"
+                    >
+                      <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-2">
+                        <Ionicons name="person" size={18} color="#6b7280" />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                          {assignedUser.name} (me)
+                        </Text>
+                        <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
+                          {assignedUser.role}
+                        </Text>
+                        <Text className="text-xs text-gray-400" numberOfLines={1}>
+                          {assignedUser.phone || "No phone"}
+                        </Text>
+                      </View>
+                    </View>
+                  ) : (
+                    // Clickable to call
                     <Pressable
                       key={assignedUser.id}
                       onPress={() => {
@@ -494,7 +539,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       </View>
                       <View className="flex-1">
                         <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                          {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
+                          {assignedUser.name}
                         </Text>
                         <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
                           {assignedUser.role}

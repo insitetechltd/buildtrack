@@ -5,14 +5,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 interface ProjectFilterState {
   selectedProjectId: string | null;
   sectionFilter: "my_tasks" | "inbox" | "outbox" | null;
-  statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | null;
+  statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
   
   // Per-user last selected projects
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
   setSelectedProject: (projectId: string | null, userId?: string) => void;
   setSectionFilter: (section: "my_tasks" | "inbox" | "outbox") => void;
-  setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue") => void;
+  setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned") => void;
   clearSectionFilter: () => void;
   clearStatusFilter: () => void;
   getLastSelectedProject: (userId: string) => string | null;
@@ -44,7 +44,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         set({ sectionFilter: section });
       },
       
-      setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | null) => {
+      setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => {
         set({ statusFilter: status });
       },
       

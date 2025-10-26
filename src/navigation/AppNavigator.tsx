@@ -427,37 +427,6 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <MainTabs />
-      
-      {/* Global Logout FAB - Lower Left Corner */}
-      <Pressable
-        onPress={() => {
-          Alert.alert(
-            "Logout",
-            "Are you sure you want to logout?",
-            [
-              { text: "Cancel", style: "cancel" },
-              { 
-                text: "Logout", 
-                style: "destructive",
-                onPress: () => {
-                  const { logout } = useAuthStore.getState();
-                  logout();
-                }
-              },
-            ]
-          );
-        }}
-        className="absolute bottom-6 left-6 w-14 h-14 bg-red-600 rounded-full items-center justify-center shadow-lg"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-      >
-        <Ionicons name="log-out-outline" size={24} color="white" />
-      </Pressable>
     </NavigationContainer>
   );
 }// Force reload Fri Oct  3 06:16:45 UTC 2025

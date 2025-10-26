@@ -191,19 +191,27 @@ export default function DashboardScreen({
 
   // Section 1: My Tasks - Tasks I assigned to MYSELF (self-assigned only)
   // These are tasks where I am both the creator AND the assignee
+  // Also includes rejected tasks that were auto-reassigned back to me
   const myTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     
-    // Include if assigned to me AND created by me (self-assigned)
-    return isAssignedToMe && isCreatedByMe;
+    // Include if:
+    // 1. Assigned to me AND created by me (self-assigned), OR
+    // 2. Created by me AND rejected (auto-reassigned back to creator)
+    return (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
   });
 
   const mySubTasks = projectFilteredTasks.flatMap(task => {
-    // Only include subtasks I created and assigned to myself
+    // Include subtasks I created and assigned to myself
+    // Also include rejected subtasks that were auto-reassigned back to me
     return collectSubTasksAssignedTo(task.subTasks, user.id)
-      .filter(subTask => subTask.assignedBy === user.id)
+      .filter(subTask => {
+        const isCreatedByMe = subTask.assignedBy === user.id;
+        // Include if created by me (either self-assigned OR rejected)
+        return isCreatedByMe;
+      })
       .map(subTask => ({ ...subTask, isSubTask: true as const }));
   });
 
@@ -240,12 +248,11 @@ export default function DashboardScreen({
     task.currentStatus !== "rejected"
   );
   
-  // 1.4 Rejected: Tasks I assigned to others that were rejected
-  // Get tasks from outbox that were rejected
-  const myRejectedTasks = projectFilteredTasks.filter(task => {
-    const isCreatedByMe = task.assignedBy === user.id;
-    return isCreatedByMe && task.currentStatus === "rejected";
-  });
+  // 1.4 Rejected: Tasks I assigned to others that were rejected and auto-reassigned back to me
+  // Now included in myAllTasks, so filter from there
+  const myRejectedTasks = myAllTasks.filter(task => 
+    task.currentStatus === "rejected"
+  );
 
   // Section 2: Inbox - Tasks assigned to me by others (need acceptance)
   // These are tasks where others assigned them to me, but I didn't create them

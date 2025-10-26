@@ -703,7 +703,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-blue-700 mb-1">{myPendingTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Pending</Text>
+                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
                   {/* Completed */}
@@ -716,7 +716,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-green-700 mb-1">{myCompletedTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Completed</Text>
+                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
                   {/* Overdue */}
@@ -787,7 +787,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-blue-700 mb-1">{inboxPendingTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Pending</Text>
+                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
                   {/* Completed */}
@@ -800,7 +800,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-green-700 mb-1">{inboxCompletedTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Completed</Text>
+                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
                   {/* Overdue */}
@@ -871,7 +871,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-blue-700 mb-1">{outboxPendingTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Pending</Text>
+                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
                   {/* Completed */}
@@ -884,7 +884,7 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className="text-2xl font-bold text-green-700 mb-1">{outboxCompletedTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Completed</Text>
+                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
                   {/* Overdue */}

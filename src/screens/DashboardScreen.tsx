@@ -281,8 +281,8 @@ export default function DashboardScreen({
   const inboxAllTasks = [...inboxTasks, ...inboxSubTasks];
   
   // Apply same categorization logic to inbox tasks
-  // 2.1 Incoming: Tasks assigned to me but not accepted yet
-  const inboxIncomingTasks = inboxAllTasks.filter(task => 
+  // 2.1 Received: Tasks assigned to me but not accepted yet
+  const inboxReceivedTasks = inboxAllTasks.filter(task => 
     !task.accepted && task.currentStatus !== "rejected"
   );
   
@@ -795,7 +795,7 @@ export default function DashboardScreen({
               
               {/* 5 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 2.1 Incoming */}
+                  {/* 2.1 Received */}
                   <Pressable 
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -804,8 +804,8 @@ export default function DashboardScreen({
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{inboxIncomingTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Incoming</Text>
+                    <Text className="text-2xl font-bold text-orange-700 mb-1">{inboxReceivedTasks.length}</Text>
+                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Received</Text>
                   </Pressable>
                   
                   {/* 2.2 WIP */}

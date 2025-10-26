@@ -233,21 +233,22 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
           </View>
         </View>
 
-        {/* Logout */}
-        <View className="mt-6 px-6 pb-8">
-          <Pressable
-            onPress={handleLogout}
-            className="bg-red-50 border border-red-200 rounded-xl py-4 items-center"
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-              <Text className="text-red-600 font-semibold ml-2">
-                {t.profile.logout}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
       </ScrollView>
+
+      {/* Floating Logout Button - Upper Right */}
+      <Pressable
+        onPress={handleLogout}
+        className="absolute top-20 right-6 w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+        }}
+      >
+        <Ionicons name="log-out-outline" size={22} color="white" />
+      </Pressable>
 
       {/* Language Picker Modal */}
       <Modal

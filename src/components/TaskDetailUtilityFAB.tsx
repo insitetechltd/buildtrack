@@ -5,14 +5,16 @@ import { Ionicons } from "@expo/vector-icons";
 interface TaskDetailUtilityFABProps {
   onUpdate: () => void;
   onEdit: () => void;
+  onCameraUpdate: () => void;
   canUpdate: boolean;
 }
 
-export default function TaskDetailUtilityFAB({ onUpdate, onEdit, canUpdate }: TaskDetailUtilityFABProps) {
+export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate, canUpdate }: TaskDetailUtilityFABProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
   const scaleAnim2 = useRef(new Animated.Value(0)).current;
+  const scaleAnim3 = useRef(new Animated.Value(0)).current;
 
   const toggleExpand = () => {
     const toValue = isExpanded ? 0 : 1;
@@ -35,6 +37,12 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, canUpdate }: Ta
         friction: 7,
         delay: isExpanded ? 0 : 100,
       }),
+      Animated.spring(scaleAnim3, {
+        toValue,
+        useNativeDriver: true,
+        friction: 7,
+        delay: isExpanded ? 0 : 150,
+      }),
     ]).start();
     
     setIsExpanded(!isExpanded);
@@ -54,6 +62,11 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, canUpdate }: Ta
     onUpdate();
   };
 
+  const handleCameraUpdate = () => {
+    setIsExpanded(false);
+    onCameraUpdate();
+  };
+
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '45deg'],
@@ -62,16 +75,17 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, canUpdate }: Ta
   return (
     <View className="absolute bottom-6 right-6">
       {/* Edit Task Button - appears when expanded */}
+      {/* Position: Center at -108px */}
       <Animated.View
         style={{
           transform: [
-            { scale: scaleAnim2 },
-            { translateY: scaleAnim2.interpolate({
+            { scale: scaleAnim3 },
+            { translateY: scaleAnim3.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -72]
+              outputRange: [0, -108]
             })}
           ],
-          opacity: scaleAnim2,
+          opacity: scaleAnim3,
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
       >
@@ -90,7 +104,40 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, canUpdate }: Ta
         </Pressable>
       </Animated.View>
 
+      {/* Camera Update Button - appears when expanded (only if user can update) */}
+      {/* Position: Center at -72px */}
+      {canUpdate && (
+        <Animated.View
+          style={{
+            transform: [
+              { scale: scaleAnim2 },
+              { translateY: scaleAnim2.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -72]
+              })}
+            ],
+            opacity: scaleAnim2,
+          }}
+          pointerEvents={isExpanded ? 'auto' : 'none'}
+        >
+          <Pressable
+            onPress={handleCameraUpdate}
+            className="w-12 h-12 bg-teal-600 rounded-full items-center justify-center shadow-lg"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Ionicons name="camera" size={20} color="white" />
+          </Pressable>
+        </Animated.View>
+      )}
+
       {/* Update Button - appears when expanded (only if user can update) */}
+      {/* Position: Center at -36px */}
       {canUpdate && (
         <Animated.View
           style={{

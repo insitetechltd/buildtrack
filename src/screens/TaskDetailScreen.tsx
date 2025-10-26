@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
@@ -1247,6 +1248,39 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             status: task.currentStatus,
           });
           setShowUpdateModal(true);
+        }}
+        onCameraUpdate={async () => {
+          try {
+            // Request camera permissions
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+              return;
+            }
+
+            // Launch camera
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsEditing: true,
+              quality: 0.8,
+            });
+
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+              const photoUri = result.assets[0].uri;
+              
+              // Open update modal with photo pre-filled
+              setUpdateForm({
+                description: "",
+                photos: [photoUri],
+                completionPercentage: task.completionPercentage,
+                status: task.currentStatus,
+              });
+              setShowUpdateModal(true);
+            }
+          } catch (error) {
+            console.error('Error launching camera:', error);
+            Alert.alert('Error', 'Failed to open camera. Please try again.');
+          }
         }}
         onEdit={() => {
           if (onNavigateToEditTask) {

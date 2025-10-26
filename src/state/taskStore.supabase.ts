@@ -514,6 +514,9 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
+          // Check if creator is assigned to the task
+          const isCreatorAssigned = taskData.assignedTo.includes(taskData.assignedBy);
+          
           const { data, error } = await supabase
             .from('tasks')
             .insert({
@@ -528,7 +531,10 @@ export const useTaskStore = create<TaskStore>()(
               assigned_to: taskData.assignedTo,
               assigned_by: taskData.assignedBy,
               attachments: taskData.attachments,
-              accepted: null,
+              // Auto-accept if creator is assigned to the task
+              accepted: isCreatorAssigned ? true : null,
+              accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
+              accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })
             .select()
             .single();
@@ -856,6 +862,9 @@ export const useTaskStore = create<TaskStore>()(
             assigned_by: subTaskData.assignedBy,
           });
 
+          // Check if creator is assigned to the subtask
+          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+
           const { data, error } = await supabase
             .from('sub_tasks')
             .insert({
@@ -871,7 +880,10 @@ export const useTaskStore = create<TaskStore>()(
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
-              accepted: false,
+              // Auto-accept if creator is assigned to the subtask
+              accepted: isCreatorAssigned ? true : null,
+              accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
+              accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })
             .select()
             .single();
@@ -916,6 +928,9 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
+          // Check if creator is assigned to the nested subtask
+          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+          
           const { data, error } = await supabase
             .from('sub_tasks')
             .insert({
@@ -932,7 +947,10 @@ export const useTaskStore = create<TaskStore>()(
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
-              accepted: false,
+              // Auto-accept if creator is assigned to the nested subtask
+              accepted: isCreatorAssigned ? true : null,
+              accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
+              accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })
             .select()
             .single();

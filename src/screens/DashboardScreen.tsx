@@ -266,6 +266,9 @@ export default function DashboardScreen({
     task.currentStatus === "rejected"
   );
 
+  // Calculate My Tasks total as sum of all categories (no double counting)
+  const myTasksTotal = myRejectedTasks.length + myWIPTasks.length + myDoneTasks.length + myOverdueTasks.length;
+
   // Section 2: Inbox - Tasks assigned to me by others (need acceptance)
   // These are tasks where others assigned them to me, but I didn't create them
   const inboxTasks = projectFilteredTasks.filter(task => {
@@ -357,6 +360,9 @@ export default function DashboardScreen({
     isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
+
+  // Calculate Inbox total as sum of all categories (no double counting)
+  const inboxTotal = inboxReceivedTasks.length + inboxWIPTasks.length + inboxReviewingTasks.length + inboxDoneTasks.length + inboxOverdueTasks.length;
   
   // Section 3: Outbox - Tasks I assigned to others
   // These are tasks where I created them and assigned them to others
@@ -443,6 +449,9 @@ export default function DashboardScreen({
     isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
+
+  // Calculate Outbox total as sum of all categories (no double counting)
+  const outboxTotal = outboxAssignedTasks.length + outboxWIPTasks.length + outboxReviewingTasks.length + outboxDoneTasks.length + outboxOverdueTasks.length;
 
   // Debug logging to understand task counts
   console.log('🔍 Dashboard Task Analysis:', {
@@ -778,7 +787,7 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
                   <Text className="text-base font-semibold text-gray-900 ml-2">
-                    My Tasks ({myAllTasks.length})
+                    My Tasks ({myTasksTotal})
                   </Text>
                 </View>
                 {/* Info text about starring */}
@@ -853,7 +862,7 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="mail-outline" size={20} color="#3b82f6" />
                   <Text className="text-base font-semibold text-gray-900 ml-2">
-                    Inbox ({inboxAllTasks.length})
+                    Inbox ({inboxTotal})
                   </Text>
                 </View>
               </View>
@@ -937,7 +946,7 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="send-outline" size={20} color="#7c3aed" />
                   <Text className="text-base font-semibold text-gray-900 ml-2">
-                    Outbox ({outboxAllTasks.length})
+                    Outbox ({outboxTotal})
                   </Text>
                 </View>
               </View>

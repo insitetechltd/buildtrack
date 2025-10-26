@@ -7,9 +7,10 @@ interface TaskDetailUtilityFABProps {
   onEdit: () => void;
   onCameraUpdate: () => void;
   canUpdate: boolean;
+  canEdit: boolean;
 }
 
-export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate, canUpdate }: TaskDetailUtilityFABProps) {
+export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate, canUpdate, canEdit }: TaskDetailUtilityFABProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
@@ -53,6 +54,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
   };
 
   const handleEdit = () => {
+    if (!canEdit) return; // Don't allow edit if user can't edit
     setIsExpanded(false);
     onEdit();
   };
@@ -91,16 +93,17 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
       >
         <Pressable
           onPress={handleEdit}
-          className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
+          disabled={!canEdit}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canEdit ? 'bg-green-600' : 'bg-gray-400'}`}
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
+            shadowOpacity: canEdit ? 0.25 : 0.1,
             shadowRadius: 3.84,
             elevation: 5,
           }}
         >
-          <Ionicons name="pencil" size={20} color="white" />
+          <Ionicons name="pencil" size={20} color="white" style={{ opacity: canEdit ? 1 : 0.5 }} />
         </Pressable>
       </Animated.View>
 

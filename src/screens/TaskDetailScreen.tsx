@@ -166,6 +166,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // 2. They are assigned AND have accepted the task
   const canCreateSubTask = isTaskCreator || (isAssignedToMe && task.accepted === true);
 
+  // Only task creator can edit the task
+  const canEditTask = isTaskCreator;
+
   const handleAcceptTask = () => {
     Alert.alert(
       "Accept Task",
@@ -1240,6 +1243,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       {/* Task Detail Utility FAB - Update & Edit */}
       <TaskDetailUtilityFAB
         canUpdate={canUpdateProgress}
+        canEdit={canEditTask}
         onUpdate={() => {
           setUpdateForm({
             description: "",

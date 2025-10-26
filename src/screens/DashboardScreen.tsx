@@ -727,17 +727,17 @@ export default function DashboardScreen({
                     <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
-                  {/* 1.3 Done - BLUE */}
+                  {/* 1.3 Done - GREEN */}
                   <Pressable 
-                    className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
+                    className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("completed");
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-blue-700 mb-1">{myDoneTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Done</Text>
+                    <Text className="text-2xl font-bold text-green-700 mb-1">{myDoneTasks.length}</Text>
+                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
                   {/* 1.4 Overdue - RED */}

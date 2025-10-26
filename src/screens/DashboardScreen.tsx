@@ -341,8 +341,8 @@ export default function DashboardScreen({
   const outboxAllTasks = [...outboxTasks, ...outboxSubTasks];
   
   // Apply same categorization logic to outbox tasks
-  // 3.1 Incoming: Tasks I assigned but assignee hasn't accepted yet
-  const outboxIncomingTasks = outboxAllTasks.filter(task => 
+  // 3.1 Outgoing: Tasks I assigned but assignee hasn't accepted yet
+  const outboxOutgoingTasks = outboxAllTasks.filter(task => 
     !task.accepted && task.currentStatus !== "rejected"
   );
   
@@ -879,7 +879,7 @@ export default function DashboardScreen({
               
               {/* 5 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 3.1 Incoming */}
+                  {/* 3.1 Outgoing */}
                   <Pressable 
                     className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -888,8 +888,8 @@ export default function DashboardScreen({
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{outboxIncomingTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Incoming</Text>
+                    <Text className="text-2xl font-bold text-orange-700 mb-1">{outboxOutgoingTasks.length}</Text>
+                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Outgoing</Text>
                   </Pressable>
                   
                   {/* 3.2 WIP */}

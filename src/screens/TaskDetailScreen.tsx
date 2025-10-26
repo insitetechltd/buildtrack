@@ -293,24 +293,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       {/* Standard Header */}
       <StandardHeader 
         title={task?.title || (isViewingSubTask ? "Sub-Task Details" : "Task Details")}
-        rightElement={
-          canUpdateProgress ? (
-            <Pressable
-              onPress={() => {
-                setUpdateForm({
-                  description: "",
-                  photos: [],
-                  completionPercentage: task.completionPercentage,
-                  status: task.currentStatus,
-                });
-                setShowUpdateModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 rounded-lg"
-            >
-              <Text className="text-white font-medium">Update</Text>
-            </Pressable>
-          ) : undefined
-        }
       />
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
@@ -1232,6 +1214,31 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         initialIndex={imageViewerInitialIndex}
         onClose={() => setShowImageViewer(false)}
       />
+
+      {/* Floating Action Button - Update Task */}
+      {canUpdateProgress && (
+        <Pressable
+          onPress={() => {
+            setUpdateForm({
+              description: "",
+              photos: [],
+              completionPercentage: task.completionPercentage,
+              status: task.currentStatus,
+            });
+            setShowUpdateModal(true);
+          }}
+          className="absolute bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+          }}
+        >
+          <Ionicons name="create-outline" size={24} color="white" />
+        </Pressable>
+      )}
     </SafeAreaView>
   );
 }

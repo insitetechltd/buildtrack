@@ -281,7 +281,7 @@ export default function DashboardScreen({
         isAssignedToMe: isAssignedToMe,
         isCreatedByMe: isCreatedByMe,
         taskAssignedBy: task.assignedBy,
-        user.id: user.id,
+        userId: user.id,
         include: include,
         readyForReview: task.readyForReview,
         projectId: task.projectId,

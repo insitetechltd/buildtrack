@@ -744,7 +744,7 @@ export default function DashboardScreen({
                   <Pressable 
                     className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
-                      setSectionFilter("my_tasks");
+                      setSectionFilter("outbox"); // Changed from "my_tasks" to "outbox"
                       setStatusFilter("rejected");
                       onNavigateToTasks();
                     }}

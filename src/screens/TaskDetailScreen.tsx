@@ -432,46 +432,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       )}
 
       <ScrollView className="flex-1">
-        {/* Task Status, Priority, and Due Date */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
-          {/* Due Date and Badges Row */}
-          <View className="flex-row items-center flex-wrap mb-4">
-            <View className="flex-row items-center mr-3 mb-2">
-              <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-              <Text className="text-base text-gray-600 ml-2 mr-1">Due:</Text>
-              <Text className={cn("text-base font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
-                {new Date(task.dueDate).toLocaleDateString()}
-                {isOverdue && " (Overdue)"}
-              </Text>
-            </View>
-            
-            {/* Status and Priority Badges */}
-            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
-              <Text className="text-sm font-medium capitalize">
-                {task.currentStatus.replace("_", " ")}
-              </Text>
-            </View>
-            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
-              <Text className="text-sm font-medium capitalize">
-                {task.priority}
-              </Text>
-            </View>
-          </View>
-
-          {/* Task Description */}
-          {task.description && (
-            <View>
-              <Text className="text-base text-gray-700 leading-6">
-                {task.description}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Assignment Information Card - Moved to top */}
+        {/* Combined Task Information & Assignment Card */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
-          <View className="flex-row gap-3">
+          {/* Assignment Section - Moved to Top */}
+          <View className="flex-row gap-3 mb-4 pb-4 border-b border-gray-200">
             {/* Assigned By */}
             <View className="flex-1">
               <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
@@ -545,6 +510,39 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             )}
             </View>
           </View>
+
+          {/* Due Date and Badges Row */}
+          <View className="flex-row items-center flex-wrap mb-4">
+            <View className="flex-row items-center mr-3 mb-2">
+              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+              <Text className="text-sm text-gray-600 ml-2 mr-1">Due:</Text>
+              <Text className={cn("text-sm font-semibold", isOverdue ? "text-red-600" : "text-gray-900")}>
+                {new Date(task.dueDate).toLocaleDateString()}
+                {isOverdue && " (Overdue)"}
+              </Text>
+            </View>
+            
+            {/* Status and Priority Badges */}
+            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
+              <Text className="text-sm font-medium capitalize">
+                {task.currentStatus.replace("_", " ")}
+              </Text>
+            </View>
+            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
+              <Text className="text-sm font-medium capitalize">
+                {task.priority}
+              </Text>
+            </View>
+          </View>
+
+          {/* Task Description */}
+          {task.description && (
+            <View>
+              <Text className="text-sm text-gray-700 leading-5">
+                {task.description}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Progress & Updates Combined Section */}

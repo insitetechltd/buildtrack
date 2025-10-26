@@ -74,13 +74,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
   return (
     <View className="absolute bottom-8 right-6">
       {/* Logout Button - appears when expanded */}
+      {/* Spacing: Main button (56px) + 24px gap + Create button (48px) + 24px gap + Logout button (48px) */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim2 },
             { translateY: scaleAnim2.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -150]
+              outputRange: [0, -148]
             })}
           ],
           opacity: scaleAnim2,
@@ -96,7 +97,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
-            marginBottom: 50,
+            marginBottom: 24,
           }}
         >
           <Ionicons name="log-out-outline" size={20} color="white" />
@@ -104,13 +105,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       </Animated.View>
 
       {/* Create Task Button - appears when expanded */}
+      {/* Spacing: Main button (56px) + 24px gap + Create button (48px) */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim1 },
             { translateY: scaleAnim1.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -75]
+              outputRange: [0, -76]
             })}
           ],
           opacity: scaleAnim1,
@@ -126,7 +128,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
-            marginBottom: 50,
+            marginBottom: 24,
           }}
         >
           <Ionicons name="add" size={24} color="white" />

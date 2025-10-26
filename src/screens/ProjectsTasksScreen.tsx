@@ -48,13 +48,14 @@ export default function ProjectsTasksScreen({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
-  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "pending" | "overdue" | "all">("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<string>("all");
   const [refreshing, setRefreshing] = useState(false);
 
   // Apply filters from store on mount
   useEffect(() => {
     if (sectionFilter) {
       setLocalSectionFilter(sectionFilter);
+      setLocalStatusFilter("all"); // Reset status filter when section changes
       clearSectionFilter(); // Clear it after applying so it doesn't persist
     }
     if (statusFilter) {
@@ -62,6 +63,11 @@ export default function ProjectsTasksScreen({
       clearStatusFilter(); // Clear it after applying so it doesn't persist
     }
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
+
+  // Reset status filter when section filter changes
+  useEffect(() => {
+    setLocalStatusFilter("all");
+  }, [localSectionFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);
@@ -229,7 +235,14 @@ export default function ProjectsTasksScreen({
       }
     });
 
-    // Apply search and status filters
+    // Helper function to check if a task is overdue
+    const isOverdue = (task: any) => {
+      const dueDate = new Date(task.dueDate);
+      const now = new Date();
+      return dueDate < now;
+    };
+
+    // Apply search and status filters with dynamic categorization
     const filteredTasks = allProjectTasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -239,28 +252,87 @@ export default function ProjectsTasksScreen({
         return matchesSearch;
       }
       
-      // Helper function to check if a task is overdue
-      const isOverdue = (task: any) => {
-        const dueDate = new Date(task.dueDate);
-        const now = new Date();
-        return dueDate < now;
-      };
-      
-      // Apply new categorization logic
-      if (localStatusFilter === "not_started") {
-        return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
-      } else if (localStatusFilter === "pending") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
-      } else if (localStatusFilter === "completed") {
-        return matchesSearch && task.accepted && task.completionPercentage === 100;
-      } else if (localStatusFilter === "overdue") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
-      } else if (localStatusFilter === "rejected") {
-        return matchesSearch && task.currentStatus === "rejected";
+      // Dynamic filtering based on section and status
+      if (localSectionFilter === "my_tasks") {
+        // My Tasks categories: Rejected, WIP, Done, Overdue
+        if (localStatusFilter === "rejected") {
+          return matchesSearch && task.currentStatus === "rejected";
+        } else if (localStatusFilter === "wip") {
+          return matchesSearch && task.accepted && 
+                 task.completionPercentage < 100 && 
+                 !isOverdue(task) && 
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "done") {
+          return matchesSearch && task.completionPercentage === 100 && 
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "overdue") {
+          return matchesSearch && task.completionPercentage < 100 && 
+                 isOverdue(task) && 
+                 task.currentStatus !== "rejected";
+        }
+      } else if (localSectionFilter === "inbox") {
+        // Inbox categories: Received, WIP, Reviewing, Done, Overdue
+        if (localStatusFilter === "received") {
+          return matchesSearch && !task.accepted && task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return matchesSearch && task.accepted && 
+                 !isOverdue(task) && 
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 || 
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "reviewing") {
+          return matchesSearch && task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        } else if (localStatusFilter === "done") {
+          return matchesSearch && task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return matchesSearch && task.completionPercentage < 100 && 
+                 isOverdue(task) && 
+                 task.currentStatus !== "rejected";
+        }
+      } else if (localSectionFilter === "outbox") {
+        // Outbox categories: Assigned, WIP, Reviewing, Done, Overdue
+        if (localStatusFilter === "assigned") {
+          return matchesSearch && !task.accepted && task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return matchesSearch && task.accepted && 
+                 !isOverdue(task) && 
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 || 
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "reviewing") {
+          return matchesSearch && task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        } else if (localStatusFilter === "done") {
+          return matchesSearch && task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return matchesSearch && task.completionPercentage < 100 && 
+                 isOverdue(task) && 
+                 task.currentStatus !== "rejected";
+        }
       } else {
-        // Fallback to original status matching
-        return matchesSearch && task.currentStatus === localStatusFilter;
+        // "All" section - keep original filters
+        if (localStatusFilter === "not_started") {
+          return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
+        } else if (localStatusFilter === "pending") {
+          return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "completed") {
+          return matchesSearch && task.accepted && task.completionPercentage === 100;
+        } else if (localStatusFilter === "overdue") {
+          return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "rejected") {
+          return matchesSearch && task.currentStatus === "rejected";
+        } else {
+          // Fallback to original status matching
+          return matchesSearch && task.currentStatus === localStatusFilter;
+        }
       }
+      
+      return false;
     });
 
     // Sort tasks by priority (high to low) then by due date (earliest first)
@@ -487,7 +559,7 @@ export default function ProjectsTasksScreen({
     status, 
     label 
   }: { 
-    status: TaskStatus | "pending" | "overdue" | "all"; 
+    status: string; 
     label: string 
   }) => (
     <Pressable
@@ -548,17 +620,47 @@ export default function ProjectsTasksScreen({
           </ScrollView>
         </View>
 
-        {/* Status Filters */}
+        {/* Status Filters - Dynamic based on section */}
         <View className="mt-3">
           <Text className="text-sm font-semibold text-gray-700 mb-2">Task Status</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row">
               <StatusFilterButton status="all" label="All" />
-              <StatusFilterButton status="not_started" label="New" />
-              <StatusFilterButton status="pending" label="Pending" />
-              <StatusFilterButton status="completed" label="Completed" />
-              <StatusFilterButton status="overdue" label="Overdue" />
-              <StatusFilterButton status="rejected" label="Rejected" />
+              {localSectionFilter === "my_tasks" && (
+                <>
+                  <StatusFilterButton status="rejected" label="Rejected" />
+                  <StatusFilterButton status="wip" label="WIP" />
+                  <StatusFilterButton status="done" label="Done" />
+                  <StatusFilterButton status="overdue" label="Overdue" />
+                </>
+              )}
+              {localSectionFilter === "inbox" && (
+                <>
+                  <StatusFilterButton status="received" label="Received" />
+                  <StatusFilterButton status="wip" label="WIP" />
+                  <StatusFilterButton status="reviewing" label="Reviewing" />
+                  <StatusFilterButton status="done" label="Done" />
+                  <StatusFilterButton status="overdue" label="Overdue" />
+                </>
+              )}
+              {localSectionFilter === "outbox" && (
+                <>
+                  <StatusFilterButton status="assigned" label="Assigned" />
+                  <StatusFilterButton status="wip" label="WIP" />
+                  <StatusFilterButton status="reviewing" label="Reviewing" />
+                  <StatusFilterButton status="done" label="Done" />
+                  <StatusFilterButton status="overdue" label="Overdue" />
+                </>
+              )}
+              {localSectionFilter === "all" && (
+                <>
+                  <StatusFilterButton status="not_started" label="New" />
+                  <StatusFilterButton status="pending" label="Pending" />
+                  <StatusFilterButton status="completed" label="Completed" />
+                  <StatusFilterButton status="overdue" label="Overdue" />
+                  <StatusFilterButton status="rejected" label="Rejected" />
+                </>
+              )}
             </View>
           </ScrollView>
         </View>

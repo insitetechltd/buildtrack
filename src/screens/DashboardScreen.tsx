@@ -21,6 +21,7 @@ import { cn } from "../utils/cn";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface DashboardScreenProps {
   onNavigateToTasks: () => void;
@@ -1046,6 +1047,9 @@ export default function DashboardScreen({
       >
         <Ionicons name="add" size={28} color="white" />
       </Pressable>
+
+      {/* Logout FAB */}
+      <LogoutFAB />
     </SafeAreaView>
   );
 }

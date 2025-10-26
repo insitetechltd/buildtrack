@@ -26,6 +26,7 @@ import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
 import { PhotoUploadSection } from "../components/PhotoUploadSection";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -1023,6 +1024,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Logout FAB */}
+      <LogoutFAB />
     </SafeAreaView>
   );
 }

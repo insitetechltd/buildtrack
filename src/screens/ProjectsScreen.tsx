@@ -23,6 +23,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import LogoutFAB from "../components/LogoutFAB";
 import ModalHandle from "../components/ModalHandle";
 
 interface ProjectsScreenProps {
@@ -720,5 +721,8 @@ function EditProjectModal({
         )}
       </SafeAreaView>
     </Modal>
+
+    {/* Logout FAB */}
+    <LogoutFAB />
   );
 }

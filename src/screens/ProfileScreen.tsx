@@ -19,6 +19,7 @@ import { useTranslation } from "../utils/useTranslation";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
@@ -323,6 +324,9 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Logout FAB */}
+      <LogoutFAB />
     </SafeAreaView>
   );
 }

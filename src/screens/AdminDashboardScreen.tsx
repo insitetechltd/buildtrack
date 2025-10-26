@@ -22,6 +22,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface AdminDashboardScreenProps {
   onNavigateToProjects: () => void;
@@ -711,6 +712,9 @@ export default function AdminDashboardScreen({
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Logout FAB */}
+      <LogoutFAB />
     </SafeAreaView>
   );
 }

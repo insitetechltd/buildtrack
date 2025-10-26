@@ -19,6 +19,7 @@ import { useCompanyStore } from "../state/companyStore";
 import { Task, Priority, TaskStatus, SubTask } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -458,6 +459,9 @@ export default function TasksScreen({
         >
           <Ionicons name="add" size={28} color="white" />
         </Pressable>
+
+        {/* Logout FAB */}
+        <LogoutFAB />
       </View>
     </SafeAreaView>
   );

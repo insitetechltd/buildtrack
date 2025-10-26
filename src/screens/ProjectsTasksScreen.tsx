@@ -21,6 +21,7 @@ import { Task, Priority, TaskStatus, SubTask, Project, ProjectStatus } from "../
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
+import LogoutFAB from "../components/LogoutFAB";
 
 interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -606,6 +607,9 @@ export default function ProjectsTasksScreen({
       >
         <Ionicons name="add" size={28} color="white" />
       </Pressable>
+
+      {/* Logout FAB */}
+      <LogoutFAB />
     </SafeAreaView>
   );
 }

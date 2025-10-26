@@ -56,6 +56,13 @@ function DashboardStack() {
       }}
     >
       <Stack.Screen name="DashboardMain" component={DashboardMainScreen} />
+      <Stack.Screen 
+        name="TaskDetail" 
+        component={TaskDetailScreenWrapper}
+        options={{
+          presentation: "modal"
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -67,6 +74,9 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
       onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
+      onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
+        navigation.navigate("TaskDetail", { taskId, subTaskId });
+      }}
     />
   );
 }

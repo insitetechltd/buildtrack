@@ -74,14 +74,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
   return (
     <View className="absolute bottom-8 right-6">
       {/* Logout Button - appears when expanded */}
-      {/* Gap = 48px (1 button size). Main radius 28 + gap 48 + Create 48 + gap 48 + Logout radius 24 = 196px */}
+      {/* Gap = 12px. Main radius 28 + gap 12 + Create 48 + gap 12 + Logout radius 24 = 124px */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim2 },
             { translateY: scaleAnim2.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -196]
+              outputRange: [0, -124]
             })}
           ],
           opacity: scaleAnim2,
@@ -104,14 +104,14 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       </Animated.View>
 
       {/* Create Task Button - appears when expanded */}
-      {/* Gap = 48px (1 button size). Main radius 28 + gap 48 + Create radius 24 = 100px */}
+      {/* Gap = 12px. Main radius 28 + gap 12 + Create radius 24 = 64px */}
       <Animated.View
         style={{
           transform: [
             { scale: scaleAnim1 },
             { translateY: scaleAnim1.interpolate({
               inputRange: [0, 1],
-              outputRange: [0, -100]
+              outputRange: [0, -64]
             })}
           ],
           opacity: scaleAnim1,

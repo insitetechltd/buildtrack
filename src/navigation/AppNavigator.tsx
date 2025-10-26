@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { View, Pressable, Alert } from "react-native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
-import { DataRefreshManager } from "../utils/DataRefreshManager";
+import { DataSyncManager } from "../utils/DataSyncManager";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
@@ -453,6 +453,8 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <MainTabs />
+      {/* Data Sync Manager - Polls every 3 minutes + refreshes on foreground */}
+      <DataSyncManager />
     </NavigationContainer>
   );
 }// Force reload Fri Oct  3 06:16:45 UTC 2025

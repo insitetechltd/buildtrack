@@ -160,6 +160,8 @@ export default function DashboardScreen({
   const selectedProject = selectedProjectId ? getProjectById(selectedProjectId) : null;
 
   // Filter tasks by selected project - show NO tasks when no project is selected
+  // BUT: For review workflow, tasks submitted for review should be visible even if
+  // project filter is active (as long as the task matches the selected project)
   const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
     ? tasks.filter(task => task.projectId === selectedProjectId)
     : []; // Show no tasks when no project is selected

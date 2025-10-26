@@ -272,7 +272,24 @@ export default function DashboardScreen({
     const isCreatedByMe = task.assignedBy === user.id;
     
     // Include if assigned to me but NOT created by me
-    return isAssignedToMe && !isCreatedByMe;
+    const include = isAssignedToMe && !isCreatedByMe;
+    
+    // Debug logging for Dennis
+    if (user?.name === "Dennis" && task.readyForReview === true) {
+      console.log(`🔍 [Inbox Debug] Task "${task.title}":`, {
+        assignedTo: assignedTo,
+        isAssignedToMe: isAssignedToMe,
+        isCreatedByMe: isCreatedByMe,
+        taskAssignedBy: task.assignedBy,
+        user.id: user.id,
+        include: include,
+        readyForReview: task.readyForReview,
+        projectId: task.projectId,
+        selectedProjectId: selectedProjectId
+      });
+    }
+    
+    return include;
   });
 
   const inboxSubTasks = projectFilteredTasks.flatMap(task => {
@@ -302,11 +319,26 @@ export default function DashboardScreen({
   );
   
   // 2.3 Reviewing: Tasks at 100% submitted for review (pending approval)
-  const inboxReviewingTasks = inboxAllTasks.filter(task => 
-    task.completionPercentage === 100 &&
-    task.readyForReview === true &&
-    task.reviewAccepted !== true
-  );
+  const inboxReviewingTasks = inboxAllTasks.filter(task => {
+    const matches = task.completionPercentage === 100 &&
+                    task.readyForReview === true &&
+                    task.reviewAccepted !== true;
+    
+    // Debug logging for Dennis
+    if (user?.name === "Dennis" && task.readyForReview === true) {
+      console.log(`🔍 [Review Debug] Task "${task.title}":`, {
+        completionPercentage: task.completionPercentage,
+        readyForReview: task.readyForReview,
+        reviewAccepted: task.reviewAccepted,
+        assignedTo: task.assignedTo,
+        assignedBy: task.assignedBy,
+        isInInbox: inboxAllTasks.includes(task),
+        matches: matches
+      });
+    }
+    
+    return matches;
+  });
   
   // 2.4 Done: Tasks where the assigner has accepted completion
   const inboxDoneTasks = inboxAllTasks.filter(task => 

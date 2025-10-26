@@ -416,7 +416,6 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <DataRefreshManager />
       <MainTabs />
     </NavigationContainer>
   );

@@ -137,39 +137,8 @@ export default function DashboardScreen({
     }
   }, [user?.id, userProjects.length]); // Only depend on user ID and project count to avoid infinite loop
 
-  // Fetch tasks when Dashboard mounts
-  useEffect(() => {
-    if (user) {
-      console.log('Dashboard: Fetching tasks for user:', user.id);
-      fetchTasks();
-    }
-  }, [user, fetchTasks]);
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    if (!user) return;
-    
-    console.log('🔄 Manual refresh triggered from Dashboard...');
-    
-    try {
-      await Promise.all([
-        fetchProjects(),
-        fetchUserProjectAssignments(user.id),
-        taskStore.fetchTasks()
-      ]);
-      console.log('✅ Manual refresh completed');
-    } catch (error) {
-      console.error('❌ Manual refresh failed:', error);
-    }
-  };
-
-  // Auto-refresh data on component mount
-  useEffect(() => {
-    if (user) {
-      console.log('🔄 Auto-refreshing data on Dashboard mount...');
-      handleRefresh();
-    }
-  }, [user]);
+  // Note: Data syncing now handled by DataSyncManager (3-min polling + foreground refresh)
+  // Pull-to-refresh provides manual control
 
   if (!user) return null;
 

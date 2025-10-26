@@ -188,7 +188,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 {/* BuildTrack - Workers */}
                 <Pressable 
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('peter@buildtrack.com', 'password123')}
+                  onPress={() => handleQuickLogin('dennis@buildtrack.com', 'password123')}
                 >
                   <Text className="text-base font-semibold text-emerald-900">
                     BuildTrack: Worker: Peter

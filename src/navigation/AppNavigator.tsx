@@ -415,9 +415,16 @@ function MainTabs() {
 export default function AppNavigator() {
   const { isAuthenticated, isLoading, isInitialized } = useAuthStore();
 
+  console.log('📱 AppNavigator render:', { 
+    isAuthenticated, 
+    isLoading, 
+    isInitialized,
+    timestamp: new Date().toISOString()
+  });
+
   // Show loading only if we're actually loading (not just uninitiated)
-  // Once initialized, we don't need to wait anymore
   if (isLoading) {
+    console.log('⏳ Showing loading state');
     // TODO: Add proper loading screen
     return null;
   }
@@ -425,13 +432,16 @@ export default function AppNavigator() {
   // Wait for initial store rehydration ONLY if we've never initialized
   // This prevents blank screen on first load but allows login to work
   if (!isInitialized && !isAuthenticated) {
+    console.log('⏳ Waiting for store initialization (not authenticated yet)');
     return null;
   }
 
   if (!isAuthenticated) {
+    console.log('🔓 Showing login screen');
     return <AuthScreens />;
   }
 
+  console.log('🔐 Showing main app (authenticated)');
   return (
     <NavigationContainer>
       <MainTabs />

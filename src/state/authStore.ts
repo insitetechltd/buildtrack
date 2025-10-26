@@ -31,6 +31,7 @@ export const useAuthStore = create<AuthStore>()(
       isInitialized: false,
 
       login: async (username: string, password: string) => {
+        console.log('🔐 Login attempt:', username);
         set({ isLoading: true });
         
         try {
@@ -64,10 +65,14 @@ export const useAuthStore = create<AuthStore>()(
                     companyId: userData.company_id || userData.companyId, // Handle both field names
                   };
                   
+                  console.log('✅ Login successful:', transformedUser.name);
+                  console.log('Setting state: isAuthenticated=true, isLoading=false, isInitialized=true');
+                  
                   set({ 
                     user: transformedUser, 
                     isAuthenticated: true, 
-                    isLoading: false 
+                    isLoading: false,
+                    isInitialized: true  // Ensure initialized after login
                   });
                   
                   // Trigger data refresh after successful login
@@ -350,8 +355,16 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
+        console.log('🔄 AuthStore rehydration callback fired');
         if (state) {
           state.isInitialized = true;
+          console.log('✅ AuthStore initialized:', { 
+            isAuthenticated: state.isAuthenticated, 
+            hasUser: !!state.user,
+            userName: state.user?.name 
+          });
+        } else {
+          console.log('⚠️ AuthStore rehydration - no state found');
         }
       },
     }

@@ -18,7 +18,6 @@ interface StandardHeaderProps {
   title: string;
   subtitle?: string;
   onRefresh?: () => void;
-  onLogout?: () => void;
   showBackButton?: boolean;
   onBackPress?: () => void;
   rightElement?: React.ReactNode;
@@ -29,13 +28,12 @@ export default function StandardHeader({
   title,
   subtitle,
   onRefresh,
-  onLogout,
   showBackButton = false,
   onBackPress,
   rightElement,
   className = "",
 }: StandardHeaderProps) {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
@@ -216,16 +214,6 @@ export default function StandardHeader({
               className="bg-blue-500 rounded-full p-2"
             >
               <Ionicons name="refresh" size={20} color="white" />
-            </Pressable>
-          )}
-          
-          {/* Logout Button */}
-          {(onLogout || logout) && (
-            <Pressable 
-              onPress={onLogout || logout}
-              className="bg-red-500 rounded-full p-2"
-            >
-              <Ionicons name="log-out-outline" size={20} color="white" />
             </Pressable>
           )}
         </View>

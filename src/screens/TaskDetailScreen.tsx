@@ -50,6 +50,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
   const acceptTask = useTaskStore(state => state.acceptTask);
   const declineTask = useTaskStore(state => state.declineTask);
+  const submitTaskForReview = useTaskStore(state => state.submitTaskForReview);
+  const acceptTaskCompletion = useTaskStore(state => state.acceptTaskCompletion);
+  const submitSubTaskForReview = useTaskStore(state => state.submitSubTaskForReview);
+  const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
@@ -169,6 +173,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // Only task creator can edit the task
   const canEditTask = isTaskCreator;
 
+  // Review workflow permissions
+  // Assignee can submit for review when task is 100% complete but not yet reviewed
+  const canSubmitForReview = isAssignedToMe && 
+    task.accepted === true && 
+    task.completionPercentage === 100 && 
+    !task.readyForReview && 
+    !task.reviewAccepted;
+  
+  // Task creator can accept completion when task is marked ready for review
+  const canAcceptCompletion = isTaskCreator && task.readyForReview === true;
+
   const handleAcceptTask = () => {
     Alert.alert(
       "Accept Task",
@@ -207,6 +222,56 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         },
       ],
       "plain-text"
+    );
+  };
+
+  const handleSubmitForReview = () => {
+    Alert.alert(
+      "Submit for Review",
+      "Are you sure you want to submit this completed task for review?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Submit",
+          onPress: async () => {
+            try {
+              if (isViewingSubTask && subTaskId) {
+                await submitSubTaskForReview(taskId, subTaskId);
+              } else {
+                await submitTaskForReview(task.id);
+              }
+              Alert.alert("Success", "Task submitted for review! Waiting for the task creator to accept completion.");
+            } catch (error) {
+              Alert.alert("Error", "Failed to submit task for review. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleAcceptCompletion = () => {
+    Alert.alert(
+      "Accept Completion",
+      "Are you sure you want to accept this task as complete?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Accept",
+          onPress: async () => {
+            try {
+              if (isViewingSubTask && subTaskId) {
+                await acceptSubTaskCompletion(taskId, subTaskId, user.id);
+              } else {
+                await acceptTaskCompletion(task.id, user.id);
+              }
+              Alert.alert("Success", "Task marked as complete! ✅");
+            } catch (error) {
+              Alert.alert("Error", "Failed to accept completion. Please try again.");
+            }
+          }
+        }
+      ]
     );
   };
 
@@ -711,6 +776,54 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 Add {isViewingSubTask ? "Nested Sub-Task" : "Sub-Task"}
               </Text>
             </Pressable>
+          </View>
+        )}
+
+        {/* Ready for Review Button - Assignee submits completed work */}
+        {canSubmitForReview && (
+          <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
+            <Pressable
+              onPress={handleSubmitForReview}
+              className="flex-row items-center justify-center bg-purple-50 px-4 py-3 rounded-lg border border-purple-200"
+            >
+              <Ionicons name="checkmark-done-circle-outline" size={20} color="#9333ea" />
+              <Text className="text-purple-700 font-semibold ml-2">
+                Ready for Review
+              </Text>
+            </Pressable>
+            <Text className="text-xs text-gray-500 mt-2 text-center">
+              Task is 100% complete. Submit for review by the task creator.
+            </Text>
+          </View>
+        )}
+
+        {/* Accept Completion Button - Task creator accepts completed work */}
+        {canAcceptCompletion && (
+          <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
+            <Pressable
+              onPress={handleAcceptCompletion}
+              className="flex-row items-center justify-center bg-green-50 px-4 py-3 rounded-lg border border-green-200"
+            >
+              <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
+              <Text className="text-green-700 font-semibold ml-2">
+                Accept Completion
+              </Text>
+            </Pressable>
+            <Text className="text-xs text-gray-500 mt-2 text-center">
+              Review and accept this completed task to mark it as Done.
+            </Text>
+          </View>
+        )}
+
+        {/* Pending Review Status - Show to assignee after submission */}
+        {task.readyForReview && isAssignedToMe && !isTaskCreator && (
+          <View className="bg-purple-50 border border-purple-200 rounded-xl mx-4 mb-3 p-4">
+            <View className="flex-row items-center">
+              <Ionicons name="time-outline" size={20} color="#9333ea" />
+              <Text className="text-sm text-purple-700 ml-2 flex-1 font-medium">
+                Task is pending review by the task creator
+              </Text>
+            </View>
           </View>
         )}
 

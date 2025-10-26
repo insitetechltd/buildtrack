@@ -30,6 +30,12 @@ interface TaskStore {
   toggleTaskStar: (taskId: string, userId: string) => Promise<void>;
   getStarredTasks: (userId: string) => Task[];
   
+  // Review workflow
+  submitTaskForReview: (taskId: string) => Promise<void>;
+  acceptTaskCompletion: (taskId: string, userId: string) => Promise<void>;
+  submitSubTaskForReview: (taskId: string, subTaskId: string) => Promise<void>;
+  acceptSubTaskCompletion: (taskId: string, subTaskId: string, userId: string) => Promise<void>;
+  
   // Progress tracking
   addTaskUpdate: (taskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
   addSubTaskUpdate: (taskId: string, subTaskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
@@ -144,6 +150,10 @@ export const useTaskStore = create<TaskStore>()(
             starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
+            readyForReview: task.ready_for_review || false,
+            reviewedBy: task.reviewed_by,
+            reviewedAt: task.reviewed_at,
+            reviewAccepted: task.review_accepted,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
@@ -163,6 +173,10 @@ export const useTaskStore = create<TaskStore>()(
               assignedBy: st.assigned_by,
               accepted: st.accepted,
               declineReason: st.decline_reason,
+              readyForReview: st.ready_for_review || false,
+              reviewedBy: st.reviewed_by,
+              reviewedAt: st.reviewed_at,
+              reviewAccepted: st.review_accepted,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
               updates: updatesByTaskId[task.id] || [],
@@ -273,6 +287,10 @@ export const useTaskStore = create<TaskStore>()(
             starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
+            readyForReview: task.ready_for_review || false,
+            reviewedBy: task.reviewed_by,
+            reviewedAt: task.reviewed_at,
+            reviewAccepted: task.review_accepted,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
@@ -292,6 +310,10 @@ export const useTaskStore = create<TaskStore>()(
               assignedBy: st.assigned_by,
               accepted: st.accepted,
               declineReason: st.decline_reason,
+              readyForReview: st.ready_for_review || false,
+              reviewedBy: st.reviewed_by,
+              reviewedAt: st.reviewed_at,
+              reviewAccepted: st.review_accepted,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
               updates: updatesByTaskId[task.id] || [],
@@ -377,6 +399,10 @@ export const useTaskStore = create<TaskStore>()(
             starredByUsers: task.starred_by_users || [],
             accepted: task.accepted,
             declineReason: task.decline_reason,
+            readyForReview: task.ready_for_review || false,
+            reviewedBy: task.reviewed_by,
+            reviewedAt: task.reviewed_at,
+            reviewAccepted: task.review_accepted,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
@@ -396,6 +422,10 @@ export const useTaskStore = create<TaskStore>()(
               assignedBy: st.assigned_by,
               accepted: st.accepted,
               declineReason: st.decline_reason,
+              readyForReview: st.ready_for_review || false,
+              reviewedBy: st.reviewed_by,
+              reviewedAt: st.reviewed_at,
+              reviewAccepted: st.review_accepted,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
               updates: updatesByTaskId[task.id] || [],
@@ -610,6 +640,11 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
           if (updates.starredByUsers !== undefined) updateData.starred_by_users = updates.starredByUsers;
+          // Review workflow fields
+          if (updates.readyForReview !== undefined) updateData.ready_for_review = updates.readyForReview;
+          if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
+          if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
+          if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
 
           const { error } = await supabase
             .from('tasks')
@@ -715,6 +750,41 @@ export const useTaskStore = create<TaskStore>()(
         return get().tasks.filter(task => {
           const starredByUsers = task.starredByUsers || [];
           return starredByUsers.includes(userId);
+        });
+      },
+
+      // Review workflow methods
+      submitTaskForReview: async (taskId) => {
+        await get().updateTask(taskId, {
+          readyForReview: true
+        });
+      },
+
+      acceptTaskCompletion: async (taskId, userId) => {
+        await get().updateTask(taskId, {
+          readyForReview: false,
+          reviewedBy: userId,
+          reviewedAt: new Date().toISOString(),
+          reviewAccepted: true,
+          currentStatus: "completed",
+          completionPercentage: 100
+        });
+      },
+
+      submitSubTaskForReview: async (taskId, subTaskId) => {
+        await get().updateSubTask(taskId, subTaskId, {
+          readyForReview: true
+        });
+      },
+
+      acceptSubTaskCompletion: async (taskId, subTaskId, userId) => {
+        await get().updateSubTask(taskId, subTaskId, {
+          readyForReview: false,
+          reviewedBy: userId,
+          reviewedAt: new Date().toISOString(),
+          reviewAccepted: true,
+          currentStatus: "completed",
+          completionPercentage: 100
         });
       },
 

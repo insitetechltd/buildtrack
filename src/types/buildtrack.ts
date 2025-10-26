@@ -326,6 +326,11 @@ export interface SubTask {
     timestamp: string;
   }>;
   starredByUsers?: string[]; // Array of user IDs who starred this subtask
+  // Review workflow
+  readyForReview?: boolean; // Assignee marks subtask as ready for review
+  reviewedBy?: string; // User ID who reviewed the subtask
+  reviewedAt?: string; // When the subtask was reviewed
+  reviewAccepted?: boolean; // Whether the review was accepted
 }
 
 export interface Task {
@@ -363,6 +368,11 @@ export interface Task {
   
   // Today's Tasks feature - track which users starred this task
   starredByUsers?: string[]; // Array of user IDs who starred this for today
+  // Review workflow
+  readyForReview?: boolean; // Assignee marks task as ready for review
+  reviewedBy?: string; // User ID who reviewed the task
+  reviewedAt?: string; // When the task was reviewed
+  reviewAccepted?: boolean; // Whether the review was accepted
 }
 
 export interface AuthState {

@@ -721,8 +721,10 @@ function EditProjectModal({
         )}
       </SafeAreaView>
     </Modal>
+    </SafeAreaView>
 
     {/* Logout FAB */}
     <LogoutFAB />
+    </>
   );
 }

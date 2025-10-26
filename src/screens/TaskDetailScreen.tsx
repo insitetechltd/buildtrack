@@ -704,14 +704,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         <SafeAreaView className="flex-1 bg-gray-50">
           <ModalHandle />
           
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setShowUpdateModal(false)}
-              className="mr-4"
-            >
-              <Text className="text-blue-600 font-medium">Cancel</Text>
-            </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+          <View className="flex-row items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
+            <Text className="text-lg font-semibold text-gray-900 flex-1 text-center">
               Progress Update
             </Text>
             <Pressable

@@ -17,7 +17,6 @@ import { detectEnvironment, getEnvironmentStyles } from "../utils/environmentDet
 interface StandardHeaderProps {
   title: string;
   subtitle?: string;
-  onRefresh?: () => void;
   showBackButton?: boolean;
   onBackPress?: () => void;
   rightElement?: React.ReactNode;
@@ -27,7 +26,6 @@ interface StandardHeaderProps {
 export default function StandardHeader({
   title,
   subtitle,
-  onRefresh,
   showBackButton = false,
   onBackPress,
   rightElement,
@@ -37,56 +35,7 @@ export default function StandardHeader({
   const { getCompanyBanner } = useCompanyStore();
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
-  const [isBlinking, setIsBlinking] = useState(false);
-  const blinkAnimation = useRef(new Animated.Value(1)).current;
   const t = useTranslation();
-
-  // Blinking animation function
-  const triggerBlinkingAnimation = () => {
-    setIsBlinking(true);
-    
-    // Create blinking animation
-    const blinkSequence = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blinkAnimation, {
-          toValue: 0.3,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(blinkAnimation, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]),
-      { iterations: 5 } // Blink 5 times (3 seconds total)
-    );
-
-    blinkSequence.start(() => {
-      // Animation completed
-      setIsBlinking(false);
-      blinkAnimation.setValue(1);
-    });
-  };
-
-  // Manual refresh function
-  const handleRefresh = async () => {
-    if (!user) return;
-    
-    console.log('🔄 Manual refresh triggered from StandardHeader...');
-    
-    // Trigger blinking animation when starting data fetch
-    triggerBlinkingAnimation();
-    
-    try {
-      if (onRefresh) {
-        await onRefresh();
-      }
-      console.log('✅ Manual refresh completed');
-    } catch (error) {
-      console.error('❌ Manual refresh failed:', error);
-    }
-  };
 
   // Check Supabase connection on component mount
   useEffect(() => {
@@ -181,16 +130,13 @@ export default function StandardHeader({
           
           {/* Supabase Connection Status */}
           <View className="flex-row items-center">
-            <Animated.View 
+            <View 
               className={cn(
                 "w-2 h-2 rounded-full mr-2",
                 supabaseStatus === "connected" ? "bg-green-500" :
                 supabaseStatus === "disconnected" ? "bg-red-500" :
                 "bg-yellow-500"
               )}
-              style={{
-                opacity: blinkAnimation,
-              }}
             />
             <Text className={cn(
               "text-xs font-medium",
@@ -205,17 +151,9 @@ export default function StandardHeader({
           </View>
         </View>
         
-        {/* Right side: Action Buttons */}
+        {/* Right side: Placeholder for spacing */}
         <View className="flex-row items-center space-x-2">
-          {/* Refresh Button */}
-          {onRefresh && (
-            <Pressable 
-              onPress={handleRefresh}
-              className="bg-blue-500 rounded-full p-2"
-            >
-              <Ionicons name="refresh" size={20} color="white" />
-            </Pressable>
-          )}
+          {/* Refresh button now only in ProfileScreen */}
         </View>
       </View>
     </View>

@@ -235,21 +235,6 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
 
       </ScrollView>
 
-      {/* Floating Logout Button - Upper Right */}
-      <Pressable
-        onPress={handleLogout}
-        className="absolute top-20 right-6 w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
-        style={{
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.25,
-          shadowRadius: 3.84,
-          elevation: 5,
-        }}
-      >
-        <Ionicons name="log-out-outline" size={22} color="white" />
-      </Pressable>
-
       {/* Language Picker Modal */}
       <Modal
         visible={showLanguagePicker}

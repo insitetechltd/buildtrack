@@ -76,15 +76,30 @@ export default function DashboardScreen({
     }
   };
 
-  // Fetch user project assignments on mount
+  // Fetch all data on mount (tasks, projects, assignments, users)
   useEffect(() => {
     if (!user) return;
     
-    console.log('🔄 [Dashboard] Fetching user project assignments for:', user.name);
-    fetchUserProjectAssignments(user.id).catch(error => {
-      console.error('❌ [Dashboard] Failed to fetch user project assignments:', error);
+    console.log('🔄 [Dashboard] Initial data fetch for:', user.name);
+    
+    // Fetch all data in parallel to ensure everything loads on app start
+    Promise.all([
+      fetchTasks().catch(error => {
+        console.error('❌ [Dashboard] Failed to fetch tasks:', error);
+      }),
+      fetchProjects().catch(error => {
+        console.error('❌ [Dashboard] Failed to fetch projects:', error);
+      }),
+      fetchUserProjectAssignments(user.id).catch(error => {
+        console.error('❌ [Dashboard] Failed to fetch user project assignments:', error);
+      }),
+      fetchUsers().catch(error => {
+        console.error('❌ [Dashboard] Failed to fetch users:', error);
+      }),
+    ]).then(() => {
+      console.log('✅ [Dashboard] Initial data fetch completed');
     });
-  }, [user?.id, fetchUserProjectAssignments]);
+  }, [user?.id, fetchTasks, fetchProjects, fetchUserProjectAssignments, fetchUsers]);
 
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];

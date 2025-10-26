@@ -508,37 +508,22 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   
                   return (
                     <View key={assignedUser.id} className="flex-row items-center">
-                      <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
+                      <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-2">
                         <Ionicons name="person" size={20} color="#10b981" />
                       </View>
                       <View className="flex-1">
-                        <View className="flex-row items-center justify-between mb-1">
-                          <Text className="text-base font-semibold text-gray-900">
+                        <View className="flex-row items-center justify-between">
+                          <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
                             {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
                           </Text>
-                          <View className="flex-row items-center">
-                            <View className="w-20 bg-gray-200 rounded-full h-2 mr-2">
-                              <View 
-                                className={cn(
-                                  "h-2 rounded-full",
-                                  userProgress === 100 ? "bg-green-500" :
-                                  userProgress >= 75 ? "bg-blue-500" :
-                                  userProgress >= 50 ? "bg-yellow-500" :
-                                  userProgress >= 25 ? "bg-orange-500" :
-                                  "bg-gray-400"
-                                )}
-                                style={{ width: `${userProgress}%` }}
-                              />
-                            </View>
-                            <Text className="text-xs font-medium text-gray-600 w-8">
-                              {userProgress}%
-                            </Text>
-                          </View>
+                          <Text className="text-sm font-semibold text-blue-600">
+                            {userProgress}%
+                          </Text>
                         </View>
-                        <Text className="text-sm text-gray-500 capitalize">
+                        <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
                           {assignedUser.role}
                         </Text>
-                        <Text className="text-xs text-gray-400">
+                        <Text className="text-xs text-gray-400" numberOfLines={1}>
                           {assignedUser.email}
                         </Text>
                       </View>

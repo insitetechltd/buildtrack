@@ -436,7 +436,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
           {/* Assignment Section - Moved to Top */}
-          <View className="flex-row mb-4 pb-4 border-b border-gray-200">
+          <View className="flex-row mb-3 pb-3 border-b border-gray-200">
             {/* Assigned By - 50% width */}
             <View style={{ width: '50%' }} className="pr-2">
               <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
@@ -507,7 +507,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
 
           {/* Due Date and Badges Row */}
-          <View className="flex-row items-center flex-wrap mb-4">
+          <View className="flex-row items-center flex-wrap mb-3">
             <View className="flex-row items-center mr-3 mb-2">
               <Ionicons name="calendar-outline" size={16} color="#6b7280" />
               <Text className="text-sm text-gray-600 ml-2 mr-1">Due:</Text>
@@ -532,11 +532,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Task Description */}
           {task.description && (
-            <View>
-              <Text className="text-sm text-gray-700 leading-5">
-                {task.description}
-              </Text>
-            </View>
+            <Text className="text-sm text-gray-700 leading-5">
+              {task.description}
+            </Text>
           )}
         </View>
 

@@ -104,7 +104,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
         </Pressable>
       </Animated.View>
 
-      {/* Camera Update Button - appears when expanded (only if user can update) */}
+      {/* Update Button - appears when expanded (only if user can update) */}
       {/* Position: Center at -72px */}
       {canUpdate && (
         <Animated.View
@@ -121,8 +121,8 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           pointerEvents={isExpanded ? 'auto' : 'none'}
         >
           <Pressable
-            onPress={handleCameraUpdate}
-            className="w-12 h-12 bg-teal-600 rounded-full items-center justify-center shadow-lg"
+            onPress={handleUpdate}
+            className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -131,12 +131,12 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
               elevation: 5,
             }}
           >
-            <Ionicons name="camera" size={20} color="white" />
+            <Ionicons name="create-outline" size={20} color="white" />
           </Pressable>
         </Animated.View>
       )}
 
-      {/* Update Button - appears when expanded (only if user can update) */}
+      {/* Camera Update Button - appears when expanded (only if user can update) */}
       {/* Position: Center at -36px */}
       {canUpdate && (
         <Animated.View
@@ -153,8 +153,8 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           pointerEvents={isExpanded ? 'auto' : 'none'}
         >
           <Pressable
-            onPress={handleUpdate}
-            className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"
+            onPress={handleCameraUpdate}
+            className="w-12 h-12 bg-amber-500 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
@@ -163,7 +163,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
               elevation: 5,
             }}
           >
-            <Ionicons name="create-outline" size={20} color="white" />
+            <Ionicons name="camera" size={20} color="white" />
           </Pressable>
         </Animated.View>
       )}

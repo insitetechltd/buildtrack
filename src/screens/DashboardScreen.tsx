@@ -320,7 +320,10 @@ export default function DashboardScreen({
     )
   );
   
-  // 2.3 Reviewing: Tasks at 100% submitted for review (pending approval)
+  // 2.3 Reviewing: Tasks at 100% submitted for review (pending my approval)
+  // When assignee completes and submits for review, task appears in MY Inbox
+  // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
+  //          Task A appears in Tristan's Inbox → Reviewing
   const inboxReviewingTasks = inboxAllTasks.filter(task => {
     const matches = task.completionPercentage === 100 &&
                     task.readyForReview === true &&
@@ -398,7 +401,10 @@ export default function DashboardScreen({
     )
   );
   
-  // 3.3 Reviewing: Tasks at 100% submitted for my review (pending my approval)
+  // 3.3 Reviewing: Tasks at 100% submitted for review (assignee completed and submitted)
+  // When assignee completes and submits for review, task appears in MY Outbox
+  // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
+  //          Task A appears in Dennis's Outbox → Reviewing (he submitted it)
   const outboxReviewingTasks = outboxAllTasks.filter(task => 
     task.completionPercentage === 100 &&
     task.readyForReview === true &&

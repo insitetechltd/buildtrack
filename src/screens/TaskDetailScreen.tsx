@@ -562,25 +562,23 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
         {/* Progress & Updates Combined Section */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-3 mb-4">
-          {/* Header with Progress */}
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-lg font-semibold text-gray-900">Comp. %</Text>
-            <Text className="text-xl font-bold text-blue-600">{task.completionPercentage}%</Text>
-          </View>
-          
-          {/* Progress Bar */}
-          <View className="w-full bg-gray-200 rounded-full h-3 mb-1">
-            <View 
-              className={cn(
-                "h-3 rounded-full",
-                task.completionPercentage === 100 ? "bg-green-500" :
-                task.completionPercentage >= 75 ? "bg-blue-500" :
-                task.completionPercentage >= 50 ? "bg-yellow-500" :
-                task.completionPercentage >= 25 ? "bg-orange-500" :
-                "bg-gray-400"
-              )}
-              style={{ width: `${task.completionPercentage}%` }}
-            />
+          {/* Compact Single Line Progress */}
+          <View className="flex-row items-center mb-1">
+            <Text className="text-sm font-semibold text-gray-700 mr-2">Comp. %</Text>
+            <View className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
+              <View 
+                className={cn(
+                  "h-2 rounded-full",
+                  task.completionPercentage === 100 ? "bg-green-500" :
+                  task.completionPercentage >= 75 ? "bg-blue-500" :
+                  task.completionPercentage >= 50 ? "bg-yellow-500" :
+                  task.completionPercentage >= 25 ? "bg-orange-500" :
+                  "bg-gray-400"
+                )}
+                style={{ width: `${task.completionPercentage}%` }}
+              />
+            </View>
+            <Text className="text-sm font-bold text-blue-600">{task.completionPercentage}%</Text>
           </View>
           
           {/* Completion Message */}

@@ -450,6 +450,7 @@ function EditProjectModal({
   };
 
   return (
+    <>
     <Modal
       visible={visible}
       animationType="slide"
@@ -721,7 +722,6 @@ function EditProjectModal({
         )}
       </SafeAreaView>
     </Modal>
-    </SafeAreaView>
 
     {/* Logout FAB */}
     <LogoutFAB />

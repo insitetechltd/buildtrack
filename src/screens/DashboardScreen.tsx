@@ -220,26 +220,34 @@ export default function DashboardScreen({
   };
 
   // New categorization logic for tasks assigned to me
-  const myNotStartedTasks = myAllTasks.filter(task => 
-    task.currentStatus === "not_started" && !task.accepted
+  // 1.1 Incoming: Tasks assigned to me but not accepted yet
+  const myIncomingTasks = myAllTasks.filter(task => 
+    !task.accepted && task.currentStatus !== "rejected"
   );
   
-  const myPendingTasks = myAllTasks.filter(task => 
+  // 1.2 WIP: Tasks I've accepted OR self-assigned tasks, under 100%, not overdue
+  const myWIPTasks = myAllTasks.filter(task => 
     task.accepted && 
     task.completionPercentage < 100 && 
     !isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
   
-  const myCompletedTasks = myAllTasks.filter(task => 
-    task.accepted && 
+  // 1.3 Reviewing: Tasks at 100% that I've submitted for review (pending approval)
+  const myReviewingTasks = myAllTasks.filter(task => 
     task.completionPercentage === 100 &&
-    // Only count as "Done" if review has been accepted (or no review required for self-assigned)
-    (task.reviewAccepted === true || task.readyForReview === false)
+    task.readyForReview === true &&
+    task.reviewAccepted !== true
   );
   
+  // 1.4 Done: Tasks where the assigner has accepted completion
+  const myDoneTasks = myAllTasks.filter(task => 
+    task.completionPercentage === 100 &&
+    task.reviewAccepted === true
+  );
+  
+  // 1.5 Overdue: Tasks past due date but not completed
   const myOverdueTasks = myAllTasks.filter(task => 
-    task.accepted && 
     task.completionPercentage < 100 && 
     isOverdue(task) &&
     task.currentStatus !== "rejected"
@@ -686,20 +694,20 @@ export default function DashboardScreen({
               
               {/* 5 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* New */}
+                  {/* 1.1 Incoming */}
                   <Pressable 
-                    className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
+                    className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("not_started");
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-yellow-700 mb-1">{myNotStartedTasks.length}</Text>
-                    <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>New</Text>
+                    <Text className="text-2xl font-bold text-orange-700 mb-1">{myIncomingTasks.length}</Text>
+                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Incoming</Text>
                   </Pressable>
                   
-                  {/* Pending */}
+                  {/* 1.2 WIP */}
                   <Pressable 
                     className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -708,11 +716,24 @@ export default function DashboardScreen({
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-blue-700 mb-1">{myPendingTasks.length}</Text>
+                    <Text className="text-2xl font-bold text-blue-700 mb-1">{myWIPTasks.length}</Text>
                     <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
-                  {/* Completed */}
+                  {/* 1.3 Reviewing */}
+                  <Pressable 
+                    className="flex-1 bg-purple-50 border border-purple-300 rounded-lg p-2 items-center"
+                    onPress={() => {
+                      setSectionFilter("my_tasks");
+                      setStatusFilter("pending" as any);
+                      onNavigateToTasks();
+                    }}
+                  >
+                    <Text className="text-2xl font-bold text-purple-700 mb-1">{myReviewingTasks.length}</Text>
+                    <Text className="text-xs text-purple-600 text-center" numberOfLines={1}>Reviewing</Text>
+                  </Pressable>
+                  
+                  {/* 1.4 Done */}
                   <Pressable 
                     className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
                     onPress={() => {
@@ -721,34 +742,21 @@ export default function DashboardScreen({
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-green-700 mb-1">{myCompletedTasks.length}</Text>
+                    <Text className="text-2xl font-bold text-green-700 mb-1">{myDoneTasks.length}</Text>
                     <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
                   </Pressable>
                   
-                  {/* Overdue */}
+                  {/* 1.5 Overdue */}
                   <Pressable 
-                    className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
+                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("overdue" as any);
                       onNavigateToTasks();
                     }}
                   >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{myOverdueTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>Overdue</Text>
-                  </Pressable>
-                  
-                  {/* Rejected */}
-                  <Pressable 
-                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("rejected");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-red-700 mb-1">{myRejectedTasks.length}</Text>
-                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Rejected</Text>
+                    <Text className="text-2xl font-bold text-red-700 mb-1">{myOverdueTasks.length}</Text>
+                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
                   </Pressable>
                 </View>
             </View>

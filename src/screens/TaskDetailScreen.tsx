@@ -298,20 +298,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
       {isAssignedToMe && (task.accepted === undefined || task.accepted === null) && (
-        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
-          <View className="flex-row items-center mb-3">
-            <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="alert-circle" size={24} color="#f59e0b" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-lg font-bold text-amber-900">
-                Action Required
-              </Text>
-              <Text className="text-sm text-amber-700">
-                You have been assigned to this {isViewingSubTask ? "sub-task" : "task"}
-              </Text>
-            </View>
-          </View>
+        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-3">
           <View className="flex-row gap-3">
             <Pressable
               onPress={() => {

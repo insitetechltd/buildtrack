@@ -75,7 +75,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
   });
 
   return (
-    <View className="absolute bottom-6 right-6">
+    <View className="absolute bottom-6 right-6 items-end">
       {/* Edit Task Button - appears when expanded */}
       {/* Position: Center at -108px - YELLOW for Edit */}
       <Animated.View

@@ -87,7 +87,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
   });
 
   return (
-    <View className="absolute bottom-8 right-6">
+    <View className="absolute bottom-8 right-6 items-end">
       {/* Reload Button - appears when expanded */}
       {/* Custom position: Center at -108px */}
       {onRefresh && (
@@ -172,7 +172,11 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
           opacity: scaleAnim1,
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
       >
+        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+          <Text className="text-white text-sm font-medium">New Task</Text>
+        </View>
         <Pressable
           onPress={handleCreateTask}
           className="w-12 h-12 bg-yellow-500 rounded-full items-center justify-center shadow-lg"

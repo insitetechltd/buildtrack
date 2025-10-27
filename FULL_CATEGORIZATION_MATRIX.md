@@ -128,14 +128,18 @@ Tasks I created and assigned to OTHERS (tracking delegated work)
 ### For Inbox (Tasks assigned to me by others):
 1. **Received**: Not accepted yet
 2. **WIP**: Accepted, working on it
-3. **Reviewing**: I completed it, submitted for review, waiting for assigner's approval
-4. **Done**: Assigner accepted my completion
+3. **Reviewing**: ⚠️ **Assigner's Inbox** - Assignee completed it, submitted for review, **awaiting assigner's action**
+4. **Done**: Assigner accepted completion
 
 ### For Outbox (Tasks I assigned to others):
 1. **Assigned**: Not accepted yet
 2. **WIP**: Accepted, working on it
-3. **Reviewing**: Assignee completed it, submitted for review, waiting for my approval
-4. **Done**: I accepted the completion
+3. **Reviewing**: ⚠️ **Assignee's Outbox** - I completed it, submitted for review, **I submitted it**
+4. **Done**: Assigner accepted completion
+
+**Key Principle**: 
+- When work is submitted for review, task appears in **assigner's Inbox** (awaiting assigner's action)
+- When work is submitted for review, task appears in **assignee's Outbox** (assignee submitted it)
 
 ---
 

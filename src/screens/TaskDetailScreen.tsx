@@ -175,8 +175,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
   // Review workflow permissions
   // Assignee can submit for review when task is 100% complete but not yet reviewed
+  // Note: Accept tasks that are 100% complete even if not explicitly accepted
+  // (handles edge case where tasks reached 100% before acceptance workflow)
   const canSubmitForReview = isAssignedToMe && 
-    task.accepted === true && 
+    (task.accepted === true || task.completionPercentage === 100) && 
     task.completionPercentage === 100 && 
     !task.readyForReview && 
     !task.reviewAccepted;

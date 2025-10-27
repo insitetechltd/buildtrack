@@ -255,14 +255,20 @@ export default function DashboardScreen({
   // New categorization logic for My Tasks (includes self-assigned + assigned by others)
   // Note: Self-assigned tasks auto-accept, so no "Incoming" needed
   
-  // 1.1 WIP: Tasks in progress (accepted, not complete, not overdue)
+  // 1.1 WIP: Tasks in progress (accepted OR self-assigned, not complete, not overdue)
   // Note: Self-assigned 100% tasks go to Done (comment #1)
-  const myWIPTasks = myAllTasks.filter(task => 
-    task.accepted && 
-    task.completionPercentage < 100 &&
-    !isOverdue(task) &&
-    task.currentStatus !== "rejected"
-  );
+  // Include unaccepted self-assigned tasks (<100%) to handle edge cases
+  const myWIPTasks = myAllTasks.filter(task => {
+    const isSelfAssigned = task.assignedBy === user.id && 
+                           task.assignedTo?.includes(user.id);
+    const isAcceptedOrSelfAssigned = task.accepted || 
+                                     (isSelfAssigned && !task.accepted);
+    
+    return isAcceptedOrSelfAssigned && 
+           task.completionPercentage < 100 &&
+           !isOverdue(task) &&
+           task.currentStatus !== "rejected";
+  });
   
   // 1.2 Done: Tasks completed (100% complete = done for self-assigned tasks)
   // Comment #1: Self-assigned, 100% - done

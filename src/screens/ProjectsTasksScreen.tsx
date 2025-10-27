@@ -254,6 +254,11 @@ export default function ProjectsTasksScreen({
       return dueDate < now;
     };
 
+    // Get all project-filtered tasks for reviewing filters (to match DashboardScreen logic)
+    const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
+      ? tasks.filter(task => task.projectId === selectedProjectId)
+      : tasks.filter(task => userProjects.some(p => p.id === task.projectId));
+
     // Apply search and status filters with dynamic categorization
     const filteredTasks = allProjectTasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -293,9 +298,12 @@ export default function ProjectsTasksScreen({
                  (task.completionPercentage < 100 || 
                   (task.completionPercentage === 100 && !task.readyForReview));
         } else if (localStatusFilter === "reviewing") {
-          // Inbox Reviewing: Tasks I CREATED that are submitted for review (awaiting my action)
+          // Inbox Reviewing: Tasks I CREATED that are submitted for review (match DashboardScreen)
+          // Filter from projectFilteredTasks, not just inboxTasks, to match DashboardScreen logic
           const isCreatedByMe = task.assignedBy === user.id;
+          const isInProjectFiltered = projectFilteredTasks.some(t => t.id === task.id);
           return matchesSearch && 
+                 isInProjectFiltered &&
                  isCreatedByMe &&
                  task.completionPercentage === 100 &&
                  task.readyForReview === true &&
@@ -319,11 +327,14 @@ export default function ProjectsTasksScreen({
                  (task.completionPercentage < 100 || 
                   (task.completionPercentage === 100 && !task.readyForReview));
         } else if (localStatusFilter === "reviewing") {
-          // Outbox Reviewing: Tasks I'm ASSIGNED TO that I submitted for review (I submitted them)
+          // Outbox Reviewing: Tasks I'm ASSIGNED TO that I submitted for review (match DashboardScreen)
+          // Filter from projectFilteredTasks, not just outboxTasks, to match DashboardScreen logic
           const assignedTo = task.assignedTo || [];
           const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
           const isCreatedByMe = task.assignedBy === user.id;
+          const isInProjectFiltered = projectFilteredTasks.some(t => t.id === task.id);
           return matchesSearch && 
+                 isInProjectFiltered &&
                  !isCreatedByMe &&
                  isAssignedToMe &&
                  task.completionPercentage === 100 &&

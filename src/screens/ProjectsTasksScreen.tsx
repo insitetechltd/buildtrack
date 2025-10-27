@@ -261,7 +261,38 @@ export default function ProjectsTasksScreen({
       : tasks.filter(task => userProjects.some(p => p.id === task.projectId));
 
     // Apply search and status filters with dynamic categorization
-    const filteredTasks = allProjectTasks.filter(task => {
+    // First filter by section (if specified), then by status
+    let sectionFilteredTasks = allProjectTasks;
+    
+    // Apply section filter FIRST to get the correct base set of tasks
+    if (localSectionFilter === "my_tasks") {
+      // Filter to only tasks assigned to me (self-assigned or assigned by others)
+      sectionFilteredTasks = allProjectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        return isAssignedToMe;
+      });
+    } else if (localSectionFilter === "inbox") {
+      // Filter to only tasks assigned to me by others (not self-assigned)
+      sectionFilteredTasks = allProjectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        return isAssignedToMe && !isCreatedByMe;
+      });
+    } else if (localSectionFilter === "outbox") {
+      // Filter to only tasks I created and assigned to others (not self-assigned)
+      sectionFilteredTasks = allProjectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+      });
+    }
+    
+    // Now apply status filter on the section-filtered tasks
+    const filteredTasks = sectionFilteredTasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       

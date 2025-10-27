@@ -561,35 +561,6 @@ export default function ProjectsTasksScreen({
   };
 
 
-  const SectionFilterButton = ({ 
-    section, 
-    label 
-  }: { 
-    section: "my_tasks" | "inbox" | "outbox" | "all"; 
-    label: string 
-  }) => (
-    <Pressable
-      onPress={() => setLocalSectionFilter(section)}
-      className={cn(
-        "px-3 py-1 rounded-full border mr-2",
-        localSectionFilter === section
-          ? "bg-blue-600 border-blue-600"
-          : "bg-white border-gray-300"
-      )}
-    >
-      <Text
-        className={cn(
-          "text-sm font-semibold",
-          localSectionFilter === section
-            ? "text-white"
-            : "text-gray-600"
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
@@ -613,18 +584,6 @@ export default function ProjectsTasksScreen({
           />
         </View>
 
-        {/* Section Filters */}
-        <View className="mt-4">
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row">
-              <SectionFilterButton section="all" label="All" />
-              <SectionFilterButton section="my_tasks" label="My Tasks" />
-              <SectionFilterButton section="inbox" label="Inbox" />
-              <SectionFilterButton section="outbox" label="Outbox" />
-            </View>
-          </ScrollView>
-        </View>
 
       </View>
 

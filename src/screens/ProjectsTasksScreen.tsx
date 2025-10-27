@@ -54,19 +54,23 @@ export default function ProjectsTasksScreen({
   // Apply filters from store on mount or when they change
   // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
   useEffect(() => {
+    console.log('🔍 [ProjectsTasksScreen] Filter Store Update:', { sectionFilter, statusFilter });
     if (sectionFilter && statusFilter) {
       // Both filters set together - apply both immediately
+      console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
       setLocalSectionFilter(sectionFilter);
       setLocalStatusFilter(statusFilter);
       clearSectionFilter();
       clearStatusFilter();
     } else if (sectionFilter) {
       // Only section filter set - apply section, reset status
+      console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
       setLocalSectionFilter(sectionFilter);
       setLocalStatusFilter("all");
       clearSectionFilter();
     } else if (statusFilter) {
       // Only status filter set - apply status only
+      console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
       setLocalStatusFilter(statusFilter);
       clearStatusFilter();
     }
@@ -263,161 +267,166 @@ export default function ProjectsTasksScreen({
       return dueDate < now;
     };
 
-    // Get all project-filtered tasks for reviewing filters (to match DashboardScreen logic)
+    // Get all project-filtered tasks (matches DashboardScreen's projectFilteredTasks)
     const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
       ? tasks.filter(task => task.projectId === selectedProjectId)
       : tasks.filter(task => userProjects.some(p => p.id === task.projectId));
 
-    // Apply search and status filters with dynamic categorization
-    // First filter by section (if specified), then by status
-    let sectionFilteredTasks = allProjectTasks;
+    // Apply exact filter logic from ALL_14_BUTTON_FILTERS.md
+    // This ensures COUNT (DashboardScreen) and DISPLAY (ProjectsTasksScreen) use identical logic
+    console.log('🔍 [ProjectsTasksScreen] Filtering with:', { 
+      localSectionFilter, 
+      localStatusFilter, 
+      projectFilteredTasksCount: projectFilteredTasks.length 
+    });
     
-    // Apply section filter FIRST to get the correct base set of tasks
-    // BUT: For "reviewing" status, skip section filter (it breaks section rules)
-    if (localStatusFilter === "reviewing") {
-      // For reviewing, filter from ALL tasks (no section filter)
-      sectionFilteredTasks = allProjectTasks;
-    } else if (localSectionFilter === "my_tasks") {
-      // Filter to only tasks assigned to me (self-assigned or assigned by others)
-      // Also include rejected tasks I created (auto-reassigned back to me)
-      sectionFilteredTasks = allProjectTasks.filter(task => {
+    const filteredTasks = projectFilteredTasks.filter(task => {
+      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           task.description.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      if (!matchesSearch) return false;
+      
+      // If no status filter, return all tasks from current section
+      if (localStatusFilter === "all") {
+        // Apply section filter only
+        if (localSectionFilter === "my_tasks") {
+          const assignedTo = task.assignedTo || [];
+          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+          const isCreatedByMe = task.assignedBy === user.id;
+          return (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        } else if (localSectionFilter === "inbox") {
+          const assignedTo = task.assignedTo || [];
+          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+          const isCreatedByMe = task.assignedBy === user.id;
+          return isAssignedToMe && !isCreatedByMe;
+        } else if (localSectionFilter === "outbox") {
+          const assignedTo = task.assignedTo || [];
+          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+          const isCreatedByMe = task.assignedBy === user.id;
+          const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+          return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        }
+        return true; // "all" section
+      }
+      
+      // Apply exact filter logic for each button combination
+      if (localSectionFilter === "my_tasks") {
+        // My Tasks: Rejected, WIP, Done, Overdue
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        // Include if:
-        // 1. Assigned to me (self-assigned or assigned by others), OR
-        // 2. Created by me AND rejected (auto-reassigned back to creator)
-        return isAssignedToMe || (isCreatedByMe && task.currentStatus === "rejected");
-      });
-    } else if (localSectionFilter === "inbox") {
-      // Filter to only tasks assigned to me by others (not self-assigned)
-      sectionFilteredTasks = allProjectTasks.filter(task => {
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        
+        if (!isInMyTasks) return false;
+        
+        if (localStatusFilter === "rejected") {
+          return task.currentStatus === "rejected";
+        } else if (localStatusFilter === "wip") {
+          const isSelfAssigned = isCreatedByMe && isAssignedToMe;
+          const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+          return isAcceptedOrSelfAssigned &&
+                 task.completionPercentage < 100 &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        // No match for status filter - exclude this task
+        return false;
+      } else if (localSectionFilter === "inbox") {
+        // Inbox: Received, WIP, Reviewing, Done, Overdue
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        return isAssignedToMe && !isCreatedByMe;
-      });
-    } else if (localSectionFilter === "outbox") {
-      // Filter to only tasks I created and assigned to others (not self-assigned)
-      sectionFilteredTasks = allProjectTasks.filter(task => {
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks inbox definition)
+          const isCreatedByMeForReview = task.assignedBy === user.id;
+          return isCreatedByMeForReview &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        }
+        
+        if (!isInInbox) return false;
+        
+        if (localStatusFilter === "received") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        // No match for status filter - exclude this task
+        return false;
+      } else if (localSectionFilter === "outbox") {
+        // Outbox: Assigned, WIP, Reviewing, Done, Overdue
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
         const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-        return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
-      });
-    }
-    
-    // Now apply status filter on the section-filtered tasks
-    const filteredTasks = sectionFilteredTasks.filter(task => {
-      const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           task.description.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Handle status filters with new categorization logic
-      if (localStatusFilter === "all") {
-        return matchesSearch;
-      }
-      
-      // Dynamic filtering based on section and status
-      if (localSectionFilter === "my_tasks") {
-        // My Tasks categories: Rejected, WIP, Done, Overdue
-        if (localStatusFilter === "rejected") {
-          return matchesSearch && task.currentStatus === "rejected";
-        } else if (localStatusFilter === "wip") {
-          // My Tasks WIP: Self-assigned tasks (<100%, not overdue) OR accepted tasks
-          const isSelfAssigned = task.assignedBy === user.id && 
-                                 task.assignedTo?.includes(user.id);
-          const isAcceptedOrSelfAssigned = task.accepted || 
-                                           (isSelfAssigned && !task.accepted);
-          return matchesSearch && 
-                 isAcceptedOrSelfAssigned &&
-                 task.completionPercentage < 100 && 
-                 !isOverdue(task) && 
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "done") {
-          return matchesSearch && task.completionPercentage === 100 && 
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "overdue") {
-          return matchesSearch && task.completionPercentage < 100 && 
-                 isOverdue(task) && 
-                 task.currentStatus !== "rejected";
-        }
-      } else if (localSectionFilter === "inbox") {
-        // Inbox categories: Received, WIP, Reviewing, Done, Overdue
-        if (localStatusFilter === "received") {
-          return matchesSearch && !task.accepted && task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "wip") {
-          return matchesSearch && task.accepted && 
-                 !isOverdue(task) && 
-                 task.currentStatus !== "rejected" &&
-                 (task.completionPercentage < 100 || 
-                  (task.completionPercentage === 100 && !task.readyForReview));
-        } else if (localStatusFilter === "reviewing") {
-          // Inbox Reviewing: Tasks I CREATED that are submitted for review (match DashboardScreen)
-          // Filter from projectFilteredTasks, not just inboxTasks, to match DashboardScreen logic
-          const isCreatedByMe = task.assignedBy === user.id;
-          const isInProjectFiltered = projectFilteredTasks.some(t => t.id === task.id);
-          return matchesSearch && 
-                 isInProjectFiltered &&
-                 isCreatedByMe &&
-                 task.completionPercentage === 100 &&
-                 task.readyForReview === true &&
-                 task.reviewAccepted !== true;
-        } else if (localStatusFilter === "done") {
-          return matchesSearch && task.completionPercentage === 100 &&
-                 task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
-          return matchesSearch && task.completionPercentage < 100 && 
-                 isOverdue(task) && 
-                 task.currentStatus !== "rejected";
-        }
-      } else if (localSectionFilter === "outbox") {
-        // Outbox categories: Assigned, WIP, Reviewing, Done, Overdue
-        if (localStatusFilter === "assigned") {
-          return matchesSearch && !task.accepted && task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "wip") {
-          return matchesSearch && task.accepted && 
-                 !isOverdue(task) && 
-                 task.currentStatus !== "rejected" &&
-                 (task.completionPercentage < 100 || 
-                  (task.completionPercentage === 100 && !task.readyForReview));
-        } else if (localStatusFilter === "reviewing") {
-          // Outbox Reviewing: Tasks I'm ASSIGNED TO that I submitted for review (match DashboardScreen)
-          // Filter from projectFilteredTasks, not just outboxTasks, to match DashboardScreen logic
-          const assignedTo = task.assignedTo || [];
-          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-          const isCreatedByMe = task.assignedBy === user.id;
-          const isInProjectFiltered = projectFilteredTasks.some(t => t.id === task.id);
-          return matchesSearch && 
-                 isInProjectFiltered &&
-                 !isCreatedByMe &&
+        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks outbox definition)
+          return !isCreatedByMe &&
                  isAssignedToMe &&
                  task.completionPercentage === 100 &&
                  task.readyForReview === true &&
                  task.reviewAccepted !== true;
+        }
+        
+        if (!isInOutbox) return false;
+        
+        if (localStatusFilter === "assigned") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
         } else if (localStatusFilter === "done") {
-          return matchesSearch && task.completionPercentage === 100 &&
+          return task.completionPercentage === 100 &&
                  task.reviewAccepted === true;
         } else if (localStatusFilter === "overdue") {
-          return matchesSearch && task.completionPercentage < 100 && 
-                 isOverdue(task) && 
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
                  task.currentStatus !== "rejected";
         }
+        // No match for status filter - exclude this task
+        return false;
       } else {
         // "All" section - keep original filters
         if (localStatusFilter === "not_started") {
-          return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
+          return task.currentStatus === "not_started" && !task.accepted;
         } else if (localStatusFilter === "pending") {
-          return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
+          return task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
         } else if (localStatusFilter === "completed") {
-          return matchesSearch && task.accepted && task.completionPercentage === 100;
+          return task.accepted && task.completionPercentage === 100;
         } else if (localStatusFilter === "overdue") {
-          return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
+          return task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
         } else if (localStatusFilter === "rejected") {
-          return matchesSearch && task.currentStatus === "rejected";
+          return task.currentStatus === "rejected";
         } else {
-          // Fallback to original status matching
-          return matchesSearch && task.currentStatus === localStatusFilter;
+          return task.currentStatus === localStatusFilter;
         }
       }
       

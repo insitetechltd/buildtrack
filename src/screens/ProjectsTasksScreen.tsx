@@ -60,8 +60,11 @@ export default function ProjectsTasksScreen({
       console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
       setLocalSectionFilter(sectionFilter);
       setLocalStatusFilter(statusFilter);
-      clearSectionFilter();
-      clearStatusFilter();
+      // Clear filters from store AFTER setting local state
+      setTimeout(() => {
+        clearSectionFilter();
+        clearStatusFilter();
+      }, 0);
     } else if (sectionFilter) {
       // Only section filter set - apply section, reset status
       console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
@@ -75,16 +78,6 @@ export default function ProjectsTasksScreen({
       clearStatusFilter();
     }
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
-
-  // Reset status filter when section filter changes manually (not from store)
-  // But keep status filter if it was set from Dashboard Quick Overview
-  useEffect(() => {
-    // Only reset if section filter changed manually AND no status filter from store
-    // This effect should NOT interfere with store-based filter application
-    if (!sectionFilter && !statusFilter && localSectionFilter !== "all") {
-      setLocalStatusFilter("all");
-    }
-  }, [localSectionFilter, sectionFilter, statusFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);

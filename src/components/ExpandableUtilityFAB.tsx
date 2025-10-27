@@ -5,14 +5,16 @@ import { useAuthStore } from "../state/authStore";
 
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
+  onRefresh?: () => void;
 }
 
-export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtilityFABProps) {
+export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: ExpandableUtilityFABProps) {
   const { logout } = useAuthStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
   const scaleAnim2 = useRef(new Animated.Value(0)).current;
+  const scaleAnim3 = useRef(new Animated.Value(0)).current;
 
   const toggleExpand = () => {
     const toValue = isExpanded ? 0 : 1;
@@ -27,13 +29,19 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
         toValue,
         useNativeDriver: true,
         friction: 7,
-        delay: isExpanded ? 0 : 50,
+        delay: isExpanded ? 0 : 100,
       }),
       Animated.spring(scaleAnim2, {
         toValue,
         useNativeDriver: true,
         friction: 7,
-        delay: isExpanded ? 0 : 100,
+        delay: isExpanded ? 0 : 50,
+      }),
+      Animated.spring(scaleAnim3, {
+        toValue,
+        useNativeDriver: true,
+        friction: 7,
+        delay: isExpanded ? 0 : 150,
       }),
     ]).start();
     
@@ -66,6 +74,13 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
     onCreateTask();
   };
 
+  const handleRefresh = () => {
+    setIsExpanded(false);
+    if (onRefresh) {
+      onRefresh();
+    }
+  };
+
   const rotate = rotateAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '45deg'],
@@ -73,6 +88,38 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
 
   return (
     <View className="absolute bottom-8 right-6">
+      {/* Reload Button - appears when expanded */}
+      {/* Custom position: Center at -108px */}
+      {onRefresh && (
+        <Animated.View
+          style={{
+            transform: [
+              { scale: scaleAnim3 },
+              { translateY: scaleAnim3.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -108]
+              })}
+            ],
+            opacity: scaleAnim3,
+          }}
+          pointerEvents={isExpanded ? 'auto' : 'none'}
+        >
+          <Pressable
+            onPress={handleRefresh}
+            className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Ionicons name="refresh" size={20} color="white" />
+          </Pressable>
+        </Animated.View>
+      )}
+
       {/* Logout Button - appears when expanded */}
       {/* Custom position: Center at -72px */}
       <Animated.View
@@ -120,7 +167,7 @@ export default function ExpandableUtilityFAB({ onCreateTask }: ExpandableUtility
       >
         <Pressable
           onPress={handleCreateTask}
-          className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg"
+          className="w-12 h-12 bg-yellow-500 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 2 },

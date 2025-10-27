@@ -7,6 +7,7 @@ import {
   Modal,
   Image,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -52,7 +53,7 @@ export default function DashboardScreen({
   const t = useTranslation();
   const { fetchUsers } = useUserStore();
 
-  // Pull-to-refresh handler
+  // Pull-to-refresh handler (silent - no alerts)
   const handleRefresh = async () => {
     if (!user) return;
     
@@ -73,6 +74,29 @@ export default function DashboardScreen({
       console.error('❌ [Pull-to-Refresh] Sync failed:', error);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  // Manual refresh handler for FAB (with alerts)
+  const handleManualRefresh = async () => {
+    if (!user) return;
+    
+    console.log('🔄 Manual refresh triggered from FAB...');
+    
+    try {
+      // Refresh all stores
+      await Promise.all([
+        fetchTasks(),
+        fetchProjects(),
+        fetchUserProjectAssignments(user.id),
+        fetchUsers(),
+      ]);
+      
+      console.log('✅ Manual refresh completed');
+      Alert.alert('Success', 'Data refreshed successfully!');
+    } catch (error) {
+      console.error('❌ Manual refresh failed:', error);
+      Alert.alert('Error', 'Failed to refresh data. Please try again.');
     }
   };
 
@@ -350,27 +374,17 @@ export default function DashboardScreen({
     )
   );
   
-  // 2.3 Reviewing: Tasks at 100% submitted for review (pending my approval)
+  // 2.3 Reviewing: Tasks I CREATED that are at 100% submitted for review (awaiting my action)
   // When assignee completes and submits for review, task appears in MY Inbox
   // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
-  //          Task A appears in Tristan's Inbox → Reviewing
-  const inboxReviewingTasks = inboxAllTasks.filter(task => {
-    const matches = task.completionPercentage === 100 &&
+  //          Task A appears in Tristan's Inbox → Reviewing (awaiting Tristan's action)
+  // Note: Inbox includes tasks assigned to me, but for Reviewing we need tasks I CREATED
+  const inboxReviewingTasks = projectFilteredTasks.filter(task => {
+    const isCreatedByMe = task.assignedBy === user.id;
+    const matches = isCreatedByMe &&
+                    task.completionPercentage === 100 &&
                     task.readyForReview === true &&
                     task.reviewAccepted !== true;
-    
-    // Debug logging for Dennis
-    if (user?.name === "Dennis" && task.readyForReview === true) {
-      console.log(`🔍 [Review Debug] Task "${task.title}":`, {
-        completionPercentage: task.completionPercentage,
-        readyForReview: task.readyForReview,
-        reviewAccepted: task.reviewAccepted,
-        assignedTo: task.assignedTo,
-        assignedBy: task.assignedBy,
-        isInInbox: inboxAllTasks.includes(task),
-        matches: matches
-      });
-    }
     
     return matches;
   });
@@ -389,6 +403,7 @@ export default function DashboardScreen({
   );
 
   // Calculate Inbox total as sum of all categories (no double counting)
+  // Note: inboxReviewingTasks includes tasks I CREATED (not in inboxAllTasks), so calculate separately
   const inboxTotal = inboxReceivedTasks.length + inboxWIPTasks.length + inboxReviewingTasks.length + inboxDoneTasks.length + inboxOverdueTasks.length;
   
   // Section 3: Outbox - Tasks I assigned to others
@@ -457,15 +472,23 @@ export default function DashboardScreen({
     )
   );
   
-  // 3.3 Reviewing: Tasks at 100% submitted for review (assignee completed and submitted)
-  // When assignee completes and submits for review, task appears in MY Outbox
+  // 3.3 Reviewing: Tasks I'm ASSIGNED TO that are at 100% submitted for review (I submitted it)
+  // When I complete and submit for review, task appears in MY Outbox
   // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
   //          Task A appears in Dennis's Outbox → Reviewing (he submitted it)
-  const outboxReviewingTasks = outboxAllTasks.filter(task => 
-    task.completionPercentage === 100 &&
-    task.readyForReview === true &&
-    task.reviewAccepted !== true
-  );
+  // Note: Outbox includes tasks I created, but for Reviewing we need tasks I'm ASSIGNED TO
+  const outboxReviewingTasks = projectFilteredTasks.filter(task => {
+    const assignedTo = task.assignedTo || [];
+    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+    const isCreatedByMe = task.assignedBy === user.id;
+    
+    // Include if assigned to me but NOT created by me (tasks assigned to me by others)
+    return !isCreatedByMe &&
+           isAssignedToMe &&
+           task.completionPercentage === 100 &&
+           task.readyForReview === true &&
+           task.reviewAccepted !== true;
+  });
   
   // 3.4 Done: Tasks where I've accepted completion
   const outboxDoneTasks = outboxAllTasks.filter(task => 
@@ -481,6 +504,7 @@ export default function DashboardScreen({
   );
 
   // Calculate Outbox total as sum of all categories (no double counting)
+  // Note: outboxReviewingTasks includes tasks I'm ASSIGNED TO (not in outboxAllTasks), so calculate separately
   const outboxTotal = outboxAssignedTasks.length + outboxWIPTasks.length + outboxReviewingTasks.length + outboxDoneTasks.length + outboxOverdueTasks.length;
 
   // Debug logging to understand task counts
@@ -1172,7 +1196,10 @@ export default function DashboardScreen({
       </Modal>
 
       {/* Expandable Utility FAB */}
-      <ExpandableUtilityFAB onCreateTask={onNavigateToCreateTask} />
+      <ExpandableUtilityFAB 
+        onCreateTask={onNavigateToCreateTask}
+        onRefresh={handleManualRefresh}
+      />
     </SafeAreaView>
   );
 }

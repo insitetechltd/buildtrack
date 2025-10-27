@@ -36,33 +36,6 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
 
   const banner = getCompanyBanner(user.companyId);
 
-  // Manual refresh function
-  const handleRefresh = async () => {
-    if (!user) return;
-    
-    console.log('🔄 Manual refresh triggered from Profile...');
-    
-    try {
-      // Refresh all stores
-      const projectStore = require('../state/projectStore.supabase').useProjectStore.getState();
-      const taskStore = require('../state/taskStore.supabase').useTaskStore.getState();
-      const userStore = require('../state/userStore.supabase').useUserStore.getState();
-      
-      await Promise.all([
-        projectStore.fetchProjects?.(),
-        projectStore.fetchUserProjectAssignments?.(user.id),
-        taskStore.fetchTasks?.(),
-        userStore.fetchUsers?.()
-      ]);
-      
-      console.log('✅ Manual refresh completed');
-      Alert.alert('Success', 'Data refreshed successfully!');
-    } catch (error) {
-      console.error('❌ Manual refresh failed:', error);
-      Alert.alert('Error', 'Failed to refresh data. Please try again.');
-    }
-  };
-
   const handleLanguageChange = (newLanguage: Language) => {
     if (newLanguage === language) {
       // Same language, just close modal
@@ -154,14 +127,6 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
         title={t.profile.profile}
         showBackButton={true}
         onBackPress={onNavigateBack}
-        rightElement={
-          <Pressable
-            onPress={handleRefresh}
-            className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
-          >
-            <Ionicons name="refresh" size={20} color="white" />
-          </Pressable>
-        }
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>

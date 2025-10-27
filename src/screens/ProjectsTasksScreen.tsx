@@ -276,7 +276,13 @@ export default function ProjectsTasksScreen({
         if (localStatusFilter === "rejected") {
           return matchesSearch && task.currentStatus === "rejected";
         } else if (localStatusFilter === "wip") {
-          return matchesSearch && task.accepted && 
+          // My Tasks WIP: Self-assigned tasks (<100%, not overdue) OR accepted tasks
+          const isSelfAssigned = task.assignedBy === user.id && 
+                                 task.assignedTo?.includes(user.id);
+          const isAcceptedOrSelfAssigned = task.accepted || 
+                                           (isSelfAssigned && !task.accepted);
+          return matchesSearch && 
+                 isAcceptedOrSelfAssigned &&
                  task.completionPercentage < 100 && 
                  !isOverdue(task) && 
                  task.currentStatus !== "rejected";

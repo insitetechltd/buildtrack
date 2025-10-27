@@ -265,7 +265,11 @@ export default function ProjectsTasksScreen({
     let sectionFilteredTasks = allProjectTasks;
     
     // Apply section filter FIRST to get the correct base set of tasks
-    if (localSectionFilter === "my_tasks") {
+    // BUT: For "reviewing" status, skip section filter (it breaks section rules)
+    if (localStatusFilter === "reviewing") {
+      // For reviewing, filter from ALL tasks (no section filter)
+      sectionFilteredTasks = allProjectTasks;
+    } else if (localSectionFilter === "my_tasks") {
       // Filter to only tasks assigned to me (self-assigned or assigned by others)
       sectionFilteredTasks = allProjectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];

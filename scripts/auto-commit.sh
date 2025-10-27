@@ -30,7 +30,8 @@ git push origin main
 
 if [ $? -eq 0 ]; then
   echo "✅ Successfully pushed to GitHub!"
-  echo "🔗 View at: https://github.com/tristankoo-1/buildtrackapp"
+  REPO_URL=$(git remote get-url origin | sed 's/\.git$//' | sed 's/git@github\.com:/https:\/\/github.com\//')
+  echo "🔗 View at: ${REPO_URL}"
 else
   echo "❌ Push failed. Check your internet connection or GitHub credentials."
   exit 1

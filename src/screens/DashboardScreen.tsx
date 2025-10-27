@@ -255,18 +255,17 @@ export default function DashboardScreen({
   // New categorization logic for My Tasks (includes self-assigned + assigned by others)
   // Note: Self-assigned tasks auto-accept, so no "Incoming" needed
   
-  // 1.1 WIP: Tasks in progress (accepted, not complete OR completed but not submitted, not overdue)
+  // 1.1 WIP: Tasks in progress (accepted, not complete, not overdue)
+  // Note: Self-assigned 100% tasks go to Done (comment #1)
   const myWIPTasks = myAllTasks.filter(task => 
     task.accepted && 
+    task.completionPercentage < 100 &&
     !isOverdue(task) &&
-    task.currentStatus !== "rejected" &&
-    (
-      task.completionPercentage < 100 || // Still in progress
-      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
-    )
+    task.currentStatus !== "rejected"
   );
   
-  // 1.2 Done: Tasks completed (includes self-completed without review)
+  // 1.2 Done: Tasks completed (100% complete = done for self-assigned tasks)
+  // Comment #1: Self-assigned, 100% - done
   const myDoneTasks = myAllTasks.filter(task => 
     task.completionPercentage === 100 &&
     task.currentStatus !== "rejected"
@@ -326,11 +325,12 @@ export default function DashboardScreen({
   const inboxAllTasks = [...inboxTasks, ...inboxSubTasks];
   
   // Apply same categorization logic to inbox tasks
-  // 2.1 Received: Tasks assigned to me but not accepted yet (exclude 100% complete tasks)
+  // 2.1 Received: Tasks assigned to me but not accepted yet
+  // Comment #2: Tasks that haven't been accepted should be allowed to be updated
+  // This includes both <100% and 100% tasks that haven't been accepted
   const inboxReceivedTasks = inboxAllTasks.filter(task => 
     !task.accepted && 
-    task.currentStatus !== "rejected" &&
-    task.completionPercentage < 100 // Completed tasks shouldn't be in "Received"
+    task.currentStatus !== "rejected"
   );
   
   // 2.2 WIP: Tasks I've accepted, either in progress OR completed but not submitted for review
@@ -432,11 +432,12 @@ export default function DashboardScreen({
   const outboxAllTasks = [...outboxTasks, ...outboxSubTasks];
   
   // Apply same categorization logic to outbox tasks
-  // 3.1 Assigned: Tasks I assigned but assignee hasn't accepted yet (exclude 100% complete tasks)
+  // 3.1 Assigned: Tasks I assigned but assignee hasn't accepted yet
+  // Comment #3: Created by me, assigned to others, not accepted - Assigned
+  // This includes both <100% and 100% tasks that haven't been accepted
   const outboxAssignedTasks = outboxAllTasks.filter(task => 
     !task.accepted && 
-    task.currentStatus !== "rejected" &&
-    task.completionPercentage < 100 // Completed tasks shouldn't be in "Assigned"
+    task.currentStatus !== "rejected"
   );
   
   // 3.2 WIP: Tasks assignee has accepted, either in progress OR completed but not submitted for review

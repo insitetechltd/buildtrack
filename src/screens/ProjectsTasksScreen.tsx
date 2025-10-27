@@ -73,13 +73,14 @@ export default function ProjectsTasksScreen({
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
   // Reset status filter when section filter changes manually (not from store)
+  // But keep status filter if it was set from Dashboard Quick Overview
   useEffect(() => {
-    // Only reset if section filter changed manually (not from store navigation)
+    // Only reset if section filter changed manually AND no status filter from store
     // This effect should NOT interfere with store-based filter application
-    if (!sectionFilter && localSectionFilter !== "all") {
+    if (!sectionFilter && !statusFilter && localSectionFilter !== "all") {
       setLocalStatusFilter("all");
     }
-  }, [localSectionFilter, sectionFilter]);
+  }, [localSectionFilter, sectionFilter, statusFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);
@@ -589,35 +590,6 @@ export default function ProjectsTasksScreen({
     </Pressable>
   );
 
-  const StatusFilterButton = ({ 
-    status, 
-    label 
-  }: { 
-    status: string; 
-    label: string 
-  }) => (
-    <Pressable
-      onPress={() => setLocalStatusFilter(status)}
-      className={cn(
-        "px-3 py-1 rounded-full border mr-2",
-        localStatusFilter === status
-          ? "bg-green-600 border-green-600"
-          : "bg-white border-gray-300"
-      )}
-    >
-      <Text
-        className={cn(
-          "text-sm font-semibold",
-          localStatusFilter === status
-            ? "text-white"
-            : "text-gray-600"
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
@@ -654,50 +626,6 @@ export default function ProjectsTasksScreen({
           </ScrollView>
         </View>
 
-        {/* Status Filters - Dynamic based on section */}
-        <View className="mt-3">
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Status</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row">
-              <StatusFilterButton status="all" label="All" />
-              {localSectionFilter === "my_tasks" && (
-                <>
-                  <StatusFilterButton status="rejected" label="Rejected" />
-                  <StatusFilterButton status="wip" label="WIP" />
-                  <StatusFilterButton status="done" label="Done" />
-                  <StatusFilterButton status="overdue" label="Overdue" />
-                </>
-              )}
-              {localSectionFilter === "inbox" && (
-                <>
-                  <StatusFilterButton status="received" label="Received" />
-                  <StatusFilterButton status="wip" label="WIP" />
-                  <StatusFilterButton status="reviewing" label="Reviewing" />
-                  <StatusFilterButton status="done" label="Done" />
-                  <StatusFilterButton status="overdue" label="Overdue" />
-                </>
-              )}
-              {localSectionFilter === "outbox" && (
-                <>
-                  <StatusFilterButton status="assigned" label="Assigned" />
-                  <StatusFilterButton status="wip" label="WIP" />
-                  <StatusFilterButton status="reviewing" label="Reviewing" />
-                  <StatusFilterButton status="done" label="Done" />
-                  <StatusFilterButton status="overdue" label="Overdue" />
-                </>
-              )}
-              {localSectionFilter === "all" && (
-                <>
-                  <StatusFilterButton status="not_started" label="New" />
-                  <StatusFilterButton status="pending" label="Pending" />
-                  <StatusFilterButton status="completed" label="Completed" />
-                  <StatusFilterButton status="overdue" label="Overdue" />
-                  <StatusFilterButton status="rejected" label="Rejected" />
-                </>
-              )}
-            </View>
-          </ScrollView>
-        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>

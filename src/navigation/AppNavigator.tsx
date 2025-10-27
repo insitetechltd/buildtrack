@@ -176,6 +176,7 @@ function ProfileMainScreen({ navigation }: { navigation: any }) {
   return (
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
     />
   );
 }

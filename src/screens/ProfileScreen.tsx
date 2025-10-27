@@ -19,13 +19,17 @@ import { useTranslation } from "../utils/useTranslation";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
+import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
+import { useTaskStore } from "../state/taskStore.supabase";
+import { useProjectStoreWithInit } from "../state/projectStore.supabase";
+import { useUserStore } from "../state/userStore.supabase";
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
+  onNavigateToCreateTask?: () => void;
 }
 
-export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
+export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }: ProfileScreenProps) {
   const { user } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { getCompanyBanner } = useCompanyStore();
@@ -35,6 +39,32 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
   if (!user) return null;
 
   const banner = getCompanyBanner(user.companyId);
+
+  const taskStore = useTaskStore();
+  const { fetchTasks } = taskStore;
+  const projectStore = useProjectStoreWithInit();
+  const { fetchProjects, fetchUserProjectAssignments } = projectStore;
+  const { fetchUsers } = useUserStore();
+
+  const handleRefresh = async () => {
+    if (!user) return;
+    
+    console.log('🔄 [Profile Refresh] Syncing all data...');
+    
+    try {
+      // Sync all data in parallel
+      await Promise.all([
+        fetchTasks(),
+        fetchProjects(),
+        fetchUserProjectAssignments(user.id),
+        fetchUsers(),
+      ]);
+      
+      console.log('✅ [Profile Refresh] Sync completed');
+    } catch (error) {
+      console.error('❌ [Profile Refresh] Sync failed:', error);
+    }
+  };
 
   const handleLanguageChange = (newLanguage: Language) => {
     if (newLanguage === language) {
@@ -310,8 +340,11 @@ export default function ProfileScreen({ onNavigateBack }: ProfileScreenProps) {
         </SafeAreaView>
       </Modal>
 
-      {/* Logout FAB */}
-      <LogoutFAB />
+      {/* Expandable Utility FAB */}
+      <ExpandableUtilityFAB 
+        onCreateTask={onNavigateToCreateTask || (() => {})}
+        onRefresh={handleRefresh}
+      />
     </SafeAreaView>
   );
 }

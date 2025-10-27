@@ -469,10 +469,14 @@ export default function ProjectsTasksScreen({
     const statusLabel = statusLabels[localStatusFilter] || "";
 
     if (sectionLabel && statusLabel) {
-      return `${sectionLabel} - ${statusLabel}`;
+      return `Tasks in ${sectionLabel} - ${statusLabel}`;
     }
 
-    return sectionLabel || "Tasks";
+    if (sectionLabel) {
+      return `Tasks in ${sectionLabel}`;
+    }
+
+    return "Tasks";
   };
 
   const getPriorityColor = (priority: Priority) => {

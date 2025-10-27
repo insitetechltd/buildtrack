@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, Pressable, Animated, Alert } from "react-native";
+import { View, Pressable, Animated, Alert, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 
@@ -103,7 +103,11 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
             opacity: scaleAnim3,
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
+          className="flex-row items-center"
         >
+          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+            <Text className="text-white text-sm font-medium">Reload</Text>
+          </View>
           <Pressable
             onPress={handleRefresh}
             className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
@@ -134,7 +138,11 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
           opacity: scaleAnim2,
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
       >
+        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+          <Text className="text-white text-sm font-medium">Logout</Text>
+        </View>
         <Pressable
           onPress={handleLogout}
           className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, Pressable, Animated } from "react-native";
+import { View, Pressable, Animated, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 interface TaskDetailUtilityFABProps {
@@ -90,7 +90,11 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           opacity: 1, // Always fully opaque
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
       >
+        <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canEdit ? 'bg-gray-800' : 'bg-gray-600'}`}>
+          <Text className={`text-sm font-medium ${canEdit ? 'text-white' : 'text-gray-300'}`}>Edit</Text>
+        </View>
         <Pressable
           onPress={handleEdit}
           disabled={!canEdit}
@@ -122,7 +126,11 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
             opacity: 1, // Always fully opaque
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
+          className="flex-row items-center"
         >
+          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+            <Text className="text-white text-sm font-medium">Update</Text>
+          </View>
           <Pressable
             onPress={handleUpdate}
             className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
@@ -154,7 +162,11 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
             opacity: 1, // Always fully opaque - NOT transparent
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
+          className="flex-row items-center"
         >
+          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+            <Text className="text-white text-sm font-medium">Camera</Text>
+          </View>
           <Pressable
             onPress={handleCameraUpdate}
             className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"

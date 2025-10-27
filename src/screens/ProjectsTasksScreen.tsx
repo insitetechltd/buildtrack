@@ -443,6 +443,38 @@ export default function ProjectsTasksScreen({
 
   const allTasks = getAllTasks();
 
+  // Helper function to get category label for banner
+  const getCategoryLabel = (): string => {
+    if (localSectionFilter === "all" || localStatusFilter === "all") {
+      return "Tasks";
+    }
+
+    const sectionLabels: Record<string, string> = {
+      my_tasks: "My Tasks",
+      inbox: "Inbox",
+      outbox: "Outbox",
+    };
+
+    const statusLabels: Record<string, string> = {
+      rejected: "Rejected",
+      wip: "WIP",
+      done: "Done",
+      overdue: "Overdue",
+      received: "Received",
+      reviewing: "Reviewing",
+      assigned: "Assigned",
+    };
+
+    const sectionLabel = sectionLabels[localSectionFilter] || "";
+    const statusLabel = statusLabels[localStatusFilter] || "";
+
+    if (sectionLabel && statusLabel) {
+      return `${sectionLabel} - ${statusLabel}`;
+    }
+
+    return sectionLabel || "Tasks";
+  };
+
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
       case "critical": return "text-red-600 bg-red-50 border-red-200";
@@ -623,7 +655,7 @@ export default function ProjectsTasksScreen({
       
       {/* Standard Header */}
       <StandardHeader 
-        title="Tasks"
+        title={getCategoryLabel()}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
       />

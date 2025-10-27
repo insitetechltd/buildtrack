@@ -186,6 +186,25 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // Task creator can accept completion when task is marked ready for review
   const canAcceptCompletion = isTaskCreator && task.readyForReview === true;
 
+  // Debug logging for review button visibility
+  useEffect(() => {
+    if (task && isAssignedToMe && task.completionPercentage === 100) {
+      console.log('🔍 [TaskDetailScreen] Review Button Debug:', {
+        taskId: task.id,
+        taskTitle: task.title,
+        isAssignedToMe,
+        accepted: task.accepted,
+        completionPercentage: task.completionPercentage,
+        readyForReview: task.readyForReview,
+        reviewAccepted: task.reviewAccepted,
+        canSubmitForReview,
+        currentStatus: task.currentStatus,
+        assignedTo: task.assignedTo,
+        userId: user?.id
+      });
+    }
+  }, [task, isAssignedToMe, canSubmitForReview, user?.id]);
+
   const handleAcceptTask = () => {
     Alert.alert(
       "Accept Task",

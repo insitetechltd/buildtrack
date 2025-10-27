@@ -10,7 +10,6 @@ import { DataSyncManager } from "../utils/DataSyncManager";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
-import TasksScreen from "../screens/TasksScreen";
 import ProjectsTasksScreen from "../screens/ProjectsTasksScreen";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -407,16 +406,6 @@ function MainTabs() {
           tabBarButton: () => null, // Hide from tab bar
         }}
       />
-      {/* Tasks Screen - Hidden from tab bar but accessible via navigation */}
-      {user?.role !== "admin" && (
-        <Tab.Screen
-          name="Tasks"
-          component={TasksStack}
-          options={{
-            tabBarButton: () => null, // Hide from tab bar
-          }}
-        />
-      )}
     </Tab.Navigator>
   );
 }

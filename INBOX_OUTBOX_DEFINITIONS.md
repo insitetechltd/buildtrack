@@ -13,12 +13,16 @@
 **Categories** (5 total):
 1. **Received** - Not accepted yet (`!accepted`)
 2. **WIP** - Accepted, in progress or completed but not submitted
-3. **Reviewing** - Tasks I CREATED that are submitted for review (awaiting my action)
+3. **Reviewing** - ⚠️ **Special Logic**: Tasks I CREATED that are submitted for review (awaiting my action)
+   - Note: This breaks the normal Inbox rule (tasks assigned to me)
+   - Exception: When tasks I created are submitted for review, they appear in my Inbox (awaiting my review action)
 4. **Done** - Review accepted
 5. **Overdue** - Past due date, not completed
 
 **Key Principle**: 
 - **Inbox = Actions for me** - Tasks that require my action or attention
+- **Standard rule**: Tasks assigned to me by others (`assignedTo.includes(me) && assignedBy !== me`)
+- **Exception for Reviewing**: Tasks I CREATED (`assignedBy === me`) that are submitted for review
 - When assignee submits for review → Appears in **assigner's Inbox** (assigner needs to review)
 
 ---
@@ -34,12 +38,16 @@
 **Categories** (5 total):
 1. **Assigned** - Not accepted yet (`!accepted`)
 2. **WIP** - Accepted, in progress or completed but not submitted
-3. **Reviewing** - Tasks I'm ASSIGNED TO that I submitted for review (I submitted them)
+3. **Reviewing** - ⚠️ **Special Logic**: Tasks I'm ASSIGNED TO that I submitted for review (I submitted them)
+   - Note: This breaks the normal Outbox rule (tasks I created)
+   - Exception: When tasks assigned to me are submitted for review, they appear in my Outbox (I submitted them)
 4. **Done** - Review accepted
 5. **Overdue** - Past due date, not completed
 
 **Key Principle**: 
 - **Outbox = Things I initiated** - Tasks I created/delegated to others
+- **Standard rule**: Tasks I created (`assignedBy === me`) and assigned to others
+- **Exception for Reviewing**: Tasks I'm ASSIGNED TO (`assignedTo.includes(me) && assignedBy !== me`) that I submitted
 - When assignee submits for review → Appears in **assignee's Outbox** (they submitted it)
 
 ---

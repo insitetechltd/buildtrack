@@ -5,7 +5,7 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // VERSION CONTROL - Increment this to force a fresh app state
-const APP_VERSION = "79.0";
+const APP_VERSION = "80.0";
 const VERSION_KEY = "@app_version";
 
 /*

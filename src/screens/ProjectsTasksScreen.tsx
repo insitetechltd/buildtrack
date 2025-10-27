@@ -271,10 +271,15 @@ export default function ProjectsTasksScreen({
       sectionFilteredTasks = allProjectTasks;
     } else if (localSectionFilter === "my_tasks") {
       // Filter to only tasks assigned to me (self-assigned or assigned by others)
+      // Also include rejected tasks I created (auto-reassigned back to me)
       sectionFilteredTasks = allProjectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        return isAssignedToMe;
+        const isCreatedByMe = task.assignedBy === user.id;
+        // Include if:
+        // 1. Assigned to me (self-assigned or assigned by others), OR
+        // 2. Created by me AND rejected (auto-reassigned back to creator)
+        return isAssignedToMe || (isCreatedByMe && task.currentStatus === "rejected");
       });
     } else if (localSectionFilter === "inbox") {
       // Filter to only tasks assigned to me by others (not self-assigned)

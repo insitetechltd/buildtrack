@@ -293,7 +293,11 @@ export default function ProjectsTasksScreen({
                  (task.completionPercentage < 100 || 
                   (task.completionPercentage === 100 && !task.readyForReview));
         } else if (localStatusFilter === "reviewing") {
-          return matchesSearch && task.completionPercentage === 100 &&
+          // Inbox Reviewing: Tasks I CREATED that are submitted for review (awaiting my action)
+          const isCreatedByMe = task.assignedBy === user.id;
+          return matchesSearch && 
+                 isCreatedByMe &&
+                 task.completionPercentage === 100 &&
                  task.readyForReview === true &&
                  task.reviewAccepted !== true;
         } else if (localStatusFilter === "done") {
@@ -315,7 +319,14 @@ export default function ProjectsTasksScreen({
                  (task.completionPercentage < 100 || 
                   (task.completionPercentage === 100 && !task.readyForReview));
         } else if (localStatusFilter === "reviewing") {
-          return matchesSearch && task.completionPercentage === 100 &&
+          // Outbox Reviewing: Tasks I'm ASSIGNED TO that I submitted for review (I submitted them)
+          const assignedTo = task.assignedTo || [];
+          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+          const isCreatedByMe = task.assignedBy === user.id;
+          return matchesSearch && 
+                 !isCreatedByMe &&
+                 isAssignedToMe &&
+                 task.completionPercentage === 100 &&
                  task.readyForReview === true &&
                  task.reviewAccepted !== true;
         } else if (localStatusFilter === "done") {

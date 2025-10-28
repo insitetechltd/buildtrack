@@ -505,12 +505,22 @@ export default function DashboardScreen({
             if (starredTasks.length === 0) return null;
           
           return (
-              <View className="bg-slate-800 rounded-2xl p-4 mb-4 border border-slate-700">
+              <View className={cn(
+                "rounded-2xl p-4 mb-4",
+                isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
+              )}>
                 <View className="flex-row items-center mb-3">
-                  <View className="bg-amber-500/20 rounded-full p-2">
-                    <Ionicons name="star" size={18} color="#fbbf24" />
-                  </View>
-                  <Text className="text-base font-bold text-white ml-3">
+                  {isDarkMode ? (
+                    <View className="bg-amber-500/20 rounded-full p-2">
+                      <Ionicons name="star" size={18} color="#fbbf24" />
+                    </View>
+                  ) : (
+                    <Ionicons name="star" size={18} color="#f59e0b" />
+                  )}
+                  <Text className={cn(
+                    "text-base ml-3",
+                    isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900"
+                  )}>
                   Today's Tasks ({starredTasks.length})
                 </Text>
               </View>
@@ -521,10 +531,16 @@ export default function DashboardScreen({
                     <Pressable
                       key={task.id}
                       onPress={() => onNavigateToTaskDetail && onNavigateToTaskDetail(task.id)}
-                      className="bg-slate-700 border border-slate-600 rounded-xl p-3"
+                      className={cn(
+                        "rounded-xl p-3",
+                        isDarkMode ? "bg-slate-700 border border-slate-600" : "bg-yellow-50 border border-yellow-300"
+                      )}
                     >
                       <View className="flex-row items-start justify-between mb-2">
-                        <Text className="flex-1 font-bold text-white mr-2" numberOfLines={2}>
+                        <Text className={cn(
+                          "flex-1 font-bold mr-2",
+                          isDarkMode ? "text-white" : "text-gray-900"
+                        )} numberOfLines={2}>
                                 {task.title}
                               </Text>
                               <Pressable
@@ -534,34 +550,54 @@ export default function DashboardScreen({
                                 }}
                           className="p-0.5"
                         >
-                          <Ionicons name="star" size={18} color="#fbbf24" />
+                          <Ionicons name="star" size={isDarkMode ? 18 : 16} color="#f59e0b" />
                               </Pressable>
                           </View>
                           
-                      <Text className="text-xs text-slate-300 mb-2" numberOfLines={2}>
+                      <Text className={cn(
+                        "text-xs mb-2",
+                        isDarkMode ? "text-slate-300" : "text-gray-600"
+                      )} numberOfLines={2}>
                               {task.description}
                             </Text>
                           
                           <View className="flex-row items-center justify-between">
                         <View className={cn(
                           "px-3 py-1 rounded-full",
-                          task.priority === "critical" ? "bg-red-500/20" :
-                          task.priority === "high" ? "bg-orange-500/20" :
-                          task.priority === "medium" ? "bg-amber-500/20" :
-                          "bg-emerald-500/20"
+                          isDarkMode ? (
+                            task.priority === "critical" ? "bg-red-500/20" :
+                            task.priority === "high" ? "bg-orange-500/20" :
+                            task.priority === "medium" ? "bg-amber-500/20" :
+                            "bg-emerald-500/20"
+                          ) : (
+                            task.priority === "critical" ? "bg-red-50 border border-red-200" :
+                            task.priority === "high" ? "bg-orange-50 border border-orange-200" :
+                            task.priority === "medium" ? "bg-yellow-50 border border-yellow-200" :
+                            "bg-green-50 border border-green-200"
+                          )
                         )}>
                           <Text className={cn(
                             "text-xs font-bold",
-                            task.priority === "critical" ? "text-red-400" :
-                            task.priority === "high" ? "text-orange-400" :
-                            task.priority === "medium" ? "text-amber-400" :
-                            "text-emerald-400"
+                            isDarkMode ? (
+                              task.priority === "critical" ? "text-red-400" :
+                              task.priority === "high" ? "text-orange-400" :
+                              task.priority === "medium" ? "text-amber-400" :
+                              "text-emerald-400"
+                            ) : (
+                              task.priority === "critical" ? "text-red-700" :
+                              task.priority === "high" ? "text-orange-700" :
+                              task.priority === "medium" ? "text-yellow-700" :
+                              "text-green-700"
+                            )
                           )}>
-                            {task.priority.toUpperCase()}
+                            {isDarkMode ? task.priority.toUpperCase() : task.priority}
                               </Text>
                             </View>
                         
-                        <Text className="text-sm font-bold text-white">
+                        <Text className={cn(
+                          "text-sm font-bold",
+                          isDarkMode ? "text-white" : "text-gray-700"
+                        )}>
                           {task.completionPercentage}%
                             </Text>
                       </View>
@@ -573,12 +609,22 @@ export default function DashboardScreen({
         })()}
 
           {/* ===== PRIORITY SUMMARY SECTION ===== */}
-          <View className="bg-slate-800 rounded-2xl p-4 border border-slate-700 mb-4">
+          <View className={cn(
+            "rounded-2xl p-4 mb-4",
+            isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
+          )}>
             <View className="flex-row items-center mb-4">
-              <View className="bg-indigo-500/20 rounded-full p-2">
-                <Ionicons name="speedometer-outline" size={20} color="#818cf8" />
-              </View>
-              <Text className="text-lg font-bold text-white ml-3">
+              {isDarkMode ? (
+                <View className="bg-indigo-500/20 rounded-full p-2">
+                  <Ionicons name="speedometer-outline" size={20} color="#818cf8" />
+                </View>
+              ) : (
+                <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
+              )}
+              <Text className={cn(
+                "text-lg font-bold ml-3",
+                isDarkMode ? "text-white" : "text-gray-900"
+              )}>
                 Priority Summary
               </Text>
             </View>
@@ -586,40 +632,63 @@ export default function DashboardScreen({
             {/* 1. URGENT! Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="alert-circle" size={18} color="#f87171" />
-                <Text className="text-sm font-bold text-red-400 ml-2">URGENT!</Text>
+                <Ionicons name="alert-circle" size={18} color={isDarkMode ? "#f87171" : "#ef4444"} />
+                <Text className={cn(
+                  "text-sm font-bold ml-2",
+                  isDarkMode ? "text-red-400" : "text-red-600"
+                )}>
+                  {isDarkMode ? "URGENT!" : "Urgent!"}
+                </Text>
               </View>
-              <View className="flex-row gap-3">
+              <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
                 {/* My Overdues */}
                 <Pressable 
-                  className="flex-1 bg-red-500/10 border border-red-500/30 rounded-xl p-3 items-center"
+                  className={cn(
+                    "flex-1 rounded-xl p-3 items-center",
+                    isDarkMode ? "bg-red-500/10 border border-red-500/30" : "bg-red-50 border border-red-300"
+                  )}
                   onPress={() => {
                     setSectionFilter("all");
                     setStatusFilter("overdue");
                     onNavigateToTasks();
                   }}
                 >
-                  <Text className="text-3xl font-black text-red-400 mb-1">
+                  <Text className={cn(
+                    "text-3xl mb-1",
+                    isDarkMode ? "font-black text-red-400" : "font-bold text-red-700"
+                  )}>
                     {myOverdueTasks.length + inboxOverdueTasks.length}
                   </Text>
-                  <Text className="text-xs text-red-300 text-center font-semibold" numberOfLines={1}>
+                  <Text className={cn(
+                    "text-center",
+                    isDarkMode ? "text-xs text-red-300 font-semibold" : "text-sm text-red-600"
+                  )} numberOfLines={1}>
                     My Overdues
                   </Text>
                 </Pressable>
                 
                 {/* Chase Now */}
                 <Pressable 
-                  className="flex-1 bg-red-500/10 border border-red-500/30 rounded-xl p-3 items-center"
+                  className={cn(
+                    "flex-1 rounded-xl p-3 items-center",
+                    isDarkMode ? "bg-red-500/10 border border-red-500/30" : "bg-red-50 border border-red-300"
+                  )}
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("overdue");
                     onNavigateToTasks();
                   }}
                 >
-                  <Text className="text-3xl font-black text-red-400 mb-1">
+                  <Text className={cn(
+                    "text-3xl mb-1",
+                    isDarkMode ? "font-black text-red-400" : "font-bold text-red-700"
+                  )}>
                     {outboxOverdueTasks.length}
                   </Text>
-                  <Text className="text-xs text-red-300 text-center font-semibold" numberOfLines={1}>
+                  <Text className={cn(
+                    "text-center",
+                    isDarkMode ? "text-xs text-red-300 font-semibold" : "text-sm text-red-600"
+                  )} numberOfLines={1}>
                     Chase Now
                   </Text>
                 </Pressable>
@@ -627,13 +696,18 @@ export default function DashboardScreen({
             </View>
 
             {/* Divider */}
-            <View className="h-px bg-slate-700 mb-4" />
+            <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
             {/* 2. ON MY PLATE Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="hourglass-outline" size={18} color="#fbbf24" />
-                <Text className="text-sm font-bold text-amber-400 ml-2">ON MY PLATE</Text>
+                <Ionicons name="hourglass-outline" size={18} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
+                <Text className={cn(
+                  "text-sm font-bold ml-2",
+                  isDarkMode ? "text-amber-400" : "text-amber-600"
+                )}>
+                  {isDarkMode ? "ON MY PLATE" : "On My Plate"}
+                </Text>
               </View>
               <View className="flex-row gap-3">
                 {/* New Incoming Tasks */}
@@ -690,7 +764,7 @@ export default function DashboardScreen({
             </View>
 
             {/* Divider */}
-            <View className="h-px bg-slate-700 mb-4" />
+            <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
             {/* 3. ON OTHERS' PLATE Section */}
             <View className="mb-4">
@@ -753,7 +827,7 @@ export default function DashboardScreen({
             </View>
 
             {/* Divider */}
-            <View className="h-px bg-slate-700 mb-4" />
+            <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
             {/* 4. ACCOMPLISHMENTS Section */}
             <View>

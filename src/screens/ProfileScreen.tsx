@@ -218,6 +218,11 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               onPress={() => setShowLanguagePicker(true)}
             />
             <MenuOption
+              title="Reload Data"
+              icon="refresh-outline"
+              onPress={handleRefresh}
+            />
+            <MenuOption
               title={t.profile.editProfile}
               icon="person-outline"
               onPress={() => Alert.alert(t.phrases.comingSoon, t.phrases.comingSoonMessage)}
@@ -416,7 +421,6 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
       {/* Expandable Utility FAB */}
       <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask || (() => {})}
-        onRefresh={handleRefresh}
       />
     </SafeAreaView>
   );

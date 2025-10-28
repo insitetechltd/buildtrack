@@ -430,19 +430,24 @@ export default function DashboardScreen({
               />
             </Pressable>
             
-            <View className="mr-2">
-              <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
-                {user.name}
-            </Text>
-              <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-                {user.role}
+            <Pressable 
+              onPress={onNavigateToProfile}
+              className="flex-row items-center"
+            >
+              <View className="mr-2">
+                <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
+                  {user.name}
               </Text>
-            </View>
-            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-sm">
-                {user.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+                <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
+                  {user.role}
+                </Text>
+              </View>
+              <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
+                <Text className="text-white font-bold text-sm">
+                  {user.name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            </Pressable>
           </View>
         }
       />
@@ -1258,7 +1263,6 @@ export default function DashboardScreen({
       {/* Expandable Utility FAB */}
       <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask}
-        onRefresh={handleManualRefresh}
         onSearch={() => {
           setSelectedProject(null, user.id);
           setSectionFilter("all");

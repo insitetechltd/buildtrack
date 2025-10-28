@@ -195,14 +195,14 @@ export default function ProjectsTasksScreen({
       
       const inboxTasks = [...inboxParentTasks, ...inboxSubTasks];
       
-      // Get outbox tasks (tasks assigned by me to OTHERS, not to myself)
+      // Get outbox tasks (tasks assigned by me to OTHERS, not ONLY self-assigned)
       const assignedParentTasks = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isDirectlyAssignedByMe = task.assignedBy === user.id;
-        const hasSubtasksAssignedByMe = collectSubTasksAssignedBy(task.subTasks, user.id).length > 0;
-        // Include if created by me, not assigned to me, and has no subtasks assigned by me
-        return isDirectlyAssignedByMe && !isAssignedToMe && !hasSubtasksAssignedByMe;
+        const isSelfAssignedOnly = isDirectlyAssignedByMe && isAssignedToMe && assignedTo.length === 1;
+        // Include if created by me, NOT self-assigned only, not rejected
+        return isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
       });
       
       const assignedSubTasks = projectTasks.flatMap(task => 

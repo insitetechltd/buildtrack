@@ -636,7 +636,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Due Date, Status, Priority - Single Row Below */}
           <View className="flex-row items-center flex-wrap gap-2 mt-4">
             <View className="flex-row items-center">
-              <Text className="text-sm font-medium text-gray-600">Due: </Text>
+              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
+              <Text className="text-sm font-medium text-gray-600 ml-1">Due: </Text>
               <Text className="text-sm font-semibold text-gray-900">
                 {new Date(task.dueDate).toLocaleDateString()}
               </Text>

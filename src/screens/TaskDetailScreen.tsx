@@ -838,76 +838,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {/* Progress Slider - Compact */}
+            {/* Photos & Files - Top Section */}
             <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-lg font-semibold text-gray-900">
-                  Completion Percentage
-                </Text>
-                <Text className="text-2xl font-bold text-blue-600">
-                  {updateForm.completionPercentage}%
-                </Text>
-              </View>
-              
-              {/* Current Progress Indicator */}
-              <View className="mb-2">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-gray-600">Current: {task.completionPercentage}%</Text>
-                  <View className="flex-row items-center">
-                    <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
-                    <Text className="text-sm text-red-600 font-medium">Previous</Text>
-                  </View>
-                </View>
-              </View>
-              
-              <View className="py-4">
-                <Slider
-                  style={{ width: '100%', height: 300 }}
-                  minimumValue={0}
-                  maximumValue={100}
-                  step={5}
-                  value={updateForm.completionPercentage}
-                  onValueChange={(value: number) => setUpdateForm(prev => ({ ...prev, completionPercentage: value }))}
-                  minimumTrackTintColor="#3b82f6"
-                  maximumTrackTintColor="#d1d5db"
-                  vertical={true}
-                />
-              </View>
-            </View>
-
-            {/* Description */}
-            <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-2">
-                Update Description
+              <Text className="text-lg font-semibold text-gray-900 mb-3">
+                Photos & Files
               </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-white"
-                placeholder="Describe what you've accomplished..."
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                maxLength={500}
-                style={{ height: 120 }}
-              />
-            </View>
-
-            {/* Photos */}
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-lg font-semibold text-gray-900">Photos</Text>
-                <Pressable
-                  onPress={handleAddPhotos}
-                  className="flex-row items-center bg-blue-600 px-3 py-2 rounded-lg"
-                >
-                  <Ionicons name="add" size={18} color="white" />
-                  <Text className="text-white font-medium ml-1">Add</Text>
-                </Pressable>
-              </View>
               
               {updateForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
                   <View className="flex-row">
                     {updateForm.photos.map((photo, index) => (
                       <View key={index} className="mr-3 relative">
@@ -931,12 +869,70 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     ))}
                   </View>
                 </ScrollView>
-              ) : (
-                <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
-                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
-                  <Text className="text-gray-400 text-sm mt-1">No photos added</Text>
+              ) : null}
+              
+              <Pressable
+                onPress={handleAddPhotos}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+              >
+                <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
+                <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
+                <Text className="text-gray-400 text-sm mt-1">
+                  {updateForm.photos.length === 0 ? "No files added" : `${updateForm.photos.length} file(s) added`}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Update Description */}
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-gray-900 mb-3">
+                Update Description
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder="Describe what you've accomplished..."
+                value={updateForm.description}
+                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                maxLength={500}
+                style={{ height: 120 }}
+              />
+            </View>
+
+            {/* Completion Percentage - Bottom with Horizontal Slider */}
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-semibold text-gray-900">
+                  Completion Percentage
+                </Text>
+                <Text className="text-2xl font-bold text-blue-600">
+                  {updateForm.completionPercentage}%
+                </Text>
+              </View>
+              
+              {/* Current Progress Indicator */}
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-sm text-gray-600">Current: {task.completionPercentage}%</Text>
+                <View className="flex-row items-center">
+                  <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
+                  <Text className="text-sm text-red-600 font-medium">Previous</Text>
                 </View>
-              )}
+              </View>
+              
+              {/* Horizontal Slider */}
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={5}
+                value={updateForm.completionPercentage}
+                onValueChange={(value: number) => setUpdateForm(prev => ({ ...prev, completionPercentage: value }))}
+                minimumTrackTintColor="#ffffff"
+                maximumTrackTintColor="#d1d5db"
+                thumbTintColor="#ffffff"
+              />
             </View>
           </ScrollView>
         </SafeAreaView>

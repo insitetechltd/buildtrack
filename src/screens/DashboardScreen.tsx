@@ -434,20 +434,7 @@ export default function DashboardScreen({
       <StatusBar style="dark" />
       
       {/* Header */}
-      <StandardHeader 
-        title="Dashboard"
-        rightElement={
-          <Pressable
-            onPress={() => setShowProjectPicker(true)}
-            className="flex-row items-center bg-blue-50 px-3 py-2 rounded-lg"
-          >
-            <Text className="text-sm font-semibold text-blue-700 mr-1">
-              {selectedProject?.name || "Select Project"}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color="#1d4ed8" />
-          </Pressable>
-        }
-      />
+      <StandardHeader title="Dashboard" />
 
       {/* Main Content with Pull-to-Refresh */}
       <ScrollView 
@@ -457,19 +444,26 @@ export default function DashboardScreen({
         }
       >
         <View className="p-4">
-          {/* Project Info Header */}
-          <View className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="text-lg font-semibold text-gray-900">
+          {/* Project Picker */}
+          <Pressable
+            onPress={() => setShowProjectPicker(true)}
+            className="bg-white rounded-lg p-3 mb-3 border-2 border-blue-300 flex-row items-center justify-between"
+          >
+            <View className="flex-row items-center flex-1">
+              <Ionicons name="business" size={20} color="#2563eb" />
+              <View className="ml-2 flex-1">
+                <Text className="text-base font-semibold text-gray-900">
                   {selectedProject?.name}
                 </Text>
-                <Text className="text-sm text-gray-600 mt-1">
-                  {selectedProject?.description}
-                </Text>
+                {selectedProject?.description && (
+                  <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
+                    {selectedProject?.description}
+                  </Text>
+                )}
               </View>
             </View>
-          </View>
+            <Ionicons name="chevron-down" size={18} color="#2563eb" />
+          </Pressable>
 
           {/* Today's Tasks Section - Only show if user has starred tasks */}
           {(() => {
@@ -480,68 +474,67 @@ export default function DashboardScreen({
             if (starredTasks.length === 0) return null;
 
             return (
-              <View className="bg-white rounded-lg p-4 mb-4 border-2 border-yellow-400">
-                <View className="flex-row items-center mb-3">
-                  <Ionicons name="star" size={20} color="#f59e0b" />
-                  <Text className="text-base font-semibold text-gray-900 ml-2">
+              <View className="bg-white rounded-lg p-3 mb-3 border-2 border-yellow-400">
+                <View className="flex-row items-center mb-2">
+                  <Ionicons name="star" size={18} color="#f59e0b" />
+                  <Text className="text-sm font-semibold text-gray-900 ml-2">
                     Today's Tasks ({starredTasks.length})
                   </Text>
                 </View>
                 
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View className="flex-row gap-3">
-                    {starredTasks.map((task) => (
-                      <Pressable
-                        key={task.id}
-                        onPress={() => onNavigateToTaskDetail && onNavigateToTaskDetail(task.id)}
-                        className="w-64 bg-yellow-50 border border-yellow-300 rounded-lg p-3"
-                      >
-                        <View className="flex-row items-start justify-between mb-2">
-                          <Text className="flex-1 font-semibold text-gray-900 mr-2" numberOfLines={2}>
-                            {task.title}
-                          </Text>
-                          <Pressable
-                            onPress={(e) => {
-                              e.stopPropagation();
-                              toggleTaskStar(task.id, user.id);
-                            }}
-                            className="p-1"
-                          >
-                            <Ionicons name="star" size={20} color="#f59e0b" />
-                          </Pressable>
-                        </View>
-                        
-                        <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-                          {task.description}
+                {/* Vertical list of tasks */}
+                <View className="gap-2">
+                  {starredTasks.map((task) => (
+                    <Pressable
+                      key={task.id}
+                      onPress={() => onNavigateToTaskDetail && onNavigateToTaskDetail(task.id)}
+                      className="bg-yellow-50 border border-yellow-300 rounded-lg p-2"
+                    >
+                      <View className="flex-row items-start justify-between mb-1">
+                        <Text className="flex-1 font-semibold text-gray-900 mr-2" numberOfLines={2}>
+                          {task.title}
                         </Text>
-                        
-                        <View className="flex-row items-center justify-between">
-                          <View className={cn(
-                            "px-2 py-1 rounded-full border",
-                            task.priority === "critical" ? "bg-red-50 border-red-200" :
-                            task.priority === "high" ? "bg-orange-50 border-orange-200" :
-                            task.priority === "medium" ? "bg-yellow-50 border-yellow-200" :
-                            "bg-green-50 border-green-200"
+                        <Pressable
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            toggleTaskStar(task.id, user.id);
+                          }}
+                          className="p-0.5"
+                        >
+                          <Ionicons name="star" size={16} color="#f59e0b" />
+                        </Pressable>
+                      </View>
+                      
+                      <Text className="text-xs text-gray-600 mb-1.5" numberOfLines={2}>
+                        {task.description}
+                      </Text>
+                      
+                      <View className="flex-row items-center justify-between">
+                        <View className={cn(
+                          "px-2 py-0.5 rounded-full border",
+                          task.priority === "critical" ? "bg-red-50 border-red-200" :
+                          task.priority === "high" ? "bg-orange-50 border-orange-200" :
+                          task.priority === "medium" ? "bg-yellow-50 border-yellow-200" :
+                          "bg-green-50 border-green-200"
+                        )}>
+                          <Text className={cn(
+                            "text-xs font-medium",
+                            task.priority === "critical" ? "text-red-700" :
+                            task.priority === "high" ? "text-orange-700" :
+                            task.priority === "medium" ? "text-yellow-700" :
+                            "text-green-700"
                           )}>
-                            <Text className={cn(
-                              "text-xs font-medium",
-                              task.priority === "critical" ? "text-red-700" :
-                              task.priority === "high" ? "text-orange-700" :
-                              task.priority === "medium" ? "text-yellow-700" :
-                              "text-green-700"
-                            )}>
-                              {task.priority}
-                            </Text>
-                          </View>
-                          
-                          <Text className="text-sm font-semibold text-gray-700">
-                            {task.completionPercentage}%
+                            {task.priority}
                           </Text>
                         </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
+                        
+                        <Text className="text-xs font-semibold text-gray-700">
+                          {task.completionPercentage}%
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
             );
           })()}

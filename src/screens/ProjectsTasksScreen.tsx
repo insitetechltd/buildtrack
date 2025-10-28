@@ -162,9 +162,8 @@ export default function ProjectsTasksScreen({
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
         // Include if assigned to me AND created by me (self-assigned)
-        return isDirectlyAssigned && isCreatedByMe && !hasAssignedSubtasks;
+        return isDirectlyAssigned && isCreatedByMe;
       });
       
       const myTasksSubTasks = projectTasks.flatMap(task => {
@@ -181,9 +180,8 @@ export default function ProjectsTasksScreen({
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
         // Include if assigned to me but NOT created by me
-        return isDirectlyAssigned && !isCreatedByMe && !hasAssignedSubtasks;
+        return isDirectlyAssigned && !isCreatedByMe;
       });
       
       const inboxSubTasks = projectTasks.flatMap(task => {

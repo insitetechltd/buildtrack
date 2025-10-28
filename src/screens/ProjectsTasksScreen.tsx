@@ -217,6 +217,14 @@ export default function ProjectsTasksScreen({
       const outboxTasks = [...assignedParentTasks, ...assignedSubTasks];
       
       // Return tasks based on section filter
+      // SPECIAL CASE: For "reviewing" status, we need ALL project tasks (not section-filtered)
+      // because reviewing breaks section definitions:
+      // - Inbox Reviewing = tasks I CREATED (not in inbox)
+      // - Outbox Reviewing = tasks assigned TO ME (not in outbox)
+      if (localStatusFilter === "reviewing") {
+        return projectTasks; // Return ALL tasks from project, let filter logic handle it
+      }
+      
       if (localSectionFilter === "my_tasks") {
         // "my_tasks" shows ALL tasks assigned to me (including self-assigned)
         return myTasksAll;

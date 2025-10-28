@@ -801,8 +801,13 @@ export default function DashboardScreen({
             {/* 3. ON OTHERS' PLATE Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="eye-outline" size={18} color="#a78bfa" />
-                <Text className="text-sm font-bold text-purple-400 ml-2">ON OTHERS' PLATE</Text>
+                <Ionicons name="eye-outline" size={18} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
+                <Text className={cn(
+                  "text-sm font-bold ml-2",
+                  isDarkMode ? "text-purple-400" : "text-purple-600"
+                )}>
+                  {isDarkMode ? "ON OTHERS' PLATE" : "On Others' Plate"}
+                </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
                 {/* Waiting to Be Accepted */}
@@ -891,8 +896,13 @@ export default function DashboardScreen({
             {/* 4. ACCOMPLISHMENTS Section */}
             <View>
               <View className="flex-row items-center mb-3">
-                <Ionicons name="trophy-outline" size={18} color="#34d399" />
-                <Text className="text-sm font-bold text-emerald-400 ml-2">ACCOMPLISHMENTS</Text>
+                <Ionicons name="trophy-outline" size={18} color={isDarkMode ? "#34d399" : "#10b981"} />
+                <Text className={cn(
+                  "text-sm font-bold ml-2",
+                  isDarkMode ? "text-emerald-400" : "text-green-600"
+                )}>
+                  {isDarkMode ? "ACCOMPLISHMENTS" : "Accomplishments"}
+                </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
                 {/* All Done Tasks */}
@@ -935,17 +945,24 @@ export default function DashboardScreen({
               className="p-4 flex-row items-center justify-between"
             >
               <View className="flex-row items-center">
-                <View className="bg-blue-500/20 rounded-full p-2">
-                  <Ionicons name="list-outline" size={20} color="#60a5fa" />
-                </View>
-                <Text className="text-base font-bold text-white ml-3">
+                {isDarkMode ? (
+                  <View className="bg-blue-500/20 rounded-full p-2">
+                    <Ionicons name="list-outline" size={20} color="#60a5fa" />
+                  </View>
+                ) : (
+                  <Ionicons name="list-outline" size={20} color="#3b82f6" />
+                )}
+                <Text className={cn(
+                  "text-base font-bold ml-3",
+                  isDarkMode ? "text-white" : "text-gray-900"
+                )}>
                   Quick Overview
                 </Text>
               </View>
               <Ionicons 
                 name={isQuickOverviewExpanded ? "chevron-up" : "chevron-down"} 
                 size={20} 
-                color="#94a3b8" 
+                color={isDarkMode ? "#94a3b8" : "#6b7280"} 
               />
             </Pressable>
 

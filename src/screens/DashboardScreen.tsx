@@ -142,20 +142,19 @@ export default function DashboardScreen({
       return;
     }
     
-    // Case 4: User has multiple projects → Use last selected for this user
+    // Case 4: User has multiple projects → Don't auto-select, user must choose
     if (userProjectCount > 1) {
-      const lastSelected = getLastSelectedProject(user.id);
-      
-      // Verify last selected is still valid for this user
-      const isLastSelectedValid = lastSelected && userProjects.some(p => p.id === lastSelected);
-      
-      if (isLastSelectedValid && selectedProjectId !== lastSelected) {
-        console.log(`   → Multiple projects, using last selected for user`);
-        setSelectedProject(lastSelected, user.id);
-      } else if (!isLastSelectedValid && selectedProjectId !== null) {
-        console.log(`   → Multiple projects, no valid last selection`);
-        console.log(`   → User must manually select from picker`);
-        setSelectedProject(null, user.id);
+      // Keep current selection if valid, otherwise clear to show picker
+      if (selectedProjectId !== null) {
+        const isValid = userProjects.some(p => p.id === selectedProjectId);
+        if (!isValid) {
+          console.log(`   → Selected project invalid, clearing to show picker`);
+          setSelectedProject(null, user.id);
+        } else {
+          console.log(`   → Project already selected: keeping current`);
+        }
+      } else {
+        console.log(`   → Multiple projects, no selection - showing picker`);
       }
     }
   }, [user?.id, userProjects.length]); // Only depend on user ID and project count to avoid infinite loop

@@ -9,11 +9,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import * as ImagePicker from "expo-image-picker";
+import * as Clipboard from "expo-clipboard";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
@@ -26,7 +29,6 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
-import { PhotoUploadSection } from "../components/PhotoUploadSection";
 import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
 
 interface CreateTaskScreenProps {
@@ -274,6 +276,104 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         : [...prev, userId]
     );
   }, []);
+
+  const handleAddPhotos = async () => {
+    Alert.alert(
+      "Add Photos",
+      "Choose how you want to add photos",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                quality: 0.8,
+                allowsEditing: false,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setFormData(prev => ({
+                  ...prev,
+                  attachments: [...prev.attachments, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to take photo");
+            }
+          },
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            try {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setFormData(prev => ({
+                  ...prev,
+                  attachments: [...prev.attachments, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to pick images");
+            }
+          },
+        },
+        {
+          text: "Paste from Clipboard",
+          onPress: async () => {
+            try {
+              const hasImage = await Clipboard.hasImageAsync();
+              
+              if (!hasImage) {
+                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
+                return;
+              }
+
+              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
+              
+              if (imageUri && imageUri.data) {
+                const uri = `data:image/png;base64,${imageUri.data}`;
+                setFormData(prev => ({
+                  ...prev,
+                  attachments: [...prev.attachments, uri],
+                }));
+                Alert.alert("Success", "Image pasted from clipboard!");
+              } else {
+                Alert.alert("Error", "Could not paste image from clipboard");
+              }
+            } catch (error) {
+              console.error("Clipboard paste error:", error);
+              Alert.alert("Error", "Failed to paste from clipboard");
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
 
   // Early returns AFTER all hooks
   if (!user) return null;
@@ -690,12 +790,51 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           )}
 
           {/* Attachments */}
-          <PhotoUploadSection
-            photos={formData.attachments}
-            onPhotosChange={(attachments) => setFormData(prev => ({ ...prev, attachments }))}
-            title="Attachments"
-            emptyMessage="No attachments added"
-          />
+          <View className="mb-6">
+            <View className="flex-row items-center mb-2">
+              <Text className="text-base font-semibold text-gray-900">
+                Attachments
+              </Text>
+            </View>
+            
+            {formData.attachments.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                <View className="flex-row">
+                  {formData.attachments.map((photo, index) => (
+                    <View key={index} className="mr-3 relative">
+                      <Image
+                        source={{ uri: photo }}
+                        className="w-24 h-24 rounded-lg"
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        onPress={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            attachments: prev.attachments.filter((_, i) => i !== index)
+                          }));
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                      >
+                        <Ionicons name="close" size={14} color="white" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+            
+            <Pressable
+              onPress={handleAddPhotos}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+            >
+              <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
+              <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
+              <Text className="text-gray-400 text-sm mt-1">
+                {formData.attachments.length === 0 ? "No attachments added" : `${formData.attachments.length} file(s) added`}
+              </Text>
+            </Pressable>
+          </View>
 
           {/* Bottom Spacing */}
           <View className="h-20" />

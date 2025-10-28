@@ -17,6 +17,7 @@ import { useTaskStore } from "../state/taskStore.supabase";
 import { useProjectStoreWithInit } from "../state/projectStore.supabase";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
+import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
 import { Task, Priority, SubTask } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -48,6 +49,7 @@ export default function DashboardScreen({
   const projectStore = useProjectStoreWithInit();
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
@@ -408,19 +410,31 @@ export default function DashboardScreen({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <StatusBar style="light" />
+    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       {/* Header */}
       <StandardHeader 
         title="Dashboard"
         rightElement={
           <View className="flex-row items-center">
+            {/* Theme Toggle */}
+            <Pressable
+              onPress={toggleDarkMode}
+              className="mr-3 p-2"
+            >
+              <Ionicons 
+                name={isDarkMode ? "sunny" : "moon"} 
+                size={22} 
+                color={isDarkMode ? "#fbbf24" : "#475569"} 
+              />
+            </Pressable>
+            
             <View className="mr-2">
-              <Text className="text-sm font-semibold text-gray-900 text-right">
+              <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
                 {user.name}
             </Text>
-              <Text className="text-xs text-gray-600 text-right capitalize">
+              <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
                 {user.role}
               </Text>
             </View>
@@ -444,35 +458,42 @@ export default function DashboardScreen({
           {/* Project Picker */}
           <Pressable
             onPress={() => setShowProjectPicker(true)}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-4 mb-4 flex-row items-center justify-between shadow-xl"
-            style={{
+            className={cn(
+              "rounded-2xl p-4 mb-4 flex-row items-center justify-between",
+              isDarkMode ? "bg-gradient-to-r from-indigo-600 to-purple-600 shadow-xl" : "bg-white border border-gray-200"
+            )}
+            style={isDarkMode ? {
               shadowColor: "#6366f1",
               shadowOffset: { width: 0, height: 4 },
               shadowOpacity: 0.3,
               shadowRadius: 8,
               elevation: 8,
-            }}
+            } : undefined}
           >
             <View className="flex-row items-center flex-1">
-              <View className="bg-white/20 rounded-full p-2">
-                <Ionicons name="business" size={22} color="#ffffff" />
-              </View>
-              <View className="ml-3 flex-1">
-                <Text className="text-base font-bold text-white">
+              {isDarkMode ? (
+                <View className="bg-white/20 rounded-full p-2">
+                  <Ionicons name="business" size={22} color="#ffffff" />
+                </View>
+              ) : (
+                <Ionicons name="business" size={20} color="#2563eb" />
+              )}
+              <View className={cn("flex-1", isDarkMode ? "ml-3" : "ml-2")}>
+                <Text className={cn("text-base", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
                   {selectedProject?.name || "All Projects"}
                 </Text>
                 {selectedProject?.description ? (
-                  <Text className="text-xs text-indigo-100 mt-0.5" numberOfLines={1}>
+                  <Text className={cn("text-xs mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
                     {selectedProject?.description}
                   </Text>
                 ) : !selectedProject && (
-                  <Text className="text-xs text-indigo-100 mt-0.5" numberOfLines={1}>
+                  <Text className={cn("text-xs mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
                     Viewing tasks from all projects
                   </Text>
                 )}
               </View>
             </View>
-            <Ionicons name="chevron-down" size={20} color="#ffffff" />
+            <Ionicons name="chevron-down" size={isDarkMode ? 20 : 18} color={isDarkMode ? "#ffffff" : "#2563eb"} />
           </Pressable>
         
           {/* Today's Tasks Section - Only show if user has starred tasks */}

@@ -53,31 +53,67 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
     toggleExpand();
   };
 
-  const handleLogout = () => {
+  const collapseImmediately = () => {
+    // Stop all running animations
+    rotateAnim.stopAnimation();
+    scaleAnim1.stopAnimation();
+    scaleAnim2.stopAnimation();
+    scaleAnim3.stopAnimation();
+    
+    // Reset all animations to collapsed state immediately
+    Animated.parallel([
+      Animated.timing(rotateAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim1, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim2, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim3, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
     setIsExpanded(false);
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Logout", 
-          style: "destructive",
-          onPress: logout
-        },
-      ]
-    );
+  };
+
+  const handleLogout = () => {
+    collapseImmediately();
+    setTimeout(() => {
+      Alert.alert(
+        "Logout",
+        "Are you sure you want to logout?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Logout", 
+            style: "destructive",
+            onPress: logout
+          },
+        ]
+      );
+    }, 200);
   };
 
   const handleCreateTask = () => {
-    setIsExpanded(false);
-    onCreateTask();
+    collapseImmediately();
+    setTimeout(() => onCreateTask(), 200);
   };
 
   const handleRefresh = () => {
-    setIsExpanded(false);
+    collapseImmediately();
     if (onRefresh) {
-      onRefresh();
+      setTimeout(() => onRefresh(), 200);
     }
   };
 
@@ -220,4 +256,3 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh }: Expand
     </View>
   );
 }
-

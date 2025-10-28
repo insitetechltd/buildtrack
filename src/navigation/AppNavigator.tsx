@@ -3,13 +3,14 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { View, Pressable, Alert } from "react-native";
+import { View } from "react-native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
-import { DataSyncManager } from "../utils/DataSyncManager";
+import { DataRefreshManager } from "../utils/DataRefreshManager";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
+import TasksScreen from "../screens/TasksScreen";
 import ProjectsTasksScreen from "../screens/ProjectsTasksScreen";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
@@ -55,13 +56,6 @@ function DashboardStack() {
       }}
     >
       <Stack.Screen name="DashboardMain" component={DashboardMainScreen} />
-      <Stack.Screen 
-        name="TaskDetail" 
-        component={TaskDetailScreenWrapper}
-        options={{
-          presentation: "modal"
-        }}
-      />
     </Stack.Navigator>
   );
 }
@@ -73,9 +67,6 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
       onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
-      onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
-        navigation.navigate("TaskDetail", { taskId, subTaskId });
-      }}
     />
   );
 }
@@ -140,24 +131,17 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         
         console.log('🚀 Navigation called to CreateTaskFromTask');
       }}
-      onNavigateToEditTask={(editTaskId) => {
-        console.log('✏️ Navigating to edit task:', editTaskId);
-        navigation.navigate("CreateTaskFromTask", { 
-          editTaskId
-        });
-      }}
     />
   );
 }
 
 function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigation: any }) {
-  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
-      editTaskId={editTaskId}
     />
   );
 }
@@ -175,7 +159,6 @@ function ProfileMainScreen({ navigation }: { navigation: any }) {
   return (
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
-      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
     />
   );
 }
@@ -207,13 +190,12 @@ function CreateTaskStack() {
 }
 
 function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
-      editTaskId={editTaskId}
     />
   );
 }
@@ -406,45 +388,36 @@ function MainTabs() {
           tabBarButton: () => null, // Hide from tab bar
         }}
       />
+      {/* Tasks Screen - Hidden from tab bar but accessible via navigation */}
+      {user?.role !== "admin" && (
+        <Tab.Screen
+          name="Tasks"
+          component={TasksStack}
+          options={{
+            tabBarButton: () => null, // Hide from tab bar
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading, isInitialized } = useAuthStore();
+  const { isAuthenticated, isLoading } = useAuthStore();
 
-  console.log('📱 AppNavigator render:', { 
-    isAuthenticated, 
-    isLoading, 
-    isInitialized,
-    timestamp: new Date().toISOString()
-  });
-
-  // Show loading only if we're actually loading (not just uninitiated)
   if (isLoading) {
-    console.log('⏳ Showing loading state');
     // TODO: Add proper loading screen
     return null;
   }
 
-  // Wait for initial store rehydration ONLY if we've never initialized
-  // This prevents blank screen on first load but allows login to work
-  if (!isInitialized && !isAuthenticated) {
-    console.log('⏳ Waiting for store initialization (not authenticated yet)');
-    return null;
-  }
-
   if (!isAuthenticated) {
-    console.log('🔓 Showing login screen');
     return <AuthScreens />;
   }
 
-  console.log('🔐 Showing main app (authenticated)');
   return (
     <NavigationContainer>
+      <DataRefreshManager />
       <MainTabs />
-      {/* Data Sync Manager - Polls every 3 minutes + refreshes on foreground */}
-      <DataSyncManager />
     </NavigationContainer>
   );
 }// Force reload Fri Oct  3 06:16:45 UTC 2025

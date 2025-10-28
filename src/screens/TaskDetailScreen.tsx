@@ -8,36 +8,31 @@ import {
   Alert,
   Modal,
   Image,
-  Dimensions,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
+import * as Clipboard from "expo-clipboard";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
-import { PhotoUploadSection } from "../components/PhotoUploadSection";
-import FullScreenImageViewer from "../components/FullScreenImageViewer";
 import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 
 interface TaskDetailScreenProps {
   taskId: string;
   subTaskId?: string; // Optional: if provided, show only this subtask
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string) => void;
-  onNavigateToEditTask?: (taskId: string) => void; // For editing the task
 }
 
-export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToEditTask }: TaskDetailScreenProps) {
+export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask }: TaskDetailScreenProps) {
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
@@ -50,10 +45,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
   const acceptTask = useTaskStore(state => state.acceptTask);
   const declineTask = useTaskStore(state => state.declineTask);
-  const submitTaskForReview = useTaskStore(state => state.submitTaskForReview);
-  const acceptTaskCompletion = useTaskStore(state => state.acceptTaskCompletion);
-  const submitSubTaskForReview = useTaskStore(state => state.submitSubTaskForReview);
-  const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
@@ -72,12 +63,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedUsersForReassign, setSelectedUsersForReassign] = useState<string[]>([]);
   const [reassignSearchQuery, setReassignSearchQuery] = useState("");
-  const [selectedUpdate, setSelectedUpdate] = useState<any>(null);
-  const [showUpdateDetailModal, setShowUpdateDetailModal] = useState(false);
-  const [showImageViewer, setShowImageViewer] = useState(false);
-  const [imageViewerImages, setImageViewerImages] = useState<string[]>([]);
-  const [imageViewerInitialIndex, setImageViewerInitialIndex] = useState(0);
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   // Get the parent task
   const parentTask = tasks.find(t => t.id === taskId);
@@ -170,42 +155,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // 2. They are assigned AND have accepted the task
   const canCreateSubTask = isTaskCreator || (isAssignedToMe && task.accepted === true);
 
-  // Only task creator can edit the task
-  const canEditTask = isTaskCreator;
-
-  // Review workflow permissions
-  // Assignee can submit for review when task is 100% complete but not yet reviewed
-  // Note: Accept tasks that are 100% complete even if not explicitly accepted
-  // (handles edge case where tasks reached 100% before acceptance workflow)
-  // Also handle case where reviewAccepted=true but readyForReview=false (inconsistent state)
-  const canSubmitForReview = isAssignedToMe && 
-    (task.accepted === true || task.completionPercentage === 100) && 
-    task.completionPercentage === 100 && 
-    !task.readyForReview && 
-    (!task.reviewAccepted || (task.reviewAccepted && !task.readyForReview));
-  
-  // Task creator can accept completion when task is marked ready for review
-  const canAcceptCompletion = isTaskCreator && task.readyForReview === true;
-
-  // Debug logging for review button visibility
-  useEffect(() => {
-    if (task && isAssignedToMe && task.completionPercentage === 100) {
-      console.log('🔍 [TaskDetailScreen] Review Button Debug:', {
-        taskId: task.id,
-        taskTitle: task.title,
-        isAssignedToMe,
-        accepted: task.accepted,
-        completionPercentage: task.completionPercentage,
-        readyForReview: task.readyForReview,
-        reviewAccepted: task.reviewAccepted,
-        canSubmitForReview,
-        currentStatus: task.currentStatus,
-        assignedTo: task.assignedTo,
-        userId: user?.id
-      });
-    }
-  }, [task, isAssignedToMe, canSubmitForReview, user?.id]);
-
   const handleAcceptTask = () => {
     Alert.alert(
       "Accept Task",
@@ -247,56 +196,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     );
   };
 
-  const handleSubmitForReview = () => {
-    Alert.alert(
-      "Submit for Review",
-      "Are you sure you want to submit this completed task for review?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: async () => {
-            try {
-              if (isViewingSubTask && subTaskId) {
-                await submitSubTaskForReview(taskId, subTaskId);
-              } else {
-                await submitTaskForReview(task.id);
-              }
-              Alert.alert("Success", "Task submitted for review! Waiting for the task creator to accept completion.");
-            } catch (error) {
-              Alert.alert("Error", "Failed to submit task for review. Please try again.");
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleAcceptCompletion = () => {
-    Alert.alert(
-      "Accept Completion",
-      "Are you sure you want to accept this task as complete?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Accept",
-          onPress: async () => {
-            try {
-              if (isViewingSubTask && subTaskId) {
-                await acceptSubTaskCompletion(taskId, subTaskId, user.id);
-              } else {
-                await acceptTaskCompletion(task.id, user.id);
-              }
-              Alert.alert("Success", "Task marked as complete! ✅");
-            } catch (error) {
-              Alert.alert("Error", "Failed to accept completion. Please try again.");
-            }
-          }
-        }
-      ]
-    );
-  };
-
   const handleReassignTask = async () => {
     if (selectedUsersForReassign.length === 0) {
       Alert.alert("Error", "Please select at least one user to reassign the task to.");
@@ -324,6 +223,106 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   };
 
+  const handleAddPhotos = async () => {
+    Alert.alert(
+      "Add Photos",
+      "Choose how you want to add photos",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            try {
+              // Request camera permissions
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                quality: 0.8,
+                allowsEditing: false,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to take photo");
+            }
+          },
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            try {
+              // Request media library permissions
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to pick images");
+            }
+          },
+        },
+        {
+          text: "Paste from Clipboard",
+          onPress: async () => {
+            try {
+              const hasImage = await Clipboard.hasImageAsync();
+              
+              if (!hasImage) {
+                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
+                return;
+              }
+
+              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
+              
+              if (imageUri && imageUri.data) {
+                // Convert base64 to URI format
+                const uri = `data:image/png;base64,${imageUri.data}`;
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, uri],
+                }));
+                Alert.alert("Success", "Image pasted from clipboard!");
+              } else {
+                Alert.alert("Error", "Could not paste image from clipboard");
+              }
+            } catch (error) {
+              console.error("Clipboard paste error:", error);
+              Alert.alert("Error", "Failed to paste from clipboard");
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
 
   const handleSubmitUpdate = async () => {
     if (!updateForm.description.trim()) {
@@ -387,11 +386,42 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       {/* Standard Header */}
       <StandardHeader 
         title={task?.title || (isViewingSubTask ? "Sub-Task Details" : "Task Details")}
+        rightElement={
+          canUpdateProgress ? (
+            <Pressable
+              onPress={() => {
+                setUpdateForm({
+                  description: "",
+                  photos: [],
+                  completionPercentage: task.completionPercentage,
+                  status: task.currentStatus,
+                });
+                setShowUpdateModal(true);
+              }}
+              className="px-4 py-2 bg-blue-600 rounded-lg"
+            >
+              <Text className="text-white font-medium">Update</Text>
+            </Pressable>
+          ) : undefined
+        }
       />
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
       {isAssignedToMe && (task.accepted === undefined || task.accepted === null) && (
-        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-3">
+        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
+          <View className="flex-row items-center mb-3">
+            <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
+              <Ionicons name="alert-circle" size={24} color="#f59e0b" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-lg font-bold text-amber-900">
+                Action Required
+              </Text>
+              <Text className="text-sm text-amber-700">
+                You have been assigned to this {isViewingSubTask ? "sub-task" : "task"}
+              </Text>
+            </View>
+          </View>
           <View className="flex-row gap-3">
             <Pressable
               onPress={() => {
@@ -465,111 +495,70 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
-      {/* Photo Slider (Full Width, 20% Screen Height) */}
-      {task.attachments && task.attachments.length > 0 && (
-        <View style={{ height: Dimensions.get('window').height * 0.2 }}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={(event) => {
-              const contentOffsetX = event.nativeEvent.contentOffset.x;
-              const newIndex = Math.round(contentOffsetX / Dimensions.get('window').width);
-              setCurrentPhotoIndex(newIndex);
-            }}
-            scrollEventThrottle={16}
-          >
-            {task.attachments.map((attachment: string, index: number) => (
-              <Pressable
-                key={index}
-                style={{ width: Dimensions.get('window').width }}
-                onPress={() => {
-                  setImageViewerImages(task.attachments);
-                  setImageViewerInitialIndex(currentPhotoIndex);
-                  setShowImageViewer(true);
-                }}
-              >
-                <Image
-                  source={{ uri: attachment }}
-                  style={{ 
-                    width: Dimensions.get('window').width, 
-                    height: Dimensions.get('window').height * 0.2 
-                  }}
-                  resizeMode="cover"
-                />
-              </Pressable>
-            ))}
-          </ScrollView>
-          
-          {/* Photo Counter Badge */}
-          {task.attachments.length > 1 && (
-            <View className="absolute bottom-3 right-3 bg-black/60 px-3 py-1.5 rounded-full">
-              <Text className="text-white text-xs font-medium">
-                {currentPhotoIndex + 1} / {task.attachments.length}
+      <ScrollView className="flex-1">
+        {/* Task Status, Priority, and Due Date */}
+        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
+          {/* Due Date and Badges Row */}
+          <View className="flex-row items-center flex-wrap mb-4">
+            <View className="flex-row items-center mr-3 mb-2">
+              <Ionicons name="calendar-outline" size={18} color="#6b7280" />
+              <Text className="text-base text-gray-600 ml-2 mr-1">Due:</Text>
+              <Text className={cn("text-base font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
+                {new Date(task.dueDate).toLocaleDateString()}
+                {isOverdue && " (Overdue)"}
+              </Text>
+            </View>
+            
+            {/* Status and Priority Badges */}
+            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
+              <Text className="text-sm font-medium capitalize">
+                {task.currentStatus.replace("_", " ")}
+              </Text>
+            </View>
+            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
+              <Text className="text-sm font-medium capitalize">
+                {task.priority}
+              </Text>
+            </View>
+          </View>
+
+          {/* Task Description */}
+          {task.description && (
+            <View>
+              <Text className="text-base text-gray-700 leading-6">
+                {task.description}
               </Text>
             </View>
           )}
         </View>
-      )}
 
-      <ScrollView className="flex-1">
-        {/* Combined Task Information & Assignment Card */}
+        {/* Assignment Information Card - Moved to top */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
-          {/* Assignment Section - Moved to Top */}
-          <View className="flex-row mb-3 pb-3 border-b border-gray-200">
-            {/* Assigned By - 50% width */}
-            <View style={{ width: '50%' }} className="pr-2">
-              <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
-              {assignedBy?.id === user.id ? (
-                // Not clickable if it's me
-                <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg p-2">
-                  <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-2">
-                    <Ionicons name="person" size={18} color="#6b7280" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                      {assignedBy?.name || "Unknown"} (me)
-                    </Text>
-                    <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
-                      {assignedBy?.role || "Unknown"}
-                    </Text>
-                    <Text className="text-xs text-gray-400" numberOfLines={1}>
-                      {assignedBy?.phone || "No phone"}
-                    </Text>
-                  </View>
-                </View>
-              ) : (
-                // Clickable to call
-                <Pressable
-                  onPress={() => {
-                    if (assignedBy?.phone) {
-                      Linking.openURL(`tel:${assignedBy.phone}`);
-                    }
-                  }}
-                  className="flex-row items-center bg-blue-50 border border-blue-200 rounded-lg p-2 active:bg-blue-100"
-                >
-                  <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-2">
-                    <Ionicons name="call" size={18} color="#3b82f6" />
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                      {assignedBy?.name || "Unknown"}
-                    </Text>
-                    <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
-                      {assignedBy?.role || "Unknown"}
-                    </Text>
-                    <Text className="text-xs text-blue-600 font-medium" numberOfLines={1}>
-                      📞 {assignedBy?.phone || "No phone"}
-                    </Text>
-                  </View>
-                </Pressable>
-              )}
+          {/* Assigned By */}
+          <View className="mb-3">
+            <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
+                <Ionicons name="person" size={20} color="#3b82f6" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-gray-900">
+                  {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown User"} (me)` : (assignedBy?.name || "Unknown User")}
+                </Text>
+                <Text className="text-sm text-gray-500 capitalize">
+                  {assignedBy?.role || "Unknown Role"}
+                </Text>
+                <Text className="text-xs text-gray-400">
+                  {assignedBy?.email || ""}
+                </Text>
+              </View>
             </View>
+          </View>
 
-            {/* Assigned To - 50% width */}
-            <View style={{ width: '50%' }} className="pl-2">
-              <Text className="text-sm font-medium text-gray-600 mb-1">Assigned To</Text>
+          {/* Assigned To */}
+          <View>
+            <Text className="text-sm font-medium text-gray-600 mb-1">Assigned To</Text>
             {assignedUsers.length > 0 ? (
               <View className="space-y-2">
                 {assignedUsers.map((assignedUser) => {
@@ -580,55 +569,43 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   const latestUpdate = userUpdates[userUpdates.length - 1];
                   const userProgress = latestUpdate?.completionPercentage || 0;
                   
-                  const isMe = assignedUser.id === user.id;
-                  
-                  return isMe ? (
-                    // Not clickable if it's me
-                    <View
-                      key={assignedUser.id}
-                      className="flex-row items-center bg-gray-50 border border-gray-200 rounded-lg p-2 mb-1"
-                    >
-                      <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="person" size={18} color="#6b7280" />
+                  return (
+                    <View key={assignedUser.id} className="flex-row items-center">
+                      <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
+                        <Ionicons name="person" size={20} color="#10b981" />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                          {assignedUser.name} (me)
-                        </Text>
-                        <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
+                        <View className="flex-row items-center justify-between mb-1">
+                          <Text className="text-base font-semibold text-gray-900">
+                            {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
+                          </Text>
+                          <View className="flex-row items-center">
+                            <View className="w-20 bg-gray-200 rounded-full h-2 mr-2">
+                              <View 
+                                className={cn(
+                                  "h-2 rounded-full",
+                                  userProgress === 100 ? "bg-green-500" :
+                                  userProgress >= 75 ? "bg-blue-500" :
+                                  userProgress >= 50 ? "bg-yellow-500" :
+                                  userProgress >= 25 ? "bg-orange-500" :
+                                  "bg-gray-400"
+                                )}
+                                style={{ width: `${userProgress}%` }}
+                              />
+                            </View>
+                            <Text className="text-xs font-medium text-gray-600 w-8">
+                              {userProgress}%
+                            </Text>
+                          </View>
+                        </View>
+                        <Text className="text-sm text-gray-500 capitalize">
                           {assignedUser.role}
                         </Text>
-                        <Text className="text-xs text-gray-400" numberOfLines={1}>
-                          {assignedUser.phone || "No phone"}
+                        <Text className="text-xs text-gray-400">
+                          {assignedUser.email}
                         </Text>
                       </View>
                     </View>
-                  ) : (
-                    // Clickable to call
-                    <Pressable
-                      key={assignedUser.id}
-                      onPress={() => {
-                        if (assignedUser.phone) {
-                          Linking.openURL(`tel:${assignedUser.phone}`);
-                        }
-                      }}
-                      className="flex-row items-center bg-green-50 border border-green-200 rounded-lg p-2 mb-1 active:bg-green-100"
-                    >
-                      <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-2">
-                        <Ionicons name="call" size={18} color="#10b981" />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
-                          {assignedUser.name}
-                        </Text>
-                        <Text className="text-xs text-gray-500 capitalize" numberOfLines={1}>
-                          {assignedUser.role}
-                        </Text>
-                        <Text className="text-xs text-green-700 font-medium" numberOfLines={1}>
-                          📞 {assignedUser.phone || "No phone"}
-                        </Text>
-                      </View>
-                    </Pressable>
                   );
                 })}
               </View>
@@ -644,60 +621,30 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 </View>
               </View>
             )}
-            </View>
           </View>
-
-          {/* Due Date and Badges Row */}
-          <View className="flex-row items-center flex-wrap mb-2">
-            <View className="flex-row items-center mr-2 mb-1">
-              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-              <Text className="text-sm text-gray-600 ml-1 mr-1">Due:</Text>
-              <Text className={cn("text-sm font-semibold", isOverdue ? "text-red-600" : "text-gray-900")}>
-                {new Date(task.dueDate).toLocaleDateString()}
-                {isOverdue && " (Overdue)"}
-              </Text>
-            </View>
-            
-            {/* Status and Priority Badges - Smaller */}
-            <View className={cn("px-2 py-1 rounded-full mr-2 mb-1", getStatusColor(task.currentStatus))}>
-              <Text className="text-xs font-medium capitalize">
-                {task.currentStatus.replace("_", " ")}
-              </Text>
-            </View>
-            <View className={cn("px-2 py-1 rounded-full border mb-1", getPriorityColor(task.priority))}>
-              <Text className="text-xs font-medium capitalize">
-                {task.priority}
-              </Text>
-            </View>
-          </View>
-
-          {/* Task Description */}
-          {task.description && (
-            <Text className="text-sm text-gray-700 leading-5">
-              {task.description}
-            </Text>
-          )}
         </View>
 
         {/* Progress & Updates Combined Section */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-3 mb-4">
-          {/* Compact Single Line Progress */}
-          <View className="flex-row items-center mb-1">
-            <Text className="text-sm font-semibold text-gray-700 mr-2">Comp. %</Text>
-            <View className="flex-1 bg-gray-200 rounded-full h-2 mr-2">
-              <View 
-                className={cn(
-                  "h-2 rounded-full",
-                  task.completionPercentage === 100 ? "bg-green-500" :
-                  task.completionPercentage >= 75 ? "bg-blue-500" :
-                  task.completionPercentage >= 50 ? "bg-yellow-500" :
-                  task.completionPercentage >= 25 ? "bg-orange-500" :
-                  "bg-gray-400"
-                )}
-                style={{ width: `${task.completionPercentage}%` }}
-              />
-            </View>
-            <Text className="text-sm font-bold text-blue-600">{task.completionPercentage}%</Text>
+          {/* Header with Progress */}
+          <View className="flex-row items-center justify-between mb-2">
+            <Text className="text-lg font-semibold text-gray-900">Comp. %</Text>
+            <Text className="text-xl font-bold text-blue-600">{task.completionPercentage}%</Text>
+          </View>
+          
+          {/* Progress Bar */}
+          <View className="w-full bg-gray-200 rounded-full h-3 mb-1">
+            <View 
+              className={cn(
+                "h-3 rounded-full",
+                task.completionPercentage === 100 ? "bg-green-500" :
+                task.completionPercentage >= 75 ? "bg-blue-500" :
+                task.completionPercentage >= 50 ? "bg-yellow-500" :
+                task.completionPercentage >= 25 ? "bg-orange-500" :
+                "bg-gray-400"
+              )}
+              style={{ width: `${task.completionPercentage}%` }}
+            />
           </View>
           
           {/* Completion Message */}
@@ -725,14 +672,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {task.updates.map((update) => {
                 const updateUser = getUserById(update.userId);
                 return (
-                  <Pressable 
-                    key={update.id} 
-                    className="border-l-4 border-blue-200 pl-4 active:bg-gray-50"
-                    onPress={() => {
-                      setSelectedUpdate(update);
-                      setShowUpdateDetailModal(true);
-                    }}
-                  >
+                  <View key={update.id} className="border-l-4 border-blue-200 pl-4">
                     <View className="flex-row items-center justify-between mb-2">
                       <Text className="font-medium text-gray-900">
                         {updateUser?.name || "Unknown User"}
@@ -741,30 +681,18 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         {new Date(update.timestamp).toLocaleString()}
                       </Text>
                     </View>
-                    <Text className="text-gray-700 mb-2" numberOfLines={2}>
-                      {update.description}
-                    </Text>
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-row items-center space-x-4">
-                        <Text className="text-sm text-gray-500">
-                          Progress: {update.completionPercentage}%
+                    <Text className="text-gray-700 mb-2">{update.description}</Text>
+                    <View className="flex-row items-center space-x-4">
+                      <Text className="text-sm text-gray-500">
+                        Progress: {update.completionPercentage}%
+                      </Text>
+                      <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
+                        <Text className="text-xs capitalize">
+                          {update.status.replace("_", " ")}
                         </Text>
-                        <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                          <Text className="text-xs capitalize">
-                            {update.status.replace("_", " ")}
-                          </Text>
-                        </View>
                       </View>
-                      {update.photos && update.photos.length > 0 && (
-                        <View className="flex-row items-center">
-                          <Ionicons name="images" size={16} color="#6b7280" />
-                          <Text className="text-xs text-gray-500 ml-1">
-                            {update.photos.length}
-                          </Text>
-                        </View>
-                      )}
                     </View>
-                  </Pressable>
+                  </View>
                 );
               })}
             </View>
@@ -801,54 +729,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
         )}
 
-        {/* Ready for Review Button - Assignee submits completed work */}
-        {canSubmitForReview && (
-          <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
-            <Pressable
-              onPress={handleSubmitForReview}
-              className="flex-row items-center justify-center bg-purple-50 px-4 py-3 rounded-lg border border-purple-200"
-            >
-              <Ionicons name="checkmark-done-circle-outline" size={20} color="#9333ea" />
-              <Text className="text-purple-700 font-semibold ml-2">
-                Ready for Review
-              </Text>
-            </Pressable>
-            <Text className="text-xs text-gray-500 mt-2 text-center">
-              Task is 100% complete. Submit for review by the task creator.
-            </Text>
-          </View>
-        )}
-
-        {/* Accept Completion Button - Task creator accepts completed work */}
-        {canAcceptCompletion && (
-          <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
-            <Pressable
-              onPress={handleAcceptCompletion}
-              className="flex-row items-center justify-center bg-green-50 px-4 py-3 rounded-lg border border-green-200"
-            >
-              <Ionicons name="shield-checkmark" size={20} color="#16a34a" />
-              <Text className="text-green-700 font-semibold ml-2">
-                Accept Completion
-              </Text>
-            </Pressable>
-            <Text className="text-xs text-gray-500 mt-2 text-center">
-              Review and accept this completed task to mark it as Done.
-            </Text>
-          </View>
-        )}
-
-        {/* Pending Review Status - Show to assignee after submission */}
-        {task.readyForReview && isAssignedToMe && !isTaskCreator && (
-          <View className="bg-purple-50 border border-purple-200 rounded-xl mx-4 mb-3 p-4">
-            <View className="flex-row items-center">
-              <Ionicons name="time-outline" size={20} color="#9333ea" />
-              <Text className="text-sm text-purple-700 ml-2 flex-1 font-medium">
-                Task is pending review by the task creator
-              </Text>
-            </View>
-          </View>
-        )}
-
         {/* Show message when user cannot create subtask */}
         {!canCreateSubTask && isAssignedToMe && !task.accepted && (
           <View className="bg-amber-50 border border-amber-200 rounded-xl mx-4 mb-3 p-4">
@@ -867,13 +747,18 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         visible={showUpdateModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowUpdateModal(false)}
       >
         <SafeAreaView className="flex-1 bg-gray-50">
           <ModalHandle />
           
-          <View className="flex-row items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
-            <Text className="text-lg font-semibold text-gray-900">
+          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable 
+              onPress={() => setShowUpdateModal(false)}
+              className="mr-4"
+            >
+              <Text className="text-blue-600 font-medium">Cancel</Text>
+            </Pressable>
+            <Text className="text-lg font-semibold text-gray-900 flex-1">
               Progress Update
             </Text>
             <Pressable
@@ -947,12 +832,50 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
 
             {/* Photos */}
-            <PhotoUploadSection
-              photos={updateForm.photos}
-              onPhotosChange={(photos) => setUpdateForm(prev => ({ ...prev, photos }))}
-              title="Photos"
-              emptyMessage="No photos added"
-            />
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-lg font-semibold text-gray-900">Photos</Text>
+                <Pressable
+                  onPress={handleAddPhotos}
+                  className="flex-row items-center bg-blue-600 px-3 py-2 rounded-lg"
+                >
+                  <Ionicons name="add" size={18} color="white" />
+                  <Text className="text-white font-medium ml-1">Add</Text>
+                </Pressable>
+              </View>
+              
+              {updateForm.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row">
+                    {updateForm.photos.map((photo, index) => (
+                      <View key={index} className="mr-3 relative">
+                        <Image
+                          source={{ uri: photo }}
+                          className="w-24 h-24 rounded-lg"
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => {
+                            setUpdateForm(prev => ({
+                              ...prev,
+                              photos: prev.photos.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : (
+                <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
+                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
+                  <Text className="text-gray-400 text-sm mt-1">No photos added</Text>
+                </View>
+              )}
+            </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -1253,182 +1176,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
         </SafeAreaView>
       </Modal>
-
-      {/* Update Detail Modal */}
-      <Modal
-        visible={showUpdateDetailModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowUpdateDetailModal(false)}
-      >
-        <SafeAreaView className="flex-1 bg-gray-50">
-          <ModalHandle />
-          
-          {/* Header */}
-          <View className="flex-row items-center justify-between bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setShowUpdateDetailModal(false)}
-              className="mr-4"
-            >
-              <Text className="text-blue-600 font-medium">Close</Text>
-            </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
-              Update Details
-            </Text>
-          </View>
-
-          {selectedUpdate && (
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-              <View className="p-6">
-                {/* User and Timestamp */}
-                <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                  <View className="flex-row items-center justify-between mb-3">
-                    <View>
-                      <Text className="text-sm text-gray-500 mb-1">Updated by</Text>
-                      <Text className="text-lg font-semibold text-gray-900">
-                        {getUserById(selectedUpdate.userId)?.name || "Unknown User"}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text className="text-sm text-gray-500 mb-1">Date</Text>
-                      <Text className="text-base text-gray-900">
-                        {new Date(selectedUpdate.timestamp).toLocaleDateString()}
-                      </Text>
-                      <Text className="text-xs text-gray-500">
-                        {new Date(selectedUpdate.timestamp).toLocaleTimeString()}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {/* Progress and Status */}
-                  <View className="flex-row items-center space-x-3">
-                    <View className="flex-1 bg-gray-50 rounded-lg p-3">
-                      <Text className="text-xs text-gray-500 mb-1">Progress</Text>
-                      <Text className="text-2xl font-bold text-blue-600">
-                        {selectedUpdate.completionPercentage}%
-                      </Text>
-                    </View>
-                    <View className="flex-1 bg-gray-50 rounded-lg p-3">
-                      <Text className="text-xs text-gray-500 mb-1">Status</Text>
-                      <View className={cn("px-3 py-1.5 rounded-lg self-start", getStatusColor(selectedUpdate.status))}>
-                        <Text className="text-sm font-medium capitalize">
-                          {selectedUpdate.status.replace("_", " ")}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-
-                {/* Description */}
-                <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                  <Text className="text-base font-semibold text-gray-900 mb-3">Description</Text>
-                  <Text className="text-gray-700 leading-6">
-                    {selectedUpdate.description}
-                  </Text>
-                </View>
-
-                {/* Photos */}
-                {selectedUpdate.photos && selectedUpdate.photos.length > 0 && (
-                  <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                    <View className="flex-row items-center justify-between mb-3">
-                      <Text className="text-base font-semibold text-gray-900">Photos</Text>
-                      <View className="bg-blue-100 px-2 py-1 rounded-full">
-                        <Text className="text-blue-700 text-xs font-medium">
-                          {selectedUpdate.photos.length}
-                        </Text>
-                      </View>
-                    </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View className="flex-row space-x-3">
-                        {selectedUpdate.photos.map((photo: string, index: number) => (
-                          <Pressable
-                            key={index}
-                            className="rounded-lg overflow-hidden border border-gray-200"
-                            onPress={() => {
-                              setImageViewerImages(selectedUpdate.photos);
-                              setImageViewerInitialIndex(index);
-                              setShowImageViewer(true);
-                            }}
-                          >
-                            <Image
-                              source={{ uri: photo }}
-                              style={{ width: 150, height: 150 }}
-                              resizeMode="cover"
-                            />
-                          </Pressable>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
-
-      {/* Full Screen Image Viewer */}
-      <FullScreenImageViewer
-        visible={showImageViewer}
-        images={imageViewerImages}
-        initialIndex={imageViewerInitialIndex}
-        onClose={() => setShowImageViewer(false)}
-      />
-
-      {/* Task Detail Utility FAB - Update & Edit */}
-      <TaskDetailUtilityFAB
-        canUpdate={canUpdateProgress}
-        canEdit={canEditTask}
-        onUpdate={() => {
-          setUpdateForm({
-            description: "",
-            photos: [],
-            completionPercentage: task.completionPercentage,
-            status: task.currentStatus,
-          });
-          setShowUpdateModal(true);
-        }}
-        onCameraUpdate={async () => {
-          try {
-            // Request camera permissions
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-              return;
-            }
-
-            // Launch camera
-            const result = await ImagePicker.launchCameraAsync({
-              mediaTypes: ImagePicker.MediaTypeOptions.Images,
-              allowsEditing: true,
-              quality: 0.8,
-            });
-
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              const photoUri = result.assets[0].uri;
-              
-              // Open update modal with photo pre-filled
-              setUpdateForm({
-                description: "",
-                photos: [photoUri],
-                completionPercentage: task.completionPercentage,
-                status: task.currentStatus,
-              });
-              setShowUpdateModal(true);
-            }
-          } catch (error) {
-            console.error('Error launching camera:', error);
-            Alert.alert('Error', 'Failed to open camera. Please try again.');
-          }
-        }}
-        onEdit={() => {
-          if (onNavigateToEditTask) {
-            onNavigateToEditTask(taskId);
-          } else {
-            Alert.alert('Error', 'Edit function is not available. Please try again.');
-          }
-        }}
-      />
     </SafeAreaView>
   );
 }

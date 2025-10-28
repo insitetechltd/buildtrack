@@ -100,74 +100,47 @@ export default function DashboardScreen({
     }
   };
 
-  // Fetch all data on mount (tasks, projects, assignments, users)
-  useEffect(() => {
-    if (!user) return;
-    
-    console.log('🔄 [Dashboard] Initial data fetch for:', user.name);
-    
-    // Fetch all data in parallel to ensure everything loads on app start
-    Promise.all([
-      fetchTasks().catch(error => {
-        console.error('❌ [Dashboard] Failed to fetch tasks:', error);
-      }),
-      fetchProjects().catch(error => {
-        console.error('❌ [Dashboard] Failed to fetch projects:', error);
-      }),
-      fetchUserProjectAssignments(user.id).catch(error => {
-        console.error('❌ [Dashboard] Failed to fetch user project assignments:', error);
-      }),
-      fetchUsers().catch(error => {
-        console.error('❌ [Dashboard] Failed to fetch users:', error);
-      }),
-    ]).then(() => {
-      console.log('✅ [Dashboard] Initial data fetch completed');
-    });
-  }, [user?.id, fetchTasks, fetchProjects, fetchUserProjectAssignments, fetchUsers]);
-
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
+  const userProjectCount = userProjects.length;
 
-  // Smart project selection logic - Run only on mount or when user/projects change
+  // Smart project selection logic
   useEffect(() => {
     if (!user) return;
     
-    const userProjectCount = userProjects.length;
-    
-    console.log(`🎯 Smart Project Selection for ${user.name}:`);
-    console.log(`   - User projects: ${userProjectCount}`);
-    console.log(`   - Current selection: ${selectedProjectId || 'none'}`);
-    
+    console.log(`📊 [DashboardScreen] Project selection check:
+      - User: ${user.name}
+      - User projects: ${userProjectCount}
+      - Selected: ${selectedProjectId || "null"}
+    `);
+
     // Case 1: User has no projects → Clear selection
     if (userProjectCount === 0) {
-      console.log(`   → No projects assigned, clearing selection`);
       if (selectedProjectId !== null) {
+        console.log(`   → No projects, clearing selection`);
         setSelectedProject(null, user.id);
       }
       return;
     }
-    
-    // Case 2: Check if current selection is still valid
-    if (selectedProjectId) {
-      const isUserInProject = userProjects.some(p => p.id === selectedProjectId);
-      if (isUserInProject) {
-        console.log(`   → Current selection is valid, keeping it`);
-        return; // Keep current selection
-      } else {
-        console.log(`   → Current selection invalid, will auto-select`);
-      }
-    }
-    
-    // Case 3: User has exactly 1 project → Auto-select it
+
+    // Case 2: User has 1 project → Auto-select it
     if (userProjectCount === 1) {
       const singleProject = userProjects[0];
       if (selectedProjectId !== singleProject.id) {
-        console.log(`   → Only 1 project, auto-selecting: ${singleProject.name}`);
+        console.log(`   → Single project, auto-selecting: ${singleProject.name}`);
         setSelectedProject(singleProject.id, user.id);
       }
       return;
     }
-    
+
+    // Case 3: Selected project is invalid → Clear selection
+    const isSelectedProjectValid = selectedProjectId && userProjects.some(p => p.id === selectedProjectId);
+    if (selectedProjectId && !isSelectedProjectValid) {
+      console.log(`   → Selected project ${selectedProjectId} is invalid, clearing`);
+      setSelectedProject(null, user.id);
+      return;
+    }
+
     // Case 4: User has multiple projects → Use last selected for this user
     if (userProjectCount > 1) {
       const lastSelected = getLastSelectedProject(user.id);
@@ -240,35 +213,6 @@ export default function DashboardScreen({
     return result;
   };
 
-  // Section 1: My Tasks - Tasks I assigned to MYSELF (self-assigned only)
-  // These are tasks where I am both the creator AND the assignee
-  // Also includes rejected tasks that were auto-reassigned back to me
-  const myTasks = projectFilteredTasks.filter(task => {
-    const assignedTo = task.assignedTo || [];
-    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-    const isCreatedByMe = task.assignedBy === user.id;
-    
-    // Include if:
-    // 1. Assigned to me AND created by me (self-assigned), OR
-    // 2. Created by me AND rejected (auto-reassigned back to creator)
-    // Note: Self-assigned tasks should auto-accept, but we handle unaccepted cases too
-    return (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
-  });
-
-  const mySubTasks = projectFilteredTasks.flatMap(task => {
-    // Include subtasks I created and assigned to myself
-    // Also include rejected subtasks that were auto-reassigned back to me
-    return collectSubTasksAssignedTo(task.subTasks, user.id)
-      .filter(subTask => {
-        const isCreatedByMe = subTask.assignedBy === user.id;
-        // Include if created by me (either self-assigned OR rejected)
-        return isCreatedByMe;
-      })
-      .map(subTask => ({ ...subTask, isSubTask: true as const }));
-  });
-
-  const myAllTasks = [...myTasks, ...mySubTasks];
-  
   // Helper function to check if a task is overdue
   const isOverdue = (task: any) => {
     const dueDate = new Date(task.dueDate);
@@ -276,567 +220,289 @@ export default function DashboardScreen({
     return dueDate < now;
   };
 
-  // New categorization logic for My Tasks (includes self-assigned + assigned by others)
-  // Note: Self-assigned tasks auto-accept, so no "Incoming" needed
-  
-  // 1.1 WIP: Tasks in progress (accepted OR self-assigned, not complete, not overdue)
-  // Note: Self-assigned 100% tasks go to Done (comment #1)
-  // Include unaccepted self-assigned tasks (<100%) to handle edge cases
-  const myWIPTasks = myAllTasks.filter(task => {
-    const isSelfAssigned = task.assignedBy === user.id && 
-                           task.assignedTo?.includes(user.id);
-    const isAcceptedOrSelfAssigned = task.accepted || 
-                                     (isSelfAssigned && !task.accepted);
-    
-    return isAcceptedOrSelfAssigned && 
+  // ===== MY TASKS SECTION =====
+  // My Tasks: Tasks I created and assigned to myself (self-assigned)
+  const myTasksParent = projectFilteredTasks.filter(task => {
+    const assignedTo = task.assignedTo || [];
+    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+    const isCreatedByMe = task.assignedBy === user.id;
+    return isAssignedToMe && isCreatedByMe;
+  });
+
+  const myTasksSubTasks = projectFilteredTasks.flatMap(task => {
+    return collectSubTasksAssignedTo(task.subTasks, user.id)
+      .filter(subTask => subTask.assignedBy === user.id)
+      .map(subTask => ({ ...subTask, isSubTask: true as const }));
+  });
+
+  const myTasksAll = [...myTasksParent, ...myTasksSubTasks];
+
+  // My Tasks: Rejected
+  const myRejectedTasks = myTasksAll.filter(task => task.currentStatus === "rejected");
+
+  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not rejected)
+  const myWIPTasks = myTasksAll.filter(task => {
+    const isSelfAssigned = task.assignedBy === user.id;
+    const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+    return isAcceptedOrSelfAssigned &&
            task.completionPercentage < 100 &&
            !isOverdue(task) &&
            task.currentStatus !== "rejected";
   });
-  
-  // 1.2 Done: Tasks completed (100% complete = done for self-assigned tasks)
-  // Comment #1: Self-assigned, 100% - done
-  const myDoneTasks = myAllTasks.filter(task => 
+
+  // My Tasks: Done (100% complete, not rejected)
+  const myDoneTasks = myTasksAll.filter(task => 
     task.completionPercentage === 100 &&
     task.currentStatus !== "rejected"
   );
-  
-  // 1.3 Overdue: Tasks past due date but not completed
-  const myOverdueTasks = myAllTasks.filter(task => 
-    task.completionPercentage < 100 && 
+
+  // My Tasks: Overdue (<100%, past due, not rejected)
+  const myOverdueTasks = myTasksAll.filter(task =>
+    task.completionPercentage < 100 &&
     isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
-  
-  // 1.4 Rejected: Tasks I assigned to others that were rejected and auto-reassigned back to me
-  // Now included in myAllTasks, so filter from there
-  const myRejectedTasks = myAllTasks.filter(task => 
-    task.currentStatus === "rejected"
-  );
 
-  // Calculate My Tasks total as sum of all categories (no double counting)
-  const myTasksTotal = myRejectedTasks.length + myWIPTasks.length + myDoneTasks.length + myOverdueTasks.length;
+  const myTasksTotal = myTasksAll.length;
 
-  // Section 2: Inbox - Tasks assigned to me by others (need acceptance)
-  // These are tasks where others assigned them to me, but I didn't create them
-  const inboxTasks = projectFilteredTasks.filter(task => {
+  // ===== INBOX SECTION =====
+  // Inbox: Tasks assigned TO me BY others
+  const inboxParentTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    
-    // Include if assigned to me but NOT created by me
-    const include = isAssignedToMe && !isCreatedByMe;
-    
-    // Debug logging for Dennis
-    if (user?.name === "Dennis" && task.readyForReview === true) {
-      console.log(`🔍 [Inbox Debug] Task "${task.title}":`, {
-        assignedTo: assignedTo,
-        isAssignedToMe: isAssignedToMe,
-        isCreatedByMe: isCreatedByMe,
-        taskAssignedBy: task.assignedBy,
-        userId: user.id,
-        include: include,
-        readyForReview: task.readyForReview,
-        projectId: task.projectId,
-        selectedProjectId: selectedProjectId
-      });
-    }
-    
-    return include;
+    return isAssignedToMe && !isCreatedByMe; // Assigned to me but NOT created by me
   });
 
   const inboxSubTasks = projectFilteredTasks.flatMap(task => {
-    // Only include subtasks assigned to me but NOT created by me
     return collectSubTasksAssignedTo(task.subTasks, user.id)
       .filter(subTask => subTask.assignedBy !== user.id)
       .map(subTask => ({ ...subTask, isSubTask: true as const }));
   });
 
-  const inboxAllTasks = [...inboxTasks, ...inboxSubTasks];
-  
-  // Apply same categorization logic to inbox tasks
-  // 2.1 Received: Tasks assigned to me but not accepted yet
-  // Comment #2: Tasks that haven't been accepted should be allowed to be updated
-  // This includes both <100% and 100% tasks that haven't been accepted
-  const inboxReceivedTasks = inboxAllTasks.filter(task => 
-    !task.accepted && 
+  const inboxAll = [...inboxParentTasks, ...inboxSubTasks];
+
+  // Inbox: Received (not accepted, not rejected)
+  const inboxReceivedTasks = inboxAll.filter(task =>
+    !task.accepted &&
     task.currentStatus !== "rejected"
   );
-  
-  // 2.2 WIP: Tasks I've accepted, either in progress OR completed but not submitted for review
-  const inboxWIPTasks = inboxAllTasks.filter(task => 
-    task.accepted && 
+
+  // Inbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review))
+  const inboxWIPTasks = inboxAll.filter(task =>
+    task.accepted &&
     !isOverdue(task) &&
     task.currentStatus !== "rejected" &&
-    (
-      task.completionPercentage < 100 || // Still in progress
-      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
-    )
+    (task.completionPercentage < 100 ||
+     (task.completionPercentage === 100 && !task.readyForReview))
   );
-  
-  // 2.3 Reviewing: Tasks I CREATED that are at 100% submitted for review (awaiting my action)
-  // When assignee completes and submits for review, task appears in MY Inbox
-  // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
-  //          Task A appears in Tristan's Inbox → Reviewing (awaiting Tristan's action)
-  // Note: Inbox includes tasks assigned to me, but for Reviewing we need tasks I CREATED
+
+  // Inbox: Reviewing (tasks I CREATED waiting for my review action)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
-    const isCreatedByMe = task.assignedBy === user.id;
-    const matches = isCreatedByMe &&
-                    task.completionPercentage === 100 &&
-                    task.readyForReview === true &&
-                    task.reviewAccepted !== true;
-    
-    return matches;
+    const isCreatedByMeForReview = task.assignedBy === user.id;
+    return isCreatedByMeForReview &&
+           task.completionPercentage === 100 &&
+           task.readyForReview === true &&
+           task.reviewAccepted !== true;
   });
-  
-  // 2.4 Done: Tasks where the assigner has accepted completion
-  const inboxDoneTasks = inboxAllTasks.filter(task => 
+
+  // Inbox: Done (100% complete, review accepted)
+  const inboxDoneTasks = inboxAll.filter(task =>
     task.completionPercentage === 100 &&
     task.reviewAccepted === true
   );
-  
-  // 2.5 Overdue: Tasks past due date but not completed
-  const inboxOverdueTasks = inboxAllTasks.filter(task => 
-    task.completionPercentage < 100 && 
+
+  // Inbox: Overdue (<100%, past due, not rejected)
+  const inboxOverdueTasks = inboxAll.filter(task =>
+    task.completionPercentage < 100 &&
     isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
 
-  // Calculate Inbox total as sum of all categories (no double counting)
-  // Note: inboxReviewingTasks includes tasks I CREATED (not in inboxAllTasks), so calculate separately
-  const inboxTotal = inboxReceivedTasks.length + inboxWIPTasks.length + inboxReviewingTasks.length + inboxDoneTasks.length + inboxOverdueTasks.length;
-  
-  // Section 3: Outbox - Tasks I assigned to others
-  // These are tasks where I created them and assigned them to others
-  // Note: Even if I'm also assigned, if I created it, it shows in Outbox
-  const outboxTasks = projectFilteredTasks.filter(task => {
+  const inboxTotal = inboxAll.length;
+
+  // ===== OUTBOX SECTION =====
+  // Outbox: Tasks I assigned TO others (not self-assigned only, not rejected)
+  const outboxParentTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    
-    // Include if created by me (regardless of whether I'm also assigned)
-    // Exclude rejected tasks (they auto-reassign to creator and show in My Tasks)
-    // Only exclude if it's ONLY assigned to me (self-assigned only)
     const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-    
-    // Debug logging for Tristan
-    if (user?.name === "Tristan" && task.readyForReview === true) {
-      console.log(`🔍 [Outbox Debug] Task "${task.title}":`, {
-        assignedTo: assignedTo,
-        isAssignedToMe: isAssignedToMe,
-        isCreatedByMe: isCreatedByMe,
-        isSelfAssignedOnly: isSelfAssignedOnly,
-        taskAssignedBy: task.assignedBy,
-        userId: user.id,
-        readyForReview: task.readyForReview,
-        projectId: task.projectId,
-        selectedProjectId: selectedProjectId,
-        willInclude: isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"
-      });
-    }
-    
     return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
   });
 
-  const outboxSubTasks = projectFilteredTasks.flatMap(task => {
-    // Only include subtasks created by me but NOT assigned to me
-    return collectSubTasksAssignedBy(task.subTasks, user.id)
+  const outboxSubTasks = projectFilteredTasks.flatMap(task =>
+    collectSubTasksAssignedBy(task.subTasks, user.id)
       .filter(subTask => {
         const assignedTo = subTask.assignedTo || [];
-        const isAssignedToMe = !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
-        // Exclude rejected subtasks (they auto-reassign to creator and show in My Tasks)
-        return isAssignedToMe && subTask.currentStatus !== "rejected";
+        return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
       })
-      .map(subTask => ({ ...subTask, isSubTask: true as const }));
-  });
+      .map(subTask => ({ ...subTask, isSubTask: true as const }))
+  );
 
-  const outboxAllTasks = [...outboxTasks, ...outboxSubTasks];
-  
-  // Apply same categorization logic to outbox tasks
-  // 3.1 Assigned: Tasks I assigned but assignee hasn't accepted yet
-  // Comment #3: Created by me, assigned to others, not accepted - Assigned
-  // This includes both <100% and 100% tasks that haven't been accepted
-  const outboxAssignedTasks = outboxAllTasks.filter(task => 
-    !task.accepted && 
+  const outboxAll = [...outboxParentTasks, ...outboxSubTasks];
+
+  // Outbox: Assigned (not accepted, not rejected)
+  const outboxAssignedTasks = outboxAll.filter(task =>
+    !task.accepted &&
     task.currentStatus !== "rejected"
   );
-  
-  // 3.2 WIP: Tasks assignee has accepted, either in progress OR completed but not submitted for review
-  const outboxWIPTasks = outboxAllTasks.filter(task => 
-    task.accepted && 
+
+  // Outbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review))
+  const outboxWIPTasks = outboxAll.filter(task =>
+    task.accepted &&
     !isOverdue(task) &&
     task.currentStatus !== "rejected" &&
-    (
-      task.completionPercentage < 100 || // Still in progress
-      (task.completionPercentage === 100 && !task.readyForReview) // Completed but not submitted
-    )
+    (task.completionPercentage < 100 ||
+     (task.completionPercentage === 100 && !task.readyForReview))
   );
-  
-  // 3.3 Reviewing: Tasks I'm ASSIGNED TO that are at 100% submitted for review (I submitted it)
-  // When I complete and submit for review, task appears in MY Outbox
-  // Example: Tristan assigns Task A to Dennis. When Dennis submits for review,
-  //          Task A appears in Dennis's Outbox → Reviewing (he submitted it)
-  // Note: Outbox includes tasks I created, but for Reviewing we need tasks I'm ASSIGNED TO
+
+  // Outbox: Reviewing (tasks I'm ASSIGNED TO that I submitted for review)
   const outboxReviewingTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    
-    // Include if assigned to me but NOT created by me (tasks assigned to me by others)
     return !isCreatedByMe &&
            isAssignedToMe &&
            task.completionPercentage === 100 &&
            task.readyForReview === true &&
            task.reviewAccepted !== true;
   });
-  
-  // 3.4 Done: Tasks where I've accepted completion
-  const outboxDoneTasks = outboxAllTasks.filter(task => 
+
+  // Outbox: Done (100% complete, review accepted)
+  const outboxDoneTasks = outboxAll.filter(task =>
     task.completionPercentage === 100 &&
     task.reviewAccepted === true
   );
-  
-  // 3.5 Overdue: Tasks past due date but not completed
-  const outboxOverdueTasks = outboxAllTasks.filter(task => 
-    task.completionPercentage < 100 && 
+
+  // Outbox: Overdue (<100%, past due, not rejected)
+  const outboxOverdueTasks = outboxAll.filter(task =>
+    task.completionPercentage < 100 &&
     isOverdue(task) &&
     task.currentStatus !== "rejected"
   );
 
-  // Calculate Outbox total as sum of all categories (no double counting)
-  // Note: outboxReviewingTasks includes tasks I'm ASSIGNED TO (not in outboxAllTasks), so calculate separately
-  const outboxTotal = outboxAssignedTasks.length + outboxWIPTasks.length + outboxReviewingTasks.length + outboxDoneTasks.length + outboxOverdueTasks.length;
+  const outboxTotal = outboxAll.length;
 
-  // Debug logging to understand task counts
-  console.log('🔍 Dashboard Task Analysis:', {
-    userId: user.id,
-    userName: user.name,
-    selectedProjectId: selectedProjectId,
-    totalTasks: tasks.length,
-    projectFilteredTasks: projectFilteredTasks.length,
-    myTasksCount: myAllTasks.length,
-    inboxTasksCount: inboxAllTasks.length,
-    outboxTasksCount: outboxAllTasks.length,
-    allTasksDetails: tasks.map(t => ({ 
-      id: t.id, 
-      title: t.title, 
-      projectId: t.projectId,
-      assignedBy: t.assignedBy, 
-      assignedTo: t.assignedTo 
-    })),
-    myTasksDetails: myAllTasks.map(t => ({ id: t.id, title: t.title, assignedBy: t.assignedBy, assignedTo: t.assignedTo })),
-    inboxTasksDetails: inboxAllTasks.map(t => ({ id: t.id, title: t.title, assignedBy: t.assignedBy, assignedTo: t.assignedTo })),
-    outboxTasksDetails: outboxAllTasks.map(t => ({ id: t.id, title: t.title, assignedBy: t.assignedBy, assignedTo: t.assignedTo }))
-  });
-
-  const getPriorityColor = (priority: Priority) => {
-    switch (priority) {
-      case "critical": return "text-red-600 bg-red-50";
-      case "high": return "text-orange-600 bg-orange-50";
-      case "medium": return "text-yellow-600 bg-yellow-50";
-      case "low": return "text-green-600 bg-green-50";
-      default: return "text-gray-600 bg-gray-50";
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed": return "text-green-600";
-      case "in_progress": return "text-blue-600";
-      case "rejected": return "text-red-600";
-      default: return "text-gray-600";
-    }
-  };
-
-  const StatCard = ({ 
-    title, 
-    count, 
-    icon, 
-    color = "bg-blue-50", 
-    iconColor = "#3b82f6",
-    onPress 
-  }: {
-    title: string;
-    count: number;
-    icon: string;
-    color?: string;
-    iconColor?: string;
-    onPress?: () => void;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      className={cn("flex-1 p-4 rounded-xl", color)}
-    >
-      <View className="flex-row items-center justify-between mb-2">
-        <Ionicons name={icon as any} size={24} color={iconColor} />
-        <Text className="text-2xl font-bold text-gray-900">{count}</Text>
-      </View>
-      <Text className="text-sm text-gray-600">{title}</Text>
-    </Pressable>
-  );
-
-  const TaskPreviewCard = ({ task }: { task: Task }) => (
-    <Pressable className="bg-white border border-gray-200 rounded-lg p-5 mb-3">
-      <View className="flex-row items-start justify-between mb-3">
-        <View className="flex-1">
-          <Text className="font-bold text-gray-900 text-lg mb-2" numberOfLines={2}>
-            {task.title}
+  // Loading state
+  if (!selectedProject && userProjectCount > 0) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar style="dark" />
+        <StandardHeader title="Dashboard" />
+        
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
+          <Text className="text-lg font-semibold text-gray-900 mt-4 text-center">
+            Select a Project
           </Text>
-          <Text className="text-base text-gray-600" numberOfLines={2}>
-            {task.description}
+          <Text className="text-sm text-gray-600 mt-2 text-center mb-6">
+            Choose a project to view your dashboard and tasks
+          </Text>
+          <Pressable
+            onPress={() => setShowProjectPicker(true)}
+            className="bg-blue-600 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-semibold">Choose Project</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (userProjectCount === 0) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-50">
+        <StatusBar style="dark" />
+        <StandardHeader title="Dashboard" />
+        
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
+          <Text className="text-lg font-semibold text-gray-900 mt-4 text-center">
+            No Projects Yet
+          </Text>
+          <Text className="text-sm text-gray-600 mt-2 text-center">
+            You haven't been assigned to any projects yet. Contact your admin to get started.
           </Text>
         </View>
-        <View className={cn("px-4 py-2 rounded ml-3", getPriorityColor(task.priority))}>
-          <Text className="text-sm font-bold capitalize">
-            {task.priority}
-          </Text>
-        </View>
-      </View>
-      
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <Ionicons 
-            name="time-outline" 
-            size={20} 
-            color="#6b7280" 
-          />
-          <Text className="text-sm text-gray-500 ml-2 font-semibold">
-            Due {new Date(task.dueDate).toLocaleDateString()}
-          </Text>
-        </View>
-        <View className="flex-row items-center">
-          <View className="w-3 h-3 rounded-full bg-gray-300 mr-2" />
-          <Text className={cn("text-sm font-bold capitalize", getStatusColor(task.currentStatus))}>
-            {task.currentStatus.replace("_", " ")}
-          </Text>
-        </View>
-      </View>
-
-      {/* Progress bar */}
-      <View className="mt-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-sm text-gray-600 font-semibold">Progress</Text>
-          <Text className="text-sm text-gray-600 font-bold">{task.completionPercentage}%</Text>
-        </View>
-        <View className="w-full bg-gray-200 rounded-full h-3">
-          <View 
-            className="bg-blue-600 h-3 rounded-full" 
-            style={{ width: `${task.completionPercentage}%` }}
-          />
-        </View>
-      </View>
-    </Pressable>
-  );
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      <LoadingIndicator 
-        isLoading={projectStore.isLoading || taskStore.isLoading} 
-        text="Syncing data..." 
-      />
       
-      {/* Standard Header */}
+      {/* Header */}
       <StandardHeader 
-        title={t.nav.dashboard}
+        title="Dashboard"
         rightElement={
-          <View className="flex-row items-center">
-            <Text className="text-base font-medium text-gray-700 mr-2">
-              {user.name} ({user.role})
-            </Text>
-            <Pressable 
-              onPress={onNavigateToProfile}
-              className="w-10 h-10 items-center justify-center"
-            >
-              <Ionicons name="person-circle-outline" size={32} color="#3b82f6" />
-            </Pressable>
-          </View>
-        }
-      />
-
-      <ScrollView 
-        className="flex-1" 
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor="#3b82f6"
-            colors={["#3b82f6"]}
-          />
-        }
-      >
-        {/* Project Filter Picker */}
-        <View className="px-6 pt-4 pb-2">
           <Pressable
             onPress={() => setShowProjectPicker(true)}
-            className="bg-white border-2 border-blue-600 rounded-lg px-4 py-3 flex-row items-center justify-between"
+            className="flex-row items-center bg-blue-50 px-3 py-2 rounded-lg"
           >
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="business-outline" size={28} color="#3b82f6" />
-              <View className="ml-3 flex-1">
-                <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                  {selectedProject 
-                    ? selectedProject.name 
-                    : userProjects.length === 0 
-                      ? "No Projects Assigned" 
-                      : "---"
-                  }
-                </Text>
-                {!selectedProject && userProjects.length > 0 && (
-                  <Text className="text-xs text-gray-500 mt-0.5">
-                    Tap to select a project
-                  </Text>
-                )}
-              </View>
-            </View>
-            <Ionicons name="chevron-down" size={28} color="#6b7280" />
-          </Pressable>
-        </View>
-        
-        {/* Today's Tasks Section */}
-        {(() => {
-          const starredTasks = getStarredTasks(user.id);
-          const hasStarredTasks = starredTasks.length > 0;
-          
-          return (
-            <View className="px-6 pt-2 pb-4">
-              <View className="flex-row items-center mb-3">
-                <Ionicons name="star" size={20} color="#f59e0b" />
-                <Text className="text-lg font-bold text-gray-900 ml-2">
-                  Today's Tasks ({starredTasks.length})
-                </Text>
-              </View>
-              
-              {hasStarredTasks ? (
-                <View className="space-y-2">
-                  {starredTasks.map((task: Task) => {
-                  const isStarred = task.starredByUsers?.includes(user.id) || false;
-                  
-                  return (
-                    <Pressable
-                      key={task.id}
-                      onPress={() => {
-                        if (onNavigateToTaskDetail) {
-                          onNavigateToTaskDetail(task.id);
-                        }
-                      }}
-                      className="bg-white border-2 border-yellow-400 rounded-lg p-3"
-                    >
-                      {/* Main content: Photo on left, Text on right */}
-                      <View className="flex-row">
-                        {/* Photo on the left (only first photo) */}
-                        {task.attachments && task.attachments.length > 0 && (
-                          <View className="mr-3">
-                            <Image
-                              source={{ uri: task.attachments[0] }}
-                              className="w-20 h-20 rounded-lg"
-                              resizeMode="cover"
-                            />
-                            {task.attachments.length > 1 && (
-                              <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
-                                <Text className="text-white text-xs font-semibold">
-                                  +{task.attachments.length - 1}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                        )}
-                        
-                        {/* Text content on the right */}
-                        <View className="flex-1">
-                          {/* Line 1: Title and Priority */}
-                          <View className="flex-row items-center justify-between mb-2">
-                            <View className="flex-row items-center flex-1 mr-2">
-                              <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
-                                {task.title}
-                              </Text>
-                            </View>
-                            <View className="flex-row items-center gap-2">
-                              {/* Star button */}
-                              <Pressable
-                                onPress={(e) => {
-                                  e.stopPropagation();
-                                  toggleTaskStar(task.id, user.id);
-                                }}
-                                className="p-1"
-                              >
-                                <Ionicons 
-                                  name={isStarred ? "star" : "star-outline"} 
-                                  size={18} 
-                                  color={isStarred ? "#f59e0b" : "#9ca3af"} 
-                                />
-                              </Pressable>
-                              {/* Priority badge */}
-                              <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-                                <Text className="text-xs font-bold capitalize">
-                                  {task.priority}
-                                </Text>
-                              </View>
-                            </View>
-                          </View>
-                          
-                          {/* Task Description */}
-                          {task.description && (
-                            <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-                              {task.description}
-                            </Text>
-                          )}
-                          
-                          {/* Line 2: Due Date and Status */}
-                          <View className="flex-row items-center justify-between">
-                            <View className="flex-row items-center">
-                              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-                              <Text className="text-sm text-gray-600 ml-1">
-                                {new Date(task.dueDate).toLocaleDateString()}
-                              </Text>
-                            </View>
-                            <Text className="text-sm text-gray-500">
-                              {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-                </View>
-              ) : (
-                <View className="bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-lg p-3 items-center">
-                  <Ionicons name="star-outline" size={24} color="#d97706" />
-                  <Text className="text-gray-600 text-sm mt-1 text-center">
-                    No tasks starred for today
-                  </Text>
-                  <Text className="text-gray-500 text-xs mt-0.5 text-center">
-                    Tap the star icon on any task to add it here
-                  </Text>
-                </View>
-              )}
-            </View>
-          );
-        })()}
-        
-        {/* Quick Overview */}
-        <View className="px-6 py-4">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-bold text-gray-900">
-              {t.dashboard.quickOverview}
+            <Text className="text-sm font-semibold text-blue-700 mr-1">
+              {selectedProject?.name || "Select Project"}
             </Text>
-            <Pressable
-              onPress={onNavigateToReports}
-              className="px-4 py-2 bg-blue-600 rounded-lg flex-row items-center"
-            >
-              <Ionicons name="bar-chart-outline" size={18} color="white" />
-              <Text className="text-white font-medium ml-2">Reports</Text>
-            </Pressable>
+            <Ionicons name="chevron-down" size={16} color="#1d4ed8" />
+          </Pressable>
+        }
+      />
+
+      {/* Main Content with Pull-to-Refresh */}
+      <ScrollView 
+        className="flex-1"
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
+        <View className="p-4">
+          {/* Project Info Header */}
+          <View className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-1">
+                <Text className="text-lg font-semibold text-gray-900">
+                  {selectedProject?.name}
+                </Text>
+                <Text className="text-sm text-gray-600 mt-1">
+                  {selectedProject?.description}
+                </Text>
+              </View>
+            </View>
           </View>
 
-          {/* Combined Task Overview Box */}
-          <View className="bg-white rounded-lg p-4 border border-gray-200">
+          {/* Quick Actions */}
+          <View className="flex-row gap-2 mb-4">
+            <Pressable
+              onPress={() => onNavigateToProfile()}
+              className="flex-1 bg-purple-600 rounded-lg p-3 flex-row items-center justify-center"
+            >
+              <Ionicons name="person" size={20} color="white" />
+              <Text className="text-white font-medium ml-2">Profile</Text>
+            </Pressable>
             
-            {/* Section 1: My Tasks - Self-assigned tasks */}
+            {onNavigateToReports && (
+              <Pressable
+                onPress={() => onNavigateToReports()}
+                className="flex-1 bg-green-600 rounded-lg p-3 flex-row items-center justify-center"
+              >
+                <Ionicons name="bar-chart" size={20} color="white" />
+                <Text className="text-white font-medium ml-2">Reports</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {/* Quick Overview Section */}
+          <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="list-outline" size={20} color="#3b82f6" />
+              <Text className="text-base font-semibold text-gray-900 ml-2">
+                Quick Overview
+              </Text>
+            </View>
+
+            {/* Section 1: My Tasks */}
             <View>
-              {/* Title */}
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle-outline" size={20} color="#10b981" />
@@ -844,74 +510,71 @@ export default function DashboardScreen({
                     My Tasks ({myTasksTotal})
                   </Text>
                 </View>
-                {/* Info text about starring */}
                 <Text className="text-xs text-gray-500 italic">
                   Tap star in Tasks screen
                 </Text>
               </View>
               
-              {/* 4 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 1.1 Rejected - YELLOW */}
-                  <Pressable 
-                    className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("rejected");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-yellow-700 mb-1">{myRejectedTasks.length}</Text>
-                    <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Rejected</Text>
-                  </Pressable>
-                  
-                  {/* 1.2 WIP - ORANGE */}
-                  <Pressable 
-                    className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("wip");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{myWIPTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
-                  </Pressable>
-                  
-                  {/* 1.3 Done - GREEN */}
-                  <Pressable 
-                    className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-green-700 mb-1">{myDoneTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
-                  </Pressable>
-                  
-                  {/* 1.4 Overdue - RED */}
-                  <Pressable 
-                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-red-700 mb-1">{myOverdueTasks.length}</Text>
-                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
-                  </Pressable>
-                </View>
+                {/* Rejected */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("my_tasks");
+                    setStatusFilter("rejected");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-yellow-700 mb-1">{myRejectedTasks.length}</Text>
+                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Rejected</Text>
+                </Pressable>
+                
+                {/* WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("my_tasks");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-orange-700 mb-1">{myWIPTasks.length}</Text>
+                  <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
+                </Pressable>
+                
+                {/* Done */}
+                <Pressable 
+                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("my_tasks");
+                    setStatusFilter("done");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-green-700 mb-1">{myDoneTasks.length}</Text>
+                  <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
+                </Pressable>
+                
+                {/* Overdue */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("my_tasks");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-red-700 mb-1">{myOverdueTasks.length}</Text>
+                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Divider */}
             <View className="h-px bg-gray-200 my-4" />
 
-            {/* Section 2: Inbox - Tasks assigned to me by others */}
+            {/* Section 2: Inbox */}
             <View>
-              {/* Title */}
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
                   <Ionicons name="mail-outline" size={20} color="#3b82f6" />
@@ -921,81 +584,79 @@ export default function DashboardScreen({
                 </View>
               </View>
               
-              {/* 5 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 2.1 Received - YELLOW */}
-                  <Pressable 
-                    className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("received");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-yellow-700 mb-1">{inboxReceivedTasks.length}</Text>
-                    <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Received</Text>
-                  </Pressable>
-                  
-                  {/* 2.2 WIP - ORANGE */}
-                  <Pressable 
-                    className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("wip");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{inboxWIPTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
-                  </Pressable>
-                  
-                  {/* 2.3 Reviewing - BLUE */}
-                  <Pressable 
-                    className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("reviewing");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-blue-700 mb-1">{inboxReviewingTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Reviewing</Text>
-                  </Pressable>
-                  
-                  {/* 2.4 Done - GREEN */}
-                  <Pressable 
-                    className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-green-700 mb-1">{inboxDoneTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
-                  </Pressable>
-                  
-                  {/* 2.5 Overdue - RED */}
-                  <Pressable 
-                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-red-700 mb-1">{inboxOverdueTasks.length}</Text>
-                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
-                  </Pressable>
-                </View>
+                {/* Received */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("received");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-yellow-700 mb-1">{inboxReceivedTasks.length}</Text>
+                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Received</Text>
+                </Pressable>
+                
+                {/* WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-orange-700 mb-1">{inboxWIPTasks.length}</Text>
+                  <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
+                </Pressable>
+                
+                {/* Reviewing */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-blue-700 mb-1">{inboxReviewingTasks.length}</Text>
+                  <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Reviewing</Text>
+                </Pressable>
+                
+                {/* Done */}
+                <Pressable 
+                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("done");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-green-700 mb-1">{inboxDoneTasks.length}</Text>
+                  <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
+                </Pressable>
+                
+                {/* Overdue */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-red-700 mb-1">{inboxOverdueTasks.length}</Text>
+                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
+                </Pressable>
+              </View>
             </View>
 
             {/* Divider */}
             <View className="h-px bg-gray-200 my-4" />
 
-            {/* Section 3: Outbox - Tasks I assigned to others */}
+            {/* Section 3: Outbox */}
             <View>
-              {/* Title */}
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
                   <Ionicons name="send-outline" size={20} color="#7c3aed" />
@@ -1005,78 +666,286 @@ export default function DashboardScreen({
                 </View>
               </View>
               
-              {/* 5 Status Categories in Single Row */}
               <View className="flex-row gap-2">
-                  {/* 3.1 Assigned - YELLOW */}
-                  <Pressable 
-                    className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("assigned");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-yellow-700 mb-1">{outboxAssignedTasks.length}</Text>
-                    <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Assigned</Text>
-                  </Pressable>
-                  
-                  {/* 3.2 WIP - ORANGE */}
-                  <Pressable 
-                    className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("wip");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-orange-700 mb-1">{outboxWIPTasks.length}</Text>
-                    <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
-                  </Pressable>
-                  
-                  {/* 3.3 Reviewing - BLUE */}
-                  <Pressable 
-                    className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("reviewing");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-blue-700 mb-1">{outboxReviewingTasks.length}</Text>
-                    <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Reviewing</Text>
-                  </Pressable>
-                  
-                  {/* 3.4 Done - GREEN */}
-                  <Pressable 
-                    className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-green-700 mb-1">{outboxDoneTasks.length}</Text>
-                    <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
-                  </Pressable>
-                  
-                  {/* 3.5 Overdue - RED */}
-                  <Pressable 
-                    className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className="text-2xl font-bold text-red-700 mb-1">{outboxOverdueTasks.length}</Text>
-                    <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
-                  </Pressable>
-                </View>
+                {/* Assigned */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("assigned");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-yellow-700 mb-1">{outboxAssignedTasks.length}</Text>
+                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={1}>Assigned</Text>
+                </Pressable>
+                
+                {/* WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-orange-700 mb-1">{outboxWIPTasks.length}</Text>
+                  <Text className="text-xs text-orange-600 text-center" numberOfLines={1}>WIP</Text>
+                </Pressable>
+                
+                {/* Reviewing */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-blue-700 mb-1">{outboxReviewingTasks.length}</Text>
+                  <Text className="text-xs text-blue-600 text-center" numberOfLines={1}>Reviewing</Text>
+                </Pressable>
+                
+                {/* Done */}
+                <Pressable 
+                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("done");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-green-700 mb-1">{outboxDoneTasks.length}</Text>
+                  <Text className="text-xs text-green-600 text-center" numberOfLines={1}>Done</Text>
+                </Pressable>
+                
+                {/* Overdue */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-2 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-2xl font-bold text-red-700 mb-1">{outboxOverdueTasks.length}</Text>
+                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>Overdue</Text>
+                </Pressable>
+              </View>
             </View>
-            
           </View>
-        </View>
 
+          {/* ===== PRIORITY SUMMARY SECTION ===== */}
+          <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
+              <Text className="text-base font-semibold text-gray-900 ml-2">
+                Priority Summary
+              </Text>
+            </View>
+
+            {/* 1. URGENT! Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                <Text className="text-sm font-semibold text-red-600 ml-2">Urgent!</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* My Overdues */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-red-700 mb-1">
+                    {myOverdueTasks.length + inboxOverdueTasks.length}
+                  </Text>
+                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>
+                    My Overdues
+                  </Text>
+                </Pressable>
+                
+                {/* Chase Now */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-red-700 mb-1">
+                    {outboxOverdueTasks.length}
+                  </Text>
+                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>
+                    Chase Now
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 2. IN QUEUE Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="hourglass-outline" size={18} color="#f59e0b" />
+                <Text className="text-sm font-semibold text-amber-600 ml-2">In Queue</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* Inbox Received */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("received");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
+                    {inboxReceivedTasks.length}
+                  </Text>
+                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={2}>
+                    Inbox{'\n'}Received
+                  </Text>
+                </Pressable>
+                
+                {/* Inbox Review */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-blue-700 mb-1">
+                    {inboxReviewingTasks.length}
+                  </Text>
+                  <Text className="text-xs text-blue-600 text-center" numberOfLines={2}>
+                    Inbox{'\n'}Review
+                  </Text>
+                </Pressable>
+                
+                {/* All WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-orange-700 mb-1">
+                    {myWIPTasks.length + inboxWIPTasks.length}
+                  </Text>
+                  <Text className="text-xs text-orange-600 text-center" numberOfLines={2}>
+                    All WIP{'\n'}Tasks
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 3. MONITORING Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="eye-outline" size={18} color="#8b5cf6" />
+                <Text className="text-sm font-semibold text-purple-600 ml-2">Monitoring</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* Outbox Assigned */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("assigned");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
+                    {outboxAssignedTasks.length}
+                  </Text>
+                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={2}>
+                    Outbox{'\n'}Assigned
+                  </Text>
+                </Pressable>
+                
+                {/* Outbox WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-orange-700 mb-1">
+                    {outboxWIPTasks.length}
+                  </Text>
+                  <Text className="text-xs text-orange-600 text-center" numberOfLines={2}>
+                    Outbox{'\n'}WIP
+                  </Text>
+                </Pressable>
+                
+                {/* Outbox Reviewing */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-blue-700 mb-1">
+                    {outboxReviewingTasks.length}
+                  </Text>
+                  <Text className="text-xs text-blue-600 text-center" numberOfLines={2}>
+                    Outbox{'\n'}Reviewing
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 4. ACCOMPLISHMENTS Section */}
+            <View>
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="trophy-outline" size={18} color="#10b981" />
+                <Text className="text-sm font-semibold text-green-600 ml-2">Accomplishments</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* All Done */}
+                <Pressable 
+                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("done");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-green-700 mb-1">
+                    {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
+                  </Text>
+                  <Text className="text-xs text-green-600 text-center" numberOfLines={2}>
+                    All Done{'\n'}Tasks
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          {/* Footer space for FAB */}
+          <View className="h-32" />
+        </View>
       </ScrollView>
 
       {/* Project Picker Modal */}
@@ -1118,33 +987,29 @@ export default function DashboardScreen({
                   setShowProjectPicker(false);
                 }}
                 className={cn(
-                  "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
-                  (!selectedProjectId || selectedProjectId === "") ? "border-blue-500 bg-blue-50" : "border-gray-300"
+                  "bg-white border rounded-lg p-4 mb-2",
+                  selectedProjectId === null ? "border-blue-500 bg-blue-50" : "border-gray-200"
                 )}
               >
-                <View className={cn(
-                  "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
-                  (!selectedProjectId || selectedProjectId === "") ? "border-blue-500" : "border-gray-300"
-                )}>
-                  {(!selectedProjectId || selectedProjectId === "") && (
-                    <View className="w-3 h-3 rounded-full bg-blue-500" />
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className={cn(
+                      "text-base font-semibold",
+                      selectedProjectId === null ? "text-blue-700" : "text-gray-900"
+                    )}>
+                      All Projects
+                    </Text>
+                    <Text className="text-sm text-gray-600 mt-1">
+                      View tasks from all assigned projects
+                    </Text>
+                  </View>
+                  {selectedProjectId === null && (
+                    <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
                   )}
                 </View>
-                <View className="flex-1">
-                  <Text className={cn(
-                    "text-sm font-semibold",
-                    (!selectedProjectId || selectedProjectId === "") ? "text-blue-900" : "text-gray-900"
-                  )} numberOfLines={1}>
-                    --- (No Project Selected)
-                  </Text>
-                  <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
-                    No projects assigned to you yet
-                  </Text>
-                </View>
-                <Ionicons name="remove-outline" size={24} color={(!selectedProjectId || selectedProjectId === "") ? "#3b82f6" : "#6b7280"} />
               </Pressable>
             )}
-            
+
             {userProjects.map((project) => (
               <Pressable
                 key={project.id}
@@ -1153,57 +1018,50 @@ export default function DashboardScreen({
                   setShowProjectPicker(false);
                 }}
                 className={cn(
-                  "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
-                  selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : "border-gray-300"
+                  "bg-white border rounded-lg p-4 mb-2",
+                  selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
                 )}
               >
-                <View className={cn(
-                  "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
-                  selectedProjectId === project.id ? "border-blue-500" : "border-gray-300"
-                )}>
+                <View className="flex-row items-center justify-between">
+                  <View className="flex-1">
+                    <Text className={cn(
+                      "text-base font-semibold",
+                      selectedProjectId === project.id ? "text-blue-700" : "text-gray-900"
+                    )}>
+                      {project.name}
+                    </Text>
+                    <Text className="text-sm text-gray-600 mt-1">
+                      {project.description}
+                    </Text>
+                    <View className="flex-row items-center mt-2">
+                      <View className={cn(
+                        "px-2 py-1 rounded-full",
+                        project.status === "active" ? "bg-green-100" : "bg-yellow-100"
+                      )}>
+                        <Text className={cn(
+                          "text-xs font-medium",
+                          project.status === "active" ? "text-green-700" : "text-yellow-700"
+                        )}>
+                          {project.status}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
                   {selectedProjectId === project.id && (
-                    <View className="w-3 h-3 rounded-full bg-blue-500" />
+                    <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
                   )}
                 </View>
-                <View className="flex-1">
-                  <Text className={cn(
-                    "text-sm font-semibold",
-                    selectedProjectId === project.id ? "text-blue-900" : "text-gray-900"
-                  )} numberOfLines={1}>
-                    {project.name}
-                  </Text>
-                  <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
-                    {project.location.city}, {project.location.state} • {project.status}
-                  </Text>
-                </View>
-                <Ionicons name="folder-outline" size={24} color={selectedProjectId === project.id ? "#3b82f6" : "#6b7280"} />
               </Pressable>
             ))}
-            
-            {userProjects.length === 0 && (
-              <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
-                <Ionicons name="folder-open-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-500 text-center mt-2">
-                  No projects assigned to you yet
-                </Text>
-                <Text className="text-gray-400 text-center mt-1 text-sm">
-                  Contact your admin to get assigned to projects
-                </Text>
-              </View>
-            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
 
       {/* Expandable Utility FAB */}
-      <ExpandableUtilityFAB 
+      <ExpandableUtilityFAB
         onCreateTask={onNavigateToCreateTask}
         onRefresh={handleManualRefresh}
       />
     </SafeAreaView>
   );
 }
-// Force reload 1759505832
-// Force reload: 1759506479
-// Force reload: 1759506549
-// Force reload: 1759507000 - Fixed 4-button layout

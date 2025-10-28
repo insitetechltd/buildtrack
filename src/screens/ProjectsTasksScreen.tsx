@@ -21,7 +21,6 @@ import { Task, Priority, TaskStatus, SubTask, Project, ProjectStatus } from "../
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
-import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
 
 interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -48,34 +47,18 @@ export default function ProjectsTasksScreen({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
-  const [localStatusFilter, setLocalStatusFilter] = useState<string>("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Apply filters from store on mount or when they change
-  // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
+  // Apply filters from store on mount
   useEffect(() => {
-    console.log('🔍 [ProjectsTasksScreen] Filter Store Update:', { sectionFilter, statusFilter });
-    if (sectionFilter && statusFilter) {
-      // Both filters set together - apply both immediately
-      console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
+    if (sectionFilter) {
       setLocalSectionFilter(sectionFilter);
+      clearSectionFilter(); // Clear it after applying so it doesn't persist
+    }
+    if (statusFilter) {
       setLocalStatusFilter(statusFilter);
-      // Clear filters from store AFTER setting local state
-      setTimeout(() => {
-        clearSectionFilter();
-        clearStatusFilter();
-      }, 0);
-    } else if (sectionFilter) {
-      // Only section filter set - apply section, reset status
-      console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
-      setLocalSectionFilter(sectionFilter);
-      setLocalStatusFilter("all");
-      clearSectionFilter();
-    } else if (statusFilter) {
-      // Only status filter set - apply status only
-      console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
-      setLocalStatusFilter(statusFilter);
-      clearStatusFilter();
+      clearStatusFilter(); // Clear it after applying so it doesn't persist
     }
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
@@ -157,28 +140,20 @@ export default function ProjectsTasksScreen({
     const allProjectTasks = userProjects.flatMap(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
 
-      // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned + rejected tasks I created)
+      // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only)
       const myTasksParent = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
         const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
-        // Include if:
-        // 1. Assigned to me AND created by me (self-assigned), OR
-        // 2. Created by me AND rejected (auto-reassigned back to creator)
-        return (isDirectlyAssigned && isCreatedByMe && !hasAssignedSubtasks) || 
-               (isCreatedByMe && task.currentStatus === "rejected");
+        // Include if assigned to me AND created by me (self-assigned)
+        return isDirectlyAssigned && isCreatedByMe && !hasAssignedSubtasks;
       });
       
       const myTasksSubTasks = projectTasks.flatMap(task => {
-        // Include subtasks I created and assigned to myself
-        // Also include rejected subtasks I created
+        // Only include subtasks I created and assigned to myself
         return collectSubTasksAssignedTo(task.subTasks, user.id)
-          .filter(subTask => {
-            const isCreatedByMe = subTask.assignedBy === user.id;
-            // Include if created by me (either self-assigned OR rejected)
-            return isCreatedByMe;
-          })
+          .filter(subTask => subTask.assignedBy === user.id)
           .map(subTask => ({ ...subTask, isSubTask: true as const }));
       });
       
@@ -253,177 +228,14 @@ export default function ProjectsTasksScreen({
       }
     });
 
-    // Helper function to check if a task is overdue
-    const isOverdue = (task: any) => {
-      const dueDate = new Date(task.dueDate);
-      const now = new Date();
-      return dueDate < now;
-    };
-
-    // Get all project-filtered tasks (matches DashboardScreen's projectFilteredTasks)
-    const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
-      ? tasks.filter(task => task.projectId === selectedProjectId)
-      : tasks.filter(task => userProjects.some(p => p.id === task.projectId));
-
-    // Apply exact filter logic from ALL_14_BUTTON_FILTERS.md
-    // This ensures COUNT (DashboardScreen) and DISPLAY (ProjectsTasksScreen) use identical logic
-    console.log('🔍 [ProjectsTasksScreen] Filtering with:', { 
-      localSectionFilter, 
-      localStatusFilter, 
-      projectFilteredTasksCount: projectFilteredTasks.length 
-    });
-    
-    const filteredTasks = projectFilteredTasks.filter(task => {
+    // Apply search and status filters
+    const filteredTasks = allProjectTasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      if (!matchesSearch) return false;
-      
-      // If no status filter, return all tasks from current section
-      if (localStatusFilter === "all") {
-        // Apply section filter only
-        if (localSectionFilter === "my_tasks") {
-          const assignedTo = task.assignedTo || [];
-          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-          const isCreatedByMe = task.assignedBy === user.id;
-          return (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
-        } else if (localSectionFilter === "inbox") {
-          const assignedTo = task.assignedTo || [];
-          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-          const isCreatedByMe = task.assignedBy === user.id;
-          return isAssignedToMe && !isCreatedByMe;
-        } else if (localSectionFilter === "outbox") {
-          const assignedTo = task.assignedTo || [];
-          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-          const isCreatedByMe = task.assignedBy === user.id;
-          const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-          return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
-        }
-        return true; // "all" section
-      }
-      
-      // Apply exact filter logic for each button combination
-      if (localSectionFilter === "my_tasks") {
-        // My Tasks: Rejected, WIP, Done, Overdue
-        const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
-        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
-        
-        if (!isInMyTasks) return false;
-        
-        if (localStatusFilter === "rejected") {
-          return task.currentStatus === "rejected";
-        } else if (localStatusFilter === "wip") {
-          const isSelfAssigned = isCreatedByMe && isAssignedToMe;
-          const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
-          return isAcceptedOrSelfAssigned &&
-                 task.completionPercentage < 100 &&
-                 !isOverdue(task) &&
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "done") {
-          return task.completionPercentage === 100 &&
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "overdue") {
-          return task.completionPercentage < 100 &&
-                 isOverdue(task) &&
-                 task.currentStatus !== "rejected";
-        }
-        // No match for status filter - exclude this task
-        return false;
-      } else if (localSectionFilter === "inbox") {
-        // Inbox: Received, WIP, Reviewing, Done, Overdue
-        const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
-        const isInInbox = isAssignedToMe && !isCreatedByMe;
-        
-        if (localStatusFilter === "reviewing") {
-          // Special: Filter from ALL tasks (breaks inbox definition)
-          const isCreatedByMeForReview = task.assignedBy === user.id;
-          return isCreatedByMeForReview &&
-                 task.completionPercentage === 100 &&
-                 task.readyForReview === true &&
-                 task.reviewAccepted !== true;
-        }
-        
-        if (!isInInbox) return false;
-        
-        if (localStatusFilter === "received") {
-          return !task.accepted &&
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "wip") {
-          return task.accepted &&
-                 !isOverdue(task) &&
-                 task.currentStatus !== "rejected" &&
-                 (task.completionPercentage < 100 ||
-                  (task.completionPercentage === 100 && !task.readyForReview));
-        } else if (localStatusFilter === "done") {
-          return task.completionPercentage === 100 &&
-                 task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
-          return task.completionPercentage < 100 &&
-                 isOverdue(task) &&
-                 task.currentStatus !== "rejected";
-        }
-        // No match for status filter - exclude this task
-        return false;
-      } else if (localSectionFilter === "outbox") {
-        // Outbox: Assigned, WIP, Reviewing, Done, Overdue
-        const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
-        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
-        
-        if (localStatusFilter === "reviewing") {
-          // Special: Filter from ALL tasks (breaks outbox definition)
-          return !isCreatedByMe &&
-                 isAssignedToMe &&
-                 task.completionPercentage === 100 &&
-                 task.readyForReview === true &&
-                 task.reviewAccepted !== true;
-        }
-        
-        if (!isInOutbox) return false;
-        
-        if (localStatusFilter === "assigned") {
-          return !task.accepted &&
-                 task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "wip") {
-          return task.accepted &&
-                 !isOverdue(task) &&
-                 task.currentStatus !== "rejected" &&
-                 (task.completionPercentage < 100 ||
-                  (task.completionPercentage === 100 && !task.readyForReview));
-        } else if (localStatusFilter === "done") {
-          return task.completionPercentage === 100 &&
-                 task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
-          return task.completionPercentage < 100 &&
-                 isOverdue(task) &&
-                 task.currentStatus !== "rejected";
-        }
-        // No match for status filter - exclude this task
-        return false;
-      } else {
-        // "All" section - keep original filters
-        if (localStatusFilter === "not_started") {
-          return task.currentStatus === "not_started" && !task.accepted;
-        } else if (localStatusFilter === "pending") {
-          return task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "completed") {
-          return task.accepted && task.completionPercentage === 100;
-        } else if (localStatusFilter === "overdue") {
-          return task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "rejected") {
-          return task.currentStatus === "rejected";
-        } else {
-          return task.currentStatus === localStatusFilter;
-        }
-      }
-      
-      return false;
+      // Handle status filters
+      const matchesStatus = localStatusFilter === "all" || task.currentStatus === localStatusFilter;
+      return matchesSearch && matchesStatus;
     });
 
     // Sort tasks by priority (high to low) then by due date (earliest first)
@@ -442,42 +254,6 @@ export default function ProjectsTasksScreen({
   };
 
   const allTasks = getAllTasks();
-
-  // Helper function to get category label for banner
-  const getCategoryLabel = (): string => {
-    if (localSectionFilter === "all" || localStatusFilter === "all") {
-      return "Tasks";
-    }
-
-    const sectionLabels: Record<string, string> = {
-      my_tasks: "My Tasks",
-      inbox: "Inbox",
-      outbox: "Outbox",
-    };
-
-    const statusLabels: Record<string, string> = {
-      rejected: "Rejected",
-      wip: "WIP",
-      done: "Done",
-      overdue: "Overdue",
-      received: "Received",
-      reviewing: "Reviewing",
-      assigned: "Assigned",
-    };
-
-    const sectionLabel = sectionLabels[localSectionFilter] || "";
-    const statusLabel = statusLabels[localStatusFilter] || "";
-
-    if (sectionLabel && statusLabel) {
-      return `Tasks in ${sectionLabel} - ${statusLabel}`;
-    }
-
-    if (sectionLabel) {
-      return `Tasks in ${sectionLabel}`;
-    }
-
-    return "Tasks";
-  };
 
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
@@ -512,14 +288,6 @@ export default function ProjectsTasksScreen({
       s => s.userId === user?.id && s.taskId === task.id
     );
     const isNew = !readStatus || !readStatus.isRead;
-
-    // Check if task is starred by current user
-    const isStarred = task.starredByUsers?.includes(user.id) || false;
-
-    const handleStarPress = (e: any) => {
-      e.stopPropagation(); // Prevent opening task detail
-      taskStore.toggleTaskStar(task.id, user.id);
-    };
 
     return (
       <Pressable
@@ -562,96 +330,118 @@ export default function ProjectsTasksScreen({
           </View>
         )}
         
-        {/* Main content: Photo on left, Text on right */}
-        <View className="flex-row">
-          {/* Photo on the left (only first photo) */}
-          {task.attachments && task.attachments.length > 0 && (
-            <View className="mr-3">
-              <Image
-                source={{ uri: task.attachments[0] }}
-                className="w-20 h-20 rounded-lg"
-                resizeMode="cover"
-              />
-              {task.attachments.length > 1 && (
-                <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
-                  <Text className="text-white text-xs font-semibold">
-                    +{task.attachments.length - 1}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-          
-          {/* Text content on the right */}
-          <View className="flex-1">
-            {/* Line 1: Title and Priority */}
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center flex-1 mr-2">
-                <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
-                  {task.title}
-                </Text>
+        {/* Line 1: Title and Priority */}
+        <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center flex-1 mr-2">
+            {/* NEW badge */}
+            {isNew && (
+              <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
+                <Text className="text-white text-xs font-bold">NEW</Text>
               </View>
-              <View className="flex-row items-center gap-2">
-                {/* Star button for Today's Tasks */}
-                <Pressable
-                  onPress={handleStarPress}
-                  className="p-1"
-                >
-                  <Ionicons 
-                    name={isStarred ? "star" : "star-outline"} 
-                    size={18} 
-                    color={isStarred ? "#f59e0b" : "#9ca3af"} 
-                  />
-                </Pressable>
-                {/* Edit button for task creator or assignee */}
-                {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation(); // Prevent card navigation
-                      if (isSubTask) {
-                        onNavigateToTaskDetail(task.parentTaskId, task.id);
-                      } else {
-                        onNavigateToTaskDetail(task.id);
-                      }
-                    }}
-                    className="w-6 h-6 items-center justify-center bg-blue-50 rounded"
-                  >
-                    <Ionicons name="pencil" size={12} color="#3b82f6" />
-                  </Pressable>
-                )}
-                <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-                  <Text className="text-xs font-bold capitalize">
-                    {task.priority}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            
-            {/* Task Description */}
-            {task.description && (
-              <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
-                {task.description}
-              </Text>
             )}
-            
-            {/* Line 2: Due Date and Status */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-                <Text className="text-sm text-gray-600 ml-1">
-                  {new Date(task.dueDate).toLocaleDateString()}
-                </Text>
-              </View>
-              <Text className="text-sm text-gray-500">
-                {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
+            <Text className="font-semibold text-gray-900 flex-1">
+              {task.title}
+            </Text>
+          </View>
+          <View className="flex-row items-center gap-2">
+            {/* Edit button for task creator or assignee */}
+            {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent card navigation
+                  if (isSubTask) {
+                    onNavigateToTaskDetail(task.parentTaskId, task.id);
+                  } else {
+                    onNavigateToTaskDetail(task.id);
+                  }
+                }}
+                className="w-6 h-6 items-center justify-center bg-blue-50 rounded"
+              >
+                <Ionicons name="pencil" size={12} color="#3b82f6" />
+              </Pressable>
+            )}
+            <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
+              <Text className="text-xs font-bold capitalize">
+                {task.priority}
               </Text>
             </View>
           </View>
+        </View>
+        
+        {/* Line 2: Due Date and Status */}
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center">
+            <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+            <Text className="text-sm text-gray-600 ml-1">
+              {new Date(task.dueDate).toLocaleDateString()}
+            </Text>
+          </View>
+          <Text className="text-sm text-gray-500">
+            {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
+          </Text>
         </View>
       </Pressable>
     );
   };
 
+
+  const SectionFilterButton = ({ 
+    section, 
+    label 
+  }: { 
+    section: "my_tasks" | "inbox" | "outbox" | "all"; 
+    label: string 
+  }) => (
+    <Pressable
+      onPress={() => setLocalSectionFilter(section)}
+      className={cn(
+        "px-3 py-1 rounded-full border mr-2",
+        localSectionFilter === section
+          ? "bg-blue-600 border-blue-600"
+          : "bg-white border-gray-300"
+      )}
+    >
+      <Text
+        className={cn(
+          "text-sm font-semibold",
+          localSectionFilter === section
+            ? "text-white"
+            : "text-gray-600"
+        )}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+
+  const StatusFilterButton = ({ 
+    status, 
+    label 
+  }: { 
+    status: TaskStatus | "all"; 
+    label: string 
+  }) => (
+    <Pressable
+      onPress={() => setLocalStatusFilter(status)}
+      className={cn(
+        "px-3 py-1 rounded-full border mr-2",
+        localStatusFilter === status
+          ? "bg-green-600 border-green-600"
+          : "bg-white border-gray-300"
+      )}
+    >
+      <Text
+        className={cn(
+          "text-sm font-semibold",
+          localStatusFilter === status
+            ? "text-white"
+            : "text-gray-600"
+        )}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -659,9 +449,19 @@ export default function ProjectsTasksScreen({
       
       {/* Standard Header */}
       <StandardHeader 
-        title={getCategoryLabel()}
+        title="Tasks"
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
+        rightElement={
+          user.role !== "admin" ? (
+            <Pressable
+              onPress={onNavigateToCreateTask}
+              className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
+            >
+              <Ionicons name="add" size={24} color="white" />
+            </Pressable>
+          ) : undefined
+        }
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
@@ -676,7 +476,32 @@ export default function ProjectsTasksScreen({
           />
         </View>
 
+        {/* Section Filters */}
+        <View className="mt-4">
+          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Categories</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row">
+              <SectionFilterButton section="all" label="All" />
+              <SectionFilterButton section="my_tasks" label="My Tasks" />
+              <SectionFilterButton section="inbox" label="Inbox" />
+              <SectionFilterButton section="outbox" label="Outbox" />
+            </View>
+          </ScrollView>
+        </View>
 
+        {/* Status Filters */}
+        <View className="mt-3">
+          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Status</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row">
+              <StatusFilterButton status="all" label="All" />
+              <StatusFilterButton status="not_started" label="Not Started" />
+              <StatusFilterButton status="in_progress" label="In Progress" />
+              <StatusFilterButton status="completed" label="Completed" />
+              <StatusFilterButton status="rejected" label="Rejected" />
+            </View>
+          </ScrollView>
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -695,10 +520,10 @@ export default function ProjectsTasksScreen({
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {searchQuery || statusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
-              {searchQuery || localStatusFilter !== "all"
+              {searchQuery || statusFilter !== "all"
                 ? "Try adjusting your search or filters"
                 : "You haven't been assigned any tasks yet"
               }
@@ -707,9 +532,6 @@ export default function ProjectsTasksScreen({
         )}
         </View>
       </ScrollView>
-
-      {/* Expandable Utility FAB */}
-      <ExpandableUtilityFAB onCreateTask={onNavigateToCreateTask} />
     </SafeAreaView>
   );
 }

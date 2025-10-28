@@ -49,7 +49,7 @@ export default function ProjectsTasksScreen({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
-  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "all">("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
 
   // Apply filters from store on mount or when they change
@@ -234,8 +234,9 @@ export default function ProjectsTasksScreen({
       } else if (localSectionFilter === "outbox") {
         return outboxTasks;
       } else {
-        // For "all", return My Tasks + Inbox (not Outbox)
-        // This is what Dashboard uses for "My Overdues" and "My On-going Tasks"
+        // For "all", behavior depends on status filter:
+        // - "all" or "done": include My Tasks + Inbox + Outbox (show everything)
+        // - other statuses: include My Tasks + Inbox only (not Outbox)
         // Use a Map to ensure unique tasks by ID
         const uniqueTasks = new Map();
         
@@ -248,6 +249,13 @@ export default function ProjectsTasksScreen({
         inboxTasks.forEach(task => {
           uniqueTasks.set(task.id, task);
         });
+        
+        // For "all" or "done" status, also include outbox tasks
+        if (localStatusFilter === "all" || localStatusFilter === "done") {
+          outboxTasks.forEach(task => {
+            uniqueTasks.set(task.id, task);
+          });
+        }
         
         return Array.from(uniqueTasks.values());
       }
@@ -309,14 +317,15 @@ export default function ProjectsTasksScreen({
           return false;
         } else if (localStatusFilter === "done") {
           // Done: My Tasks + Inbox + Outbox
+          // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
           const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
-          if (isInMyTasks) {
+          if (isInOutbox) {
+            return task.completionPercentage === 100 &&
+                   task.reviewAccepted === true;
+          } else if (isInMyTasks) {
             return task.completionPercentage === 100 &&
                    task.currentStatus !== "rejected";
           } else if (isInInbox) {
-            return task.completionPercentage === 100 &&
-                   task.reviewAccepted === true;
-          } else if (isInOutbox) {
             return task.completionPercentage === 100 &&
                    task.reviewAccepted === true;
           }
@@ -612,10 +621,10 @@ export default function ProjectsTasksScreen({
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              {searchQuery || statusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
-              {searchQuery || statusFilter !== "all"
+              {searchQuery || localStatusFilter !== "all"
                 ? "Try adjusting your search or filters"
                 : "You haven't been assigned any tasks yet"
               }

@@ -19,6 +19,7 @@ import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
+import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { Priority, TaskCategory } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -64,6 +65,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const { getUsersByRole, getUserById } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
+  const { selectedProjectId } = useProjectFilterStore();
   const { getCompanyBanner } = useCompanyStore();
 
   // Get parent task information if creating a sub-task
@@ -212,11 +214,15 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   }, [parentTaskId, parentTask, hasInitializedFromParent]);
 
   // Set default project if user has access to projects
+  // Priority: 1) Current selected project, 2) First project in list
   React.useEffect(() => {
     if (userProjects.length > 0 && !formData.projectId) {
-      setFormData(prev => ({ ...prev, projectId: userProjects[0].id }));
+      const defaultProjectId = selectedProjectId && userProjects.some(p => p.id === selectedProjectId)
+        ? selectedProjectId
+        : userProjects[0].id;
+      setFormData(prev => ({ ...prev, projectId: defaultProjectId }));
     }
-  }, [userProjects, formData.projectId]);
+  }, [userProjects, formData.projectId, selectedProjectId]);
 
   // Fetch project user assignments when project changes
   React.useEffect(() => {

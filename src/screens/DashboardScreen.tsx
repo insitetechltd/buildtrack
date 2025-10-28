@@ -172,12 +172,13 @@ export default function DashboardScreen({
   // Get selected project name for display
   const selectedProject = selectedProjectId ? getProjectById(selectedProjectId) : null;
 
-  // Filter tasks by selected project - show NO tasks when no project is selected
+  // Filter tasks by selected project
+  // If no project selected, show tasks from ALL user projects
   // BUT: For review workflow, tasks submitted for review should be visible even if
   // project filter is active (as long as the task matches the selected project)
   const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
     ? tasks.filter(task => task.projectId === selectedProjectId)
-    : []; // Show no tasks when no project is selected
+    : tasks.filter(task => userProjects.some(p => p.id === task.projectId)); // Show all project tasks when no specific project selected
 
   // Helper function to recursively collect all subtasks assigned by a user
   const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
@@ -385,31 +386,7 @@ export default function DashboardScreen({
 
   const outboxTotal = outboxAll.length;
 
-  // Loading state
-  if (!selectedProject && userProjectCount > 0) {
-    return (
-      <SafeAreaView className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-        <StandardHeader title="Dashboard" />
-        
-        <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
-          <Text className="text-lg font-semibold text-gray-900 mt-4 text-center">
-            Select a Project
-          </Text>
-          <Text className="text-sm text-gray-600 mt-2 text-center mb-6">
-            Choose a project to view your dashboard and tasks
-          </Text>
-    <Pressable
-            onPress={() => setShowProjectPicker(true)}
-            className="bg-blue-600 px-6 py-3 rounded-lg"
-          >
-            <Text className="text-white font-semibold">Choose Project</Text>
-    </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // No longer block rendering when no project selected - show "All Projects" mode instead
 
   if (userProjectCount === 0) {
     return (
@@ -473,11 +450,15 @@ export default function DashboardScreen({
               <Ionicons name="business" size={20} color="#2563eb" />
               <View className="ml-2 flex-1">
                 <Text className="text-base font-semibold text-gray-900">
-                  {selectedProject?.name}
+                  {selectedProject?.name || "All Projects"}
                 </Text>
-                {selectedProject?.description && (
+                {selectedProject?.description ? (
                   <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
                     {selectedProject?.description}
+                  </Text>
+                ) : !selectedProject && (
+                  <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
+                    Viewing tasks from all projects
                   </Text>
                 )}
               </View>
@@ -1023,8 +1004,6 @@ export default function DashboardScreen({
               </View>
                 </View>
               </View>
-                </View>
-              </View>
             )}
           </View>
 
@@ -1170,7 +1149,11 @@ export default function DashboardScreen({
       <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask}
         onRefresh={handleManualRefresh}
-        onProfile={onNavigateToProfile}
+        onSearch={() => {
+          setSelectedProject(null, user.id);
+          setSectionFilter("all");
+          onNavigateToTasks();
+        }}
         onReports={onNavigateToReports}
       />
 

@@ -6,11 +6,11 @@ import { useAuthStore } from "../state/authStore";
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
   onRefresh?: () => void;
-  onProfile?: () => void;
+  onSearch?: () => void;
   onReports?: () => void;
 }
 
-export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onProfile, onReports }: ExpandableUtilityFABProps) {
+export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onSearch, onReports }: ExpandableUtilityFABProps) {
   const { logout } = useAuthStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -145,10 +145,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onProfil
     }
   };
 
-  const handleProfile = () => {
+  const handleSearch = () => {
     collapseImmediately();
-    if (onProfile) {
-      setTimeout(() => onProfile(), 200);
+    if (onSearch) {
+      setTimeout(() => onSearch(), 200);
     }
   };
 
@@ -202,9 +202,9 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onProfil
         </Animated.View>
       )}
 
-      {/* Profile Button - appears when expanded */}
+      {/* Search Button - appears when expanded */}
       {/* Custom position: Center at -144px */}
-      {onProfile && (
+      {onSearch && (
         <Animated.View
           style={{
             transform: [
@@ -220,10 +220,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onProfil
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Profile</Text>
+            <Text className="text-white text-sm font-medium">Search</Text>
           </View>
           <Pressable
-            onPress={handleProfile}
+            onPress={handleSearch}
             className="w-12 h-12 bg-purple-600 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
@@ -233,7 +233,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onRefresh, onProfil
               elevation: 5,
             }}
           >
-            <Ionicons name="person" size={20} color="white" />
+            <Ionicons name="search" size={20} color="white" />
           </Pressable>
         </Animated.View>
       )}

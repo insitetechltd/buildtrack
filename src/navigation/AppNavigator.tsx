@@ -67,6 +67,12 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
       onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
+      onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
+        navigation.getParent()?.navigate("Tasks", { 
+          screen: "TaskDetail", 
+          params: { taskId, subTaskId } 
+        })
+      }
     />
   );
 }

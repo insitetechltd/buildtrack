@@ -476,6 +476,14 @@ export default function ProjectsTasksScreen({
     );
     const isNew = !readStatus || !readStatus.isRead;
 
+    // Check if task is starred by current user
+    const isStarred = task.starredByUsers?.includes(user.id) || false;
+
+    const handleStarPress = (e: any) => {
+      e.stopPropagation(); // Prevent opening task detail
+      taskStore.toggleTaskStar(task.id, user.id);
+    };
+
     return (
       <Pressable
         onPress={() => {
@@ -526,27 +534,22 @@ export default function ProjectsTasksScreen({
                 <Text className="text-white text-xs font-bold">NEW</Text>
               </View>
             )}
-            <Text className="font-semibold text-gray-900 flex-1">
+            <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
               {task.title}
             </Text>
           </View>
           <View className="flex-row items-center gap-2">
-            {/* Edit button for task creator or assignee */}
-            {(task.assignedBy === user?.id || (task.assignedTo || []).includes(user?.id)) && (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent card navigation
-                  if (isSubTask) {
-                    onNavigateToTaskDetail(task.parentTaskId, task.id);
-                  } else {
-                    onNavigateToTaskDetail(task.id);
-                  }
-                }}
-                className="w-6 h-6 items-center justify-center bg-blue-50 rounded"
-              >
-                <Ionicons name="pencil" size={12} color="#3b82f6" />
-              </Pressable>
-            )}
+            {/* Star button for Today's Tasks */}
+            <Pressable
+              onPress={handleStarPress}
+              className="mr-1 p-1"
+            >
+              <Ionicons
+                name={isStarred ? "star" : "star-outline"}
+                size={20}
+                color={isStarred ? "#f59e0b" : "#9ca3af"}
+              />
+            </Pressable>
             <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
               <Text className="text-xs font-bold capitalize">
                 {task.priority}
@@ -555,7 +558,14 @@ export default function ProjectsTasksScreen({
           </View>
         </View>
         
-        {/* Line 2: Due Date and Status */}
+        {/* Line 2: Description */}
+        {task.description && (
+          <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+            {task.description}
+          </Text>
+        )}
+        
+        {/* Line 3: Due Date and Status */}
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
             <Ionicons name="calendar-outline" size={14} color="#6b7280" />

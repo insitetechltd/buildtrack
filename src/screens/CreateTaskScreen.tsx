@@ -195,9 +195,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     }, [parentTaskId])
   );
 
-  // Inherit parent task title and description when creating sub-task
+  // Inherit parent task title and description when creating sub-task (only once on mount)
+  const [hasInitializedFromParent, setHasInitializedFromParent] = React.useState(false);
+  
   React.useEffect(() => {
-    if (parentTaskId && parentTask && (formData.title === "" || formData.description === "")) {
+    if (parentTaskId && parentTask && !hasInitializedFromParent) {
       console.log('📋 Copying parent task data to subtask form');
       setFormData(prev => ({
         ...prev,
@@ -205,8 +207,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         description: parentTask.description,
         projectId: parentTask.projectId || prev.projectId
       }));
+      setHasInitializedFromParent(true);
     }
-  }, [parentTaskId, parentTask, formData.title, formData.description]);
+  }, [parentTaskId, parentTask, hasInitializedFromParent]);
 
   // Set default project if user has access to projects
   React.useEffect(() => {

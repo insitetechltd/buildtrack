@@ -50,15 +50,31 @@ export default function ProjectsTasksScreen({
   const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
 
-  // Apply filters from store on mount
+  // Apply filters from store on mount or when they change
+  // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
   useEffect(() => {
-    if (sectionFilter) {
+    console.log('🔍 [ProjectsTasksScreen] Filter Store Update:', { sectionFilter, statusFilter });
+    if (sectionFilter && statusFilter) {
+      // Both filters set together - apply both immediately
+      console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
       setLocalSectionFilter(sectionFilter);
-      clearSectionFilter(); // Clear it after applying so it doesn't persist
-    }
-    if (statusFilter) {
       setLocalStatusFilter(statusFilter);
-      clearStatusFilter(); // Clear it after applying so it doesn't persist
+      // Clear filters from store AFTER setting local state
+      setTimeout(() => {
+        clearSectionFilter();
+        clearStatusFilter();
+      }, 0);
+    } else if (sectionFilter) {
+      // Only section filter set - apply section, reset status
+      console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
+      setLocalSectionFilter(sectionFilter);
+      setLocalStatusFilter("all");
+      clearSectionFilter();
+    } else if (statusFilter) {
+      // Only status filter set - apply status only
+      console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
+      setLocalStatusFilter(statusFilter);
+      clearStatusFilter();
     }
   }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
@@ -385,63 +401,6 @@ export default function ProjectsTasksScreen({
   };
 
 
-  const SectionFilterButton = ({ 
-    section, 
-    label 
-  }: { 
-    section: "my_tasks" | "inbox" | "outbox" | "all"; 
-    label: string 
-  }) => (
-    <Pressable
-      onPress={() => setLocalSectionFilter(section)}
-      className={cn(
-        "px-3 py-1 rounded-full border mr-2",
-        localSectionFilter === section
-          ? "bg-blue-600 border-blue-600"
-          : "bg-white border-gray-300"
-      )}
-    >
-      <Text
-        className={cn(
-          "text-sm font-semibold",
-          localSectionFilter === section
-            ? "text-white"
-            : "text-gray-600"
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-
-  const StatusFilterButton = ({ 
-    status, 
-    label 
-  }: { 
-    status: TaskStatus | "all"; 
-    label: string 
-  }) => (
-    <Pressable
-      onPress={() => setLocalStatusFilter(status)}
-      className={cn(
-        "px-3 py-1 rounded-full border mr-2",
-        localStatusFilter === status
-          ? "bg-green-600 border-green-600"
-          : "bg-white border-gray-300"
-      )}
-    >
-      <Text
-        className={cn(
-          "text-sm font-semibold",
-          localStatusFilter === status
-            ? "text-white"
-            : "text-gray-600"
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
@@ -449,7 +408,40 @@ export default function ProjectsTasksScreen({
       
       {/* Standard Header */}
       <StandardHeader 
-        title="Tasks"
+        title={(() => {
+          const sectionLabels: Record<string, string> = {
+            my_tasks: "My Tasks",
+            inbox: "Inbox",
+            outbox: "Outbox",
+            all: "All",
+          };
+
+          const statusLabels: Record<string, string> = {
+            rejected: "Rejected",
+            wip: "WIP",
+            done: "Done",
+            overdue: "Overdue",
+            received: "Received",
+            reviewing: "Reviewing",
+            assigned: "Assigned",
+          };
+
+          const sectionLabel = sectionLabels[localSectionFilter] || "All";
+          const statusLabel = statusLabels[localStatusFilter as string] || "";
+
+          // If both section and status are specified
+          if (statusLabel && localStatusFilter !== "all") {
+            return `Tasks - ${sectionLabel} ${statusLabel}`;
+          }
+
+          // If only section is specified (status is "all")
+          if (localStatusFilter === "all") {
+            return `Tasks - ${sectionLabel}`;
+          }
+
+          // Default fallback
+          return "Tasks";
+        })()}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
         rightElement={
@@ -466,7 +458,7 @@ export default function ProjectsTasksScreen({
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
         {/* Search Bar */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-3">
+        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
           <Ionicons name="search-outline" size={18} color="#6b7280" />
           <TextInput
             className="flex-1 ml-2 text-gray-900 text-sm"
@@ -474,33 +466,6 @@ export default function ProjectsTasksScreen({
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
-        </View>
-
-        {/* Section Filters */}
-        <View className="mt-4">
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Categories</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row">
-              <SectionFilterButton section="all" label="All" />
-              <SectionFilterButton section="my_tasks" label="My Tasks" />
-              <SectionFilterButton section="inbox" label="Inbox" />
-              <SectionFilterButton section="outbox" label="Outbox" />
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Status Filters */}
-        <View className="mt-3">
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Task Status</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row">
-              <StatusFilterButton status="all" label="All" />
-              <StatusFilterButton status="not_started" label="Not Started" />
-              <StatusFilterButton status="in_progress" label="In Progress" />
-              <StatusFilterButton status="completed" label="Completed" />
-              <StatusFilterButton status="rejected" label="Rejected" />
-            </View>
-          </ScrollView>
         </View>
       </View>
 

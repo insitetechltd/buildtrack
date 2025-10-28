@@ -24,6 +24,7 @@ import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
+import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -1176,6 +1177,53 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Task Detail Utility FAB */}
+      <TaskDetailUtilityFAB
+        onUpdate={() => setShowUpdateModal(true)}
+        onEdit={() => {
+          // Navigate to edit - you may need to implement this
+          Alert.alert("Edit", "Edit task functionality");
+        }}
+        onCameraUpdate={async () => {
+          // Check if camera is available (fails on simulator)
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') {
+            // Fall back to photo library on simulator
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: "images" as any,
+              allowsMultipleSelection: true,
+              quality: 0.8,
+            });
+            
+            if (!result.canceled && result.assets) {
+              // Handle photos
+              Alert.alert("Success", `Selected ${result.assets.length} photo(s)`);
+            }
+            return;
+          }
+          
+          const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: "images" as any,
+            allowsEditing: false,
+            quality: 0.8,
+          });
+          
+          if (!result.canceled && result.assets) {
+            Alert.alert("Success", "Photo captured");
+          }
+        }}
+        onCreateSubTask={onNavigateToCreateTask ? () => {
+          if (subTaskId) {
+            onNavigateToCreateTask(taskId, subTaskId);
+          } else {
+            onNavigateToCreateTask(taskId);
+          }
+        } : undefined}
+        canUpdate={true}
+        canEdit={task?.assignedBy === user?.id}
+        canCreateSubTask={!!onNavigateToCreateTask}
+      />
     </SafeAreaView>
   );
 }

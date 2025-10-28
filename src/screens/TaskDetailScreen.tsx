@@ -486,7 +486,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Assigned By and Assigned To - Side by Side */}
           <View className="flex-row gap-2">
             {/* Assigned By Card */}
-            <View className="flex-1 bg-gray-50 rounded-lg p-3">
+            <Pressable 
+              className="flex-1 bg-gray-50 rounded-lg p-3"
+              onPress={() => {
+                if (assignedBy?.phone && assignedBy.id !== user.id) {
+                  Linking.openURL(`tel:${assignedBy.phone}`);
+                }
+              }}
+              disabled={!assignedBy?.phone || assignedBy.id === user.id}
+            >
               <Text className="text-xs font-medium text-gray-500 mb-2">Assigned By</Text>
               <View className="flex-row items-center mb-2">
                 <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2">
@@ -502,19 +510,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 </View>
               </View>
               {assignedBy?.phone && (
-                <View className="flex-row items-center">
-                  <Text className="text-xs text-gray-600 flex-1">{assignedBy.phone}</Text>
-                  {assignedBy.id !== user.id && (
-                    <Pressable
-                      onPress={() => Linking.openURL(`tel:${assignedBy.phone}`)}
-                      className="w-8 h-8 bg-green-600 rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="call" size={14} color="white" />
-                    </Pressable>
-                  )}
-                </View>
+                <Text className="text-xs text-gray-600">{assignedBy.phone}</Text>
               )}
-            </View>
+            </Pressable>
 
             {/* Assigned To Card */}
             <View className="flex-1 bg-gray-50 rounded-lg p-3">
@@ -529,7 +527,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
                   
                   return (
-                    <View key={assignedUser.id} className={index > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}>
+                    <Pressable 
+                      key={assignedUser.id} 
+                      className={index > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}
+                      onPress={() => {
+                        if (assignedUser.phone && assignedUser.id !== user.id) {
+                          Linking.openURL(`tel:${assignedUser.phone}`);
+                        }
+                      }}
+                      disabled={!assignedUser.phone || assignedUser.id === user.id}
+                    >
                       <View className="flex-row items-center mb-2">
                         <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
                           <Ionicons name="person" size={16} color="#10b981" />
@@ -545,19 +552,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       </View>
                       
                       {assignedUser.phone && (
-                        <View className="flex-row items-center">
-                          <Text className="text-xs text-gray-600 flex-1">{assignedUser.phone}</Text>
-                          {assignedUser.id !== user.id && (
-                            <Pressable
-                              onPress={() => Linking.openURL(`tel:${assignedUser.phone}`)}
-                              className="w-8 h-8 bg-green-600 rounded-full items-center justify-center"
-                            >
-                              <Ionicons name="call" size={14} color="white" />
-                            </Pressable>
-                          )}
-                        </View>
+                        <Text className="text-xs text-gray-600">{assignedUser.phone}</Text>
                       )}
-                    </View>
+                    </Pressable>
                   );
                 })
               ) : (

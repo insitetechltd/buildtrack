@@ -389,6 +389,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       {/* Standard Header */}
       <StandardHeader 
         title={task?.title || (isViewingSubTask ? "Sub-Task Details" : "Task Details")}
+        showBackButton={true}
+        onBackPress={onNavigateBack}
       />
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}

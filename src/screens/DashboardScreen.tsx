@@ -924,23 +924,6 @@ export default function DashboardScreen({
                   </Text>
                 </Pressable>
                 
-                {/* Outbox WIP */}
-                <Pressable 
-                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("wip");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-orange-700 mb-1">
-                    {outboxWIPTasks.length}
-                  </Text>
-                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
-                    Outbox{'\n'}WIP
-                  </Text>
-                </Pressable>
-                
                 {/* Outbox Reviewing */}
                 <Pressable 
                   className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
@@ -955,6 +938,23 @@ export default function DashboardScreen({
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
                     Outbox{'\n'}Reviewing
+                  </Text>
+                </Pressable>
+                
+                {/* Outbox WIP */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-orange-700 mb-1">
+                    {outboxWIPTasks.length}
+                  </Text>
+                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
+                    Outbox{'\n'}WIP
                   </Text>
                 </Pressable>
               </View>

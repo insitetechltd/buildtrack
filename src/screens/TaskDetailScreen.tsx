@@ -388,24 +388,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       {/* Standard Header */}
       <StandardHeader 
         title={task?.title || (isViewingSubTask ? "Sub-Task Details" : "Task Details")}
-        rightElement={
-          canUpdateProgress ? (
-            <Pressable
-              onPress={() => {
-                setUpdateForm({
-                  description: "",
-                  photos: [],
-                  completionPercentage: task.completionPercentage,
-                  status: task.currentStatus,
-                });
-                setShowUpdateModal(true);
-              }}
-              className="px-4 py-2 bg-blue-600 rounded-lg"
-            >
-              <Text className="text-white font-medium">Update</Text>
-            </Pressable>
-          ) : undefined
-        }
       />
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
@@ -498,42 +480,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       )}
 
       <ScrollView className="flex-1">
-        {/* Task Status, Priority, and Due Date */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
-          {/* Due Date and Badges Row */}
-          <View className="flex-row items-center flex-wrap mb-4">
-            <View className="flex-row items-center mr-3 mb-2">
-              <Ionicons name="calendar-outline" size={18} color="#6b7280" />
-              <Text className="text-base text-gray-600 ml-2 mr-1">Due:</Text>
-              <Text className={cn("text-base font-medium", isOverdue ? "text-red-600" : "text-gray-900")}>
-                {new Date(task.dueDate).toLocaleDateString()}
-                {isOverdue && " (Overdue)"}
-              </Text>
-            </View>
-            
-            {/* Status and Priority Badges */}
-            <View className={cn("px-3 py-1.5 rounded-full mr-2 mb-2", getStatusColor(task.currentStatus))}>
-              <Text className="text-sm font-medium capitalize">
-                {task.currentStatus.replace("_", " ")}
-              </Text>
-            </View>
-            <View className={cn("px-3 py-1.5 rounded-full border mb-2", getPriorityColor(task.priority))}>
-              <Text className="text-sm font-medium capitalize">
-                {task.priority}
-              </Text>
-            </View>
-          </View>
-
-          {/* Task Description */}
-          {task.description && (
-            <View>
-              <Text className="text-base text-gray-700 leading-6">
-                {task.description}
-              </Text>
-            </View>
-          )}
-        </View>
-
         {/* Assignment Information Card - Side by Side Layout */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
@@ -766,42 +712,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           )}
         </View>
 
-        {/* Add Sub-Task Button */}
-        {canCreateSubTask && (
-          <View className="bg-white mx-4 mb-3 rounded-xl border border-gray-200 p-4">
-            <Pressable
-              onPress={() => {
-                if (onNavigateToCreateTask) {
-                  if (isViewingSubTask && subTaskId) {
-                    onNavigateToCreateTask(taskId, subTaskId);
-                  } else {
-                    onNavigateToCreateTask(taskId);
-                  }
-                } else {
-                  Alert.alert('Error', 'Navigation function is not available. Please try again.');
-                }
-              }}
-              className="flex-row items-center justify-center bg-blue-50 px-4 py-3 rounded-lg"
-            >
-              <Ionicons name="add-circle-outline" size={20} color="#3b82f6" />
-              <Text className="text-blue-600 font-medium ml-2">
-                Add {isViewingSubTask ? "Nested Sub-Task" : "Sub-Task"}
-              </Text>
-            </Pressable>
-          </View>
-        )}
-
-        {/* Show message when user cannot create subtask */}
-        {!canCreateSubTask && isAssignedToMe && !task.accepted && (
-          <View className="bg-amber-50 border border-amber-200 rounded-xl mx-4 mb-3 p-4">
-            <View className="flex-row items-center">
-              <Ionicons name="lock-closed" size={20} color="#f59e0b" />
-              <Text className="text-sm text-amber-700 ml-2 flex-1">
-                Accept this task to create subtasks and add updates
-              </Text>
-            </View>
-          </View>
-        )}
       </ScrollView>
 
       {/* Update Modal */}

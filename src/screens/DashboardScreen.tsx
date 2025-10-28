@@ -50,6 +50,7 @@ export default function DashboardScreen({
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const t = useTranslation();
   const { fetchUsers } = useUserStore();
 
@@ -1079,9 +1080,33 @@ export default function DashboardScreen({
             {userProjects.map((project) => (
               <Pressable
                 key={project.id}
-                onPress={() => {
+                onPress={async () => {
+                  // Only refresh if actually changing projects
+                  if (selectedProjectId === project.id) {
+                    setShowProjectPicker(false);
+                    return;
+                  }
+                  
+                  setIsProjectSwitching(true);
                   setSelectedProject(project.id, user.id);
                   setShowProjectPicker(false);
+                  
+                  // Refresh all data when project changes (treat as re-login)
+                  try {
+                    console.log('🔄 Project changed - refreshing all data...');
+                    await Promise.all([
+                      fetchTasks(),
+                      fetchProjects(),
+                      fetchUserProjectAssignments(user.id),
+                      fetchUsers()
+                    ]);
+                    console.log('✅ Data refresh complete');
+                  } catch (error) {
+                    console.error('❌ Error refreshing data:', error);
+                    Alert.alert('Error', 'Failed to refresh data. Please try again.');
+                  } finally {
+                    setIsProjectSwitching(false);
+                  }
                 }}
                 className={cn(
                   "bg-white border rounded-lg p-4 mb-2",
@@ -1109,8 +1134,8 @@ export default function DashboardScreen({
                           project.status === "active" ? "text-green-700" : "text-yellow-700"
                         )}>
                           {project.status}
-                </Text>
-              </View>
+                  </Text>
+                </View>
                     </View>
                   </View>
                   {selectedProjectId === project.id && (
@@ -1124,12 +1149,26 @@ export default function DashboardScreen({
       </Modal>
 
       {/* Expandable Utility FAB */}
-      <ExpandableUtilityFAB
+      <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask}
         onRefresh={handleManualRefresh}
         onProfile={onNavigateToProfile}
         onReports={onNavigateToReports}
       />
+
+      {/* Project Switching Loading Overlay */}
+      {isProjectSwitching && (
+        <View className="absolute inset-0 bg-black/50 items-center justify-center">
+          <View className="bg-white rounded-xl p-6 items-center shadow-lg">
+            <Text className="text-lg font-semibold text-gray-900 mb-2">
+              Switching Project...
+                </Text>
+            <Text className="text-sm text-gray-600 text-center">
+              Refreshing all data for the new project
+                </Text>
+          </View>
+              </View>
+            )}
     </SafeAreaView>
   );
 }

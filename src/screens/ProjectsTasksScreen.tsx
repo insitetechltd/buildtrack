@@ -225,7 +225,8 @@ export default function ProjectsTasksScreen({
       } else if (localSectionFilter === "outbox") {
         return outboxTasks;
       } else {
-        // For "all", return all my tasks (including self-assigned) and outbox tasks
+        // For "all", return My Tasks + Inbox (not Outbox)
+        // This is what Dashboard uses for "My Overdues" and "My On-going Tasks"
         // Use a Map to ensure unique tasks by ID
         const uniqueTasks = new Map();
         
@@ -234,8 +235,8 @@ export default function ProjectsTasksScreen({
           uniqueTasks.set(task.id, task);
         });
         
-        // Add outbox tasks (will overwrite if same ID, ensuring uniqueness)
-        outboxTasks.forEach(task => {
+        // Add inbox tasks (will overwrite if same ID, ensuring uniqueness)
+        inboxTasks.forEach(task => {
           uniqueTasks.set(task.id, task);
         });
         

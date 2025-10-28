@@ -857,11 +857,11 @@ export default function DashboardScreen({
             {/* Divider */}
             <View className="h-px bg-gray-200 mb-4" />
 
-            {/* 2. IN QUEUE Section */}
+            {/* 2. ON MY PLATE Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-2">
                 <Ionicons name="hourglass-outline" size={18} color="#f59e0b" />
-                <Text className="text-sm font-semibold text-amber-600 ml-2">In Queue</Text>
+                <Text className="text-sm font-semibold text-amber-600 ml-2">On My Plate</Text>
               </View>
               <View className="flex-row gap-2">
                 {/* Inbox Received */}
@@ -920,11 +920,11 @@ export default function DashboardScreen({
             {/* Divider */}
             <View className="h-px bg-gray-200 mb-4" />
 
-            {/* 3. MONITORING Section */}
+            {/* 3. ON OTHERS' PLATE Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-2">
                 <Ionicons name="eye-outline" size={18} color="#8b5cf6" />
-                <Text className="text-sm font-semibold text-purple-600 ml-2">Monitoring</Text>
+                <Text className="text-sm font-semibold text-purple-600 ml-2">On Others' Plate</Text>
               </View>
               <View className="flex-row gap-2">
                 {/* Outbox Assigned */}

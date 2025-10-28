@@ -894,7 +894,7 @@ export default function DashboardScreen({
                     {inboxReviewingTasks.length}
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Review Completed{'\n'}Tasks
+                    Completed{'\n'}Review Now
                   </Text>
                 </Pressable>
                 
@@ -940,7 +940,7 @@ export default function DashboardScreen({
                     {outboxAssignedTasks.length}
                   </Text>
                   <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
-                    Waiting to Be{'\n'}Accepted Tasks
+                    Waiting to Be{'\n'}Accepted
                   </Text>
                 </Pressable>
                 
@@ -957,7 +957,7 @@ export default function DashboardScreen({
                     {outboxReviewingTasks.length}
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Completed Tasks{'\n'}Waiting for Approval
+                    Completed{'\n'}Sent for Review
                   </Text>
                 </Pressable>
                 

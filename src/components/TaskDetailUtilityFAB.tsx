@@ -270,7 +270,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
               elevation: 5,
             }}
           >
-            <Ionicons name="camera" size={20} color="white" />
+            <Ionicons name="attach-outline" size={20} color="white" />
           </Pressable>
         </Animated.View>
       )}

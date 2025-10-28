@@ -544,19 +544,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         </View>
                       </View>
                       
-                      {/* Progress bar */}
-                      <View className="flex-row items-center mb-1">
-                        <View className="flex-1 h-1.5 bg-gray-200 rounded-full mr-2">
-                          <View 
-                            className="h-full bg-green-600 rounded-full"
-                            style={{ width: `${userProgress}%` }}
-                          />
-                        </View>
-                        <Text className="text-xs font-medium text-gray-600 w-10 text-right">
-                          {userProgress}%
-                        </Text>
-                      </View>
-                      
                       {assignedUser.phone && (
                         <View className="flex-row items-center">
                           <Text className="text-xs text-gray-600 flex-1">{assignedUser.phone}</Text>

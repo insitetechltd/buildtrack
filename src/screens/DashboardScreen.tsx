@@ -877,7 +877,7 @@ export default function DashboardScreen({
                     {inboxReceivedTasks.length}
                   </Text>
                   <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
-                    Inbox{'\n'}Received
+                    New Incoming{'\n'}Tasks
                   </Text>
                 </Pressable>
                 
@@ -894,7 +894,7 @@ export default function DashboardScreen({
                     {inboxReviewingTasks.length}
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Inbox{'\n'}Review
+                    Review Completed{'\n'}Tasks
                   </Text>
                 </Pressable>
                 
@@ -911,7 +911,7 @@ export default function DashboardScreen({
                     {myWIPTasks.length + inboxWIPTasks.length}
                   </Text>
                   <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
-                    All WIP{'\n'}Tasks
+                    My On-going{'\n'}Tasks
                   </Text>
                 </Pressable>
               </View>
@@ -940,7 +940,7 @@ export default function DashboardScreen({
                     {outboxAssignedTasks.length}
                   </Text>
                   <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
-                    Outbox{'\n'}Assigned
+                    Waiting to Be{'\n'}Accepted Tasks
                   </Text>
                 </Pressable>
                 
@@ -957,7 +957,7 @@ export default function DashboardScreen({
                     {outboxReviewingTasks.length}
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Outbox{'\n'}Reviewing
+                    Completed Tasks{'\n'}Waiting for Approval
                   </Text>
                 </Pressable>
                 
@@ -974,7 +974,7 @@ export default function DashboardScreen({
                     {outboxWIPTasks.length}
                   </Text>
                   <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
-                    Outbox{'\n'}WIP
+                    Others Working{'\n'}on My Tasks
                   </Text>
                 </Pressable>
               </View>

@@ -8,6 +8,7 @@ import {
   Alert,
   Modal,
   Image,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -554,6 +555,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   {assignedBy?.email || ""}
                 </Text>
               </View>
+              {assignedBy?.phone && assignedBy.id !== user.id && (
+                <Pressable
+                  onPress={() => {
+                    Linking.openURL(`tel:${assignedBy.phone}`);
+                  }}
+                  className="w-10 h-10 bg-green-600 rounded-full items-center justify-center ml-2"
+                >
+                  <Ionicons name="call" size={20} color="white" />
+                </Pressable>
+              )}
             </View>
           </View>
 
@@ -606,6 +617,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           {assignedUser.email}
                         </Text>
                       </View>
+                      {assignedUser.phone && assignedUser.id !== user.id && (
+                        <Pressable
+                          onPress={() => {
+                            Linking.openURL(`tel:${assignedUser.phone}`);
+                          }}
+                          className="w-10 h-10 bg-green-600 rounded-full items-center justify-center ml-2"
+                        >
+                          <Ionicons name="call" size={20} color="white" />
+                        </Pressable>
+                      )}
                     </View>
                   );
                 })}

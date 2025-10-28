@@ -441,6 +441,45 @@ export default function ProjectsTasksScreen({
 
   const allTasks = getAllTasks();
 
+  // Group tasks: parent tasks with their subtasks nested
+  const groupedTasks = React.useMemo(() => {
+    const taskMap = new Map<string, { parent: TaskListItem; subtasks: TaskListItem[] }>();
+    const standaloneSubtasks: TaskListItem[] = [];
+    
+    allTasks.forEach(task => {
+      const isSubTask = 'isSubTask' in task && task.isSubTask;
+      
+      if (isSubTask) {
+        const parentId = task.parentTaskId;
+        // Check if parent task is in the list
+        const parentExists = allTasks.some(t => !('isSubTask' in t) && t.id === parentId);
+        
+        if (parentExists) {
+          // Add to parent's subtask list
+          if (!taskMap.has(parentId)) {
+            const parentTask = allTasks.find(t => !('isSubTask' in t) && t.id === parentId)!;
+            taskMap.set(parentId, { parent: parentTask, subtasks: [] });
+          }
+          taskMap.get(parentId)!.subtasks.push(task);
+        } else {
+          // Parent not in list, show subtask standalone
+          standaloneSubtasks.push(task);
+        }
+      } else {
+        // Parent task
+        if (!taskMap.has(task.id)) {
+          taskMap.set(task.id, { parent: task, subtasks: [] });
+        }
+      }
+    });
+    
+    // Combine: parent tasks with their subtasks, then standalone subtasks
+    return {
+      grouped: Array.from(taskMap.values()),
+      standalone: standaloneSubtasks
+    };
+  }, [allTasks]);
+
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
       case "critical": return "text-red-600 bg-red-50 border-red-200";
@@ -634,14 +673,35 @@ export default function ProjectsTasksScreen({
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Flat Tasks List */}
+        {/* Grouped Tasks List */}
         <View className="px-6 py-4">
         {allTasks.length > 0 ? (
           <>
             <Text className="text-sm text-gray-600 font-semibold mb-3">
               {allTasks.length} task{allTasks.length !== 1 ? "s" : ""}
             </Text>
-            {allTasks.map((task) => (
+            
+            {/* Render parent tasks with their subtasks */}
+            {groupedTasks.grouped.map((group) => (
+              <View key={group.parent.id} className="mb-3">
+                {/* Parent task */}
+                <CompactTaskCard task={group.parent} />
+                
+                {/* Subtasks indented below parent */}
+                {group.subtasks.length > 0 && (
+                  <View className="ml-4 mt-1 border-l-2 border-purple-300 pl-2">
+                    {group.subtasks.map((subtask) => (
+                      <View key={subtask.id} className="mb-1">
+                        <CompactTaskCard task={subtask} />
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))}
+            
+            {/* Render standalone subtasks (parent not in list) */}
+            {groupedTasks.standalone.map((task) => (
               <CompactTaskCard key={task.id} task={task} />
             ))}
           </>

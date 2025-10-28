@@ -56,6 +56,13 @@ function DashboardStack() {
       }}
     >
       <Stack.Screen name="DashboardMain" component={DashboardMainScreen} />
+      <Stack.Screen 
+        name="TaskDetailFromDashboard" 
+        component={TaskDetailFromDashboardWrapper}
+        options={{
+          presentation: "modal"
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -68,11 +75,26 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
-        navigation.getParent()?.navigate("Tasks", { 
-          screen: "TaskDetail", 
-          params: { taskId, subTaskId } 
-        })
+        navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId })
       }
+    />
+  );
+}
+
+function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; navigation: any }) {
+  const { taskId, subTaskId } = route.params;
+  return (
+    <TaskDetailScreen
+      taskId={taskId}
+      subTaskId={subTaskId}
+      onNavigateBack={() => navigation.goBack()}
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId) => {
+        // Navigate to CreateTask at parent level
+        navigation.getParent()?.navigate("CreateTask", {
+          parentTaskId,
+          parentSubTaskId
+        });
+      }}
     />
   );
 }

@@ -537,12 +537,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               />
           </InputField>
 
-          {/* Project Selection */}
+          {/* Project Selection - Read Only */}
           <InputField label="Project" error={errors.projectId}>
-            <Pressable
-              onPress={() => setShowProjectPicker(true)}
+            <View
               className={cn(
-                "border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
+                "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
                 errors.projectId ? "border-red-300" : "border-gray-300"
               )}
             >
@@ -555,8 +554,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   : "Select a project"
                 }
               </Text>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Pressable>
+              <Ionicons name="lock-closed" size={16} color="#9ca3af" />
+            </View>
           </InputField>
 
           {/* Priority */}

@@ -447,7 +447,7 @@ export default function DashboardScreen({
           {/* Project Picker */}
           <Pressable
             onPress={() => setShowProjectPicker(true)}
-            className="bg-white rounded-lg p-3 mb-3 border border-gray-200 flex-row items-center justify-between"
+            className="bg-gray-100 rounded-lg p-3 mb-3 border border-gray-200 flex-row items-center justify-between"
           >
             <View className="flex-row items-center flex-1">
               <Ionicons name="business" size={20} color="#2563eb" />
@@ -474,7 +474,7 @@ export default function DashboardScreen({
             if (starredTasks.length === 0) return null;
 
             return (
-              <View className="bg-white rounded-lg p-3 mb-3 border border-gray-200">
+              <View className="bg-gray-100 rounded-lg p-3 mb-3 border border-gray-200">
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="star" size={18} color="#f59e0b" />
                   <Text className="text-sm font-semibold text-gray-900 ml-2">

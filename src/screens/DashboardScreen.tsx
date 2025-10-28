@@ -51,6 +51,7 @@ export default function DashboardScreen({
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
+  const [isQuickOverviewExpanded, setIsQuickOverviewExpanded] = useState(false);
   const t = useTranslation();
   const { fetchUsers } = useUserStore();
 
@@ -557,17 +558,239 @@ export default function DashboardScreen({
             </View>
           );
         })()}
-        
-          {/* Quick Overview Section */}
+
+          {/* ===== PRIORITY SUMMARY SECTION ===== */}
           <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
             <View className="flex-row items-center mb-3">
-              <Ionicons name="list-outline" size={20} color="#3b82f6" />
+              <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
               <Text className="text-base font-semibold text-gray-900 ml-2">
-                Quick Overview
-            </Text>
+                Priority Summary
+              </Text>
+            </View>
+
+            {/* 1. URGENT! Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="alert-circle" size={18} color="#ef4444" />
+                <Text className="text-sm font-semibold text-red-600 ml-2">Urgent!</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* My Overdues */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-red-700 mb-1">
+                    {myOverdueTasks.length + inboxOverdueTasks.length}
+                  </Text>
+                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
+                    My Overdues
+                  </Text>
+                </Pressable>
+                
+                {/* Chase Now */}
+                <Pressable 
+                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("overdue");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-red-700 mb-1">
+                    {outboxOverdueTasks.length}
+                  </Text>
+                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
+                    Chase Now
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 2. ON MY PLATE Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="hourglass-outline" size={18} color="#f59e0b" />
+                <Text className="text-sm font-semibold text-amber-600 ml-2">On My Plate</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* New Incoming Tasks */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("received");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
+                    {inboxReceivedTasks.length}
+                  </Text>
+                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
+                    New Incoming{'\n'}Tasks
+                  </Text>
+                </Pressable>
+                
+                {/* Completed Review Now */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-blue-700 mb-1">
+                    {inboxReviewingTasks.length}
+                  </Text>
+                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
+                    Completed{'\n'}Review Now
+                  </Text>
+                </Pressable>
+                
+                {/* My On-going Tasks */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-orange-700 mb-1">
+                    {myWIPTasks.length + inboxWIPTasks.length}
+                  </Text>
+                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
+                    My On-going{'\n'}Tasks
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 3. ON OTHERS' PLATE Section */}
+            <View className="mb-4">
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="eye-outline" size={18} color="#8b5cf6" />
+                <Text className="text-sm font-semibold text-purple-600 ml-2">On Others' Plate</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* Waiting to Be Accepted */}
+                <Pressable 
+                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("assigned");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
+                    {outboxAssignedTasks.length}
+                  </Text>
+                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
+                    Waiting to Be{'\n'}Accepted
+                  </Text>
+                </Pressable>
+                
+                {/* Sent for Review */}
+                <Pressable 
+                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-blue-700 mb-1">
+                    {outboxReviewingTasks.length}
+                  </Text>
+                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
+                    Sent for{'\n'}Review
+                  </Text>
+                </Pressable>
+                
+                {/* Others Working on My Tasks */}
+                <Pressable 
+                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("wip");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-orange-700 mb-1">
+                    {outboxWIPTasks.length}
+                  </Text>
+                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
+                    Others Working{'\n'}on My Tasks
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {/* Divider */}
+            <View className="h-px bg-gray-200 mb-4" />
+
+            {/* 4. ACCOMPLISHMENTS Section */}
+            <View>
+              <View className="flex-row items-center mb-2">
+                <Ionicons name="trophy-outline" size={18} color="#10b981" />
+                <Text className="text-sm font-semibold text-green-600 ml-2">Accomplishments</Text>
+              </View>
+              <View className="flex-row gap-2">
+                {/* All Done Tasks */}
+                <Pressable 
+                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-3 items-center"
+                  onPress={() => {
+                    setSectionFilter("all");
+                    setStatusFilter("done");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className="text-3xl font-bold text-green-700 mb-1">
+                    {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
+                  </Text>
+                  <Text className="text-sm text-green-600 text-center" numberOfLines={2}>
+                    All Done{'\n'}Tasks
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
 
-            {/* Section 1: My Tasks */}
+          {/* ===== QUICK OVERVIEW SECTION (COLLAPSIBLE) ===== */}
+          <View className="bg-white rounded-lg border border-gray-200 mb-4">
+            {/* Header with Collapse/Expand */}
+            <Pressable 
+              onPress={() => setIsQuickOverviewExpanded(!isQuickOverviewExpanded)}
+              className="p-4 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="list-outline" size={20} color="#3b82f6" />
+                <Text className="text-base font-semibold text-gray-900 ml-2">
+                  Quick Overview
+                </Text>
+              </View>
+              <Ionicons 
+                name={isQuickOverviewExpanded ? "chevron-up" : "chevron-down"} 
+                size={20} 
+                color="#6b7280" 
+              />
+            </Pressable>
+
+            {/* Collapsible Content */}
+            {isQuickOverviewExpanded && (
+              <View className="px-4 pb-4">
+                {/* Section 1: My Tasks */}
             <View>
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
@@ -799,214 +1022,10 @@ export default function DashboardScreen({
                   </Pressable>
               </View>
                 </View>
-            </View>
-            
-          {/* ===== PRIORITY SUMMARY SECTION ===== */}
-          <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
-              <Text className="text-base font-semibold text-gray-900 ml-2">
-                Priority Summary
-              </Text>
-          </View>
-
-            {/* 1. URGENT! Section */}
-            <View className="mb-4">
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="alert-circle" size={18} color="#ef4444" />
-                <Text className="text-sm font-semibold text-red-600 ml-2">Urgent!</Text>
-        </View>
-              <View className="flex-row gap-2">
-                {/* My Overdues */}
-                <Pressable 
-                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("all");
-                    setStatusFilter("overdue");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-red-700 mb-1">
-                    {myOverdueTasks.length + inboxOverdueTasks.length}
-                  </Text>
-                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
-                    My Overdues
-                  </Text>
-                </Pressable>
-                
-                {/* Chase Now */}
-                <Pressable 
-                  className="flex-1 bg-red-50 border border-red-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("overdue");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-red-700 mb-1">
-                    {outboxOverdueTasks.length}
-                  </Text>
-                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
-                    Chase Now
-                  </Text>
-                </Pressable>
               </View>
-            </View>
-
-            {/* Divider */}
-            <View className="h-px bg-gray-200 mb-4" />
-
-            {/* 2. ON MY PLATE Section */}
-            <View className="mb-4">
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="hourglass-outline" size={18} color="#f59e0b" />
-                <Text className="text-sm font-semibold text-amber-600 ml-2">On My Plate</Text>
+                </View>
               </View>
-              <View className="flex-row gap-2">
-                {/* Inbox Received */}
-                <Pressable 
-                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("inbox");
-                    setStatusFilter("received");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
-                    {inboxReceivedTasks.length}
-                  </Text>
-                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
-                    New Incoming{'\n'}Tasks
-                  </Text>
-                </Pressable>
-                
-                {/* Inbox Review */}
-                <Pressable 
-                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("inbox");
-                    setStatusFilter("reviewing");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-blue-700 mb-1">
-                    {inboxReviewingTasks.length}
-                  </Text>
-                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Completed{'\n'}Review Now
-                  </Text>
-                </Pressable>
-                
-                {/* All WIP */}
-                <Pressable 
-                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("all");
-                    setStatusFilter("wip");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-orange-700 mb-1">
-                    {myWIPTasks.length + inboxWIPTasks.length}
-                  </Text>
-                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
-                    My On-going{'\n'}Tasks
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View className="h-px bg-gray-200 mb-4" />
-
-            {/* 3. ON OTHERS' PLATE Section */}
-            <View className="mb-4">
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="eye-outline" size={18} color="#8b5cf6" />
-                <Text className="text-sm font-semibold text-purple-600 ml-2">On Others' Plate</Text>
-              </View>
-              <View className="flex-row gap-2">
-                {/* Outbox Assigned */}
-                <Pressable 
-                  className="flex-1 bg-yellow-50 border border-yellow-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("assigned");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-yellow-700 mb-1">
-                    {outboxAssignedTasks.length}
-                  </Text>
-                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
-                    Waiting to Be{'\n'}Accepted
-                  </Text>
-                </Pressable>
-                
-                {/* Outbox Reviewing */}
-                <Pressable 
-                  className="flex-1 bg-blue-50 border border-blue-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("reviewing");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-blue-700 mb-1">
-                    {outboxReviewingTasks.length}
-                  </Text>
-                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Sent for{'\n'}Review
-                  </Text>
-                </Pressable>
-                
-                {/* Outbox WIP */}
-                <Pressable 
-                  className="flex-1 bg-orange-50 border border-orange-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("wip");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-orange-700 mb-1">
-                    {outboxWIPTasks.length}
-                  </Text>
-                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
-                    Others Working{'\n'}on My Tasks
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View className="h-px bg-gray-200 mb-4" />
-
-            {/* 4. ACCOMPLISHMENTS Section */}
-            <View>
-              <View className="flex-row items-center mb-2">
-                <Ionicons name="trophy-outline" size={18} color="#10b981" />
-                <Text className="text-sm font-semibold text-green-600 ml-2">Accomplishments</Text>
-              </View>
-              <View className="flex-row gap-2">
-                {/* All Done */}
-                <Pressable 
-                  className="flex-1 bg-green-50 border border-green-300 rounded-lg p-3 items-center"
-                  onPress={() => {
-                    setSectionFilter("all");
-                    setStatusFilter("done");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className="text-3xl font-bold text-green-700 mb-1">
-                    {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
-                  </Text>
-                  <Text className="text-sm text-green-600 text-center" numberOfLines={2}>
-                    All Done{'\n'}Tasks
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
+            )}
           </View>
 
           {/* Footer space for FAB */}

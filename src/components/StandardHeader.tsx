@@ -58,43 +58,6 @@ export default function StandardHeader({
 
   return (
     <View className={cn("bg-white border-b border-gray-200 px-6 py-4", className)}>
-      {/* First Row: Status Indicators - Above everything */}
-      <View className="flex-row items-center justify-end mb-2">
-        <View className="flex-row items-center space-x-4">
-          {/* Environment Indicator */}
-          <View className="flex-row items-center">
-            <View 
-              className="w-2 h-2 rounded-full mr-2"
-              style={{ backgroundColor: getEnvironmentStyles(environmentInfo).backgroundColor }}
-            />
-            <Text className="text-xs font-medium text-gray-700">
-              {environmentInfo.displayName}
-            </Text>
-          </View>
-          
-          {/* Supabase Connection Status */}
-          <View className="flex-row items-center">
-            <View 
-              className={cn(
-                "w-2 h-2 rounded-full mr-2",
-                supabaseStatus === "connected" ? "bg-green-500" :
-                supabaseStatus === "disconnected" ? "bg-red-500" :
-                "bg-yellow-500"
-              )}
-            />
-            <Text className={cn(
-              "text-xs font-medium",
-              supabaseStatus === "connected" ? "text-green-700" :
-              supabaseStatus === "disconnected" ? "text-red-700" :
-              "text-yellow-700"
-            )}>
-              {supabaseStatus === "connected" ? "Cloud" :
-               supabaseStatus === "disconnected" ? "Offline" :
-               "Checking..."}
-            </Text>
-          </View>
-        </View>
-      </View>
 
       {/* Company Banner */}
       {banner && banner.isVisible && (

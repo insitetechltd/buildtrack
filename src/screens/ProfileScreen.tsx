@@ -23,6 +23,8 @@ import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useProjectStoreWithInit } from "../state/projectStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
+import { checkSupabaseConnection } from "../api/supabase";
+import { detectEnvironment, getEnvironmentStyles } from "../utils/environmentDetector";
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
@@ -34,7 +36,24 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
   const { language, setLanguage } = useLanguageStore();
   const { getCompanyBanner } = useCompanyStore();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
+  const [environmentInfo] = useState(() => detectEnvironment());
   const t = useTranslation();
+
+  // Check Supabase connection on component mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const isConnected = await checkSupabaseConnection();
+        setSupabaseStatus(isConnected ? "connected" : "disconnected");
+      } catch (error) {
+        console.error("Supabase connection check failed:", error);
+        setSupabaseStatus("disconnected");
+      }
+    };
+    
+    checkConnection();
+  }, []);
 
   if (!user) return null;
 
@@ -246,6 +265,60 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               icon="lock-closed-outline"
               onPress={() => Alert.alert("Coming Soon", "Privacy policy will be available in a future update.")}
             />
+          </View>
+        </View>
+
+        {/* System Status Indicators */}
+        <View className="mt-6 mb-4 px-6">
+          <Text className="text-lg font-semibold text-gray-900 mb-2">
+            System Status
+          </Text>
+          <View className="bg-white border border-gray-200 rounded-xl p-4">
+            {/* Environment Indicator */}
+            <View className="flex-row items-center justify-between py-2">
+              <View className="flex-row items-center flex-1">
+                <View 
+                  className="w-3 h-3 rounded-full mr-3"
+                  style={{ backgroundColor: getEnvironmentStyles(environmentInfo).backgroundColor }}
+                />
+                <Text className="text-sm text-gray-700">
+                  Environment
+                </Text>
+              </View>
+              <Text className="text-sm font-medium text-gray-900">
+                {environmentInfo.displayName}
+              </Text>
+            </View>
+            
+            {/* Divider */}
+            <View className="h-px bg-gray-200 my-2" />
+            
+            {/* Supabase Connection Status */}
+            <View className="flex-row items-center justify-between py-2">
+              <View className="flex-row items-center flex-1">
+                <View 
+                  className={cn(
+                    "w-3 h-3 rounded-full mr-3",
+                    supabaseStatus === "connected" ? "bg-green-500" :
+                    supabaseStatus === "disconnected" ? "bg-red-500" :
+                    "bg-yellow-500"
+                  )}
+                />
+                <Text className="text-sm text-gray-700">
+                  Cloud Connection
+                </Text>
+              </View>
+              <Text className={cn(
+                "text-sm font-medium",
+                supabaseStatus === "connected" ? "text-green-700" :
+                supabaseStatus === "disconnected" ? "text-red-700" :
+                "text-yellow-700"
+              )}>
+                {supabaseStatus === "connected" ? "Connected" :
+                 supabaseStatus === "disconnected" ? "Offline" :
+                 "Checking..."}
+              </Text>
+            </View>
           </View>
         </View>
 

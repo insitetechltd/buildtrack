@@ -21,6 +21,7 @@ import { Task, Priority, TaskStatus, SubTask, Project, ProjectStatus } from "../
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
+import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
 
 interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -444,16 +445,6 @@ export default function ProjectsTasksScreen({
         })()}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
-        rightElement={
-          user.role !== "admin" ? (
-            <Pressable
-              onPress={onNavigateToCreateTask}
-              className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
-            >
-              <Ionicons name="add" size={24} color="white" />
-            </Pressable>
-          ) : undefined
-        }
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
@@ -497,6 +488,13 @@ export default function ProjectsTasksScreen({
         )}
         </View>
       </ScrollView>
+
+      {/* Expandable Utility FAB */}
+      {user.role !== "admin" && (
+        <ExpandableUtilityFAB
+          onCreateTask={onNavigateToCreateTask}
+        />
+      )}
     </SafeAreaView>
   );
 }

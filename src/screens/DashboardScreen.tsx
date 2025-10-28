@@ -434,7 +434,26 @@ export default function DashboardScreen({
       <StatusBar style="dark" />
       
       {/* Header */}
-      <StandardHeader title="Dashboard" />
+      <StandardHeader 
+        title="Dashboard"
+        rightElement={
+          <View className="flex-row items-center">
+            <View className="mr-2">
+              <Text className="text-sm font-semibold text-gray-900 text-right">
+                {user.name}
+              </Text>
+              <Text className="text-xs text-gray-600 text-right capitalize">
+                {user.role}
+              </Text>
+            </View>
+            <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-lg">
+                {user.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        }
+      />
 
       {/* Main Content with Pull-to-Refresh */}
       <ScrollView 

@@ -57,7 +57,7 @@ export default function StandardHeader({
   const banner = getCompanyBanner(user.companyId);
 
   return (
-    <View className={cn("bg-blue-900 border-b border-blue-950 px-6 py-4", className)}>
+    <View className={cn("bg-white border-b border-gray-200 px-6 py-4", className)}>
       {/* First Row: Status Indicators - Above everything */}
       <View className="flex-row items-center justify-end mb-2">
         <View className="flex-row items-center space-x-4">
@@ -67,7 +67,7 @@ export default function StandardHeader({
               className="w-2 h-2 rounded-full mr-2"
               style={{ backgroundColor: getEnvironmentStyles(environmentInfo).backgroundColor }}
             />
-            <Text className="text-xs font-medium text-yellow-400">
+            <Text className="text-xs font-medium text-gray-700">
               {environmentInfo.displayName}
             </Text>
           </View>
@@ -84,9 +84,9 @@ export default function StandardHeader({
             />
             <Text className={cn(
               "text-xs font-medium",
-              supabaseStatus === "connected" ? "text-green-400" :
-              supabaseStatus === "disconnected" ? "text-red-400" :
-              "text-yellow-400"
+              supabaseStatus === "connected" ? "text-green-700" :
+              supabaseStatus === "disconnected" ? "text-red-700" :
+              "text-yellow-700"
             )}>
               {supabaseStatus === "connected" ? "Cloud" :
                supabaseStatus === "disconnected" ? "Offline" :
@@ -111,7 +111,7 @@ export default function StandardHeader({
             // Display text banner
             <Text 
               style={{ 
-                color: '#fbbf24', // bright yellow
+                color: banner.textColor,
                 fontSize: 18, // Consistent with main title
                 fontWeight: '700',
               }}
@@ -131,17 +131,17 @@ export default function StandardHeader({
             onPress={onBackPress}
             className="w-10 h-10 items-center justify-center mr-3"
           >
-            <Ionicons name="arrow-back" size={24} color="#fbbf24" />
+            <Ionicons name="arrow-back" size={24} color="#374151" />
           </Pressable>
         )}
         
         {/* Title and Subtitle */}
         <View className="flex-1">
-          <Text className="text-xl font-bold text-yellow-400">
+          <Text className="text-xl font-bold text-gray-900">
             {title}
           </Text>
           {subtitle && (
-            <Text className="text-sm text-yellow-300 mt-0.5" numberOfLines={1}>
+            <Text className="text-sm text-gray-600 mt-0.5" numberOfLines={1}>
               {subtitle}
             </Text>
           )}

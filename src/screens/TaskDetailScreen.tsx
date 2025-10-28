@@ -534,115 +534,154 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           )}
         </View>
 
-        {/* Assignment Information Card - Moved to top */}
+        {/* Assignment Information Card - Side by Side Layout */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
-          {/* Assigned By */}
-          <View className="mb-3">
-            <Text className="text-sm font-medium text-gray-600 mb-1">Assigned By</Text>
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-                <Ionicons name="person" size={20} color="#3b82f6" />
+          {/* Assigned By and Assigned To - Side by Side */}
+          <View className="flex-row gap-2">
+            {/* Assigned By Card */}
+            <View className="flex-1 bg-gray-50 rounded-lg p-3">
+              <Text className="text-xs font-medium text-gray-500 mb-2">Assigned By</Text>
+              <View className="flex-row items-center mb-2">
+                <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2">
+                  <Ionicons name="person" size={16} color="#3b82f6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                    {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
+                  </Text>
+                  <Text className="text-xs text-gray-500 capitalize">
+                    {assignedBy?.role || "Unknown"}
+                  </Text>
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown User"} (me)` : (assignedBy?.name || "Unknown User")}
-                </Text>
-                <Text className="text-sm text-gray-500 capitalize">
-                  {assignedBy?.role || "Unknown Role"}
-                </Text>
-                <Text className="text-xs text-gray-400">
-                  {assignedBy?.email || ""}
-                </Text>
-              </View>
-              {assignedBy?.phone && assignedBy.id !== user.id && (
-                <Pressable
-                  onPress={() => {
-                    Linking.openURL(`tel:${assignedBy.phone}`);
-                  }}
-                  className="w-10 h-10 bg-green-600 rounded-full items-center justify-center ml-2"
-                >
-                  <Ionicons name="call" size={20} color="white" />
-                </Pressable>
+              {assignedBy?.phone && (
+                <View className="flex-row items-center">
+                  <Text className="text-xs text-gray-600 flex-1">{assignedBy.phone}</Text>
+                  {assignedBy.id !== user.id && (
+                    <Pressable
+                      onPress={() => Linking.openURL(`tel:${assignedBy.phone}`)}
+                      className="w-8 h-8 bg-green-600 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="call" size={14} color="white" />
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Assigned To Card */}
+            <View className="flex-1 bg-gray-50 rounded-lg p-3">
+              <Text className="text-xs font-medium text-gray-500 mb-2">Assigned To</Text>
+              {assignedUsers.length > 0 ? (
+                assignedUsers.map((assignedUser, index) => {
+                  if (!assignedUser) return null;
+                  
+                  // Get progress for this user
+                  const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
+                  const latestUpdate = userUpdates[userUpdates.length - 1];
+                  const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
+                  
+                  return (
+                    <View key={assignedUser.id} className={index > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}>
+                      <View className="flex-row items-center mb-2">
+                        <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
+                          <Ionicons name="person" size={16} color="#10b981" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                            {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
+                          </Text>
+                          <Text className="text-xs text-gray-500 capitalize">
+                            {assignedUser.role}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {/* Progress bar */}
+                      <View className="flex-row items-center mb-1">
+                        <View className="flex-1 h-1.5 bg-gray-200 rounded-full mr-2">
+                          <View 
+                            className="h-full bg-green-600 rounded-full"
+                            style={{ width: `${userProgress}%` }}
+                          />
+                        </View>
+                        <Text className="text-xs font-medium text-gray-600 w-10 text-right">
+                          {userProgress}%
+                        </Text>
+                      </View>
+                      
+                      {assignedUser.phone && (
+                        <View className="flex-row items-center">
+                          <Text className="text-xs text-gray-600 flex-1">{assignedUser.phone}</Text>
+                          {assignedUser.id !== user.id && (
+                            <Pressable
+                              onPress={() => Linking.openURL(`tel:${assignedUser.phone}`)}
+                              className="w-8 h-8 bg-green-600 rounded-full items-center justify-center"
+                            >
+                              <Ionicons name="call" size={14} color="white" />
+                            </Pressable>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              ) : (
+                <Text className="text-xs text-gray-500">No assignees</Text>
               )}
             </View>
           </View>
 
-          {/* Assigned To */}
-          <View>
-            <Text className="text-sm font-medium text-gray-600 mb-1">Assigned To</Text>
-            {assignedUsers.length > 0 ? (
-              <View className="space-y-2">
-                {assignedUsers.map((assignedUser) => {
-                  if (!assignedUser) return null;
-                  
-                  // Get progress for this user from task updates
-                  const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
-                  const latestUpdate = userUpdates[userUpdates.length - 1];
-                  const userProgress = latestUpdate?.completionPercentage || 0;
-                  
-                  return (
-                    <View key={assignedUser.id} className="flex-row items-center">
-                      <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
-                        <Ionicons name="person" size={20} color="#10b981" />
-                      </View>
-                      <View className="flex-1">
-                        <View className="flex-row items-center justify-between mb-1">
-                          <Text className="text-base font-semibold text-gray-900">
-                            {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
-                          </Text>
-                          <View className="flex-row items-center">
-                            <View className="w-20 bg-gray-200 rounded-full h-2 mr-2">
-                              <View 
-                                className={cn(
-                                  "h-2 rounded-full",
-                                  userProgress === 100 ? "bg-green-500" :
-                                  userProgress >= 75 ? "bg-blue-500" :
-                                  userProgress >= 50 ? "bg-yellow-500" :
-                                  userProgress >= 25 ? "bg-orange-500" :
-                                  "bg-gray-400"
-                                )}
-                                style={{ width: `${userProgress}%` }}
-                              />
-                            </View>
-                            <Text className="text-xs font-medium text-gray-600 w-8">
-                              {userProgress}%
-                            </Text>
-                          </View>
-                        </View>
-                        <Text className="text-sm text-gray-500 capitalize">
-                          {assignedUser.role}
-                        </Text>
-                        <Text className="text-xs text-gray-400">
-                          {assignedUser.email}
-                        </Text>
-                      </View>
-                      {assignedUser.phone && assignedUser.id !== user.id && (
-                        <Pressable
-                          onPress={() => {
-                            Linking.openURL(`tel:${assignedUser.phone}`);
-                          }}
-                          className="w-10 h-10 bg-green-600 rounded-full items-center justify-center ml-2"
-                        >
-                          <Ionicons name="call" size={20} color="white" />
-                        </Pressable>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 bg-gray-100 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="person-outline" size={20} color="#6b7280" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-medium text-gray-500">
-                    No one assigned
-                  </Text>
-                </View>
-              </View>
-            )}
+          {/* Due Date, Status, Priority - Single Row Below */}
+          <View className="flex-row items-center flex-wrap gap-2 mt-4">
+            <View className="flex-row items-center">
+              <Text className="text-sm font-medium text-gray-600">Due: </Text>
+              <Text className="text-sm font-semibold text-gray-900">
+                {new Date(task.dueDate).toLocaleDateString()}
+              </Text>
+            </View>
+            <View className={cn(
+              "px-2 py-1 rounded-full",
+              task.currentStatus === "completed" ? "bg-green-50" :
+              task.currentStatus === "in_progress" ? "bg-blue-50" :
+              task.currentStatus === "rejected" ? "bg-red-50" :
+              "bg-gray-50"
+            )}>
+              <Text className={cn(
+                "text-xs font-medium capitalize",
+                task.currentStatus === "completed" ? "text-green-700" :
+                task.currentStatus === "in_progress" ? "text-blue-700" :
+                task.currentStatus === "rejected" ? "text-red-700" :
+                "text-gray-700"
+              )}>
+                {task.currentStatus.replace("_", " ")}
+              </Text>
+            </View>
+            <View className={cn(
+              "px-2 py-1 rounded-full",
+              task.priority === "critical" ? "bg-red-50" :
+              task.priority === "high" ? "bg-orange-50" :
+              task.priority === "medium" ? "bg-yellow-50" :
+              "bg-green-50"
+            )}>
+              <Text className={cn(
+                "text-xs font-medium capitalize",
+                task.priority === "critical" ? "text-red-700" :
+                task.priority === "high" ? "text-orange-700" :
+                task.priority === "medium" ? "text-yellow-700" :
+                "text-green-700"
+              )}>
+                {task.priority}
+              </Text>
+            </View>
+          </View>
+
+          {/* Description */}
+          <View className="mt-3">
+            <Text className="text-sm text-gray-700">
+              {task.description}
+            </Text>
           </View>
         </View>
 

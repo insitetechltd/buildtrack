@@ -471,27 +471,6 @@ export default function DashboardScreen({
             </View>
           </View>
 
-          {/* Quick Actions */}
-          <View className="flex-row gap-2 mb-4">
-            <Pressable
-              onPress={() => onNavigateToProfile()}
-              className="flex-1 bg-purple-600 rounded-lg p-3 flex-row items-center justify-center"
-            >
-              <Ionicons name="person" size={20} color="white" />
-              <Text className="text-white font-medium ml-2">Profile</Text>
-            </Pressable>
-            
-            {onNavigateToReports && (
-              <Pressable
-                onPress={() => onNavigateToReports()}
-                className="flex-1 bg-green-600 rounded-lg p-3 flex-row items-center justify-center"
-              >
-                <Ionicons name="bar-chart" size={20} color="white" />
-                <Text className="text-white font-medium ml-2">Reports</Text>
-              </Pressable>
-            )}
-          </View>
-
           {/* Quick Overview Section */}
           <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
             <View className="flex-row items-center mb-3">
@@ -1061,6 +1040,8 @@ export default function DashboardScreen({
       <ExpandableUtilityFAB
         onCreateTask={onNavigateToCreateTask}
         onRefresh={handleManualRefresh}
+        onProfile={onNavigateToProfile}
+        onReports={onNavigateToReports}
       />
     </SafeAreaView>
   );

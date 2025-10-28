@@ -446,24 +446,38 @@ export default function ProjectsTasksScreen({
     const taskMap = new Map<string, { parent: TaskListItem; subtasks: TaskListItem[] }>();
     const standaloneSubtasks: TaskListItem[] = [];
     
+    console.log('🔍 Grouping tasks. Total tasks:', allTasks.length);
+    
     allTasks.forEach(task => {
       const isSubTask = 'isSubTask' in task && task.isSubTask;
       
       if (isSubTask) {
         const parentId = task.parentTaskId;
+        console.log(`  📎 Subtask found: "${task.title}" (parentId: ${parentId})`);
+        
         // Check if parent task is in the list
-        const parentExists = allTasks.some(t => !('isSubTask' in t) && t.id === parentId);
+        const parentExists = allTasks.some(t => {
+          const isParent = !('isSubTask' in t) || !t.isSubTask;
+          return isParent && t.id === parentId;
+        });
+        
+        console.log(`    Parent exists in list: ${parentExists}`);
         
         if (parentExists) {
           // Add to parent's subtask list
           if (!taskMap.has(parentId)) {
-            const parentTask = allTasks.find(t => !('isSubTask' in t) && t.id === parentId)!;
+            const parentTask = allTasks.find(t => {
+              const isParent = !('isSubTask' in t) || !t.isSubTask;
+              return isParent && t.id === parentId;
+            })!;
             taskMap.set(parentId, { parent: parentTask, subtasks: [] });
           }
           taskMap.get(parentId)!.subtasks.push(task);
+          console.log(`    ✅ Added to parent's subtask list`);
         } else {
           // Parent not in list, show subtask standalone
           standaloneSubtasks.push(task);
+          console.log(`    ⚠️ Parent not in list, showing standalone`);
         }
       } else {
         // Parent task
@@ -471,6 +485,11 @@ export default function ProjectsTasksScreen({
           taskMap.set(task.id, { parent: task, subtasks: [] });
         }
       }
+    });
+    
+    console.log(`📊 Grouping complete: ${taskMap.size} parent groups, ${standaloneSubtasks.length} standalone subtasks`);
+    taskMap.forEach((group, parentId) => {
+      console.log(`  Parent "${group.parent.title}": ${group.subtasks.length} subtasks`);
     });
     
     // Combine: parent tasks with their subtasks, then standalone subtasks

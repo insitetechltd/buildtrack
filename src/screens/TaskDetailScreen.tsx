@@ -696,6 +696,113 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           )}
         </View>
 
+        {/* Subtasks Section - Only show for parent tasks (not when viewing a subtask) */}
+        {!isViewingSubTask && task?.subTasks && task.subTasks.length > 0 && (
+          <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center">
+                <Ionicons name="git-branch-outline" size={20} color="#7c3aed" />
+                <Text className="text-lg font-semibold text-gray-900 ml-2">
+                  Sub-Tasks ({task.subTasks.length})
+                </Text>
+              </View>
+            </View>
+
+            {/* Subtasks List */}
+            <View className="space-y-2">
+              {task.subTasks.map((subtask, index) => {
+                const subtaskAssignees = subtask.assignedTo
+                  .map(id => getUserById(id))
+                  .filter(u => u !== null);
+                
+                return (
+                  <Pressable
+                    key={subtask.id}
+                    onPress={() => onNavigateToCreateTask && onNavigateToCreateTask(taskId, subtask.id)}
+                    className={cn(
+                      "bg-purple-50 border border-purple-200 rounded-lg p-3",
+                      index > 0 && "mt-2"
+                    )}
+                  >
+                    {/* Subtask Title and Status */}
+                    <View className="flex-row items-start justify-between mb-2">
+                      <Text className="flex-1 font-semibold text-gray-900 mr-2" numberOfLines={2}>
+                        {subtask.title}
+                      </Text>
+                      <View className={cn(
+                        "px-2 py-1 rounded-full",
+                        subtask.priority === "critical" ? "bg-red-100 border border-red-300" :
+                        subtask.priority === "high" ? "bg-orange-100 border border-orange-300" :
+                        subtask.priority === "medium" ? "bg-yellow-100 border border-yellow-300" :
+                        "bg-green-100 border border-green-300"
+                      )}>
+                        <Text className={cn(
+                          "text-xs font-medium",
+                          subtask.priority === "critical" ? "text-red-700" :
+                          subtask.priority === "high" ? "text-orange-700" :
+                          subtask.priority === "medium" ? "text-yellow-700" :
+                          "text-green-700"
+                        )}>
+                          {subtask.priority}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Subtask Description */}
+                    {subtask.description && (
+                      <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+                        {subtask.description}
+                      </Text>
+                    )}
+
+                    {/* Subtask Info Row */}
+                    <View className="flex-row items-center justify-between flex-wrap gap-2">
+                      {/* Assignees */}
+                      <View className="flex-row items-center flex-1">
+                        <Ionicons name="person-outline" size={14} color="#6b7280" />
+                        <Text className="text-xs text-gray-600 ml-1" numberOfLines={1}>
+                          {subtaskAssignees.length > 0 
+                            ? subtaskAssignees.map(u => u.name).join(", ")
+                            : "Unassigned"}
+                        </Text>
+                      </View>
+
+                      {/* Due Date */}
+                      <View className="flex-row items-center">
+                        <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+                        <Text className="text-xs text-gray-600 ml-1">
+                          {new Date(subtask.dueDate).toLocaleDateString()}
+                        </Text>
+                      </View>
+
+                      {/* Completion */}
+                      <View className="flex-row items-center">
+                        <Text className="text-xs font-semibold text-gray-700">
+                          {subtask.completionPercentage}%
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Acceptance Status */}
+                    {!subtask.accepted && subtask.currentStatus !== "rejected" && (
+                      <View className="mt-2 flex-row items-center bg-yellow-50 px-2 py-1 rounded">
+                        <Ionicons name="time-outline" size={12} color="#d97706" />
+                        <Text className="text-xs text-yellow-700 ml-1">Waiting for acceptance</Text>
+                      </View>
+                    )}
+                    {subtask.currentStatus === "rejected" && (
+                      <View className="mt-2 flex-row items-center bg-red-50 px-2 py-1 rounded">
+                        <Ionicons name="close-circle-outline" size={12} color="#dc2626" />
+                        <Text className="text-xs text-red-700 ml-1">Rejected</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
       </ScrollView>
 
       {/* Update Modal */}

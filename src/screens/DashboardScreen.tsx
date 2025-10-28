@@ -471,6 +471,81 @@ export default function DashboardScreen({
             </View>
           </View>
 
+          {/* Today's Tasks Section - Only show if user has starred tasks */}
+          {(() => {
+            const starredTasks = getStarredTasks(user.id).filter(task => 
+              selectedProjectId ? task.projectId === selectedProjectId : true
+            );
+            
+            if (starredTasks.length === 0) return null;
+
+            return (
+              <View className="bg-white rounded-lg p-4 mb-4 border-2 border-yellow-400">
+                <View className="flex-row items-center mb-3">
+                  <Ionicons name="star" size={20} color="#f59e0b" />
+                  <Text className="text-base font-semibold text-gray-900 ml-2">
+                    Today's Tasks ({starredTasks.length})
+                  </Text>
+                </View>
+                
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View className="flex-row gap-3">
+                    {starredTasks.map((task) => (
+                      <Pressable
+                        key={task.id}
+                        onPress={() => onNavigateToTaskDetail && onNavigateToTaskDetail(task.id)}
+                        className="w-64 bg-yellow-50 border border-yellow-300 rounded-lg p-3"
+                      >
+                        <View className="flex-row items-start justify-between mb-2">
+                          <Text className="flex-1 font-semibold text-gray-900 mr-2" numberOfLines={2}>
+                            {task.title}
+                          </Text>
+                          <Pressable
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              toggleTaskStar(task.id, user.id);
+                            }}
+                            className="p-1"
+                          >
+                            <Ionicons name="star" size={20} color="#f59e0b" />
+                          </Pressable>
+                        </View>
+                        
+                        <Text className="text-sm text-gray-600 mb-2" numberOfLines={2}>
+                          {task.description}
+                        </Text>
+                        
+                        <View className="flex-row items-center justify-between">
+                          <View className={cn(
+                            "px-2 py-1 rounded-full border",
+                            task.priority === "critical" ? "bg-red-50 border-red-200" :
+                            task.priority === "high" ? "bg-orange-50 border-orange-200" :
+                            task.priority === "medium" ? "bg-yellow-50 border-yellow-200" :
+                            "bg-green-50 border-green-200"
+                          )}>
+                            <Text className={cn(
+                              "text-xs font-medium",
+                              task.priority === "critical" ? "text-red-700" :
+                              task.priority === "high" ? "text-orange-700" :
+                              task.priority === "medium" ? "text-yellow-700" :
+                              "text-green-700"
+                            )}>
+                              {task.priority}
+                            </Text>
+                          </View>
+                          
+                          <Text className="text-sm font-semibold text-gray-700">
+                            {task.completionPercentage}%
+                          </Text>
+                        </View>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            );
+          })()}
+
           {/* Quick Overview Section */}
           <View className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
             <View className="flex-row items-center mb-3">

@@ -957,7 +957,7 @@ export default function DashboardScreen({
                     {outboxReviewingTasks.length}
                   </Text>
                   <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
-                    Completed{'\n'}Sent for Review
+                    Sent for{'\n'}Review
                   </Text>
                 </Pressable>
                 

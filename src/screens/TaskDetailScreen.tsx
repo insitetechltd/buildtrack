@@ -27,7 +27,6 @@ import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 import CompactTaskCard from "../components/CompactTaskCard";
-import { PhotoUploadSection } from "../components/PhotoUploadSection";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -227,7 +226,106 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   };
 
-  // handleAddPhotos removed - now using PhotoUploadSection component
+  const handleAddPhotos = async () => {
+    Alert.alert(
+      "Add Photos",
+      "Choose how you want to add photos",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            try {
+              // Request camera permissions
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                quality: 0.8,
+                allowsEditing: false,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to take photo");
+            }
+          },
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            try {
+              // Request media library permissions
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+              });
+
+              if (!result.canceled && result.assets) {
+                const newPhotos = result.assets.map(asset => asset.uri);
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, ...newPhotos],
+                }));
+              }
+            } catch (error) {
+              Alert.alert("Error", "Failed to pick images");
+            }
+          },
+        },
+        {
+          text: "Paste from Clipboard",
+          onPress: async () => {
+            try {
+              const hasImage = await Clipboard.hasImageAsync();
+              
+              if (!hasImage) {
+                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
+                return;
+              }
+
+              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
+              
+              if (imageUri && imageUri.data) {
+                // Convert base64 to URI format
+                const uri = `data:image/png;base64,${imageUri.data}`;
+                setUpdateForm(prev => ({
+                  ...prev,
+                  photos: [...prev.photos, uri],
+                }));
+                Alert.alert("Success", "Image pasted from clipboard!");
+              } else {
+                Alert.alert("Error", "Could not paste image from clipboard");
+              }
+            } catch (error) {
+              console.error("Clipboard paste error:", error);
+              Alert.alert("Error", "Failed to paste from clipboard");
+            }
+          },
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]
+    );
+  };
 
   const handleSubmitUpdate = async () => {
     if (!updateForm.description.trim()) {
@@ -668,14 +766,50 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {/* Photos & Files - Using PhotoUploadSection Component */}
-            <PhotoUploadSection
-              photos={updateForm.photos}
-              onPhotosChange={(photos) => setUpdateForm(prev => ({ ...prev, photos }))}
-              title="Photos & Files"
-              emptyMessage="No files added"
-              showCount={true}
-            />
+            {/* Photos & Files - Top Section */}
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-gray-900 mb-3">
+                Photos & Files
+              </Text>
+              
+              {updateForm.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                  <View className="flex-row">
+                    {updateForm.photos.map((photo, index) => (
+                      <View key={index} className="mr-3 relative">
+                        <Image
+                          source={{ uri: photo }}
+                          className="w-24 h-24 rounded-lg"
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => {
+                            setUpdateForm(prev => ({
+                              ...prev,
+                              photos: prev.photos.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+              
+              <Pressable
+                onPress={handleAddPhotos}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+              >
+                <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
+                <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
+                <Text className="text-gray-400 text-sm mt-1">
+                  {updateForm.photos.length === 0 ? "No files added" : `${updateForm.photos.length} file(s) added`}
+                </Text>
+              </Pressable>
+            </View>
 
             {/* Update Description */}
             <View className="mb-6">

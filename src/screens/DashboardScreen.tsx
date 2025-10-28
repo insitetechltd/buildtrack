@@ -817,7 +817,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-red-700 mb-1">
                     {myOverdueTasks.length + inboxOverdueTasks.length}
                   </Text>
-                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>
+                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
                     My Overdues
                   </Text>
                 </Pressable>
@@ -834,7 +834,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-red-700 mb-1">
                     {outboxOverdueTasks.length}
                   </Text>
-                  <Text className="text-xs text-red-600 text-center" numberOfLines={1}>
+                  <Text className="text-sm text-red-600 text-center" numberOfLines={1}>
                     Chase Now
                   </Text>
                 </Pressable>
@@ -863,7 +863,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-yellow-700 mb-1">
                     {inboxReceivedTasks.length}
                   </Text>
-                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
                     Inbox{'\n'}Received
                   </Text>
                 </Pressable>
@@ -880,7 +880,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-blue-700 mb-1">
                     {inboxReviewingTasks.length}
                   </Text>
-                  <Text className="text-xs text-blue-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
                     Inbox{'\n'}Review
                   </Text>
                 </Pressable>
@@ -897,7 +897,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-orange-700 mb-1">
                     {myWIPTasks.length + inboxWIPTasks.length}
                   </Text>
-                  <Text className="text-xs text-orange-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
                     All WIP{'\n'}Tasks
                   </Text>
                 </Pressable>
@@ -926,7 +926,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-yellow-700 mb-1">
                     {outboxAssignedTasks.length}
                   </Text>
-                  <Text className="text-xs text-yellow-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-yellow-600 text-center" numberOfLines={2}>
                     Outbox{'\n'}Assigned
                   </Text>
                 </Pressable>
@@ -943,7 +943,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-orange-700 mb-1">
                     {outboxWIPTasks.length}
                   </Text>
-                  <Text className="text-xs text-orange-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-orange-600 text-center" numberOfLines={2}>
                     Outbox{'\n'}WIP
                   </Text>
                 </Pressable>
@@ -960,7 +960,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-blue-700 mb-1">
                     {outboxReviewingTasks.length}
                   </Text>
-                  <Text className="text-xs text-blue-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-blue-600 text-center" numberOfLines={2}>
                     Outbox{'\n'}Reviewing
                   </Text>
                 </Pressable>
@@ -989,7 +989,7 @@ export default function DashboardScreen({
                   <Text className="text-3xl font-bold text-green-700 mb-1">
                     {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
                   </Text>
-                  <Text className="text-xs text-green-600 text-center" numberOfLines={2}>
+                  <Text className="text-sm text-green-600 text-center" numberOfLines={2}>
                     All Done{'\n'}Tasks
                   </Text>
                 </Pressable>

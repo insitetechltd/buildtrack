@@ -771,7 +771,7 @@ export default function DashboardScreen({
                 <Pressable 
                   className={cn(
                     "flex-1 rounded-xl p-3 items-center",
-                    isDarkMode ? "bg-violet-900 border-2 border-violet-600" : "bg-orange-50 border border-orange-300"
+                    isDarkMode ? "bg-orange-900 border-2 border-orange-600" : "bg-orange-50 border border-orange-300"
                   )}
                   onPress={() => {
                     setSectionFilter("all");
@@ -781,13 +781,13 @@ export default function DashboardScreen({
                 >
                   <Text className={cn(
                     "text-3xl mb-1",
-                    isDarkMode ? "font-black text-violet-300" : "font-bold text-orange-700"
+                    isDarkMode ? "font-black text-orange-300" : "font-bold text-orange-700"
                   )}>
                     {myWIPTasks.length + inboxWIPTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-violet-200" : "text-sm text-orange-600"
+                    isDarkMode ? "text-xs text-orange-200" : "text-sm text-orange-600"
                   )} numberOfLines={2}>
                     My On-going{'\n'}Tasks
                   </Text>

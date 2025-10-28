@@ -1139,51 +1139,105 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           // Navigate to edit - you may need to implement this
           Alert.alert("Edit", "Edit task functionality");
         }}
-        onCameraUpdate={async () => {
-          try {
-            // Check if camera is available (fails on simulator)
-            const { status } = await ImagePicker.requestCameraPermissionsAsync();
-            
-            let result;
-            if (status !== 'granted') {
-              // Fall back to photo library on simulator
-              Alert.alert(
-                "Camera Not Available",
-                "Camera is not available on simulator. Opening photo library instead.",
-                [{ text: "OK" }]
-              );
-              
-              result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: "images" as any,
-                allowsMultipleSelection: true,
-                quality: 0.8,
-              });
-            } else {
-              // Use camera on device
-              result = await ImagePicker.launchCameraAsync({
-                mediaTypes: "images" as any,
-                allowsEditing: false,
-                quality: 0.8,
-              });
-            }
-            
-            if (!result.canceled && result.assets && result.assets.length > 0) {
-              // Add photos to update form
-              const newPhotos = result.assets.map(asset => asset.uri);
-              setUpdateForm(prev => ({
-                description: prev.description || "",
-                photos: [...prev.photos, ...newPhotos],
-                completionPercentage: task.completionPercentage,
-                status: task.currentStatus,
-              }));
-              
-              // Open the update modal
-              setShowUpdateModal(true);
-            }
-          } catch (error) {
-            console.error("Error launching camera:", error);
-            Alert.alert("Error", "Failed to access camera or photo library");
-          }
+        onCameraUpdate={() => {
+          Alert.alert(
+            "Add Photos or Files",
+            "Choose how you want to add content",
+            [
+              {
+                text: "Take Photo",
+                onPress: async () => {
+                  try {
+                    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                    
+                    if (status !== 'granted') {
+                      Alert.alert("Permission Required", "Camera permission is required to take photos.");
+                      return;
+                    }
+                    
+                    const result = await ImagePicker.launchCameraAsync({
+                      mediaTypes: "images" as any,
+                      allowsEditing: false,
+                      quality: 0.8,
+                    });
+                    
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                      const newPhotos = result.assets.map(asset => asset.uri);
+                      setUpdateForm(prev => ({
+                        description: prev.description || "",
+                        photos: [...prev.photos, ...newPhotos],
+                        completionPercentage: task.completionPercentage,
+                        status: task.currentStatus,
+                      }));
+                      setShowUpdateModal(true);
+                    }
+                  } catch (error) {
+                    console.error("Error launching camera:", error);
+                    Alert.alert("Error", "Failed to access camera");
+                  }
+                },
+              },
+              {
+                text: "Choose from Library",
+                onPress: async () => {
+                  try {
+                    const result = await ImagePicker.launchImageLibraryAsync({
+                      mediaTypes: "images" as any,
+                      allowsMultipleSelection: true,
+                      quality: 0.8,
+                    });
+                    
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                      const newPhotos = result.assets.map(asset => asset.uri);
+                      setUpdateForm(prev => ({
+                        description: prev.description || "",
+                        photos: [...prev.photos, ...newPhotos],
+                        completionPercentage: task.completionPercentage,
+                        status: task.currentStatus,
+                      }));
+                      setShowUpdateModal(true);
+                    }
+                  } catch (error) {
+                    console.error("Error opening library:", error);
+                    Alert.alert("Error", "Failed to access photo library");
+                  }
+                },
+              },
+              {
+                text: "Upload PDF",
+                onPress: async () => {
+                  try {
+                    const result = await DocumentPicker.getDocumentAsync({
+                      type: 'application/pdf',
+                      copyToCacheDirectory: true,
+                    });
+                    
+                    if (!result.canceled && result.assets && result.assets.length > 0) {
+                      const newFiles = result.assets.map(asset => ({
+                        uri: asset.uri,
+                        type: 'pdf' as const,
+                        name: asset.name,
+                      }));
+                      setUpdateForm(prev => ({
+                        description: prev.description || "",
+                        photos: [...prev.photos, ...newFiles],
+                        completionPercentage: task.completionPercentage,
+                        status: task.currentStatus,
+                      }));
+                      setShowUpdateModal(true);
+                    }
+                  } catch (error) {
+                    console.error("Error picking document:", error);
+                    Alert.alert("Error", "Failed to pick document");
+                  }
+                },
+              },
+              {
+                text: "Cancel",
+                style: "cancel",
+              },
+            ]
+          );
         }}
         onCreateSubTask={onNavigateToCreateTask ? () => {
           if (subTaskId) {

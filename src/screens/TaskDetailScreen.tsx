@@ -1153,31 +1153,49 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           Alert.alert("Edit", "Edit task functionality");
         }}
         onCameraUpdate={async () => {
-          // Check if camera is available (fails on simulator)
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') {
-            // Fall back to photo library on simulator
-            const result = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: "images" as any,
-              allowsMultipleSelection: true,
-              quality: 0.8,
-            });
+          try {
+            // Check if camera is available (fails on simulator)
+            const { status } = await ImagePicker.requestCameraPermissionsAsync();
             
-            if (!result.canceled && result.assets) {
-              // Handle photos
-              Alert.alert("Success", `Selected ${result.assets.length} photo(s)`);
+            let result;
+            if (status !== 'granted') {
+              // Fall back to photo library on simulator
+              Alert.alert(
+                "Camera Not Available",
+                "Camera is not available on simulator. Opening photo library instead.",
+                [{ text: "OK" }]
+              );
+              
+              result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: "images" as any,
+                allowsMultipleSelection: true,
+                quality: 0.8,
+              });
+            } else {
+              // Use camera on device
+              result = await ImagePicker.launchCameraAsync({
+                mediaTypes: "images" as any,
+                allowsEditing: false,
+                quality: 0.8,
+              });
             }
-            return;
-          }
-          
-          const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: "images" as any,
-            allowsEditing: false,
-            quality: 0.8,
-          });
-          
-          if (!result.canceled && result.assets) {
-            Alert.alert("Success", "Photo captured");
+            
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+              // Add photos to update form
+              const newPhotos = result.assets.map(asset => asset.uri);
+              setUpdateForm(prev => ({
+                description: prev.description || "",
+                photos: [...prev.photos, ...newPhotos],
+                completionPercentage: task.completionPercentage,
+                status: task.currentStatus,
+              }));
+              
+              // Open the update modal
+              setShowUpdateModal(true);
+            }
+          } catch (error) {
+            console.error("Error launching camera:", error);
+            Alert.alert("Error", "Failed to access camera or photo library");
           }
         }}
         onCreateSubTask={onNavigateToCreateTask ? () => {

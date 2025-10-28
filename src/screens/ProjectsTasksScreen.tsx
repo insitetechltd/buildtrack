@@ -245,14 +245,184 @@ export default function ProjectsTasksScreen({
       }
     });
 
+    // Helper function to check if a task is overdue
+    const isOverdue = (task: any) => {
+      const dueDate = new Date(task.dueDate);
+      const now = new Date();
+      return dueDate < now;
+    };
+
     // Apply search and status filters
     const filteredTasks = allProjectTasks.filter(task => {
       const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       
-      // Handle status filters
-      const matchesStatus = localStatusFilter === "all" || task.currentStatus === localStatusFilter;
-      return matchesSearch && matchesStatus;
+      if (!matchesSearch) return false;
+      
+      // If no status filter, return all tasks from current section
+      if (localStatusFilter === "all") {
+        return true;
+      }
+      
+      // Handle "all" section with specific status filters (for Priority Summary)
+      if (localSectionFilter === "all") {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        
+        // For "all" section, combine My Tasks + Inbox logic (not Outbox for most filters)
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        const isInMyTasksOrInbox = isInMyTasks || isInInbox;
+        
+        if (localStatusFilter === "overdue") {
+          // Overdue: My Tasks + Inbox only (not outbox)
+          return isInMyTasksOrInbox &&
+                 task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          // WIP: My Tasks + Inbox only
+          if (isInMyTasks) {
+            const isSelfAssigned = isCreatedByMe && isAssignedToMe;
+            const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+            return isAcceptedOrSelfAssigned &&
+                   task.completionPercentage < 100 &&
+                   !isOverdue(task) &&
+                   task.currentStatus !== "rejected";
+          } else if (isInInbox) {
+            return task.accepted &&
+                   !isOverdue(task) &&
+                   task.currentStatus !== "rejected" &&
+                   (task.completionPercentage < 100 ||
+                    (task.completionPercentage === 100 && !task.readyForReview));
+          }
+          return false;
+        } else if (localStatusFilter === "done") {
+          // Done: My Tasks + Inbox + Outbox
+          const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+          if (isInMyTasks) {
+            return task.completionPercentage === 100 &&
+                   task.currentStatus !== "rejected";
+          } else if (isInInbox) {
+            return task.completionPercentage === 100 &&
+                   task.reviewAccepted === true;
+          } else if (isInOutbox) {
+            return task.completionPercentage === 100 &&
+                   task.reviewAccepted === true;
+          }
+          return false;
+        }
+        // For other statuses, return false for "all" section
+        return false;
+      }
+      
+      // Apply exact filter logic for each button combination
+      if (localSectionFilter === "my_tasks") {
+        // My Tasks: Rejected, WIP, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        
+        if (!isInMyTasks) return false;
+        
+        if (localStatusFilter === "rejected") {
+          return task.currentStatus === "rejected";
+        } else if (localStatusFilter === "wip") {
+          const isSelfAssigned = isCreatedByMe && isAssignedToMe;
+          const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+          return isAcceptedOrSelfAssigned &&
+                 task.completionPercentage < 100 &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      } else if (localSectionFilter === "inbox") {
+        // Inbox: Received, WIP, Reviewing, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks inbox definition)
+          const isCreatedByMeForReview = task.assignedBy === user.id;
+          return isCreatedByMeForReview &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        }
+        
+        if (!isInInbox) return false;
+        
+        if (localStatusFilter === "received") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      } else if (localSectionFilter === "outbox") {
+        // Outbox: Assigned, WIP, Reviewing, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks outbox definition)
+          return !isCreatedByMe &&
+                 isAssignedToMe &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        }
+        
+        if (!isInOutbox) return false;
+        
+        if (localStatusFilter === "assigned") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      }
+      
+      // Default: no filter match
+      return false;
     });
 
     // Sort tasks by priority (high to low) then by due date (earliest first)

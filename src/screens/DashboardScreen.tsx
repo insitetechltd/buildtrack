@@ -427,7 +427,7 @@ export default function DashboardScreen({
     );
   }
 
-  // If user has multiple projects but no selection, show project selection required screen
+  // If user has multiple projects but no selection, show project selection required screen with picker open
   if (userProjectCount > 1 && !selectedProjectId) {
     return (
       <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
@@ -442,14 +442,6 @@ export default function DashboardScreen({
           <Text className={cn("text-base mt-2 text-center", isDarkMode ? "text-slate-400" : "text-gray-600")}>
             Please select a project to view your dashboard
           </Text>
-          <Pressable
-            onPress={() => setShowProjectPicker(true)}
-            className="mt-6 bg-blue-600 px-6 py-3 rounded-lg"
-          >
-            <Text className="text-white font-semibold text-base">
-              Choose Project
-            </Text>
-          </Pressable>
         </View>
 
         {/* Project Picker Modal */}

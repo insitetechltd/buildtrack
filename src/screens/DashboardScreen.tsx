@@ -49,7 +49,7 @@ export default function DashboardScreen({
   const { fetchTasks, getStarredTasks, toggleTaskStar } = taskStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
-  const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, getLastSelectedProject } = useProjectFilterStore();
+  const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, setButtonLabel, getLastSelectedProject } = useProjectFilterStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -245,20 +245,21 @@ export default function DashboardScreen({
   // My Tasks: Rejected
   const myRejectedTasks = myTasksAll.filter(task => task.currentStatus === "rejected");
 
-  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not rejected)
+  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not rejected, not review accepted)
   const myWIPTasks = myTasksAll.filter(task => {
     const isSelfAssigned = task.assignedBy === user.id;
     const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
     return isAcceptedOrSelfAssigned && 
            task.completionPercentage < 100 &&
            !isOverdue(task) &&
-           task.currentStatus !== "rejected";
+           task.currentStatus !== "rejected" &&
+           !task.reviewAccepted;
   });
   
-  // My Tasks: Done (100% complete, not rejected)
+  // My Tasks: Done (100% complete, review accepted)
   const myDoneTasks = myTasksAll.filter(task => 
     task.completionPercentage === 100 &&
-    task.currentStatus !== "rejected"
+    task.reviewAccepted === true
   );
   
   // My Tasks: Overdue (<100%, past due, not rejected)
@@ -293,13 +294,14 @@ export default function DashboardScreen({
     task.currentStatus !== "rejected"
   );
   
-  // Inbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review))
+  // Inbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review), not review accepted)
   const inboxWIPTasks = inboxAll.filter(task =>
     task.accepted && 
     !isOverdue(task) &&
     task.currentStatus !== "rejected" &&
     (task.completionPercentage < 100 ||
-     (task.completionPercentage === 100 && !task.readyForReview))
+     (task.completionPercentage === 100 && !task.readyForReview)) &&
+    !task.reviewAccepted
   );
 
   // Inbox: Reviewing (tasks I CREATED waiting for my review action)
@@ -353,13 +355,14 @@ export default function DashboardScreen({
     task.currentStatus !== "rejected"
   );
   
-  // Outbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review))
+  // Outbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review), not review accepted)
   const outboxWIPTasks = outboxAll.filter(task =>
     task.accepted && 
     !isOverdue(task) &&
     task.currentStatus !== "rejected" &&
     (task.completionPercentage < 100 ||
-     (task.completionPercentage === 100 && !task.readyForReview))
+     (task.completionPercentage === 100 && !task.readyForReview)) &&
+    !task.reviewAccepted
   );
 
   // Outbox: Reviewing (tasks I'm ASSIGNED TO that I submitted for review)
@@ -474,15 +477,6 @@ export default function DashboardScreen({
                 <Text className={cn("text-lg", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
                   {selectedProject?.name || "All Projects"}
                 </Text>
-                {selectedProject?.description ? (
-                  <Text className={cn("text-sm mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
-                    {selectedProject?.description}
-                  </Text>
-                ) : !selectedProject && (
-                  <Text className={cn("text-sm mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
-                    Viewing tasks from all projects
-                  </Text>
-                )}
               </View>
             </View>
             <Ionicons name="chevron-down" size={isDarkMode ? 20 : 18} color={isDarkMode ? "#ffffff" : "#2563eb"} />
@@ -575,8 +569,9 @@ export default function DashboardScreen({
                     isDarkMode ? "bg-red-900 border-2 border-red-600" : "bg-red-50 border border-red-300"
                   )}
                   onPress={() => {
-                    setSectionFilter("all");
+                    setSectionFilter("my_work");
                     setStatusFilter("overdue");
+                    setButtonLabel("Urgent! - My Action Required Now");
                     onNavigateToTasks();
                   }}
                 >
@@ -587,8 +582,8 @@ export default function DashboardScreen({
                     {myOverdueTasks.length + inboxOverdueTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center",
-                    isDarkMode ? "text-sm text-red-200 font-semibold" : "text-base text-red-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-red-200" : "text-red-600"
                   )} numberOfLines={2}>
                     My Action{'\n'}Required Now
                   </Text>
@@ -603,6 +598,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("overdue");
+                    setButtonLabel("Urgent! - Follow Up Now");
                     onNavigateToTasks();
                   }}
                 >
@@ -613,8 +609,8 @@ export default function DashboardScreen({
                     {outboxOverdueTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center",
-                    isDarkMode ? "text-sm text-red-200 font-semibold" : "text-base text-red-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-red-200" : "text-red-600"
                   )} numberOfLines={2}>
                     Follow Up{'\n'}Now
                   </Text>
@@ -646,6 +642,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("inbox");
                     setStatusFilter("received");
+                    setButtonLabel("Tasks for me - New Requests");
                     onNavigateToTasks();
                   }}
                 >
@@ -656,8 +653,8 @@ export default function DashboardScreen({
                     {inboxReceivedTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-amber-200" : "text-base text-yellow-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-amber-200" : "text-yellow-600"
                   )} numberOfLines={2}>
                     New{'\n'}Requests
                   </Text>
@@ -670,8 +667,9 @@ export default function DashboardScreen({
                     isDarkMode ? "bg-violet-900 border-2 border-violet-600" : "bg-orange-50 border border-orange-300"
                   )}
                   onPress={() => {
-                    setSectionFilter("all");
+                    setSectionFilter("my_work");
                     setStatusFilter("wip");
+                    setButtonLabel("Tasks for me - Current Tasks");
                     onNavigateToTasks();
                   }}
                 >
@@ -682,8 +680,8 @@ export default function DashboardScreen({
                     {myWIPTasks.length + inboxWIPTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-violet-200" : "text-base text-orange-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-violet-200" : "text-orange-600"
                   )} numberOfLines={2}>
                     Current{'\n'}Tasks
                   </Text>
@@ -698,6 +696,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("inbox");
                     setStatusFilter("reviewing");
+                    setButtonLabel("Tasks for me - Pending my review");
                     onNavigateToTasks();
                   }}
                 >
@@ -708,8 +707,8 @@ export default function DashboardScreen({
                     {inboxReviewingTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-cyan-200" : "text-base text-blue-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-cyan-200" : "text-blue-600"
                   )} numberOfLines={2}>
                     Pending{'\n'}my review
                   </Text>
@@ -741,6 +740,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("assigned");
+                    setButtonLabel("Tasks from me - Pending Acceptance");
                     onNavigateToTasks();
                   }}
                 >
@@ -751,10 +751,10 @@ export default function DashboardScreen({
                     {outboxAssignedTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-amber-200" : "text-base text-yellow-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-amber-200" : "text-yellow-600"
                   )} numberOfLines={2}>
-                    Waiting to Be{'\n'}Accepted
+                    Pending{'\n'}Acceptance
                   </Text>
                 </Pressable>
                 
@@ -767,6 +767,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("wip");
+                    setButtonLabel("Tasks from me - Team Proceeding");
                     onNavigateToTasks();
                   }}
                 >
@@ -777,10 +778,10 @@ export default function DashboardScreen({
                     {outboxWIPTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-violet-200" : "text-base text-orange-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-violet-200" : "text-orange-600"
                   )} numberOfLines={2}>
-                    Others Working{'\n'}on My Tasks
+                    Team{'\n'}Proceeding
                   </Text>
                 </Pressable>
                 
@@ -793,6 +794,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("reviewing");
+                    setButtonLabel("Tasks from me - Pending Approval");
                     onNavigateToTasks();
                   }}
                 >
@@ -803,10 +805,10 @@ export default function DashboardScreen({
                     {outboxReviewingTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-cyan-200" : "text-base text-blue-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-cyan-200" : "text-blue-600"
                   )} numberOfLines={2}>
-                    Sent for{'\n'}Review
+                    Pending{'\n'}Approval
                   </Text>
                 </Pressable>
               </View>
@@ -834,8 +836,9 @@ export default function DashboardScreen({
                     isDarkMode ? "bg-emerald-900 border-2 border-emerald-600" : "bg-green-50 border border-green-300"
                   )}
                   onPress={() => {
-                    setSectionFilter("all");
+                    setSectionFilter("my_work");
                     setStatusFilter("done");
+                    setButtonLabel("Accomplishments - Work Accepted");
                     onNavigateToTasks();
                   }}
                 >
@@ -846,10 +849,10 @@ export default function DashboardScreen({
                     {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
                   </Text>
                   <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-sm text-emerald-200" : "text-base text-green-600"
+                    "text-center text-base font-semibold",
+                    isDarkMode ? "text-emerald-200" : "text-green-600"
                   )} numberOfLines={2}>
-                    All Done{'\n'}Tasks
+                    Work{'\n'}Accepted
                   </Text>
                 </Pressable>
               </View>
@@ -921,6 +924,7 @@ export default function DashboardScreen({
                     onPress={() => {
                     setSectionFilter("my_tasks");
                       setStatusFilter("rejected");
+                      setButtonLabel("My Tasks - Rejected");
                       onNavigateToTasks();
                     }}
                   >
@@ -943,6 +947,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("wip");
+                      setButtonLabel("My Tasks - WIP");
                       onNavigateToTasks();
                     }}
                   >
@@ -965,6 +970,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("done");
+                      setButtonLabel("My Tasks - Done");
                       onNavigateToTasks();
                     }}
                   >
@@ -987,6 +993,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("my_tasks");
                       setStatusFilter("overdue");
+                      setButtonLabel("My Tasks - Overdue");
                       onNavigateToTasks();
                     }}
                   >
@@ -1029,6 +1036,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("inbox");
                       setStatusFilter("received");
+                      setButtonLabel("Inbox - Received");
                       onNavigateToTasks();
                     }}
                   >
@@ -1051,6 +1059,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("inbox");
                       setStatusFilter("wip");
+                      setButtonLabel("Inbox - WIP");
                       onNavigateToTasks();
                     }}
                   >
@@ -1073,6 +1082,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("inbox");
                       setStatusFilter("reviewing");
+                      setButtonLabel("Inbox - Reviewing");
                       onNavigateToTasks();
                     }}
                   >
@@ -1095,6 +1105,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("inbox");
                       setStatusFilter("done");
+                      setButtonLabel("Inbox - Done");
                       onNavigateToTasks();
                     }}
                   >
@@ -1117,6 +1128,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("inbox");
                       setStatusFilter("overdue");
+                      setButtonLabel("Inbox - Overdue");
                       onNavigateToTasks();
                     }}
                   >
@@ -1159,6 +1171,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("outbox");
                       setStatusFilter("assigned");
+                      setButtonLabel("Outbox - Assigned");
                       onNavigateToTasks();
                     }}
                   >
@@ -1181,6 +1194,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("outbox");
                       setStatusFilter("wip");
+                      setButtonLabel("Outbox - WIP");
                       onNavigateToTasks();
                     }}
                   >
@@ -1203,6 +1217,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("outbox");
                       setStatusFilter("reviewing");
+                      setButtonLabel("Outbox - Reviewing");
                       onNavigateToTasks();
                     }}
                   >
@@ -1225,6 +1240,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("outbox");
                       setStatusFilter("done");
+                      setButtonLabel("Outbox - Done");
                       onNavigateToTasks();
                     }}
                   >
@@ -1247,6 +1263,7 @@ export default function DashboardScreen({
                     onPress={() => {
                       setSectionFilter("outbox");
                       setStatusFilter("overdue");
+                      setButtonLabel("Outbox - Overdue");
                       onNavigateToTasks();
                     }}
                   >
@@ -1408,7 +1425,7 @@ export default function DashboardScreen({
         onCreateTask={onNavigateToCreateTask}
         onSearch={() => {
           setSelectedProject(null, user.id);
-          setSectionFilter("all");
+          setSectionFilter("my_work");
           onNavigateToTasks();
         }}
         onReports={onNavigateToReports}

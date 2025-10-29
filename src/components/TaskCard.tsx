@@ -147,19 +147,20 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
             </Text>
           </View>
       
-          {/* Line 2: Due Date, Status Badge, Priority Badge - all on one line with consistent spacing */}
-          <View className="flex-row items-center mb-2">
+          {/* Line 2: Due Date (left), Comp% (center), Priority (right) */}
+          <View className="flex-row items-center justify-between mb-2">
+            {/* Left: Due Date */}
             <Text className={cn(
-              "text-sm mr-3",
+              "text-sm",
               isDarkMode ? "text-slate-400" : "text-gray-600"
             )}>
               Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </Text>
             
-            {/* Completion status with review states */}
+            {/* Center: Completion status with review states */}
             {isCompleted && task.reviewAccepted ? (
               // Green bubble: 100% and accepted by assigner
-              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center mr-2">
+              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
                 <Ionicons name="checkmark-circle" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
                   Accepted
@@ -167,7 +168,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               </View>
             ) : isCompleted && task.readyForReview ? (
               // Blue bubble: 100% and submitted for review
-              <View className="bg-blue-500 px-2 py-1 rounded-full flex-row items-center mr-2">
+              <View className="bg-blue-500 px-2 py-1 rounded-full flex-row items-center">
                 <Ionicons name="eye" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
                   Reviewing
@@ -176,13 +177,14 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
             ) : (
               // Plain text: 0-100% normal display
               <Text className={cn(
-                "text-sm font-semibold mr-2",
+                "text-sm font-semibold",
                 isDarkMode ? "text-slate-400" : "text-gray-500"
               )}>
                 Comp. {task.completionPercentage}%
               </Text>
             )}
             
+            {/* Right: Priority Badge */}
             <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
               <Text className="text-sm font-semibold capitalize">
                 {task.priority}

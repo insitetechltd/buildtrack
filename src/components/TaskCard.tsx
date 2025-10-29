@@ -147,22 +147,19 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
             </Text>
           </View>
       
-          {/* Line 2: Due Date */}
+          {/* Line 2: Due Date, Status Badge, Priority Badge - all on one line with consistent spacing */}
           <View className="flex-row items-center mb-2">
             <Text className={cn(
-              "text-sm",
+              "text-sm mr-3",
               isDarkMode ? "text-slate-400" : "text-gray-600"
             )}>
               Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </Text>
-          </View>
-          
-          {/* Line 3: Status Badge and Priority Badge */}
-          <View className="flex-row items-center gap-2 mb-2">
+            
             {/* Completion status with review states */}
             {isCompleted && task.reviewAccepted ? (
               // Green bubble: 100% and accepted by assigner
-              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
+              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center mr-2">
                 <Ionicons name="checkmark-circle" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
                   Accepted
@@ -170,7 +167,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               </View>
             ) : isCompleted && task.readyForReview ? (
               // Blue bubble: 100% and submitted for review
-              <View className="bg-blue-500 px-2 py-1 rounded-full flex-row items-center">
+              <View className="bg-blue-500 px-2 py-1 rounded-full flex-row items-center mr-2">
                 <Ionicons name="eye" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
                   Reviewing
@@ -179,7 +176,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
             ) : (
               // Plain text: 0-100% normal display
               <Text className={cn(
-                "text-sm font-semibold",
+                "text-sm font-semibold mr-2",
                 isDarkMode ? "text-slate-400" : "text-gray-500"
               )}>
                 Comp. {task.completionPercentage}%
@@ -193,7 +190,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
             </View>
           </View>
       
-          {/* Line 4: Assigner → Assignees */}
+          {/* Line 3: Assigner → Assignees */}
           <View className="flex-row items-center">
             <View className={cn(
               "w-4 h-4 rounded-full items-center justify-center mr-1",

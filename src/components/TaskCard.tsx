@@ -6,6 +6,7 @@ import { cn } from "../utils/cn";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
+import { useThemeStore } from "../state/themeStore";
 
 // Type for task list items (can be Task or SubTask)
 export type TaskListItem = Task | (SubTask & { isSubTask: true });
@@ -13,12 +14,14 @@ export type TaskListItem = Task | (SubTask & { isSubTask: true });
 interface TaskCardProps {
   task: TaskListItem;
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
+  className?: string;
 }
 
-export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps) {
+export default function TaskCard({ task, onNavigateToTaskDetail, className }: TaskCardProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const { getUserById } = useUserStoreWithInit();
+  const { isDarkMode } = useThemeStore();
   
   const isSubTask = 'isSubTask' in task && task.isSubTask;
   
@@ -34,7 +37,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
   const isNew = !readStatus || !readStatus.isRead;
 
   // Check if task is starred by current user
-  const isStarred = task.starredByUsers?.includes(user.id) || false;
+  const isStarred = user ? (task.starredByUsers?.includes(user.id) || false) : false;
   
   // Get assigner and assignees
   const assigner = getUserById(task.assignedBy);
@@ -45,7 +48,9 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
 
   const handleStarPress = (e: any) => {
     e.stopPropagation(); // Prevent opening task detail
-    taskStore.toggleTaskStar(task.id, user.id);
+    if (user) {
+      taskStore.toggleTaskStar(task.id, user.id);
+    }
   };
 
   const getPriorityColor = (priority: Priority) => {
@@ -72,26 +77,45 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
           onNavigateToTaskDetail(task.id);
         }
       }}
-      className="bg-white border border-gray-200 rounded-lg p-3 mb-2"
+      className={cn(
+        "rounded-lg p-3 border",
+        isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
+        className || "mb-2"
+      )}
     >
       {/* Sub-task indicator */}
       {isSubTask && (
-        <View className="flex-row items-center mb-2 bg-purple-50 -mx-3 -mt-3 px-3 py-2 rounded-t-lg">
-          <Ionicons name="git-branch-outline" size={14} color="#7c3aed" />
-          <Text className="text-base text-purple-700 ml-2 font-semibold">Sub-task</Text>
+        <View className={cn(
+          "flex-row items-center mb-2 -mx-3 -mt-3 px-3 py-2 rounded-t-lg",
+          isDarkMode ? "bg-purple-900/40" : "bg-purple-50"
+        )}>
+          <Ionicons name="git-branch-outline" size={14} color={isDarkMode ? "#a78bfa" : "#7c3aed"} />
+          <Text className={cn(
+            "text-base ml-2 font-semibold",
+            isDarkMode ? "text-purple-300" : "text-purple-700"
+          )}>Sub-task</Text>
         </View>
       )}
       
       {/* Delegation indicator */}
       {isDelegated && !isSubTask && (
-        <View className="flex-row items-center mb-2 bg-amber-50 -mx-3 -mt-3 px-3 py-2 rounded-t-lg border-b border-amber-200">
-          <Ionicons name="arrow-forward-circle" size={14} color="#f59e0b" />
-          <Text className="text-base text-amber-700 ml-2 font-medium">
+        <View className={cn(
+          "flex-row items-center mb-2 -mx-3 -mt-3 px-3 py-2 rounded-t-lg border-b",
+          isDarkMode ? "bg-amber-900/40 border-amber-700" : "bg-amber-50 border-amber-200"
+        )}>
+          <Ionicons name="arrow-forward-circle" size={14} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
+          <Text className={cn(
+            "text-base ml-2 font-medium",
+            isDarkMode ? "text-amber-300" : "text-amber-700"
+          )}>
             Delegated from {delegatedFromUser?.name || 'Unknown'}
           </Text>
           {lastDelegation?.reason && (
             <View className="ml-2 flex-1">
-              <Text className="text-sm text-amber-600 italic" numberOfLines={1}>
+              <Text className={cn(
+                "text-sm italic",
+                isDarkMode ? "text-amber-400" : "text-amber-600"
+              )} numberOfLines={1}>
                 • {lastDelegation.reason}
               </Text>
             </View>
@@ -115,26 +139,33 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
                 color={isStarred ? "#f59e0b" : "#9ca3af"}
               />
             </Pressable>
-            <Text className="text-base font-semibold text-gray-900 flex-1" numberOfLines={1}>
+            <Text className={cn(
+              "text-lg font-semibold flex-1",
+              isDarkMode ? "text-white" : "text-gray-900"
+            )} numberOfLines={1}>
               {task.title}
             </Text>
           </View>
       
-          {/* Line 2: Due Date, Completion %, Priority Badge */}
-          <View className="flex-row items-center justify-between mb-2">
-            <View>
-              <Text className="text-sm text-gray-600">
-                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </Text>
-            </View>
-            
+          {/* Line 2: Due Date */}
+          <View className="flex-row items-center mb-2">
+            <Text className={cn(
+              "text-sm",
+              isDarkMode ? "text-slate-400" : "text-gray-600"
+            )}>
+              Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </Text>
+          </View>
+          
+          {/* Line 3: Status Badge and Priority Badge */}
+          <View className="flex-row items-center gap-2 mb-2">
             {/* Completion status with review states */}
             {isCompleted && task.reviewAccepted ? (
               // Green bubble: 100% and accepted by assigner
               <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
                 <Ionicons name="checkmark-circle" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
-                  Accepted Comp.
+                  Accepted
                 </Text>
               </View>
             ) : isCompleted && task.readyForReview ? (
@@ -147,11 +178,12 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
               </View>
             ) : (
               // Plain text: 0-100% normal display
-              <View>
-                <Text className="text-sm text-gray-500 font-semibold">
-                  Comp. {task.completionPercentage}%
-                </Text>
-              </View>
+              <Text className={cn(
+                "text-sm font-semibold",
+                isDarkMode ? "text-slate-400" : "text-gray-500"
+              )}>
+                Comp. {task.completionPercentage}%
+              </Text>
             )}
             
             <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
@@ -161,19 +193,31 @@ export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps
             </View>
           </View>
       
-          {/* Line 3: Assigner → Assignees */}
+          {/* Line 4: Assigner → Assignees */}
           <View className="flex-row items-center">
-            <View className="w-4 h-4 bg-blue-100 rounded-full items-center justify-center mr-1">
-              <Ionicons name="person" size={8} color="#3b82f6" />
+            <View className={cn(
+              "w-4 h-4 rounded-full items-center justify-center mr-1",
+              isDarkMode ? "bg-blue-900" : "bg-blue-100"
+            )}>
+              <Ionicons name="person" size={8} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
             </View>
-            <Text className="text-sm text-gray-600 mr-1 font-medium" numberOfLines={1}>
+            <Text className={cn(
+              "text-sm mr-1 font-medium",
+              isDarkMode ? "text-slate-300" : "text-gray-600"
+            )} numberOfLines={1}>
               {assigner?.name || 'Unknown'}
             </Text>
-            <Ionicons name="arrow-forward" size={10} color="#9ca3af" />
-            <View className="w-4 h-4 bg-green-100 rounded-full items-center justify-center ml-1 mr-1">
-              <Ionicons name="people" size={8} color="#10b981" />
+            <Ionicons name="arrow-forward" size={10} color={isDarkMode ? "#64748b" : "#9ca3af"} />
+            <View className={cn(
+              "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
+              isDarkMode ? "bg-green-900" : "bg-green-100"
+            )}>
+              <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
             </View>
-            <Text className="text-sm text-gray-600 flex-1 font-medium" numberOfLines={1}>
+            <Text className={cn(
+              "text-sm flex-1 font-medium",
+              isDarkMode ? "text-slate-300" : "text-gray-600"
+            )} numberOfLines={1}>
               {assignees.length > 0 
                 ? assignees.length === 1 
                   ? assignees[0]?.name 

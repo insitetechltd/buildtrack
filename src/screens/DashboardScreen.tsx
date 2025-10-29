@@ -48,7 +48,7 @@ export default function DashboardScreen({
   const tasks = taskStore.tasks;
   const { fetchTasks, getStarredTasks, toggleTaskStar } = taskStore;
   const projectStore = useProjectStoreWithInit();
-  const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments } = projectStore;
+  const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments, isLoading: isLoadingProjects } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, setButtonLabel, getLastSelectedProject } = useProjectFilterStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
@@ -163,12 +163,29 @@ export default function DashboardScreen({
         setShowProjectPicker(true);
       }
     }
-  }, [user?.id, userProjects.length]); // Only depend on user ID and project count to avoid infinite loop
+  }, [user?.id, userProjects.length, selectedProjectId]); // Include selectedProjectId to trigger when selection changes
 
   // Note: Data syncing now handled by DataSyncManager (3-min polling + foreground refresh)
   // Pull-to-refresh provides manual control
 
   if (!user) return null;
+
+  // Show loading indicator while projects are being fetched
+  if (isLoadingProjects) {
+    return (
+      <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+        <StatusBar style={isDarkMode ? "light" : "dark"} />
+        <StandardHeader title="Dashboard" />
+        
+        <View className="flex-1 items-center justify-center">
+          <LoadingIndicator isLoading={true} />
+          <Text className={cn("text-base mt-4", isDarkMode ? "text-slate-400" : "text-gray-600")}>
+            Loading projects...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   // Only show project statistics when a project is selected
   const activeProjects = selectedProjectId && selectedProjectId !== "" ? userProjects.filter(p => p.status === "active") : [];

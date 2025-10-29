@@ -48,13 +48,14 @@ export default function DashboardScreen({
   const tasks = taskStore.tasks;
   const { fetchTasks, getStarredTasks, toggleTaskStar } = taskStore;
   const projectStore = useProjectStoreWithInit();
-  const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments, isLoading: isLoadingProjects } = projectStore;
+  const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments, isLoading: isLoadingProjects, projects } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, setButtonLabel, getLastSelectedProject } = useProjectFilterStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const [isQuickOverviewExpanded, setIsQuickOverviewExpanded] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const t = useTranslation();
   const { fetchUsers } = useUserStore();
 
@@ -108,6 +109,14 @@ export default function DashboardScreen({
   // Get projects user is participating in
   const userProjects = user ? getProjectsByUser(user.id) : [];
   const userProjectCount = userProjects.length;
+
+  // Track when projects have been initialized (at least one fetch attempt completed)
+  useEffect(() => {
+    // If we have projects in the store OR loading is complete, mark as initialized
+    if (projects.length > 0 || (!isLoadingProjects && user)) {
+      setHasInitialized(true);
+    }
+  }, [projects.length, isLoadingProjects, user]);
 
   // Smart project selection logic
   useEffect(() => {
@@ -170,8 +179,8 @@ export default function DashboardScreen({
 
   if (!user) return null;
 
-  // Show loading indicator while projects are being fetched
-  if (isLoadingProjects) {
+  // Show loading indicator while projects are being fetched or not yet initialized
+  if (isLoadingProjects || !hasInitialized) {
     return (
       <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />

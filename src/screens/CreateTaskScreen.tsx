@@ -567,22 +567,6 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         }
         showBackButton={true}
         onBackPress={onNavigateBack}
-        rightElement={
-          <Pressable
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-            className={cn(
-              "px-4 py-2 rounded-lg",
-              isSubmitting 
-                ? "bg-gray-300" 
-                : "bg-blue-600"
-            )}
-          >
-            <Text className="text-white font-medium">
-              {isSubmitting ? "Creating..." : "Create"}
-            </Text>
-          </Pressable>
-        }
       />
 
       {/* Parent Task Info Banner */}
@@ -836,10 +820,31 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             </Pressable>
           </View>
 
-          {/* Bottom Spacing */}
-          <View className="h-20" />
+          {/* Bottom Spacing for Fixed Button */}
+          <View className="h-24" />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Fixed Create Button at Bottom */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 pb-6">
+        <Pressable
+          onPress={handleSubmit}
+          disabled={isSubmitting}
+          className={cn(
+            "rounded-lg py-4 items-center shadow-lg",
+            isSubmitting 
+              ? "bg-gray-300" 
+              : "bg-blue-600"
+          )}
+        >
+          <Text className="text-white font-semibold text-base">
+            {isSubmitting 
+              ? (editTaskId ? "Updating..." : "Creating...") 
+              : (editTaskId ? "Update Task" : "Create Task")
+            }
+          </Text>
+        </Pressable>
+      </View>
 
       {/* Priority Picker Modal */}
       <Modal

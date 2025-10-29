@@ -11,7 +11,6 @@ import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TasksScreen from "../screens/TasksScreen";
-import ProjectsTasksScreen from "../screens/ProjectsTasksScreen";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
@@ -129,7 +128,7 @@ function TasksStack() {
 
 function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
   return (
-    <ProjectsTasksScreen
+    <TasksScreen
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   Pressable,
   TextInput,
   Image,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -13,17 +14,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
-import { useProjectStoreWithInit } from "../state/projectStore.supabase";
+import { useProjectStoreWithInit, useProjectStore } from "../state/projectStore.supabase";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
-import { Task, Priority, TaskStatus, SubTask } from "../types/buildtrack";
+import { Task, Priority, TaskStatus, SubTask, Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import CompanyBanner from "../components/CompanyBanner";
 import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
+import TaskCard from "../components/TaskCard";
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: () => void;
+  onNavigateBack?: () => void;
 }
 
 // Type for task list items (can be Task or SubTask)
@@ -31,7 +35,8 @@ type TaskListItem = Task | (SubTask & { isSubTask: true });
 
 export default function TasksScreen({ 
   onNavigateToTaskDetail, 
-  onNavigateToCreateTask 
+  onNavigateToCreateTask,
+  onNavigateBack 
 }: TasksScreenProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
@@ -39,25 +44,69 @@ export default function TasksScreen({
   const userStore = useUserStoreWithInit();
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
-  const { getProjectById } = projectStore;
-  const { selectedProjectId, setSelectedProject } = useProjectFilterStore();
-  const { getCompanyBanner } = useCompanyStore();
+  const { getProjectById, getProjectsByUser } = projectStore;
+  const { selectedProjectId, sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">("all");
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Apply filters from store on mount or when they change
+  // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
+  useEffect(() => {
+    console.log('🔍 [ProjectsTasksScreen] Filter Store Update:', { sectionFilter, statusFilter });
+    if (sectionFilter && statusFilter) {
+      // Both filters set together - apply both immediately
+      console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
+      setLocalSectionFilter(sectionFilter);
+      setLocalStatusFilter(statusFilter);
+      // Clear filters from store AFTER setting local state
+      setTimeout(() => {
+        clearSectionFilter();
+        clearStatusFilter();
+      }, 0);
+    } else if (sectionFilter) {
+      // Only section filter set - apply section, reset status
+      console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
+      setLocalSectionFilter(sectionFilter);
+      setLocalStatusFilter("all");
+      clearSectionFilter();
+    } else if (statusFilter) {
+      // Only status filter set - apply status only
+      console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
+      setLocalStatusFilter(statusFilter);
+      clearStatusFilter();
+    }
+  }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    // Force stores to re-read from state
+    useTaskStore.setState({ isLoading: taskStore.isLoading });
+    useProjectStore.setState({ isLoading: projectStore.isLoading });
+    
+    // Simulate network delay for UX
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 500);
+  }, []);
+
   if (!user) return null;
 
-  const banner = getCompanyBanner(user.companyId);
 
-  
-  // Filter tasks by selected project FIRST
-  const projectFilteredTasks = selectedProjectId 
-    ? tasks.filter(task => task.projectId === selectedProjectId)
-    : tasks;
+  // Get user's projects - filter by selected project if one is chosen
+  const allUserProjects = getProjectsByUser(user.id);
+  const userProjects = selectedProjectId 
+    ? allUserProjects.filter(p => p.id === selectedProjectId)
+    : allUserProjects;
+
+  // No project-level filtering - show all user projects
+  const filteredProjects = userProjects;
 
   // Helper function to recursively collect all subtasks assigned by a user
   const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
@@ -68,7 +117,6 @@ export default function TasksScreen({
       if (subTask.assignedBy === userId) {
         result.push(subTask);
       }
-      // Recursively collect from nested subtasks
       if (subTask.subTasks) {
         result.push(...collectSubTasksAssignedBy(subTask.subTasks, userId));
       }
@@ -86,54 +134,12 @@ export default function TasksScreen({
       if (Array.isArray(assignedTo) && assignedTo.includes(userId)) {
         result.push(subTask);
       }
-      // Recursively collect from nested subtasks
       if (subTask.subTasks) {
         result.push(...collectSubTasksAssignedTo(subTask.subTasks, userId));
       }
     }
     return result;
   };
-
-  // For "My Tasks": Show parent tasks assigned to me + subtasks assigned to me (as individual tasks)
-  // BUT: Don't show parent task if user is only assigned to its subtasks
-  const myParentTasks = projectFilteredTasks.filter(task => {
-    // Only include parent task if user is directly assigned to it
-    const assignedTo = task.assignedTo || [];
-    const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-    
-    // Check if user is assigned to any subtasks
-    const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
-    
-    // Include parent task only if directly assigned, regardless of subtask assignments
-    // This prevents showing parent task when user is only assigned to subtasks
-    return isDirectlyAssigned && !hasAssignedSubtasks;
-  });
-  
-  const mySubTasks = projectFilteredTasks.flatMap(task => {
-    // Only see subtasks assigned to the user
-    return collectSubTasksAssignedTo(task.subTasks, user.id)
-      .map(subTask => ({ ...subTask, isSubTask: true as const }));
-  });
-  const myTasks: TaskListItem[] = [...myParentTasks, ...mySubTasks];
-
-  // For "Assigned Tasks": Show parent tasks assigned by me + subtasks assigned by me
-  // Same logic: Don't show parent if user only assigned its subtasks
-  const assignedParentTasks = projectFilteredTasks.filter(task => {
-    const isDirectlyAssignedByMe = task.assignedBy === user.id;
-    
-    const hasSubtasksAssignedByMe = collectSubTasksAssignedBy(task.subTasks, user.id).length > 0;
-    
-    return isDirectlyAssignedByMe && !hasSubtasksAssignedByMe;
-  });
-  
-  const assignedSubTasks = projectFilteredTasks.flatMap(task => 
-    collectSubTasksAssignedBy(task.subTasks, user.id)
-      .map(subTask => ({ ...subTask, isSubTask: true as const }))
-  );
-  const assignedTasks: TaskListItem[] = [...assignedParentTasks, ...assignedSubTasks];
-
-  // Show all tasks (inbox + outbox combined)
-  const currentTasks = [...myTasks, ...assignedTasks];
 
   // Helper function to get priority order (lower number = higher priority)
   const getPriorityOrder = (priority: Priority): number => {
@@ -146,15 +152,298 @@ export default function TasksScreen({
     }
   };
 
-  // Filter tasks based on search only
-  const filteredTasks = currentTasks.filter(task => {
+  // Get all tasks across all projects in a flat list
+  const getAllTasks = (): TaskListItem[] => {
+    // Collect tasks from all user's projects
+    const allProjectTasks = userProjects.flatMap(project => {
+      const projectTasks = tasks.filter(task => task.projectId === project.id);
+
+      // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only)
+      const myTasksParent = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        // Include if assigned to me AND created by me (self-assigned)
+        return isDirectlyAssigned && isCreatedByMe;
+      });
+      
+      const myTasksSubTasks = projectTasks.flatMap(task => {
+        // Only include subtasks I created and assigned to myself
+        return collectSubTasksAssignedTo(task.subTasks, user.id)
+          .filter(subTask => subTask.assignedBy === user.id)
+          .map(subTask => ({ ...subTask, isSubTask: true as const }));
+      });
+      
+      const myTasksAll = [...myTasksParent, ...myTasksSubTasks];
+      
+      // Get INBOX tasks (tasks assigned to me by OTHERS only, not self-assigned)
+      const inboxParentTasks = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        // Include if assigned to me but NOT created by me
+        return isDirectlyAssigned && !isCreatedByMe;
+      });
+      
+      const inboxSubTasks = projectTasks.flatMap(task => {
+        // Only include subtasks assigned to me but NOT created by me
+        return collectSubTasksAssignedTo(task.subTasks, user.id)
+          .filter(subTask => subTask.assignedBy !== user.id)
+          .map(subTask => ({ ...subTask, isSubTask: true as const }));
+      });
+      
+      const inboxTasks = [...inboxParentTasks, ...inboxSubTasks];
+      
+      // Get outbox tasks (tasks assigned by me to OTHERS, not ONLY self-assigned)
+      const assignedParentTasks = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isDirectlyAssignedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isDirectlyAssignedByMe && isAssignedToMe && assignedTo.length === 1;
+        // Include if created by me, NOT self-assigned only, not rejected
+        return isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+      });
+      
+      const assignedSubTasks = projectTasks.flatMap(task => 
+        collectSubTasksAssignedBy(task.subTasks, user.id)
+          .filter(subTask => {
+            const assignedTo = subTask.assignedTo || [];
+            // Only include subtasks NOT assigned to me
+            return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+          })
+          .map(subTask => ({ ...subTask, isSubTask: true as const }))
+      );
+      
+      const outboxTasks = [...assignedParentTasks, ...assignedSubTasks];
+      
+      // Return tasks based on section filter
+      // SPECIAL CASE: For "reviewing" status, we need ALL project tasks (not section-filtered)
+      // because reviewing breaks section definitions:
+      // - Inbox Reviewing = tasks I CREATED (not in inbox)
+      // - Outbox Reviewing = tasks assigned TO ME (not in outbox)
+      if (localStatusFilter === "reviewing") {
+        return projectTasks; // Return ALL tasks from project, let filter logic handle it
+      }
+      
+      if (localSectionFilter === "my_tasks") {
+        // "my_tasks" shows ALL tasks assigned to me (including self-assigned)
+        return myTasksAll;
+      } else if (localSectionFilter === "inbox") {
+        // "inbox" shows only tasks assigned to me by others
+        return inboxTasks;
+      } else if (localSectionFilter === "outbox") {
+        return outboxTasks;
+      } else {
+        // For "all", behavior depends on status filter:
+        // - "all" or "done": include My Tasks + Inbox + Outbox (show everything)
+        // - other statuses: include My Tasks + Inbox only (not Outbox)
+        // Use a Map to ensure unique tasks by ID
+        const uniqueTasks = new Map();
+        
+        // Add all my tasks (including self-assigned)
+        myTasksAll.forEach(task => {
+          uniqueTasks.set(task.id, task);
+        });
+        
+        // Add inbox tasks (will overwrite if same ID, ensuring uniqueness)
+        inboxTasks.forEach(task => {
+          uniqueTasks.set(task.id, task);
+        });
+        
+        // For "all" or "done" status, also include outbox tasks
+        if (localStatusFilter === "all" || localStatusFilter === "done") {
+          outboxTasks.forEach(task => {
+            uniqueTasks.set(task.id, task);
+          });
+        }
+        
+        return Array.from(uniqueTasks.values());
+      }
+    });
+
+    // Helper function to check if a task is overdue
+    const isOverdue = (task: any) => {
+      const dueDate = new Date(task.dueDate);
+      const now = new Date();
+      return dueDate < now;
+    };
+
+    // Apply search and status filters
+    const filteredTasks = allProjectTasks.filter(task => {
     const matchesSearch = task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesSearch;
+      
+      if (!matchesSearch) return false;
+      
+      // If no status filter, return all tasks from current section
+      if (localStatusFilter === "all") {
+        return true;
+      }
+      
+      // Handle "all" section with specific status filters (for Priority Summary)
+      if (localSectionFilter === "all") {
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        
+        // For "all" section, combine My Tasks + Inbox logic (not Outbox for most filters)
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        const isInMyTasksOrInbox = isInMyTasks || isInInbox;
+        
+        if (localStatusFilter === "overdue") {
+          // Overdue: My Tasks + Inbox only (not outbox)
+          return isInMyTasksOrInbox &&
+                 task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          // WIP: My Tasks + Inbox only
+          if (isInMyTasks) {
+            const isSelfAssigned = isCreatedByMe && isAssignedToMe;
+            const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+            return isAcceptedOrSelfAssigned &&
+                   task.completionPercentage < 100 &&
+                   !isOverdue(task) &&
+                   task.currentStatus !== "rejected";
+          } else if (isInInbox) {
+            return task.accepted &&
+                   !isOverdue(task) &&
+                   task.currentStatus !== "rejected" &&
+                   (task.completionPercentage < 100 ||
+                    (task.completionPercentage === 100 && !task.readyForReview));
+          }
+          return false;
+        } else if (localStatusFilter === "done") {
+          // Done: My Tasks + Inbox + Outbox
+          // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
+          const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+          if (isInOutbox) {
+            return task.completionPercentage === 100 &&
+                   task.reviewAccepted === true;
+          } else if (isInMyTasks) {
+            return task.completionPercentage === 100 &&
+                   task.currentStatus !== "rejected";
+          } else if (isInInbox) {
+            return task.completionPercentage === 100 &&
+                   task.reviewAccepted === true;
+          }
+          return false;
+        }
+        // For other statuses, return false for "all" section
+        return false;
+      }
+      
+      // Apply exact filter logic for each button combination
+      if (localSectionFilter === "my_tasks") {
+        // My Tasks: Rejected, WIP, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
+        
+        if (!isInMyTasks) return false;
+        
+        if (localStatusFilter === "rejected") {
+          return task.currentStatus === "rejected";
+        } else if (localStatusFilter === "wip") {
+          const isSelfAssigned = isCreatedByMe && isAssignedToMe;
+          const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
+          return isAcceptedOrSelfAssigned &&
+                 task.completionPercentage < 100 &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      } else if (localSectionFilter === "inbox") {
+        // Inbox: Received, WIP, Reviewing, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks inbox definition)
+          const isCreatedByMeForReview = task.assignedBy === user.id;
+          return isCreatedByMeForReview &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        }
+        
+        if (!isInInbox) return false;
+        
+        if (localStatusFilter === "received") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      } else if (localSectionFilter === "outbox") {
+        // Outbox: Assigned, WIP, Reviewing, Done, Overdue
+        const assignedTo = task.assignedTo || [];
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+        const isCreatedByMe = task.assignedBy === user.id;
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        
+        if (localStatusFilter === "reviewing") {
+          // Special: Filter from ALL tasks (breaks outbox definition)
+          return !isCreatedByMe &&
+                 isAssignedToMe &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+        }
+        
+        if (!isInOutbox) return false;
+        
+        if (localStatusFilter === "assigned") {
+          return !task.accepted &&
+                 task.currentStatus !== "rejected";
+        } else if (localStatusFilter === "wip") {
+          return task.accepted &&
+                 !isOverdue(task) &&
+                 task.currentStatus !== "rejected" &&
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && !task.readyForReview));
+        } else if (localStatusFilter === "done") {
+          return task.completionPercentage === 100 &&
+                 task.reviewAccepted === true;
+        } else if (localStatusFilter === "overdue") {
+          return task.completionPercentage < 100 &&
+                 isOverdue(task) &&
+                 task.currentStatus !== "rejected";
+        }
+        return false;
+      }
+      
+      // Default: no filter match
+      return false;
   });
 
   // Sort tasks by priority (high to low) then by due date (earliest first)
-  const sortedTasks = filteredTasks.sort((a, b) => {
+    return filteredTasks.sort((a, b) => {
     // First sort by priority
     const priorityA = getPriorityOrder(a.priority);
     const priorityB = getPriorityOrder(b.priority);
@@ -166,23 +455,67 @@ export default function TasksScreen({
     // If same priority, sort by due date (earliest first)
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
   });
+  };
 
-  // Group tasks by project
-  const groupedTasks = sortedTasks.reduce((acc, task) => {
-    const projectId = task.projectId;
-    if (!acc[projectId]) {
-      acc[projectId] = [];
-    }
-    acc[projectId].push(task);
-    return acc;
-  }, {} as Record<string, TaskListItem[]>);
+  const allTasks = getAllTasks();
 
-  // Sort projects by name
-  const sortedProjectIds = Object.keys(groupedTasks).sort((a, b) => {
-    const projectA = getProjectById(a);
-    const projectB = getProjectById(b);
-    return (projectA?.name || "").localeCompare(projectB?.name || "");
-  });
+  // Group tasks: parent tasks with their subtasks nested
+  const groupedTasks = React.useMemo(() => {
+    const taskMap = new Map<string, { parent: TaskListItem; subtasks: TaskListItem[] }>();
+    const standaloneSubtasks: TaskListItem[] = [];
+    
+    console.log('🔍 Grouping tasks. Total tasks:', allTasks.length);
+    
+    allTasks.forEach(task => {
+      const isSubTask = 'isSubTask' in task && task.isSubTask;
+      
+      if (isSubTask) {
+        const parentId = task.parentTaskId;
+        console.log(`  📎 Subtask found: "${task.title}" (parentId: ${parentId})`);
+        
+        // Check if parent task is in the list
+        const parentExists = allTasks.some(t => {
+          const isParent = !('isSubTask' in t) || !t.isSubTask;
+          return isParent && t.id === parentId;
+        });
+        
+        console.log(`    Parent exists in list: ${parentExists}`);
+        
+        if (parentExists) {
+          // Add to parent's subtask list
+          if (!taskMap.has(parentId)) {
+            const parentTask = allTasks.find(t => {
+              const isParent = !('isSubTask' in t) || !t.isSubTask;
+              return isParent && t.id === parentId;
+            })!;
+            taskMap.set(parentId, { parent: parentTask, subtasks: [] });
+          }
+          taskMap.get(parentId)!.subtasks.push(task);
+          console.log(`    ✅ Added to parent's subtask list`);
+        } else {
+          // Parent not in list, show subtask standalone
+          standaloneSubtasks.push(task);
+          console.log(`    ⚠️ Parent not in list, showing standalone`);
+        }
+      } else {
+        // Parent task
+        if (!taskMap.has(task.id)) {
+          taskMap.set(task.id, { parent: task, subtasks: [] });
+        }
+      }
+    });
+    
+    console.log(`📊 Grouping complete: ${taskMap.size} parent groups, ${standaloneSubtasks.length} standalone subtasks`);
+    taskMap.forEach((group, parentId) => {
+      console.log(`  Parent "${group.parent.title}": ${group.subtasks.length} subtasks`);
+    });
+    
+    // Combine: parent tasks with their subtasks, then standalone subtasks
+    return {
+      grouped: Array.from(taskMap.values()),
+      standalone: standaloneSubtasks
+    };
+  }, [allTasks]);
 
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
@@ -194,260 +527,119 @@ export default function TasksScreen({
     }
   };
 
-  const getStatusColor = (status: TaskStatus) => {
-    switch (status) {
-      case "completed": return "text-green-600 bg-green-50";
-      case "in_progress": return "text-blue-600 bg-blue-50";
-      case "rejected": return "text-red-600 bg-red-50";
-      case "not_started": return "text-gray-600 bg-gray-50";
-      default: return "text-gray-600 bg-gray-50";
-    }
-  };
-
-
-  const CompactTaskCard = ({ task }: { task: TaskListItem }) => {
-    const isSubTask = 'isSubTask' in task && task.isSubTask;
-    
-    // Check if task is new/unread
-    const readStatus = taskStore.taskReadStatuses.find(
-      (s: any) => s.userId === user?.id && s.taskId === task.id
-    );
-    const isNew = !readStatus || !readStatus.isRead;
-
-    // Check if task is starred by current user
-    const isStarred = task.starredByUsers?.includes(user.id) || false;
-
-    const handleStarPress = (e: any) => {
-      e.stopPropagation(); // Prevent opening task detail
-      taskStore.toggleTaskStar(task.id, user.id);
-    };
-
-    return (
-      <Pressable
-        onPress={() => {
-          // Mark task as read when opened
-          if (user && isNew) {
-            taskStore.markTaskAsRead(user.id, task.id);
-          }
-          
-          // For subtasks, pass both parent taskId and subTaskId
-          if (isSubTask) {
-            onNavigateToTaskDetail(task.parentTaskId, task.id);
-          } else {
-            onNavigateToTaskDetail(task.id);
-          }
-        }}
-        className="bg-white border border-gray-200 rounded-lg p-3 mb-2"
-      >
-        <View className="flex-row">
-          {/* Photo on the left (only first photo) */}
-          {task.attachments && task.attachments.length > 0 && (
-            <View className="mr-3">
-              <Image
-                source={{ uri: task.attachments[0] }}
-                className="w-20 h-20 rounded-lg"
-                resizeMode="cover"
-              />
-              {task.attachments.length > 1 && (
-                <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
-                  <Text className="text-white text-xs font-semibold">
-                    +{task.attachments.length - 1}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-          
-          {/* Text content on the right */}
-          <View className="flex-1">
-            {/* Line 1: Title and Priority */}
-            <View className="flex-row items-center justify-between mb-2">
-              <View className="flex-row items-center flex-1 mr-2">
-                {/* Sub-task indicator */}
-                {isSubTask && (
-                  <View className="mr-2">
-                    <Ionicons name="git-branch-outline" size={12} color="#7c3aed" />
-                  </View>
-                )}
-                {/* NEW badge */}
-                {isNew && (
-                  <View className="bg-red-500 px-1 py-0.5 rounded-full mr-2">
-                    <Text className="text-white text-xs font-bold">NEW</Text>
-                  </View>
-                )}
-                <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
-                  {task.title}
-                </Text>
-              </View>
-              <View className="flex-row items-center">
-                {/* Star button for Today's Tasks */}
-                <Pressable
-                  onPress={handleStarPress}
-                  className="mr-2 p-1"
-                >
-                  <Ionicons 
-                    name={isStarred ? "star" : "star-outline"} 
-                    size={20} 
-                    color={isStarred ? "#f59e0b" : "#9ca3af"} 
-                  />
-                </Pressable>
-                {/* Priority badge */}
-                <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-                  <Text className="text-xs font-bold capitalize">
-                    {task.priority}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            
-            {/* Line 2: Due Date and Status */}
-            <View className="flex-row items-center justify-between">
-              <View className="flex-row items-center">
-                <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-                <Text className="text-sm text-gray-600 ml-1">
-                  {new Date(task.dueDate).toLocaleDateString()}
-                </Text>
-              </View>
-              <Text className="text-sm text-gray-500">
-                {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
-              </Text>
-            </View>
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
-
-  // Get all user projects for the picker
-  const userProjects = projectStore.projects.filter((project: any) => 
-    project.companyId === user.companyId
-  );
-
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
       <StandardHeader 
-        title="Tasks"
+        title={(() => {
+          const sectionLabels: Record<string, string> = {
+            my_tasks: "My Tasks",
+            inbox: "Inbox",
+            outbox: "Outbox",
+            all: "All",
+          };
+
+          const statusLabels: Record<string, string> = {
+            rejected: "Rejected",
+            wip: "WIP",
+            done: "Done",
+            overdue: "Overdue",
+            received: "Received",
+            reviewing: "Reviewing",
+            assigned: "Assigned",
+          };
+
+          const sectionLabel = sectionLabels[localSectionFilter] || "All";
+          const statusLabel = statusLabels[localStatusFilter as string] || "";
+
+          // If both section and status are specified
+          if (statusLabel && localStatusFilter !== "all") {
+            return `Tasks - ${sectionLabel} ${statusLabel}`;
+          }
+
+          // If only section is specified (status is "all")
+          if (localStatusFilter === "all") {
+            return `Tasks - ${sectionLabel}`;
+          }
+
+          // Default fallback
+          return "Tasks";
+        })()}
+        showBackButton={!!onNavigateBack}
+        onBackPress={onNavigateBack}
       />
 
-      <View className="flex-1">
-        <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <View className="bg-white border-b border-gray-200 px-6 py-4">
         {/* Search Bar */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-4 py-3 mb-4">
-          <Ionicons name="search-outline" size={24} color="#6b7280" />
+        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
+          <Ionicons name="search-outline" size={18} color="#6b7280" />
           <TextInput
-            className="flex-1 ml-3 text-gray-900 text-base"
+            className="flex-1 ml-2 text-gray-900 text-sm"
             placeholder="Search tasks..."
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
         </View>
-
-        {/* Project Picker */}
-        <View className="mt-4">
-          <Text className="text-sm font-semibold text-gray-700 mb-2">Project</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row">
-              <Pressable
-                onPress={() => setSelectedProject(null)}
-                className={cn(
-                  "px-4 py-2 rounded-full border mr-2",
-                  !selectedProjectId
-                    ? "bg-blue-600 border-blue-600"
-                    : "bg-white border-gray-300"
-                )}
-              >
-                <Text
-                  className={cn(
-                    "text-sm font-semibold",
-                    !selectedProjectId
-                      ? "text-white"
-                      : "text-gray-600"
-                  )}
-                >
-                  All Projects
-                </Text>
-              </Pressable>
-              {userProjects.map((project) => (
-                <Pressable
-                  key={project.id}
-                  onPress={() => setSelectedProject(project.id)}
-                  className={cn(
-                    "px-4 py-2 rounded-full border mr-2",
-                    selectedProjectId === project.id
-                      ? "bg-blue-600 border-blue-600"
-                      : "bg-white border-gray-300"
-                  )}
-                >
-                  <Text
-                    className={cn(
-                      "text-sm font-semibold",
-                      selectedProjectId === project.id
-                        ? "text-white"
-                        : "text-gray-600"
-                    )}
-                  >
-                    {project.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </ScrollView>
         </View>
-      </ScrollView>
 
-      {/* Task List */}
-      <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
-        {filteredTasks.length > 0 ? (
-          sortedProjectIds.map((projectId) => {
-            const project = getProjectById(projectId);
-            const projectTasks = groupedTasks[projectId];
-            
-            return (
-              <View key={projectId} className="mb-4">
-                {/* Project Header */}
-                <View className="flex-row items-center mb-3 bg-gray-100 px-4 py-3 rounded-lg">
-                  <Ionicons name="folder-outline" size={22} color="#6b7280" />
-                  <Text className="text-base font-bold text-gray-700 ml-2 flex-1">
-                    {project?.name || "Unknown Project"}
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        {/* Grouped Tasks List */}
+        <View className="px-6 py-4">
+        {allTasks.length > 0 ? (
+          <>
+            <Text className="text-sm text-gray-600 font-semibold mb-3">
+              {allTasks.length} task{allTasks.length !== 1 ? "s" : ""}
                   </Text>
-                  <View className="bg-gray-200 px-3 py-1 rounded">
-                    <Text className="text-sm text-gray-600 font-semibold">
-                      {projectTasks.length} task{projectTasks.length !== 1 ? "s" : ""}
-                    </Text>
-                  </View>
-                </View>
+            
+            {/* Render parent tasks with their subtasks */}
+            {groupedTasks.grouped.map((group) => (
+              <View key={group.parent.id} className="mb-3">
+                {/* Parent task */}
+                <TaskCard task={group.parent} onNavigateToTaskDetail={onNavigateToTaskDetail} />
                 
-                {/* Project Tasks */}
-                {projectTasks.map((task) => (
-                  <CompactTaskCard key={task.id} task={task} />
-                ))}
+                {/* Subtasks indented below parent */}
+                {group.subtasks.length > 0 && (
+                  <View className="ml-4 mt-1 border-l-2 border-purple-300 pl-2">
+                    {group.subtasks.map((subtask) => (
+                      <View key={subtask.id} className="mb-1">
+                        <TaskCard task={subtask} onNavigateToTaskDetail={onNavigateToTaskDetail} />
+                      </View>
+                    ))}
+                  </View>
+                )}
               </View>
-            );
-          })
+            ))}
+            
+            {/* Render standalone subtasks (parent not in list) */}
+            {groupedTasks.standalone.map((task) => (
+              <TaskCard key={task.id} task={task} onNavigateToTaskDetail={onNavigateToTaskDetail} />
+            ))}
+          </>
         ) : (
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
-            <Text className="text-gray-500 text-xl font-semibold mt-4">
-              {searchQuery ? "No tasks found" : "No tasks yet"}
+            <Text className="text-gray-500 text-lg font-medium mt-4">
+              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
-            <Text className="text-gray-400 text-base text-center mt-2 px-8">
-              {searchQuery 
-                ? "Try adjusting your search"
-                : "No tasks found"
+            <Text className="text-gray-400 text-center mt-2 px-8">
+              {searchQuery || localStatusFilter !== "all"
+                ? "Try adjusting your search or filters"
+                : "You haven't been assigned any tasks yet"
               }
             </Text>
           </View>
         )}
+        </View>
         </ScrollView>
 
         {/* Expandable Utility FAB */}
-        <ExpandableUtilityFAB onCreateTask={onNavigateToCreateTask} />
-      </View>
+      {user.role !== "admin" && (
+        <ExpandableUtilityFAB
+          onCreateTask={onNavigateToCreateTask}
+        />
+      )}
     </SafeAreaView>
   );
-}// Force reload 1759505833
-// Force reload: 1759506479
-// Force reload: 1759506549
+}

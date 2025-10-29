@@ -25,6 +25,7 @@ import { LoadingIndicator } from "../components/LoadingIndicator";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
+import TaskCard from "../components/TaskCard";
 import { useUserStore } from "../state/userStore.supabase";
 
 interface DashboardScreenProps {
@@ -417,38 +418,24 @@ export default function DashboardScreen({
       <StandardHeader 
         title="Dashboard"
         rightElement={
-          <View className="flex-row items-center">
-            {/* Theme Toggle */}
-            <Pressable
-              onPress={toggleDarkMode}
-              className="mr-3 p-2"
-            >
-              <Ionicons 
-                name={isDarkMode ? "sunny" : "moon"} 
-                size={22} 
-                color={isDarkMode ? "#fbbf24" : "#475569"} 
-              />
-            </Pressable>
-            
-            <Pressable 
-              onPress={onNavigateToProfile}
-              className="flex-row items-center"
-            >
-              <View className="mr-2">
-                <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
-                  {user.name}
+          <Pressable 
+            onPress={onNavigateToProfile}
+            className="flex-row items-center"
+          >
+            <View className="mr-2">
+              <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
+                {user.name}
+            </Text>
+              <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
+                {user.role}
               </Text>
-                <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-                  {user.role}
-                </Text>
-              </View>
-              <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-                <Text className="text-white font-bold text-sm">
-                  {user.name.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            </Pressable>
-          </View>
+            </View>
+            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-sm">
+                {user.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          </Pressable>
         }
       />
 
@@ -512,7 +499,7 @@ export default function DashboardScreen({
           return (
               <View className={cn(
                 "rounded-2xl p-4 mb-4",
-                isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
+                isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-yellow-50 border border-yellow-200"
               )}>
                 <View className="flex-row items-center mb-3">
                   {isDarkMode ? (
@@ -530,83 +517,18 @@ export default function DashboardScreen({
                 </Text>
               </View>
               
-                {/* Vertical list of tasks */}
+                {/* Vertical list of tasks using TaskCard */}
                 <View className="gap-2">
                   {starredTasks.map((task) => (
-                    <Pressable
+                    <TaskCard
                       key={task.id}
-                      onPress={() => onNavigateToTaskDetail && onNavigateToTaskDetail(task.id)}
-                      className={cn(
-                        "rounded-xl p-3",
-                        isDarkMode ? "bg-slate-700 border border-slate-600" : "bg-yellow-50 border border-yellow-300"
-                      )}
-                    >
-                      <View className="flex-row items-start justify-between mb-2">
-                        <Text className={cn(
-                          "flex-1 font-bold mr-2",
-                          isDarkMode ? "text-white" : "text-gray-900"
-                        )} numberOfLines={2}>
-                                {task.title}
-                              </Text>
-                              <Pressable
-                                onPress={(e) => {
-                                  e.stopPropagation();
-                                  toggleTaskStar(task.id, user.id);
-                                }}
-                          className="p-0.5"
-                        >
-                          <Ionicons name="star" size={isDarkMode ? 18 : 16} color="#f59e0b" />
-                              </Pressable>
-                          </View>
-                          
-                      <Text className={cn(
-                        "text-xs mb-2",
-                        isDarkMode ? "text-slate-300" : "text-gray-600"
-                      )} numberOfLines={2}>
-                              {task.description}
-                            </Text>
-                          
-                          <View className="flex-row items-center justify-between">
-                        <View className={cn(
-                          "px-3 py-1 rounded-full",
-                          isDarkMode ? (
-                            task.priority === "critical" ? "bg-red-500/20" :
-                            task.priority === "high" ? "bg-orange-500/20" :
-                            task.priority === "medium" ? "bg-amber-500/20" :
-                            "bg-emerald-500/20"
-                          ) : (
-                            task.priority === "critical" ? "bg-red-50 border border-red-200" :
-                            task.priority === "high" ? "bg-orange-50 border border-orange-200" :
-                            task.priority === "medium" ? "bg-yellow-50 border border-yellow-200" :
-                            "bg-green-50 border border-green-200"
-                          )
-                        )}>
-                          <Text className={cn(
-                            "text-xs font-bold",
-                            isDarkMode ? (
-                              task.priority === "critical" ? "text-red-400" :
-                              task.priority === "high" ? "text-orange-400" :
-                              task.priority === "medium" ? "text-amber-400" :
-                              "text-emerald-400"
-                            ) : (
-                              task.priority === "critical" ? "text-red-700" :
-                              task.priority === "high" ? "text-orange-700" :
-                              task.priority === "medium" ? "text-yellow-700" :
-                              "text-green-700"
-                            )
-                          )}>
-                            {isDarkMode ? task.priority.toUpperCase() : task.priority}
-                              </Text>
-                            </View>
-                        
-                        <Text className={cn(
-                          "text-sm font-bold",
-                          isDarkMode ? "text-white" : "text-gray-700"
-                        )}>
-                          {task.completionPercentage}%
-                            </Text>
-                      </View>
-                    </Pressable>
+                      task={task}
+                      onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
+                        if (onNavigateToTaskDetail) {
+                          onNavigateToTaskDetail(taskId, subTaskId);
+                        }
+                      }}
+                    />
                   ))}
                 </View>
             </View>
@@ -703,15 +625,15 @@ export default function DashboardScreen({
             {/* Divider */}
             <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
-            {/* 2. ON MY PLATE Section */}
+            {/* 2. TASKS FOR ME Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="hourglass-outline" size={18} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
+                <Ionicons name="mail-outline" size={18} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
                 <Text className={cn(
                   "text-sm font-bold ml-2",
                   isDarkMode ? "text-amber-400" : "text-amber-600"
                 )}>
-                  {isDarkMode ? "ON MY PLATE" : "On My Plate"}
+                  {isDarkMode ? "TASKS FOR ME" : "Tasks for me"}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -741,32 +663,6 @@ export default function DashboardScreen({
                   </Text>
                 </Pressable>
                 
-                {/* Completed Review Now */}
-                <Pressable 
-                  className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
-                    isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
-                  )}
-                  onPress={() => {
-                    setSectionFilter("inbox");
-                    setStatusFilter("reviewing");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className={cn(
-                    "text-3xl mb-1",
-                    isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
-                  )}>
-                    {inboxReviewingTasks.length}
-                  </Text>
-                  <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
-                  )} numberOfLines={2}>
-                    Completed{'\n'}Review Now
-                  </Text>
-                </Pressable>
-                
                 {/* My On-going Tasks */}
                 <Pressable 
                   className={cn(
@@ -792,21 +688,47 @@ export default function DashboardScreen({
                     My On-going{'\n'}Tasks
                   </Text>
                 </Pressable>
+                
+                {/* Completed Review Now */}
+                <Pressable 
+                  className={cn(
+                    "flex-1 rounded-xl p-3 items-center",
+                    isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
+                  )}
+                  onPress={() => {
+                    setSectionFilter("inbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className={cn(
+                    "text-3xl mb-1",
+                    isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
+                  )}>
+                    {inboxReviewingTasks.length}
+                  </Text>
+                  <Text className={cn(
+                    "text-center font-semibold",
+                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
+                  )} numberOfLines={2}>
+                    Completed{'\n'}Review Now
+                  </Text>
+                </Pressable>
               </View>
             </View>
 
             {/* Divider */}
             <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
-            {/* 3. ON OTHERS' PLATE Section */}
+            {/* 3. TASKS FROM ME Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="eye-outline" size={18} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
+                <Ionicons name="paper-plane-outline" size={18} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
                 <Text className={cn(
                   "text-sm font-bold ml-2",
                   isDarkMode ? "text-purple-400" : "text-purple-600"
                 )}>
-                  {isDarkMode ? "ON OTHERS' PLATE" : "On Others' Plate"}
+                  {isDarkMode ? "TASKS FROM ME" : "Tasks from me"}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -836,32 +758,6 @@ export default function DashboardScreen({
                   </Text>
                 </Pressable>
                 
-                {/* Sent for Review */}
-                <Pressable 
-                  className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
-                    isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
-                  )}
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("reviewing");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className={cn(
-                    "text-3xl mb-1",
-                    isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
-                  )}>
-                    {outboxReviewingTasks.length}
-                  </Text>
-                  <Text className={cn(
-                    "text-center font-semibold",
-                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
-                  )} numberOfLines={2}>
-                    Sent for{'\n'}Review
-                  </Text>
-                </Pressable>
-                
                 {/* Others Working on My Tasks */}
                 <Pressable 
                   className={cn(
@@ -885,6 +781,32 @@ export default function DashboardScreen({
                     isDarkMode ? "text-xs text-violet-200" : "text-sm text-orange-600"
                   )} numberOfLines={2}>
                     Others Working{'\n'}on My Tasks
+                  </Text>
+                </Pressable>
+                
+                {/* Sent for Review */}
+                <Pressable 
+                  className={cn(
+                    "flex-1 rounded-xl p-3 items-center",
+                    isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
+                  )}
+                  onPress={() => {
+                    setSectionFilter("outbox");
+                    setStatusFilter("reviewing");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className={cn(
+                    "text-3xl mb-1",
+                    isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
+                  )}>
+                    {outboxReviewingTasks.length}
+                  </Text>
+                  <Text className={cn(
+                    "text-center font-semibold",
+                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
+                  )} numberOfLines={2}>
+                    Sent for{'\n'}Review
                   </Text>
                 </Pressable>
               </View>

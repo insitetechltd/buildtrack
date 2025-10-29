@@ -145,19 +145,53 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
 
   return (
     <View className="absolute bottom-8 right-6 items-end">
+      {/* Logout Button - appears when expanded */}
+      {/* Custom position: Center at -144px - HIGHEST POSITION */}
+      <Animated.View
+        style={{
+          transform: [
+            { scale: scaleAnim4 },
+            { translateY: scaleAnim4.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -144]
+            })}
+          ],
+          opacity: scaleAnim4,
+        }}
+        pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
+      >
+        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+          <Text className="text-white text-sm font-medium">Logout</Text>
+        </View>
+        <Pressable
+          onPress={handleLogout}
+          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+          }}
+        >
+          <Ionicons name="log-out-outline" size={20} color="white" />
+        </Pressable>
+      </Animated.View>
+
       {/* Reports Button - appears when expanded */}
-      {/* Custom position: Center at -144px */}
+      {/* Custom position: Center at -108px */}
       {onReports && (
         <Animated.View
           style={{
             transform: [
-              { scale: scaleAnim4 },
-              { translateY: scaleAnim4.interpolate({
+              { scale: scaleAnim3 },
+              { translateY: scaleAnim3.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, -144]
+                outputRange: [0, -108]
               })}
             ],
-            opacity: scaleAnim4,
+            opacity: scaleAnim3,
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
           className="flex-row items-center"
@@ -182,18 +216,18 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
       )}
 
       {/* Search Button - appears when expanded */}
-      {/* Custom position: Center at -108px */}
+      {/* Custom position: Center at -72px */}
       {onSearch && (
         <Animated.View
           style={{
             transform: [
-              { scale: scaleAnim3 },
-              { translateY: scaleAnim3.interpolate({
+              { scale: scaleAnim2 },
+              { translateY: scaleAnim2.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, -108]
+                outputRange: [0, -72]
               })}
             ],
-            opacity: scaleAnim3,
+            opacity: scaleAnim2,
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
           className="flex-row items-center"
@@ -216,40 +250,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           </Pressable>
         </Animated.View>
       )}
-
-      {/* Logout Button - appears when expanded */}
-      {/* Custom position: Center at -72px */}
-      <Animated.View
-        style={{
-          transform: [
-            { scale: scaleAnim2 },
-            { translateY: scaleAnim2.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -72]
-            })}
-          ],
-          opacity: scaleAnim2,
-        }}
-        pointerEvents={isExpanded ? 'auto' : 'none'}
-        className="flex-row items-center"
-      >
-        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-          <Text className="text-white text-sm font-medium">Logout</Text>
-        </View>
-        <Pressable
-          onPress={handleLogout}
-          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}
-        >
-          <Ionicons name="log-out-outline" size={20} color="white" />
-        </Pressable>
-      </Animated.View>
 
       {/* Create Task Button - appears when expanded */}
       {/* Custom position: Center at -36px */}

@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, SubTask, Priority, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -10,12 +10,12 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 // Type for task list items (can be Task or SubTask)
 export type TaskListItem = Task | (SubTask & { isSubTask: true });
 
-interface CompactTaskCardProps {
+interface TaskCardProps {
   task: TaskListItem;
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
 }
 
-export default function CompactTaskCard({ task, onNavigateToTaskDetail }: CompactTaskCardProps) {
+export default function TaskCard({ task, onNavigateToTaskDetail }: TaskCardProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const { getUserById } = useUserStoreWithInit();
@@ -35,6 +35,13 @@ export default function CompactTaskCard({ task, onNavigateToTaskDetail }: Compac
 
   // Check if task is starred by current user
   const isStarred = task.starredByUsers?.includes(user.id) || false;
+  
+  // Get assigner and assignees
+  const assigner = getUserById(task.assignedBy);
+  const assignees = task.assignedTo.map(id => getUserById(id)).filter(Boolean);
+  
+  // Check if task is 100% complete
+  const isCompleted = task.completionPercentage === 100;
 
   const handleStarPress = (e: any) => {
     e.stopPropagation(); // Prevent opening task detail
@@ -92,8 +99,29 @@ export default function CompactTaskCard({ task, onNavigateToTaskDetail }: Compac
         </View>
       )}
       
-      {/* Line 1: Title and Priority */}
-      <View className="flex-row items-center justify-between mb-2">
+      <View className="flex-row">
+        {/* Photo on the left (only first photo) */}
+        {task.attachments && task.attachments.length > 0 && (
+          <View className="mr-3">
+            <Image
+              source={{ uri: task.attachments[0] }}
+              className="w-20 h-20 rounded-lg"
+              resizeMode="cover"
+            />
+            {task.attachments.length > 1 && (
+              <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
+                <Text className="text-white text-xs font-semibold">
+                  +{task.attachments.length - 1}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+        
+        {/* Text content */}
+        <View className="flex-1">
+          {/* Line 1: Title and Priority */}
+          <View className="flex-row items-center justify-between mb-2">
         <View className="flex-row items-center flex-1 mr-2">
           <Text className="font-semibold text-gray-900 flex-1" numberOfLines={2}>
             {task.title}
@@ -126,17 +154,54 @@ export default function CompactTaskCard({ task, onNavigateToTaskDetail }: Compac
         </Text>
       )}
       
-      {/* Line 3: Due Date and Status */}
-      <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center">
-          <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-          <Text className="text-sm text-gray-600 ml-1">
-            {new Date(task.dueDate).toLocaleDateString()}
-          </Text>
+          {/* Line 3: Assigner → Assignees (compact) */}
+          <View className="flex-row items-center mb-2">
+            <View className="flex-row items-center flex-1">
+              <View className="w-5 h-5 bg-blue-100 rounded-full items-center justify-center mr-1">
+                <Ionicons name="person" size={10} color="#3b82f6" />
+              </View>
+              <Text className="text-xs text-gray-600 mr-1" numberOfLines={1}>
+                {assigner?.name || 'Unknown'}
+              </Text>
+              <Ionicons name="arrow-forward" size={10} color="#9ca3af" />
+              <View className="w-5 h-5 bg-green-100 rounded-full items-center justify-center ml-1 mr-1">
+                <Ionicons name="people" size={10} color="#10b981" />
+              </View>
+              <Text className="text-xs text-gray-600 flex-1" numberOfLines={1}>
+                {assignees.length > 0 
+                  ? assignees.length === 1 
+                    ? assignees[0]?.name 
+                    : `${assignees[0]?.name} +${assignees.length - 1}`
+                  : 'Unassigned'
+                }
+              </Text>
+            </View>
+          </View>
+      
+          {/* Line 4: Due Date and Completion */}
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <Ionicons name="calendar-outline" size={14} color="#6b7280" />
+              <Text className="text-sm text-gray-600 ml-1">
+                {new Date(task.dueDate).toLocaleDateString()}
+              </Text>
+            </View>
+            
+            {/* Highlighted 100% completion */}
+            {isCompleted ? (
+              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
+                <Ionicons name="checkmark-circle" size={14} color="white" />
+                <Text className="text-white text-sm font-bold ml-1">
+                  100%
+                </Text>
+              </View>
+            ) : (
+              <Text className="text-sm text-gray-500">
+                {task.completionPercentage}%
+              </Text>
+            )}
+          </View>
         </View>
-        <Text className="text-sm text-gray-500">
-          {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
-        </Text>
       </View>
     </Pressable>
   );

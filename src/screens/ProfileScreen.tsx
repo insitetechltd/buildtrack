@@ -14,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 import { useLanguageStore, Language } from "../state/languageStore";
+import { useThemeStore } from "../state/themeStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useTranslation } from "../utils/useTranslation";
 import { cn } from "../utils/cn";
@@ -34,6 +35,7 @@ interface ProfileScreenProps {
 export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }: ProfileScreenProps) {
   const { user } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { getCompanyBanner } = useCompanyStore();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
@@ -216,6 +218,12 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               icon="language-outline"
               rightText={language === "en" ? t.profile.english : t.profile.traditionalChinese}
               onPress={() => setShowLanguagePicker(true)}
+            />
+            <MenuOption
+              title="Theme"
+              icon={isDarkMode ? "moon" : "sunny-outline"}
+              rightText={isDarkMode ? "Dark Mode" : "Light Mode"}
+              onPress={toggleDarkMode}
             />
             <MenuOption
               title="Reload Data"

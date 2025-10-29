@@ -100,11 +100,11 @@ export default function StandardHeader({
         
         {/* Title and Subtitle */}
         <View className="flex-1">
-          <Text className="text-xl font-bold text-gray-900">
+          <Text className="text-2xl font-bold text-gray-900">
             {title}
           </Text>
           {subtitle && (
-            <Text className="text-sm text-gray-600 mt-0.5" numberOfLines={1}>
+            <Text className="text-base text-gray-600 mt-0.5" numberOfLines={1}>
               {subtitle}
             </Text>
           )}

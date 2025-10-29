@@ -138,7 +138,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               <View className="w-16 h-16 bg-blue-600 rounded-xl items-center justify-center mb-4">
                 <Ionicons name="construct" size={24} color="white" />
               </View>
-              <Text className="text-2xl font-bold text-gray-900 mb-1">
+              <Text className="text-3xl font-bold text-gray-900 mb-1">
                 Join BuildTrack
               </Text>
               <Text className="text-gray-600 text-center">
@@ -150,7 +150,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
             <View className="space-y-4">
               {/* Name Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Full Name
                 </Text>
                 <View
@@ -177,13 +177,13 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                 </View>
                 {errors.name && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.name}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
                 )}
               </View>
 
               {/* Phone Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Phone Number <Text className="text-red-500">*</Text>
                 </Text>
                 <View
@@ -213,13 +213,13 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                 </View>
                 {errors.phone && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.phone}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.phone}</Text>
                 )}
               </View>
 
               {/* Email Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Email Address <Text className="text-gray-400">(Optional)</Text>
                 </Text>
                 <View
@@ -249,13 +249,13 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                 </View>
                 {errors.email && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.email}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
                 )}
               </View>
 
               {/* Role Picker */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Role
                 </Text>
                 <View className="border border-gray-300 rounded-lg bg-gray-50 overflow-hidden">
@@ -272,7 +272,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Password Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Password
                 </Text>
                 <View
@@ -311,13 +311,13 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   </Pressable>
                 </View>
                 {errors.password && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.password}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
                 )}
               </View>
 
               {/* Confirm Password Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Confirm Password
                 </Text>
                 <View
@@ -356,7 +356,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   </Pressable>
                 </View>
                 {errors.confirmPassword && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.confirmPassword}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.confirmPassword}</Text>
                 )}
               </View>
 
@@ -369,7 +369,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   isLoading && "opacity-50"
                 )}
               >
-                <Text className="text-white font-semibold text-lg">
+                <Text className="text-white font-semibold text-xl">
                   {isLoading ? "Creating Account..." : "Create Account"}
                 </Text>
               </Pressable>

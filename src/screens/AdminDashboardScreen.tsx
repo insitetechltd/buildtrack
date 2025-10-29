@@ -169,11 +169,11 @@ export default function AdminDashboardScreen({
     >
       <View className="flex-row items-center justify-between mb-2">
         <Ionicons name={icon as any} size={24} color={iconColor} />
-        <Text className={cn("text-2xl font-bold", textColor)}>{count}</Text>
+        <Text className={cn("text-3xl font-bold", textColor)}>{count}</Text>
       </View>
-      <Text className="text-sm text-gray-700 font-medium">{title}</Text>
+      <Text className="text-base text-gray-700 font-medium">{title}</Text>
       {subtitle && (
-        <Text className="text-xs text-gray-600 mt-1">{subtitle}</Text>
+        <Text className="text-sm text-gray-600 mt-1">{subtitle}</Text>
       )}
     </Pressable>
   );
@@ -204,10 +204,10 @@ export default function AdminDashboardScreen({
           <Ionicons name={icon as any} size={24} color={iconColor} />
         </View>
         <View className="flex-1">
-          <Text className="text-base font-semibold text-gray-900 mb-1">
+          <Text className="text-lg font-semibold text-gray-900 mb-1">
             {title}
           </Text>
-          <Text className="text-sm text-gray-600">
+          <Text className="text-base text-gray-600">
             {description}
           </Text>
         </View>
@@ -363,7 +363,7 @@ export default function AdminDashboardScreen({
         rightElement={
           <Pressable onPress={onNavigateToProfile}>
             <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-lg">
+              <Text className="text-white font-bold text-xl">
                 {user.name.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -383,7 +383,7 @@ export default function AdminDashboardScreen({
                   {currentCompany.name}
                 </Text>
               </View>
-              <Text className="text-blue-700 text-xs mt-1">
+              <Text className="text-blue-700 text-sm mt-1">
                 Showing data for your company only
               </Text>
             </View>
@@ -392,48 +392,48 @@ export default function AdminDashboardScreen({
 
         {/* Company Overview */}
         <View className="px-6 pb-4 pt-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">
+          <Text className="text-xl font-semibold text-gray-900 mb-3">
             Company Overview
           </Text>
           
           {/* Project Status */}
           <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-            <Text className="text-base font-semibold text-gray-900 mb-3">
+            <Text className="text-lg font-semibold text-gray-900 mb-3">
               Project Status
             </Text>
             <View className="flex-row">
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-blue-600">{stats.totalProjects}</Text>
-                <Text className="text-xs text-gray-600">Total Projects</Text>
+                <Text className="text-2xl font-bold text-blue-600">{stats.totalProjects}</Text>
+                <Text className="text-sm text-gray-600">Total Projects</Text>
               </View>
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-green-600">{projectsByStatus.active}</Text>
-                <Text className="text-xs text-gray-600">In Progress</Text>
+                <Text className="text-2xl font-bold text-green-600">{projectsByStatus.active}</Text>
+                <Text className="text-sm text-gray-600">In Progress</Text>
               </View>
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-gray-600">{projectsByStatus.completed}</Text>
-                <Text className="text-xs text-gray-600">Completed</Text>
+                <Text className="text-2xl font-bold text-gray-600">{projectsByStatus.completed}</Text>
+                <Text className="text-sm text-gray-600">Completed</Text>
               </View>
             </View>
           </View>
 
           {/* User Role Distribution */}
           <View className="bg-white rounded-xl border border-gray-200 p-4">
-            <Text className="text-base font-semibold text-gray-900 mb-3">
+            <Text className="text-lg font-semibold text-gray-900 mb-3">
               User Roles
             </Text>
             <View className="flex-row">
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-purple-600">{usersByRole.admin}</Text>
-                <Text className="text-xs text-gray-600">Admins</Text>
+                <Text className="text-2xl font-bold text-purple-600">{usersByRole.admin}</Text>
+                <Text className="text-sm text-gray-600">Admins</Text>
               </View>
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-blue-600">{usersByRole.manager}</Text>
-                <Text className="text-xs text-gray-600">Managers</Text>
+                <Text className="text-2xl font-bold text-blue-600">{usersByRole.manager}</Text>
+                <Text className="text-sm text-gray-600">Managers</Text>
               </View>
               <View className="flex-1 items-center">
-                <Text className="text-xl font-bold text-green-600">{usersByRole.worker}</Text>
-                <Text className="text-xs text-gray-600">Workers</Text>
+                <Text className="text-2xl font-bold text-green-600">{usersByRole.worker}</Text>
+                <Text className="text-sm text-gray-600">Workers</Text>
               </View>
             </View>
           </View>
@@ -441,7 +441,7 @@ export default function AdminDashboardScreen({
 
         {/* Administrative Actions */}
         <View className="px-6 pb-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">
+          <Text className="text-xl font-semibold text-gray-900 mb-3">
             Administrative Actions
           </Text>
           
@@ -497,7 +497,7 @@ export default function AdminDashboardScreen({
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-2xl font-semibold text-gray-900 flex-1">
               Company Banner Settings
             </Text>
           </View>
@@ -505,7 +505,7 @@ export default function AdminDashboardScreen({
           <ScrollView className="flex-1 px-6 py-4">
             {/* Banner Preview */}
             <View className="mb-6">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">Preview</Text>
+              <Text className="text-base font-semibold text-gray-700 mb-2">Preview</Text>
               {bannerForm.isVisible && (
                 <View className="rounded-lg overflow-hidden">
                   {bannerForm.imageUri ? (
@@ -522,7 +522,7 @@ export default function AdminDashboardScreen({
                       style={{ backgroundColor: bannerForm.backgroundColor }}
                     >
                       <Text 
-                        className="text-sm font-medium text-center"
+                        className="text-base font-medium text-center"
                         style={{ color: bannerForm.textColor }}
                       >
                         {bannerForm.text || "Your banner text will appear here"}
@@ -533,7 +533,7 @@ export default function AdminDashboardScreen({
               )}
               {!bannerForm.isVisible && (
                 <View className="bg-gray-100 px-4 py-3 rounded-lg border border-gray-300">
-                  <Text className="text-sm text-gray-500 text-center">
+                  <Text className="text-base text-gray-500 text-center">
                     Banner is hidden
                   </Text>
                 </View>
@@ -544,10 +544,10 @@ export default function AdminDashboardScreen({
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-700">
+                  <Text className="text-base font-semibold text-gray-700">
                     Banner Image (Optional)
                   </Text>
-                  <Text className="text-xs text-gray-500 mt-1">
+                  <Text className="text-sm text-gray-500 mt-1">
                     Recommended size: 1200x225px
                   </Text>
                 </View>
@@ -590,7 +590,7 @@ export default function AdminDashboardScreen({
                       paddingVertical: 8,
                       borderRadius: 8
                     }}>
-                      <Text className="text-gray-900 font-medium text-sm">Tap to change</Text>
+                      <Text className="text-gray-900 font-medium text-base">Tap to change</Text>
                     </View>
                   </View>
                 </Pressable>
@@ -600,7 +600,7 @@ export default function AdminDashboardScreen({
                   className="bg-white rounded-lg border border-dashed border-gray-300 p-4 items-center"
                 >
                   <Ionicons name="images-outline" size={24} color="#9ca3af" />
-                  <Text className="text-gray-400 text-sm mt-1">Tap to add banner image</Text>
+                  <Text className="text-gray-400 text-base mt-1">Tap to add banner image</Text>
                 </Pressable>
               )}
             </View>
@@ -609,7 +609,7 @@ export default function AdminDashboardScreen({
             {!bannerForm.imageUri && (
               <View className="flex-row items-center mb-6">
                 <View className="flex-1 h-px bg-gray-300" />
-                <Text className="text-xs text-gray-500 mx-3">OR USE TEXT BANNER</Text>
+                <Text className="text-sm text-gray-500 mx-3">OR USE TEXT BANNER</Text>
                 <View className="flex-1 h-px bg-gray-300" />
               </View>
             )}
@@ -618,7 +618,7 @@ export default function AdminDashboardScreen({
             {!bannerForm.imageUri && (
               <>
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">Banner Text</Text>
+                  <Text className="text-base font-semibold text-gray-700 mb-2">Banner Text</Text>
                   <TextInput
                     className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
                     placeholder="Enter banner message..."
@@ -630,7 +630,7 @@ export default function AdminDashboardScreen({
 
                 {/* Color Presets */}
                 <View className="mb-4">
-                  <Text className="text-sm font-semibold text-gray-700 mb-2">Color Preset</Text>
+                  <Text className="text-base font-semibold text-gray-700 mb-2">Color Preset</Text>
                   <View className="flex-row flex-wrap -mx-1">
                     {colorPresets.map((preset) => (
                       <Pressable
@@ -649,7 +649,7 @@ export default function AdminDashboardScreen({
                             borderColor: bannerForm.backgroundColor === preset.bg ? "#374151" : "transparent"
                           }}
                         >
-                          <Text style={{ color: preset.text }} className="text-xs font-medium">
+                          <Text style={{ color: preset.text }} className="text-sm font-medium">
                             {preset.name}
                           </Text>
                         </View>
@@ -665,10 +665,10 @@ export default function AdminDashboardScreen({
               <View className="bg-white rounded-lg border border-gray-300 px-4 py-3">
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1 mr-4">
-                    <Text className="text-sm font-semibold text-gray-900 mb-1">
+                    <Text className="text-base font-semibold text-gray-900 mb-1">
                       Banner Visibility
                     </Text>
-                    <Text className="text-xs text-gray-600">
+                    <Text className="text-sm text-gray-600">
                       {bannerForm.isVisible ? "Banner will be shown to all users" : "Banner is hidden from all users"}
                     </Text>
                   </View>
@@ -695,7 +695,7 @@ export default function AdminDashboardScreen({
               onPress={saveBanner}
               className="bg-blue-600 rounded-lg py-4 items-center justify-center mt-2"
             >
-              <Text className="text-white font-semibold text-base">
+              <Text className="text-white font-semibold text-lg">
                 Save Banner Settings
               </Text>
             </Pressable>
@@ -705,7 +705,7 @@ export default function AdminDashboardScreen({
               onPress={() => setShowBannerModal(false)}
               className="bg-gray-200 rounded-lg py-4 items-center justify-center mt-3 mb-6"
             >
-              <Text className="text-gray-700 font-semibold text-base">
+              <Text className="text-gray-700 font-semibold text-lg">
                 Cancel
               </Text>
             </Pressable>

@@ -91,9 +91,9 @@ export default function FullScreenImageViewer({
               className="flex-row items-center p-2 -ml-2"
             >
               <Ionicons name="close" size={28} color="white" />
-              <Text className="text-white text-base font-medium ml-2">Close</Text>
+              <Text className="text-white text-lg font-medium ml-2">Close</Text>
             </Pressable>
-            <Text className="text-white text-base font-medium">
+            <Text className="text-white text-lg font-medium">
               {currentIndex + 1} / {images.length}
             </Text>
           </View>

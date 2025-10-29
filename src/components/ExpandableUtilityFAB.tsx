@@ -162,7 +162,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         className="flex-row items-center"
       >
         <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-          <Text className="text-white text-sm font-medium">Logout</Text>
+          <Text className="text-white text-base font-medium">Logout</Text>
         </View>
         <Pressable
           onPress={handleLogout}
@@ -197,7 +197,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Reports</Text>
+            <Text className="text-white text-base font-medium">Reports</Text>
           </View>
           <Pressable
             onPress={handleReports}
@@ -233,7 +233,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Search</Text>
+            <Text className="text-white text-base font-medium">Search</Text>
           </View>
           <Pressable
             onPress={handleSearch}
@@ -268,7 +268,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         className="flex-row items-center"
       >
         <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-          <Text className="text-white text-sm font-medium">New Task</Text>
+          <Text className="text-white text-base font-medium">New Task</Text>
         </View>
         <Pressable
           onPress={handleCreateTask}

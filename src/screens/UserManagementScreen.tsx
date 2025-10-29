@@ -180,7 +180,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           <View className="flex-1">
             <View className="flex-row items-center gap-2">
               <View className="flex-row items-center gap-1">
-                <Text className="font-semibold text-gray-900 text-base">
+                <Text className="font-semibold text-gray-900 text-lg">
                   {user.name}
                 </Text>
                 {user.role === "admin" && (
@@ -189,22 +189,22 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               </View>
               {user.role === "admin" && (
                 <View className="bg-purple-100 px-2 py-1 rounded">
-                  <Text className="text-purple-700 text-xs font-bold">ADMIN</Text>
+                  <Text className="text-purple-700 text-sm font-bold">ADMIN</Text>
                 </View>
               )}
               {isLastAdmin && (
                 <View className="bg-amber-100 px-2 py-1 rounded flex-row items-center">
                   <Ionicons name="shield-checkmark" size={12} color="#d97706" />
-                  <Text className="text-amber-700 text-xs font-bold ml-1">Protected</Text>
+                  <Text className="text-amber-700 text-sm font-bold ml-1">Protected</Text>
                 </View>
               )}
             </View>
-            <Text className="text-sm text-gray-600">
+            <Text className="text-base text-gray-600">
               {user.email}
             </Text>
             <View className="flex-row items-center mt-1">
               <Ionicons name="person-outline" size={14} color="#6b7280" />
-              <Text className="text-xs text-gray-500 ml-1 capitalize">
+              <Text className="text-sm text-gray-500 ml-1 capitalize">
                 {user.role} • {user.position}
               </Text>
             </View>
@@ -217,14 +217,14 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             }}
             className="px-3 py-2 bg-blue-600 rounded-lg"
           >
-            <Text className="text-white text-xs font-medium">Assign</Text>
+            <Text className="text-white text-sm font-medium">Assign</Text>
           </Pressable>
         </View>
 
         {/* Project Assignments */}
         {userAssignments.length > 0 ? (
           <View>
-            <Text className="text-sm font-medium text-gray-700 mb-2">
+            <Text className="text-base font-medium text-gray-700 mb-2">
               Project Assignments ({userAssignments.length})
             </Text>
             <View className="space-y-2">
@@ -235,11 +235,11 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                 return (
                   <View key={assignment.projectId} className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2">
                     <View className="flex-1">
-                      <Text className="text-sm font-medium text-gray-900">
+                      <Text className="text-base font-medium text-gray-900">
                         {project.name}
                       </Text>
                       <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(assignment.category))}>
-                        <Text className="text-xs font-medium">
+                        <Text className="text-sm font-medium">
                           {getCategoryLabel(assignment.category)}
                         </Text>
                       </View>
@@ -258,7 +258,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           </View>
         ) : (
           <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <Text className="text-yellow-800 text-sm">
+            <Text className="text-yellow-800 text-base">
               Not assigned to any projects
             </Text>
           </View>
@@ -280,7 +280,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           >
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </Pressable>
-          <Text className="text-xl font-bold text-gray-900 flex-1">
+          <Text className="text-2xl font-bold text-gray-900 flex-1">
             User Management
           </Text>
         </View>
@@ -296,7 +296,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                 {currentCompany.name}
               </Text>
             </View>
-            <Text className="text-blue-700 text-xs mt-1">
+            <Text className="text-blue-700 text-sm mt-1">
               Showing users from your company only
             </Text>
           </View>
@@ -323,7 +323,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           </Pressable>
         </View>
 
-        <Text className="text-sm text-gray-600">
+        <Text className="text-base text-gray-600">
           {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} in your company
         </Text>
       </View>
@@ -335,10 +335,10 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
               <Ionicons name="people-outline" size={40} color="#9ca3af" />
             </View>
-            <Text className="text-lg font-semibold text-gray-900 mb-2">
+            <Text className="text-xl font-semibold text-gray-900 mb-2">
               No Users Found
             </Text>
-            <Text className="text-sm text-gray-600 text-center px-8 mb-6">
+            <Text className="text-base text-gray-600 text-center px-8 mb-6">
               {searchQuery 
                 ? "No users match your search criteria"
                 : "No users in your company yet. Invite team members to get started."
@@ -376,7 +376,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             >
               <Text className="text-blue-600 font-medium">Cancel</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Assign User to Project
             </Text>
             <Pressable
@@ -397,20 +397,20 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           >
             {selectedUser && (
               <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                <Text className="text-lg font-semibold text-gray-900 mb-2">
+                <Text className="text-xl font-semibold text-gray-900 mb-2">
                   Selected User
                 </Text>
-                <Text className="text-base font-medium text-gray-900">
+                <Text className="text-lg font-medium text-gray-900">
                   {selectedUser.name}
                 </Text>
-                <Text className="text-sm text-gray-600">
+                <Text className="text-base text-gray-600">
                   {selectedUser.email} • {selectedUser.role}
                 </Text>
               </View>
             )}
 
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-lg font-semibold text-gray-900 mb-4">
+              <Text className="text-xl font-semibold text-gray-900 mb-4">
                 Select Project
               </Text>
               <Pressable
@@ -430,7 +430,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
 
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-lg font-semibold text-gray-900 mb-4">
+              <Text className="text-xl font-semibold text-gray-900 mb-4">
                 Select Category
               </Text>
               <Pressable
@@ -449,7 +449,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               </Pressable>
 
               <View className={cn("mt-3 p-3 rounded-lg border", getCategoryColor(selectedCategory))}>
-                <Text className="text-sm font-medium">
+                <Text className="text-base font-medium">
                   Preview: {getCategoryLabel(selectedCategory)}
                 </Text>
               </View>
@@ -474,7 +474,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             >
               <Text className="text-blue-600 font-medium">Done</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Select Project
             </Text>
           </View>
@@ -498,7 +498,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                   )}
                 >
                   <Text className={cn(
-                    "text-base",
+                    "text-lg",
                     selectedProject?.id === project.id ? "text-blue-600 font-semibold" : "text-gray-900"
                   )}>
                     {project.name}
@@ -534,7 +534,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             >
               <Text className="text-blue-600 font-medium">Done</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Select Project Role
             </Text>
           </View>
@@ -556,13 +556,13 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                 <View className="flex-row items-center justify-between">
                   <View>
                     <Text className={cn(
-                      "text-base",
+                      "text-lg",
                       selectedCategory === category ? "text-blue-600 font-semibold" : "text-gray-900"
                     )}>
                       {getCategoryLabel(category)}
                     </Text>
                     <View className={cn("inline-flex px-2 py-1 rounded border mt-2", getCategoryColor(category))}>
-                      <Text className="text-xs font-medium">
+                      <Text className="text-sm font-medium">
                         {getCategoryLabel(category)}
                       </Text>
                     </View>
@@ -589,7 +589,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-3">
                 <Ionicons name="checkmark-circle" size={40} color="#10b981" />
               </View>
-              <Text className="text-xl font-bold text-gray-900 mb-2">Success!</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Success!</Text>
               <Text className="text-center text-gray-600">{successMessage}</Text>
             </View>
             <Pressable
@@ -614,7 +614,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               <View className="w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-3">
                 <Ionicons name="warning" size={40} color="#ef4444" />
               </View>
-              <Text className="text-xl font-bold text-gray-900 mb-2">Remove Assignment</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Remove Assignment</Text>
               <Text className="text-center text-gray-600">
                 Remove {removeData?.userName} from {removeData?.projectName}?
               </Text>

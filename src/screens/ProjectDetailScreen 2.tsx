@@ -84,7 +84,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
         />
         <View className="flex-1 items-center justify-center p-6">
           <Ionicons name="alert-circle-outline" size={64} color="#9ca3af" />
-          <Text className="text-gray-500 text-lg font-medium mt-4">Project not found</Text>
+          <Text className="text-gray-500 text-xl font-medium mt-4">Project not found</Text>
           <Text className="text-gray-400 text-center mt-2">
             This project may have been deleted or you don't have access to it.
           </Text>
@@ -203,13 +203,13 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
         <View className="bg-white border-b border-gray-200 px-6 py-4">
           <View className="flex-row items-start justify-between mb-3">
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-gray-900 mb-2">{project.name}</Text>
-              <Text className="text-base text-gray-600">{project.description}</Text>
+              <Text className="text-3xl font-bold text-gray-900 mb-2">{project.name}</Text>
+              <Text className="text-lg text-gray-600">{project.description}</Text>
             </View>
           </View>
           
           <View className={cn("px-3 py-2 rounded-lg border self-start", getStatusColor(project.status))}>
-            <Text className="text-sm font-medium capitalize">
+            <Text className="text-base font-medium capitalize">
               {project.status.replace("_", " ")}
             </Text>
           </View>
@@ -220,12 +220,12 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
           <View className="bg-purple-100 border-y border-purple-200 px-6 py-3">
             <View className="flex-row items-center">
               <Ionicons name="star" size={20} color="#7c3aed" />
-              <Text className="text-sm text-purple-900 font-semibold ml-2">
+              <Text className="text-base text-purple-900 font-semibold ml-2">
                 Lead Project Manager: {leadPM.name}
               </Text>
             </View>
             {leadPM.email && (
-              <Text className="text-xs text-purple-700 ml-7">{leadPM.email}</Text>
+              <Text className="text-sm text-purple-700 ml-7">{leadPM.email}</Text>
             )}
           </View>
         )}
@@ -237,9 +237,9 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               <View className="bg-white border border-gray-200 rounded-xl p-4">
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="people-outline" size={20} color="#3b82f6" />
-                  <Text className="text-xs text-gray-500 ml-2">Team Members</Text>
+                  <Text className="text-sm text-gray-500 ml-2">Team Members</Text>
                 </View>
-                <Text className="text-2xl font-bold text-gray-900">{projectStats.totalUsers}</Text>
+                <Text className="text-3xl font-bold text-gray-900">{projectStats.totalUsers}</Text>
               </View>
             </View>
             
@@ -247,9 +247,9 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               <View className="bg-white border border-gray-200 rounded-xl p-4">
                 <View className="flex-row items-center mb-2">
                   <Ionicons name="checkbox-outline" size={20} color="#10b981" />
-                  <Text className="text-xs text-gray-500 ml-2">Total Tasks</Text>
+                  <Text className="text-sm text-gray-500 ml-2">Total Tasks</Text>
                 </View>
-                <Text className="text-2xl font-bold text-gray-900">{projectTasks.length}</Text>
+                <Text className="text-3xl font-bold text-gray-900">{projectTasks.length}</Text>
               </View>
             </View>
           </View>
@@ -257,15 +257,15 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
 
         {/* Project Information */}
         <View className="px-6 pb-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">Project Information</Text>
+          <Text className="text-xl font-semibold text-gray-900 mb-3">Project Information</Text>
           
           <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
             <View className="flex-row items-start mb-4">
               <Ionicons name="location-outline" size={20} color="#6b7280" />
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium text-gray-900 mb-1">Location</Text>
-                <Text className="text-sm text-gray-600">{project.location.address}</Text>
-                <Text className="text-sm text-gray-600">
+                <Text className="text-base font-medium text-gray-900 mb-1">Location</Text>
+                <Text className="text-base text-gray-600">{project.location.address}</Text>
+                <Text className="text-base text-gray-600">
                   {project.location.city}, {project.location.state} {project.location.zipCode}
                 </Text>
               </View>
@@ -274,12 +274,12 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
             <View className="flex-row items-start mb-4">
               <Ionicons name="calendar-outline" size={20} color="#6b7280" />
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium text-gray-900 mb-1">Timeline</Text>
-                <Text className="text-sm text-gray-600">
+                <Text className="text-base font-medium text-gray-900 mb-1">Timeline</Text>
+                <Text className="text-base text-gray-600">
                   Start: {new Date(project.startDate).toLocaleDateString()}
                 </Text>
                 {project.endDate && (
-                  <Text className="text-sm text-gray-600">
+                  <Text className="text-base text-gray-600">
                     End: {new Date(project.endDate).toLocaleDateString()}
                   </Text>
                 )}
@@ -289,13 +289,13 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
             <View className="flex-row items-start mb-4">
               <Ionicons name="business-outline" size={20} color="#6b7280" />
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium text-gray-900 mb-1">Client</Text>
-                <Text className="text-sm text-gray-600">{project.clientInfo.name}</Text>
+                <Text className="text-base font-medium text-gray-900 mb-1">Client</Text>
+                <Text className="text-base text-gray-600">{project.clientInfo.name}</Text>
                 {project.clientInfo.email && (
-                  <Text className="text-sm text-gray-600">{project.clientInfo.email}</Text>
+                  <Text className="text-base text-gray-600">{project.clientInfo.email}</Text>
                 )}
                 {project.clientInfo.phone && (
-                  <Text className="text-sm text-gray-600">{project.clientInfo.phone}</Text>
+                  <Text className="text-base text-gray-600">{project.clientInfo.phone}</Text>
                 )}
               </View>
             </View>
@@ -304,8 +304,8 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               <View className="flex-row items-start mb-4">
                 <Ionicons name="cash-outline" size={20} color="#6b7280" />
                 <View className="ml-3 flex-1">
-                  <Text className="text-sm font-medium text-gray-900 mb-1">Budget</Text>
-                  <Text className="text-sm text-gray-600">${project.budget.toLocaleString()}</Text>
+                  <Text className="text-base font-medium text-gray-900 mb-1">Budget</Text>
+                  <Text className="text-base text-gray-600">${project.budget.toLocaleString()}</Text>
                 </View>
               </View>
             )}
@@ -313,9 +313,9 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
             <View className="flex-row items-start">
               <Ionicons name="person-outline" size={20} color="#6b7280" />
               <View className="ml-3 flex-1">
-                <Text className="text-sm font-medium text-gray-900 mb-1">Created By</Text>
-                <Text className="text-sm text-gray-600">{createdBy?.name || "Unknown"}</Text>
-                <Text className="text-xs text-gray-500 mt-1">
+                <Text className="text-base font-medium text-gray-900 mb-1">Created By</Text>
+                <Text className="text-base text-gray-600">{createdBy?.name || "Unknown"}</Text>
+                <Text className="text-sm text-gray-500 mt-1">
                   {new Date(project.createdAt).toLocaleString()}
                 </Text>
               </View>
@@ -326,13 +326,13 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
         {/* Team Members */}
         <View className="px-6 pb-4">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-lg font-semibold text-gray-900">Team Members</Text>
+            <Text className="text-xl font-semibold text-gray-900">Team Members</Text>
             {user.role === "admin" && (
               <Pressable
                 onPress={() => setShowAddMemberModal(true)}
                 className="px-3 py-1.5 bg-blue-600 rounded-lg"
               >
-                <Text className="text-white text-sm font-medium">Add Member</Text>
+                <Text className="text-white text-base font-medium">Add Member</Text>
               </Pressable>
             )}
           </View>
@@ -359,18 +359,18 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
                   >
                     <View className="flex-1">
                       <View className="flex-row items-center mb-1">
-                        <Text className="text-base font-medium text-gray-900">{member.name}</Text>
+                        <Text className="text-lg font-medium text-gray-900">{member.name}</Text>
                         {isLeadPM && (
                           <View className="ml-2 bg-purple-100 px-2 py-0.5 rounded">
-                            <Text className="text-xs text-purple-700 font-medium">Lead PM</Text>
+                            <Text className="text-sm text-purple-700 font-medium">Lead PM</Text>
                           </View>
                         )}
                       </View>
-                      <Text className="text-sm text-gray-600 capitalize">
+                      <Text className="text-base text-gray-600 capitalize">
                         {assignment.category.replace("_", " ")}
                       </Text>
                       {member.email && (
-                        <Text className="text-xs text-gray-500 mt-1">{member.email}</Text>
+                        <Text className="text-sm text-gray-500 mt-1">{member.email}</Text>
                       )}
                     </View>
                     
@@ -388,7 +388,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
             ) : (
               <View className="p-6 items-center">
                 <Ionicons name="people-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-500 text-sm mt-2">No team members yet</Text>
+                <Text className="text-gray-500 text-base mt-2">No team members yet</Text>
               </View>
             )}
           </View>
@@ -559,7 +559,7 @@ function EditProjectModal({
           <Pressable onPress={onClose} className="mr-4 w-10 h-10 items-center justify-center">
             <Ionicons name="close" size={24} color="#374151" />
           </Pressable>
-          <Text className="text-xl font-semibold text-gray-900 flex-1">
+          <Text className="text-2xl font-semibold text-gray-900 flex-1">
             Edit Project
           </Text>
           <Pressable onPress={handleSave} className="px-4 py-2 bg-blue-600 rounded-lg">
@@ -574,7 +574,7 @@ function EditProjectModal({
           <ScrollView className="flex-1 px-6 py-4" keyboardShouldPersistTaps="handled">
             {/* Project Name */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">
+              <Text className="text-base font-medium text-gray-700 mb-2">
                 Project Name <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
@@ -588,7 +588,7 @@ function EditProjectModal({
 
             {/* Description */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
+              <Text className="text-base font-medium text-gray-700 mb-2">Description</Text>
               <TextInput
                 className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-gray-50"
                 placeholder="Project description"
@@ -603,7 +603,7 @@ function EditProjectModal({
 
             {/* Status */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Status</Text>
+              <Text className="text-base font-medium text-gray-700 mb-2">Status</Text>
               <View className="border border-gray-300 rounded-lg bg-gray-50 overflow-hidden">
                 <Picker
                   selectedValue={formData.status}
@@ -620,11 +620,11 @@ function EditProjectModal({
 
             {/* Dates */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-lg font-semibold text-gray-900 mb-4">Timeline</Text>
+              <Text className="text-xl font-semibold text-gray-900 mb-4">Timeline</Text>
               
               <View className="flex-row space-x-4 mb-4">
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">Start Date</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">Start Date</Text>
                   <Pressable
                     onPress={() => setShowStartDatePicker(true)}
                     className="border border-gray-300 rounded-lg px-3 py-3 bg-gray-50 flex-row items-center justify-between"
@@ -637,7 +637,7 @@ function EditProjectModal({
                 </View>
 
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">End Date</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">End Date</Text>
                   <Pressable
                     onPress={() => setShowEndDatePicker(true)}
                     className="border border-gray-300 rounded-lg px-3 py-3 bg-gray-50 flex-row items-center justify-between"
@@ -653,10 +653,10 @@ function EditProjectModal({
 
             {/* Location */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-lg font-semibold text-gray-900 mb-4">Location</Text>
+              <Text className="text-xl font-semibold text-gray-900 mb-4">Location</Text>
               
               <View className="mb-4">
-                <Text className="text-sm font-medium text-gray-700 mb-2">Address</Text>
+                <Text className="text-base font-medium text-gray-700 mb-2">Address</Text>
                 <TextInput
                   className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-gray-50"
                   placeholder="Street address"
@@ -670,7 +670,7 @@ function EditProjectModal({
 
               <View className="flex-row space-x-4 mb-4">
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">City</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">City</Text>
                   <TextInput
                     className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-gray-50"
                     placeholder="City"
@@ -683,7 +683,7 @@ function EditProjectModal({
                 </View>
 
                 <View className="w-24">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">State</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">State</Text>
                   <TextInput
                     className="border border-gray-300 rounded-lg px-3 py-3 text-gray-900 bg-gray-50"
                     placeholder="State"
@@ -702,11 +702,11 @@ function EditProjectModal({
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-6">
               <View className="flex-row items-center mb-3">
                 <Ionicons name="star" size={18} color="#7c3aed" />
-                <Text className="text-lg font-semibold text-gray-900 ml-2">
+                <Text className="text-xl font-semibold text-gray-900 ml-2">
                   Lead Project Manager
                 </Text>
               </View>
-              <Text className="text-sm text-gray-600 mb-3">
+              <Text className="text-base text-gray-600 mb-3">
                 The Lead PM has full visibility to all tasks and subtasks in this project
               </Text>
               <View className="border border-gray-300 rounded-lg bg-gray-50 overflow-hidden">
@@ -832,7 +832,7 @@ function AddMemberModal({
           <Pressable onPress={onClose} className="mr-4 w-10 h-10 items-center justify-center">
             <Ionicons name="close" size={24} color="#374151" />
           </Pressable>
-          <Text className="text-xl font-semibold text-gray-900 flex-1">
+          <Text className="text-2xl font-semibold text-gray-900 flex-1">
             Add Team Members
           </Text>
           <Pressable onPress={handleAdd} className="px-4 py-2 bg-blue-600 rounded-lg">
@@ -846,10 +846,10 @@ function AddMemberModal({
           {availableUsers.length > 0 ? (
             <View className="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <View className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <Text className="text-sm font-medium text-gray-700">
+                <Text className="text-base font-medium text-gray-700">
                   Select Users <Text className="text-red-500">*</Text>
                 </Text>
-                <Text className="text-xs text-gray-500 mt-1">
+                <Text className="text-sm text-gray-500 mt-1">
                   Tap to select/deselect team members
                 </Text>
               </View>
@@ -868,14 +868,14 @@ function AddMemberModal({
                     )}
                   >
                     <View className="flex-1">
-                      <Text className="text-base font-medium text-gray-900">
+                      <Text className="text-lg font-medium text-gray-900">
                         {availableUser.name}
                       </Text>
-                      <Text className="text-sm text-gray-600 capitalize mt-0.5">
+                      <Text className="text-base text-gray-600 capitalize mt-0.5">
                         {availableUser.role}
                       </Text>
                       {availableUser.email && (
-                        <Text className="text-xs text-gray-500 mt-0.5">
+                        <Text className="text-sm text-gray-500 mt-0.5">
                           {availableUser.email}
                         </Text>
                       )}
@@ -900,7 +900,7 @@ function AddMemberModal({
           ) : (
             <View className="flex-1 items-center justify-center py-16">
               <Ionicons name="people-outline" size={64} color="#9ca3af" />
-              <Text className="text-gray-500 text-lg font-medium mt-4">No Available Users</Text>
+              <Text className="text-gray-500 text-xl font-medium mt-4">No Available Users</Text>
               <Text className="text-gray-400 text-center mt-2 px-8">
                 All company members are already assigned to this project.
               </Text>

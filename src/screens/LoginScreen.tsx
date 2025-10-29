@@ -102,7 +102,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
       
       {/* Build Identifier */}
       <View className="absolute top-12 right-4 z-10">
-        <Text className="text-xs text-gray-400 font-mono">
+        <Text className="text-sm text-gray-400 font-mono">
           {buildIdentifier}
         </Text>
       </View>
@@ -121,7 +121,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
               <View className="w-20 h-20 bg-blue-600 rounded-2xl items-center justify-center mb-6">
                 <Ionicons name="construct" size={32} color="white" />
               </View>
-              <Text className="text-3xl font-bold text-gray-900 mb-2">
+              <Text className="text-4xl font-bold text-gray-900 mb-2">
                 BuildTrack
               </Text>
               <Text className="text-gray-600 text-center">
@@ -131,7 +131,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
 
             {/* Quick Login User List */}
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <Text className="text-sm font-semibold text-blue-800 mb-3">
+              <Text className="text-base font-semibold text-blue-800 mb-3">
                 👥 Quick Login - Tap any user (9 total):
               </Text>
               
@@ -141,7 +141,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
                   onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-purple-900">
+                  <Text className="text-lg font-semibold text-purple-900">
                     Insite Tech: Admin: Admin Tristan
                   </Text>
                 </Pressable>
@@ -151,7 +151,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
                   onPress={() => handleQuickLogin('tristan@insitetech.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-purple-900">
+                  <Text className="text-lg font-semibold text-purple-900">
                     Insite Tech: Manager: Tristan
                   </Text>
                 </Pressable>
@@ -160,7 +160,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
                   onPress={() => handleQuickLogin('dennis@insitetech.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-purple-900">
+                  <Text className="text-lg font-semibold text-purple-900">
                     Insite Tech: Manager: Dennis
                   </Text>
                 </Pressable>
@@ -170,7 +170,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
                   onPress={() => handleQuickLogin('admin@buildtrack.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-emerald-900">
+                  <Text className="text-lg font-semibold text-emerald-900">
                     BuildTrack: Admin: Alex Administrator
                   </Text>
                 </Pressable>
@@ -180,7 +180,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
                   onPress={() => handleQuickLogin('manager@buildtrack.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-emerald-900">
+                  <Text className="text-lg font-semibold text-emerald-900">
                     BuildTrack: Manager: John Manager
                   </Text>
                 </Pressable>
@@ -190,7 +190,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
                   onPress={() => handleQuickLogin('peter@buildtrack.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-emerald-900">
+                  <Text className="text-lg font-semibold text-emerald-900">
                     BuildTrack: Worker: Peter
                   </Text>
                 </Pressable>
@@ -199,7 +199,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
                   onPress={() => handleQuickLogin('worker@buildtrack.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-emerald-900">
+                  <Text className="text-lg font-semibold text-emerald-900">
                     BuildTrack: Worker: Sarah Worker
                   </Text>
                 </Pressable>
@@ -209,7 +209,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
                   onPress={() => handleQuickLogin('admin@eliteelectric.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-amber-900">
+                  <Text className="text-lg font-semibold text-amber-900">
                     Elite Electric: Admin: Mike Johnson
                   </Text>
                 </Pressable>
@@ -219,13 +219,13 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
                   onPress={() => handleQuickLogin('lisa@eliteelectric.com', 'password123')}
                 >
-                  <Text className="text-base font-semibold text-amber-900">
+                  <Text className="text-lg font-semibold text-amber-900">
                     Elite Electric: Worker: Lisa Martinez
                   </Text>
                 </Pressable>
               </View>
               
-              <Text className="text-xs text-gray-600 mt-2 italic">
+              <Text className="text-sm text-gray-600 mt-2 italic">
                 💡 Tap any name to login instantly
               </Text>
             </View>
@@ -234,7 +234,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
             <View className="space-y-4">
               {/* Email Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Email Address
                 </Text>
                 <View
@@ -264,13 +264,13 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   />
                 </View>
                 {errors.email && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.email}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
                 )}
               </View>
 
               {/* Password Input */}
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-2">
+                <Text className="text-base font-medium text-gray-700 mb-2">
                   Password
                 </Text>
                 <View
@@ -309,7 +309,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   </Pressable>
                 </View>
                 {errors.password && (
-                  <Text className="text-red-500 text-xs mt-1">{errors.password}</Text>
+                  <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
                 )}
               </View>
 
@@ -322,7 +322,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   isLoading && "opacity-50"
                 )}
               >
-                <Text className="text-white font-semibold text-lg">
+                <Text className="text-white font-semibold text-xl">
                   {isLoading ? "Signing In..." : "Sign In"}
                 </Text>
               </Pressable>

@@ -51,6 +51,11 @@ export default function TasksScreen({
   const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
   const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Sorting options (can apply multiple)
+  const [showSelfAssignedOnly, setShowSelfAssignedOnly] = useState(false);
+  const [sortByPriority, setSortByPriority] = useState(false);
+  const [sortByDueDate, setSortByDueDate] = useState(false);
 
   // Apply filters from store on mount or when they change
   // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
@@ -457,7 +462,48 @@ export default function TasksScreen({
   });
   };
 
-  const allTasks = getAllTasks();
+  let allTasks = getAllTasks();
+  
+  // Apply self-assigned filter if enabled
+  if (showSelfAssignedOnly) {
+    allTasks = allTasks.filter(task => {
+      const assignedTo = task.assignedTo || [];
+      const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
+      const isCreatedByMe = task.assignedBy === user.id;
+      // Only show tasks I assigned to myself
+      return isAssignedToMe && isCreatedByMe;
+    });
+  }
+  
+  // Apply multi-criteria sorting
+  if (sortByPriority || sortByDueDate) {
+    allTasks = [...allTasks].sort((a, b) => {
+      // Primary sort: Priority (if enabled)
+      if (sortByPriority) {
+        const priorityA = getPriorityOrder(a.priority);
+        const priorityB = getPriorityOrder(b.priority);
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+      }
+      
+      // Secondary sort: Due Date (if enabled)
+      if (sortByDueDate) {
+        const dateA = new Date(a.dueDate).getTime();
+        const dateB = new Date(b.dueDate).getTime();
+        return dateA - dateB;
+      }
+      
+      return 0;
+    });
+  } else {
+    // Default sort: By creation date (newest first) when no sorting options are active
+    allTasks = [...allTasks].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // Newest first
+    });
+  }
 
   // Group tasks: parent tasks with their subtasks nested
   const groupedTasks = React.useMemo(() => {
@@ -515,7 +561,7 @@ export default function TasksScreen({
       grouped: Array.from(taskMap.values()),
       standalone: standaloneSubtasks
     };
-  }, [allTasks]);
+  }, [allTasks, showSelfAssignedOnly, sortByPriority, sortByDueDate]);
 
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
@@ -573,23 +619,100 @@ export default function TasksScreen({
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
         {/* Search Bar */}
-        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
+        <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-3">
           <Ionicons name="search-outline" size={18} color="#6b7280" />
           <TextInput
-            className="flex-1 ml-2 text-gray-900 text-sm"
+            className="flex-1 ml-2 text-gray-900 text-base"
             placeholder="Search tasks..."
             value={searchQuery}
             onChangeText={handleSearchChange}
           />
         </View>
+        
+        {/* Sorting Options */}
+        <View>
+          <Text className="text-sm font-semibold text-gray-700 mb-2">Sort & Filter:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-2">
+              {/* Self-Assigned Filter */}
+              <Pressable
+                onPress={() => setShowSelfAssignedOnly(!showSelfAssignedOnly)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border flex-row items-center",
+                  showSelfAssignedOnly 
+                    ? "bg-blue-500 border-blue-600" 
+                    : "bg-white border-gray-300"
+                )}
+              >
+                <Ionicons 
+                  name={showSelfAssignedOnly ? "checkmark-circle" : "person-outline"} 
+                  size={16} 
+                  color={showSelfAssignedOnly ? "white" : "#6b7280"} 
+                />
+                <Text className={cn(
+                  "ml-1.5 text-sm font-medium",
+                  showSelfAssignedOnly ? "text-white" : "text-gray-700"
+                )}>
+                  Self-Assigned
+                </Text>
+              </Pressable>
+              
+              {/* Sort by Priority */}
+              <Pressable
+                onPress={() => setSortByPriority(!sortByPriority)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border flex-row items-center",
+                  sortByPriority 
+                    ? "bg-orange-500 border-orange-600" 
+                    : "bg-white border-gray-300"
+                )}
+              >
+                <Ionicons 
+                  name={sortByPriority ? "checkmark-circle" : "flame-outline"} 
+                  size={16} 
+                  color={sortByPriority ? "white" : "#6b7280"} 
+                />
+                <Text className={cn(
+                  "ml-1.5 text-sm font-medium",
+                  sortByPriority ? "text-white" : "text-gray-700"
+                )}>
+                  Priority
+                </Text>
+              </Pressable>
+              
+              {/* Sort by Due Date */}
+              <Pressable
+                onPress={() => setSortByDueDate(!sortByDueDate)}
+                className={cn(
+                  "px-3 py-2 rounded-lg border flex-row items-center",
+                  sortByDueDate 
+                    ? "bg-purple-500 border-purple-600" 
+                    : "bg-white border-gray-300"
+                )}
+              >
+                <Ionicons 
+                  name={sortByDueDate ? "checkmark-circle" : "calendar-outline"} 
+                  size={16} 
+                  color={sortByDueDate ? "white" : "#6b7280"} 
+                />
+                <Text className={cn(
+                  "ml-1.5 text-sm font-medium",
+                  sortByDueDate ? "text-white" : "text-gray-700"
+                )}>
+                  Due Date
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </View>
+      </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Grouped Tasks List */}
         <View className="px-6 py-4">
         {allTasks.length > 0 ? (
           <>
-            <Text className="text-sm text-gray-600 font-semibold mb-3">
+            <Text className="text-base text-gray-600 font-semibold mb-3">
               {allTasks.length} task{allTasks.length !== 1 ? "s" : ""}
                   </Text>
             
@@ -620,7 +743,7 @@ export default function TasksScreen({
         ) : (
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
-            <Text className="text-gray-500 text-lg font-medium mt-4">
+            <Text className="text-gray-500 text-xl font-medium mt-4">
               {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">

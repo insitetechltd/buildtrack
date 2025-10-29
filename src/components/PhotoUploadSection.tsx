@@ -187,10 +187,10 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
     <View className="mb-6">
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
-          <Text className="text-lg font-semibold text-gray-900">{title}</Text>
+          <Text className="text-xl font-semibold text-gray-900">{title}</Text>
           {showCount && photos.length > 0 && (
             <View className="ml-2 bg-blue-100 px-2 py-0.5 rounded-full">
-              <Text className="text-blue-700 text-xs font-medium">{photos.length}</Text>
+              <Text className="text-blue-700 text-sm font-medium">{photos.length}</Text>
             </View>
           )}
         </View>
@@ -246,7 +246,7 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
       ) : (
         <View className="border border-dashed border-gray-300 rounded-lg p-4 items-center bg-gray-50">
           <Ionicons name="images-outline" size={24} color="#9ca3af" />
-          <Text className="text-gray-400 text-sm mt-1">{emptyMessage}</Text>
+          <Text className="text-gray-400 text-base mt-1">{emptyMessage}</Text>
         </View>
       )}
     </View>

@@ -180,9 +180,9 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
     <View className={cn("flex-1 p-4 rounded-xl mr-3 mb-3", color)}>
       <View className="flex-row items-center justify-between mb-2">
         <Ionicons name={icon as any} size={20} color="#6b7280" />
-        <Text className={cn("text-xl font-bold", textColor)}>{value}</Text>
+        <Text className={cn("text-2xl font-bold", textColor)}>{value}</Text>
       </View>
-      <Text className="text-sm text-gray-600">{label}</Text>
+      <Text className="text-base text-gray-600">{label}</Text>
     </View>
   );
 
@@ -193,7 +193,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
           {task.title}
         </Text>
         <Text className={cn(
-          "text-xs px-2 py-1 rounded capitalize",
+          "text-sm px-2 py-1 rounded capitalize",
           task.currentStatus === "completed" ? "bg-green-100 text-green-700" :
           task.currentStatus === "in_progress" ? "bg-blue-100 text-blue-700" :
           task.currentStatus === "rejected" ? "bg-red-100 text-red-700" :
@@ -203,10 +203,10 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         </Text>
       </View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-xs text-gray-500">
+        <Text className="text-sm text-gray-500">
           Due: {new Date(task.dueDate).toLocaleDateString()}
         </Text>
-        <Text className="text-xs text-gray-500">
+        <Text className="text-sm text-gray-500">
           {task.completionPercentage}% complete
         </Text>
       </View>
@@ -236,13 +236,13 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
 
         {/* Report Configuration */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
+          <Text className="text-xl font-semibold text-gray-900 mb-4">
             Report Configuration
           </Text>
 
           {/* Report Type */}
           <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">Report Type</Text>
+            <Text className="text-base font-medium text-gray-700 mb-2">Report Type</Text>
             <View className="flex-row space-x-2">
               <Pressable
                 onPress={() => setReportType("my_tasks")}
@@ -283,7 +283,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
 
           {/* Date Range */}
           <View className="mb-4">
-            <Text className="text-sm font-medium text-gray-700 mb-2">Date Range</Text>
+            <Text className="text-base font-medium text-gray-700 mb-2">Date Range</Text>
             <View className="flex-row space-x-2">
               <Pressable
                 onPress={() => setShowFromDatePicker(true)}
@@ -307,7 +307,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
 
         {/* Statistics Overview */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-lg font-semibold text-gray-900 mb-4">
+          <Text className="text-xl font-semibold text-gray-900 mb-4">
             Statistics Overview
           </Text>
 
@@ -343,9 +343,9 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
             <View className="flex-1 p-4 rounded-xl mr-3 mb-3 bg-purple-50">
               <View className="flex-row items-center justify-between mb-2">
                 <Ionicons name="trending-up-outline" size={20} color="#6b7280" />
-                <Text className="text-xl font-bold text-purple-600">{stats.averageCompletion}%</Text>
+                <Text className="text-2xl font-bold text-purple-600">{stats.averageCompletion}%</Text>
               </View>
-              <Text className="text-sm text-gray-600">Avg Completion</Text>
+              <Text className="text-base text-gray-600">Avg Completion</Text>
             </View>
             <StatCard
               label="Critical Priority"
@@ -360,10 +360,10 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         {/* Task List Preview */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-semibold text-gray-900">
+            <Text className="text-xl font-semibold text-gray-900">
               Task Preview
             </Text>
-            <Text className="text-sm text-gray-500">
+            <Text className="text-base text-gray-500">
               {filteredTasks.length} tasks
             </Text>
           </View>
@@ -374,7 +374,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                 <TaskRow key={task.id} task={task} />
               ))}
               {filteredTasks.length > 5 && (
-                <Text className="text-center text-gray-500 text-sm mt-2">
+                <Text className="text-center text-gray-500 text-base mt-2">
                   + {filteredTasks.length - 5} more tasks in full report
                 </Text>
               )}
@@ -383,7 +383,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
             <View className="py-8 items-center">
               <Ionicons name="document-outline" size={48} color="#d1d5db" />
               <Text className="text-gray-500 mt-2">No tasks found</Text>
-              <Text className="text-gray-400 text-sm text-center mt-1">
+              <Text className="text-gray-400 text-base text-center mt-1">
                 Adjust your date range or report type
               </Text>
             </View>

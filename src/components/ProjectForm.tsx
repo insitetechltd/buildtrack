@@ -208,15 +208,15 @@ export default function ProjectForm({
       <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="handled">
         {/* Project Information */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Project Information</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-4">Project Information</Text>
           
           <View className="space-y-4">
             {/* Client Name */}
             <View>
-              <Text className="text-base font-medium text-gray-700 mb-2">Client</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Client</Text>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-base",
+                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
                   errors.clientName ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Enter client name"
@@ -225,18 +225,18 @@ export default function ProjectForm({
                 maxLength={100}
               />
               {errors.clientName && (
-                <Text className="text-red-500 text-xs mt-1">{errors.clientName}</Text>
+                <Text className="text-red-500 text-sm mt-1">{errors.clientName}</Text>
               )}
             </View>
 
             {/* Project Name */}
             <View>
-              <Text className="text-base font-medium text-gray-700 mb-2">
+              <Text className="text-lg font-medium text-gray-700 mb-2">
                 Project Title <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-base",
+                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
                   errors.name ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Enter project name"
@@ -245,16 +245,16 @@ export default function ProjectForm({
                 maxLength={100}
               />
               {errors.name && (
-                <Text className="text-red-500 text-xs mt-1">{errors.name}</Text>
+                <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
               )}
             </View>
 
             {/* Description */}
             <View>
-              <Text className="text-base font-medium text-gray-700 mb-2">Description</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Description</Text>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-base min-h-[90px]",
+                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[90px]",
                   errors.description ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Project description"
@@ -267,20 +267,20 @@ export default function ProjectForm({
                 style={{ minHeight: 90 }}
               />
               {errors.description && (
-                <Text className="text-red-500 text-xs mt-1">{errors.description}</Text>
+                <Text className="text-red-500 text-sm mt-1">{errors.description}</Text>
               )}
             </View>
 
             {/* Status */}
             <View>
-              <Text className="text-base font-medium text-gray-700 mb-2">Status</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Status</Text>
               
               {/* Custom Status Dropdown */}
               <Pressable
                 onPress={() => setShowStatusPicker(!showStatusPicker)}
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
               >
-                <Text className="text-gray-900 text-base capitalize">
+                <Text className="text-gray-900 text-lg capitalize">
                   {formData.status.replace("_", " ")}
                 </Text>
                 <Ionicons 
@@ -307,7 +307,7 @@ export default function ProjectForm({
                       )}
                     >
                       <Text className={cn(
-                        "text-base",
+                        "text-lg",
                         formData.status === option.value ? "text-blue-900 font-medium" : "text-gray-900"
                       )}>
                         {option.label}
@@ -322,12 +322,12 @@ export default function ProjectForm({
 
         {/* Location */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-bold text-gray-900 mb-3">Location</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-3">Location</Text>
           
           <View>
             <TextInput
               className={cn(
-                "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-base min-h-[130px]",
+                "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[130px]",
                 errors.address ? "border-red-300" : "border-gray-300"
               )}
               placeholder="Enter full address (street, city, state/province, postal code, country)"
@@ -339,23 +339,23 @@ export default function ProjectForm({
               style={{ minHeight: 130 }}
             />
             {errors.address && (
-              <Text className="text-red-500 text-xs mt-1">{errors.address}</Text>
+              <Text className="text-red-500 text-sm mt-1">{errors.address}</Text>
             )}
           </View>
         </View>
 
         {/* Project Timeline */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Project Timeline</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-4">Project Timeline</Text>
           
           <View className="flex-row space-x-4">
             <View className="flex-1">
-              <Text className="text-base font-medium text-gray-700 mb-2">Start Date</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Start Date</Text>
               <Pressable
                 onPress={() => setShowStartDatePicker(true)}
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
               >
-                <Text className="text-gray-900 text-base">
+                <Text className="text-gray-900 text-lg">
                   {formData.startDate.toLocaleDateString()}
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#6b7280" />
@@ -363,7 +363,7 @@ export default function ProjectForm({
             </View>
 
             <View className="flex-1">
-              <Text className="text-base font-medium text-gray-700 mb-2">Estimated End Date</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Estimated End Date</Text>
               <Pressable
                 onPress={() => setShowEndDatePicker(true)}
                 className={cn(
@@ -371,13 +371,13 @@ export default function ProjectForm({
                   errors.endDate ? "border-red-300" : "border-gray-300"
                 )}
               >
-                <Text className="text-gray-900 text-base">
+                <Text className="text-gray-900 text-lg">
                   {formData.endDate.toLocaleDateString()}
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#6b7280" />
               </Pressable>
               {errors.endDate && (
-                <Text className="text-red-500 text-xs mt-1">{errors.endDate}</Text>
+                <Text className="text-red-500 text-sm mt-1">{errors.endDate}</Text>
               )}
             </View>
           </View>
@@ -385,10 +385,10 @@ export default function ProjectForm({
 
         {/* Lead Project Manager */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-bold text-gray-900 mb-4">Lead Project Manager</Text>
+          <Text className="text-2xl font-bold text-gray-900 mb-4">Lead Project Manager</Text>
           
           <View className="space-y-3">
-            <Text className="text-sm text-gray-600">
+            <Text className="text-base text-gray-600">
               The Lead PM has full visibility to all tasks and subtasks in this project
             </Text>
             
@@ -398,7 +398,7 @@ export default function ProjectForm({
                 onPress={() => setShowLeadPMPicker(!showLeadPMPicker)}
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
               >
-                <Text className="text-gray-900 text-base">
+                <Text className="text-gray-900 text-lg">
                   {formData.selectedLeadPM 
                     ? eligibleLeadPMs.find(u => u.id === formData.selectedLeadPM)?.name + ` (${eligibleLeadPMs.find(u => u.id === formData.selectedLeadPM)?.role})`
                     : "No Lead PM (Select one)"
@@ -421,7 +421,7 @@ export default function ProjectForm({
                     }}
                     className="px-4 py-3 border-b border-gray-200"
                   >
-                    <Text className="text-gray-900 text-base">No Lead PM (Select one)</Text>
+                    <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
                   </Pressable>
                   {eligibleLeadPMs.map((user) => (
                     <Pressable
@@ -437,7 +437,7 @@ export default function ProjectForm({
                       )}
                     >
                       <Text className={cn(
-                        "text-base",
+                        "text-lg",
                         user.id === formData.selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
                       )}>
                         {user.name} ({user.role})

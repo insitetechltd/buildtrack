@@ -170,7 +170,7 @@ export default function CacheSettingsScreen({ navigation }: any) {
             className="flex-row items-center"
           >
             <Ionicons name="arrow-back" size={24} color="#374151" />
-            <Text className="ml-2 text-lg font-semibold text-gray-900">
+            <Text className="ml-2 text-xl font-semibold text-gray-900">
               Cache Settings
             </Text>
           </TouchableOpacity>
@@ -188,15 +188,15 @@ export default function CacheSettingsScreen({ navigation }: any) {
       >
         {/* Cache Usage */}
         <View className="mt-4 mx-4 p-4 bg-white rounded-lg shadow-sm">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">Cache Usage</Text>
+          <Text className="text-xl font-semibold text-gray-900 mb-3">Cache Usage</Text>
           
           {/* Progress Bar */}
           <View className="mb-3">
             <View className="flex-row justify-between mb-2">
-              <Text className="text-sm text-gray-600">
+              <Text className="text-base text-gray-600">
                 {formatBytes(stats.totalSize)} / {formatBytes(maxCacheSize)}
               </Text>
-              <Text className="text-sm font-medium" style={{ color: statusColor }}>
+              <Text className="text-base font-medium" style={{ color: statusColor }}>
                 {usagePercentage}%
               </Text>
             </View>
@@ -213,27 +213,27 @@ export default function CacheSettingsScreen({ navigation }: any) {
 
           {/* File Counts */}
           <View className="pt-3 border-t border-gray-200">
-            <Text className="text-sm font-medium text-gray-700 mb-2">Breakdown</Text>
+            <Text className="text-base font-medium text-gray-700 mb-2">Breakdown</Text>
             <View className="space-y-1">
               <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-600">Total Files</Text>
-                <Text className="text-sm font-medium text-gray-900">{stats.totalFiles}</Text>
+                <Text className="text-base text-gray-600">Total Files</Text>
+                <Text className="text-base font-medium text-gray-900">{stats.totalFiles}</Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-600">Images</Text>
-                <Text className="text-sm text-gray-900">
+                <Text className="text-base text-gray-600">Images</Text>
+                <Text className="text-base text-gray-900">
                   {stats.breakdown.images.count} ({formatBytes(stats.breakdown.images.size)})
                 </Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-600">Documents</Text>
-                <Text className="text-sm text-gray-900">
+                <Text className="text-base text-gray-600">Documents</Text>
+                <Text className="text-base text-gray-900">
                   {stats.breakdown.documents.count} ({formatBytes(stats.breakdown.documents.size)})
                 </Text>
               </View>
               <View className="flex-row justify-between">
-                <Text className="text-sm text-gray-600">Pending Uploads</Text>
-                <Text className="text-sm font-medium text-blue-600">
+                <Text className="text-base text-gray-600">Pending Uploads</Text>
+                <Text className="text-base font-medium text-blue-600">
                   {stats.breakdown.pending.count} ({formatBytes(stats.breakdown.pending.size)})
                 </Text>
               </View>
@@ -243,23 +243,23 @@ export default function CacheSettingsScreen({ navigation }: any) {
 
         {/* Upload Queue Status */}
         <View className="mt-4 mx-4 p-4 bg-white rounded-lg shadow-sm">
-          <Text className="text-lg font-semibold text-gray-900 mb-3">Upload Queue</Text>
+          <Text className="text-xl font-semibold text-gray-900 mb-3">Upload Queue</Text>
           
           <View className="space-y-1">
             <View className="flex-row justify-between">
-              <Text className="text-sm text-gray-600">Pending Uploads</Text>
-              <Text className="text-sm font-medium text-gray-900">
+              <Text className="text-base text-gray-600">Pending Uploads</Text>
+              <Text className="text-base font-medium text-gray-900">
                 {stats.pendingUploads}
               </Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-gray-600">Failed Uploads</Text>
-              <Text className="text-sm font-medium text-red-600">
+              <Text className="text-base text-gray-600">Failed Uploads</Text>
+              <Text className="text-base font-medium text-red-600">
                 {stats.failedUploads}
               </Text>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-gray-600">Network</Text>
+              <Text className="text-base text-gray-600">Network</Text>
               <View className="flex-row items-center">
                 <View
                   className="w-2 h-2 rounded-full mr-2"
@@ -267,14 +267,14 @@ export default function CacheSettingsScreen({ navigation }: any) {
                     backgroundColor: queueStats.isConnected ? '#10b981' : '#ef4444',
                   }}
                 />
-                <Text className="text-sm text-gray-900 capitalize">
+                <Text className="text-base text-gray-900 capitalize">
                   {queueStats.networkType}
                 </Text>
               </View>
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-sm text-gray-600">Concurrent Uploads</Text>
-              <Text className="text-sm text-gray-900">{queueStats.concurrency}</Text>
+              <Text className="text-base text-gray-600">Concurrent Uploads</Text>
+              <Text className="text-base text-gray-900">{queueStats.concurrency}</Text>
             </View>
           </View>
         </View>
@@ -309,8 +309,8 @@ export default function CacheSettingsScreen({ navigation }: any) {
           <View className="flex-row">
             <Ionicons name="information-circle" size={20} color="#3b82f6" />
             <View className="ml-3 flex-1">
-              <Text className="text-sm text-blue-900 font-medium mb-1">About Cache</Text>
-              <Text className="text-sm text-blue-800 leading-5">
+              <Text className="text-base text-blue-900 font-medium mb-1">About Cache</Text>
+              <Text className="text-base text-blue-800 leading-5">
                 The app caches up to 500MB of files for offline access. Old files are automatically removed when space is needed. Pending uploads are never deleted.
               </Text>
             </View>

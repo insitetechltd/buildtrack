@@ -102,16 +102,16 @@ export default function ProjectsScreen({
             className="flex-1"
             onPress={() => onNavigateToProjectDetail(project.id)}
           >
-            <Text className="font-bold text-lg text-gray-900 mb-1" numberOfLines={2}>
+            <Text className="font-bold text-xl text-gray-900 mb-1" numberOfLines={2}>
               {project.name}
             </Text>
-            <Text className="text-sm text-gray-600" numberOfLines={2}>
+            <Text className="text-base text-gray-600" numberOfLines={2}>
               {project.description}
             </Text>
           </Pressable>
           <View className="flex-row items-center ml-3">
             <View className={cn("px-3 py-1 rounded-full mr-2", getStatusColor(project.status))}>
-              <Text className="text-xs font-medium capitalize">
+              <Text className="text-sm font-medium capitalize">
                 {project.status.replace("_", " ")}
               </Text>
             </View>
@@ -133,7 +133,7 @@ export default function ProjectsScreen({
         {leadPM && (
           <View className="bg-purple-50 border border-purple-200 rounded-lg px-2 py-1 mb-3 flex-row items-center">
             <Ionicons name="star" size={12} color="#7c3aed" />
-            <Text className="text-xs text-purple-700 font-medium ml-1">
+            <Text className="text-sm text-purple-700 font-medium ml-1">
               Lead PM: {leadPM.name}
             </Text>
           </View>
@@ -143,14 +143,14 @@ export default function ProjectsScreen({
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <Ionicons name="location-outline" size={14} color="#6b7280" />
-            <Text className="text-xs text-gray-500 ml-1">
+            <Text className="text-sm text-gray-500 ml-1">
               {project.location.city}, {project.location.state}
             </Text>
           </View>
           
           <View className="flex-row items-center">
             <Ionicons name="people-outline" size={14} color="#6b7280" />
-            <Text className="text-xs text-gray-500 ml-1">
+            <Text className="text-sm text-gray-500 ml-1">
               {projectStats.totalUsers} member{projectStats.totalUsers !== 1 ? "s" : ""}
             </Text>
           </View>
@@ -160,14 +160,14 @@ export default function ProjectsScreen({
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <Ionicons name="business-outline" size={14} color="#6b7280" />
-            <Text className="text-xs text-gray-500 ml-1">
+            <Text className="text-sm text-gray-500 ml-1">
               {project.clientInfo.name}
             </Text>
           </View>
           
           <View className="flex-row items-center">
             <Ionicons name="calendar-outline" size={14} color="#6b7280" />
-            <Text className="text-xs text-gray-500 ml-1">
+            <Text className="text-sm text-gray-500 ml-1">
               {new Date(project.startDate).toLocaleDateString()}
             </Text>
           </View>
@@ -178,13 +178,13 @@ export default function ProjectsScreen({
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="cash-outline" size={14} color="#6b7280" />
-              <Text className="text-xs text-gray-500 ml-1">
+              <Text className="text-sm text-gray-500 ml-1">
                 Budget: ${project.budget.toLocaleString()}
               </Text>
             </View>
             
             <View className="flex-row items-center">
-              <Text className="text-xs text-gray-500">
+              <Text className="text-sm text-gray-500">
                 Created by {createdBy?.name || "Unknown"}
               </Text>
             </View>
@@ -212,7 +212,7 @@ export default function ProjectsScreen({
     >
       <Text
         className={cn(
-          "text-sm font-medium",
+          "text-base font-medium",
           statusFilter === status
             ? "text-white"
             : "text-gray-600"
@@ -268,7 +268,7 @@ export default function ProjectsScreen({
           </View>
 
           {/* Project Count */}
-          <Text className="text-sm text-gray-600 mb-4">
+          <Text className="text-base text-gray-600 mb-4">
             {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
             {user.role !== "admin" && " assigned to you"}
           </Text>
@@ -297,7 +297,7 @@ export default function ProjectsScreen({
         ) : (
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
-            <Text className="text-gray-500 text-lg font-medium mt-4">
+            <Text className="text-gray-500 text-xl font-medium mt-4">
               {searchQuery ? "No projects found" : "No projects yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
@@ -467,7 +467,7 @@ function EditProjectModal({
           <Pressable onPress={onClose} className="mr-4 w-10 h-10 items-center justify-center">
             <Ionicons name="close" size={24} color="#374151" />
           </Pressable>
-          <Text className="text-xl font-semibold text-gray-900 flex-1">
+          <Text className="text-2xl font-semibold text-gray-900 flex-1">
             Edit Project
           </Text>
           <Pressable onPress={handleSave} className="px-4 py-2 bg-blue-600 rounded-lg">
@@ -482,16 +482,16 @@ function EditProjectModal({
           <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="handled">
             {/* Project Information */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Project Information</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-4">Project Information</Text>
               
               <View className="space-y-4">
                 {/* Project Name */}
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
+                  <Text className="text-base font-medium text-gray-700 mb-2">
                     Project Name <Text className="text-red-500">*</Text>
                   </Text>
                   <TextInput
-                    className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
+                    className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-xl"
                     placeholder="Enter project name"
                     value={formData.name}
                     onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
@@ -501,9 +501,9 @@ function EditProjectModal({
 
                 {/* Description */}
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">Description</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">Description</Text>
                   <TextInput
-                    className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
+                    className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-xl"
                     placeholder="Project description"
                     value={formData.description}
                     onChangeText={(text) => setFormData(prev => ({ ...prev, description: text }))}
@@ -516,14 +516,14 @@ function EditProjectModal({
 
                 {/* Status */}
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">Status</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">Status</Text>
                   
                   {/* Custom Status Dropdown */}
                   <Pressable
                     onPress={() => setShowStatusPicker(!showStatusPicker)}
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
-                    <Text className="text-gray-900 text-base capitalize">
+                    <Text className="text-gray-900 text-lg capitalize">
                       {formData.status.replace("_", " ")}
                     </Text>
                     <Ionicons 
@@ -550,7 +550,7 @@ function EditProjectModal({
                           )}
                         >
                           <Text className={cn(
-                            "text-base capitalize",
+                            "text-lg capitalize",
                             formData.status === status ? "text-blue-900 font-medium" : "text-gray-900"
                           )}>
                             {status.replace("_", " ")}
@@ -565,11 +565,11 @@ function EditProjectModal({
 
             {/* Location */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-bold text-gray-900 mb-3">Location</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-3">Location</Text>
               
               <View>
                 <TextInput
-                  className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-base"
+                  className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
                   placeholder="Enter full address (street, city, state/province, postal code, country)"
                   value={formData.location.address}
                   onChangeText={(text) => setFormData(prev => ({
@@ -585,16 +585,16 @@ function EditProjectModal({
 
             {/* Project Timeline */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Project Timeline</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-4">Project Timeline</Text>
               
               <View className="flex-row space-x-4">
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">Start Date</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">Start Date</Text>
                   <Pressable
                     onPress={() => setShowStartDatePicker(true)}
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
-                    <Text className="text-gray-900 text-base">
+                    <Text className="text-gray-900 text-lg">
                       {formData.startDate.toLocaleDateString()}
                     </Text>
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
@@ -602,12 +602,12 @@ function EditProjectModal({
                 </View>
 
                 <View className="flex-1">
-                  <Text className="text-sm font-medium text-gray-700 mb-2">Estimated End Date</Text>
+                  <Text className="text-base font-medium text-gray-700 mb-2">Estimated End Date</Text>
                   <Pressable
                     onPress={() => setShowEndDatePicker(true)}
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
-                    <Text className="text-gray-900 text-base">
+                    <Text className="text-gray-900 text-lg">
                       {formData.endDate.toLocaleDateString()}
                     </Text>
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
@@ -618,22 +618,22 @@ function EditProjectModal({
 
             {/* Lead Project Manager */}
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-bold text-gray-900 mb-4">Lead Project Manager</Text>
+              <Text className="text-2xl font-bold text-gray-900 mb-4">Lead Project Manager</Text>
               
               <View className="space-y-3">
-                <Text className="text-sm text-gray-600">
+                <Text className="text-base text-gray-600">
                   The Lead PM has full visibility to all tasks and subtasks in this project
                 </Text>
                 
                 <View>
-                  <Text className="text-xs text-gray-500 mb-2">Debug: selectedLeadPM = "{selectedLeadPM}"</Text>
+                  <Text className="text-sm text-gray-500 mb-2">Debug: selectedLeadPM = "{selectedLeadPM}"</Text>
                   
                   {/* Custom Dropdown Picker */}
                   <Pressable
                     onPress={() => setShowLeadPMPicker(!showLeadPMPicker)}
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
-                    <Text className="text-gray-900 text-base">
+                    <Text className="text-gray-900 text-lg">
                       {selectedLeadPM 
                         ? eligibleLeadPMs.find(u => u.id === selectedLeadPM)?.name + ` (${eligibleLeadPMs.find(u => u.id === selectedLeadPM)?.role})`
                         : "No Lead PM (Select one)"
@@ -657,7 +657,7 @@ function EditProjectModal({
                         }}
                         className="px-4 py-3 border-b border-gray-200"
                       >
-                        <Text className="text-gray-900 text-base">No Lead PM (Select one)</Text>
+                        <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
                       </Pressable>
                       {eligibleLeadPMs.map((user) => (
                         <Pressable
@@ -674,7 +674,7 @@ function EditProjectModal({
                           )}
                         >
                           <Text className={cn(
-                            "text-base",
+                            "text-lg",
                             user.id === selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
                           )}>
                             {user.name} ({user.role})

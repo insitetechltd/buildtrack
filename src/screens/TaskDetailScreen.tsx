@@ -128,14 +128,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         
         {/* Header */}
         <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-          <Text className="text-xl font-semibold text-gray-900 flex-1">
+          <Text className="text-2xl font-semibold text-gray-900 flex-1">
             {task?.title || (isViewingSubTask ? "Sub-Task Details" : "Task Details")}
           </Text>
         </View>
 
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text className="text-xl font-semibold text-gray-900 mt-4 mb-2">
+          <Text className="text-2xl font-semibold text-gray-900 mt-4 mb-2">
             {isViewingSubTask ? "Sub-Task Not Found" : "Task Not Found"}
           </Text>
           <Text className="text-gray-600 text-center mb-6">
@@ -474,10 +474,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="alert-circle" size={24} color="#f59e0b" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-amber-900">
+              <Text className="text-xl font-bold text-amber-900">
                 Action Required
               </Text>
-              <Text className="text-sm text-amber-700">
+              <Text className="text-base text-amber-700">
                 You have been assigned to this {isViewingSubTask ? "sub-task" : "task"}
               </Text>
             </View>
@@ -495,7 +495,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               className="flex-1 bg-green-600 py-3.5 rounded-lg items-center flex-row justify-center"
             >
               <Ionicons name="checkmark-circle" size={20} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">Accept</Text>
+              <Text className="text-white font-semibold text-lg ml-2">Accept</Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -518,7 +518,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               className="flex-1 bg-red-600 py-3.5 rounded-lg items-center flex-row justify-center"
             >
               <Ionicons name="close-circle" size={20} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">Decline</Text>
+              <Text className="text-white font-semibold text-lg ml-2">Decline</Text>
             </Pressable>
           </View>
         </View>
@@ -536,10 +536,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="checkmark-done-circle" size={24} color="#3b82f6" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-blue-900">
+              <Text className="text-xl font-bold text-blue-900">
                 Task Complete!
               </Text>
-              <Text className="text-sm text-blue-700">
+              <Text className="text-base text-blue-700">
                 Submit this task for review by the task creator
               </Text>
             </View>
@@ -549,7 +549,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             className="bg-blue-600 py-3.5 rounded-lg items-center flex-row justify-center"
           >
             <Ionicons name="paper-plane" size={20} color="white" />
-            <Text className="text-white font-semibold text-base ml-2">Submit for Review</Text>
+            <Text className="text-white font-semibold text-lg ml-2">Submit for Review</Text>
           </Pressable>
         </View>
       )}
@@ -566,10 +566,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="time-outline" size={24} color="#f59e0b" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-amber-900">
+              <Text className="text-xl font-bold text-amber-900">
                 Submitted for Review
               </Text>
-              <Text className="text-sm text-amber-700">
+              <Text className="text-base text-amber-700">
                 Your task has been submitted and is awaiting approval from the task creator
               </Text>
             </View>
@@ -588,10 +588,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="eye" size={24} color="#9333ea" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-purple-900">
+              <Text className="text-xl font-bold text-purple-900">
                 Ready for Review
               </Text>
-              <Text className="text-sm text-purple-700">
+              <Text className="text-base text-purple-700">
                 The assignee has submitted this task for your approval
               </Text>
             </View>
@@ -601,7 +601,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             className="bg-purple-600 py-3.5 rounded-lg items-center flex-row justify-center"
           >
             <Ionicons name="checkmark-done-circle" size={20} color="white" />
-            <Text className="text-white font-semibold text-base ml-2">Approve & Complete</Text>
+            <Text className="text-white font-semibold text-lg ml-2">Approve & Complete</Text>
           </Pressable>
         </View>
       )}
@@ -614,10 +614,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="checkmark-done-circle" size={24} color="#16a34a" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-green-900">
+              <Text className="text-xl font-bold text-green-900">
                 ✓ Task Approved
               </Text>
-              <Text className="text-sm text-green-700">
+              <Text className="text-base text-green-700">
                 Reviewed and approved by {getUserById(task.reviewedBy)?.name || "Unknown"}
                 {task.reviewedAt && ` on ${new Date(task.reviewedAt).toLocaleDateString()}`}
               </Text>
@@ -634,14 +634,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="close-circle" size={24} color="#dc2626" />
             </View>
             <View className="flex-1">
-              <Text className="text-lg font-bold text-red-900">
+              <Text className="text-xl font-bold text-red-900">
                 Task Rejected
               </Text>
-              <Text className="text-sm text-red-700">
+              <Text className="text-base text-red-700">
                 This task was declined by the assignee
               </Text>
               {task.declineReason && (
-                <Text className="text-sm text-red-600 mt-1 italic">
+                <Text className="text-base text-red-600 mt-1 italic">
                   Reason: {task.declineReason}
                 </Text>
               )}
@@ -652,7 +652,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             className="bg-blue-600 py-3.5 rounded-lg items-center flex-row justify-center"
           >
             <Ionicons name="people" size={20} color="white" />
-            <Text className="text-white font-semibold text-base ml-2">Reassign to Another User</Text>
+            <Text className="text-white font-semibold text-lg ml-2">Reassign to Another User</Text>
           </Pressable>
         </View>
       )}
@@ -673,28 +673,28 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               }}
               disabled={!assignedBy?.phone || assignedBy.id === user.id}
             >
-              <Text className="text-xs font-medium text-gray-500 mb-2">Assigned By</Text>
+              <Text className="text-sm font-medium text-gray-500 mb-2">Assigned By</Text>
               <View className="flex-row items-center mb-2">
                 <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2">
                   <Ionicons name="person" size={16} color="#3b82f6" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                  <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
                     {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
                   </Text>
-                  <Text className="text-xs text-gray-500 capitalize">
+                  <Text className="text-sm text-gray-500 capitalize">
                     {assignedBy?.role || "Unknown"}
                   </Text>
                 </View>
               </View>
               {assignedBy?.phone && (
-                <Text className="text-xs text-gray-600">{assignedBy.phone}</Text>
+                <Text className="text-sm text-gray-600">{assignedBy.phone}</Text>
               )}
             </Pressable>
 
             {/* Assigned To Card */}
             <View className="flex-1 bg-gray-50 rounded-lg p-3">
-              <Text className="text-xs font-medium text-gray-500 mb-2">Assigned To</Text>
+              <Text className="text-sm font-medium text-gray-500 mb-2">Assigned To</Text>
               {assignedUsers.length > 0 ? (
                 assignedUsers.map((assignedUser, index) => {
                   if (!assignedUser) return null;
@@ -720,23 +720,23 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           <Ionicons name="person" size={16} color="#10b981" />
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-semibold text-gray-900" numberOfLines={1}>
+                          <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
                             {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
                           </Text>
-                          <Text className="text-xs text-gray-500 capitalize">
+                          <Text className="text-sm text-gray-500 capitalize">
                             {assignedUser.role}
                           </Text>
                         </View>
                       </View>
                       
                       {assignedUser.phone && (
-                        <Text className="text-xs text-gray-600">{assignedUser.phone}</Text>
+                        <Text className="text-sm text-gray-600">{assignedUser.phone}</Text>
                       )}
                     </Pressable>
                   );
                 })
               ) : (
-                <Text className="text-xs text-gray-500">No assignees</Text>
+                <Text className="text-sm text-gray-500">No assignees</Text>
               )}
             </View>
           </View>
@@ -745,8 +745,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           <View className="flex-row items-center flex-wrap gap-2 mt-4">
             <View className="flex-row items-center">
               <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-              <Text className="text-sm font-medium text-gray-600 ml-1">Due: </Text>
-              <Text className="text-sm font-semibold text-gray-900">
+              <Text className="text-base font-medium text-gray-600 ml-1">Due: </Text>
+              <Text className="text-base font-semibold text-gray-900">
                 {new Date(task.dueDate).toLocaleDateString()}
               </Text>
             </View>
@@ -758,7 +758,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               "bg-gray-50"
             )}>
               <Text className={cn(
-                "text-xs font-medium capitalize",
+                "text-sm font-medium capitalize",
                 task.currentStatus === "completed" ? "text-green-700" :
                 task.currentStatus === "in_progress" ? "text-blue-700" :
                 task.currentStatus === "rejected" ? "text-red-700" :
@@ -775,7 +775,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               "bg-green-50"
             )}>
               <Text className={cn(
-                "text-xs font-medium capitalize",
+                "text-sm font-medium capitalize",
                 task.priority === "critical" ? "text-red-700" :
                 task.priority === "high" ? "text-orange-700" :
                 task.priority === "medium" ? "text-yellow-700" :
@@ -788,7 +788,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Description */}
           <View className="mt-3">
-            <Text className="text-sm text-gray-700">
+            <Text className="text-base text-gray-700">
               {task.description}
             </Text>
           </View>
@@ -799,7 +799,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
             <View className="flex-row items-center mb-3">
               <Ionicons name="images-outline" size={18} color="#6b7280" />
-              <Text className="text-base font-semibold text-gray-900 ml-2">
+              <Text className="text-lg font-semibold text-gray-900 ml-2">
                 Attachments ({task.attachments.length})
               </Text>
             </View>
@@ -819,7 +819,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         // PDF preview - show PDF icon
                         <View className="w-28 h-28 rounded-xl bg-red-50 border-2 border-red-200 items-center justify-center">
                           <Ionicons name="document-text" size={48} color="#dc2626" />
-                          <Text className="text-xs text-red-700 font-semibold mt-1">PDF</Text>
+                          <Text className="text-sm text-red-700 font-semibold mt-1">PDF</Text>
                         </View>
                       ) : (
                         // Image preview
@@ -846,8 +846,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-3 mb-4">
           {/* Header with Progress */}
           <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-lg font-semibold text-gray-900">Comp. %</Text>
-            <Text className="text-xl font-bold text-blue-600">{task.completionPercentage}%</Text>
+            <Text className="text-xl font-semibold text-gray-900">Comp. %</Text>
+            <Text className="text-2xl font-bold text-blue-600">{task.completionPercentage}%</Text>
           </View>
           
           {/* Progress Bar */}
@@ -869,7 +869,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {task.completionPercentage === 100 && (
             <View className="flex-row items-center mt-2 mb-3 p-2 bg-green-50 rounded-lg">
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-              <Text className="text-green-700 text-sm font-medium ml-2">
+              <Text className="text-green-700 text-base font-medium ml-2">
                 Completed! 🎉
               </Text>
             </View>
@@ -883,9 +883,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             onPress={() => setShowProgressDetails(true)}
             className="flex-row items-center justify-between mb-2 active:opacity-70"
           >
-            <Text className="text-base font-semibold text-gray-900">Progress</Text>
+            <Text className="text-lg font-semibold text-gray-900">Progress</Text>
             <View className="flex-row items-center">
-              <Text className="text-xs text-gray-500 mr-1">{task.updates.length} updates</Text>
+              <Text className="text-sm text-gray-500 mr-1">{task.updates.length} updates</Text>
               <Ionicons name="chevron-forward" size={16} color="#6b7280" />
             </View>
           </Pressable>
@@ -901,17 +901,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       <Text className="font-medium text-gray-900">
                         {updateUser?.name || "Unknown User"}
                       </Text>
-                      <Text className="text-xs text-gray-500">
+                      <Text className="text-sm text-gray-500">
                         {new Date(update.timestamp).toLocaleString()}
                       </Text>
                     </View>
                     <Text className="text-gray-700 mb-2">{update.description}</Text>
                     <View className="flex-row items-center space-x-4 mb-2">
-                      <Text className="text-sm text-gray-500">
+                      <Text className="text-base text-gray-500">
                         Progress: {update.completionPercentage}%
                       </Text>
                       <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                        <Text className="text-xs capitalize">
+                        <Text className="text-sm capitalize">
                           {update.status.replace("_", " ")}
                         </Text>
                       </View>
@@ -957,7 +957,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           ) : (
             <View className="py-6 items-center">
               <Ionicons name="chatbubble-outline" size={40} color="#d1d5db" />
-              <Text className="text-gray-500 mt-2 text-sm">No updates yet</Text>
+              <Text className="text-gray-500 mt-2 text-base">No updates yet</Text>
             </View>
           )}
         </View>
@@ -968,7 +968,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             <View className="flex-row items-center justify-between mb-3">
               <View className="flex-row items-center">
                 <Ionicons name="git-branch-outline" size={20} color="#7c3aed" />
-                <Text className="text-lg font-semibold text-gray-900 ml-2">
+                <Text className="text-xl font-semibold text-gray-900 ml-2">
                   Sub-Tasks ({task.subTasks.length})
                 </Text>
               </View>
@@ -1011,7 +1011,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             >
               <Text className="text-blue-600 font-medium">Cancel</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Progress Update
             </Text>
             <Pressable
@@ -1031,7 +1031,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           <ScrollView className="flex-1 px-6 py-4">
             {/* Photos & Files - Top Section */}
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-3">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
                 Photos & Files
               </Text>
               
@@ -1068,7 +1068,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               >
                 <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
                 <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
-                <Text className="text-gray-400 text-sm mt-1">
+                <Text className="text-gray-400 text-base mt-1">
                   {updateForm.photos.length === 0 ? "No files added" : `${updateForm.photos.length} file(s) added`}
                 </Text>
               </Pressable>
@@ -1076,7 +1076,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
             {/* Update Description */}
             <View className="mb-6">
-              <Text className="text-lg font-semibold text-gray-900 mb-3">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
                 Update Description
               </Text>
               <TextInput
@@ -1095,20 +1095,20 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             {/* Completion Percentage - Bottom with Horizontal Slider */}
             <View className="mb-6">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-lg font-semibold text-gray-900">
+                <Text className="text-xl font-semibold text-gray-900">
                   Completion Percentage
                 </Text>
-                <Text className="text-2xl font-bold text-blue-600">
+                <Text className="text-3xl font-bold text-blue-600">
                   {updateForm.completionPercentage}%
                 </Text>
               </View>
               
               {/* Current Progress Indicator */}
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm text-gray-600">Current: {task.completionPercentage}%</Text>
+                <Text className="text-base text-gray-600">Current: {task.completionPercentage}%</Text>
                 <View className="flex-row items-center">
                   <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
-                  <Text className="text-sm text-red-600 font-medium">Previous</Text>
+                  <Text className="text-base text-red-600 font-medium">Previous</Text>
                 </View>
               </View>
               
@@ -1148,7 +1148,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             >
               <Text className="text-blue-600 font-medium">Close</Text>
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               {selectedTaskForDetail?.title || "Task Details"}
             </Text>
           </View>
@@ -1158,26 +1158,26 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {/* Task Info Card */}
               <View className="bg-white rounded-xl p-6 mb-4">
                 {/* Title */}
-                <Text className="text-2xl font-bold text-gray-900 mb-4">
+                <Text className="text-3xl font-bold text-gray-900 mb-4">
                   {selectedTaskForDetail.title}
                 </Text>
 
                 {/* Status and Priority */}
                 <View className="flex-row items-center mb-4">
                   <View className={cn("px-3 py-1.5 rounded-full mr-3", getStatusColor(selectedTaskForDetail.currentStatus))}>
-                    <Text className="text-sm font-medium capitalize">
+                    <Text className="text-base font-medium capitalize">
                       {selectedTaskForDetail.currentStatus.replace("_", " ")}
                     </Text>
                   </View>
                   <View className={cn("px-3 py-1.5 rounded-full border", getPriorityColor(selectedTaskForDetail.priority))}>
-                    <Text className="text-sm font-medium capitalize">
+                    <Text className="text-base font-medium capitalize">
                       {selectedTaskForDetail.priority} Priority
                     </Text>
                   </View>
                 </View>
 
                 {/* Description */}
-                <Text className="text-gray-700 text-base leading-6 mb-6">
+                <Text className="text-gray-700 text-lg leading-6 mb-6">
                   {selectedTaskForDetail.description}
                 </Text>
 
@@ -1186,7 +1186,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <View className="flex-row items-center">
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
                     <View className="ml-3 flex-1">
-                      <Text className="text-sm text-gray-500">Due Date</Text>
+                      <Text className="text-base text-gray-500">Due Date</Text>
                       <Text className={cn("font-medium", new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.currentStatus !== "completed" ? "text-red-600" : "text-gray-900")}>
                         {new Date(selectedTaskForDetail.dueDate).toLocaleDateString()} 
                         {new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.currentStatus !== "completed" && " (Overdue)"}
@@ -1197,7 +1197,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <View className="flex-row items-center">
                     <Ionicons name="pricetag-outline" size={20} color="#6b7280" />
                     <View className="ml-3 flex-1">
-                      <Text className="text-sm text-gray-500">Category</Text>
+                      <Text className="text-base text-gray-500">Category</Text>
                       <Text className="font-medium text-gray-900 capitalize">
                         {selectedTaskForDetail.category}
                       </Text>
@@ -1207,7 +1207,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <View className="flex-row items-center">
                     <Ionicons name="person-outline" size={20} color="#6b7280" />
                     <View className="ml-3 flex-1">
-                      <Text className="text-sm text-gray-500">Assigned By</Text>
+                      <Text className="text-base text-gray-500">Assigned By</Text>
                       <Text className="font-medium text-gray-900">
                         {getUserById(selectedTaskForDetail.assignedBy)?.name || "Unknown"}
                       </Text>
@@ -1217,7 +1217,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <View className="flex-row items-center">
                     <Ionicons name="people-outline" size={20} color="#6b7280" />
                     <View className="ml-3 flex-1">
-                      <Text className="text-sm text-gray-500">Assigned To</Text>
+                      <Text className="text-base text-gray-500">Assigned To</Text>
                       <Text className="font-medium text-gray-900">
                         {selectedTaskForDetail.assignedTo.map(userId => getUserById(userId)?.name).filter(Boolean).join(", ")}
                       </Text>
@@ -1228,11 +1228,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
               {/* Progress Card */}
               <View className="bg-white rounded-xl p-6 mb-4">
-                <Text className="text-lg font-semibold text-gray-900 mb-4">Progress</Text>
+                <Text className="text-xl font-semibold text-gray-900 mb-4">Progress</Text>
                 <View className="flex-row items-center justify-between mb-2">
                   <Text className="text-gray-600">Completion</Text>
                   <Text className={cn(
-                    "font-semibold text-2xl",
+                    "font-semibold text-3xl",
                     selectedTaskForDetail.completionPercentage === 100 ? "text-green-600" :
                     selectedTaskForDetail.completionPercentage >= 75 ? "text-blue-600" :
                     selectedTaskForDetail.completionPercentage >= 50 ? "text-yellow-600" :
@@ -1258,7 +1258,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 {selectedTaskForDetail.completionPercentage === 100 && (
                   <View className="flex-row items-center mt-2">
                     <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                    <Text className="text-green-600 text-sm font-medium ml-1">
+                    <Text className="text-green-600 text-base font-medium ml-1">
                       Task Completed!
                     </Text>
                   </View>
@@ -1268,8 +1268,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {/* Task Updates */}
               <View className="bg-white rounded-xl p-6 mb-6">
                 <View className="flex-row items-center justify-between mb-4">
-                  <Text className="text-lg font-semibold text-gray-900">Updates</Text>
-                  <Text className="text-sm text-gray-500">{selectedTaskForDetail.updates.length} updates</Text>
+                  <Text className="text-xl font-semibold text-gray-900">Updates</Text>
+                  <Text className="text-base text-gray-500">{selectedTaskForDetail.updates.length} updates</Text>
                 </View>
                 
                 {selectedTaskForDetail.updates.length > 0 ? (
@@ -1282,17 +1282,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             <Text className="font-medium text-gray-900">
                               {updateUser?.name || "Unknown User"}
                             </Text>
-                            <Text className="text-xs text-gray-500">
+                            <Text className="text-sm text-gray-500">
                               {new Date(update.timestamp).toLocaleString()}
                             </Text>
                           </View>
                           <Text className="text-gray-700 mb-2">{update.description}</Text>
                           <View className="flex-row items-center space-x-4">
-                            <Text className="text-sm text-gray-500">
+                            <Text className="text-base text-gray-500">
                               Progress: {update.completionPercentage}%
                             </Text>
                             <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                              <Text className="text-xs capitalize">
+                              <Text className="text-sm capitalize">
                                 {update.status.replace("_", " ")}
                               </Text>
                             </View>
@@ -1330,7 +1330,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             <Pressable onPress={() => setShowReassignModal(false)} className="mr-4">
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="flex-1 text-lg font-semibold text-gray-900">
+            <Text className="flex-1 text-xl font-semibold text-gray-900">
               Reassign Task
             </Text>
             <Pressable
@@ -1346,7 +1346,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             <View className="flex-row items-center bg-white border border-gray-300 rounded-lg px-4 py-3">
               <Ionicons name="search" size={20} color="#6b7280" />
               <TextInput
-                className="flex-1 ml-2 text-base"
+                className="flex-1 ml-2 text-lg"
                 placeholder="Search users..."
                 value={reassignSearchQuery}
                 onChangeText={setReassignSearchQuery}
@@ -1356,7 +1356,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* User List */}
           <ScrollView className="flex-1 px-6">
-            <Text className="text-sm text-gray-600 mb-3">
+            <Text className="text-base text-gray-600 mb-3">
               Select user(s) to reassign this task to:
             </Text>
             
@@ -1401,13 +1401,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       {isSelected && <Ionicons name="checkmark" size={16} color="white" />}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-base font-semibold text-gray-900">
+                      <Text className="text-lg font-semibold text-gray-900">
                         {projectUser.name}
                       </Text>
-                      <Text className="text-sm text-gray-500 capitalize">
+                      <Text className="text-base text-gray-500 capitalize">
                         {projectUser.role}
                       </Text>
-                      <Text className="text-xs text-gray-400">
+                      <Text className="text-sm text-gray-400">
                         {projectUser.email}
                       </Text>
                     </View>
@@ -1419,7 +1419,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Selected Count */}
           <View className="bg-white border-t border-gray-200 px-6 py-4">
-            <Text className="text-sm text-gray-600 text-center">
+            <Text className="text-base text-gray-600 text-center">
               {selectedUsersForReassign.length} user(s) selected
             </Text>
           </View>
@@ -1445,10 +1445,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Progress Details
             </Text>
-            <Text className="text-sm text-blue-600 font-medium">
+            <Text className="text-base text-blue-600 font-medium">
               {task.updates.length} updates
             </Text>
           </View>
@@ -1456,16 +1456,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           <ScrollView className="flex-1 px-6 py-4">
             {/* Overall Progress */}
             <View className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-              <Text className="text-sm font-semibold text-gray-700 mb-2">Overall Completion</Text>
+              <Text className="text-base font-semibold text-gray-700 mb-2">Overall Completion</Text>
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-3xl font-bold text-blue-600">{task.completionPercentage}%</Text>
+                <Text className="text-4xl font-bold text-blue-600">{task.completionPercentage}%</Text>
                 <View className={cn(
                   "px-3 py-1 rounded-full",
                   task.completionPercentage === 100 ? "bg-green-50" :
                   task.completionPercentage >= 50 ? "bg-blue-50" : "bg-gray-50"
                 )}>
                   <Text className={cn(
-                    "text-xs font-medium capitalize",
+                    "text-sm font-medium capitalize",
                     task.completionPercentage === 100 ? "text-green-700" :
                     task.completionPercentage >= 50 ? "text-blue-700" : "text-gray-700"
                   )}>
@@ -1490,7 +1490,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
 
             {/* Progress History */}
-            <Text className="text-sm font-semibold text-gray-700 mb-3">Update History</Text>
+            <Text className="text-base font-semibold text-gray-700 mb-3">Update History</Text>
             
             {task.updates.length > 0 ? (
               <View className="space-y-4">
@@ -1523,25 +1523,25 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             <Text className="font-semibold text-gray-900">
                               {updateUser?.name || "Unknown User"}
                             </Text>
-                            <Text className="text-xs text-gray-500">
+                            <Text className="text-sm text-gray-500">
                               {new Date(update.timestamp).toLocaleString()}
                             </Text>
                           </View>
                         </View>
                         {isLatest && (
                           <View className="bg-blue-100 px-2 py-1 rounded">
-                            <Text className="text-xs font-medium text-blue-700">Latest</Text>
+                            <Text className="text-sm font-medium text-blue-700">Latest</Text>
                           </View>
                         )}
                       </View>
 
                       {/* Progress Change */}
                       <View className="flex-row items-center mb-2">
-                        <Text className="text-2xl font-bold text-blue-600 mr-2">
+                        <Text className="text-3xl font-bold text-blue-600 mr-2">
                           {update.completionPercentage}%
                         </Text>
                         <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                          <Text className="text-xs capitalize font-medium">
+                          <Text className="text-sm capitalize font-medium">
                             {update.status.replace("_", " ")}
                           </Text>
                         </View>
@@ -1569,7 +1569,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                                     // PDF preview
                                     <View className="w-20 h-20 rounded-lg bg-red-50 border border-red-200 items-center justify-center">
                                       <Ionicons name="document-text" size={32} color="#dc2626" />
-                                      <Text className="text-xs text-red-700 font-semibold">PDF</Text>
+                                      <Text className="text-sm text-red-700 font-semibold">PDF</Text>
                                     </View>
                                   ) : (
                                     // Image preview

@@ -155,11 +155,11 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
       className="flex-row items-center py-4 px-6 bg-white border-b border-gray-100"
     >
       <Ionicons name={icon as any} size={20} color="#6b7280" />
-      <Text className={cn("flex-1 ml-3 text-base", color)}>
+      <Text className={cn("flex-1 ml-3 text-lg", color)}>
         {title}
       </Text>
       {rightText && (
-        <Text className="text-gray-500 text-sm mr-2">
+        <Text className="text-gray-500 text-base mr-2">
           {rightText}
         </Text>
       )}
@@ -186,21 +186,21 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
           {/* Avatar and Name */}
           <View className="items-center py-6">
             <View className="w-20 h-20 bg-blue-600 rounded-full items-center justify-center mb-4">
-              <Text className="text-white font-bold text-2xl">
+              <Text className="text-white font-bold text-3xl">
                 {user.name.charAt(0).toUpperCase()}
               </Text>
             </View>
-            <Text className="text-xl font-bold text-gray-900">
+            <Text className="text-2xl font-bold text-gray-900">
               {user.name}
             </Text>
             <Text className="text-gray-600 capitalize">
               {user.role}
             </Text>
-            <Text className="text-gray-500 text-sm mt-1">
+            <Text className="text-gray-500 text-base mt-1">
               {user.email}
             </Text>
             {user.phone && user.phone !== user.email && (
-              <Text className="text-gray-500 text-sm">
+              <Text className="text-gray-500 text-base">
                 {user.phone}
               </Text>
             )}
@@ -209,7 +209,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
 
         {/* Menu Options */}
         <View className="mt-6">
-          <Text className="text-lg font-semibold text-gray-900 px-6 mb-2">
+          <Text className="text-xl font-semibold text-gray-900 px-6 mb-2">
             {t.profile.settings}
           </Text>
           <View className="bg-white border border-gray-200 rounded-xl mx-6">
@@ -255,7 +255,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
 
         {/* App Info */}
         <View className="mt-6">
-          <Text className="text-lg font-semibold text-gray-900 px-6 mb-2">
+          <Text className="text-xl font-semibold text-gray-900 px-6 mb-2">
             About
           </Text>
           <View className="bg-white border border-gray-200 rounded-xl mx-6">
@@ -283,7 +283,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
 
         {/* System Status Indicators */}
         <View className="mt-6 mb-4 px-6">
-          <Text className="text-lg font-semibold text-gray-900 mb-2">
+          <Text className="text-xl font-semibold text-gray-900 mb-2">
             System Status
           </Text>
           <View className="bg-white border border-gray-200 rounded-xl p-4">
@@ -294,11 +294,11 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
                   className="w-3 h-3 rounded-full mr-3"
                   style={{ backgroundColor: getEnvironmentStyles(environmentInfo).backgroundColor }}
                 />
-                <Text className="text-sm text-gray-700">
+                <Text className="text-base text-gray-700">
                   Environment
                 </Text>
               </View>
-              <Text className="text-sm font-medium text-gray-900">
+              <Text className="text-base font-medium text-gray-900">
                 {environmentInfo.displayName}
               </Text>
             </View>
@@ -317,12 +317,12 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
                     "bg-yellow-500"
                   )}
                 />
-                <Text className="text-sm text-gray-700">
+                <Text className="text-base text-gray-700">
                   Cloud Connection
                 </Text>
               </View>
               <Text className={cn(
-                "text-sm font-medium",
+                "text-base font-medium",
                 supabaseStatus === "connected" ? "text-green-700" :
                 supabaseStatus === "disconnected" ? "text-red-700" :
                 "text-yellow-700"
@@ -357,7 +357,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
+            <Text className="text-2xl font-semibold text-gray-900 flex-1">
               {t.profile.selectLanguage}
             </Text>
           </View>
@@ -381,12 +381,12 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               </View>
               <View className="flex-1">
                 <Text className={cn(
-                  "font-semibold text-base",
+                  "font-semibold text-lg",
                   language === "en" ? "text-blue-900" : "text-gray-900"
                 )}>
                   English
                 </Text>
-                <Text className="text-xs text-gray-600 mt-0.5">
+                <Text className="text-sm text-gray-600 mt-0.5">
                   English (United States)
                 </Text>
               </View>
@@ -411,12 +411,12 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               </View>
               <View className="flex-1">
                 <Text className={cn(
-                  "font-semibold text-base",
+                  "font-semibold text-lg",
                   language === "zh-TW" ? "text-blue-900" : "text-gray-900"
                 )}>
                   繁體中文
                 </Text>
-                <Text className="text-xs text-gray-600 mt-0.5">
+                <Text className="text-sm text-gray-600 mt-0.5">
                   Traditional Chinese
                 </Text>
               </View>

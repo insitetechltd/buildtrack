@@ -51,12 +51,12 @@ const InputField = ({
   children: React.ReactNode;
 }) => (
   <View className="mb-4">
-    <Text className="text-sm font-semibold text-gray-700 mb-2">
+    <Text className="text-base font-semibold text-gray-700 mb-2">
       {label} {required && <Text className="text-red-500">*</Text>}
     </Text>
     {children}
     {error && (
-      <Text className="text-red-500 text-xs mt-1">{error}</Text>
+      <Text className="text-red-500 text-sm mt-1">{error}</Text>
     )}
   </View>
 );
@@ -389,7 +389,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <Pressable onPress={onNavigateBack} className="mr-4">
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </Pressable>
-          <Text className="flex-1 text-xl font-semibold text-gray-900">
+          <Text className="flex-1 text-2xl font-semibold text-gray-900">
             Create Task
           </Text>
         </View>
@@ -400,10 +400,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="w-16 h-16 bg-amber-100 rounded-full items-center justify-center mb-3">
                 <Ionicons name="shield-outline" size={32} color="#f59e0b" />
               </View>
-              <Text className="text-lg font-semibold text-amber-900 text-center mb-2">
+              <Text className="text-xl font-semibold text-amber-900 text-center mb-2">
                 Access Restricted
               </Text>
-              <Text className="text-sm text-amber-800 text-center leading-5">
+              <Text className="text-base text-amber-800 text-center leading-5">
                 Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.
               </Text>
             </View>
@@ -574,10 +574,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         <View className="bg-blue-50 border-b border-blue-100 px-6 py-3">
           <View className="flex-row items-center">
             <Ionicons name="link-outline" size={18} color="#3b82f6" />
-            <Text className="text-sm text-gray-600 ml-2">
+            <Text className="text-base text-gray-600 ml-2">
               {parentSubTask ? 'Nested under: ' : 'Sub-task of: '}
             </Text>
-            <Text className="text-sm font-semibold text-gray-900 flex-1" numberOfLines={1}>
+            <Text className="text-base font-semibold text-gray-900 flex-1" numberOfLines={1}>
               {parentSubTask?.title || parentTask.title}
             </Text>
           </View>
@@ -596,7 +596,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <InputField label="Title" error={errors.title}>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-base text-gray-900 bg-white",
+                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.title ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Enter task title (e.g., Fix Roof Leak)"
@@ -612,7 +612,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <InputField label="Description" error={errors.description}>
               <TextInput
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-base text-gray-900 bg-white",
+                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
                 )}
                 placeholder="Describe the task in detail..."
@@ -636,7 +636,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               )}
             >
               <Text className={cn(
-                "flex-1 text-base",
+                "flex-1 text-lg",
                 formData.projectId ? "text-gray-900" : "text-gray-500"
               )}>
                 {formData.projectId 
@@ -654,7 +654,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => setShowPriorityPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-base text-gray-900 capitalize flex-1">
+              <Text className="text-lg text-gray-900 capitalize flex-1">
                 {formData.priority}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
@@ -667,7 +667,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => setShowCategoryPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-base text-gray-900 capitalize flex-1">
+              <Text className="text-lg text-gray-900 capitalize flex-1">
                 {formData.category}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
@@ -684,7 +684,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               )}
             >
               <Text className={cn(
-                "text-base",
+                "text-lg",
                 showDatePicker ? "text-blue-600" : "text-gray-900"
               )}>
                 {formData.dueDate.toLocaleDateString("en-US", { 
@@ -738,7 +738,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 errors.assignedTo ? "border-red-300" : "border-gray-300"
               )}
             >
-              <Text className="text-base text-gray-900">
+              <Text className="text-lg text-gray-900">
                 {selectedUsers.length > 0 
                   ? `${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} selected`
                   : "Select users to assign"
@@ -755,14 +755,14 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Show selected users */}
           {selectedUsers.length > 0 && (
             <View className="bg-gray-50 border border-gray-200 rounded-lg p-3 -mt-6 mb-4">
-              <Text className="text-xs font-medium text-gray-700 mb-2">Selected Users:</Text>
+              <Text className="text-sm font-medium text-gray-700 mb-2">Selected Users:</Text>
               <View className="flex-row flex-wrap">
                 {selectedUsers.map((userId) => {
                   const user = allAssignableUsers.find(u => u.id === userId);
                   if (!user) return null;
                   return (
                     <View key={userId} className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
-                      <Text className="text-blue-900 text-xs font-medium mr-1">{user.name}</Text>
+                      <Text className="text-blue-900 text-sm font-medium mr-1">{user.name}</Text>
                       <Pressable onPress={() => toggleUserSelection(userId)}>
                         <Ionicons name="close-circle" size={16} color="#1e40af" />
                       </Pressable>
@@ -776,7 +776,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Attachments */}
           <View className="mb-6">
             <View className="flex-row items-center mb-2">
-              <Text className="text-base font-semibold text-gray-900">
+              <Text className="text-lg font-semibold text-gray-900">
                 Attachments
               </Text>
             </View>
@@ -814,7 +814,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
               <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
-              <Text className="text-gray-400 text-sm mt-1">
+              <Text className="text-gray-400 text-base mt-1">
                 {formData.attachments.length === 0 ? "No attachments added" : `${formData.attachments.length} file(s) added`}
               </Text>
             </Pressable>
@@ -837,7 +837,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               : "bg-blue-600"
           )}
         >
-          <Text className="text-white font-semibold text-base">
+          <Text className="text-white font-semibold text-lg">
             {isSubmitting 
               ? (editTaskId ? "Updating..." : "Creating...") 
               : (editTaskId ? "Update Task" : "Create Task")
@@ -865,7 +865,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Select Priority
             </Text>
           </View>
@@ -892,7 +892,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   )}
                 </View>
                 <Text className={cn(
-                  "text-base font-medium capitalize flex-1",
+                  "text-lg font-medium capitalize flex-1",
                   formData.priority === priority ? "text-blue-900" : "text-gray-900"
                 )}>
                   {priority}
@@ -927,7 +927,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Select Category
             </Text>
           </View>
@@ -954,7 +954,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   )}
                 </View>
                 <Text className={cn(
-                  "text-base font-medium capitalize flex-1",
+                  "text-lg font-medium capitalize flex-1",
                   formData.category === category ? "text-blue-900" : "text-gray-900"
                 )}>
                   {category}
@@ -996,7 +996,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Select Project
             </Text>
           </View>
@@ -1024,12 +1024,12 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 </View>
                 <View className="flex-1">
                   <Text className={cn(
-                    "text-base font-medium",
+                    "text-lg font-medium",
                     formData.projectId === project.id ? "text-blue-900" : "text-gray-900"
                   )} numberOfLines={1}>
                     {project.name}
                   </Text>
-                  <Text className="text-xs text-gray-600 mt-0.5" numberOfLines={1}>
+                  <Text className="text-sm text-gray-600 mt-0.5" numberOfLines={1}>
                     {project.location.city}, {project.location.state}
                   </Text>
                 </View>
@@ -1074,10 +1074,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               Assign To
             </Text>
-            <Text className="text-sm text-blue-600 font-medium">
+            <Text className="text-base text-blue-600 font-medium">
               {selectedUsers.length} selected
             </Text>
           </View>
@@ -1087,7 +1087,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
               <Ionicons name="search" size={20} color="#6b7280" />
               <TextInput
-                className="flex-1 ml-2 text-base text-gray-900"
+                className="flex-1 ml-2 text-lg text-gray-900"
                 placeholder="Search by name, email, position, or role..."
                 placeholderTextColor="#9ca3af"
                 value={userSearchQuery}
@@ -1103,7 +1103,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             </View>
             
             {/* Results count */}
-            <Text className="text-xs text-gray-600 mt-2">
+            <Text className="text-sm text-gray-600 mt-2">
               {filteredAssignableUsers.length} user{filteredAssignableUsers.length !== 1 ? 's' : ''} available
               {userSearchQuery && ` (filtered from ${allAssignableUsers.length})`}
             </Text>
@@ -1138,22 +1138,22 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     {/* User Info */}
                     <View className="flex-1">
                       <Text className={cn(
-                        "text-base font-semibold",
+                        "text-lg font-semibold",
                         isSelected ? "text-blue-900" : "text-gray-900"
                       )}>
                         {assignableUser.name}
                       </Text>
                       <View className="flex-row items-center mt-1">
-                        <Text className="text-xs text-gray-600 capitalize">
+                        <Text className="text-sm text-gray-600 capitalize">
                           {assignableUser.position}
                         </Text>
                         <View className="w-1 h-1 rounded-full bg-gray-400 mx-2" />
-                        <Text className="text-xs text-gray-500 capitalize">
+                        <Text className="text-sm text-gray-500 capitalize">
                           {assignableUser.role}
                         </Text>
                       </View>
                       {assignableUser.email && (
-                        <Text className="text-xs text-gray-500 mt-0.5">
+                        <Text className="text-sm text-gray-500 mt-0.5">
                           {assignableUser.email}
                         </Text>
                       )}
@@ -1173,7 +1173,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 <Text className="text-gray-500 text-center mt-3 font-medium">
                   No users found
                 </Text>
-                <Text className="text-gray-400 text-center mt-1 text-sm">
+                <Text className="text-gray-400 text-center mt-1 text-base">
                   Try adjusting your search
                 </Text>
                 <Pressable
@@ -1190,7 +1190,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 <Text className="text-gray-500 text-center mt-3 font-medium">
                   No users assigned to this project
                 </Text>
-                <Text className="text-gray-400 text-center mt-1 text-sm">
+                <Text className="text-gray-400 text-center mt-1 text-base">
                   Add team members to the project first
                 </Text>
               </View>
@@ -1206,7 +1206,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               }}
               className="bg-blue-600 rounded-lg py-3 items-center"
             >
-              <Text className="text-white font-semibold text-base">
+              <Text className="text-white font-semibold text-lg">
                 Done ({selectedUsers.length} selected)
               </Text>
             </Pressable>

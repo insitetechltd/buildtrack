@@ -17,7 +17,7 @@ export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
     <View className="absolute top-2 right-2 bg-blue-500 rounded-full p-2 shadow-lg z-50">
       <View className="flex-row items-center">
         <ActivityIndicator size="small" color="white" />
-        <Text className="text-white text-xs ml-1 font-medium">
+        <Text className="text-white text-sm ml-1 font-medium">
           {text}
         </Text>
       </View>

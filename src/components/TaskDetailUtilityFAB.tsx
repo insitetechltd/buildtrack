@@ -149,7 +149,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
         className="flex-row items-center"
       >
         <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canEdit ? 'bg-gray-800' : 'bg-gray-600'}`}>
-          <Text className={`text-sm font-medium ${canEdit ? 'text-white' : 'text-gray-300'}`}>Edit Task Detail</Text>
+          <Text className={`text-base font-medium ${canEdit ? 'text-white' : 'text-gray-300'}`}>Edit Task Detail</Text>
         </View>
         <Pressable
           onPress={handleEdit}
@@ -185,7 +185,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Add Sub-task</Text>
+            <Text className="text-white text-base font-medium">Add Sub-task</Text>
           </View>
           <Pressable
             onPress={handleCreateSubTask}
@@ -221,7 +221,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Update Progress</Text>
+            <Text className="text-white text-base font-medium">Update Progress</Text>
           </View>
           <Pressable
             onPress={handleUpdate}
@@ -257,7 +257,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-sm font-medium">Photos Updates</Text>
+            <Text className="text-white text-base font-medium">Photos Updates</Text>
           </View>
           <Pressable
             onPress={handleCameraUpdate}

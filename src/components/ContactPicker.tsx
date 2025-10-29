@@ -71,7 +71,7 @@ export default function ContactPicker({ onSelectContact, onClose }: ContactPicke
     return (
       <View className="flex-1 items-center justify-center px-6">
         <Ionicons name="people-outline" size={64} color="#9ca3af" />
-        <Text className="text-gray-900 text-lg font-semibold mt-4 text-center">
+        <Text className="text-gray-900 text-xl font-semibold mt-4 text-center">
           Contacts Permission Required
         </Text>
         <Text className="text-gray-600 text-center mt-2">
@@ -95,21 +95,21 @@ export default function ContactPicker({ onSelectContact, onClose }: ContactPicke
             className="bg-white border-b border-gray-100 px-6 py-4 flex-row items-center"
           >
             <View className="w-12 h-12 bg-blue-100 rounded-full items-center justify-center mr-3">
-              <Text className="text-blue-600 font-bold text-lg">
+              <Text className="text-blue-600 font-bold text-xl">
                 {item.name.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="font-semibold text-gray-900 text-base">
+              <Text className="font-semibold text-gray-900 text-lg">
                 {item.name}
               </Text>
               {item.phoneNumbers?.[0]?.number && (
-                <Text className="text-sm text-gray-600 mt-0.5">
+                <Text className="text-base text-gray-600 mt-0.5">
                   {item.phoneNumbers[0].number}
                 </Text>
               )}
               {item.emails?.[0]?.email && (
-                <Text className="text-sm text-gray-600 mt-0.5">
+                <Text className="text-base text-gray-600 mt-0.5">
                   {item.emails[0].email}
                 </Text>
               )}
@@ -120,7 +120,7 @@ export default function ContactPicker({ onSelectContact, onClose }: ContactPicke
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="people-outline" size={64} color="#9ca3af" />
-            <Text className="text-gray-500 text-lg font-medium mt-4">
+            <Text className="text-gray-500 text-xl font-medium mt-4">
               No contacts found
             </Text>
           </View>

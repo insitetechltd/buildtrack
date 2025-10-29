@@ -399,10 +399,10 @@ export default function DashboardScreen({
         
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
-          <Text className="text-lg font-semibold text-gray-900 mt-4 text-center">
+          <Text className="text-xl font-semibold text-gray-900 mt-4 text-center">
             No Projects Yet
           </Text>
-          <Text className="text-sm text-gray-600 mt-2 text-center">
+          <Text className="text-base text-gray-600 mt-2 text-center">
             You haven't been assigned to any projects yet. Contact your admin to get started.
           </Text>
         </View>
@@ -423,15 +423,15 @@ export default function DashboardScreen({
             className="flex-row items-center"
           >
             <View className="mr-2">
-              <Text className={cn("text-sm font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
+              <Text className={cn("text-base font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
                 {user.name}
             </Text>
-              <Text className={cn("text-xs text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
+              <Text className={cn("text-sm text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
                 {user.role}
               </Text>
             </View>
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-sm">
+              <Text className="text-white font-bold text-base">
                 {user.name.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -471,15 +471,15 @@ export default function DashboardScreen({
                 <Ionicons name="business" size={20} color="#2563eb" />
               )}
               <View className={cn("flex-1", isDarkMode ? "ml-3" : "ml-2")}>
-                <Text className={cn("text-base", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
+                <Text className={cn("text-lg", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
                   {selectedProject?.name || "All Projects"}
                 </Text>
                 {selectedProject?.description ? (
-                  <Text className={cn("text-xs mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
+                  <Text className={cn("text-sm mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
                     {selectedProject?.description}
                   </Text>
                 ) : !selectedProject && (
-                  <Text className={cn("text-xs mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
+                  <Text className={cn("text-sm mt-0.5", isDarkMode ? "text-indigo-100" : "text-gray-600")} numberOfLines={1}>
                     Viewing tasks from all projects
                   </Text>
                 )}
@@ -510,7 +510,7 @@ export default function DashboardScreen({
                     <Ionicons name="star" size={18} color="#f59e0b" />
                   )}
                   <Text className={cn(
-                    "text-base ml-3",
+                    "text-lg ml-3",
                     isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900"
                   )}>
                   Today's Tasks ({starredTasks.length})
@@ -549,7 +549,7 @@ export default function DashboardScreen({
                 <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
               )}
               <Text className={cn(
-                "text-lg font-bold ml-3",
+                "text-xl font-bold ml-3",
                 isDarkMode ? "text-white" : "text-gray-900"
               )}>
                 Priority Summary
@@ -561,7 +561,7 @@ export default function DashboardScreen({
               <View className="flex-row items-center mb-3">
                 <Ionicons name="alert-circle" size={18} color={isDarkMode ? "#f87171" : "#ef4444"} />
                 <Text className={cn(
-                  "text-sm font-bold ml-2",
+                  "text-base font-bold ml-2",
                   isDarkMode ? "text-red-400" : "text-red-600"
                 )}>
                   {isDarkMode ? "URGENT!" : "Urgent!"}
@@ -581,16 +581,16 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
                   )}>
                     {myOverdueTasks.length + inboxOverdueTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center",
-                    isDarkMode ? "text-xs text-red-200 font-semibold" : "text-sm text-red-600"
-                  )} numberOfLines={1}>
-                    My Overdues
+                    isDarkMode ? "text-sm text-red-200 font-semibold" : "text-base text-red-600"
+                  )} numberOfLines={2}>
+                    My Action{'\n'}Required Now
                   </Text>
                 </Pressable>
                 
@@ -607,16 +607,16 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
                   )}>
                     {outboxOverdueTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center",
-                    isDarkMode ? "text-xs text-red-200 font-semibold" : "text-sm text-red-600"
-                  )} numberOfLines={1}>
-                    Chase Now
+                    isDarkMode ? "text-sm text-red-200 font-semibold" : "text-base text-red-600"
+                  )} numberOfLines={2}>
+                    Follow Up{'\n'}Now
                   </Text>
                 </Pressable>
               </View>
@@ -630,7 +630,7 @@ export default function DashboardScreen({
               <View className="flex-row items-center mb-3">
                 <Ionicons name="mail-outline" size={18} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
                 <Text className={cn(
-                  "text-sm font-bold ml-2",
+                  "text-base font-bold ml-2",
                   isDarkMode ? "text-amber-400" : "text-amber-600"
                 )}>
                   {isDarkMode ? "TASKS FOR ME" : "Tasks for me"}
@@ -650,16 +650,16 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-amber-300" : "font-bold text-yellow-700"
                   )}>
                     {inboxReceivedTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-amber-200" : "text-sm text-yellow-600"
+                    isDarkMode ? "text-sm text-amber-200" : "text-base text-yellow-600"
                   )} numberOfLines={2}>
-                    New Incoming{'\n'}Tasks
+                    New{'\n'}Requests
                   </Text>
                 </Pressable>
                 
@@ -676,16 +676,16 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-violet-300" : "font-bold text-orange-700"
                   )}>
                     {myWIPTasks.length + inboxWIPTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-violet-200" : "text-sm text-orange-600"
+                    isDarkMode ? "text-sm text-violet-200" : "text-base text-orange-600"
                   )} numberOfLines={2}>
-                    My On-going{'\n'}Tasks
+                    Current{'\n'}Tasks
                   </Text>
                 </Pressable>
                 
@@ -702,16 +702,16 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
                   )}>
                     {inboxReviewingTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
+                    isDarkMode ? "text-sm text-cyan-200" : "text-base text-blue-600"
                   )} numberOfLines={2}>
-                    Completed{'\n'}Review Now
+                    Pending{'\n'}my review
                   </Text>
                 </Pressable>
               </View>
@@ -725,7 +725,7 @@ export default function DashboardScreen({
               <View className="flex-row items-center mb-3">
                 <Ionicons name="paper-plane-outline" size={18} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
                 <Text className={cn(
-                  "text-sm font-bold ml-2",
+                  "text-base font-bold ml-2",
                   isDarkMode ? "text-purple-400" : "text-purple-600"
                 )}>
                   {isDarkMode ? "TASKS FROM ME" : "Tasks from me"}
@@ -745,14 +745,14 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-amber-300" : "font-bold text-yellow-700"
                   )}>
                     {outboxAssignedTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-amber-200" : "text-sm text-yellow-600"
+                    isDarkMode ? "text-sm text-amber-200" : "text-base text-yellow-600"
                   )} numberOfLines={2}>
                     Waiting to Be{'\n'}Accepted
                   </Text>
@@ -771,14 +771,14 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-violet-300" : "font-bold text-orange-700"
                   )}>
                     {outboxWIPTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-violet-200" : "text-sm text-orange-600"
+                    isDarkMode ? "text-sm text-violet-200" : "text-base text-orange-600"
                   )} numberOfLines={2}>
                     Others Working{'\n'}on My Tasks
                   </Text>
@@ -797,14 +797,14 @@ export default function DashboardScreen({
                   }}
                 >
                   <Text className={cn(
-                    "text-3xl mb-1",
+                    "text-4xl mb-1",
                     isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
                   )}>
                     {outboxReviewingTasks.length}
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-cyan-200" : "text-sm text-blue-600"
+                    isDarkMode ? "text-sm text-cyan-200" : "text-base text-blue-600"
                   )} numberOfLines={2}>
                     Sent for{'\n'}Review
                   </Text>
@@ -820,7 +820,7 @@ export default function DashboardScreen({
               <View className="flex-row items-center mb-3">
                 <Ionicons name="trophy-outline" size={18} color={isDarkMode ? "#34d399" : "#10b981"} />
                 <Text className={cn(
-                  "text-sm font-bold ml-2",
+                  "text-base font-bold ml-2",
                   isDarkMode ? "text-emerald-400" : "text-green-600"
                 )}>
                   {isDarkMode ? "ACCOMPLISHMENTS" : "Accomplishments"}
@@ -847,7 +847,7 @@ export default function DashboardScreen({
                   </Text>
                   <Text className={cn(
                     "text-center font-semibold",
-                    isDarkMode ? "text-xs text-emerald-200" : "text-sm text-green-600"
+                    isDarkMode ? "text-sm text-emerald-200" : "text-base text-green-600"
                   )} numberOfLines={2}>
                     All Done{'\n'}Tasks
                   </Text>
@@ -875,7 +875,7 @@ export default function DashboardScreen({
                   <Ionicons name="list-outline" size={20} color="#3b82f6" />
                 )}
                 <Text className={cn(
-                  "text-base font-bold ml-3",
+                  "text-lg font-bold ml-3",
                   isDarkMode ? "text-white" : "text-gray-900"
                 )}>
                   Quick Overview
@@ -897,14 +897,14 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="checkmark-circle-outline" size={18} color={isDarkMode ? "#34d399" : "#10b981"} />
                   <Text className={cn(
-                    "text-sm font-bold ml-2",
+                    "text-base font-bold ml-2",
                     isDarkMode ? "text-emerald-400" : "text-gray-900"
                   )}>
                     My Tasks ({myTasksTotal})
                   </Text>
                 </View>
                 <Text className={cn(
-                  "text-xs italic",
+                  "text-sm italic",
                   isDarkMode ? "text-slate-400" : "text-gray-500"
                 )}>
                   Tap star in Tasks screen
@@ -925,12 +925,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
                     )}>{myRejectedTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-amber-200" : "text-xs text-yellow-600"
+                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
                     )} numberOfLines={1}>Rejected</Text>
                   </Pressable>
                   
@@ -947,12 +947,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
                     )}>{myWIPTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-orange-200" : "text-xs text-orange-600"
+                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
                     )} numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
@@ -969,12 +969,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
                     )}>{myDoneTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-emerald-200" : "text-xs text-green-600"
+                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
                     )} numberOfLines={1}>Done</Text>
                   </Pressable>
                   
@@ -991,12 +991,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
                     )}>{myOverdueTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-red-200" : "text-xs text-red-600"
+                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
                     )} numberOfLines={1}>Overdue</Text>
                   </Pressable>
                 </View>
@@ -1011,7 +1011,7 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="mail-outline" size={isDarkMode ? 18 : 20} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
                   <Text className={cn(
-                    "text-sm font-bold ml-2",
+                    "text-base font-bold ml-2",
                     isDarkMode ? "text-blue-400" : "text-gray-900"
                   )}>
                     Inbox ({inboxTotal})
@@ -1033,12 +1033,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
                     )}>{inboxReceivedTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-amber-200" : "text-xs text-yellow-600"
+                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
                     )} numberOfLines={1}>Received</Text>
                   </Pressable>
                   
@@ -1055,12 +1055,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
                     )}>{inboxWIPTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-orange-200" : "text-xs text-orange-600"
+                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
                     )} numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
@@ -1077,12 +1077,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-cyan-300" : "font-bold text-blue-700"
                     )}>{inboxReviewingTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-cyan-200" : "text-xs text-blue-600"
+                      isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
                     )} numberOfLines={1}>Reviewing</Text>
                   </Pressable>
                   
@@ -1099,12 +1099,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
                     )}>{inboxDoneTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-emerald-200" : "text-xs text-green-600"
+                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
                     )} numberOfLines={1}>Done</Text>
                   </Pressable>
                   
@@ -1121,12 +1121,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
                     )}>{inboxOverdueTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-red-200" : "text-xs text-red-600"
+                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
                     )} numberOfLines={1}>Overdue</Text>
                   </Pressable>
                 </View>
@@ -1141,7 +1141,7 @@ export default function DashboardScreen({
                 <View className="flex-row items-center">
                   <Ionicons name="send-outline" size={isDarkMode ? 18 : 20} color={isDarkMode ? "#a78bfa" : "#7c3aed"} />
                   <Text className={cn(
-                    "text-sm font-bold ml-2",
+                    "text-base font-bold ml-2",
                     isDarkMode ? "text-purple-400" : "text-gray-900"
                   )}>
                     Outbox ({outboxTotal})
@@ -1163,12 +1163,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
                     )}>{outboxAssignedTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-amber-200" : "text-xs text-yellow-600"
+                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
                     )} numberOfLines={1}>Assigned</Text>
                   </Pressable>
                   
@@ -1185,12 +1185,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
                     )}>{outboxWIPTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-orange-200" : "text-xs text-orange-600"
+                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
                     )} numberOfLines={1}>WIP</Text>
                   </Pressable>
                   
@@ -1207,12 +1207,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-cyan-300" : "font-bold text-blue-700"
                     )}>{outboxReviewingTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-cyan-200" : "text-xs text-blue-600"
+                      isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
                     )} numberOfLines={1}>Reviewing</Text>
                   </Pressable>
                   
@@ -1229,12 +1229,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
                     )}>{outboxDoneTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-emerald-200" : "text-xs text-green-600"
+                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
                     )} numberOfLines={1}>Done</Text>
                   </Pressable>
                   
@@ -1251,12 +1251,12 @@ export default function DashboardScreen({
                     }}
                   >
                     <Text className={cn(
-                      "text-2xl mb-1",
+                      "text-3xl mb-1",
                       isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
                     )}>{outboxOverdueTasks.length}</Text>
                     <Text className={cn(
                       "text-center font-medium",
-                      isDarkMode ? "text-xs text-red-200" : "text-xs text-red-600"
+                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
                     )} numberOfLines={1}>Overdue</Text>
                   </Pressable>
               </View>
@@ -1290,14 +1290,14 @@ export default function DashboardScreen({
             >
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
-            <Text className="text-lg font-semibold text-gray-900 flex-1">
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
               {t.dashboard.selectProject}
             </Text>
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
             {/* Individual Projects */}
-            <Text className="text-xs font-semibold text-gray-500 uppercase mb-2 mt-2">
+            <Text className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-2">
               {t.dashboard.yourProjects} ({userProjects.length})
             </Text>
             
@@ -1316,12 +1316,12 @@ export default function DashboardScreen({
                 <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className={cn(
-                      "text-base font-semibold",
+                      "text-lg font-semibold",
                       selectedProjectId === null ? "text-blue-700" : "text-gray-900"
                     )}>
                       All Projects
                   </Text>
-                    <Text className="text-sm text-gray-600 mt-1">
+                    <Text className="text-base text-gray-600 mt-1">
                       View tasks from all assigned projects
                   </Text>
                 </View>
@@ -1371,12 +1371,12 @@ export default function DashboardScreen({
                 <View className="flex-row items-center justify-between">
                 <View className="flex-1">
                   <Text className={cn(
-                      "text-base font-semibold",
+                      "text-lg font-semibold",
                       selectedProjectId === project.id ? "text-blue-700" : "text-gray-900"
                     )}>
                     {project.name}
                   </Text>
-                    <Text className="text-sm text-gray-600 mt-1">
+                    <Text className="text-base text-gray-600 mt-1">
                       {project.description}
                   </Text>
                     <View className="flex-row items-center mt-2">
@@ -1385,7 +1385,7 @@ export default function DashboardScreen({
                         project.status === "active" ? "bg-green-100" : "bg-yellow-100"
                       )}>
                         <Text className={cn(
-                          "text-xs font-medium",
+                          "text-sm font-medium",
                           project.status === "active" ? "text-green-700" : "text-yellow-700"
                         )}>
                           {project.status}
@@ -1418,10 +1418,10 @@ export default function DashboardScreen({
       {isProjectSwitching && (
         <View className="absolute inset-0 bg-black/50 items-center justify-center">
           <View className="bg-white rounded-xl p-6 items-center shadow-lg">
-            <Text className="text-lg font-semibold text-gray-900 mb-2">
+            <Text className="text-xl font-semibold text-gray-900 mb-2">
               Switching Project...
                 </Text>
-            <Text className="text-sm text-gray-600 text-center">
+            <Text className="text-base text-gray-600 text-center">
               Refreshing all data for the new project
                 </Text>
           </View>

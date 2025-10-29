@@ -638,11 +638,36 @@ export default function DashboardScreen({
             </View>
             <Ionicons name="chevron-down" size={isDarkMode ? 20 : 18} color={isDarkMode ? "#ffffff" : "#2563eb"} />
           </Pressable>
+
+          {/* Show message when no project selected */}
+          {!selectedProjectId && (
+            <View className={cn(
+              "rounded-2xl p-8 mb-4 items-center",
+              isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
+            )}>
+              <Ionicons name="business-outline" size={48} color={isDarkMode ? "#94a3b8" : "#9ca3af"} />
+              <Text className={cn(
+                "text-lg font-semibold mt-4 text-center",
+                isDarkMode ? "text-white" : "text-gray-900"
+              )}>
+                No Project Selected
+              </Text>
+              <Text className={cn(
+                "text-base mt-2 text-center",
+                isDarkMode ? "text-slate-400" : "text-gray-600"
+              )}>
+                Tap "Select a Project" above to view your tasks and dashboard
+              </Text>
+            </View>
+          )}
         
-          {/* Today's Tasks Section - Only show if user has starred tasks */}
+          {/* Today's Tasks Section - Only show if user has starred tasks AND a project is selected */}
         {(() => {
+            // Don't show any tasks if no project is selected
+            if (!selectedProjectId) return null;
+            
             const starredTasks = getStarredTasks(user.id).filter(task => 
-              selectedProjectId ? task.projectId === selectedProjectId : true
+              task.projectId === selectedProjectId
             );
             
             if (starredTasks.length === 0) return null;
@@ -687,6 +712,7 @@ export default function DashboardScreen({
         })()}
 
           {/* ===== PRIORITY SUMMARY SECTION ===== */}
+          {selectedProjectId && (
           <View className={cn(
             "rounded-2xl p-4 mb-4",
             isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
@@ -1015,8 +1041,10 @@ export default function DashboardScreen({
               </View>
             </View>
           </View>
+          )}
 
           {/* ===== QUICK OVERVIEW SECTION (COLLAPSIBLE) ===== */}
+          {selectedProjectId && (
           <View className={cn(
             "rounded-2xl mb-4",
             isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
@@ -1438,6 +1466,7 @@ export default function DashboardScreen({
               </View>
             )}
           </View>
+          )}
 
           {/* Footer space for FAB */}
           <View className="h-32" />

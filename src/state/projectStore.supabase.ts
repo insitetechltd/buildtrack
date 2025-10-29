@@ -756,9 +756,32 @@ export const useProjectStoreWithInit = () => {
   const store = useProjectStore();
   
   React.useEffect(() => {
-    // Initialize data on first mount if not already loaded
-    if (store.projects.length === 0 && !store.isLoading && supabase) {
+    console.log('🔄 useProjectStoreWithInit: Initializing project store...');
+    
+    // Get current user from auth store
+    const authStore = require('./authStore').useAuthStore.getState();
+    const user = authStore.user;
+    
+    console.log('👤 Current user:', user ? `${user.name} (${user.id})` : 'none');
+    console.log('🔗 Supabase available:', !!supabase);
+    
+    if (user && supabase) {
+      console.log('🚀 Initializing with user context - fetching projects and assignments...');
+      // Fetch both projects and user assignments
+      Promise.all([
+        store.fetchProjects(),
+        store.fetchUserProjectAssignments(user.id)
+      ]).then(() => {
+        console.log('✅ Project store initialization complete');
+      }).catch(error => {
+        console.error('❌ Error during project store initialization:', error);
+      });
+    } else if (store.projects.length === 0 && !store.isLoading && supabase) {
+      console.log('🚀 Fallback to basic initialization...');
+      // Fallback to basic initialization
       store.fetchProjects();
+    } else {
+      console.log('⏭️ Skipping initialization - already loaded or no Supabase');
     }
   }, []);
   

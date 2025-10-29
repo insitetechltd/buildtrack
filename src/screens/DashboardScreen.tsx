@@ -138,27 +138,29 @@ export default function DashboardScreen({
       return;
     }
 
-    // Case 3: Selected project is invalid → Clear selection
+    // Case 3: Selected project is invalid → Clear selection and show picker
     const isSelectedProjectValid = selectedProjectId && userProjects.some(p => p.id === selectedProjectId);
     if (selectedProjectId && !isSelectedProjectValid) {
-      console.log(`   → Selected project ${selectedProjectId} is invalid, clearing`);
+      console.log(`   → Selected project ${selectedProjectId} is invalid, clearing and showing picker`);
       setSelectedProject(null, user.id);
+      setShowProjectPicker(true);
       return;
     }
     
-    // Case 4: User has multiple projects → Don't auto-select, user must choose
+    // Case 4: User has multiple projects → Must have a selection, otherwise force picker
     if (userProjectCount > 1) {
-      // Keep current selection if valid, otherwise clear to show picker
       if (selectedProjectId !== null) {
         const isValid = userProjects.some(p => p.id === selectedProjectId);
         if (!isValid) {
-          console.log(`   → Selected project invalid, clearing to show picker`);
+          console.log(`   → Selected project invalid, showing picker`);
           setSelectedProject(null, user.id);
+          setShowProjectPicker(true);
         } else {
           console.log(`   → Project already selected: keeping current`);
         }
       } else {
-        console.log(`   → Multiple projects, no selection - showing picker`);
+        console.log(`   → Multiple projects, no selection - forcing picker to open`);
+        setShowProjectPicker(true);
       }
     }
   }, [user?.id, userProjects.length]); // Only depend on user ID and project count to avoid infinite loop
@@ -175,13 +177,10 @@ export default function DashboardScreen({
   // Get selected project name for display
   const selectedProject = selectedProjectId ? getProjectById(selectedProjectId) : null;
 
-  // Filter tasks by selected project
-  // If no project selected, show tasks from ALL user projects
-  // BUT: For review workflow, tasks submitted for review should be visible even if
-  // project filter is active (as long as the task matches the selected project)
+  // Filter tasks by selected project - must have a project selected
   const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
     ? tasks.filter(task => task.projectId === selectedProjectId)
-    : tasks.filter(task => userProjects.some(p => p.id === task.projectId)); // Show all project tasks when no specific project selected
+    : []; // No tasks shown if no project selected (should not reach here due to early returns)
 
   // Helper function to recursively collect all subtasks assigned by a user
   const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
@@ -392,8 +391,6 @@ export default function DashboardScreen({
 
   const outboxTotal = outboxAll.length;
 
-  // No longer block rendering when no project selected - show "All Projects" mode instead
-
   if (userProjectCount === 0) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
@@ -409,6 +406,157 @@ export default function DashboardScreen({
             You haven't been assigned to any projects yet. Contact your admin to get started.
           </Text>
         </View>
+      </SafeAreaView>
+    );
+  }
+
+  // If user has multiple projects but no selection, show project selection required screen
+  if (userProjectCount > 1 && !selectedProjectId) {
+    return (
+      <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+        <StatusBar style={isDarkMode ? "light" : "dark"} />
+        <StandardHeader title="Dashboard" />
+        
+        <View className="flex-1 items-center justify-center px-6">
+          <Ionicons name="business-outline" size={64} color={isDarkMode ? "#94a3b8" : "#9ca3af"} />
+          <Text className={cn("text-xl font-semibold mt-4 text-center", isDarkMode ? "text-white" : "text-gray-900")}>
+            Select a Project
+          </Text>
+          <Text className={cn("text-base mt-2 text-center", isDarkMode ? "text-slate-400" : "text-gray-600")}>
+            Please select a project to view your dashboard
+          </Text>
+          <Pressable
+            onPress={() => setShowProjectPicker(true)}
+            className="mt-6 bg-blue-600 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-semibold text-base">
+              Choose Project
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Project Picker Modal */}
+        <Modal
+          visible={showProjectPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => {
+            // Don't allow closing modal if no project selected
+            if (!selectedProjectId) {
+              return;
+            }
+            setShowProjectPicker(false);
+          }}
+        >
+          <SafeAreaView className="flex-1 bg-gray-50">
+            <StatusBar style="dark" />
+            
+            <ModalHandle />
+            
+            {/* Modal Header */}
+            <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+              {selectedProjectId && (
+                <Pressable 
+                  onPress={() => setShowProjectPicker(false)}
+                  className="mr-4 w-10 h-10 items-center justify-center"
+                >
+                  <Ionicons name="close" size={24} color="#374151" />
+                </Pressable>
+              )}
+              <Text className="text-xl font-semibold text-gray-900 flex-1">
+                {t.dashboard.selectProject}
+              </Text>
+            </View>
+
+            <ScrollView className="flex-1 px-6 py-4">
+              <Text className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-2">
+                {t.dashboard.yourProjects} ({userProjects.length})
+              </Text>
+              
+              {userProjects.map((project) => (
+                <Pressable
+                  key={project.id}
+                  onPress={async () => {
+                    // Only refresh if actually changing projects
+                    if (selectedProjectId === project.id) {
+                      setShowProjectPicker(false);
+                      return;
+                    }
+                    
+                    setIsProjectSwitching(true);
+                    setSelectedProject(project.id, user.id);
+                    setShowProjectPicker(false);
+                    
+                    // Refresh all data when project changes
+                    try {
+                      console.log('🔄 Project changed - refreshing all data...');
+                      await Promise.all([
+                        fetchTasks(),
+                        fetchProjects(),
+                        fetchUserProjectAssignments(user.id),
+                        fetchUsers()
+                      ]);
+                      console.log('✅ Data refresh complete');
+                    } catch (error) {
+                      console.error('❌ Error refreshing data:', error);
+                      Alert.alert('Error', 'Failed to refresh data. Please try again.');
+                    } finally {
+                      setIsProjectSwitching(false);
+                    }
+                  }}
+                  className={cn(
+                    "bg-white border rounded-lg p-4 mb-2",
+                    selectedProjectId === project.id ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                  )}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-1">
+                      <Text className={cn(
+                        "text-lg font-semibold",
+                        selectedProjectId === project.id ? "text-blue-700" : "text-gray-900"
+                      )}>
+                        {project.name}
+                      </Text>
+                      <Text className="text-base text-gray-600 mt-1">
+                        {project.description}
+                      </Text>
+                      <View className="flex-row items-center mt-2">
+                        <View className={cn(
+                          "px-2 py-1 rounded-full",
+                          project.status === "active" ? "bg-green-100" : "bg-yellow-100"
+                        )}>
+                          <Text className={cn(
+                            "text-sm font-medium",
+                            project.status === "active" ? "text-green-700" : "text-yellow-700"
+                          )}>
+                            {project.status}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                    {selectedProjectId === project.id && (
+                      <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+                    )}
+                  </View>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
+        {/* Project Switching Loading Overlay */}
+        {isProjectSwitching && (
+          <View className="absolute inset-0 bg-black/50 items-center justify-center">
+            <View className="bg-white rounded-xl p-6 items-center shadow-lg">
+              <Text className="text-xl font-semibold text-gray-900 mb-2">
+                Switching Project...
+              </Text>
+              <Text className="text-base text-gray-600 text-center">
+                Refreshing all data for the new project
+              </Text>
+            </View>
+          </View>
+        )}
       </SafeAreaView>
     );
   }
@@ -475,7 +623,7 @@ export default function DashboardScreen({
               )}
               <View className={cn("flex-1", isDarkMode ? "ml-3" : "ml-2")}>
                 <Text className={cn("text-lg", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
-                  {selectedProject?.name || "All Projects"}
+                  {selectedProject?.name || "Select a Project"}
                 </Text>
               </View>
             </View>
@@ -1292,7 +1440,13 @@ export default function DashboardScreen({
         visible={showProjectPicker}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowProjectPicker(false)}
+        onRequestClose={() => {
+          // Don't allow closing modal if no project selected
+          if (!selectedProjectId) {
+            return;
+          }
+          setShowProjectPicker(false);
+        }}
       >
         <SafeAreaView className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
@@ -1301,12 +1455,14 @@ export default function DashboardScreen({
           
           {/* Modal Header */}
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setShowProjectPicker(false)}
-              className="mr-4 w-10 h-10 items-center justify-center"
-            >
-              <Ionicons name="close" size={24} color="#374151" />
-            </Pressable>
+            {selectedProjectId && (
+              <Pressable 
+                onPress={() => setShowProjectPicker(false)}
+                className="mr-4 w-10 h-10 items-center justify-center"
+              >
+                <Ionicons name="close" size={24} color="#374151" />
+              </Pressable>
+            )}
             <Text className="text-xl font-semibold text-gray-900 flex-1">
               {t.dashboard.selectProject}
             </Text>
@@ -1317,37 +1473,6 @@ export default function DashboardScreen({
             <Text className="text-sm font-semibold text-gray-500 uppercase mb-2 mt-2">
               {t.dashboard.yourProjects} ({userProjects.length})
             </Text>
-            
-            {/* No Project Option - Only show when user has no projects assigned */}
-            {userProjects.length === 0 && (
-              <Pressable
-                onPress={() => {
-                  setSelectedProject(null, user.id);
-                  setShowProjectPicker(false);
-                }}
-                className={cn(
-                  "bg-white border rounded-lg p-4 mb-2",
-                  selectedProjectId === null ? "border-blue-500 bg-blue-50" : "border-gray-200"
-                )}
-              >
-                <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className={cn(
-                      "text-lg font-semibold",
-                      selectedProjectId === null ? "text-blue-700" : "text-gray-900"
-                    )}>
-                      All Projects
-                  </Text>
-                    <Text className="text-base text-gray-600 mt-1">
-                      View tasks from all assigned projects
-                  </Text>
-                </View>
-                  {selectedProjectId === null && (
-                    <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
-                  )}
-                </View>
-              </Pressable>
-            )}
             
             {userProjects.map((project) => (
               <Pressable
@@ -1424,7 +1549,6 @@ export default function DashboardScreen({
       <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask}
         onSearch={() => {
-          setSelectedProject(null, user.id);
           setSectionFilter("my_work");
           onNavigateToTasks();
         }}

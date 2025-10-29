@@ -591,9 +591,9 @@ export default function DashboardScreen({
             {/* 1. URGENT! Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="alert-circle" size={18} color={isDarkMode ? "#f87171" : "#ef4444"} />
+                <Ionicons name="alert-circle" size={20} color={isDarkMode ? "#f87171" : "#ef4444"} />
                 <Text className={cn(
-                  "text-base font-bold ml-2",
+                  "text-lg font-bold ml-2",
                   isDarkMode ? "text-red-400" : "text-red-600"
                 )}>
                   {isDarkMode ? "URGENT!" : "Urgent!"}
@@ -662,9 +662,9 @@ export default function DashboardScreen({
             {/* 2. TASKS FOR ME Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="mail-outline" size={18} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
+                <Ionicons name="mail-outline" size={20} color={isDarkMode ? "#fbbf24" : "#f59e0b"} />
                 <Text className={cn(
-                  "text-base font-bold ml-2",
+                  "text-lg font-bold ml-2",
                   isDarkMode ? "text-amber-400" : "text-amber-600"
                 )}>
                   {isDarkMode ? "TASKS FOR ME" : "Tasks for me"}
@@ -760,9 +760,9 @@ export default function DashboardScreen({
             {/* 3. TASKS FROM ME Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="paper-plane-outline" size={18} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
+                <Ionicons name="paper-plane-outline" size={20} color={isDarkMode ? "#a78bfa" : "#8b5cf6"} />
                 <Text className={cn(
-                  "text-base font-bold ml-2",
+                  "text-lg font-bold ml-2",
                   isDarkMode ? "text-purple-400" : "text-purple-600"
                 )}>
                   {isDarkMode ? "TASKS FROM ME" : "Tasks from me"}

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
-import { uploadFile, FileUploadOptions, FileAttachment } from '@/api/fileUploadService';
-import { compressImage, compressImages, formatFileSize } from '@/api/imageCompressionService';
+import { uploadFile, FileUploadOptions, FileAttachment } from '../api/fileUploadService';
+import { compressImage, compressImages, formatFileSize } from '../api/imageCompressionService';
 
 export function useFileUpload() {
   const [isUploading, setIsUploading] = useState(false);

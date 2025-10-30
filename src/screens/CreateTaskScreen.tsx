@@ -280,7 +280,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const handleAddPhotos = async () => {
     Alert.alert(
       "Add Photos",
-      "Choose how you want to add photos",
+      "Note: For task creation, photos are currently stored locally. They will be visible only on this device. For shared photos across devices, add them via task updates after creating the task.",
       [
         {
           text: "Take Photo",
@@ -304,6 +304,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   ...prev,
                   attachments: [...prev.attachments, ...newPhotos],
                 }));
+                console.log('ℹ️ [Create Task] Photos added locally. For cross-device visibility, add photos via task updates.');
               }
             } catch (error) {
               Alert.alert("Error", "Failed to take photo");
@@ -332,6 +333,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   ...prev,
                   attachments: [...prev.attachments, ...newPhotos],
                 }));
+                console.log('ℹ️ [Create Task] Photos added locally. For cross-device visibility, add photos via task updates.');
               }
             } catch (error) {
               Alert.alert("Error", "Failed to pick images");

@@ -1808,32 +1808,38 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {
                 text: "Take Photo",
                 onPress: async () => {
+                  if (!user || !task) return;
+                  
                   try {
-                    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                    console.log('📸 [Task Detail FAB] Taking photo from camera...');
                     
-                    if (status !== 'granted') {
-                      Alert.alert("Permission Required", "Camera permission is required to take photos.");
-                      return;
-                    }
-                    
-                    const result = await ImagePicker.launchCameraAsync({
-                      mediaTypes: "images" as any,
-                      allowsEditing: false,
-                      quality: 0.8,
-                    });
-                    
-                    if (!result.canceled && result.assets && result.assets.length > 0) {
-                      const newPhotos = result.assets.map(asset => asset.uri);
+                    const results: UploadResults = await pickAndUploadImages(
+                      {
+                        entityType: 'task-update',
+                        entityId: task.id,
+                        companyId: user.companyId,
+                        userId: user.id,
+                      },
+                      'camera'
+                    );
+
+                    if (results.successful.length > 0) {
+                      const newPhotoUrls = results.successful.map(file => file.public_url);
                       setUpdateForm(prev => ({
                         description: prev.description || "",
-                        photos: [...prev.photos, ...newPhotos],
+                        photos: [...prev.photos, ...newPhotoUrls],
                         completionPercentage: task.completionPercentage,
                         status: task.currentStatus,
                       }));
                       setShowUpdateModal(true);
+                      console.log(`✅ [Task Detail FAB] ${results.successful.length} photo(s) uploaded and ready`);
+                    }
+
+                    if (results.failed.length > 0) {
+                      setFailedUploadsInSession(prev => [...prev, ...results.failed]);
                     }
                   } catch (error) {
-                    console.error("Error launching camera:", error);
+                    console.error("❌ [Task Detail FAB] Error launching camera:", error);
                     Alert.alert("Error", "Failed to access camera");
                   }
                 },
@@ -1841,25 +1847,38 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {
                 text: "Choose from Library",
                 onPress: async () => {
+                  if (!user || !task) return;
+                  
                   try {
-                    const result = await ImagePicker.launchImageLibraryAsync({
-                      mediaTypes: "images" as any,
-                      allowsMultipleSelection: true,
-                      quality: 0.8,
-                    });
+                    console.log('📚 [Task Detail FAB] Selecting photos from library...');
                     
-                    if (!result.canceled && result.assets && result.assets.length > 0) {
-                      const newPhotos = result.assets.map(asset => asset.uri);
+                    const results: UploadResults = await pickAndUploadImages(
+                      {
+                        entityType: 'task-update',
+                        entityId: task.id,
+                        companyId: user.companyId,
+                        userId: user.id,
+                      },
+                      'library'
+                    );
+
+                    if (results.successful.length > 0) {
+                      const newPhotoUrls = results.successful.map(file => file.public_url);
                       setUpdateForm(prev => ({
                         description: prev.description || "",
-                        photos: [...prev.photos, ...newPhotos],
+                        photos: [...prev.photos, ...newPhotoUrls],
                         completionPercentage: task.completionPercentage,
                         status: task.currentStatus,
                       }));
                       setShowUpdateModal(true);
+                      console.log(`✅ [Task Detail FAB] ${results.successful.length} photo(s) uploaded and ready`);
+                    }
+
+                    if (results.failed.length > 0) {
+                      setFailedUploadsInSession(prev => [...prev, ...results.failed]);
                     }
                   } catch (error) {
-                    console.error("Error opening library:", error);
+                    console.error("❌ [Task Detail FAB] Error opening library:", error);
                     Alert.alert("Error", "Failed to access photo library");
                   }
                 },

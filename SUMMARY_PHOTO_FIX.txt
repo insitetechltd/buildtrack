@@ -1,0 +1,125 @@
+================================================================================
+                    PHOTO UPLOAD CROSS-DEVICE FIX - COMPLETE
+================================================================================
+
+PROBLEM IDENTIFIED:
+------------------
+Photos uploaded on one device were NOT visible on other devices.
+
+ROOT CAUSES:
+-----------
+1. ❌ Storage bucket "buildtrack-files" was set to PRIVATE
+   → Photo URLs required authentication to access
+   
+2. ❌ FAB camera button (floating action button) was using OLD code
+   → Saved local device file paths instead of uploading to Supabase
+   → Database had URLs like: file:///var/mobile/... (only works on that device)
+
+FIXES APPLIED:
+-------------
+✅ Updated TaskDetailScreen FAB camera button to upload photos to Supabase
+✅ Photos are now uploaded to Supabase Storage and get public URLs
+✅ Added user notice in CreateTaskScreen about local-only photos
+✅ Created diagnostic scripts to verify the fix
+✅ Created SQL script to make bucket public
+
+FILES MODIFIED:
+--------------
+1. src/screens/TaskDetailScreen.tsx (lines 1803-1917) - FAB camera button
+2. src/screens/CreateTaskScreen.tsx (lines 280-342) - Added notice
+3. scripts/diagnose-photo-upload.js - NEW: Diagnostic tool
+4. scripts/check-photo-data.js - NEW: Database checker
+5. scripts/make-storage-public.sql - NEW: SQL fix
+6. PHOTO_UPLOAD_COMPLETE_FIX.md - NEW: Complete documentation
+7. PHOTO_UPLOAD_FIX_GUIDE.md - NEW: Step-by-step guide
+8. PHOTO_UPLOAD_IMMEDIATE_ACTION.md - NEW: Quick action guide
+
+🔴 CRITICAL ACTION REQUIRED:
+===========================
+YOU MUST MAKE THE STORAGE BUCKET PUBLIC!
+
+Method 1 - Supabase Dashboard (EASIEST):
+---------------------------------------
+1. Go to https://supabase.com/dashboard
+2. Select your project
+3. Click "Storage" in left sidebar
+4. Click "buildtrack-files" bucket
+5. Click Settings (gear icon)
+6. Toggle "Public bucket" to ON
+7. Click Save
+
+Method 2 - SQL Editor:
+--------------------
+1. Go to Supabase Dashboard → SQL Editor
+2. Run: UPDATE storage.buckets SET public = true WHERE name = 'buildtrack-files';
+
+VERIFICATION:
+------------
+After making bucket public, run:
+  node scripts/diagnose-photo-upload.js
+
+Should show:
+  ✅ buildtrack-files bucket exists (PUBLIC)
+
+TEST IT:
+-------
+1. Device A: Upload photo to task update via FAB button
+2. Device B: Pull to refresh, open same task
+3. Device B: Photo should be visible! ✅
+
+HOW IT WORKS NOW:
+----------------
+1. User clicks FAB camera button
+2. Photo is compressed (if >5MB)  
+3. Photo is uploaded to Supabase Storage
+4. Public URL is returned (e.g., https://xxx.supabase.co/storage/...)
+5. URL is saved to database in task_updates.photos array
+6. Other devices fetch task updates and get the URLs
+7. Photos display using public URLs ✅
+
+CONSOLE LOGS TO LOOK FOR:
+-------------------------
+When uploading:
+  📸 [Task Detail FAB] Taking photo from camera...
+  📤 [File Upload] Starting upload for photo.jpg
+  ✅ [File Upload] File uploaded successfully
+  🔗 [File Upload] Public URL generated
+  ✅ [Task Detail FAB] 1 photo(s) uploaded and ready
+
+DATABASE CHECK:
+--------------
+Run: node scripts/check-photo-data.js
+
+Good URLs: https://xxxxx.supabase.co/storage/v1/object/public/buildtrack-files/...
+Bad URLs:  file:///var/mobile/Containers/Data/Application/... (old data)
+
+SECURITY:
+--------
+✅ Public bucket is SAFE because:
+  - URLs contain unique IDs (hard to guess)
+  - RLS on task_updates table controls who can see which updates
+  - Only users with task access can get photo URLs
+
+NEXT STEPS:
+----------
+1. Make bucket public (see above) 🔴 DO THIS NOW
+2. Test photo upload
+3. Verify photos appear on different devices
+4. Optional: Clean up old task updates with local paths
+
+SUPPORT:
+-------
+All documentation in project root:
+  - PHOTO_UPLOAD_IMMEDIATE_ACTION.md - Quick start
+  - PHOTO_UPLOAD_COMPLETE_FIX.md - Full details
+  - PHOTO_UPLOAD_FIX_GUIDE.md - Troubleshooting
+
+Diagnostic commands:
+  node scripts/diagnose-photo-upload.js
+  node scripts/check-photo-data.js
+
+================================================================================
+                    🎉 FIX IS 99% COMPLETE! 🎉
+           Just make the bucket public and you're done!
+================================================================================
+

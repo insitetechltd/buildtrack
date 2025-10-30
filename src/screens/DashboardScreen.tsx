@@ -43,7 +43,7 @@ export default function DashboardScreen({
   onNavigateToReports,
   onNavigateToTaskDetail
 }: DashboardScreenProps) {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const taskStore = useTaskStore();
   const tasks = taskStore.tasks;
   const { fetchTasks, getStarredTasks, toggleTaskStar } = taskStore;
@@ -516,39 +516,7 @@ export default function DashboardScreen({
           }
         >
           <View className="p-4">
-            {/* Project Picker */}
-            <Pressable
-              onPress={() => setShowProjectPicker(true)}
-              className={cn(
-                "rounded-2xl p-4 mb-4 flex-row items-center justify-between",
-                isDarkMode ? "bg-gradient-to-r from-indigo-600 to-purple-600 shadow-xl" : "bg-white border border-gray-200"
-              )}
-              style={isDarkMode ? {
-                shadowColor: "#6366f1",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              } : undefined}
-            >
-              <View className="flex-row items-center flex-1">
-                {isDarkMode ? (
-                  <View className="bg-white/20 rounded-full p-2">
-                    <Ionicons name="business" size={22} color="#ffffff" />
-                  </View>
-                ) : (
-                  <Ionicons name="business" size={20} color="#2563eb" />
-                )}
-                <View className={cn("flex-1", isDarkMode ? "ml-3" : "ml-2")}>
-                  <Text className={cn("text-lg", isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900")}>
-                    {selectedProject?.name || "Select a Project"}
-                  </Text>
-                </View>
-              </View>
-              <Ionicons name="chevron-down" size={isDarkMode ? 20 : 18} color={isDarkMode ? "#ffffff" : "#2563eb"} />
-            </Pressable>
-        
-          {/* Today's Tasks Section - Only show if user has starred tasks AND a project is selected */}
+            {/* Today's Tasks Section - Only show if user has starred tasks AND a project is selected */}
         {(() => {
             // Don't show any tasks if no project is selected
             if (!selectedProjectId) return null;
@@ -1538,6 +1506,32 @@ export default function DashboardScreen({
                 <Ionicons name="person-outline" size={22} color="#3b82f6" />
                 <Text className="text-gray-900 text-base font-medium ml-3">
                   Profile & Settings
+                </Text>
+              </Pressable>
+
+              <View className="h-px bg-gray-200 mx-4" />
+
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  Alert.alert(
+                    "Logout",
+                    "Are you sure you want to logout?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "Logout", 
+                        style: "destructive",
+                        onPress: logout
+                      },
+                    ]
+                  );
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+                <Text className="text-red-600 text-base font-medium ml-3">
+                  Logout
                 </Text>
               </Pressable>
             </View>

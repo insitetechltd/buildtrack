@@ -52,6 +52,7 @@ export default function DashboardScreen({
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, setButtonLabel, getLastSelectedProject } = useProjectFilterStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const [isQuickOverviewExpanded, setIsQuickOverviewExpanded] = useState(false);
@@ -463,7 +464,7 @@ export default function DashboardScreen({
         title="Dashboard"
         rightElement={
           <Pressable 
-            onPress={onNavigateToProfile}
+            onPress={() => setShowProfileMenu(true)}
             className="flex-row items-center"
           >
             <View className="mr-2">
@@ -1469,6 +1470,79 @@ export default function DashboardScreen({
             ))}
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={showProfileMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <Pressable 
+          className="flex-1 bg-black/50"
+          onPress={() => setShowProfileMenu(false)}
+        >
+          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            {/* User Info Header */}
+            <View className="bg-blue-600 px-4 py-3 border-b border-blue-700">
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
+                  <Text className="text-blue-600 font-bold text-lg">
+                    {user.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold text-base" numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text className="text-blue-100 text-sm capitalize">
+                    {user.role}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Menu Options */}
+            <View className="py-2">
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  setShowProjectPicker(true);
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="business-outline" size={22} color="#3b82f6" />
+                <Text className="text-gray-900 text-base font-medium ml-3">
+                  Change Project
+                </Text>
+              </Pressable>
+
+              <View className="h-px bg-gray-200 mx-4" />
+
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  onNavigateToProfile();
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="person-outline" size={22} color="#3b82f6" />
+                <Text className="text-gray-900 text-base font-medium ml-3">
+                  Profile & Settings
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
       </Modal>
 
       {/* Expandable Utility FAB */}

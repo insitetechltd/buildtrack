@@ -33,8 +33,10 @@ interface TaskStore {
   // Review workflow
   submitTaskForReview: (taskId: string) => Promise<void>;
   acceptTaskCompletion: (taskId: string, userId: string) => Promise<void>;
+  rejectTaskCompletion: (taskId: string, userId: string, reason: string) => Promise<void>;
   submitSubTaskForReview: (taskId: string, subTaskId: string) => Promise<void>;
   acceptSubTaskCompletion: (taskId: string, subTaskId: string, userId: string) => Promise<void>;
+  rejectSubTaskCompletion: (taskId: string, subTaskId: string, userId: string, reason: string) => Promise<void>;
   
   // Progress tracking
   addTaskUpdate: (taskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
@@ -831,6 +833,18 @@ export const useTaskStore = create<TaskStore>()(
         });
       },
 
+      rejectTaskCompletion: async (taskId, userId, reason) => {
+        await get().updateTask(taskId, {
+          readyForReview: false,
+          reviewedBy: userId,
+          reviewedAt: new Date().toISOString(),
+          reviewAccepted: false,
+          currentStatus: "rejected",
+          declineReason: reason,
+          // Keep completion at 100% - they submitted it, just needs rework
+        });
+      },
+
       submitSubTaskForReview: async (taskId, subTaskId) => {
         await get().updateSubTask(taskId, subTaskId, {
           readyForReview: true
@@ -846,6 +860,18 @@ export const useTaskStore = create<TaskStore>()(
           currentStatus: "completed",
           completionPercentage: 100,
           starredByUsers: [] // Un-star subtask when accepted
+        });
+      },
+
+      rejectSubTaskCompletion: async (taskId, subTaskId, userId, reason) => {
+        await get().updateSubTask(taskId, subTaskId, {
+          readyForReview: false,
+          reviewedBy: userId,
+          reviewedAt: new Date().toISOString(),
+          reviewAccepted: false,
+          currentStatus: "rejected",
+          declineReason: reason,
+          // Keep completion at 100% - they submitted it, just needs rework
         });
       },
 

@@ -52,8 +52,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const declineTask = useTaskStore(state => state.declineTask);
   const submitTaskForReview = useTaskStore(state => state.submitTaskForReview);
   const acceptTaskCompletion = useTaskStore(state => state.acceptTaskCompletion);
+  const rejectTaskCompletion = useTaskStore(state => state.rejectTaskCompletion);
   const submitSubTaskForReview = useTaskStore(state => state.submitSubTaskForReview);
   const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
+  const rejectSubTaskCompletion = useTaskStore(state => state.rejectSubTaskCompletion);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
@@ -259,6 +261,43 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           }
         }
       ]
+    );
+  };
+
+  const handleRejectTask = () => {
+    Alert.prompt(
+      "Reject Task",
+      "Please provide a reason for rejecting this task. The assignee will need to make corrections.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reject",
+          style: "destructive",
+          onPress: async (reason) => {
+            if (!reason || !reason.trim()) {
+              Alert.alert("Error", "Please provide a reason for rejection.");
+              return;
+            }
+
+            try {
+              if (isViewingSubTask && subTaskId) {
+                await rejectSubTaskCompletion(taskId, subTaskId, user.id, reason.trim());
+              } else {
+                await rejectTaskCompletion(task.id, user.id, reason.trim());
+              }
+              Alert.alert(
+                "Task Rejected", 
+                "The task has been sent back to the assignee for corrections."
+              );
+            } catch (error) {
+              Alert.alert("Error", "Failed to reject task.");
+            }
+          }
+        }
+      ],
+      "plain-text",
+      "",
+      "default"
     );
   };
 
@@ -568,13 +607,22 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               </Text>
             </View>
           </View>
-          <Pressable
-            onPress={handleApproveTask}
-            className="bg-purple-600 py-3.5 rounded-lg items-center flex-row justify-center"
-          >
-            <Ionicons name="checkmark-done-circle" size={20} color="white" />
-            <Text className="text-white font-semibold text-lg ml-2">Approve & Complete</Text>
-          </Pressable>
+          <View className="flex-row gap-3">
+            <Pressable
+              onPress={handleRejectTask}
+              className="flex-1 bg-red-600 py-3.5 rounded-lg items-center flex-row justify-center"
+            >
+              <Ionicons name="close-circle" size={20} color="white" />
+              <Text className="text-white font-semibold text-lg ml-2">Reject</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleApproveTask}
+              className="flex-1 bg-green-600 py-3.5 rounded-lg items-center flex-row justify-center"
+            >
+              <Ionicons name="checkmark-done-circle" size={20} color="white" />
+              <Text className="text-white font-semibold text-lg ml-2">Approve</Text>
+            </Pressable>
+          </View>
         </View>
       )}
 

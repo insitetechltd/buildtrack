@@ -1604,30 +1604,40 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         onRequestClose={() => setShowImagePreview(false)}
       >
         <View className="flex-1 bg-black">
-          <SafeAreaView className="flex-1">
-            {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-3">
+          {/* Image - Full screen */}
+          <View className="flex-1 items-center justify-center">
+            {selectedImageUri && (
+              <Image
+                source={{ uri: selectedImageUri }}
+                className="w-full h-full"
+                resizeMode="contain"
+              />
+            )}
+          </View>
+
+          {/* Close Button - Positioned lower and larger for easy reach */}
+          <SafeAreaView className="absolute top-0 left-0 right-0">
+            <View className="px-6 pt-4">
               <Pressable
                 onPress={() => setShowImagePreview(false)}
-                className="w-10 h-10 items-center justify-center bg-white/20 rounded-full"
+                className="w-12 h-12 items-center justify-center bg-black/60 rounded-full self-start"
+                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}
               >
-                <Ionicons name="close" size={24} color="white" />
+                <Ionicons name="close" size={28} color="white" />
               </Pressable>
-              <Text className="text-white font-semibold">Image Preview</Text>
-              <View className="w-10" />
-            </View>
-
-            {/* Image */}
-            <View className="flex-1 items-center justify-center">
-              {selectedImageUri && (
-                <Image
-                  source={{ uri: selectedImageUri }}
-                  className="w-full h-full"
-                  resizeMode="contain"
-                />
-              )}
             </View>
           </SafeAreaView>
+
+          {/* Optional: Tap anywhere to close hint */}
+          <Pressable 
+            className="absolute bottom-0 left-0 right-0 pb-8 items-center"
+            onPress={() => setShowImagePreview(false)}
+            style={{ pointerEvents: 'box-none' }}
+          >
+            <View className="bg-black/60 px-4 py-2 rounded-full">
+              <Text className="text-white/80 text-sm">Tap anywhere to close</Text>
+            </View>
+          </Pressable>
         </View>
       </Modal>
 

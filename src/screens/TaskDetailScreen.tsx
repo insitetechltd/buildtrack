@@ -28,6 +28,7 @@ import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 import TaskCard from "../components/TaskCard";
+import { useFileUpload } from "../utils/useFileUpload";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -56,6 +57,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
+  const { pickAndUploadImages, isUploading, uploadProgress, isCompressing, compressionProgress } = useFileUpload();
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({
@@ -276,6 +278,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   };
 
   const handleAddPhotos = async () => {
+    if (!user || !task) return;
+
     Alert.alert(
       "Add Photos",
       "Choose how you want to add photos",
@@ -284,27 +288,28 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           text: "Take Photo",
           onPress: async () => {
             try {
-              // Request camera permissions
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                return;
-              }
+              console.log('📸 [Task Detail] Taking photo from camera...');
+              
+              const uploadedFiles = await pickAndUploadImages(
+                {
+                  entityType: 'task-update',
+                  entityId: task.id,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'camera'
+              );
 
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                quality: 0.8,
-                allowsEditing: false,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+              if (uploadedFiles.length > 0) {
+                const newPhotoUrls = uploadedFiles.map(file => file.public_url);
                 setUpdateForm(prev => ({
                   ...prev,
-                  photos: [...prev.photos, ...newPhotos],
+                  photos: [...prev.photos, ...newPhotoUrls],
                 }));
+                console.log(`✅ [Task Detail] ${uploadedFiles.length} photo(s) uploaded and ready`);
               }
             } catch (error) {
+              console.error('❌ [Task Detail] Failed to take photo:', error);
               Alert.alert("Error", "Failed to take photo");
             }
           },
@@ -313,27 +318,28 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           text: "Choose from Library",
           onPress: async () => {
             try {
-              // Request media library permissions
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
-                return;
-              }
+              console.log('📚 [Task Detail] Selecting photos from library...');
+              
+              const uploadedFiles = await pickAndUploadImages(
+                {
+                  entityType: 'task-update',
+                  entityId: task.id,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'library'
+              );
 
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsMultipleSelection: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+              if (uploadedFiles.length > 0) {
+                const newPhotoUrls = uploadedFiles.map(file => file.public_url);
                 setUpdateForm(prev => ({
                   ...prev,
-                  photos: [...prev.photos, ...newPhotos],
+                  photos: [...prev.photos, ...newPhotoUrls],
                 }));
+                console.log(`✅ [Task Detail] ${uploadedFiles.length} photo(s) uploaded and ready`);
               }
             } catch (error) {
+              console.error('❌ [Task Detail] Failed to pick images:', error);
               Alert.alert("Error", "Failed to pick images");
             }
           },
@@ -341,31 +347,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         {
           text: "Paste from Clipboard",
           onPress: async () => {
-            try {
-              const hasImage = await Clipboard.hasImageAsync();
-              
-              if (!hasImage) {
-                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
-                return;
-              }
-
-              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
-              
-              if (imageUri && imageUri.data) {
-                // Convert base64 to URI format
-                const uri = `data:image/png;base64,${imageUri.data}`;
-                setUpdateForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, uri],
-                }));
-                Alert.alert("Success", "Image pasted from clipboard!");
-              } else {
-                Alert.alert("Error", "Could not paste image from clipboard");
-              }
-            } catch (error) {
-              console.error("Clipboard paste error:", error);
-              Alert.alert("Error", "Failed to paste from clipboard");
-            }
+            Alert.alert(
+              "Not Available",
+              "Clipboard paste is temporarily disabled. Please use Camera or Library to upload photos."
+            );
           },
         },
         {

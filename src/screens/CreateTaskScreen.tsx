@@ -30,6 +30,7 @@ import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
 import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
+import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -68,6 +69,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const { selectedProjectId } = useProjectFilterStore();
+  const { pickAndUploadImages, isUploading, isCompressing } = useFileUpload();
   const { getCompanyBanner } = useCompanyStore();
 
   // Get parent task information if creating a sub-task
@@ -278,35 +280,48 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   }, []);
 
   const handleAddPhotos = async () => {
+    if (!user) return;
+
     Alert.alert(
       "Add Photos",
-      "Note: For task creation, photos are currently stored locally. They will be visible only on this device. For shared photos across devices, add them via task updates after creating the task.",
+      "Photos will be uploaded to cloud storage and visible to all assignees.",
       [
         {
           text: "Take Photo",
           onPress: async () => {
             try {
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                return;
-              }
+              console.log('📸 [Create Task] Taking photo from camera...');
+              
+              // Use a temporary task ID for upload path
+              const tempTaskId = `temp-${Date.now()}`;
+              
+              const results: UploadResults = await pickAndUploadImages(
+                {
+                  entityType: 'task',
+                  entityId: tempTaskId,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'camera'
+              );
 
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                quality: 0.8,
-                allowsEditing: false,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
                 setFormData(prev => ({
                   ...prev,
-                  attachments: [...prev.attachments, ...newPhotos],
+                  attachments: [...prev.attachments, ...newPhotoUrls],
                 }));
-                console.log('ℹ️ [Create Task] Photos added locally. For cross-device visibility, add photos via task updates.');
+                console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
+              }
+
+              if (results.failed.length > 0) {
+                Alert.alert(
+                  'Upload Warning',
+                  `${results.failed.length} photo(s) failed to upload. Please try again.`
+                );
               }
             } catch (error) {
+              console.error('❌ [Create Task] Failed to take photo:', error);
               Alert.alert("Error", "Failed to take photo");
             }
           },
@@ -315,27 +330,38 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           text: "Choose from Library",
           onPress: async () => {
             try {
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
-                return;
-              }
+              console.log('📚 [Create Task] Selecting photos from library...');
+              
+              // Use a temporary task ID for upload path
+              const tempTaskId = `temp-${Date.now()}`;
+              
+              const results: UploadResults = await pickAndUploadImages(
+                {
+                  entityType: 'task',
+                  entityId: tempTaskId,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'library'
+              );
 
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsMultipleSelection: true,
-                quality: 0.8,
-              });
-
-              if (!result.canceled && result.assets) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
                 setFormData(prev => ({
                   ...prev,
-                  attachments: [...prev.attachments, ...newPhotos],
+                  attachments: [...prev.attachments, ...newPhotoUrls],
                 }));
-                console.log('ℹ️ [Create Task] Photos added locally. For cross-device visibility, add photos via task updates.');
+                console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
+              }
+
+              if (results.failed.length > 0) {
+                Alert.alert(
+                  'Upload Warning',
+                  `${results.failed.length} photo(s) failed to upload. Please try again.`
+                );
               }
             } catch (error) {
+              console.error('❌ [Create Task] Failed to pick images:', error);
               Alert.alert("Error", "Failed to pick images");
             }
           },

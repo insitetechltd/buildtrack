@@ -1,7 +1,6 @@
 import React, { useState, useRef } from "react";
-import { View, Pressable, Animated, Alert, Text } from "react-native";
+import { View, Pressable, Animated, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "../state/authStore";
 
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
@@ -10,13 +9,11 @@ interface ExpandableUtilityFABProps {
 }
 
 export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports }: ExpandableUtilityFABProps) {
-  const { logout } = useAuthStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
   const scaleAnim2 = useRef(new Animated.Value(0)).current;
   const scaleAnim3 = useRef(new Animated.Value(0)).current;
-  const scaleAnim4 = useRef(new Animated.Value(0)).current;
 
   const toggleExpand = () => {
     const toValue = isExpanded ? 0 : 1;
@@ -45,12 +42,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         friction: 7,
         delay: isExpanded ? 0 : 150,
       }),
-      Animated.spring(scaleAnim4, {
-        toValue,
-        useNativeDriver: true,
-        friction: 7,
-        delay: isExpanded ? 0 : 200,
-      }),
     ]).start();
     
     setIsExpanded(!isExpanded);
@@ -67,7 +58,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
     scaleAnim1.stopAnimation();
     scaleAnim2.stopAnimation();
     scaleAnim3.stopAnimation();
-    scaleAnim4.stopAnimation();
     
     // Reset all animations to collapsed state immediately
     Animated.parallel([
@@ -91,32 +81,9 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         duration: 150,
         useNativeDriver: true,
       }),
-      Animated.timing(scaleAnim4, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
     ]).start();
     
     setIsExpanded(false);
-  };
-
-  const handleLogout = () => {
-    collapseImmediately();
-    setTimeout(() => {
-      Alert.alert(
-        "Logout",
-        "Are you sure you want to logout?",
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Logout", 
-            style: "destructive",
-            onPress: logout
-          },
-        ]
-      );
-    }, 200);
   };
 
   const handleCreateTask = () => {
@@ -145,40 +112,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
 
   return (
     <View className="absolute bottom-8 right-6 items-end">
-      {/* Logout Button - appears when expanded */}
-      {/* Custom position: Center at -144px - HIGHEST POSITION */}
-      <Animated.View
-        style={{
-          transform: [
-            { scale: scaleAnim4 },
-            { translateY: scaleAnim4.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -144]
-            })}
-          ],
-          opacity: scaleAnim4,
-        }}
-        pointerEvents={isExpanded ? 'auto' : 'none'}
-        className="flex-row items-center"
-      >
-        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-          <Text className="text-white text-base font-medium">Logout</Text>
-        </View>
-        <Pressable
-          onPress={handleLogout}
-          className="w-12 h-12 bg-red-600 rounded-full items-center justify-center shadow-lg"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.25,
-            shadowRadius: 3.84,
-            elevation: 5,
-          }}
-        >
-          <Ionicons name="log-out-outline" size={20} color="white" />
-        </Pressable>
-      </Animated.View>
-
       {/* Reports Button - appears when expanded */}
       {/* Custom position: Center at -108px */}
       {onReports && (

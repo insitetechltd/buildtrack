@@ -2,23 +2,31 @@ import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
-import { uploadFile, FileUploadOptions, FileAttachment } from '../api/fileUploadService';
+import { uploadFileWithVerification, FileUploadOptions, FileAttachment, UploadResult } from '../api/fileUploadService';
 import { compressImage, compressImages, formatFileSize } from '../api/imageCompressionService';
+import { useUploadFailureStore } from '../state/uploadFailureStore';
+
+export interface UploadResults {
+  successful: FileAttachment[];
+  failed: Array<{ fileName: string; error: string; originalFile: any }>;
+}
 
 export function useFileUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
+  const { addFailure } = useUploadFailureStore();
 
   /**
    * Pick and upload images from camera or gallery
    * Automatically compresses images to be under 5MB
+   * Returns UploadResults with successful and failed uploads
    */
   const pickAndUploadImages = async (
     options: Omit<FileUploadOptions, 'file'>,
     source: 'camera' | 'library' = 'library'
-  ): Promise<FileAttachment[]> => {
+  ): Promise<UploadResults> => {
     try {
       let result;
 
@@ -49,7 +57,7 @@ export function useFileUpload() {
       }
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
-        return [];
+        return { successful: [], failed: [] };
       }
 
       console.log(`📸 Selected ${result.assets.length} image(s)`);
@@ -63,6 +71,7 @@ export function useFileUpload() {
         fileName: string;
         width: number;
         height: number;
+        originalAsset: any;
       }> = [];
 
       for (let i = 0; i < result.assets.length; i++) {
@@ -80,6 +89,7 @@ export function useFileUpload() {
             fileName: asset.fileName || `image-${Date.now()}-${i}.jpg`,
             width: compressed.width,
             height: compressed.height,
+            originalAsset: asset,
           });
 
           console.log(`✅ Image ${i + 1} compressed:`, {
@@ -101,14 +111,15 @@ export function useFileUpload() {
 
       if (compressedImages.length === 0) {
         Alert.alert('Error', 'No images could be processed. Please try again.');
-        return [];
+        return { successful: [], failed: [] };
       }
 
-      // Step 2: Upload compressed images
+      // Step 2: Upload compressed images with verification
       setIsUploading(true);
       setUploadProgress(0);
 
       const uploadedFiles: FileAttachment[] = [];
+      const failedUploads: Array<{ fileName: string; error: string; originalFile: any }> = [];
 
       for (let i = 0; i < compressedImages.length; i++) {
         const compressed = compressedImages[i];
@@ -123,31 +134,91 @@ export function useFileUpload() {
             type: 'image/jpeg', // Compressed images are always JPEG
           };
 
-          const uploadedFile = await uploadFile({ ...options, file });
-          uploadedFiles.push(uploadedFile);
+          // Upload with verification
+          const result: UploadResult = await uploadFileWithVerification({ ...options, file });
 
-          console.log(`✅ Image ${i + 1} uploaded successfully`);
-        } catch (error) {
-          console.error(`❌ Failed to upload image ${i + 1}:`, error);
-          Alert.alert(
-            'Upload Failed',
-            `Failed to upload image ${i + 1}. It will be skipped.`
-          );
+          if (result.success && result.file) {
+            uploadedFiles.push(result.file);
+            console.log(`✅ Image ${i + 1} uploaded and verified successfully`);
+          } else {
+            // Upload failed or verification failed
+            const errorMsg = result.error || 'Upload verification failed';
+            console.error(`❌ Image ${i + 1} upload failed:`, errorMsg);
+            
+            failedUploads.push({
+              fileName: compressed.fileName,
+              error: errorMsg,
+              originalFile: {
+                uri: compressed.uri,
+                name: compressed.fileName,
+                type: 'image/jpeg',
+              },
+            });
+
+            // Store failure in persistent store
+            addFailure({
+              taskId: options.entityId,
+              fileName: compressed.fileName,
+              fileUri: compressed.uri,
+              fileType: 'image/jpeg',
+              error: errorMsg,
+              entityType: options.entityType,
+              entityId: options.entityId,
+              companyId: options.companyId,
+              userId: options.userId,
+            });
+          }
+        } catch (error: any) {
+          const errorMsg = error.message || 'Unknown error';
+          console.error(`❌ Failed to upload image ${i + 1}:`, errorMsg);
+          
+          failedUploads.push({
+            fileName: compressed.fileName,
+            error: errorMsg,
+            originalFile: {
+              uri: compressed.uri,
+              name: compressed.fileName,
+              type: 'image/jpeg',
+            },
+          });
+
+          // Store failure in persistent store
+          addFailure({
+            taskId: options.entityId,
+            fileName: compressed.fileName,
+            fileUri: compressed.uri,
+            fileType: 'image/jpeg',
+            error: errorMsg,
+            entityType: options.entityType,
+            entityId: options.entityId,
+            companyId: options.companyId,
+            userId: options.userId,
+          });
         }
       }
 
       setIsUploading(false);
       setUploadProgress(0);
 
-      if (uploadedFiles.length > 0) {
-        const message = uploadedFiles.length === compressedImages.length
-          ? `Successfully uploaded ${uploadedFiles.length} image(s)`
-          : `Uploaded ${uploadedFiles.length} of ${compressedImages.length} image(s)`;
-        
-        console.log(`✅ ${message}`);
+      // Show summary alert
+      if (uploadedFiles.length > 0 && failedUploads.length > 0) {
+        Alert.alert(
+          'Upload Complete',
+          `${uploadedFiles.length} photo(s) uploaded successfully.\n${failedUploads.length} photo(s) failed - you can retry them below.`
+        );
+      } else if (uploadedFiles.length > 0) {
+        console.log(`✅ Successfully uploaded ${uploadedFiles.length} image(s)`);
+      } else if (failedUploads.length > 0) {
+        Alert.alert(
+          'Upload Failed',
+          `All ${failedUploads.length} photo(s) failed to upload. Please check your connection and retry.`
+        );
       }
 
-      return uploadedFiles;
+      return {
+        successful: uploadedFiles,
+        failed: failedUploads,
+      };
     } catch (error) {
       setIsUploading(false);
       setUploadProgress(0);
@@ -156,18 +227,19 @@ export function useFileUpload() {
       
       console.error('Image upload error:', error);
       Alert.alert('Upload Failed', 'Failed to upload images. Please try again.');
-      return [];
+      return { successful: [], failed: [] };
     }
   };
 
   /**
    * Pick and upload images with size estimation
    * Shows user what will happen before compressing
+   * Returns UploadResults with successful and failed uploads
    */
   const pickAndUploadImagesWithPreview = async (
     options: Omit<FileUploadOptions, 'file'>,
     source: 'camera' | 'library' = 'library'
-  ): Promise<FileAttachment[]> => {
+  ): Promise<UploadResults> => {
     try {
       let result;
 
@@ -175,7 +247,7 @@ export function useFileUpload() {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-          return [];
+          return { successful: [], failed: [] };
         }
 
         result = await ImagePicker.launchCameraAsync({
@@ -187,7 +259,7 @@ export function useFileUpload() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission Denied', 'Photo library permission is required.');
-          return [];
+          return { successful: [], failed: [] };
         }
 
         result = await ImagePicker.launchImageLibraryAsync({
@@ -198,7 +270,7 @@ export function useFileUpload() {
       }
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
-        return [];
+        return { successful: [], failed: [] };
       }
 
       // Check if any images need compression
@@ -217,7 +289,7 @@ export function useFileUpload() {
               {
                 text: 'Cancel',
                 style: 'cancel',
-                onPress: () => resolve([]),
+                onPress: () => resolve({ successful: [], failed: [] }),
               },
               {
                 text: 'Continue',
@@ -236,7 +308,7 @@ export function useFileUpload() {
     } catch (error) {
       console.error('Image upload error:', error);
       Alert.alert('Upload Failed', 'Failed to upload images. Please try again.');
-      return [];
+      return { successful: [], failed: [] };
     }
   };
 

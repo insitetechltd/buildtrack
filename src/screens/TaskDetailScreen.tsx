@@ -28,7 +28,8 @@ import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 import TaskCard from "../components/TaskCard";
-import { useFileUpload } from "../utils/useFileUpload";
+import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import { useUploadFailureStore } from "../state/uploadFailureStore";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -60,6 +61,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
   const { pickAndUploadImages, isUploading, uploadProgress, isCompressing, compressionProgress } = useFileUpload();
+  const { getFailuresForTask, dismissFailure, incrementRetryCount } = useUploadFailureStore();
 
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateForm, setUpdateForm] = useState({
@@ -68,6 +70,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     completionPercentage: 0,
     status: "in_progress" as TaskStatus,
   });
+  const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
@@ -316,6 +319,51 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   };
 
+  const handleRetryUpload = async (failedUpload: { fileName: string; error: string; originalFile: any }) => {
+    if (!user || !task) return;
+
+    try {
+      console.log(`🔄 [Task Detail] Retrying upload for ${failedUpload.fileName}...`);
+      
+      // Import the uploadFileWithVerification directly
+      const { uploadFileWithVerification } = require('../api/fileUploadService');
+      
+      const result = await uploadFileWithVerification({
+        file: failedUpload.originalFile,
+        entityType: 'task-update',
+        entityId: task.id,
+        companyId: user.companyId,
+        userId: user.id,
+      });
+
+      if (result.success && result.file) {
+        // Success - add to photos
+        setUpdateForm(prev => ({
+          ...prev,
+          photos: [...prev.photos, result.file!.public_url],
+        }));
+        
+        // Remove from failed list
+        setFailedUploadsInSession(prev => 
+          prev.filter(f => f.fileName !== failedUpload.fileName)
+        );
+        
+        Alert.alert("Success", `${failedUpload.fileName} uploaded successfully!`);
+        console.log(`✅ [Task Detail] Retry successful for ${failedUpload.fileName}`);
+      } else {
+        // Still failed
+        Alert.alert(
+          "Retry Failed", 
+          result.error || "Upload failed again. Please check your connection and try again."
+        );
+        console.error(`❌ [Task Detail] Retry failed:`, result.error);
+      }
+    } catch (error: any) {
+      console.error('❌ [Task Detail] Retry error:', error);
+      Alert.alert("Error", error.message || "Retry failed. Please try again.");
+    }
+  };
+
   const handleAddPhotos = async () => {
     if (!user || !task) return;
 
@@ -329,7 +377,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             try {
               console.log('📸 [Task Detail] Taking photo from camera...');
               
-              const uploadedFiles = await pickAndUploadImages(
+              const results: UploadResults = await pickAndUploadImages(
                 {
                   entityType: 'task-update',
                   entityId: task.id,
@@ -339,13 +387,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 'camera'
               );
 
-              if (uploadedFiles.length > 0) {
-                const newPhotoUrls = uploadedFiles.map(file => file.public_url);
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
                 setUpdateForm(prev => ({
                   ...prev,
                   photos: [...prev.photos, ...newPhotoUrls],
                 }));
-                console.log(`✅ [Task Detail] ${uploadedFiles.length} photo(s) uploaded and ready`);
+                console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
+              }
+
+              if (results.failed.length > 0) {
+                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
               }
             } catch (error) {
               console.error('❌ [Task Detail] Failed to take photo:', error);
@@ -359,7 +411,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             try {
               console.log('📚 [Task Detail] Selecting photos from library...');
               
-              const uploadedFiles = await pickAndUploadImages(
+              const results: UploadResults = await pickAndUploadImages(
                 {
                   entityType: 'task-update',
                   entityId: task.id,
@@ -369,13 +421,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 'library'
               );
 
-              if (uploadedFiles.length > 0) {
-                const newPhotoUrls = uploadedFiles.map(file => file.public_url);
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
                 setUpdateForm(prev => ({
                   ...prev,
                   photos: [...prev.photos, ...newPhotoUrls],
                 }));
-                console.log(`✅ [Task Detail] ${uploadedFiles.length} photo(s) uploaded and ready`);
+                console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
+              }
+
+              if (results.failed.length > 0) {
+                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
               }
             } catch (error) {
               console.error('❌ [Task Detail] Failed to pick images:', error);
@@ -436,6 +492,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         completionPercentage: updateForm.completionPercentage,
         status: calculatedStatus,
       });
+
+      // Clear failed uploads after successful submission
+      setFailedUploadsInSession([]);
 
       setShowUpdateModal(false);
       
@@ -1026,7 +1085,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
             <Pressable 
-              onPress={() => setShowUpdateModal(false)}
+              onPress={() => {
+                setShowUpdateModal(false);
+                // Clear failed uploads when canceling
+                setFailedUploadsInSession([]);
+              }}
               className="mr-4"
             >
               <Text className="text-blue-600 font-medium">Cancel</Text>
@@ -1065,6 +1128,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           className="w-24 h-24 rounded-lg"
                           resizeMode="cover"
                         />
+                        {/* Success badge */}
+                        <View className="absolute top-1 left-1 w-6 h-6 bg-green-500 rounded-full items-center justify-center">
+                          <Ionicons name="checkmark" size={14} color="white" />
+                        </View>
+                        {/* Remove button */}
                         <Pressable
                           onPress={() => {
                             setUpdateForm(prev => ({
@@ -1081,6 +1149,57 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   </View>
                 </ScrollView>
               ) : null}
+
+              {/* Failed Uploads Section with Retry */}
+              {failedUploadsInSession.length > 0 && (
+                <View className="mb-3">
+                  <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
+                    <View className="flex-row items-center mb-2">
+                      <Ionicons name="alert-circle" size={20} color="#dc2626" />
+                      <Text className="text-red-800 font-semibold ml-2">
+                        {failedUploadsInSession.length} photo(s) failed to upload
+                      </Text>
+                    </View>
+                    <Text className="text-red-700 text-sm">
+                      Check your connection and tap retry below
+                    </Text>
+                  </View>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View className="flex-row">
+                      {failedUploadsInSession.map((failedUpload, index) => (
+                        <View key={index} className="mr-3 w-24">
+                          <View className="w-24 h-24 rounded-lg bg-red-100 border-2 border-red-300 items-center justify-center mb-2">
+                            <Ionicons name="close-circle" size={40} color="#dc2626" />
+                          </View>
+                          <Text className="text-xs text-gray-700 mb-1" numberOfLines={1}>
+                            {failedUpload.fileName}
+                          </Text>
+                          <Text className="text-xs text-red-600 mb-2" numberOfLines={2}>
+                            {failedUpload.error}
+                          </Text>
+                          <Pressable
+                            onPress={() => handleRetryUpload(failedUpload)}
+                            className="bg-blue-600 py-2 rounded-lg items-center"
+                          >
+                            <Text className="text-white text-xs font-semibold">Retry</Text>
+                          </Pressable>
+                          <Pressable
+                            onPress={() => {
+                              setFailedUploadsInSession(prev => 
+                                prev.filter((_, i) => i !== index)
+                              );
+                            }}
+                            className="mt-1 py-1"
+                          >
+                            <Text className="text-gray-500 text-xs text-center">Dismiss</Text>
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
               
               <Pressable
                 onPress={handleAddPhotos}

@@ -34,6 +34,12 @@ export interface FileAttachment {
   updated_at: string;
 }
 
+export interface UploadResult {
+  success: boolean;
+  file?: FileAttachment;
+  error?: string;
+}
+
 /**
  * Determine file type from MIME type
  */
@@ -185,5 +191,67 @@ export function getFileUrl(storagePath: string): string | null {
     .getPublicUrl(storagePath);
 
   return data?.publicUrl || null;
+}
+
+/**
+ * Verify that an uploaded file is accessible
+ * Returns true if file can be fetched, false otherwise
+ */
+export async function verifyUpload(publicUrl: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    console.log(`🔍 [Upload Verification] Verifying file at: ${publicUrl}`);
+    
+    // Try to fetch the file with a HEAD request to check if it exists
+    const response = await fetch(publicUrl, { 
+      method: 'HEAD',
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
+    });
+
+    if (response.ok) {
+      console.log(`✅ [Upload Verification] File verified successfully`);
+      return { success: true };
+    } else {
+      const error = `File not accessible (HTTP ${response.status})`;
+      console.error(`❌ [Upload Verification] ${error}`);
+      return { success: false, error };
+    }
+  } catch (error: any) {
+    const errorMessage = error.message || 'Network error during verification';
+    console.error(`❌ [Upload Verification] Failed:`, errorMessage);
+    return { success: false, error: errorMessage };
+  }
+}
+
+/**
+ * Upload a file with verification
+ * Returns UploadResult with success status and file data or error
+ */
+export async function uploadFileWithVerification(options: FileUploadOptions): Promise<UploadResult> {
+  try {
+    // Upload the file
+    const fileAttachment = await uploadFile(options);
+    
+    // Verify the upload
+    const verification = await verifyUpload(fileAttachment.public_url);
+    
+    if (!verification.success) {
+      return {
+        success: false,
+        error: verification.error || 'Upload verification failed',
+      };
+    }
+    
+    return {
+      success: true,
+      file: fileAttachment,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Upload failed',
+    };
+  }
 }
 

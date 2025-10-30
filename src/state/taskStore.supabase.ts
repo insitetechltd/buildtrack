@@ -625,8 +625,40 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
-        set({ isLoading: true, error: null });
+        // OPTIMISTIC UPDATE: Store original state for potential rollback
+        const originalTasks = get().tasks;
+        
         try {
+          // Get current task to check if it's self-assigned
+          const currentTask = get().tasks.find(t => t.id === id);
+          
+          // Auto-accept self-assigned tasks when they reach 100%
+          if (currentTask && updates.completionPercentage === 100) {
+            const isSelfAssigned = currentTask.assignedBy && 
+                                  currentTask.assignedTo && 
+                                  currentTask.assignedTo.length === 1 && 
+                                  currentTask.assignedTo[0] === currentTask.assignedBy;
+            
+            if (isSelfAssigned && updates.reviewAccepted === undefined) {
+              updates.reviewAccepted = true;
+              updates.reviewedBy = currentTask.assignedBy;
+              updates.reviewedAt = new Date().toISOString();
+            }
+          }
+          
+          // OPTIMISTIC UPDATE: Update local state IMMEDIATELY before backend call
+          console.log(`⚡ [Optimistic Update] Updating task ${id} locally before backend sync`);
+          set(state => ({
+            tasks: state.tasks.map(task =>
+              task.id === id 
+                ? { ...task, ...updates, updatedAt: new Date().toISOString() } 
+                : task
+            ),
+            isLoading: true,
+            error: null,
+          }));
+          
+          // Prepare data for backend
           const updateData: any = {};
           if (updates.title) updateData.title = updates.title;
           if (updates.description) updateData.description = updates.description;
@@ -646,6 +678,7 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
           if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
 
+          // Send update to backend
           const { error } = await supabase
             .from('tasks')
             .update(updateData)
@@ -653,18 +686,15 @@ export const useTaskStore = create<TaskStore>()(
 
           if (error) throw error;
 
-          // Update local state
-          set(state => ({
-            tasks: state.tasks.map(task =>
-              task.id === id 
-                ? { ...task, ...updates, updatedAt: new Date().toISOString() } 
-                : task
-            ),
-            isLoading: false,
-          }));
+          // Success - backend confirmed the update
+          console.log(`✅ [Optimistic Update] Backend confirmed update for task ${id}`);
+          set({ isLoading: false });
+          
         } catch (error: any) {
-          console.error('Error updating task:', error);
+          console.error('❌ [Optimistic Update] Backend failed, rolling back:', error);
+          // ROLLBACK: Restore original state on failure
           set({ 
+            tasks: originalTasks,
             error: error.message, 
             isLoading: false 
           });
@@ -796,7 +826,8 @@ export const useTaskStore = create<TaskStore>()(
           reviewedAt: new Date().toISOString(),
           reviewAccepted: true,
           currentStatus: "completed",
-          completionPercentage: 100
+          completionPercentage: 100,
+          starredByUsers: [] // Un-star task when accepted
         });
       },
 
@@ -813,7 +844,8 @@ export const useTaskStore = create<TaskStore>()(
           reviewedAt: new Date().toISOString(),
           reviewAccepted: true,
           currentStatus: "completed",
-          completionPercentage: 100
+          completionPercentage: 100,
+          starredByUsers: [] // Un-star subtask when accepted
         });
       },
 
@@ -837,8 +869,34 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
+        // OPTIMISTIC UPDATE: Store original state for potential rollback
+        const originalTasks = get().tasks;
+        
         try {
-          // Insert the task update
+          // Create the new update with temporary ID
+          const newUpdate: TaskUpdate = {
+            ...update,
+            id: `temp-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+          };
+
+          // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
+          console.log(`⚡ [Optimistic Update] Adding update to task ${taskId} locally before backend sync`);
+          set(state => ({
+            tasks: state.tasks.map(task =>
+              task.id === taskId
+                ? { 
+                    ...task, 
+                    updates: [...task.updates, newUpdate],
+                    completionPercentage: update.completionPercentage,
+                    currentStatus: update.status,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : task
+            )
+          }));
+
+          // Insert the task update to backend
           const { error: updateError } = await supabase
             .from('task_updates')
             .insert({
@@ -852,7 +910,7 @@ export const useTaskStore = create<TaskStore>()(
 
           if (updateError) throw updateError;
 
-          // Update the task's completion percentage and status
+          // Update the task's completion percentage and status in backend
           const { error: taskError } = await supabase
             .from('tasks')
             .update({
@@ -864,10 +922,16 @@ export const useTaskStore = create<TaskStore>()(
 
           if (taskError) throw taskError;
 
-          // Refresh task data
-          await get().fetchTaskById(taskId);
+          // Success - backend confirmed
+          console.log(`✅ [Optimistic Update] Backend confirmed task update for ${taskId}`);
+          
+          // Optionally refresh to get real IDs from backend (in background)
+          get().fetchTaskById(taskId);
+          
         } catch (error: any) {
-          console.error('Error adding task update:', error);
+          console.error('❌ [Optimistic Update] Backend failed for task update, rolling back:', error);
+          // ROLLBACK: Restore original state on failure
+          set({ tasks: originalTasks });
           throw error;
         }
       },
@@ -1083,6 +1147,33 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
+          // Get current subtask to check if it's self-assigned
+          const currentTask = get().tasks.find(t => t.id === taskId);
+          const findSubTask = (subTasks: SubTask[] | undefined): SubTask | undefined => {
+            if (!subTasks) return undefined;
+            for (const subTask of subTasks) {
+              if (subTask.id === subTaskId) return subTask;
+              const nested = findSubTask(subTask.subTasks);
+              if (nested) return nested;
+            }
+            return undefined;
+          };
+          const currentSubTask = currentTask ? findSubTask(currentTask.subTasks) : undefined;
+          
+          // Auto-accept self-assigned subtasks when they reach 100%
+          if (currentSubTask && updates.completionPercentage === 100) {
+            const isSelfAssigned = currentSubTask.assignedBy && 
+                                  currentSubTask.assignedTo && 
+                                  currentSubTask.assignedTo.length === 1 && 
+                                  currentSubTask.assignedTo[0] === currentSubTask.assignedBy;
+            
+            if (isSelfAssigned && updates.reviewAccepted === undefined) {
+              updates.reviewAccepted = true;
+              updates.reviewedBy = currentSubTask.assignedBy;
+              updates.reviewedAt = new Date().toISOString();
+            }
+          }
+          
           const updateData: any = {};
           if (updates.title) updateData.title = updates.title;
           if (updates.description) updateData.description = updates.description;
@@ -1095,6 +1186,11 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.declineReason) updateData.decline_reason = updates.declineReason;
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
+          // Review workflow fields for subtasks
+          if (updates.readyForReview !== undefined) updateData.ready_for_review = updates.readyForReview;
+          if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
+          if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
+          if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
 
           const { error } = await supabase
             .from('sub_tasks')

@@ -4,15 +4,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ProjectFilterState {
   selectedProjectId: string | null;
-  sectionFilter: "my_tasks" | "inbox" | "outbox" | "all" | null;
+  sectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | null;
   statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
+  buttonLabel: string | null; // The label from the Dashboard button
   
   // Per-user last selected projects
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
   setSelectedProject: (projectId: string | null, userId?: string) => void;
-  setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "all") => void;
+  setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work") => void;
   setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned") => void;
+  setButtonLabel: (label: string | null) => void;
   clearSectionFilter: () => void;
   clearStatusFilter: () => void;
   getLastSelectedProject: (userId: string) => string | null;
@@ -24,6 +26,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       selectedProjectId: null,
       sectionFilter: null,
       statusFilter: null,
+      buttonLabel: null,
       lastSelectedProjects: {}, // Store last selected project per user
       
       setSelectedProject: (projectId: string | null, userId?: string) => {
@@ -46,6 +49,10 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       
       setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => {
         set({ statusFilter: status });
+      },
+      
+      setButtonLabel: (label: string | null) => {
+        set({ buttonLabel: label });
       },
       
       clearSectionFilter: () => {

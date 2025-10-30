@@ -28,12 +28,14 @@ interface AdminDashboardScreenProps {
   onNavigateToProjects: () => void;
   onNavigateToUserManagement: () => void;
   onNavigateToProfile: () => void;
+  onNavigateToDevAdmin?: () => void;
 }
 
 export default function AdminDashboardScreen({ 
   onNavigateToProjects,
   onNavigateToUserManagement,
-  onNavigateToProfile
+  onNavigateToProfile,
+  onNavigateToDevAdmin
 }: AdminDashboardScreenProps) {
   const { user } = useAuthStore();
   const { getProjectsByCompany, userAssignments } = useProjectStoreWithCompanyInit(user.companyId);
@@ -474,6 +476,18 @@ export default function AdminDashboardScreen({
             borderColor="border-amber-300"
             onPress={openBannerModal}
           />
+
+          {onNavigateToDevAdmin && (
+            <QuickActionCard
+              title="Dev Admin Tools"
+              description="Database management, testing scripts, and environment control"
+              icon="code-slash-outline"
+              color="bg-red-50"
+              iconColor="#ef4444"
+              borderColor="border-red-300"
+              onPress={onNavigateToDevAdmin}
+            />
+          )}
         </View>
       </ScrollView>
 

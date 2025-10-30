@@ -20,6 +20,7 @@ import CreateProjectScreen from "../screens/CreateProjectScreen";
 import UserManagementScreen from "../screens/UserManagementScreen";
 import AdminDashboardScreen from "../screens/AdminDashboardScreen";
 import ProjectDetailScreen from "../screens/ProjectDetailScreen";
+import DevAdminScreen from "../screens/DevAdminScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -236,6 +237,7 @@ function AdminDashboardStack() {
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreenWrapper} />
       <Stack.Screen name="CreateProject" component={CreateProjectMainScreen} />
       <Stack.Screen name="UserManagement" component={UserManagementMainScreen} />
+      <Stack.Screen name="DevAdmin" component={DevAdminScreen} />
     </Stack.Navigator>
   );
 }
@@ -246,6 +248,7 @@ function AdminDashboardMainScreen({ navigation }: { navigation: any }) {
       onNavigateToProjects={() => navigation.navigate("ProjectsList")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToDevAdmin={() => navigation.navigate("DevAdmin")}
     />
   );
 }

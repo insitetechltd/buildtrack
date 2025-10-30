@@ -234,30 +234,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   };
 
-  const handleSubmitForReview = () => {
-    Alert.alert(
-      "Submit for Review",
-      "Submit this completed task for review by the task creator?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Submit",
-          onPress: async () => {
-            try {
-              if (isViewingSubTask && subTaskId) {
-                await submitSubTaskForReview(taskId, subTaskId);
-              } else {
-                await submitTaskForReview(task.id);
-              }
-              Alert.alert("Success", "Task submitted for review!");
-            } catch (error) {
-              Alert.alert("Error", "Failed to submit task for review.");
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const handleApproveTask = () => {
     Alert.alert(
@@ -439,12 +415,52 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       setShowUpdateModal(false);
       
-      let successMessage = "Progress update added successfully!";
+      // Check if task reached 100% and prompt for review submission
       if (updateForm.completionPercentage === 100) {
-        successMessage = "🎉 Task marked as completed! Great job!";
+        // Check if task is self-assigned (no review needed, auto-accepted)
+        const assignedTo = task.assignedTo || [];
+        const isSelfAssigned = task.assignedBy === user.id && 
+                              assignedTo.length === 1 && 
+                              assignedTo[0] === user.id;
+        
+        if (!isSelfAssigned && !task.readyForReview) {
+          // Not self-assigned and not already submitted - prompt for review
+          Alert.alert(
+            "Task Complete!",
+            "Great job! Would you like to submit this task for review by the task creator?",
+            [
+              {
+                text: "Not Yet",
+                style: "cancel",
+                onPress: () => {
+                  Alert.alert("Success", "🎉 Task marked as completed!");
+                }
+              },
+              {
+                text: "Submit for Review",
+                onPress: async () => {
+                  try {
+                    if (isViewingSubTask && subTaskId) {
+                      await submitSubTaskForReview(taskId, subTaskId);
+                    } else {
+                      await submitTaskForReview(task.id);
+                    }
+                    Alert.alert("Success", "🎉 Task completed and submitted for review!");
+                  } catch (error) {
+                    Alert.alert("Error", "Failed to submit for review, but task is marked as complete.");
+                  }
+                }
+              }
+            ]
+          );
+        } else {
+          // Self-assigned or already submitted
+          Alert.alert("Success", "🎉 Task marked as completed! Great job!");
+        }
+      } else {
+        // Not 100%, show normal success message
+        Alert.alert("Success", "Progress update added successfully!");
       }
-      
-      Alert.alert("Success", successMessage);
     } catch (error) {
       Alert.alert("Error", "Failed to submit update");
     } finally {
@@ -524,35 +540,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
-      {/* Submit for Review Banner - Shown when task is 100% complete but not yet submitted */}
-      {isAssignedToMe && 
-       task.accepted === true && 
-       task.completionPercentage === 100 && 
-       !task.readyForReview && 
-       !task.reviewAccepted && (
-        <View className="bg-blue-50 border-b-2 border-blue-200 px-6 py-4">
-          <View className="flex-row items-center mb-3">
-            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="checkmark-done-circle" size={24} color="#3b82f6" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-blue-900">
-                Task Complete!
-              </Text>
-              <Text className="text-base text-blue-700">
-                Submit this task for review by the task creator
-              </Text>
-            </View>
-          </View>
-          <Pressable
-            onPress={handleSubmitForReview}
-            className="bg-blue-600 py-3.5 rounded-lg items-center flex-row justify-center"
-          >
-            <Ionicons name="paper-plane" size={20} color="white" />
-            <Text className="text-white font-semibold text-lg ml-2">Submit for Review</Text>
-          </Pressable>
-        </View>
-      )}
 
       {/* Awaiting Approval Banner - Shown to assignee after submitting for review */}
       {isAssignedToMe && 

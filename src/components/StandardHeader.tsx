@@ -9,6 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 import { useCompanyStore } from "../state/companyStore";
+import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
 import { cn } from "../utils/cn";
 import { checkSupabaseConnection } from "../api/supabase";
@@ -33,6 +34,7 @@ export default function StandardHeader({
 }: StandardHeaderProps) {
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
+  const { isDarkMode } = useThemeStore();
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
   const t = useTranslation();
@@ -57,7 +59,11 @@ export default function StandardHeader({
   const banner = getCompanyBanner(user.companyId);
 
   return (
-    <View className={cn("bg-white border-b border-gray-200 px-6 py-4", className)}>
+    <View className={cn(
+      "border-b px-6 py-4",
+      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
+      className
+    )}>
 
       {/* Company Banner */}
       {banner && banner.isVisible && (
@@ -94,17 +100,23 @@ export default function StandardHeader({
             onPress={onBackPress}
             className="w-10 h-10 items-center justify-center mr-3"
           >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
+            <Ionicons name="arrow-back" size={24} color={isDarkMode ? "#cbd5e1" : "#374151"} />
           </Pressable>
         )}
         
         {/* Title and Subtitle */}
         <View className="flex-1">
-          <Text className="text-2xl font-bold text-gray-900">
+          <Text className={cn(
+            "text-2xl font-bold",
+            isDarkMode ? "text-white" : "text-gray-900"
+          )}>
             {title}
           </Text>
           {subtitle && (
-            <Text className="text-base text-gray-600 mt-0.5" numberOfLines={1}>
+            <Text className={cn(
+              "text-base mt-0.5",
+              isDarkMode ? "text-slate-400" : "text-gray-600"
+            )} numberOfLines={1}>
               {subtitle}
             </Text>
           )}

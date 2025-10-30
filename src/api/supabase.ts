@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Get environment variables
@@ -18,7 +18,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Create Supabase client (only if environment variables are available)
-export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
+let _supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     // Use AsyncStorage for session persistence
     storage: AsyncStorage,
@@ -41,6 +41,28 @@ export const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUr
     },
   },
 }) : null;
+
+// Export mutable reference for backward compatibility
+export let supabase = _supabaseClient;
+
+/**
+ * Set a new Supabase client (for environment switching)
+ * @param newClient - New Supabase client instance
+ */
+export function setSupabaseClient(newClient: SupabaseClient | null) {
+  _supabaseClient = newClient;
+  // @ts-ignore - We need to reassign the exported const
+  supabase = newClient;
+  console.log('✅ Supabase client updated');
+}
+
+/**
+ * Get the current active Supabase client
+ * @returns Current Supabase client or null
+ */
+export function getSupabaseClient(): SupabaseClient | null {
+  return _supabaseClient;
+}
 
 // Helper function to check connection
 export async function checkSupabaseConnection() {

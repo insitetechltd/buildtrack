@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -58,6 +58,9 @@ export default function DashboardScreen({
   const [hasInitialized, setHasInitialized] = useState(false);
   const t = useTranslation();
   const { fetchUsers } = useUserStore();
+  
+  // Track if we've already run initial project selection to prevent re-running on data refreshes
+  const hasRunInitialSelection = useRef(false);
 
   // Pull-to-refresh handler (silent - no alerts)
   const handleRefresh = async () => {
@@ -118,15 +121,20 @@ export default function DashboardScreen({
     }
   }, [projects.length, isLoadingProjects, user]);
 
-  // Smart project selection logic - runs after projects are loaded
+  // Smart project selection logic - ONLY runs once on initial load
+  // This prevents unexpected project switching during data refreshes
   useEffect(() => {
-    if (!user || !hasInitialized) return;
+    // Only run once on initial load
+    if (!user || !hasInitialized || hasRunInitialSelection.current) return;
     
-    console.log(`📊 [DashboardScreen] Project selection logic:
+    console.log(`📊 [DashboardScreen] Initial project selection logic (one-time):
       - User: ${user.name}
       - User projects: ${userProjectCount}
       - Selected: ${selectedProjectId || "null"}
     `);
+    
+    // Mark that we've run the initial selection
+    hasRunInitialSelection.current = true;
     
     // Case 1: User has no projects → Clear any selection
     if (userProjectCount === 0) {
@@ -137,7 +145,7 @@ export default function DashboardScreen({
       return;
     }
     
-    // Case 2: User has exactly 1 project → Auto-select it
+    // Case 2: User has exactly 1 project → Auto-select it (only on initial load)
     if (userProjectCount === 1) {
       const singleProject = userProjects[0];
       if (selectedProjectId !== singleProject.id) {
@@ -173,7 +181,30 @@ export default function DashboardScreen({
       console.log(`   → Multiple projects, no valid selection - opening picker`);
       setShowProjectPicker(true);
     }
-  }, [user?.id, hasInitialized, userProjectCount, selectedProjectId]);
+  }, [user?.id, hasInitialized]);
+  
+  // Separate effect to validate current selection when projects change (but don't auto-switch)
+  useEffect(() => {
+    // Skip if we haven't initialized yet or if user is not logged in
+    if (!user || !hasInitialized || !hasRunInitialSelection.current) return;
+    
+    // If user has no projects, clear selection
+    if (userProjectCount === 0 && selectedProjectId !== null) {
+      console.log(`⚠️ [DashboardScreen] User has no projects, clearing selection`);
+      setSelectedProject(null, user.id);
+      return;
+    }
+    
+    // If current selection is invalid (project no longer accessible), clear it
+    if (selectedProjectId && !userProjects.some(p => p.id === selectedProjectId)) {
+      console.log(`⚠️ [DashboardScreen] Current project no longer accessible, clearing selection`);
+      setSelectedProject(null, user.id);
+      // Optionally show picker if user has multiple projects
+      if (userProjectCount > 1) {
+        setShowProjectPicker(true);
+      }
+    }
+  }, [userProjectCount, selectedProjectId, user?.id, hasInitialized]);
 
   // Note: Data syncing now handled by DataSyncManager (3-min polling + foreground refresh)
   // Pull-to-refresh provides manual control

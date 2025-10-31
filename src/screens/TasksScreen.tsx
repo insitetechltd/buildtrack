@@ -805,22 +805,32 @@ export default function TasksScreen({
         console.log(`  📎 Subtask found: "${task.title}" (parentId: ${task.parentTaskId})`);
         
         // Check if parent task is in the list
-        const parentExists = allTasks.some(t => t.id === task.parentTaskId);
+        const parentTask = allTasks.find(t => t.id === task.parentTaskId);
+        const parentExists = !!parentTask;
         
         console.log(`    Parent exists in list: ${parentExists}`);
         
-        if (parentExists) {
-          // Add to parent's subtask list
+        // Check if subtask has the SAME assignees as parent
+        // If different assignees, show as standalone card for the assignee
+        const hasSameAssignees = parentTask && 
+          JSON.stringify(task.assignedTo.sort()) === JSON.stringify(parentTask.assignedTo.sort());
+        
+        console.log(`    Same assignees as parent: ${hasSameAssignees}`);
+        console.log(`    Subtask assignedTo: ${JSON.stringify(task.assignedTo)}`);
+        console.log(`    Parent assignedTo: ${parentTask ? JSON.stringify(parentTask.assignedTo) : 'N/A'}`);
+        
+        if (parentExists && hasSameAssignees) {
+          // Group under parent only if they have the same assignees
           if (!taskMap.has(task.parentTaskId)) {
-            const parentTask = allTasks.find(t => t.id === task.parentTaskId)!;
-            taskMap.set(task.parentTaskId, { parent: parentTask, subtasks: [] });
+            taskMap.set(task.parentTaskId, { parent: parentTask!, subtasks: [] });
           }
           taskMap.get(task.parentTaskId)!.subtasks.push(task);
-          console.log(`    ✅ Added to parent's subtask list`);
+          console.log(`    ✅ Added to parent's subtask list (same assignees)`);
         } else {
-          // Parent not in list, show subtask standalone
+          // Show standalone if: parent not in list OR different assignees
           standaloneSubtasks.push(task);
-          console.log(`    ⚠️ Parent not in list, showing standalone`);
+          const reason = !parentExists ? 'parent not in list' : 'different assignees';
+          console.log(`    ⚠️ Showing standalone (${reason})`);
         }
       } else {
         // Top-level task (no parent)

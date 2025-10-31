@@ -55,14 +55,41 @@ if (isSubTask && task.parentTaskId) {
 ### Scenario 2: Sub-task with different assignees than parent
 - Sub-task appears as a standalone card for the new assignee
 - Shows the "Sub-task" banner at the top of the card
-- When clicked, opens the parent task detail view with the sub-task focused
+- When clicked, opens the **sub-task detail view** (NOT the parent task detail)
+- User sees the sub-task's specific details, assignees, and can accept/reject
 
 ### Scenario 3: Sub-task where parent is not in filtered list
 - Sub-task appears as a standalone card
 - Shows the "Sub-task" banner at the top of the card
 
+## Bug #2 Fixed: Sub-task Detail View
+
+### Problem
+When clicking on a standalone sub-task card, the app was showing the **parent task's details** instead of the **sub-task's details**.
+
+### Root Cause
+The `TaskDetailScreen` was still using the old nested sub-task structure:
+```typescript
+const subTask = subTaskId && parentTask 
+  ? parentTask.subTasks?.find(st => st.id === subTaskId)
+  : null;
+```
+
+This was looking for `parentTask.subTasks` which no longer exists after the unified tasks migration.
+
+### Solution
+Updated to fetch the sub-task directly from the unified tasks table:
+```typescript
+const subTask = subTaskId 
+  ? tasks.find(t => t.id === subTaskId)
+  : null;
+```
+
+Now when a user clicks on a sub-task card, they see the correct sub-task details including its specific assignees, due date, description, and accept/reject buttons.
+
 ## Files Modified
-- `src/screens/TasksScreen.tsx` (lines 795-843)
+- `src/screens/TasksScreen.tsx` (lines 795-843) - Fixed task grouping logic
+- `src/screens/TaskDetailScreen.tsx` (lines 85-96) - Fixed sub-task detail view to use unified tasks table
 
 ## Testing Recommendations
 1. Create a parent task assigned to User A

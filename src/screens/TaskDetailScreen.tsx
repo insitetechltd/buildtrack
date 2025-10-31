@@ -85,9 +85,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // Get the parent task
   const parentTask = tasks.find(t => t.id === taskId);
   
-  // If subTaskId is provided, find and display that subtask as the main task
-  const subTask = subTaskId && parentTask 
-    ? parentTask.subTasks?.find(st => st.id === subTaskId)
+  // ✅ UPDATED: If subTaskId is provided, find the subtask directly from the unified tasks table
+  // (not from nested subTasks array - that's the old schema)
+  const subTask = subTaskId 
+    ? tasks.find(t => t.id === subTaskId)
     : null;
   
   // Use subtask if viewing subtask, otherwise use parent task

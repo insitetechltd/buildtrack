@@ -17,7 +17,7 @@ import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStore } from "../state/projectStore";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
-import { Task, SubTask } from "../types/buildtrack";
+import { Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 

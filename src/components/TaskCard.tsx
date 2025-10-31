@@ -1,18 +1,16 @@
 import React from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Task, SubTask, Priority, TaskStatus } from "../types/buildtrack";
+import { Task, Priority, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useThemeStore } from "../state/themeStore";
 
-// Type for task list items (can be Task or SubTask)
-export type TaskListItem = Task | (SubTask & { isSubTask: true });
-
+// ✅ UPDATED: Task can now have parentTaskId to indicate it's nested
 interface TaskCardProps {
-  task: TaskListItem;
+  task: Task;
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   className?: string;
 }
@@ -23,7 +21,8 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   const { getUserById } = useUserStoreWithInit();
   const { isDarkMode } = useThemeStore();
   
-  const isSubTask = 'isSubTask' in task && task.isSubTask;
+  // Check if this is a nested task (has a parent)
+  const isSubTask = !!task.parentTaskId;
   
   // Check if task is delegated (has delegation history)
   const isDelegated = task.delegationHistory && task.delegationHistory.length > 0;
@@ -41,7 +40,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   
   // Get assigner and assignees
   const assigner = getUserById(task.assignedBy);
-  const assignees = task.assignedTo.map(id => getUserById(id)).filter(Boolean);
+  const assignees = task.assignedTo.map((id: string) => getUserById(id)).filter(Boolean);
   
   // Check if task is 100% complete
   const isCompleted = task.completionPercentage === 100;
@@ -71,7 +70,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           taskStore.markTaskAsRead(user.id, task.id);
         }
         
-        if (isSubTask) {
+        if (isSubTask && task.parentTaskId) {
           onNavigateToTaskDetail(task.parentTaskId, task.id);
         } else {
           onNavigateToTaskDetail(task.id);

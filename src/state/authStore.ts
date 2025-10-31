@@ -7,6 +7,9 @@ import { useUserStore } from "./userStore.supabase";
 
 interface AuthStore extends AuthState {
   isInitialized: boolean;
+  session: any | null;
+  error: string | null;
+  // Existing methods
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (data: {
@@ -20,15 +23,23 @@ interface AuthStore extends AuthState {
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Test-compatible method names
+  signUp: (email: string, password: string, fullName?: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  restoreSession: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       user: null,
+      session: null,
       isAuthenticated: false,
       isLoading: false,
       isInitialized: false,
+      error: null,
 
       login: async (username: string, password: string) => {
         console.log('🔐 Login attempt:', username);
@@ -343,6 +354,198 @@ export const useAuthStore = create<AuthStore>()(
           }
         } catch (error) {
           console.error('Error refreshing user:', error);
+        }
+      },
+
+      // Test-compatible method implementations
+      signUp: async (email: string, password: string, fullName?: string) => {
+        set({ isLoading: true, error: null });
+        
+        try {
+          if (!supabase) {
+            throw new Error('Supabase not configured');
+          }
+
+          const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName || '',
+              }
+            }
+          });
+
+          if (error) {
+            set({ isLoading: false, error: error.message });
+            throw error;
+          }
+
+          if (data.user && data.session) {
+            set({ 
+              user: { 
+                id: data.user.id, 
+                email: data.user.email,
+                name: fullName || data.user.email?.split('@')[0] || 'User'
+              } as any,
+              session: data.session,
+              isAuthenticated: true,
+              isLoading: false,
+              error: null
+            });
+          }
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message });
+          throw error;
+        }
+      },
+
+      signIn: async (email: string, password: string) => {
+        set({ isLoading: true, error: null });
+        
+        try {
+          if (!supabase) {
+            throw new Error('Supabase not configured');
+          }
+
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            set({ isLoading: false, error: error.message });
+            throw error;
+          }
+
+          if (data.user && data.session) {
+            // Fetch user details from users table
+            const { data: userData } = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', data.user.email)
+              .single();
+
+            const transformedUser = userData ? {
+              ...userData,
+              companyId: userData.company_id || userData.companyId,
+            } : {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.email?.split('@')[0] || 'User'
+            };
+
+            set({ 
+              user: transformedUser as any,
+              session: data.session,
+              isAuthenticated: true,
+              isLoading: false,
+              isInitialized: true,
+              error: null
+            });
+          }
+        } catch (error: any) {
+          set({ isLoading: false, error: error.message });
+          throw error;
+        }
+      },
+
+      signOut: async () => {
+        try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+          set({ 
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          });
+        } catch (error: any) {
+          console.error('Logout error:', error);
+          // Clear state anyway
+          set({ 
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          });
+        }
+      },
+
+      restoreSession: async () => {
+        try {
+          if (!supabase) return;
+
+          const { data: { session }, error } = await supabase.auth.getSession();
+
+          if (error) {
+            console.error('Session restore error:', error);
+            set({ user: null, session: null, isAuthenticated: false });
+            return;
+          }
+
+          if (session) {
+            // Check if session is expired
+            if (session.expires_at && session.expires_at < Date.now() / 1000) {
+              console.log('Session expired');
+              set({ user: null, session: null, isAuthenticated: false });
+              return;
+            }
+
+            // Get user data
+            const { data: { user } } = await supabase.auth.getUser();
+            
+            if (user) {
+              const { data: userData } = await supabase
+                .from('users')
+                .select('*')
+                .eq('email', user.email)
+                .single();
+
+              const transformedUser = userData ? {
+                ...userData,
+                companyId: userData.company_id || userData.companyId,
+              } : {
+                id: user.id,
+                email: user.email,
+                name: user.email?.split('@')[0] || 'User'
+              };
+
+              set({ 
+                user: transformedUser as any,
+                session,
+                isAuthenticated: true,
+                isInitialized: true
+              });
+            }
+          } else {
+            set({ user: null, session: null, isAuthenticated: false });
+          }
+        } catch (error) {
+          console.error('Error restoring session:', error);
+          set({ user: null, session: null, isAuthenticated: false });
+        }
+      },
+
+      refreshSession: async () => {
+        try {
+          if (!supabase) return;
+
+          const { data, error } = await supabase.auth.refreshSession();
+
+          if (error) {
+            console.error('Session refresh error:', error);
+            return;
+          }
+
+          if (data.session) {
+            set({ session: data.session });
+          }
+        } catch (error) {
+          console.error('Error refreshing session:', error);
         }
       },
     }),

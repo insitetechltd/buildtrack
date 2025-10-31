@@ -292,50 +292,24 @@ export interface TaskUpdate {
   userId: string;
 }
 
-export interface SubTask {
-  id: string;
-  parentTaskId: string;
-  projectId: string; // Same project as parent
-  title: string;
-  description: string;
-  priority: Priority;
-  dueDate: string;
-  category: TaskCategory; // Add category
-  attachments: string[]; // Add attachments
-  location?: {
-    address?: string;
-    latitude?: number;
-    longitude?: number;
-  };
-  assignedTo: string[];
-  assignedBy: string;
-  originalAssignedBy?: string; // Original creator before any delegation
-  createdAt: string;
-  updates: TaskUpdate[]; // Add updates
-  currentStatus: TaskStatus;
-  completionPercentage: number;
-  accepted?: boolean;
-  acceptedBy?: string; // User ID who accepted the subtask
-  acceptedAt?: string; // When the subtask was accepted
-  declineReason?: string;
-  subTasks?: SubTask[]; // Recursive nesting
-  delegationHistory?: Array<{ // Track subtask delegation
-    fromUserId: string;
-    toUserId: string;
-    reason?: string;
-    timestamp: string;
-  }>;
-  starredByUsers?: string[]; // Array of user IDs who starred this subtask
-  // Review workflow
-  readyForReview?: boolean; // Assignee marks subtask as ready for review
-  reviewedBy?: string; // User ID who reviewed the subtask
-  reviewedAt?: string; // When the subtask was reviewed
-  reviewAccepted?: boolean; // Whether the review was accepted
-}
-
+/**
+ * TASK (Unified)
+ * 
+ * After migration: tasks and sub_tasks are now unified into a single table.
+ * - Top-level tasks have parentTaskId = null
+ * - Nested tasks have parentTaskId set to their parent
+ * - Unlimited nesting depth via self-referential structure
+ */
 export interface Task {
   id: string;
-  projectId: string; // Tasks now belong to projects
+  projectId: string;
+  
+  // ✅ NEW: Self-referential parent for unlimited nesting
+  parentTaskId?: string | null; // NULL = top-level task, UUID = nested task
+  nestingLevel?: number; // 0 = top-level, 1+ = nested depth
+  rootTaskId?: string | null; // Reference to the top-level task in the tree
+  
+  // Core fields
   title: string;
   description: string;
   priority: Priority;
@@ -358,22 +332,32 @@ export interface Task {
   acceptedBy?: string; // User ID who accepted the task
   acceptedAt?: string; // When the task was accepted
   declineReason?: string;
-  subTasks?: SubTask[]; // Add subtasks array
-  delegationHistory?: Array<{ // Track task delegation
+  
+  // Client-side only: Children loaded dynamically
+  children?: Task[]; // For tree rendering - populated by app logic
+  
+  delegationHistory?: Array<{
     fromUserId: string;
     toUserId: string;
     reason?: string;
     timestamp: string;
   }>;
   
-  // Today's Tasks feature - track which users starred this task
-  starredByUsers?: string[]; // Array of user IDs who starred this for today
+  // Today's Tasks feature
+  starredByUsers?: string[];
+  
   // Review workflow
-  readyForReview?: boolean; // Assignee marks task as ready for review
-  reviewedBy?: string; // User ID who reviewed the task
-  reviewedAt?: string; // When the task was reviewed
-  reviewAccepted?: boolean; // Whether the review was accepted
+  readyForReview?: boolean;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewAccepted?: boolean;
 }
+
+/**
+ * @deprecated SubTask type is deprecated. Use Task with parentTaskId instead.
+ * This type alias is kept for backward compatibility during migration.
+ */
+export type SubTask = Task;
 
 export interface AuthState {
   user: User | null;

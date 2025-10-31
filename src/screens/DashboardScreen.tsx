@@ -19,7 +19,7 @@ import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
-import { Task, Priority, SubTask } from "../types/buildtrack";
+import { Task, Priority } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import StandardHeader from "../components/StandardHeader";
@@ -241,39 +241,23 @@ export default function DashboardScreen({
     ? tasks.filter(task => task.projectId === selectedProjectId)
     : []; // No tasks shown if no project selected (should not reach here due to early returns)
 
-  // Helper function to recursively collect all subtasks assigned by a user
-  const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      if (subTask.assignedBy === userId) {
-        result.push(subTask);
-      }
-      // Recursively collect from nested subtasks
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedBy(subTask.subTasks, userId));
-      }
-    }
-    return result;
+  // ✅ UPDATED: Simplified for unified tasks table
+  // Get all nested tasks (tasks with parentTaskId) assigned by a user
+  const getNestedTasksAssignedBy = (userId: string): Task[] => {
+    return projectFilteredTasks.filter(task => 
+      task.parentTaskId && // Is a nested task
+      task.assignedBy === userId
+    );
   };
 
-  // Helper function to recursively collect all subtasks assigned to a user
-  const collectSubTasksAssignedTo = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      const assignedTo = subTask.assignedTo || [];
-      if (Array.isArray(assignedTo) && assignedTo.includes(userId)) {
-        result.push(subTask);
-      }
-      // Recursively collect from nested subtasks
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedTo(subTask.subTasks, userId));
-      }
-    }
-    return result;
+  // Get all nested tasks assigned to a user
+  const getNestedTasksAssignedTo = (userId: string): Task[] => {
+    return projectFilteredTasks.filter(task => {
+      const assignedTo = task.assignedTo || [];
+      return task.parentTaskId && // Is a nested task
+             Array.isArray(assignedTo) && 
+             assignedTo.includes(userId);
+    });
   };
 
   // Helper function to check if a task is overdue
@@ -285,20 +269,18 @@ export default function DashboardScreen({
 
   // ===== MY TASKS SECTION =====
   // My Tasks: Tasks I created and assigned to myself (self-assigned)
+  // Now includes both top-level and nested tasks (all in one table!)
   const myTasksParent = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    return isAssignedToMe && isCreatedByMe;
+    return !task.parentTaskId && isAssignedToMe && isCreatedByMe; // Top-level only
   });
 
-  const myTasksSubTasks = projectFilteredTasks.flatMap(task => {
-    return collectSubTasksAssignedTo(task.subTasks, user.id)
-      .filter(subTask => subTask.assignedBy === user.id)
-      .map(subTask => ({ ...subTask, isSubTask: true as const }));
-  });
+  const myTasksNested = getNestedTasksAssignedTo(user.id)
+    .filter(task => task.assignedBy === user.id);
 
-  const myTasksAll = [...myTasksParent, ...myTasksSubTasks];
+  const myTasksAll = [...myTasksParent, ...myTasksNested];
 
   // My Tasks: Rejected
   const myRejectedTasks = myTasksAll.filter(task => task.currentStatus === "rejected");
@@ -335,16 +317,13 @@ export default function DashboardScreen({
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    return isAssignedToMe && !isCreatedByMe; // Assigned to me but NOT created by me
+    return !task.parentTaskId && isAssignedToMe && !isCreatedByMe; // Top-level only
   });
 
-  const inboxSubTasks = projectFilteredTasks.flatMap(task => {
-    return collectSubTasksAssignedTo(task.subTasks, user.id)
-      .filter(subTask => subTask.assignedBy !== user.id)
-      .map(subTask => ({ ...subTask, isSubTask: true as const }));
-  });
+  const inboxNestedTasks = getNestedTasksAssignedTo(user.id)
+    .filter(task => task.assignedBy !== user.id);
 
-  const inboxAll = [...inboxParentTasks, ...inboxSubTasks];
+  const inboxAll = [...inboxParentTasks, ...inboxNestedTasks];
 
   // Inbox: Received (not accepted, not rejected)
   const inboxReceivedTasks = inboxAll.filter(task =>
@@ -393,19 +372,16 @@ export default function DashboardScreen({
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-    return isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+    return !task.parentTaskId && isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"; // Top-level only
   });
 
-  const outboxSubTasks = projectFilteredTasks.flatMap(task =>
-    collectSubTasksAssignedBy(task.subTasks, user.id)
-      .filter(subTask => {
-        const assignedTo = subTask.assignedTo || [];
-        return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
-      })
-      .map(subTask => ({ ...subTask, isSubTask: true as const }))
-  );
+  const outboxNestedTasks = getNestedTasksAssignedBy(user.id)
+    .filter(task => {
+      const assignedTo = task.assignedTo || [];
+      return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+    });
 
-  const outboxAll = [...outboxParentTasks, ...outboxSubTasks];
+  const outboxAll = [...outboxParentTasks, ...outboxNestedTasks];
 
   // Outbox: Assigned (not accepted, not rejected)
   const outboxAssignedTasks = outboxAll.filter(task =>

@@ -7,6 +7,7 @@ import { User, UserRole } from "../types/buildtrack";
 
 interface UserStore {
   users: User[];
+  currentUser: User | null;
   isLoading: boolean;
   error: string | null;
 
@@ -17,6 +18,7 @@ interface UserStore {
   fetchUsers: () => Promise<void>;
   fetchUsersByCompany: (companyId: string) => Promise<void>;
   fetchUserById: (id: string) => Promise<User | null>;
+  fetchCurrentUser: (id: string) => Promise<void>;
   
   // Getters (local state)
   getAllUsers: () => User[];
@@ -25,6 +27,9 @@ interface UserStore {
   getUsersByCompany: (companyId: string) => User[];
   searchUsers: (query: string) => User[];
   searchUsersByCompany: (query: string, companyId: string) => User[];
+  
+  // Permissions
+  hasPermission: (permission: string) => boolean;
   
   // Admin validation helpers
   getAdminCountByCompany: (companyId: string) => number;
@@ -41,6 +46,7 @@ export const useUserStore = create<UserStore>()(
   persist(
     (set, get) => ({
       users: [], // No mock data fallback - Supabase only
+      currentUser: null,
       isLoading: false,
       error: null,
 
@@ -361,6 +367,31 @@ export const useUserStore = create<UserStore>()(
           });
           return false;
         }
+      },
+
+      // Fetch current user (for tests)
+      fetchCurrentUser: async (id: string) => {
+        const user = await get().fetchUserById(id);
+        if (user) {
+          set({ currentUser: user });
+        }
+      },
+
+      // Permission checking (for tests)
+      hasPermission: (permission: string) => {
+        const { currentUser } = get();
+        if (!currentUser) return false;
+
+        // Admin has all permissions
+        if (currentUser.role === 'admin') return true;
+
+        // Manager permissions
+        if (permission === 'manager' && (currentUser.role === 'manager' || currentUser.role === 'admin')) {
+          return true;
+        }
+
+        // Exact role match
+        return currentUser.role === permission;
       },
     }),
     {

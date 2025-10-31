@@ -4,10 +4,18 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config();
 
-// Supabase configuration
-const supabaseUrl = 'https://zusulknbhaumougqckec.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3Vsa25iaGF1bW91Z3Fja2VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjQ3NzIsImV4cCI6MjA3NjAwMDc3Mn0.MllamzveYfgR0hH1G-1-qv-E7wjMkhzjH8MhWnO-cIA';
+// Supabase configuration from environment variables
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+
+// Validate environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Error: Missing Supabase configuration');
+  console.error('Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in your .env file');
+  process.exit(1);
+}
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 

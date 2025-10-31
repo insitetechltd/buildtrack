@@ -63,6 +63,14 @@ interface TaskStore {
   getTasksByStatus: (status: TaskStatus, projectId?: string) => Task[];
   getTasksByPriority: (priority: Priority, projectId?: string) => Task[];
   getTasksByProject: (projectId: string) => Task[];
+  
+  // ✅ NEW: Unified tasks helpers
+  getTopLevelTasks: (projectId?: string) => Task[];
+  getChildTasks: (parentTaskId: string) => Task[];
+  buildTaskTree: (tasks: Task[]) => Task[];
+  getTaskDescendants: (taskId: string) => Task[];
+  getTaskAncestors: (taskId: string) => Task[];
+  countTaskDescendants: (taskId: string) => number;
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -83,20 +91,13 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          // Fetch tasks
-          const { data: tasksData, error: tasksError } = await supabase
+          // Fetch all tasks (unified table includes top-level + nested)
+          const { data: allTasksData, error: tasksError } = await supabase
             .from('tasks')
             .select('*')
             .order('created_at', { ascending: false });
 
           if (tasksError) throw tasksError;
-
-          // Fetch all subtasks
-          const { data: subTasksData, error: subTasksError } = await supabase
-            .from('sub_tasks')
-            .select('*');
-
-          if (subTasksError) throw subTasksError;
 
           // Fetch all task updates
           const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
@@ -105,16 +106,6 @@ export const useTaskStore = create<TaskStore>()(
             .order('timestamp', { ascending: true });
 
           if (taskUpdatesError) throw taskUpdatesError;
-
-          // Group subtasks by parent_task_id
-          const subTasksByParentId: { [key: string]: any[] } = {};
-          (subTasksData || []).forEach((st: any) => {
-            const parentId = st.parent_task_id;
-            if (!subTasksByParentId[parentId]) {
-              subTasksByParentId[parentId] = [];
-            }
-            subTasksByParentId[parentId].push(st);
-          });
 
           // Group task updates by task_id
           const updatesByTaskId: { [key: string]: any[] } = {};
@@ -134,10 +125,13 @@ export const useTaskStore = create<TaskStore>()(
             });
           });
 
-          // Transform Supabase data to match local interface
-          const transformedTasks = (tasksData || []).map(task => ({
+          // Transform all tasks from unified table
+          const transformedTasks = (allTasksData || []).map(task => ({
             id: task.id,
             projectId: task.project_id,
+            parentTaskId: task.parent_task_id, // ✅ NEW: for nested tasks
+            nestingLevel: task.nesting_level,   // ✅ NEW: depth level
+            rootTaskId: task.root_task_id,      // ✅ NEW: root reference
             title: task.title,
             description: task.description,
             priority: task.priority,
@@ -145,7 +139,7 @@ export const useTaskStore = create<TaskStore>()(
             dueDate: task.due_date,
             currentStatus: task.current_status,
             completionPercentage: task.completion_percentage,
-            assignedTo: task.assigned_to,
+            assignedTo: task.assigned_to || [],
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
@@ -159,30 +153,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
-            subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
-              id: st.id,
-              parentTaskId: st.parent_task_id,
-              parentSubTaskId: st.parent_sub_task_id,
-              projectId: st.project_id,
-              title: st.title,
-              description: st.description,
-              priority: st.priority,
-              category: st.category,
-              dueDate: st.due_date,
-              currentStatus: st.current_status,
-              completionPercentage: st.completion_percentage,
-              assignedTo: st.assigned_to || [],
-              assignedBy: st.assigned_by,
-              accepted: st.accepted,
-              declineReason: st.decline_reason,
-              readyForReview: st.ready_for_review || false,
-              reviewedBy: st.reviewed_by,
-              reviewedAt: st.reviewed_at,
-              reviewAccepted: st.review_accepted,
-              createdAt: st.created_at,
-              updatedAt: st.updated_at,
-              updates: updatesByTaskId[task.id] || [],
-            })),
+            // Note: children are built client-side when needed via buildTaskTree()
           }));
 
           console.log('✅ Fetched tasks from Supabase:', transformedTasks.length);
@@ -216,8 +187,8 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          // Fetch tasks for this project
-          const { data: tasksData, error: tasksError } = await supabase
+          // Fetch all tasks for this project (unified table includes nested tasks)
+          const { data: allTasksData, error: tasksError } = await supabase
             .from('tasks')
             .select('*')
             .eq('project_id', projectId)
@@ -225,33 +196,17 @@ export const useTaskStore = create<TaskStore>()(
 
           if (tasksError) throw tasksError;
 
-          // Fetch subtasks for this project
-          const { data: subTasksData, error: subTasksError } = await supabase
-            .from('sub_tasks')
-            .select('*')
-            .eq('project_id', projectId);
-
-          if (subTasksError) throw subTasksError;
-
           // Fetch task updates for tasks in this project
-          const taskIds = (tasksData || []).map(t => t.id);
-          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
-            .from('task_updates')
-            .select('*')
-            .in('task_id', taskIds)
-            .order('created_at', { ascending: true });
+          const taskIds = (allTasksData || []).map(t => t.id);
+          const { data: taskUpdatesData, error: taskUpdatesError } = taskIds.length > 0
+            ? await supabase
+                .from('task_updates')
+                .select('*')
+                .in('task_id', taskIds)
+                .order('timestamp', { ascending: true })
+            : { data: [], error: null };
 
           if (taskUpdatesError) throw taskUpdatesError;
-
-          // Group subtasks by parent_task_id
-          const subTasksByParentId: { [key: string]: any[] } = {};
-          (subTasksData || []).forEach((st: any) => {
-            const parentId = st.parent_task_id;
-            if (!subTasksByParentId[parentId]) {
-              subTasksByParentId[parentId] = [];
-            }
-            subTasksByParentId[parentId].push(st);
-          });
 
           // Group task updates by task_id
           const updatesByTaskId: { [key: string]: any[] } = {};
@@ -271,10 +226,13 @@ export const useTaskStore = create<TaskStore>()(
             });
           });
 
-          // Transform Supabase data to match local interface
-          const transformedTasks = (tasksData || []).map(task => ({
+          // Transform all tasks from unified table
+          const transformedTasks = (allTasksData || []).map(task => ({
             id: task.id,
             projectId: task.project_id,
+            parentTaskId: task.parent_task_id, // ✅ NEW
+            nestingLevel: task.nesting_level,   // ✅ NEW
+            rootTaskId: task.root_task_id,      // ✅ NEW
             title: task.title,
             description: task.description,
             priority: task.priority,
@@ -282,7 +240,7 @@ export const useTaskStore = create<TaskStore>()(
             dueDate: task.due_date,
             currentStatus: task.current_status,
             completionPercentage: task.completion_percentage,
-            assignedTo: task.assigned_to,
+            assignedTo: task.assigned_to || [],
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
@@ -296,30 +254,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
-            subTasks: (subTasksByParentId[task.id] || []).map((st: any) => ({
-              id: st.id,
-              parentTaskId: st.parent_task_id,
-              parentSubTaskId: st.parent_sub_task_id,
-              projectId: st.project_id,
-              title: st.title,
-              description: st.description,
-              priority: st.priority,
-              category: st.category,
-              dueDate: st.due_date,
-              currentStatus: st.current_status,
-              completionPercentage: st.completion_percentage,
-              assignedTo: st.assigned_to || [],
-              assignedBy: st.assigned_by,
-              accepted: st.accepted,
-              declineReason: st.decline_reason,
-              readyForReview: st.ready_for_review || false,
-              reviewedBy: st.reviewed_by,
-              reviewedAt: st.reviewed_at,
-              reviewAccepted: st.review_accepted,
-              createdAt: st.created_at,
-              updatedAt: st.updated_at,
-              updates: updatesByTaskId[task.id] || [],
-            })),
+            // Note: children are built client-side when needed
           }));
 
           set({ 
@@ -973,15 +908,8 @@ export const useTaskStore = create<TaskStore>()(
 
           set(state => ({
             tasks: state.tasks.map(task =>
-              task.id === taskId
-                ? {
-                    ...task,
-                    subTasks: task.subTasks?.map(subTask =>
-                      subTask.id === subTaskId
-                        ? { ...subTask, updates: [...subTask.updates, newUpdate] }
-                        : subTask
-                    )
-                  }
+              task.id === subTaskId
+                ? { ...task, updates: [...(task.updates || []), newUpdate] }
                 : task
             )
           }));
@@ -992,8 +920,7 @@ export const useTaskStore = create<TaskStore>()(
           const { error } = await supabase
             .from('task_updates')
             .insert({
-              task_id: taskId,
-              sub_task_id: subTaskId,
+              task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
               user_id: update.userId,
               description: update.description,
               photos: update.photos,
@@ -1043,8 +970,15 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
+          // Get parent task to calculate nesting level
+          const parentTask = get().tasks.find(t => t.id === taskId);
+          const nestingLevel = (parentTask?.nestingLevel || 0) + 1;
+          const rootTaskId = parentTask?.rootTaskId || parentTask?.id || taskId;
+          
           console.log('Creating sub-task with data:', {
             parent_task_id: taskId,
+            nesting_level: nestingLevel,
+            root_task_id: rootTaskId,
             project_id: subTaskData.projectId,
             title: subTaskData.title,
             assigned_to: subTaskData.assignedTo,
@@ -1055,9 +989,11 @@ export const useTaskStore = create<TaskStore>()(
           const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
 
           const { data, error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')  // ✅ Changed to unified tasks table
             .insert({
               parent_task_id: taskId,
+              nesting_level: nestingLevel,   // ✅ NEW
+              root_task_id: rootTaskId,      // ✅ NEW
               project_id: subTaskData.projectId,
               title: subTaskData.title,
               description: subTaskData.description,
@@ -1081,8 +1017,31 @@ export const useTaskStore = create<TaskStore>()(
           
           console.log('✅ Sub-task created successfully:', data.id);
 
-          // Refresh task data to get updated subtasks
-          await get().fetchTaskById(taskId);
+          // Add to local state
+          set(state => ({
+            tasks: [...state.tasks, {
+              id: data.id,
+              projectId: data.project_id,
+              parentTaskId: data.parent_task_id,
+              nestingLevel: data.nesting_level,
+              rootTaskId: data.root_task_id,
+              title: data.title,
+              description: data.description,
+              priority: data.priority,
+              category: data.category,
+              dueDate: data.due_date,
+              currentStatus: data.current_status,
+              completionPercentage: data.completion_percentage,
+              assignedTo: data.assigned_to || [],
+              assignedBy: data.assigned_by,
+              location: data.location,
+              attachments: data.attachments || [],
+              accepted: data.accepted,
+              createdAt: data.created_at,
+              updates: [],
+            }]
+          }));
+          
           return data.id;
         } catch (error: any) {
           console.error('Error creating subtask:', error);
@@ -1117,14 +1076,20 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
+          // Get parent task to calculate nesting level
+          const parentTask = get().tasks.find(t => t.id === parentSubTaskId);
+          const nestingLevel = (parentTask?.nestingLevel || 0) + 1;
+          const rootTaskId = parentTask?.rootTaskId || parentTask?.id || taskId;
+          
           // Check if creator is assigned to the nested subtask
           const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
           
           const { data, error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')  // ✅ Changed to unified tasks table
             .insert({
-              parent_task_id: taskId,
-              parent_sub_task_id: parentSubTaskId,
+              parent_task_id: parentSubTaskId,  // ✅ Parent is now just another task
+              nesting_level: nestingLevel,       // ✅ NEW
+              root_task_id: rootTaskId,          // ✅ NEW
               project_id: subTaskData.projectId,
               title: subTaskData.title,
               description: subTaskData.description,
@@ -1145,6 +1110,32 @@ export const useTaskStore = create<TaskStore>()(
             .single();
 
           if (error) throw error;
+          
+          // Add to local state
+          set(state => ({
+            tasks: [...state.tasks, {
+              id: data.id,
+              projectId: data.project_id,
+              parentTaskId: data.parent_task_id,
+              nestingLevel: data.nesting_level,
+              rootTaskId: data.root_task_id,
+              title: data.title,
+              description: data.description,
+              priority: data.priority,
+              category: data.category,
+              dueDate: data.due_date,
+              currentStatus: data.current_status,
+              completionPercentage: data.completion_percentage,
+              assignedTo: data.assigned_to || [],
+              assignedBy: data.assigned_by,
+              location: data.location,
+              attachments: data.attachments || [],
+              accepted: data.accepted,
+              createdAt: data.created_at,
+              updates: [],
+            }]
+          }));
+          
           return data.id;
         } catch (error: any) {
           console.error('Error creating nested subtask:', error);
@@ -1173,18 +1164,8 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
-          // Get current subtask to check if it's self-assigned
-          const currentTask = get().tasks.find(t => t.id === taskId);
-          const findSubTask = (subTasks: SubTask[] | undefined): SubTask | undefined => {
-            if (!subTasks) return undefined;
-            for (const subTask of subTasks) {
-              if (subTask.id === subTaskId) return subTask;
-              const nested = findSubTask(subTask.subTasks);
-              if (nested) return nested;
-            }
-            return undefined;
-          };
-          const currentSubTask = currentTask ? findSubTask(currentTask.subTasks) : undefined;
+          // Get current subtask (now just a task with parentTaskId)
+          const currentSubTask = get().tasks.find(t => t.id === subTaskId);
           
           // Auto-accept self-assigned subtasks when they reach 100%
           if (currentSubTask && updates.completionPercentage === 100) {
@@ -1212,21 +1193,25 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.declineReason) updateData.decline_reason = updates.declineReason;
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
-          // Review workflow fields for subtasks
+          // Review workflow fields
           if (updates.readyForReview !== undefined) updateData.ready_for_review = updates.readyForReview;
           if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
           if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
           if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
 
           const { error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')  // ✅ Changed to unified tasks table
             .update(updateData)
             .eq('id', subTaskId);
 
           if (error) throw error;
 
-          // Refresh task data
-          await get().fetchTaskById(taskId);
+          // Update local state
+          set(state => ({
+            tasks: state.tasks.map(t => 
+              t.id === subTaskId ? { ...t, ...updates } : t
+            )
+          }));
         } catch (error: any) {
           console.error('Error updating subtask:', error);
           throw error;
@@ -1237,28 +1222,23 @@ export const useTaskStore = create<TaskStore>()(
         if (!supabase) {
           // Fallback to local deletion
           set(state => ({
-            tasks: state.tasks.map(task =>
-              task.id === taskId
-                ? {
-                    ...task,
-                    subTasks: task.subTasks?.filter(subTask => subTask.id !== subTaskId)
-                  }
-                : task
-            )
+            tasks: state.tasks.filter(t => t.id !== subTaskId)
           }));
           return;
         }
 
         try {
           const { error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')  // ✅ Changed to unified tasks table
             .delete()
             .eq('id', subTaskId);
 
           if (error) throw error;
 
-          // Refresh task data
-          await get().fetchTaskById(taskId);
+          // Remove from local state (CASCADE will handle children in DB)
+          set(state => ({
+            tasks: state.tasks.filter(t => t.id !== subTaskId)
+          }));
         } catch (error: any) {
           console.error('Error deleting subtask:', error);
           throw error;
@@ -1422,6 +1402,92 @@ export const useTaskStore = create<TaskStore>()(
 
       getTasksByProject: (projectId) => {
         return get().tasks.filter(task => task.projectId === projectId);
+      },
+
+      // ✅ NEW: Helper methods for unified tasks structure
+      
+      // Get top-level tasks (no parent)
+      getTopLevelTasks: (projectId?: string) => {
+        const tasks = get().tasks;
+        return tasks.filter(t => 
+          !t.parentTaskId && 
+          (projectId ? t.projectId === projectId : true)
+        );
+      },
+
+      // Get children of a specific task
+      getChildTasks: (parentTaskId: string) => {
+        return get().tasks.filter(t => t.parentTaskId === parentTaskId);
+      },
+
+      // Build hierarchical tree from flat list
+      buildTaskTree: (tasks: Task[]): Task[] => {
+        const taskMap = new Map<string, Task & { children: Task[] }>();
+        
+        // First pass: create map with all tasks
+        tasks.forEach(task => {
+          taskMap.set(task.id, { ...task, children: [] });
+        });
+        
+        const rootTasks: Task[] = [];
+        
+        // Second pass: build hierarchy
+        tasks.forEach(task => {
+          const taskWithChildren = taskMap.get(task.id)!;
+          
+          if (!task.parentTaskId) {
+            rootTasks.push(taskWithChildren);
+          } else {
+            const parent = taskMap.get(task.parentTaskId);
+            if (parent) {
+              parent.children = parent.children || [];
+              parent.children.push(taskWithChildren);
+            } else {
+              // Orphaned task - add to root
+              rootTasks.push(taskWithChildren);
+            }
+          }
+        });
+        
+        return rootTasks;
+      },
+
+      // Get all descendants of a task (recursive)
+      getTaskDescendants: (taskId: string): Task[] => {
+        const descendants: Task[] = [];
+        const allTasks = get().tasks;
+        
+        function collectChildren(parentId: string) {
+          const children = allTasks.filter(t => t.parentTaskId === parentId);
+          children.forEach(child => {
+            descendants.push(child);
+            collectChildren(child.id); // Recurse
+          });
+        }
+        
+        collectChildren(taskId);
+        return descendants;
+      },
+
+      // Get ancestors of a task (breadcrumb path)
+      getTaskAncestors: (taskId: string): Task[] => {
+        const ancestors: Task[] = [];
+        const allTasks = get().tasks;
+        let currentTask = allTasks.find(t => t.id === taskId);
+        
+        while (currentTask?.parentTaskId) {
+          const parent = allTasks.find(t => t.id === currentTask!.parentTaskId);
+          if (!parent) break;
+          ancestors.unshift(parent); // Add to beginning
+          currentTask = parent;
+        }
+        
+        return ancestors;
+      },
+
+      // Count all descendants
+      countTaskDescendants: (taskId: string): number => {
+        return get().getTaskDescendants(taskId).length;
       },
     }),
     {

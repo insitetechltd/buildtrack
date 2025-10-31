@@ -1,0 +1,115 @@
+name: EAS Update
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  update:
+    name: Install and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check for EXPO_TOKEN
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "❌ EXPO_TOKEN secret is not set"
+            echo "Please add your EXPO_TOKEN to GitHub Secrets:"
+            echo "1. Go to your GitHub repository"
+            echo "2. Click Settings → Secrets and variables → Actions"
+            echo "3. Click 'New repository secret'"
+            echo "4. Name: EXPO_TOKEN"
+            echo "5. Value: Your Expo token from 'npx eas whoami' or expo.dev"
+            exit 1
+          else
+            echo "✅ EXPO_TOKEN is configured"
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.10.0
+          cache: 'npm'
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          echo "Installing dependencies with legacy peer deps..."
+          npm install --legacy-peer-deps
+          echo "Dependencies installed successfully"
+
+      - name: Install latest EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Verify EAS CLI installation
+        run: |
+          echo "EAS CLI version:"
+          npx eas --version
+          echo "Expo CLI version:"
+          npx expo --version
+
+      - name: Auto-increment version
+        run: |
+          echo "Current version:"
+          CURRENT_VERSION=$(node -p "require('./app.json').expo.version")
+          echo "$CURRENT_VERSION"
+          
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          
+          # Increment patch version
+          NEW_PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}"
+          
+          echo "New version: $NEW_VERSION"
+          
+          # Update version in app.json
+          node -e "
+            const fs = require('fs');
+            const appJson = require('./app.json');
+            appJson.expo.version = '$NEW_VERSION';
+            fs.writeFileSync('./app.json', JSON.stringify(appJson, null, 2) + '\n');
+          "
+          
+          echo "✅ Version updated to $NEW_VERSION"
+
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add app.json
+          git commit -m "chore: Auto-increment version to $(node -p "require('./app.json').expo.version") [skip ci]" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      - name: Publish to EAS Update
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message || 'Push to main' }}"
+          echo "Publishing EAS update with message: $COMMIT_MSG"
+          npx eas update --branch main --message "Automated update: $COMMIT_MSG" --non-interactive
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🚀 **EAS Update Published!**\n\nYour changes have been automatically published to EAS Update and are now available in Expo Go.\n\n📱 **To test:**\n1. Open Expo Go app\n2. Scan QR code or enter your project URL\n3. Pull down to refresh for the latest update'
+            })

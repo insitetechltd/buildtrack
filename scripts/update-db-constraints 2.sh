@@ -5,9 +5,25 @@
 
 echo "🔄 Updating Supabase database constraints..."
 
-# Supabase configuration
-SUPABASE_URL="https://zusulknbhaumougqckec.supabase.co"
-API_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1c3Vsa25iaGF1bW91Z3Fja2VjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA0MjQ3NzIsImV4cCI6MjA3NjAwMDc3Mn0.MllamzveYfgR0hH1G-1-qv-E7wjMkhzjH8MhWnO-cIA"
+# Load environment variables from .env file
+if [ -f .env ]; then
+  export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
+else
+  echo "❌ Error: .env file not found"
+  echo "Please create a .env file with EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY"
+  exit 1
+fi
+
+# Supabase configuration from environment
+SUPABASE_URL="$EXPO_PUBLIC_SUPABASE_URL"
+API_KEY="$EXPO_PUBLIC_SUPABASE_ANON_KEY"
+
+# Check if environment variables are set
+if [ -z "$SUPABASE_URL" ] || [ -z "$API_KEY" ]; then
+  echo "❌ Error: Missing environment variables"
+  echo "Please set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env file"
+  exit 1
+fi
 
 # SQL commands to update constraints
 SQL_COMMANDS=(

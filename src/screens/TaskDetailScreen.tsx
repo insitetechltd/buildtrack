@@ -1042,35 +1042,42 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
 
         {/* Subtasks Section - Only show for parent tasks (not when viewing a subtask) */}
-        {!isViewingSubTask && task?.subTasks && task.subTasks.length > 0 && (
-          <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-row items-center">
-                <Ionicons name="git-branch-outline" size={20} color="#7c3aed" />
-                <Text className="text-xl font-semibold text-gray-900 ml-2">
-                  Sub-Tasks ({task.subTasks.length})
-                </Text>
+        {(() => {
+          // Get children tasks from the unified tasks table
+          const childTasks = useTaskStore(state => 
+            state.tasks.filter(t => t.parentTaskId === task?.id)
+          );
+          
+          return !isViewingSubTask && childTasks.length > 0 && (
+            <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
+              <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center">
+                  <Ionicons name="git-branch-outline" size={20} color="#7c3aed" />
+                  <Text className="text-xl font-semibold text-gray-900 ml-2">
+                    Sub-Tasks ({childTasks.length})
+                  </Text>
+                </View>
+              </View>
+
+              {/* Subtasks List using TaskCard */}
+              <View>
+                {childTasks.map((subtask, index) => (
+                  <View key={subtask.id} className={index > 0 ? "mt-2" : ""}>
+                    <TaskCard 
+                      task={subtask}
+                      onNavigateToTaskDetail={(taskId, subTaskId) => {
+                        // Navigate to subtask detail
+                        if (onNavigateToCreateTask) {
+                          onNavigateToCreateTask(taskId, subTaskId);
+                        }
+                      }}
+                    />
+                  </View>
+                ))}
               </View>
             </View>
-
-            {/* Subtasks List using TaskCard */}
-            <View>
-              {task.subTasks.map((subtask, index) => (
-                <View key={subtask.id} className={index > 0 ? "mt-2" : ""}>
-                  <TaskCard 
-                    task={{ ...subtask, isSubTask: true as const }} 
-                    onNavigateToTaskDetail={(taskId, subTaskId) => {
-                      // Navigate to subtask detail
-                      if (onNavigateToCreateTask) {
-                        onNavigateToCreateTask(taskId, subTaskId);
-                      }
-                    }}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+          );
+        })()}
 
       </ScrollView>
 

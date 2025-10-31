@@ -7,12 +7,21 @@ import { Company, CompanyType } from "../types/buildtrack";
 
 interface CompanyStore {
   companies: Company[];
+  company: Company | null;
+  companyStats: {
+    totalUsers: number;
+    totalProjects: number;
+    activeProjects: number;
+    completedProjects: number;
+  } | null;
   isLoading: boolean;
   error: string | null;
 
   // Fetching
   fetchCompanies: () => Promise<void>;
+  fetchCompany: (id: string) => Promise<void>;
   fetchCompanyById: (id: string) => Promise<Company | null>;
+  fetchCompanyUsers: (companyId: string) => Promise<any[]>;
   
   // Getters (local state)
   getAllCompanies: () => Company[];
@@ -42,6 +51,8 @@ export const useCompanyStore = create<CompanyStore>()(
   persist(
     (set, get) => ({
       companies: [], // No mock data fallback - Supabase only
+      company: null,
+      companyStats: null,
       isLoading: false,
       error: null,
 
@@ -93,6 +104,34 @@ export const useCompanyStore = create<CompanyStore>()(
         } catch (error: any) {
           console.error('Error fetching company:', error);
           return null;
+        }
+      },
+
+      // Fetch single company (for tests)
+      fetchCompany: async (id: string) => {
+        const company = await get().fetchCompanyById(id);
+        if (company) {
+          set({ company });
+        }
+      },
+
+      // Fetch company users (for tests)
+      fetchCompanyUsers: async (companyId: string) => {
+        if (!supabase) {
+          return [];
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('company_id', companyId);
+
+          if (error) throw error;
+          return data || [];
+        } catch (error: any) {
+          console.error('Error fetching company users:', error);
+          return [];
         }
       },
 

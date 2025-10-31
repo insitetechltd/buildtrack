@@ -18,7 +18,7 @@ import { useProjectStoreWithInit, useProjectStore } from "../state/projectStore.
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useThemeStore } from "../state/themeStore";
-import { Task, Priority, TaskStatus, SubTask, Project, ProjectStatus } from "../types/buildtrack";
+import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
@@ -31,8 +31,8 @@ interface TasksScreenProps {
   onNavigateBack?: () => void;
 }
 
-// Type for task list items (can be Task or SubTask)
-type TaskListItem = Task | (SubTask & { isSubTask: true });
+// ✅ UPDATED: All tasks are now in unified table (with optional parentTaskId)
+type TaskListItem = Task;
 
 export default function TasksScreen({ 
   onNavigateToTaskDetail, 
@@ -115,37 +115,25 @@ export default function TasksScreen({
   // No project-level filtering - show all user projects
   const filteredProjects = userProjects;
 
-  // Helper function to recursively collect all subtasks assigned by a user
-  const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      if (subTask.assignedBy === userId) {
-        result.push(subTask);
-      }
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedBy(subTask.subTasks, userId));
-      }
-    }
-    return result;
+  // ✅ UPDATED: Simplified for unified tasks table
+  // Get all nested tasks (tasks with parentTaskId) assigned by a user
+  const getNestedTasksAssignedBy = (userId: string, projectId?: string): Task[] => {
+    return tasks.filter(task => 
+      task.parentTaskId && // Is a nested task
+      task.assignedBy === userId &&
+      (!projectId || task.projectId === projectId)
+    );
   };
 
-  // Helper function to recursively collect all subtasks assigned to a user
-  const collectSubTasksAssignedTo = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      const assignedTo = subTask.assignedTo || [];
-      if (Array.isArray(assignedTo) && assignedTo.includes(userId)) {
-        result.push(subTask);
-      }
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedTo(subTask.subTasks, userId));
-      }
-    }
-    return result;
+  // Get all nested tasks assigned to a user
+  const getNestedTasksAssignedTo = (userId: string, projectId?: string): Task[] => {
+    return tasks.filter(task => {
+      const assignedTo = task.assignedTo || [];
+      return task.parentTaskId && // Is a nested task
+             Array.isArray(assignedTo) && 
+             assignedTo.includes(userId) &&
+             (!projectId || task.projectId === projectId);
+    });
   };
 
   // Helper function to get priority order (lower number = higher priority)
@@ -165,41 +153,35 @@ export default function TasksScreen({
     const allProjectTasks = userProjects.flatMap(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
 
-      // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only)
+      // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only, top-level)
       const myTasksParent = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        // Include if assigned to me AND created by me (self-assigned)
-        return isDirectlyAssigned && isCreatedByMe;
+        // Include top-level tasks assigned to me AND created by me (self-assigned)
+        return !task.parentTaskId && isDirectlyAssigned && isCreatedByMe;
       });
       
-      const myTasksSubTasks = projectTasks.flatMap(task => {
-        // Only include subtasks I created and assigned to myself
-        return collectSubTasksAssignedTo(task.subTasks, user.id)
-          .filter(subTask => subTask.assignedBy === user.id)
-          .map(subTask => ({ ...subTask, isSubTask: true as const }));
-      });
+      // Get nested tasks I created and assigned to myself
+      const myTasksNested = getNestedTasksAssignedTo(user.id, selectedProjectId || undefined)
+        .filter(task => task.assignedBy === user.id);
       
-      const myTasksAll = [...myTasksParent, ...myTasksSubTasks];
+      const myTasksAll = [...myTasksParent, ...myTasksNested];
       
       // Get INBOX tasks (tasks assigned to me by OTHERS only, not self-assigned)
       const inboxParentTasks = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        // Include if assigned to me but NOT created by me
-        return isDirectlyAssigned && !isCreatedByMe;
+        // Include top-level tasks assigned to me but NOT created by me
+        return !task.parentTaskId && isDirectlyAssigned && !isCreatedByMe;
       });
       
-      const inboxSubTasks = projectTasks.flatMap(task => {
-        // Only include subtasks assigned to me but NOT created by me
-        return collectSubTasksAssignedTo(task.subTasks, user.id)
-          .filter(subTask => subTask.assignedBy !== user.id)
-          .map(subTask => ({ ...subTask, isSubTask: true as const }));
-      });
+      // Get nested tasks assigned to me but not created by me
+      const inboxNestedTasks = getNestedTasksAssignedTo(user.id, selectedProjectId || undefined)
+        .filter(task => task.assignedBy !== user.id);
       
-      const inboxTasks = [...inboxParentTasks, ...inboxSubTasks];
+      const inboxTasks = [...inboxParentTasks, ...inboxNestedTasks];
       
       // Get outbox tasks (tasks assigned by me to OTHERS, not ONLY self-assigned)
       const assignedParentTasks = projectTasks.filter(task => {
@@ -207,21 +189,18 @@ export default function TasksScreen({
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isDirectlyAssignedByMe = task.assignedBy === user.id;
         const isSelfAssignedOnly = isDirectlyAssignedByMe && isAssignedToMe && assignedTo.length === 1;
-        // Include if created by me, NOT self-assigned only, not rejected
-        return isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        // Include top-level tasks created by me, NOT self-assigned only, not rejected
+        return !task.parentTaskId && isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
       });
       
-      const assignedSubTasks = projectTasks.flatMap(task => 
-        collectSubTasksAssignedBy(task.subTasks, user.id)
-          .filter(subTask => {
-            const assignedTo = subTask.assignedTo || [];
-            // Only include subtasks NOT assigned to me
-            return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
-          })
-          .map(subTask => ({ ...subTask, isSubTask: true as const }))
-      );
+      // Get nested tasks assigned by me but not to me
+      const assignedNestedTasks = getNestedTasksAssignedBy(user.id, selectedProjectId || undefined)
+        .filter(task => {
+          const assignedTo = task.assignedTo || [];
+          return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
+        });
       
-      const outboxTasks = [...assignedParentTasks, ...assignedSubTasks];
+      const outboxTasks = [...assignedParentTasks, ...assignedNestedTasks];
       
       // Return tasks based on section filter
       // SPECIAL CASE: For "reviewing" status, we need ALL project tasks (not section-filtered)
@@ -538,37 +517,31 @@ export default function TasksScreen({
   }
 
   // Group tasks: parent tasks with their subtasks nested
+  // ✅ UPDATED: Group tasks using unified table structure
   const groupedTasks = React.useMemo(() => {
-    const taskMap = new Map<string, { parent: TaskListItem; subtasks: TaskListItem[] }>();
-    const standaloneSubtasks: TaskListItem[] = [];
+    const taskMap = new Map<string, { parent: Task; subtasks: Task[] }>();
+    const standaloneSubtasks: Task[] = [];
     
     console.log('🔍 Grouping tasks. Total tasks:', allTasks.length);
     
     allTasks.forEach(task => {
-      const isSubTask = 'isSubTask' in task && task.isSubTask;
+      const isSubTask = !!task.parentTaskId; // Check if has parent
       
-      if (isSubTask) {
-        const parentId = task.parentTaskId;
-        console.log(`  📎 Subtask found: "${task.title}" (parentId: ${parentId})`);
+      if (isSubTask && task.parentTaskId) {
+        console.log(`  📎 Subtask found: "${task.title}" (parentId: ${task.parentTaskId})`);
         
         // Check if parent task is in the list
-        const parentExists = allTasks.some(t => {
-          const isParent = !('isSubTask' in t) || !t.isSubTask;
-          return isParent && t.id === parentId;
-        });
+        const parentExists = allTasks.some(t => t.id === task.parentTaskId);
         
         console.log(`    Parent exists in list: ${parentExists}`);
         
         if (parentExists) {
           // Add to parent's subtask list
-          if (!taskMap.has(parentId)) {
-            const parentTask = allTasks.find(t => {
-              const isParent = !('isSubTask' in t) || !t.isSubTask;
-              return isParent && t.id === parentId;
-            })!;
-            taskMap.set(parentId, { parent: parentTask, subtasks: [] });
+          if (!taskMap.has(task.parentTaskId)) {
+            const parentTask = allTasks.find(t => t.id === task.parentTaskId)!;
+            taskMap.set(task.parentTaskId, { parent: parentTask, subtasks: [] });
           }
-          taskMap.get(parentId)!.subtasks.push(task);
+          taskMap.get(task.parentTaskId)!.subtasks.push(task);
           console.log(`    ✅ Added to parent's subtask list`);
         } else {
           // Parent not in list, show subtask standalone
@@ -576,7 +549,7 @@ export default function TasksScreen({
           console.log(`    ⚠️ Parent not in list, showing standalone`);
         }
       } else {
-        // Parent task
+        // Top-level task (no parent)
         if (!taskMap.has(task.id)) {
           taskMap.set(task.id, { parent: task, subtasks: [] });
         }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -93,6 +93,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // Use subtask if viewing subtask, otherwise use parent task
   const task = subTask || parentTask;
   const isViewingSubTask = !!subTask;
+  
+  // Get children tasks from the unified tasks table - memoized to avoid infinite loops
+  const childTasks = useMemo(() => 
+    task ? tasks.filter(t => t.parentTaskId === task.id) : [],
+    [tasks, task?.id]
+  );
   
   const assignedBy = task ? getUserById(task.assignedBy) : null;
   const assignedUsers = task ? task.assignedTo.map(userId => getUserById(userId)).filter(Boolean) : [];
@@ -223,7 +229,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     try {
       await updateTask(task.id, {
         assignedTo: selectedUsersForReassign,
-        accepted: undefined,
+        accepted: false,
         currentStatus: "not_started",
         declineReason: undefined,
       });
@@ -566,7 +572,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       />
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
-      {isAssignedToMe && (task.accepted === undefined || task.accepted === null) && (
+      {isAssignedToMe && task.accepted === false && !task.declineReason && task.currentStatus !== "rejected" && (
         <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
           <View className="flex-row items-center mb-3">
             <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
@@ -1042,13 +1048,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
 
         {/* Subtasks Section - Only show for parent tasks (not when viewing a subtask) */}
-        {(() => {
-          // Get children tasks from the unified tasks table
-          const childTasks = useTaskStore(state => 
-            state.tasks.filter(t => t.parentTaskId === task?.id)
-          );
-          
-          return !isViewingSubTask && childTasks.length > 0 && (
+        {!isViewingSubTask && childTasks.length > 0 && (
             <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
@@ -1076,8 +1076,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 ))}
               </View>
             </View>
-          );
-        })()}
+        )}
 
       </ScrollView>
 

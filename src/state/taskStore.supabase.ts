@@ -156,14 +156,54 @@ export const useTaskStore = create<TaskStore>()(
             // Note: children are built client-side when needed via buildTaskTree()
           }));
 
-          console.log('✅ Fetched tasks from Supabase:', transformedTasks.length);
-          console.log('Task details:', transformedTasks.map(t => ({ 
+          console.log('✅✅✅ Fetched tasks from Supabase:', transformedTasks.length);
+          console.log('✅✅✅ Task details:', transformedTasks.map(t => ({ 
             id: t.id, 
             title: t.title, 
             projectId: t.projectId,
+            parentTaskId: t.parentTaskId,
             assignedTo: t.assignedTo, 
-            assignedBy: t.assignedBy 
+            assignedBy: t.assignedBy,
+            accepted: t.accepted,
+            currentStatus: t.currentStatus
           })));
+          
+          // 🔍 SPECIAL CHECK: Look for the test task
+          const testTask = transformedTasks.find(t => t.title?.toLowerCase().includes("testing sub task"));
+          if (testTask) {
+            console.log('✅✅✅ TEST TASK FOUND IN FETCHED DATA:', {
+              title: testTask.title,
+              id: testTask.id,
+              projectId: testTask.projectId,
+              parentTaskId: testTask.parentTaskId,
+              assignedTo: testTask.assignedTo,
+              assignedToType: typeof testTask.assignedTo,
+              assignedToIsArray: Array.isArray(testTask.assignedTo),
+              assignedToLength: Array.isArray(testTask.assignedTo) ? testTask.assignedTo.length : 'N/A',
+              assignedToContents: Array.isArray(testTask.assignedTo) ? JSON.stringify(testTask.assignedTo) : testTask.assignedTo,
+              assignedToValues: Array.isArray(testTask.assignedTo) ? testTask.assignedTo.map((id, idx) => ({ idx, id, type: typeof id, string: String(id) })) : [],
+              assignedBy: testTask.assignedBy,
+              accepted: testTask.accepted,
+              currentStatus: testTask.currentStatus
+            });
+            
+            // Check if Peter's ID is in the array
+            const peterId = '66666666-6666-6666-6666-666666666666';
+            if (Array.isArray(testTask.assignedTo)) {
+              const hasPeterExact = testTask.assignedTo.includes(peterId);
+              const hasPeterString = testTask.assignedTo.some(id => String(id) === peterId);
+              const hasPeterMatch = testTask.assignedTo.some(id => id === peterId || String(id) === peterId);
+              console.log('✅✅✅ Peter ID check in fetched data:', {
+                peterId,
+                hasPeterExact,
+                hasPeterString,
+                hasPeterMatch,
+                allIds: testTask.assignedTo.map(id => ({ value: id, type: typeof id, string: String(id) }))
+              });
+            }
+          } else {
+            console.log('❌❌❌ TEST TASK NOT IN FETCHED DATA');
+          }
 
           set({ 
             tasks: transformedTasks, 
@@ -281,10 +321,7 @@ export const useTaskStore = create<TaskStore>()(
         try {
           const { data, error } = await supabase
             .from('tasks')
-            .select(`
-              *,
-              sub_tasks (*)
-            `)
+            .select('*')
             .contains('assigned_to', [userId])
             .order('created_at', { ascending: false });
 
@@ -318,10 +355,30 @@ export const useTaskStore = create<TaskStore>()(
             });
           });
 
+          // Fetch nested tasks (subtasks) for these tasks
+          const { data: nestedTasksData } = await supabase
+            .from('tasks')
+            .select('*')
+            .in('parent_task_id', taskIds)
+            .order('created_at', { ascending: true });
+
+          // Group nested tasks by parent
+          const nestedTasksByParent: { [key: string]: any[] } = {};
+          (nestedTasksData || []).forEach((nestedTask: any) => {
+            const parentId = nestedTask.parent_task_id;
+            if (!nestedTasksByParent[parentId]) {
+              nestedTasksByParent[parentId] = [];
+            }
+            nestedTasksByParent[parentId].push(nestedTask);
+          });
+
           // Transform Supabase data to match local interface
           const transformedTasks = (data || []).map(task => ({
             id: task.id,
             projectId: task.project_id,
+            parentTaskId: task.parent_task_id,
+            nestingLevel: task.nesting_level || 0,
+            rootTaskId: task.root_task_id,
             title: task.title,
             description: task.description,
             priority: task.priority,
@@ -343,7 +400,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             updates: updatesByTaskId[task.id] || [],
-            subTasks: (task.sub_tasks || []).map((st: any) => ({
+            subTasks: (nestedTasksByParent[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
               parentSubTaskId: st.parent_sub_task_id,
@@ -499,7 +556,7 @@ export const useTaskStore = create<TaskStore>()(
               assigned_by: taskData.assignedBy,
               attachments: taskData.attachments,
               // Auto-accept if creator is assigned to the task
-              accepted: isCreatorAssigned ? true : null,
+              accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })
@@ -1006,7 +1063,7 @@ export const useTaskStore = create<TaskStore>()(
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
               // Auto-accept if creator is assigned to the subtask
-              accepted: isCreatorAssigned ? true : null,
+              accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })

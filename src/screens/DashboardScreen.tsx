@@ -245,7 +245,7 @@ export default function DashboardScreen({
   // Get all nested tasks (tasks with parentTaskId) assigned by a user
   const getNestedTasksAssignedBy = (userId: string): Task[] => {
     return projectFilteredTasks.filter(task => 
-      task.parentTaskId && // Is a nested task
+      isNestedTask(task) && // Is a nested task
       task.assignedBy === userId
     );
   };
@@ -254,10 +254,20 @@ export default function DashboardScreen({
   const getNestedTasksAssignedTo = (userId: string): Task[] => {
     return projectFilteredTasks.filter(task => {
       const assignedTo = task.assignedTo || [];
-      return task.parentTaskId && // Is a nested task
+      return isNestedTask(task) && // Is a nested task
              Array.isArray(assignedTo) && 
              assignedTo.includes(userId);
     });
+  };
+
+  // Helper: Check if task is top-level (not a subtask)
+  const isTopLevelTask = (task: Task) => {
+    return !task.parentTaskId || task.parentTaskId === null || task.parentTaskId === '';
+  };
+
+  // Helper: Check if task is nested (has a parent)
+  const isNestedTask = (task: Task) => {
+    return !!task.parentTaskId && task.parentTaskId !== null && task.parentTaskId !== '';
   };
 
   // Helper function to check if a task is overdue
@@ -274,7 +284,7 @@ export default function DashboardScreen({
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    return !task.parentTaskId && isAssignedToMe && isCreatedByMe; // Top-level only
+    return isTopLevelTask(task) && isAssignedToMe && isCreatedByMe; // Top-level only
   });
 
   const myTasksNested = getNestedTasksAssignedTo(user.id)
@@ -317,7 +327,7 @@ export default function DashboardScreen({
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
-    return !task.parentTaskId && isAssignedToMe && !isCreatedByMe; // Top-level only
+    return isTopLevelTask(task) && isAssignedToMe && !isCreatedByMe; // Top-level only
   });
 
   const inboxNestedTasks = getNestedTasksAssignedTo(user.id)
@@ -325,11 +335,15 @@ export default function DashboardScreen({
 
   const inboxAll = [...inboxParentTasks, ...inboxNestedTasks];
 
-  // Inbox: Received (not accepted, not rejected)
-  const inboxReceivedTasks = inboxAll.filter(task =>
-    !task.accepted && 
-    task.currentStatus !== "rejected"
-  );
+  // Inbox: Received (not yet responded, not rejected)
+  // Helper: Check if task is pending acceptance (accepted === false, no declineReason, not rejected)
+  const isPendingAcceptance = (task: Task) => {
+    return task.accepted === false && 
+           !task.declineReason && 
+           task.currentStatus !== "rejected";
+  };
+  
+  const inboxReceivedTasks = inboxAll.filter(task => isPendingAcceptance(task));
   
   // Inbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review), not review accepted)
   const inboxWIPTasks = inboxAll.filter(task =>
@@ -342,12 +356,13 @@ export default function DashboardScreen({
   );
 
   // Inbox: Reviewing (tasks I CREATED waiting for my review action)
+  // NOTE: Includes both top-level and nested tasks (all tasks I created)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
     const isCreatedByMeForReview = task.assignedBy === user.id;
     return isCreatedByMeForReview &&
            task.completionPercentage === 100 &&
-                    task.readyForReview === true &&
-                    task.reviewAccepted !== true;
+           task.readyForReview === true &&
+           task.reviewAccepted !== true;
   });
 
   // Inbox: Done (100% complete, review accepted)
@@ -372,7 +387,7 @@ export default function DashboardScreen({
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-    return !task.parentTaskId && isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"; // Top-level only
+    return isTopLevelTask(task) && isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"; // Top-level only
   });
 
   const outboxNestedTasks = getNestedTasksAssignedBy(user.id)
@@ -383,9 +398,10 @@ export default function DashboardScreen({
 
   const outboxAll = [...outboxParentTasks, ...outboxNestedTasks];
 
-  // Outbox: Assigned (not accepted, not rejected)
+  // Outbox: Assigned (pending acceptance, not rejected)
   const outboxAssignedTasks = outboxAll.filter(task =>
-    !task.accepted && 
+    task.accepted === false && 
+    !task.declineReason && 
     task.currentStatus !== "rejected"
   );
   
@@ -400,14 +416,15 @@ export default function DashboardScreen({
   );
 
   // Outbox: Reviewing (tasks I'm ASSIGNED TO that I submitted for review)
+  // NOTE: Includes both top-level and nested tasks (all tasks assigned to me)
   const outboxReviewingTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     return !isCreatedByMe &&
            isAssignedToMe &&
-    task.completionPercentage === 100 &&
-    task.readyForReview === true &&
+           task.completionPercentage === 100 &&
+           task.readyForReview === true &&
            task.reviewAccepted !== true;
   });
   

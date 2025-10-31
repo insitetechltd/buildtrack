@@ -7,6 +7,7 @@ import {
   TextInput,
   Image,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -42,6 +43,7 @@ export default function TasksScreen({
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const tasks = taskStore.tasks;
+  
   const userStore = useUserStoreWithInit();
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
@@ -93,6 +95,9 @@ export default function TasksScreen({
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
+    console.log('🔄 REFRESHING TASKS...');
+    // Actually fetch tasks from database
+    await taskStore.fetchTasks();
     // Force stores to re-read from state
     useTaskStore.setState({ isLoading: taskStore.isLoading });
     useProjectStore.setState({ isLoading: projectStore.isLoading });
@@ -101,6 +106,22 @@ export default function TasksScreen({
     setTimeout(() => {
       setRefreshing(false);
     }, 500);
+  }, [taskStore]);
+  
+  // 🔍 Fetch tasks on mount if not already loaded
+  useEffect(() => {
+    console.log('🔍 CHECKING IF TASKS NEED TO BE FETCHED...');
+    console.log('🔍 Tasks in store:', tasks.length);
+    console.log('🔍 Is loading:', taskStore.isLoading);
+    
+    if (tasks.length === 0 && !taskStore.isLoading) {
+      console.log('🔍 NO TASKS FOUND - FETCHING FROM DATABASE...');
+      taskStore.fetchTasks().then(() => {
+        console.log('🔍✅ FETCH COMPLETE - Tasks in store:', taskStore.tasks.length);
+      }).catch((error) => {
+        console.error('🔍❌ FETCH ERROR:', error);
+      });
+    }
   }, []);
 
   if (!user) return null;
@@ -118,9 +139,11 @@ export default function TasksScreen({
   // ✅ UPDATED: Simplified for unified tasks table
   // Get all nested tasks (tasks with parentTaskId) assigned by a user
   const getNestedTasksAssignedBy = (userId: string, projectId?: string): Task[] => {
+    // 🔍 FIX: Use String() comparison to handle type mismatches
+    const userIdStr = String(userId);
     return tasks.filter(task => 
       task.parentTaskId && // Is a nested task
-      task.assignedBy === userId &&
+      String(task.assignedBy) === userIdStr &&
       (!projectId || task.projectId === projectId)
     );
   };
@@ -129,9 +152,11 @@ export default function TasksScreen({
   const getNestedTasksAssignedTo = (userId: string, projectId?: string): Task[] => {
     return tasks.filter(task => {
       const assignedTo = task.assignedTo || [];
+      // 🔍 FIX: Use String() comparison to handle type mismatches
+      const userIdStr = String(userId);
       return task.parentTaskId && // Is a nested task
              Array.isArray(assignedTo) && 
-             assignedTo.includes(userId) &&
+             assignedTo.some(id => String(id) === userIdStr) &&
              (!projectId || task.projectId === projectId);
     });
   };
@@ -147,58 +172,228 @@ export default function TasksScreen({
     }
   };
 
+  // Helper: Check if task is top-level (not a subtask) - matches DashboardScreen logic
+  const isTopLevelTask = (task: Task) => {
+    return !task.parentTaskId || task.parentTaskId === null || task.parentTaskId === '';
+  };
+
+  // Helper: Check if task is nested (has a parent) - matches DashboardScreen logic
+  const isNestedTask = (task: Task) => {
+    return !!task.parentTaskId && task.parentTaskId !== null && task.parentTaskId !== '';
+  };
+
   // Get all tasks across all projects in a flat list
   const getAllTasks = (): TaskListItem[] => {
+    // 🔍 DEBUG: Comprehensive task analysis
+    console.log('🔍 [DEBUG] ========== TASK ANALYSIS START ==========');
+    console.log('🔍 [DEBUG] Total tasks in store:', tasks.length);
+    console.log('🔍 [DEBUG] Current user:', { id: user?.id, name: user?.name });
+    console.log('🔍 [DEBUG] User projects:', userProjects.map(p => ({ id: p.id, name: p.name })));
+    
+    // Find the specific task
+    const testTask = tasks.find(t => t.title?.toLowerCase().includes("testing sub task"));
+    if (testTask) {
+      console.log('🔍 [DEBUG] ✅ Task FOUND in store:', {
+        title: testTask.title,
+        id: testTask.id,
+        projectId: testTask.projectId,
+        parentTaskId: testTask.parentTaskId,
+        assignedTo: testTask.assignedTo,
+        assignedBy: testTask.assignedBy,
+        accepted: testTask.accepted,
+        currentStatus: testTask.currentStatus,
+        completionPercentage: testTask.completionPercentage,
+        user_id: user?.id,
+        isAssignedToUser: testTask.assignedTo?.includes(user?.id),
+        isInUserProject: userProjects.some(p => p.id === testTask.projectId)
+      });
+    } else {
+      console.log('🔍 [DEBUG] ❌ Task NOT found in store');
+      console.log('🔍 [DEBUG] All task titles:', tasks.map(t => t.title));
+      
+      // Check if there are any tasks with similar names
+      const similarTasks = tasks.filter(t => 
+        t.title?.toLowerCase().includes("test") || 
+        t.title?.toLowerCase().includes("sub")
+      );
+      if (similarTasks.length > 0) {
+        console.log('🔍 [DEBUG] Similar tasks found:', similarTasks.map(t => ({
+          title: t.title,
+          id: t.id,
+          projectId: t.projectId
+        })));
+      }
+    }
+    
+    // Check all tasks assigned to Peter
+    const peterTasks = tasks.filter(t => {
+      const assignedTo = t.assignedTo || [];
+      return Array.isArray(assignedTo) && assignedTo.includes(user?.id);
+    });
+    console.log('🔍 [DEBUG] Tasks assigned to Peter:', peterTasks.length);
+    console.log('🔍 [DEBUG] Peter tasks details:', peterTasks.map(t => ({
+      title: t.title,
+      id: t.id,
+      projectId: t.projectId,
+      assignedBy: t.assignedBy,
+      accepted: t.accepted,
+      currentStatus: t.currentStatus
+    })));
+    
     // Collect tasks from all user's projects
     const allProjectTasks = userProjects.flatMap(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
+      
+      // 🔍 DEBUG: Check if task is in this project
+      if (projectTasks.some(t => t.title?.toLowerCase().includes("testing sub task"))) {
+        console.log('🔍 [DEBUG] Task found in project:', {
+          projectId: project.id,
+          projectName: project.name,
+          tasksInProject: projectTasks.length
+        });
+      }
 
       // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only, top-level)
       const myTasksParent = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
-        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
         // Include top-level tasks assigned to me AND created by me (self-assigned)
-        return !task.parentTaskId && isDirectlyAssigned && isCreatedByMe;
+        return isTopLevelTask(task) && isDirectlyAssigned && isCreatedByMe;
       });
       
-      // Get nested tasks I created and assigned to myself
-      const myTasksNested = getNestedTasksAssignedTo(user.id, selectedProjectId || undefined)
-        .filter(task => task.assignedBy === user.id);
+      // Get nested tasks I created and assigned to myself - filter from current project's tasks
+      const myTasksNested = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        return isNestedTask(task) && // Is a nested task
+               Array.isArray(assignedTo) && 
+               assignedTo.some(id => String(id) === userIdStr) &&
+               String(task.assignedBy) === userIdStr; // Created by me
+      });
       
       const myTasksAll = [...myTasksParent, ...myTasksNested];
       
       // Get INBOX tasks (tasks assigned to me by OTHERS only, not self-assigned)
       const inboxParentTasks = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
-        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches (UUIDs might be different types)
+        const userIdStr = String(user.id);
+        const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
+        
+        // 🔍 DEBUG: Log tasks assigned to other users that are incorrectly being included
+        if (!isDirectlyAssigned && Array.isArray(assignedTo) && assignedTo.length > 0) {
+          const assignedUserIds = assignedTo.map(id => String(id));
+          if (!assignedUserIds.includes(userIdStr)) {
+            console.log('🔍 [DEBUG] ⚠️ Task NOT assigned to current user, but in projectTasks:', {
+              title: task.title,
+              assignedTo: assignedTo,
+              assignedUserIds,
+              currentUserId: userIdStr,
+              projectId: project.id,
+              projectName: project.name
+            });
+          }
+        }
+        
+        // 🔍 DEBUG: Log specific task if it matches the title
+        if (task.title?.toLowerCase().includes("testing sub task")) {
+          console.log('🔍 [DEBUG] Found task in projectTasks:', {
+            title: task.title,
+            id: task.id,
+            projectId: task.projectId,
+            parentTaskId: task.parentTaskId,
+            assignedTo: assignedTo,
+            assignedToType: typeof assignedTo,
+            assignedToIsArray: Array.isArray(assignedTo),
+            assignedToLength: Array.isArray(assignedTo) ? assignedTo.length : 'N/A',
+            assignedToContents: Array.isArray(assignedTo) ? JSON.stringify(assignedTo) : assignedTo,
+            assignedBy: task.assignedBy,
+            user_id: user.id,
+            user_idType: typeof user.id,
+            isTopLevel: isTopLevelTask(task),
+            isDirectlyAssigned,
+            includesCheck: Array.isArray(assignedTo) ? assignedTo.includes(user.id) : 'N/A',
+            isCreatedByMe,
+            willBeInInbox: isTopLevelTask(task) && isDirectlyAssigned && !isCreatedByMe
+          });
+          
+          // Also check if Peter's ID is in the array
+          const peterId = '66666666-6666-6666-6666-666666666666';
+          const hasPeterId = Array.isArray(assignedTo) && assignedTo.includes(peterId);
+          console.log('🔍 [DEBUG] Peter ID check:', {
+            peterId,
+            hasPeterId,
+            assignedToHasPeter: Array.isArray(assignedTo) ? assignedTo.some(id => id === peterId || String(id) === peterId) : false,
+            assignedToAsStrings: Array.isArray(assignedTo) ? assignedTo.map(id => String(id)) : []
+          });
+        }
+        
         // Include top-level tasks assigned to me but NOT created by me
-        return !task.parentTaskId && isDirectlyAssigned && !isCreatedByMe;
+        return isTopLevelTask(task) && isDirectlyAssigned && !isCreatedByMe;
       });
       
-      // Get nested tasks assigned to me but not created by me
-      const inboxNestedTasks = getNestedTasksAssignedTo(user.id, selectedProjectId || undefined)
-        .filter(task => task.assignedBy !== user.id);
+      // Get nested tasks assigned to me but not created by me - filter from current project's tasks
+      const inboxNestedTasks = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        const isNested = isNestedTask(task);
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const notCreatedByMe = String(task.assignedBy) !== userIdStr;
+        
+        // 🔍 DEBUG: Log specific task if it matches the title
+        if (task.title?.toLowerCase().includes("testing sub task")) {
+          console.log('🔍 [DEBUG] Checking nested task:', {
+            title: task.title,
+            id: task.id,
+            isNested,
+            isAssigned,
+            notCreatedByMe,
+            willBeInInbox: isNested && isAssigned && notCreatedByMe
+          });
+        }
+        
+        return isNested && isAssigned && notCreatedByMe;
+      });
       
       const inboxTasks = [...inboxParentTasks, ...inboxNestedTasks];
+      
+      // 🔍 DEBUG: Log inbox tasks count
+      if (projectTasks.some(t => t.title?.toLowerCase().includes("testing sub task"))) {
+        console.log('🔍 [DEBUG] Inbox tasks summary:', {
+          inboxParentTasks: inboxParentTasks.length,
+          inboxNestedTasks: inboxNestedTasks.length,
+          totalInboxTasks: inboxTasks.length,
+          taskInInbox: inboxTasks.some(t => t.title?.toLowerCase().includes("testing sub task"))
+        });
+      }
       
       // Get outbox tasks (tasks assigned by me to OTHERS, not ONLY self-assigned)
       const assignedParentTasks = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isDirectlyAssignedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isDirectlyAssignedByMe = String(task.assignedBy) === userIdStr;
         const isSelfAssignedOnly = isDirectlyAssignedByMe && isAssignedToMe && assignedTo.length === 1;
         // Include top-level tasks created by me, NOT self-assigned only, not rejected
-        return !task.parentTaskId && isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+        return isTopLevelTask(task) && isDirectlyAssignedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
       });
       
-      // Get nested tasks assigned by me but not to me
-      const assignedNestedTasks = getNestedTasksAssignedBy(user.id, selectedProjectId || undefined)
-        .filter(task => {
-          const assignedTo = task.assignedTo || [];
-          return !Array.isArray(assignedTo) || !assignedTo.includes(user.id);
-        });
+      // Get nested tasks assigned by me but not to me - filter from current project's tasks
+      const assignedNestedTasks = projectTasks.filter(task => {
+        const assignedTo = task.assignedTo || [];
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        return isNestedTask(task) && // Is a nested task
+               String(task.assignedBy) === userIdStr && // Created by me
+               (!Array.isArray(assignedTo) || !assignedTo.some(id => String(id) === userIdStr)); // Not assigned to me
+      });
       
       const outboxTasks = [...assignedParentTasks, ...assignedNestedTasks];
       
@@ -216,7 +411,21 @@ export default function TasksScreen({
         return myTasksAll;
       } else if (localSectionFilter === "inbox") {
         // "inbox" shows only tasks assigned to me by others
-        return inboxTasks;
+        // 🔍 VERIFY: Double-check that all tasks are actually assigned to current user
+        const userIdStr = String(user.id);
+        const verifiedInboxTasks = inboxTasks.filter(task => {
+          const assignedTo = task.assignedTo || [];
+          const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+          if (!isAssignedToMe) {
+            console.log('🔍 [DEBUG] ⚠️ Task in inboxTasks but NOT assigned to user:', {
+              title: task.title,
+              assignedTo: assignedTo,
+              user_id: user.id
+            });
+          }
+          return isAssignedToMe;
+        });
+        return verifiedInboxTasks;
       } else if (localSectionFilter === "outbox") {
         return outboxTasks;
       } else {
@@ -269,9 +478,27 @@ export default function TasksScreen({
       // Handle "my_work" section with specific status filters (for Priority Summary)
       if (localSectionFilter === "my_work") {
         const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        
+        // 🔍 CRITICAL FIX: "my_work" should ONLY show tasks assigned to me
+        // If task is not assigned to me, exclude it immediately
+        if (!isAssignedToMe) {
+          // 🔍 DEBUG: Log tasks that shouldn't be in my_work
+          if (task.title?.toLowerCase().includes("photo upload") || task.title?.toLowerCase().includes("test upload")) {
+            console.log('🔍 [DEBUG] ❌ Task NOT assigned to current user, excluding from my_work:', {
+              title: task.title,
+              assignedTo: assignedTo,
+              user_id: user.id,
+              userIdStr,
+              isAssignedToMe
+            });
+          }
+          return false;
+        }
         
         // For "my_work" section: combines My Tasks + Inbox (tasks assigned TO me)
         // Exception: "done" status includes Outbox as well (all completed work)
@@ -335,8 +562,10 @@ export default function TasksScreen({
         // MY TASKS: Self-assigned tasks (I created AND assigned to myself)
         // Also includes rejected tasks I created (reassigned back to me)
         const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
         
         if (!isInMyTasks) return false;
@@ -367,26 +596,64 @@ export default function TasksScreen({
       } else if (localSectionFilter === "inbox") {
         // INBOX: Tasks assigned TO me BY others (not self-assigned)
         const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isInInbox = isAssignedToMe && !isCreatedByMe;
+        
+        // 🔍 CRITICAL FIX: If task is not assigned to me, immediately exclude it
+        if (!isAssignedToMe) {
+          // 🔍 DEBUG: Log tasks that shouldn't be in inbox
+          if (task.title?.toLowerCase().includes("photo upload") || task.title?.toLowerCase().includes("test upload")) {
+            console.log('🔍 [DEBUG] ❌ Task NOT assigned to current user, excluding from inbox:', {
+              title: task.title,
+              assignedTo: assignedTo,
+              user_id: user.id,
+              userIdStr,
+              isAssignedToMe,
+              assignedToUserIds: Array.isArray(assignedTo) ? assignedTo.map(id => ({ id, type: typeof id, string: String(id) })) : []
+            });
+          }
+          return false;
+        }
         
         if (localStatusFilter === "reviewing") {
           // REVIEWING: Tasks I CREATED that others submitted for MY review
           // Special case: Breaks inbox definition to show tasks I need to review
-          const isCreatedByMeForReview = task.assignedBy === user.id;
+          const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
           return isCreatedByMeForReview &&
                  task.completionPercentage === 100 &&
                  task.readyForReview === true &&
                  task.reviewAccepted !== true;
         }
         
+        // Only proceed if task is assigned to me AND not created by me
         if (!isInInbox) return false;
         
         if (localStatusFilter === "received") {
           // RECEIVED: New tasks from others waiting for my acceptance
-          return !task.accepted &&
-                 task.currentStatus !== "rejected";
+          // Not yet responded = accepted === false AND no declineReason AND not rejected
+          const isPendingAcceptance = task.accepted === false && 
+                                      !task.declineReason && 
+                                      task.currentStatus !== "rejected";
+          
+          // 🔍 DEBUG: Log why task is/isn't showing in received
+          if (task.title?.toLowerCase().includes("testing sub task")) {
+            console.log('🔍 [DEBUG] Checking received filter:', {
+              title: task.title,
+              id: task.id,
+              isInInbox,
+              accepted: task.accepted,
+              declineReason: task.declineReason,
+              isPendingAcceptance,
+              currentStatus: task.currentStatus,
+              isRejected: task.currentStatus === "rejected",
+              willPassFilter: isPendingAcceptance
+            });
+          }
+          
+          return isPendingAcceptance;
         } else if (localStatusFilter === "wip") {
           // WIP: Tasks from others I'm actively working on
           // Must be accepted, incomplete or at 100% but not yet submitted for review
@@ -411,8 +678,10 @@ export default function TasksScreen({
         // OUTBOX: Tasks I assigned TO others (not self-assigned)
         // Excludes: Self-assigned tasks, Rejected tasks
         const assignedTo = task.assignedTo || [];
-        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-        const isCreatedByMe = task.assignedBy === user.id;
+        // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
         const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
         
@@ -430,8 +699,11 @@ export default function TasksScreen({
         
         if (localStatusFilter === "assigned") {
           // ASSIGNED: Tasks I delegated to others waiting for their acceptance
-          return !task.accepted &&
-                 task.currentStatus !== "rejected";
+          // Pending acceptance = accepted === false AND no declineReason AND not rejected
+          const isPendingAcceptance = task.accepted === false && 
+                                      !task.declineReason && 
+                                      task.currentStatus !== "rejected";
+          return isPendingAcceptance;
         } else if (localStatusFilter === "wip") {
           // WIP: Tasks I assigned to others that they're working on
           // They've accepted it, working on it, not overdue, not complete/submitted
@@ -479,8 +751,10 @@ export default function TasksScreen({
   if (showSelfAssignedOnly) {
     allTasks = allTasks.filter(task => {
       const assignedTo = task.assignedTo || [];
-      const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-      const isCreatedByMe = task.assignedBy === user.id;
+      // 🔍 FIX: Use String() comparison to handle type mismatches
+      const userIdStr = String(user.id);
+      const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+      const isCreatedByMe = String(task.assignedBy) === userIdStr;
       // Only show tasks I assigned to myself
       return isAssignedToMe && isCreatedByMe;
     });

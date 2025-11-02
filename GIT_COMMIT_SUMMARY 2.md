@@ -87,7 +87,7 @@ Since the repository uses HTTPS authentication, you'll need to push manually:
 
 ### Option 1: Using Personal Access Token
 ```bash
-git push https://YOUR_GITHUB_TOKEN@github.com/tristankoo-1/buildtrackapp.git main
+git push https://YOUR_GITHUB_TOKEN@github.com/insitetechltd/buildtrackapp.git main
 ```
 
 ### Option 2: Using GitHub CLI (if installed)
@@ -99,7 +99,7 @@ git push origin main
 ### Option 3: Using SSH (if configured)
 ```bash
 # First, add SSH remote
-git remote set-url origin git@github.com:tristankoo-1/buildtrackapp.git
+git remote set-url origin git@github.com:insitetechltd/buildtrackapp.git
 git push origin main
 ```
 

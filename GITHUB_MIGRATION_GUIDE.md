@@ -104,7 +104,7 @@ If you have any environment variables or CI/CD that reference the old repository
 ### Need to keep old remote as backup
 ```bash
 # Add old remote as backup
-git remote add old-origin https://github.com/tristankoo-1/buildtrackapp.git
+git remote add old-origin https://github.com/insitetechltd/buildtrackapp.git
 
 # View all remotes
 git remote -v
@@ -112,6 +112,6 @@ git remote -v
 
 ## Current Repository Info
 
-- **Old Remote**: `https://github.com/tristankoo-1/buildtrackapp.git`
+- **Old Remote**: `https://github.com/insitetechltd/buildtrackapp.git`
 - **Current Branch**: Check with `git branch --show-current`
 

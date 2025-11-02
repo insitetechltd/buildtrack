@@ -609,7 +609,7 @@ export const useTaskStore = create<TaskStore>()(
 
         try {
           const { data, error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')
             .insert({
               parent_task_id: taskId,
               project_id: subTaskData.projectId,
@@ -665,10 +665,9 @@ export const useTaskStore = create<TaskStore>()(
 
         try {
           const { data, error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')
             .insert({
-              parent_task_id: taskId,
-              parent_sub_task_id: parentSubTaskId,
+              parent_task_id: parentSubTaskId,
               project_id: subTaskData.projectId,
               title: subTaskData.title,
               description: subTaskData.description,
@@ -726,7 +725,7 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
 
           const { error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')
             .update(updateData)
             .eq('id', subTaskId);
 
@@ -758,7 +757,7 @@ export const useTaskStore = create<TaskStore>()(
 
         try {
           const { error } = await supabase
-            .from('sub_tasks')
+            .from('tasks')
             .delete()
             .eq('id', subTaskId);
 

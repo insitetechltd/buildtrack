@@ -88,11 +88,12 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
       taskId={taskId}
       subTaskId={subTaskId}
       onNavigateBack={() => navigation.goBack()}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
         // Navigate to CreateTask at parent level
         navigation.getParent()?.navigate("CreateTask", {
           parentTaskId,
-          parentSubTaskId
+          parentSubTaskId,
+          editTaskId
         });
       }}
     />
@@ -146,15 +147,17 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
       taskId={taskId}
       subTaskId={subTaskId}
       onNavigateBack={() => navigation.goBack()}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
         console.log('🚀 Navigation handler called');
         console.log('🚀 parentTaskId:', parentTaskId);
         console.log('🚀 parentSubTaskId:', parentSubTaskId);
+        console.log('🚀 editTaskId:', editTaskId);
         
         // Navigate within the same stack to CreateTaskFromTask
         navigation.navigate("CreateTaskFromTask", { 
           parentTaskId, 
-          parentSubTaskId
+          parentSubTaskId,
+          editTaskId
         });
         
         console.log('🚀 Navigation called to CreateTaskFromTask');
@@ -164,12 +167,13 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
 }
 
 function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigation: any }) {
-  const { parentTaskId, parentSubTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
     />
   );
 }
@@ -218,12 +222,13 @@ function CreateTaskStack() {
 }
 
 function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { parentTaskId, parentSubTaskId } = route.params || {};
+  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
     />
   );
 }

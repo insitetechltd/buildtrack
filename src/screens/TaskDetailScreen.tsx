@@ -35,7 +35,7 @@ interface TaskDetailScreenProps {
   taskId: string;
   subTaskId?: string; // Optional: if provided, show only this subtask
   onNavigateBack: () => void;
-  onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string) => void;
+  onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string) => void;
 }
 
 export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask }: TaskDetailScreenProps) {
@@ -79,6 +79,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [selectedUsersForReassign, setSelectedUsersForReassign] = useState<string[]>([]);
   const [reassignSearchQuery, setReassignSearchQuery] = useState("");
   const [showProgressDetails, setShowProgressDetails] = useState(false);
+  const [selectedUpdateId, setSelectedUpdateId] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
@@ -283,7 +284,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         {
           text: "Reject",
           style: "destructive",
-          onPress: async (reason) => {
+          onPress: async (reason: string | undefined) => {
             if (!reason || !reason.trim()) {
               Alert.alert("Error", "Please provide a reason for rejection.");
               return;
@@ -574,20 +575,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
       {isAssignedToMe && task.accepted === false && !task.declineReason && task.currentStatus !== "rejected" && (
-        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
-          <View className="flex-row items-center mb-3">
-            <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="alert-circle" size={24} color="#f59e0b" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-amber-900">
-                Action Required
-              </Text>
-              <Text className="text-base text-amber-700">
-                You have been assigned to this {isViewingSubTask ? "sub-task" : "task"}
-              </Text>
-            </View>
-          </View>
+        <View className="bg-amber-50 border-4 border-red-500 px-6 py-4 mx-6 mt-4 rounded-lg">
           <View className="flex-row gap-3">
             <Pressable
               onPress={() => {
@@ -768,14 +756,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
                     {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
                   </Text>
-                  <Text className="text-sm text-gray-500 capitalize">
-                    {assignedBy?.role || "Unknown"}
-                  </Text>
+                  {assignedBy?.phone && (
+                    <Text className="text-sm text-gray-500">
+                      {assignedBy.phone}
+                    </Text>
+                  )}
                 </View>
               </View>
-              {assignedBy?.phone && (
-                <Text className="text-sm text-gray-600">{assignedBy.phone}</Text>
-              )}
             </Pressable>
 
             {/* Assigned To Card */}
@@ -809,15 +796,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
                             {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
                           </Text>
-                          <Text className="text-sm text-gray-500 capitalize">
-                            {assignedUser.role}
-                          </Text>
+                          {assignedUser.phone && (
+                            <Text className="text-sm text-gray-500">
+                              {assignedUser.phone}
+                            </Text>
+                          )}
                         </View>
                       </View>
-                      
-                      {assignedUser.phone && (
-                        <Text className="text-sm text-gray-600">{assignedUser.phone}</Text>
-                      )}
                     </Pressable>
                   );
                 })
@@ -966,7 +951,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
           {/* Updates Header - Clickable */}
           <Pressable 
-            onPress={() => setShowProgressDetails(true)}
+            onPress={() => {
+              setSelectedUpdateId(null); // Reset selection when opening from header
+              setShowProgressDetails(true);
+            }}
             className="flex-row items-center justify-between mb-2 active:opacity-70"
           >
             <Text className="text-lg font-semibold text-gray-900">Progress</Text>
@@ -982,7 +970,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {task.updates.map((update) => {
                 const updateUser = getUserById(update.userId);
                 return (
-                  <View key={update.id} className="border-l-4 border-blue-200 pl-4">
+                  <Pressable 
+                    key={update.id} 
+                    onPress={() => {
+                      setSelectedUpdateId(update.id);
+                      setShowProgressDetails(true);
+                    }}
+                    className="border-l-4 border-blue-200 pl-4 active:opacity-70"
+                  >
                     <View className="flex-row items-center justify-between mb-2">
                       <Text className="font-medium text-gray-900">
                         {updateUser?.name || "Unknown User"}
@@ -1036,7 +1031,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         </View>
                       </ScrollView>
                     )}
-                  </View>
+                  </Pressable>
                 );
               })}
             </View>
@@ -1643,12 +1638,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 {task.updates.map((update, index) => {
                   const updateUser = getUserById(update.userId);
                   const isLatest = index === task.updates.length - 1;
+                  const isSelected = selectedUpdateId === update.id;
                   
                   return (
                     <View 
                       key={update.id} 
                       className={cn(
                         "bg-white rounded-xl p-4 border-l-4",
+                        isSelected ? "border-purple-500 border-4 shadow-lg" : 
                         isLatest ? "border-blue-500 border-2" : "border-gray-300 border"
                       )}
                     >
@@ -1657,12 +1654,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         <View className="flex-row items-center flex-1">
                           <View className={cn(
                             "w-8 h-8 rounded-full items-center justify-center mr-2",
-                            isLatest ? "bg-blue-100" : "bg-gray-100"
+                            isSelected ? "bg-purple-100" : isLatest ? "bg-blue-100" : "bg-gray-100"
                           )}>
                             <Ionicons 
                               name="person" 
                               size={16} 
-                              color={isLatest ? "#3b82f6" : "#6b7280"} 
+                              color={isSelected ? "#9333ea" : isLatest ? "#3b82f6" : "#6b7280"} 
                             />
                           </View>
                           <View className="flex-1">
@@ -1674,16 +1671,23 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             </Text>
                           </View>
                         </View>
-                        {isLatest && (
+                        {isSelected ? (
+                          <View className="bg-purple-100 px-2 py-1 rounded">
+                            <Text className="text-sm font-medium text-purple-700">Selected</Text>
+                          </View>
+                        ) : isLatest ? (
                           <View className="bg-blue-100 px-2 py-1 rounded">
                             <Text className="text-sm font-medium text-blue-700">Latest</Text>
                           </View>
-                        )}
+                        ) : null}
                       </View>
 
                       {/* Progress Change */}
                       <View className="flex-row items-center mb-2">
-                        <Text className="text-3xl font-bold text-blue-600 mr-2">
+                        <Text className={cn(
+                          "text-3xl font-bold mr-2",
+                          isSelected ? "text-purple-600" : "text-blue-600"
+                        )}>
                           {update.completionPercentage}%
                         </Text>
                         <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
@@ -1804,8 +1808,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       <TaskDetailUtilityFAB
         onUpdate={() => setShowUpdateModal(true)}
         onEdit={() => {
-          // Navigate to edit - you may need to implement this
-          Alert.alert("Edit", "Edit task functionality");
+          if (onNavigateToCreateTask && task) {
+            // Navigate to edit screen by passing the task ID as editTaskId
+            onNavigateToCreateTask(undefined, undefined, task.id);
+          }
         }}
         onCameraUpdate={() => {
           Alert.alert(
@@ -1929,9 +1935,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             onNavigateToCreateTask(taskId);
           }
         } : undefined}
-        canUpdate={true}
-        canEdit={task?.assignedBy === user?.id}
-        canCreateSubTask={!!onNavigateToCreateTask}
+        canUpdate={canUpdateProgress}
+        canEdit={canUpdateProgress}
+        canCreateSubTask={canCreateSubTask && !!onNavigateToCreateTask}
       />
     </SafeAreaView>
   );

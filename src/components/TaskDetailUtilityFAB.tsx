@@ -109,16 +109,19 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
   };
 
   const handleUpdate = () => {
+    if (!canUpdate) return;
     collapseImmediately();
     setTimeout(() => onUpdate(), 200);
   };
 
   const handleCameraUpdate = () => {
+    if (!canUpdate) return;
     collapseImmediately();
     setTimeout(() => onCameraUpdate(), 200);
   };
 
   const handleCreateSubTask = () => {
+    if (!canCreateSubTask) return;
     collapseImmediately();
     if (onCreateSubTask) {
       setTimeout(() => onCreateSubTask(), 200);
@@ -131,10 +134,26 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
   });
 
   return (
-    <View className="absolute bottom-6 right-6 items-end">
-      {/* Edit Task Button */}
-      {/* Position: -144px - YELLOW for Edit */}
-      <Animated.View
+    <>
+      {/* Full-screen backdrop - tap to close when expanded */}
+      {isExpanded && (
+        <Pressable
+          onPress={toggleExpand}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+          }}
+        />
+      )}
+      
+      <View className="absolute bottom-6 right-6 items-end" style={{ zIndex: 1000 }}>
+        {/* Edit Task Button */}
+        {/* Position: -144px - YELLOW for Edit */}
+        <Animated.View
         style={{
           transform: [
             { scale: scaleAnim3 },
@@ -169,7 +188,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
 
       {/* Add Sub-Task Button */}
       {/* Position: -108px - ORANGE for Add Sub-Task */}
-      {canCreateSubTask && onCreateSubTask && (
+      {onCreateSubTask && (
         <Animated.View
           style={{
             transform: [
@@ -184,96 +203,95 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           pointerEvents={isExpanded ? 'auto' : 'none'}
           className="flex-row items-center"
         >
-          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">Add Sub-task</Text>
+          <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canCreateSubTask ? 'bg-gray-800' : 'bg-gray-600'}`}>
+            <Text className={`text-base font-medium ${canCreateSubTask ? 'text-white' : 'text-gray-300'}`}>Add Sub-task</Text>
           </View>
           <Pressable
             onPress={handleCreateSubTask}
-            className="w-12 h-12 bg-orange-500 rounded-full items-center justify-center shadow-lg"
+            disabled={!canCreateSubTask}
+            className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canCreateSubTask ? 'bg-orange-500' : 'bg-gray-400'}`}
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
+              shadowOpacity: canCreateSubTask ? 0.25 : 0.1,
               shadowRadius: 3.84,
               elevation: 5,
             }}
           >
-            <Ionicons name="add-circle-outline" size={20} color="white" />
+            <Ionicons name="add-circle-outline" size={20} color="white" style={{ opacity: canCreateSubTask ? 1 : 0.5 }} />
           </Pressable>
         </Animated.View>
       )}
 
       {/* Update Button */}
       {/* Position: -72px - GREEN for Update */}
-      {canUpdate && (
-        <Animated.View
+      <Animated.View
+        style={{
+          transform: [
+            { scale: scaleAnim2 },
+            { translateY: scaleAnim2.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -72]
+            })}
+          ],
+          opacity: 1,
+        }}
+        pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
+      >
+        <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canUpdate ? 'bg-gray-800' : 'bg-gray-600'}`}>
+          <Text className={`text-base font-medium ${canUpdate ? 'text-white' : 'text-gray-300'}`}>Update Progress</Text>
+        </View>
+        <Pressable
+          onPress={handleUpdate}
+          disabled={!canUpdate}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canUpdate ? 'bg-green-600' : 'bg-gray-400'}`}
           style={{
-            transform: [
-              { scale: scaleAnim2 },
-              { translateY: scaleAnim2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -72]
-              })}
-            ],
-            opacity: 1,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: canUpdate ? 0.25 : 0.1,
+            shadowRadius: 3.84,
+            elevation: 5,
           }}
-          pointerEvents={isExpanded ? 'auto' : 'none'}
-          className="flex-row items-center"
         >
-          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">Update Progress</Text>
-          </View>
-          <Pressable
-            onPress={handleUpdate}
-            className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }}
-          >
-            <Ionicons name="create-outline" size={20} color="white" />
-          </Pressable>
-        </Animated.View>
-      )}
+          <Ionicons name="create-outline" size={20} color="white" style={{ opacity: canUpdate ? 1 : 0.5 }} />
+        </Pressable>
+      </Animated.View>
 
       {/* Camera/Photos Update Button */}
       {/* Position: -36px - BLUE for Camera */}
-      {canUpdate && (
-        <Animated.View
+      <Animated.View
+        style={{
+          transform: [
+            { scale: scaleAnim1 },
+            { translateY: scaleAnim1.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -36]
+            })}
+          ],
+          opacity: 1,
+        }}
+        pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
+      >
+        <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canUpdate ? 'bg-gray-800' : 'bg-gray-600'}`}>
+          <Text className={`text-base font-medium ${canUpdate ? 'text-white' : 'text-gray-300'}`}>Photos Updates</Text>
+        </View>
+        <Pressable
+          onPress={handleCameraUpdate}
+          disabled={!canUpdate}
+          className={`w-12 h-12 rounded-full items-center justify-center shadow-lg ${canUpdate ? 'bg-blue-600' : 'bg-gray-400'}`}
           style={{
-            transform: [
-              { scale: scaleAnim1 },
-              { translateY: scaleAnim1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -36]
-              })}
-            ],
-            opacity: 1,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: canUpdate ? 0.25 : 0.1,
+            shadowRadius: 3.84,
+            elevation: 5,
           }}
-          pointerEvents={isExpanded ? 'auto' : 'none'}
-          className="flex-row items-center"
         >
-          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">Photos Updates</Text>
-          </View>
-          <Pressable
-            onPress={handleCameraUpdate}
-            className="w-12 h-12 bg-blue-600 rounded-full items-center justify-center shadow-lg"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }}
-          >
-            <Ionicons name="attach-outline" size={20} color="white" />
-          </Pressable>
-        </Animated.View>
-      )}
+          <Ionicons name="attach-outline" size={20} color="white" style={{ opacity: canUpdate ? 1 : 0.5 }} />
+        </Pressable>
+      </Animated.View>
 
       {/* Main Utility FAB */}
       <Pressable
@@ -291,15 +309,7 @@ export default function TaskDetailUtilityFAB({ onUpdate, onEdit, onCameraUpdate,
           <Ionicons name="settings" size={28} color="white" />
         </Animated.View>
       </Pressable>
-
-      {/* Backdrop - tap to close when expanded */}
-      {isExpanded && (
-        <Pressable
-          onPress={toggleExpand}
-          className="absolute -inset-96"
-          style={{ zIndex: -1 }}
-        />
-      )}
     </View>
+    </>
   );
 }

@@ -111,10 +111,26 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
   });
 
   return (
-    <View className="absolute bottom-8 right-6 items-end">
-      {/* Reports Button - appears when expanded */}
-      {/* Custom position: Center at -108px */}
-      {onReports && (
+    <>
+      {/* Full-screen backdrop - tap to close when expanded */}
+      {isExpanded && (
+        <Pressable
+          onPress={toggleExpand}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 999,
+          }}
+        />
+      )}
+      
+      <View className="absolute bottom-8 right-6 items-end" style={{ zIndex: 1000 }}>
+        {/* Reports Button - appears when expanded */}
+        {/* Custom position: Center at -108px */}
+        {onReports && (
         <Animated.View
           style={{
             transform: [
@@ -234,15 +250,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           <Ionicons name="apps" size={28} color="white" />
         </Animated.View>
       </Pressable>
-
-      {/* Backdrop - tap to close when expanded */}
-      {isExpanded && (
-        <Pressable
-          onPress={toggleExpand}
-          className="absolute -inset-96"
-          style={{ zIndex: -1 }}
-        />
-      )}
     </View>
+    </>
   );
 }

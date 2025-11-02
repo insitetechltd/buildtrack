@@ -483,7 +483,14 @@ export const useAuthStore = create<AuthStore>()(
 
           if (error) {
             console.error('Session restore error:', error);
-            set({ user: null, session: null, isAuthenticated: false });
+            
+            // If refresh token is invalid, clear auth state
+            if (error.message?.includes('Invalid Refresh Token') || 
+                error.message?.includes('Refresh Token Not Found')) {
+              console.log('🔴 Invalid refresh token during restore - clearing auth state');
+            }
+            
+            set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
             return;
           }
 
@@ -491,7 +498,7 @@ export const useAuthStore = create<AuthStore>()(
             // Check if session is expired
             if (session.expires_at && session.expires_at < Date.now() / 1000) {
               console.log('Session expired');
-              set({ user: null, session: null, isAuthenticated: false });
+              set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
               return;
             }
 
@@ -522,11 +529,18 @@ export const useAuthStore = create<AuthStore>()(
               });
             }
           } else {
-            set({ user: null, session: null, isAuthenticated: false });
+            set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error restoring session:', error);
-          set({ user: null, session: null, isAuthenticated: false });
+          
+          // If it's an auth error, clear session completely
+          if (error?.message?.includes('Invalid Refresh Token') || 
+              error?.message?.includes('Refresh Token Not Found')) {
+            console.log('🔴 Invalid refresh token exception - clearing auth state');
+          }
+          
+          set({ user: null, session: null, isAuthenticated: false, isInitialized: true });
         }
       },
 
@@ -538,14 +552,29 @@ export const useAuthStore = create<AuthStore>()(
 
           if (error) {
             console.error('Session refresh error:', error);
+            
+            // If refresh token is invalid/expired, log user out
+            if (error.message?.includes('Invalid Refresh Token') || 
+                error.message?.includes('Refresh Token Not Found')) {
+              console.log('🔴 Invalid refresh token detected - logging out user');
+              get().logout();
+              return;
+            }
             return;
           }
 
           if (data.session) {
             set({ session: data.session });
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error refreshing session:', error);
+          
+          // If it's an auth error, log user out
+          if (error?.message?.includes('Invalid Refresh Token') || 
+              error?.message?.includes('Refresh Token Not Found')) {
+            console.log('🔴 Invalid refresh token detected - logging out user');
+            get().logout();
+          }
         }
       },
     }),

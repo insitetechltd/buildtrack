@@ -7,6 +7,8 @@ import { View } from "react-native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { DataRefreshManager } from "../utils/DataRefreshManager";
+import { NetworkSyncManager } from "../utils/NetworkSyncManager";
+import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
@@ -452,6 +454,8 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       <DataRefreshManager />
+      <NetworkSyncManager />
+      <RealtimeSyncManager />
       <MainTabs />
     </NavigationContainer>
   );

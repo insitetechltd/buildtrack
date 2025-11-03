@@ -41,6 +41,7 @@ interface TaskDetailScreenProps {
 export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask }: TaskDetailScreenProps) {
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
+  const fetchTaskById = useTaskStore(state => state.fetchTaskById);
   const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
   const updateTask = useTaskStore(state => state.updateTask);
   const updateSubTaskStatus = useTaskStore(state => state.updateSubTaskStatus);
@@ -125,6 +126,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       default: return "text-gray-600 bg-gray-50";
     }
   };
+
+  // Fetch task data when screen opens to ensure we have latest completion percentage
+  useEffect(() => {
+    if (taskId) {
+      fetchTaskById(taskId);
+    }
+    if (subTaskId) {
+      fetchTaskById(subTaskId);
+    }
+  }, [taskId, subTaskId, fetchTaskById]);
 
   // Mark task as read when viewing
   useEffect(() => {

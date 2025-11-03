@@ -500,12 +500,23 @@ export const useTaskStore = create<TaskStore>()(
             subTasks: [],
           };
 
-          // Update the task in the store
-          set(state => ({
-            tasks: state.tasks.map(task => 
-              task.id === id ? transformedTask : task
-            )
-          }));
+          // Update the task in the store (add if doesn't exist)
+          set(state => {
+            const existingTaskIndex = state.tasks.findIndex(task => task.id === id);
+            if (existingTaskIndex >= 0) {
+              // Update existing task
+              return {
+                tasks: state.tasks.map(task => 
+                  task.id === id ? transformedTask : task
+                )
+              };
+            } else {
+              // Add new task if it doesn't exist
+              return {
+                tasks: [...state.tasks, transformedTask]
+              };
+            }
+          });
 
           return transformedTask;
         } catch (error: any) {
@@ -943,8 +954,8 @@ export const useTaskStore = create<TaskStore>()(
           // Success - backend confirmed
           console.log(`✅ [Optimistic Update] Backend confirmed task update for ${taskId}`);
           
-          // Optionally refresh to get real IDs from backend (in background)
-          get().fetchTaskById(taskId);
+          // Refresh to get latest data from backend (including completion percentage)
+          await get().fetchTaskById(taskId);
           
         } catch (error: any) {
           console.error('❌ [Optimistic Update] Backend failed for task update, rolling back:', error);
@@ -966,15 +977,48 @@ export const useTaskStore = create<TaskStore>()(
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === subTaskId
-                ? { ...task, updates: [...(task.updates || []), newUpdate] }
+                ? { 
+                    ...task, 
+                    updates: [...(task.updates || []), newUpdate],
+                    completionPercentage: update.completionPercentage,
+                    currentStatus: update.status,
+                    updatedAt: new Date().toISOString(),
+                  }
                 : task
             )
           }));
           return;
         }
 
+        // OPTIMISTIC UPDATE: Store original state for potential rollback
+        const originalTasks = get().tasks;
+
         try {
-          const { error } = await supabase
+          // Create the new update with temporary ID
+          const newUpdate: TaskUpdate = {
+            ...update,
+            id: `temp-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+          };
+
+          // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
+          console.log(`⚡ [Optimistic Update] Adding update to subtask ${subTaskId} locally before backend sync`);
+          set(state => ({
+            tasks: state.tasks.map(task =>
+              task.id === subTaskId
+                ? { 
+                    ...task, 
+                    updates: [...(task.updates || []), newUpdate],
+                    completionPercentage: update.completionPercentage,
+                    currentStatus: update.status,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : task
+            )
+          }));
+
+          // Insert the task update to backend
+          const { error: updateError } = await supabase
             .from('task_updates')
             .insert({
               task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
@@ -985,9 +1029,30 @@ export const useTaskStore = create<TaskStore>()(
               status: update.status,
             });
 
-          if (error) throw error;
+          if (updateError) throw updateError;
+
+          // Update the subtask's completion percentage and status in backend
+          const { error: taskError } = await supabase
+            .from('tasks')
+            .update({
+              completion_percentage: update.completionPercentage,
+              current_status: update.status,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', subTaskId);
+
+          if (taskError) throw taskError;
+
+          // Success - backend confirmed
+          console.log(`✅ [Optimistic Update] Backend confirmed subtask update for ${subTaskId}`);
+          
+          // Refresh to get latest data from backend (including completion percentage)
+          await get().fetchTaskById(subTaskId);
+
         } catch (error: any) {
-          console.error('Error adding subtask update:', error);
+          console.error('❌ [Optimistic Update] Backend failed for subtask update, rolling back:', error);
+          // ROLLBACK: Restore original state on failure
+          set({ tasks: originalTasks });
           throw error;
         }
       },

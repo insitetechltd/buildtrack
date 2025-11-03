@@ -46,69 +46,79 @@ const generateDataHash = () => {
   return hash.toString();
 };
 
+// Export triggerRefresh function for use by NetworkSyncManager
+let lastRefreshTime = Date.now();
+
+// Function to force a re-render of all components using these stores
+export const triggerRefresh = async () => {
+  const now = Date.now();
+  
+  // Prevent too frequent refreshes (minimum 500ms between refreshes)
+  if (now - lastRefreshTime < 500) {
+    return;
+  }
+  
+  lastRefreshTime = now;
+  
+  // Check if data has actually changed
+  const currentHash = generateDataHash();
+  const hasDataChanged = currentHash !== lastDataHash;
+  
+  if (hasDataChanged || now - lastRefreshTime > 30000) {
+    lastDataHash = currentHash;
+    
+    // Actually fetch fresh data from Supabase instead of just re-rendering
+    const taskStore = useTaskStore.getState();
+    const projectStore = useProjectStore.getState();
+    const userStore = useUserStore.getState();
+    const authStore = useAuthStore.getState();
+    const user = authStore.user;
+    
+    try {
+      // Fetch fresh data if user is logged in
+      if (user) {
+        await Promise.all([
+          projectStore.fetchProjects(),
+          projectStore.fetchUserProjectAssignments(user.id),
+          taskStore.fetchTasks(), // Fetch ALL tasks, not just user's tasks
+          userStore.fetchUsers()
+        ]);
+        
+        console.log('[DataSync] ✓ Fresh data fetched from Supabase', new Date().toLocaleTimeString());
+      }
+    } catch (error) {
+      console.error('[DataSync] Error fetching fresh data:', error);
+      
+      // Fallback to old behavior if fetch fails
+      useTaskStore.setState({ 
+        isLoading: false,
+        tasks: [...taskStore.tasks]
+      });
+      useProjectStore.setState({ 
+        isLoading: false,
+        projects: [...projectStore.projects],
+        userAssignments: [...projectStore.userAssignments]
+      });
+      useUserStore.setState({ 
+        isLoading: false,
+        users: [...userStore.users]
+      });
+    }
+    
+    if (hasDataChanged) {
+      console.log('[DataSync] ✓ Data changed - all users notified', new Date().toLocaleTimeString());
+    }
+  }
+};
+
 export const DataRefreshManager = () => {
   const appState = useRef(AppState.currentState);
   const lastRefresh = useRef(Date.now());
   const { user } = useAuthStore();
 
-  // Function to force a re-render of all components using these stores
-  const triggerRefresh = async () => {
-    const now = Date.now();
-    
-    // Prevent too frequent refreshes (minimum 500ms between refreshes)
-    if (now - lastRefresh.current < 500) {
-      return;
-    }
-    
-    lastRefresh.current = now;
-    
-    // Check if data has actually changed
-    const currentHash = generateDataHash();
-    const hasDataChanged = currentHash !== lastDataHash;
-    
-    if (hasDataChanged || now - lastRefresh.current > 30000) {
-      lastDataHash = currentHash;
-      
-      // Actually fetch fresh data from Supabase instead of just re-rendering
-      const taskStore = useTaskStore.getState();
-      const projectStore = useProjectStore.getState();
-      const userStore = useUserStore.getState();
-      
-      try {
-        // Fetch fresh data if user is logged in
-        if (user) {
-          await Promise.all([
-            projectStore.fetchProjects(),
-            projectStore.fetchUserProjectAssignments(user.id),
-            taskStore.fetchTasks(), // Fetch ALL tasks, not just user's tasks
-            userStore.fetchUsers()
-          ]);
-          
-          console.log('[DataSync] ✓ Fresh data fetched from Supabase', new Date().toLocaleTimeString());
-        }
-      } catch (error) {
-        console.error('[DataSync] Error fetching fresh data:', error);
-        
-        // Fallback to old behavior if fetch fails
-        useTaskStore.setState({ 
-          isLoading: false,
-          tasks: [...taskStore.tasks]
-        });
-        useProjectStore.setState({ 
-          isLoading: false,
-          projects: [...projectStore.projects],
-          userAssignments: [...projectStore.userAssignments]
-        });
-        useUserStore.setState({ 
-          isLoading: false,
-          users: [...userStore.users]
-        });
-      }
-      
-      if (hasDataChanged) {
-        console.log('[DataSync] ✓ Data changed - all users notified', new Date().toLocaleTimeString());
-      }
-    }
+  // Internal refresh function that uses the exported triggerRefresh
+  const handleRefresh = async () => {
+    await triggerRefresh();
   };
 
   useEffect(() => {
@@ -122,7 +132,7 @@ export const DataRefreshManager = () => {
         nextAppState === 'active'
       ) {
         console.log('[DataSync] App foregrounded - syncing data...');
-        triggerRefresh();
+        handleRefresh();
       }
       appState.current = nextAppState;
     };
@@ -130,16 +140,17 @@ export const DataRefreshManager = () => {
     // Subscribe to app state changes
     const subscription = AppState.addEventListener('change', handleAppStateChange);
 
-    // Set up periodic polling (every 30 seconds) for real-time feel
+    // Set up periodic polling (every 60 seconds) as fallback
+    // Note: Real-time subscriptions handle most updates, polling is backup
     refreshInterval = setInterval(() => {
       if (AppState.currentState === 'active' && user) {
-        triggerRefresh();
+        handleRefresh();
       }
-    }, 30000); // 30 seconds - less aggressive
+    }, 60000); // 60 seconds - reduced since RealtimeSyncManager handles most updates
 
     // Initial sync
     lastDataHash = generateDataHash();
-    triggerRefresh();
+    handleRefresh();
 
     // Cleanup
     return () => {

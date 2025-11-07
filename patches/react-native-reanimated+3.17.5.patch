@@ -1,0 +1,30 @@
+diff --git a/node_modules/react-native-reanimated/RNReanimated.podspec b/node_modules/react-native-reanimated/RNReanimated.podspec
+index a5aea4f..4e01f26 100644
+--- a/node_modules/react-native-reanimated/RNReanimated.podspec
++++ b/node_modules/react-native-reanimated/RNReanimated.podspec
+@@ -62,7 +62,10 @@ Pod::Spec.new do |s|
+     end
+   end
+ 
+-  gcc_debug_definitions = "$(inherited)"
++  # Extract version definitions without -D prefix for GCC_PREPROCESSOR_DEFINITIONS
++  version_definitions = "REACT_NATIVE_MINOR_VERSION=#{$config[:react_native_minor_version]} REANIMATED_VERSION=#{reanimated_package_json['version']}"
++  
++  gcc_debug_definitions = "$(inherited) #{version_definitions}"
+   if !is_release
+     gcc_debug_definitions << " HERMES_ENABLE_DEBUGGER=1"
+   end
+@@ -81,9 +84,11 @@ Pod::Spec.new do |s|
+       '"$(PODS_ROOT)/Headers/Private/Yoga"',
+     ].join(' '),
+     "FRAMEWORK_SEARCH_PATHS" => '"${PODS_CONFIGURATION_BUILD_DIR}/React-hermes"',
+-    "CLANG_CXX_LANGUAGE_STANDARD" => "c++17",
++    "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
++    "CLANG_CXX_LIBRARY" => "libc++",
++    "OTHER_CPLUSPLUSFLAGS" => "$(inherited) -std=c++20 -stdlib=libc++ #{version_flags}",
+     "GCC_PREPROCESSOR_DEFINITIONS[config=Debug]" => gcc_debug_definitions,
+-    "GCC_PREPROCESSOR_DEFINITIONS[config=Release]" => '$(inherited) NDEBUG=1',
++    "GCC_PREPROCESSOR_DEFINITIONS[config=Release]" => "$(inherited) NDEBUG=1 #{version_definitions}",
+   }
+   s.compiler_flags = "#{folly_flags} #{boost_compiler_flags}"
+   s.xcconfig = {

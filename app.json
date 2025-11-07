@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "BuildTrack",
+    "slug": "buildtrack",
+    "scheme": "buildtrack",
+    "version": "1.1.2",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "sdkVersion": "54.0.0",
+    "icon": "./assets/icon.png",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.1",
+            "useFrameworks": "static",
+            "clangCxxLanguageStandard": "c++20",
+            "clangCxxLibrary": "libc++"
+          }
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.buildtrack.app",
+      "icon": "./assets/icon.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app uses the camera to take photos for task attachments and updates.",
+        "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select images for task attachments and updates."
+      }
+    },
+    "android": {
+      "edgeToEdgeEnabled": true,
+      "package": "com.buildtrack.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "a8596e39-81b8-4e27-bfe0-b9a8ad5e2722"
+      }
+    },
+    "owner": "insitetech",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/a8596e39-81b8-4e27-bfe0-b9a8ad5e2722"
+    }
+  }
+}

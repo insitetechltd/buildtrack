@@ -1,0 +1,39 @@
+diff --git a/node_modules/babel-preset-expo/build/index.js b/node_modules/babel-preset-expo/build/index.js
+index 7239752..01d5076 100644
+--- a/node_modules/babel-preset-expo/build/index.js
++++ b/node_modules/babel-preset-expo/build/index.js
+@@ -282,12 +282,28 @@ function babelPresetExpo(api, options = {}) {
+             ],
+             // Automatically add `react-native-reanimated/plugin` when the package is installed.
+             // TODO: Move to be a customTransformOption.
+-            (0, common_1.hasModule)('react-native-worklets') &&
+-                platformOptions.worklets !== false &&
+-                platformOptions.reanimated !== false
+-                ? [require('react-native-worklets/plugin')]
+-                : (0, common_1.hasModule)('react-native-reanimated') &&
+-                    platformOptions.reanimated !== false && [require('react-native-reanimated/plugin')],
++            // PATCHED: Use lazy require to prevent Babel from statically analyzing react-native-worklets/plugin when disabled
++            (function() {
++                // If worklets is explicitly disabled, skip it entirely and use reanimated
++                if (platformOptions.worklets === false) {
++                    return (0, common_1.hasModule)('react-native-reanimated') &&
++                        platformOptions.reanimated !== false && ['react-native-reanimated/plugin'];
++                }
++                // If worklets is enabled, check if module exists before requiring
++                if (platformOptions.worklets !== false &&
++                    platformOptions.reanimated !== false &&
++                    (0, common_1.hasModule)('react-native-worklets')) {
++                    try {
++                        // Use string reference instead of require to avoid static analysis
++                        return ['react-native-worklets/plugin'];
++                    } catch (e) {
++                        // Fall through to reanimated
++                    }
++                }
++                // Fallback to reanimated
++                return (0, common_1.hasModule)('react-native-reanimated') &&
++                    platformOptions.reanimated !== false && ['react-native-reanimated/plugin'];
++            })(),
+         ].filter(Boolean),
+     };
+ }

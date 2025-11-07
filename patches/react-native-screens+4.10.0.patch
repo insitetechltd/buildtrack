@@ -1,0 +1,48 @@
+diff --git a/node_modules/react-native-screens/.DS_Store b/node_modules/react-native-screens/.DS_Store
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-screens/RNScreens.podspec b/node_modules/react-native-screens/RNScreens.podspec
+index 83ee5f7..739b21d 100644
+--- a/node_modules/react-native-screens/RNScreens.podspec
++++ b/node_modules/react-native-screens/RNScreens.podspec
+@@ -22,12 +22,24 @@ Pod::Spec.new do |s|
+   s.project_header_files = "cpp/**/*.h" # Don't expose C++ headers publicly to allow importing framework into Swift files
+   s.requires_arc = true
+ 
++  # CRITICAL: Force C++20 standard to fix std::move errors
++  s.pod_target_xcconfig = {
++    'CLANG_CXX_LANGUAGE_STANDARD' => 'c++20',
++    'CLANG_CXX_LIBRARY' => 'libc++',
++    'OTHER_CPLUSPLUSFLAGS' => '$(inherited) -std=c++20 -stdlib=libc++'
++  }
++
+   install_modules_dependencies(s)
+   if new_arch_enabled
+     s.subspec "common" do |ss|
+       ss.source_files         = ["common/cpp/**/*.{cpp,h}", "cpp/**/*.{cpp,h}"]
+       ss.header_dir           = "rnscreens"
+-      ss.pod_target_xcconfig  = { "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"" }
++      ss.pod_target_xcconfig  = { 
++        "HEADER_SEARCH_PATHS" => "\"$(PODS_TARGET_SRCROOT)/common/cpp\"",
++        "CLANG_CXX_LANGUAGE_STANDARD" => "c++20",
++        "CLANG_CXX_LIBRARY" => "libc++",
++        "OTHER_CPLUSPLUSFLAGS" => "$(inherited) -std=c++20 -stdlib=libc++"
++      }
+     end
+   end
+ 
+diff --git a/node_modules/react-native-screens/ios/.DS_Store b/node_modules/react-native-screens/ios/.DS_Store
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/react-native-screens/ios/RNSScreenStackHeaderConfig.mm b/node_modules/react-native-screens/ios/RNSScreenStackHeaderConfig.mm
+index 0c5b76b..cec5c31 100644
+--- a/node_modules/react-native-screens/ios/RNSScreenStackHeaderConfig.mm
++++ b/node_modules/react-native-screens/ios/RNSScreenStackHeaderConfig.mm
+@@ -30,6 +30,7 @@
+ #import "RNSScreenStackHeaderConfig.h"
+ #import "RNSSearchBar.h"
+ #import "RNSUIBarButtonItem.h"
++#include <utility>
+ 
+ #ifdef RCT_NEW_ARCH_ENABLED
+ namespace react = facebook::react;

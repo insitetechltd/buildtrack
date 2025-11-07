@@ -1,0 +1,73 @@
+{
+  "cli": {
+    "version": ">= 16.23.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "_development_DISABLED": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "credentialsSource": "remote",
+        "cocoapods": "1.16.1"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true"
+      }
+    },
+    "simulator": {
+      "distribution": "internal",
+      "ios": {
+        "credentialsSource": "remote",
+        "cocoapods": "1.16.1",
+        "simulator": true
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true"
+      }
+    },
+    "expo-go": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true,
+        "buildConfiguration": "Debug",
+        "credentialsSource": "local"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "distribution": "store",
+      "ios": {
+        "credentialsSource": "remote",
+        "cocoapods": "1.16.1"
+      },
+      "android": {
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6754898737"
+      }
+    }
+  }
+}

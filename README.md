@@ -1,137 +1,52 @@
-# Insite App (BuildTrack)
+# BuildTrack
 
-This is a fresh copy of the BuildTrack application, migrated to resolve build and dependency issues.
+A comprehensive construction project management application built with React Native and Expo.
 
-## 🚀 Quick Start
+## Documentation
 
-### 1. Start the Development Server
+All project documentation has been organized in the `/documentation` folder:
+
+- [README.md](./documentation/README.md) - Main project documentation
+- [BUILD_SCRIPTS.md](./documentation/BUILD_SCRIPTS.md) - **Build scripts reference (START HERE)**
+- [BUILD_ERRORS_SOLUTIONS.md](./documentation/BUILD_ERRORS_SOLUTIONS.md) - **Troubleshooting build errors**
+- [PERFORMANCE_BACKEND.md](./documentation/PERFORMANCE_BACKEND.md) - **Backend performance fixes**
+- [VERSION_NUMBERS_EXPLAINED.md](./documentation/VERSION_NUMBERS_EXPLAINED.md) - Understanding version numbers
+- [ICON_CONFIGURATION.md](./documentation/ICON_CONFIGURATION.md) - App icon setup and troubleshooting
+- [BUILD_CONFIGURATION.md](./documentation/BUILD_CONFIGURATION.md) - Build configuration details
+- [DEPENDENCY_STATUS.md](./documentation/DEPENDENCY_STATUS.md) - Package dependencies and known issues
+- [PERFORMANCE_OPTIMIZATION.md](./documentation/PERFORMANCE_OPTIMIZATION.md) - Performance tips
+- [QUICK_BUILD_GUIDE.md](./documentation/QUICK_BUILD_GUIDE.md) - Quick reference for building the app
+- [LOCAL_BUILD_GUIDE.md](./documentation/LOCAL_BUILD_GUIDE.md) - Detailed local build instructions
+- [MIGRATION_SUMMARY.md](./documentation/MIGRATION_SUMMARY.md) - Migration notes and history
+
+## Quick Start
+
 ```bash
-npm start
-```
-
-This will start the Expo development server. You can then:
-- Press `i` for iOS Simulator
-- Press `a` for Android Emulator
-- Scan the QR code with Expo Go app on your device
-
-### 2. Run on iOS
-```bash
-npm run ios
-```
-
-### 3. Run on Android
-```bash
-npm run android
-```
-
-### 4. Run Tests
-```bash
-npm test
-```
-
-## 📋 Important Notes
-
-### Environment Variables
-Make sure to configure your `.env` file with the correct values:
-- `EXPO_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-- `EXPO_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
-- `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
-- Other API keys as needed
-
-### Known Issues
-- Some duplicate dependencies detected (minor, won't affect functionality)
-- Used `--legacy-peer-deps` during installation due to React version conflicts
-
-### Project Structure
-```
-.
-├── src/
-│   ├── api/          # API services (Supabase, AI services)
-│   ├── components/   # React components
-│   ├── hooks/        # Custom hooks
-│   ├── navigation/   # Navigation setup
-│   ├── screens/      # Screen components
-│   ├── services/     # Service modules
-│   ├── state/        # Zustand state management
-│   ├── types/        # TypeScript types
-│   └── utils/        # Utility functions
-├── assets/           # Static assets
-├── App.tsx          # Root component
-└── index.ts         # Entry point
-```
-
-## 📦 Tech Stack
-
-- **Expo SDK 54** - React Native framework
-- **React 19.1.0** - UI library
-- **React Native 0.81.4** - Native mobile framework
-- **TypeScript 5.8.3** - Type safety
-- **Supabase** - Backend & database
-- **Zustand** - State management
-- **NativeWind** - Tailwind CSS for React Native
-- **React Navigation** - Navigation
-- **Jest** - Testing framework
-
-## 🏗️ Building for Production
-
-### Using EAS Build (Recommended)
-```bash
-# iOS
-npx eas build --platform ios
-
-# Android
-npx eas build --platform android
-```
-
-### Local Build
-```bash
-# iOS
-npx expo run:ios --configuration Release
-
-# Android
-npx expo run:android --variant release
-```
-
-## 📖 Documentation
-
-For more detailed information, see `MIGRATION_SUMMARY.md`.
-
-## 🆘 Troubleshooting
-
-### Clear Cache
-If you encounter issues:
-```bash
-# Clear Metro bundler cache
-npx expo start --clear
-
-# Clear npm cache
-npm cache clean --force
-
-# Reinstall dependencies
-rm -rf node_modules package-lock.json
+# Install dependencies
 npm install --legacy-peer-deps
+
+# Start development server
+npm start
+
+# Run on iOS
+npx expo run:ios
+
+# Build for production (locally)
+./build-local.sh production ios
+
+# Build and submit to TestFlight (auto-increments version!)
+./build-and-submit.sh ios production
+
+# Or just increment build number
+./increment-build.sh
 ```
 
-### Clean Native Build
-```bash
-# iOS
-cd ios && pod install && cd ..
+## Project Info
 
-# Android
-cd android && ./gradlew clean && cd ..
-```
+- **Bundle ID**: com.buildtrack.app.local
+- **Expo SDK**: 54.0.0
+- **React Native**: 0.81.5
+- **React**: 19.1.0
 
-## 📝 Available Scripts
-
-- `npm start` - Start Expo development server
-- `npm run ios` - Run on iOS
-- `npm run android` - Run on Android
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-- `npm run test:coverage` - Run tests with coverage
-- `npm run test:all` - Run all tests with coverage
-
----
-
-**Note**: This is a clean installation with fresh dependencies. All source code has been preserved from the original BuildTrack project.
+For detailed documentation, please refer to the `/documentation` folder.
 

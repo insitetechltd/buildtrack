@@ -33,6 +33,28 @@ let _supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl,
     detectSessionInUrl: false,
   },
   
+  // Global fetch options for better performance
+  global: {
+    headers: {
+      'x-client-info': 'buildtrack-mobile',
+    },
+    fetch: (url, options = {}) => {
+      // Add timeout to all requests (10 seconds)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      return fetch(url, {
+        ...options,
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+    },
+  },
+  
+  // Database options for better performance
+  db: {
+    schema: 'public',
+  },
+  
   // Real-time options (optional)
   realtime: {
     // Enable presence and broadcast features

@@ -58,6 +58,24 @@ export const useDatabaseConfig = create<DatabaseConfigState>()(
             persistSession: true,
             detectSessionInUrl: false,
           },
+          global: {
+            headers: {
+              'x-client-info': 'buildtrack-mobile',
+            },
+            fetch: (url, options = {}) => {
+              // Add timeout to all requests (10 seconds)
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 10000);
+              
+              return fetch(url, {
+                ...options,
+                signal: controller.signal,
+              }).finally(() => clearTimeout(timeoutId));
+            },
+          },
+          db: {
+            schema: 'public',
+          },
         });
 
         // Test connection
@@ -151,6 +169,24 @@ export const useDatabaseConfig = create<DatabaseConfigState>()(
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: false,
+          },
+          global: {
+            headers: {
+              'x-client-info': 'buildtrack-mobile',
+            },
+            fetch: (url, options = {}) => {
+              // Add timeout to all requests (10 seconds)
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 10000);
+              
+              return fetch(url, {
+                ...options,
+                signal: controller.signal,
+              }).finally(() => clearTimeout(timeoutId));
+            },
+          },
+          db: {
+            schema: 'public',
           },
         });
 

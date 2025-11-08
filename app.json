@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "BuildTrack",
+    "name": "Taskr",
     "slug": "buildtrack",
-    "scheme": "buildtrack",
+    "scheme": "taskr",
     "version": "1.1.2",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -24,7 +24,8 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.buildtrack.app",
+      "bundleIdentifier": "com.buildtrack.app.local",
+      "buildNumber": "2",
       "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -35,6 +36,11 @@
     "android": {
       "edgeToEdgeEnabled": true,
       "package": "com.buildtrack.app",
+      "icon": "./assets/icon.png",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",

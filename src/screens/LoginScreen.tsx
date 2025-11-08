@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -120,120 +121,21 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
           <View className="flex-1 px-6 py-8 justify-center">
             {/* Logo and Title */}
             <View className="items-center mb-12">
-              <View className="w-20 h-20 bg-blue-600 rounded-2xl items-center justify-center mb-6">
-                <Ionicons name="construct" size={32} color="white" />
-              </View>
+              <Image 
+                source={require('../../assets/icon.png')}
+                style={{ width: 80, height: 80 }}
+                className="mb-6 rounded-2xl"
+              />
               <Text className="text-4xl font-bold text-gray-900 mb-2">
-                {t.login.buildTrack}
+                Taskr
               </Text>
               <Text className="text-gray-600 text-center">
                 {t.login.constructionTaskManagement}
               </Text>
             </View>
 
-            {/* Quick Login User List */}
-            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <Text className="text-base font-semibold text-blue-800 mb-3">
-                👥 {t.login.quickLogin} (9 total):
-              </Text>
-              
-              <View className="space-y-3">
-                {/* Insite Tech Ltd - Admin */}
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Admin: Admin Tristan
-                  </Text>
-                </Pressable>
-                
-                {/* Insite Tech Ltd - Managers */}
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('tristan@insitetech.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Manager: Tristan
-                  </Text>
-                </Pressable>
-                
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('dennis@insitetech.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Manager: Dennis
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Admin */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('admin@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Admin: Alex Administrator
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Manager */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('manager@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Manager: John Manager
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Workers */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('peter@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Worker: Peter
-                  </Text>
-                </Pressable>
-                
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('worker@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Worker: Sarah Worker
-                  </Text>
-                </Pressable>
-                
-                {/* Elite Electric - Admin */}
-                <Pressable 
-                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
-                  onPress={() => handleQuickLogin('admin@eliteelectric.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-amber-900">
-                    Elite Electric: Admin: Mike Johnson
-                  </Text>
-                </Pressable>
-                
-                {/* Elite Electric - Worker */}
-                <Pressable 
-                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
-                  onPress={() => handleQuickLogin('lisa@eliteelectric.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-amber-900">
-                    Elite Electric: Worker: Lisa Martinez
-                  </Text>
-                </Pressable>
-              </View>
-              
-              <Text className="text-sm text-gray-600 mt-2 italic">
-                💡 {t.login.tapToLogin}
-              </Text>
-            </View>
-
             {/* Login Form */}
-            <View className="space-y-4">
+            <View className="space-y-4 mb-6">
               {/* Email Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
@@ -336,6 +238,107 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   <Text className="text-blue-600 font-semibold">{t.login.signUp}</Text>
                 </Pressable>
               </View>
+            </View>
+
+            {/* Quick Login User List */}
+            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <Text className="text-base font-semibold text-blue-800 mb-3">
+                👥 {t.login.quickLogin} (9 total):
+              </Text>
+              
+              <View className="space-y-3">
+                {/* Insite Tech Ltd - Admin */}
+                <Pressable 
+                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
+                  onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-purple-900">
+                    Insite Tech: Admin: Admin Tristan
+                  </Text>
+                </Pressable>
+                
+                {/* Insite Tech Ltd - Managers */}
+                <Pressable 
+                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
+                  onPress={() => handleQuickLogin('tristan@insitetech.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-purple-900">
+                    Insite Tech: Manager: Tristan
+                  </Text>
+                </Pressable>
+                
+                <Pressable 
+                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
+                  onPress={() => handleQuickLogin('dennis@insitetech.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-purple-900">
+                    Insite Tech: Manager: Dennis
+                  </Text>
+                </Pressable>
+                
+                {/* BuildTrack - Admin */}
+                <Pressable 
+                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
+                  onPress={() => handleQuickLogin('admin@buildtrack.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-emerald-900">
+                    BuildTrack: Admin: Alex Administrator
+                  </Text>
+                </Pressable>
+                
+                {/* BuildTrack - Manager */}
+                <Pressable 
+                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
+                  onPress={() => handleQuickLogin('manager@buildtrack.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-emerald-900">
+                    BuildTrack: Manager: John Manager
+                  </Text>
+                </Pressable>
+                
+                {/* BuildTrack - Workers */}
+                <Pressable 
+                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
+                  onPress={() => handleQuickLogin('peter@buildtrack.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-emerald-900">
+                    BuildTrack: Worker: Peter
+                  </Text>
+                </Pressable>
+                
+                <Pressable 
+                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
+                  onPress={() => handleQuickLogin('worker@buildtrack.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-emerald-900">
+                    BuildTrack: Worker: Sarah Worker
+                  </Text>
+                </Pressable>
+                
+                {/* Elite Electric - Admin */}
+                <Pressable 
+                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
+                  onPress={() => handleQuickLogin('admin@eliteelectric.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-amber-900">
+                    Elite Electric: Admin: Mike Johnson
+                  </Text>
+                </Pressable>
+                
+                {/* Elite Electric - Worker */}
+                <Pressable 
+                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
+                  onPress={() => handleQuickLogin('lisa@eliteelectric.com', 'password123')}
+                >
+                  <Text className="text-lg font-semibold text-amber-900">
+                    Elite Electric: Worker: Lisa Martinez
+                  </Text>
+                </Pressable>
+              </View>
+              
+              <Text className="text-sm text-gray-600 mt-2 italic">
+                💡 {t.login.tapToLogin}
+              </Text>
             </View>
           </View>
         </ScrollView>

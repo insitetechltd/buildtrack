@@ -1,0 +1,3 @@
+# This file signals to iCloud Drive and other cloud services to skip this directory
+# Helps prevent sync conflicts and improves performance
+

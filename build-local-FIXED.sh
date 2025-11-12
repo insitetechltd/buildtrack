@@ -10,14 +10,15 @@ echo "🔨 BuildTrack Local Build (Fixed Version)"
 echo "=========================================="
 echo ""
 
-# Default to production-local if no profile specified
-PROFILE="${1:-production-local}"
-PLATFORM="${2:-ios}"
+# Arguments: PLATFORM PROFILE [SKIP_INCREMENT]
+# Example: ./build-local-FIXED.sh ios production
+PLATFORM="${1:-ios}"
+PROFILE="${2:-production-local}"
 SKIP_INCREMENT="${3:-false}"  # Allow skipping increment if already done
 
 echo "📋 Configuration:"
-echo "  Profile: $PROFILE"
 echo "  Platform: $PLATFORM"
+echo "  Profile: $PROFILE"
 echo ""
 
 # Step 1: Increment build number (unless skipped)

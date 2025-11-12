@@ -53,10 +53,13 @@ if [ "$SKIP_INCREMENT" != "true" ]; then
     
     # Increment build number
     echo "🔢 Incrementing build number..."
-    if [ -f "./increment-build.sh" ]; then
+    if [ -f "./increment-build-FIXED.sh" ]; then
+        ./increment-build-FIXED.sh
+    elif [ -f "./increment-build.sh" ]; then
+        echo "⚠️  Using old increment-build.sh (may not work correctly)"
         ./increment-build.sh
     else
-        echo "❌ Error: increment-build.sh not found"
+        echo "❌ Error: increment-build script not found"
         exit 1
     fi
     echo ""

@@ -170,7 +170,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
                 <Ionicons name="checkmark-circle" size={12} color="white" />
                 <Text className="text-white text-sm font-semibold ml-1">
-                  Accepted
+                  Closed
                 </Text>
               </View>
             ) : isCompleted && task.readyForReview ? (

@@ -140,12 +140,24 @@ export default function TasksScreen({
   }, []);
 
   // 🔄 Refetch tasks when screen comes into focus (e.g., returning from TaskDetailScreen)
+  // Only refetch if data is stale (more than 30 seconds old)
+  const lastFetchTime = React.useRef<number>(0);
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 TasksScreen focused - refreshing tasks...');
-      taskStore.fetchTasks().catch((error) => {
-        console.error('🔄❌ Error refreshing tasks on focus:', error);
-      });
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTime.current;
+      const STALE_TIME = 30000; // 30 seconds
+      
+      // Only fetch if data is stale or this is the first focus
+      if (timeSinceLastFetch > STALE_TIME || lastFetchTime.current === 0) {
+        console.log('🔄 TasksScreen focused - refreshing tasks (data is stale)...');
+        lastFetchTime.current = now;
+        taskStore.fetchTasks().catch((error) => {
+          console.error('🔄❌ Error refreshing tasks on focus:', error);
+        });
+      } else {
+        console.log('⏭️ TasksScreen focused - skipping refresh (data is fresh)');
+      }
     }, [taskStore])
   );
 
@@ -768,7 +780,8 @@ export default function TasksScreen({
   let allTasks = getAllTasks();
   
   // Apply self-assigned filter if enabled
-  if (showSelfAssignedOnly) {
+  // BUT: Don't apply to "reviewing" status - those are tasks assigned to others
+  if (showSelfAssignedOnly && localStatusFilter !== "reviewing") {
     allTasks = allTasks.filter(task => {
       const assignedTo = task.assignedTo || [];
       // 🔍 FIX: Use String() comparison to handle type mismatches

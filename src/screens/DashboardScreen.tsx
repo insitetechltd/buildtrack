@@ -139,12 +139,24 @@ export default function DashboardScreen({
   const isAnyDataLoading = isLoadingProjects || isLoadingTasks || isLoadingUsers;
 
   // 🔄 Refetch tasks when screen comes into focus (e.g., returning from TaskDetailScreen)
+  // Only refetch if data is stale (more than 30 seconds old)
+  const lastFetchTime = useRef<number>(0);
   useFocusEffect(
     useCallback(() => {
-      console.log('🔄 DashboardScreen focused - refreshing tasks...');
-      fetchTasks().catch((error) => {
-        console.error('🔄❌ Error refreshing tasks on focus:', error);
-      });
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTime.current;
+      const STALE_TIME = 30000; // 30 seconds
+      
+      // Only fetch if data is stale or this is the first focus
+      if (timeSinceLastFetch > STALE_TIME || lastFetchTime.current === 0) {
+        console.log('🔄 DashboardScreen focused - refreshing tasks (data is stale)...');
+        lastFetchTime.current = now;
+        fetchTasks().catch((error) => {
+          console.error('🔄❌ Error refreshing tasks on focus:', error);
+        });
+      } else {
+        console.log('⏭️ DashboardScreen focused - skipping refresh (data is fresh)');
+      }
     }, [fetchTasks])
   );
 
@@ -607,10 +619,10 @@ export default function DashboardScreen({
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
           }
         >
-          <View className="px-4 pb-4">
+          <View className="px-4 pb-4 pt-1.5">
             {/* Project Name Display */}
             {selectedProject && (
-              <View className="mb-4">
+              <View className="mb-4 mt-1.5">
                 <Text className={cn(
                   "text-2xl font-bold",
                   isDarkMode ? "text-white" : "text-gray-900"

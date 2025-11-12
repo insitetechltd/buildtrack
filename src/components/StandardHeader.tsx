@@ -67,7 +67,7 @@ export default function StandardHeader({
 
       {/* Company Banner */}
       {banner && banner.isVisible && (
-        <View className="mb-2">
+        <View className="mb-2 mt-1.5">
           {banner.imageUri ? (
             // Display image banner
             <Image

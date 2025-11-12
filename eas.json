@@ -65,6 +65,23 @@
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
       }
+    },
+    "production-local": {
+      "extends": "production",
+      "distribution": "internal",
+      "ios": {
+        "credentialsSource": "remote",
+        "cocoapods": "1.16.1",
+        "autoIncrement": true
+      },
+      "android": {
+        "credentialsSource": "remote",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "env": {
+        "EXPO_APPLE_ID": "tristan.koo@insiteworks.com",
+        "EXPO_APPLE_TEAM_ID": "DSNR656S6Y"
+      }
     }
   },
   "submit": {

@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# BuildTrack - Build and Submit Script
-# Builds iOS app locally (EAS auto-increments version) and submits to TestFlight
+# BuildTrack - Build and Submit Script (REFACTORED)
+# Calls build-local-FIXED.sh for building, then submits to TestFlight
+# This ensures consistent build process across all scripts
 
 set -e
 
-echo "🚀 BuildTrack - Build and Submit to TestFlight"
-echo "=============================================="
+echo "🚀 BuildTrack - Build and Submit to TestFlight (Refactored)"
+echo "==========================================================="
 echo ""
 
 # Default values
@@ -18,17 +19,34 @@ echo "  Platform: $PLATFORM"
 echo "  Profile: $PROFILE"
 echo ""
 
-# Note about auto-increment
-echo "ℹ️  Note: EAS auto-increment is enabled in eas.json"
-echo "   Build number will be automatically incremented during build"
+# Determine which build-local script to use
+if [ -f "./build-local-FIXED.sh" ]; then
+    BUILD_LOCAL_SCRIPT="./build-local-FIXED.sh"
+    echo "✅ Using: build-local-FIXED.sh"
+elif [ -f "./build-local.sh" ]; then
+    BUILD_LOCAL_SCRIPT="./build-local.sh"
+    echo "⚠️  Using: build-local.sh (old version)"
+else
+    echo "❌ Error: No build-local script found"
+    exit 1
+fi
 echo ""
 
-# Step 1: Build locally (EAS auto-increments during this step)
-echo "🔨 Step 1/2: Building locally..."
-echo "----------------------------------------"
-echo "Build will auto-increment version number..."
+# Step 1: Build using build-local script
+echo "🔨 Step 1/2: Building (calling $BUILD_LOCAL_SCRIPT)..."
+echo "=========================================================="
 echo ""
-npx eas build --platform "$PLATFORM" --profile "$PROFILE" --local --non-interactive
+
+# Map profile for build-local
+# build-and-submit uses "production" but build-local expects "production-local" for local builds
+if [ "$PROFILE" = "production" ]; then
+    BUILD_PROFILE="production-local"
+else
+    BUILD_PROFILE="$PROFILE"
+fi
+
+# Call build-local script
+$BUILD_LOCAL_SCRIPT "$PLATFORM" "$BUILD_PROFILE"
 
 # Check if build succeeded
 if [ $? -ne 0 ]; then
@@ -41,15 +59,31 @@ echo ""
 echo "✅ Build completed successfully!"
 echo ""
 
-# Get version from app.json
-if [ -f "app.json" ]; then
-    APP_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
-fi
+# Step 2: Get build info for confirmation
+echo "🔍 Verifying build..."
+echo "----------------------------------------"
+
+APP_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' app.json | head -1 | cut -d'"' -f4)
+APP_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | grep -o '[0-9]*' || echo "unknown")
+
+echo "Built: Version $APP_VERSION (Build $APP_BUILD)"
 echo ""
 
-# Step 2: Submit to TestFlight
+# Confirm submission
+read -p "Submit this build to App Store Connect? (Y/n): " CONFIRM_SUBMIT
+
+if [[ "$CONFIRM_SUBMIT" =~ ^[Nn]$ ]]; then
+    echo ""
+    echo "⏹️  Submission cancelled by user"
+    echo "   Build is ready but not submitted"
+    exit 0
+fi
+
+echo ""
+
+# Step 3: Submit to TestFlight
 echo "📤 Step 2/2: Submitting to App Store Connect..."
-echo "----------------------------------------"
+echo "=========================================================="
 echo "Uploading build to App Store Connect for TestFlight distribution..."
 echo ""
 
@@ -66,13 +100,14 @@ if [ $SUBMIT_EXIT_CODE -ne 0 ]; then
     echo "❌ Submission to App Store Connect failed."
     echo ""
     echo "💡 Common causes:"
-    echo "   1. Network issues - Check your internet connection"
-    echo "   2. Apple credentials - Verify in EAS"
-    echo "   3. Build already submitted - This is a new build, shouldn't happen"
+    echo "   1. Build number already used - Check App Store Connect"
+    echo "   2. Network issues - Check your internet connection"
+    echo "   3. Apple credentials - Verify in EAS"
     echo ""
     echo "🔍 To debug:"
     echo "   - Check build logs: npx eas build:list"
     echo "   - Verify App Store Connect: https://appstoreconnect.apple.com"
+    echo "   - Check build number in App Store Connect matches: $APP_BUILD"
     exit 1
 fi
 
@@ -91,7 +126,9 @@ echo "✅ BUILD & SUBMISSION SUCCESSFUL!"
 echo "═══════════════════════════════════════════════════════"
 echo ""
 echo "📦 Build Information:"
-echo "  ├─ App Version:    ${APP_VERSION:-Check App Store Connect}"
+echo "  ├─ App Version:    $APP_VERSION"
+echo "  ├─ Build Number:   $APP_BUILD"
+echo "  ├─ Display:        $APP_VERSION ($APP_BUILD)"
 echo "  ├─ Platform:       $PLATFORM"
 echo "  └─ Profile:        $PROFILE"
 echo ""
@@ -109,13 +146,14 @@ echo ""
 echo "  2. 📱 Check TestFlight tab for your app"
 echo "     - Build will appear after processing"
 echo "     - Status will change: Processing → Ready to Test"
-echo "     - Build number will be visible there"
+echo "     - Verify build number shows: $APP_BUILD"
 echo ""
 echo "  3. 👥 Add internal/external testers (if needed)"
 echo ""
 echo "  4. 📧 Send test invitation to testers"
 echo ""
 echo "═══════════════════════════════════════════════════════"
-echo "Version ${APP_VERSION:-unknown} - Check App Store Connect for build number"
+echo "Version $APP_VERSION (Build $APP_BUILD) submitted successfully!"
 echo "═══════════════════════════════════════════════════════"
 echo ""
+

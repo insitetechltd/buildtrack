@@ -43,6 +43,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
+  const fetchTasks = useTaskStore(state => state.fetchTasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
   const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
   const updateTask = useTaskStore(state => state.updateTask);

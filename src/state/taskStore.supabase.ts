@@ -689,6 +689,8 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
           if (updates.attachments) updateData.attachments = updates.attachments;
           if (updates.accepted !== undefined) updateData.accepted = updates.accepted;
+          if (updates.acceptedBy) updateData.accepted_by = updates.acceptedBy;
+          if (updates.acceptedAt) updateData.accepted_at = updates.acceptedAt;
           if (updates.declineReason) updateData.decline_reason = updates.declineReason;
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;

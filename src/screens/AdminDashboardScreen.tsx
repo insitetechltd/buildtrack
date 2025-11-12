@@ -8,6 +8,7 @@ import {
   TextInput,
   Image,
   Alert,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -38,9 +39,11 @@ export default function AdminDashboardScreen({
   onNavigateToDevAdmin
 }: AdminDashboardScreenProps) {
   const { user } = useAuthStore();
-  const { getProjectsByCompany, userAssignments } = useProjectStoreWithCompanyInit(user.companyId);
-  const { getUsersByCompany } = useUserStoreWithInit();
+  const { getProjectsByCompany, userAssignments, fetchProjects } = useProjectStoreWithCompanyInit(user.companyId);
+  const userStore = useUserStoreWithInit();
+  const { getUsersByCompany, fetchUsers } = userStore;
   const tasks = useTaskStore(state => state.tasks);
+  const fetchTasks = useTaskStore(state => state.fetchTasks);
   const { getCompanyById, getCompanyBanner, updateCompanyBanner } = useCompanyStore();
 
   // Banner customization state
@@ -52,6 +55,24 @@ export default function AdminDashboardScreen({
     isVisible: true,
     imageUri: "",
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        fetchUsers(),
+        fetchProjects(),
+        fetchTasks()
+      ]);
+      console.log('✅ Dashboard data refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing dashboard:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!user || user.role !== "admin") {
     return (
@@ -112,7 +133,6 @@ export default function AdminDashboardScreen({
   console.log('- Company users:', companyUsers.length);
   console.log('- Company user IDs:', Array.from(companyUserIds));
   console.log('- Project creators:', allProjects.map(p => p.createdBy));
-  const userStore = useUserStoreWithInit();
   console.log('- All users count:', userStore.getAllUsers().length);
   console.log('- Company users details:', companyUsers.map(u => ({ id: u.id, name: u.name, companyId: u.companyId, company_id: u.company_id })));
   console.log('- Current user company ID:', user.companyId);
@@ -373,7 +393,13 @@ export default function AdminDashboardScreen({
         }
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
 
         {/* Company Info Banner */}
         {currentCompany && (

@@ -7,6 +7,7 @@ import {
   TextInput,
   Modal,
   Image,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -28,7 +29,8 @@ interface UserManagementScreenProps {
 export default function UserManagementScreen({ onNavigateBack }: UserManagementScreenProps) {
   const { user: currentUser } = useAuthStore();
   const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentUser.companyId);
-  const { getUsersByCompany, getAdminCountByCompany } = useUserStoreWithInit();
+  const userStore = useUserStoreWithInit();
+  const { getUsersByCompany, getAdminCountByCompany, fetchUsers } = userStore;
   const { getCompanyById, getCompanyBanner } = useCompanyStore();
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -38,6 +40,20 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
   const [successMessage, setSuccessMessage] = useState("");
   const [removeData, setRemoveData] = useState<{userId: string, projectId: string, userName: string, projectName: string} | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Handle pull-to-refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await fetchUsers();
+      console.log('✅ User list refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing users:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!currentUser || currentUser.role !== "admin") {
     return (
@@ -329,7 +345,13 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
       </View>
 
       {/* User List */}
-      <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1 px-6 py-4" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+        }
+      >
         {filteredUsers.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
             <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">

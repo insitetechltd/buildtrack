@@ -60,7 +60,7 @@ export default function StandardHeader({
 
   return (
     <View className={cn(
-      "border-b px-6 py-4",
+      "border-b px-6 pt-12 pb-4",
       isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
       className
     )}>

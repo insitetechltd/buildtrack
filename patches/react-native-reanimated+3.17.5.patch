@@ -28,3 +28,38 @@ index a5aea4f..4e01f26 100644
    }
    s.compiler_flags = "#{folly_flags} #{boost_compiler_flags}"
    s.xcconfig = {
+diff --git a/node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/ReanimatedPackage.java b/node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/ReanimatedPackage.java
+index ca640a7..31a5768 100644
+--- a/node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/ReanimatedPackage.java
++++ b/node_modules/react-native-reanimated/android/src/main/java/com/swmansion/reanimated/ReanimatedPackage.java
+@@ -76,7 +76,7 @@ public class ReanimatedPackage extends BaseReactPackage implements ReactPackage
+ 
+   private UIManagerModule createUIManager(final ReactApplicationContext reactContext) {
+     ReactMarker.logMarker(CREATE_UI_MANAGER_MODULE_START);
+-    Systrace.beginSection(Systrace.TRACE_TAG_REACT_JAVA_BRIDGE, "createUIManagerModule");
++    Systrace.beginSection(Systrace.TRACE_TAG_REACT_APPS, "createUIManagerModule");
+     final ReactInstanceManager reactInstanceManager = getReactInstanceManager(reactContext);
+     List<ViewManager> viewManagers = reactInstanceManager.getOrCreateViewManagers(reactContext);
+     int minTimeLeftInFrameForNonBatchedOperationMs = -1;
+@@ -84,7 +84,7 @@ public class ReanimatedPackage extends BaseReactPackage implements ReactPackage
+       return ReanimatedUIManagerFactory.create(
+           reactContext, viewManagers, minTimeLeftInFrameForNonBatchedOperationMs);
+     } finally {
+-      Systrace.endSection(Systrace.TRACE_TAG_REACT_JAVA_BRIDGE);
++      Systrace.endSection(Systrace.TRACE_TAG_REACT_APPS);
+       ReactMarker.logMarker(CREATE_UI_MANAGER_MODULE_END);
+     }
+   }
+diff --git a/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java b/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
+index c850777..4577e26 100644
+--- a/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
++++ b/node_modules/react-native-reanimated/android/src/reactNativeVersionPatch/BorderRadiiDrawableUtils/latest/com/swmansion/reanimated/BorderRadiiDrawableUtils.java
+@@ -18,7 +18,7 @@ public class BorderRadiiDrawableUtils {
+       return defaultValue;
+     }
+     Rect bounds = view.getBackground().getBounds();
+-    return length.resolve(bounds.width(), bounds.height()).toPixelFromDIP().getHorizontal();
++    return length.resolve((float) bounds.width()).toPixelFromDIP().getHorizontal();
+   }
+ 
+   public static ReactNativeUtils.BorderRadii getBorderRadii(View view) {

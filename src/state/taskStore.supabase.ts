@@ -469,7 +469,7 @@ export const useTaskStore = create<TaskStore>()(
             .from('task_updates')
             .select('*')
             .eq('task_id', id)
-            .order('timestamp', { ascending: false });
+            .order('timestamp', { ascending: true });
 
           if (updatesError) {
             console.error('Error fetching task updates:', updatesError);

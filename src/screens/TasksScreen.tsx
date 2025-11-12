@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
@@ -137,6 +138,16 @@ export default function TasksScreen({
       });
     }
   }, []);
+
+  // 🔄 Refetch tasks when screen comes into focus (e.g., returning from TaskDetailScreen)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 TasksScreen focused - refreshing tasks...');
+      taskStore.fetchTasks().catch((error) => {
+        console.error('🔄❌ Error refreshing tasks on focus:', error);
+      });
+    }, [taskStore])
+  );
 
   if (!user) return null;
 

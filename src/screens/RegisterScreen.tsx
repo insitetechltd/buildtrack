@@ -28,11 +28,14 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
     email: "",
     password: "",
     confirmPassword: "",
+    promoCode: "",
     // Note: All users default to "worker" role. Administrators can reassign roles in user management.
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  
+  const VALID_PROMO_CODE = "tasker";
 
   const { register, isLoading } = useAuthStore();
   const companies = useCompanyStore(state => state.companies);
@@ -66,6 +69,12 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
       newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!formData.promoCode.trim()) {
+      newErrors.promoCode = "Promo code is required";
+    } else if (formData.promoCode.toLowerCase() !== VALID_PROMO_CODE.toLowerCase()) {
+      newErrors.promoCode = "Invalid promo code";
     }
 
     setErrors(newErrors);
@@ -145,6 +154,10 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
     setFormData(prev => ({ ...prev, confirmPassword: text }));
   }, []);
 
+  const handlePromoCodeChange = useCallback((text: string) => {
+    setFormData(prev => ({ ...prev, promoCode: text }));
+  }, []);
+
   return (
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar style="dark" />
@@ -163,7 +176,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 <Ionicons name="construct" size={24} color="white" />
               </View>
               <Text className="text-3xl font-bold text-gray-900 mb-1">
-                Join BuildTrack
+                Join Taskr
               </Text>
               <Text className="text-gray-600 text-center">
                 Create your account to get started
@@ -355,7 +368,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     autoCapitalize="none"
                     textContentType="none"
                     importantForAutofill="no"
-                    returnKeyType="done"
+                    returnKeyType="next"
                   />
                   <Pressable
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -370,6 +383,49 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 </View>
                 {errors.confirmPassword && (
                   <Text className="text-red-500 text-sm mt-1">{errors.confirmPassword}</Text>
+                )}
+              </View>
+
+              {/* Promo Code Input */}
+              <View>
+                <Text className="text-base font-medium text-gray-700 mb-2">
+                  Promo Code <Text className="text-red-500">*</Text>
+                </Text>
+                <View
+                  className={cn(
+                    "flex-row items-center border rounded-lg px-3 py-3",
+                    errors.promoCode
+                      ? "border-red-300 bg-red-50"
+                      : formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode
+                      ? "border-green-300 bg-green-50"
+                      : "border-gray-300 bg-gray-50"
+                  )}
+                >
+                  <Ionicons
+                    name="ticket-outline"
+                    size={20}
+                    color={errors.promoCode ? "#ef4444" : formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode ? "#10b981" : "#6b7280"}
+                  />
+                  <TextInput
+                    className="flex-1 ml-3 text-gray-900"
+                    placeholder="Enter promo code to continue"
+                    value={formData.promoCode}
+                    onChangeText={handlePromoCodeChange}
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    autoCorrect={false}
+                    spellCheck={false}
+                    returnKeyType="done"
+                  />
+                  {formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode && (
+                    <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                  )}
+                </View>
+                {errors.promoCode && (
+                  <Text className="text-red-500 text-sm mt-1">{errors.promoCode}</Text>
+                )}
+                {!errors.promoCode && formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode && (
+                  <Text className="text-green-600 text-sm mt-1">✓ Valid promo code!</Text>
                 )}
               </View>
 

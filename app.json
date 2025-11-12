@@ -18,7 +18,13 @@
             "useFrameworks": "static",
             "clangCxxLanguageStandard": "c++20",
             "clangCxxLibrary": "libc++"
-          }
+          },
+        "android": {
+          "extraMavenRepos": [],
+          "compileSdkVersion": 35,
+          "targetSdkVersion": 35,
+          "buildToolsVersion": "35.0.0"
+        }
         }
       ]
     ],

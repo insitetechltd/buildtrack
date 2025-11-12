@@ -50,8 +50,33 @@ export const useAuthStore = create<AuthStore>()(
           // Always try Supabase Auth first if available
           if (supabase) {
             try {
+              let email = username;
+              
+              // Check if username is a phone number (contains only digits, spaces, dashes, parentheses, plus)
+              const phoneRegex = /^[\d\s\-\(\)\+]+$/;
+              const isPhoneNumber = phoneRegex.test(username.trim());
+              
+              // If it's a phone number, look up the email from the users table
+              if (isPhoneNumber) {
+                console.log('📱 Phone number login detected, looking up email...');
+                const { data: phoneUserData, error: phoneError } = await supabase
+                  .from('users')
+                  .select('email')
+                  .eq('phone', username.trim())
+                  .single();
+                
+                if (phoneError || !phoneUserData) {
+                  console.error('Phone number not found:', phoneError);
+                  set({ isLoading: false });
+                  return false;
+                }
+                
+                email = phoneUserData.email;
+                console.log('✅ Found email for phone number');
+              }
+              
               const { data, error } = await supabase.auth.signInWithPassword({
-                email: username,
+                email: email,
                 password: password,
               });
 

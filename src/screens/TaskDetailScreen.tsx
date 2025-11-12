@@ -203,9 +203,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         { text: t.common.cancel, style: "cancel" },
         {
           text: t.taskDetail.accept,
-          onPress: () => {
-            acceptTask(task.id, user.id);
-            Alert.alert(t.errors.success, t.taskDetail.taskAccepted);
+          onPress: async () => {
+            try {
+              await acceptTask(task.id, user.id);
+              // Refetch tasks to ensure the dashboard shows updated state
+              await fetchTasks();
+              Alert.alert(t.errors.success, t.taskDetail.taskAccepted);
+            } catch (error) {
+              console.error('Error accepting task:', error);
+              Alert.alert(t.errors.error, 'Failed to accept task. Please try again.');
+            }
           }
         }
       ]

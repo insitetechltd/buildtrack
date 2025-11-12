@@ -57,7 +57,8 @@
         "cocoapods": "1.16.1"
       },
       "android": {
-        "credentialsSource": "remote"
+        "credentialsSource": "remote",
+        "gradleCommand": ":app:bundleRelease"
       },
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",

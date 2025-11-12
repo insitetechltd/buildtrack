@@ -24,20 +24,31 @@ interface LoginScreenProps {
 
 export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
   const t = useTranslation();
-  const [email, setEmail] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ emailOrPhone?: string; password?: string }>({});
 
   const { login, isLoading } = useAuthStore();
 
-  const validateForm = () => {
-    const newErrors: { email?: string; password?: string } = {};
+  const isPhoneNumber = (value: string) => {
+    // Check if it's a phone number (digits, spaces, dashes, parentheses, plus)
+    const phoneRegex = /^[\d\s\-\(\)\+]+$/;
+    return phoneRegex.test(value.trim());
+  };
 
-    if (!email) {
-      newErrors.email = t.validation.emailRequired;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = t.validation.emailInvalid;
+  const isEmail = (value: string) => {
+    const emailRegex = /\S+@\S+\.\S+/;
+    return emailRegex.test(value);
+  };
+
+  const validateForm = () => {
+    const newErrors: { emailOrPhone?: string; password?: string } = {};
+
+    if (!emailOrPhone) {
+      newErrors.emailOrPhone = "Email or phone number is required";
+    } else if (!isEmail(emailOrPhone) && !isPhoneNumber(emailOrPhone)) {
+      newErrors.emailOrPhone = "Please enter a valid email or phone number";
     }
 
     if (!password) {
@@ -50,8 +61,8 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleEmailChange = useCallback((text: string) => {
-    setEmail(text);
+  const handleEmailOrPhoneChange = useCallback((text: string) => {
+    setEmailOrPhone(text);
   }, []);
 
   const handlePasswordChange = useCallback((text: string) => {
@@ -64,7 +75,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     
     if (!validateForm()) return;
 
-    const success = await login(email, password);
+    const success = await login(emailOrPhone, password);
     
     if (!success) {
       Alert.alert(
@@ -80,7 +91,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     setErrors({});
     
     // Set the form fields for visual feedback
-    setEmail(email);
+    setEmailOrPhone(email);
     setPassword(password);
     
     // Perform login
@@ -136,39 +147,39 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
 
             {/* Login Form */}
             <View className="space-y-4 mb-6">
-              {/* Email Input */}
+              {/* Email or Phone Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  {t.login.emailAddress}
+                  Email or Phone Number
                 </Text>
                 <View
                   className={cn(
                     "flex-row items-center border rounded-lg px-3 py-3",
-                    errors.email
+                    errors.emailOrPhone
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300 bg-gray-50"
                   )}
                 >
                   <Ionicons
-                    name="mail-outline"
+                    name={isPhoneNumber(emailOrPhone) ? "call-outline" : "mail-outline"}
                     size={20}
-                    color={errors.email ? "#ef4444" : "#6b7280"}
+                    color={errors.emailOrPhone ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder={t.login.emailPlaceholder}
-                    value={email}
-                    onChangeText={handleEmailChange}
-                    keyboardType="email-address"
+                    placeholder="email@example.com or +1234567890"
+                    value={emailOrPhone}
+                    onChangeText={handleEmailOrPhoneChange}
+                    keyboardType="default"
                     autoCapitalize="none"
-                    autoComplete="email"
+                    autoComplete="off"
                     autoCorrect={false}
                     spellCheck={false}
                     returnKeyType="next"
                   />
                 </View>
-                {errors.email && (
-                  <Text className="text-red-500 text-sm mt-1">{errors.email}</Text>
+                {errors.emailOrPhone && (
+                  <Text className="text-red-500 text-sm mt-1">{errors.emailOrPhone}</Text>
                 )}
               </View>
 

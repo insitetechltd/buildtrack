@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useProjectStoreWithInit } from "../state/projectStore.supabase";
@@ -136,6 +137,16 @@ export default function DashboardScreen({
 
   // Check if any critical data is still loading
   const isAnyDataLoading = isLoadingProjects || isLoadingTasks || isLoadingUsers;
+
+  // 🔄 Refetch tasks when screen comes into focus (e.g., returning from TaskDetailScreen)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('🔄 DashboardScreen focused - refreshing tasks...');
+      fetchTasks().catch((error) => {
+        console.error('🔄❌ Error refreshing tasks on focus:', error);
+      });
+    }, [fetchTasks])
+  );
 
   // Smart project selection logic - ONLY runs once on initial load
   // This prevents unexpected project switching during data refreshes
@@ -537,7 +548,7 @@ export default function DashboardScreen({
   const shouldShowEmptyState = userProjectCount > 1 && !selectedProjectId;
 
   return (
-    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")} edges={['bottom', 'left', 'right']}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       {/* Header */}
@@ -596,7 +607,7 @@ export default function DashboardScreen({
             <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
           }
         >
-          <View className="p-4">
+          <View className="px-4 pb-4">
             {/* Project Name Display */}
             {selectedProject && (
               <View className="mb-4">
@@ -609,7 +620,7 @@ export default function DashboardScreen({
               </View>
             )}
             
-            {/* Today's Tasks Section - Only show if user has starred tasks AND a project is selected */}
+            {/* Key Tasks Section - Only show if user has starred tasks AND a project is selected */}
         {(() => {
             // Don't show any tasks if no project is selected
             if (!selectedProjectId) return null;
@@ -637,7 +648,7 @@ export default function DashboardScreen({
                     "text-lg ml-3",
                     isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900"
                   )}>
-                  Today's Tasks ({starredTasks.length})
+                  Key Tasks ({starredTasks.length})
                 </Text>
               </View>
               
@@ -675,15 +686,14 @@ export default function DashboardScreen({
               )}
             </View>
 
-            {/* 1. URGENT! Section */}
+            {/* 1. Overdue Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
-                <Ionicons name="alert-circle" size={20} color={isDarkMode ? "#f87171" : "#ef4444"} />
                 <Text className={cn(
-                  "text-lg font-bold ml-2",
+                  "text-lg font-bold",
                   isDarkMode ? "text-red-400" : "text-red-600"
                 )}>
-                  {isDarkMode ? "URGENT!" : "Urgent!"}
+                  {isDarkMode ? "OVERDUE" : "Overdue"}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -696,7 +706,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("my_work");
                     setStatusFilter("overdue");
-                    setButtonLabel("Urgent! - My Action Required Now");
+                    setButtonLabel("Overdue - My Action Required Now");
                     onNavigateToTasks();
                   }}
                 >
@@ -723,7 +733,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("outbox");
                     setStatusFilter("overdue");
-                    setButtonLabel("Urgent! - Follow Up Now");
+                    setButtonLabel("Overdue - Follow Up Now");
                     onNavigateToTasks();
                   }}
                 >

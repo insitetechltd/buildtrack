@@ -287,20 +287,12 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
-      {/* Header with Back Button */}
-      <View className="bg-white border-b border-gray-200 px-6 py-4">
-        <View className="flex-row items-center">
-          <Pressable 
-            onPress={onNavigateBack}
-            className="w-10 h-10 items-center justify-center mr-3"
-          >
-            <Ionicons name="arrow-back" size={24} color="#374151" />
-          </Pressable>
-          <Text className="text-2xl font-bold text-gray-900 flex-1">
-            User Management
-          </Text>
-        </View>
-      </View>
+      {/* Standard Header */}
+      <StandardHeader 
+        title="User Management"
+        showBackButton={true}
+        onBackPress={onNavigateBack}
+      />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
         {/* Company Info Banner */}

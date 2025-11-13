@@ -560,7 +560,7 @@ export default function DashboardScreen({
   const shouldShowEmptyState = userProjectCount > 1 && !selectedProjectId;
 
   return (
-    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       {/* Header */}

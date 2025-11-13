@@ -10,11 +10,13 @@ echo "🔨 BuildTrack Local Build (Fixed Version)"
 echo "=========================================="
 echo ""
 
-# Arguments: PLATFORM PROFILE [SKIP_INCREMENT]
-# Example: ./build-local-FIXED.sh ios production
+# Arguments: PLATFORM PROFILE [SKIP_INCREMENT] [CHANGE_VERSION]
+# Example: ./build-local.sh ios production
+# To change version: ./build-local.sh ios production false true
 PLATFORM="${1:-ios}"
 PROFILE="${2:-production-local}"
 SKIP_INCREMENT="${3:-false}"  # Allow skipping increment if already done
+CHANGE_VERSION="${4:-false}"  # Set to true to prompt for version change
 
 echo "📋 Configuration:"
 echo "  Platform: $PLATFORM"
@@ -33,23 +35,30 @@ if [ "$SKIP_INCREMENT" != "true" ]; then
     echo "Current: Version $CURRENT_VERSION (Build $CURRENT_BUILD)"
     echo ""
     
-    # Ask if version should be incremented
-    echo "❓ Is this a new version with new features?"
-    echo "   - If YES: You should increment the version number (e.g., 1.1.2 → 1.1.3)"
-    echo "   - If NO (bug fix only): Keep version the same"
-    echo ""
-    read -p "Keep current version $CURRENT_VERSION? (Y/n): " KEEP_VERSION
-    
-    if [[ "$KEEP_VERSION" =~ ^[Nn]$ ]]; then
+    # Only prompt if CHANGE_VERSION is true
+    if [ "$CHANGE_VERSION" = "true" ]; then
+        # Ask if version should be incremented
+        echo "❓ Is this a new version with new features?"
+        echo "   - If YES: You should increment the version number (e.g., 1.1.2 → 1.1.3)"
+        echo "   - If NO (bug fix only): Keep version the same"
         echo ""
-        echo "⚠️  Please manually edit app.json to update the version number"
-        echo "   Then run this script again"
-        exit 1
+        read -p "Keep current version $CURRENT_VERSION? (Y/n): " KEEP_VERSION
+        
+        if [[ "$KEEP_VERSION" =~ ^[Nn]$ ]]; then
+            echo ""
+            echo "⚠️  Please manually edit app.json to update the version number"
+            echo "   Then run this script again"
+            exit 1
+        fi
+        
+        echo ""
+        echo "✅ Keeping version: $CURRENT_VERSION"
+        echo ""
+    else
+        # Default: Keep version without prompting
+        echo "✅ Keeping version: $CURRENT_VERSION (use 4th arg 'true' to change)"
+        echo ""
     fi
-    
-    echo ""
-    echo "✅ Keeping version: $CURRENT_VERSION"
-    echo ""
     
     # Increment build number
     echo "🔢 Incrementing build number..."

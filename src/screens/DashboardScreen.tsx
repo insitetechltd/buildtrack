@@ -701,6 +701,16 @@ export default function DashboardScreen({
             {/* 1. Overdue Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">
+                <View className={cn(
+                  "rounded-full p-1.5 mr-2",
+                  isDarkMode ? "bg-red-900/40" : "bg-red-100"
+                )}>
+                  <Ionicons 
+                    name="alarm-outline" 
+                    size={18} 
+                    color={isDarkMode ? "#fca5a5" : "#dc2626"} 
+                  />
+                </View>
                 <Text className={cn(
                   "text-lg font-bold",
                   isDarkMode ? "text-red-400" : "text-red-600"

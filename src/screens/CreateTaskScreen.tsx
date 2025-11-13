@@ -24,6 +24,7 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
+import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
@@ -73,6 +74,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const { selectedProjectId } = useProjectFilterStore();
   const { pickAndUploadImages, isUploading, isCompressing } = useFileUpload();
   const { getCompanyBanner } = useCompanyStore();
+  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
 
   // Get parent task information if creating a sub-task
   const parentTask = parentTaskId ? tasks.find(t => t.id === parentTaskId) : null;
@@ -171,20 +173,35 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     return eligibleUsers;
   }, [formData.projectId, workers, managers, getProjectUserAssignments]);
 
-  // Filter users by search query
+  // Filter users by search query and sort favorites to top
   const filteredAssignableUsers = React.useMemo(() => {
-    if (!userSearchQuery.trim()) {
-      return allAssignableUsers;
+    let filtered = allAssignableUsers;
+    
+    // Apply search filter
+    if (userSearchQuery.trim()) {
+      const query = userSearchQuery.toLowerCase();
+      filtered = allAssignableUsers.filter(user => 
+        user.name.toLowerCase().includes(query) ||
+        (user.email && user.email.toLowerCase().includes(query)) ||
+        user.position.toLowerCase().includes(query) ||
+        user.role.toLowerCase().includes(query)
+      );
     }
     
-    const query = userSearchQuery.toLowerCase();
-    return allAssignableUsers.filter(user => 
-      user.name.toLowerCase().includes(query) ||
-      (user.email && user.email.toLowerCase().includes(query)) ||
-      user.position.toLowerCase().includes(query) ||
-      user.role.toLowerCase().includes(query)
-    );
-  }, [allAssignableUsers, userSearchQuery]);
+    // Sort favorites to top
+    if (user?.id) {
+      return [...filtered].sort((a, b) => {
+        const aIsFavorite = isFavoriteUser(user.id, a.id);
+        const bIsFavorite = isFavoriteUser(user.id, b.id);
+        
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        return 0; // Keep original order for non-favorites
+      });
+    }
+    
+    return filtered;
+  }, [allAssignableUsers, userSearchQuery, user?.id, isFavoriteUser]);
 
   // Reset form every time screen comes into focus (but not for subtasks)
   useFocusEffect(
@@ -1166,6 +1183,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             {filteredAssignableUsers.length > 0 ? (
               filteredAssignableUsers.map((assignableUser) => {
                 const isSelected = selectedUsers.includes(assignableUser.id);
+                const isFavorite = user?.id ? isFavoriteUser(user.id, assignableUser.id) : false;
+                
                 return (
                   <Pressable
                     key={assignableUser.id}
@@ -1211,10 +1230,22 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                       )}
                     </View>
 
-                    {/* Selected indicator */}
-                    {isSelected && (
-                      <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
-                    )}
+                    {/* Favorite Star */}
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        if (user?.id) {
+                          toggleFavoriteUser(user.id, assignableUser.id);
+                        }
+                      }}
+                      className="p-2"
+                    >
+                      <Ionicons 
+                        name={isFavorite ? "star" : "star-outline"} 
+                        size={24} 
+                        color={isFavorite ? "#fbbf24" : "#9ca3af"} 
+                      />
+                    </Pressable>
                   </Pressable>
                 );
               })

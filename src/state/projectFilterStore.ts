@@ -9,6 +9,10 @@ interface ProjectFilterState {
   statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
   buttonLabel: string | null; // The label from the Dashboard button
   
+  // Current active filters (persisted across navigation)
+  currentSectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | null;
+  currentStatusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
+  
   // Per-user last selected projects
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
@@ -16,6 +20,8 @@ interface ProjectFilterState {
   setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work") => void;
   setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned") => void;
   setButtonLabel: (label: string | null) => void;
+  setCurrentSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work" | null) => void;
+  setCurrentStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => void;
   clearSectionFilter: () => void;
   clearStatusFilter: () => void;
   getLastSelectedProject: (userId: string) => Promise<string | null>;
@@ -28,6 +34,8 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       sectionFilter: null,
       statusFilter: null,
       buttonLabel: null,
+      currentSectionFilter: null,
+      currentStatusFilter: null,
       lastSelectedProjects: {}, // Store last selected project per user
       
       setSelectedProject: async (projectId: string | null, userId?: string) => {
@@ -97,6 +105,14 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       
       setButtonLabel: (label: string | null) => {
         set({ buttonLabel: label });
+      },
+      
+      setCurrentSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work" | null) => {
+        set({ currentSectionFilter: section });
+      },
+      
+      setCurrentStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => {
+        set({ currentStatusFilter: status });
       },
       
       clearSectionFilter: () => {

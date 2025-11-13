@@ -22,6 +22,7 @@ import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
+import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -48,6 +49,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
   const updateTask = useTaskStore(state => state.updateTask);
   const updateSubTaskStatus = useTaskStore(state => state.updateSubTaskStatus);
+  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const acceptSubTask = useTaskStore(state => state.acceptSubTask);
   const declineSubTask = useTaskStore(state => state.declineSubTask);
   const deleteSubTask = useTaskStore(state => state.deleteSubTask);
@@ -1563,16 +1565,29 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     .filter(Boolean)
                 : [];
 
-              const filteredUsers = projectUsers.filter(u => 
+              let filteredUsers = projectUsers.filter(u => 
                 u && (
                   u.name.toLowerCase().includes(reassignSearchQuery.toLowerCase()) ||
                   (u.email && u.email.toLowerCase().includes(reassignSearchQuery.toLowerCase()))
                 )
               );
 
+              // Sort favorites to top
+              if (user?.id) {
+                filteredUsers = [...filteredUsers].sort((a, b) => {
+                  const aIsFavorite = isFavoriteUser(user.id, a.id);
+                  const bIsFavorite = isFavoriteUser(user.id, b.id);
+                  
+                  if (aIsFavorite && !bIsFavorite) return -1;
+                  if (!aIsFavorite && bIsFavorite) return 1;
+                  return 0;
+                });
+              }
+
               return filteredUsers.map((projectUser) => {
                 if (!projectUser) return null;
                 const isSelected = selectedUsersForReassign.includes(projectUser.id);
+                const isFavorite = user?.id ? isFavoriteUser(user.id, projectUser.id) : false;
                 
                 return (
                   <Pressable
@@ -1606,6 +1621,23 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         {projectUser.email}
                       </Text>
                     </View>
+                    
+                    {/* Favorite Star */}
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        if (user?.id) {
+                          toggleFavoriteUser(user.id, projectUser.id);
+                        }
+                      }}
+                      className="p-2"
+                    >
+                      <Ionicons 
+                        name={isFavorite ? "star" : "star-outline"} 
+                        size={24} 
+                        color={isFavorite ? "#fbbf24" : "#9ca3af"} 
+                      />
+                    </Pressable>
                   </Pressable>
                 );
               });

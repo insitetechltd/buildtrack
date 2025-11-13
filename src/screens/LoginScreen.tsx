@@ -107,8 +107,8 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
   };
 
   const appVersion = Constants.expoConfig?.version || "1.0.0";
-  const runtimeVersion = Constants.expoConfig?.runtimeVersion || "1.0.0";
-  const buildIdentifier = `v${appVersion} (${runtimeVersion})`;
+  const buildNumber = Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "0";
+  const buildIdentifier = `v${appVersion} (${buildNumber})`;
 
   return (
     <SafeAreaView className="flex-1 bg-white">

@@ -21,6 +21,7 @@ import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
+import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Project, ProjectStatus, UserCategory, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -564,6 +565,7 @@ function AddMemberModal({
   const { user } = useAuthStore();
   const { getUsersByCompany, getAllUsers } = useUserStoreWithInit();
   const { getCompanyById } = useCompanyStore();
+  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -581,23 +583,38 @@ function AddMemberModal({
     }
   }, [user?.role, user?.companyId, getAllUsers, getUsersByCompany, existingMembers]);
 
-  // Filter by search query
+  // Filter by search query and sort favorites to top
   const availableUsers = React.useMemo(() => {
-    if (!searchQuery.trim()) {
-      return allAvailableUsers;
+    let filtered = allAvailableUsers;
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = allAvailableUsers.filter(u => {
+        const company = getCompanyById(u.companyId);
+        return (
+          u.name.toLowerCase().includes(query) ||
+          (u.email && u.email.toLowerCase().includes(query)) ||
+          u.position.toLowerCase().includes(query) ||
+          (company && company.name.toLowerCase().includes(query))
+        );
+      });
     }
     
-    const query = searchQuery.toLowerCase();
-    return allAvailableUsers.filter(u => {
-      const company = getCompanyById(u.companyId);
-      return (
-        u.name.toLowerCase().includes(query) ||
-        (u.email && u.email.toLowerCase().includes(query)) ||
-        u.position.toLowerCase().includes(query) ||
-        (company && company.name.toLowerCase().includes(query))
-      );
-    });
-  }, [allAvailableUsers, searchQuery, getCompanyById]);
+    // Sort favorites to top
+    if (user?.id) {
+      return [...filtered].sort((a, b) => {
+        const aIsFavorite = isFavoriteUser(user.id, a.id);
+        const bIsFavorite = isFavoriteUser(user.id, b.id);
+        
+        if (aIsFavorite && !bIsFavorite) return -1;
+        if (!aIsFavorite && bIsFavorite) return 1;
+        return 0;
+      });
+    }
+    
+    return filtered;
+  }, [allAvailableUsers, searchQuery, getCompanyById, user?.id, isFavoriteUser]);
 
   // Reset selected users and search when modal opens/closes
   React.useEffect(() => {
@@ -697,6 +714,7 @@ function AddMemberModal({
               {availableUsers.map((availableUser, index) => {
                 const isSelected = selectedUsers.includes(availableUser.id);
                 const userCompany = getCompanyById(availableUser.companyId);
+                const isFavorite = user?.id ? isFavoriteUser(user.id, availableUser.id) : false;
                 
                 return (
                   <Pressable
@@ -737,17 +755,37 @@ function AddMemberModal({
                       )}
                     </View>
                     
-                    <View 
-                      className={cn(
-                        "w-6 h-6 rounded border-2 items-center justify-center ml-3",
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600" 
-                          : "bg-white border-gray-300"
-                      )}
-                    >
-                      {isSelected && (
-                        <Ionicons name="checkmark" size={16} color="white" />
-                      )}
+                    <View className="flex-row items-center ml-3">
+                      {/* Favorite Star */}
+                      <Pressable
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          if (user?.id) {
+                            toggleFavoriteUser(user.id, availableUser.id);
+                          }
+                        }}
+                        className="p-2 mr-2"
+                      >
+                        <Ionicons 
+                          name={isFavorite ? "star" : "star-outline"} 
+                          size={24} 
+                          color={isFavorite ? "#fbbf24" : "#9ca3af"} 
+                        />
+                      </Pressable>
+                      
+                      {/* Checkbox */}
+                      <View 
+                        className={cn(
+                          "w-6 h-6 rounded border-2 items-center justify-center",
+                          isSelected 
+                            ? "bg-blue-600 border-blue-600" 
+                            : "bg-white border-gray-300"
+                        )}
+                      >
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={16} color="white" />
+                        )}
+                      </View>
                     </View>
                   </Pressable>
                 );

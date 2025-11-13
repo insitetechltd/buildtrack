@@ -49,11 +49,12 @@ export default function TasksScreen({
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectById, getProjectsByUser } = projectStore;
-  const { selectedProjectId, sectionFilter, statusFilter, buttonLabel, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
+  const { selectedProjectId, sectionFilter, statusFilter, buttonLabel, currentSectionFilter, currentStatusFilter, setCurrentSectionFilter, setCurrentStatusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
   const { isDarkMode } = useThemeStore();
 
-  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "my_work">("my_work");
-  const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">("all");
+  // Initialize local filters from current filters if available, otherwise use defaults
+  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "my_work">(currentSectionFilter || "my_work");
+  const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">(currentStatusFilter || "all");
   const [refreshing, setRefreshing] = useState(false);
   
   // Sorting options (can apply multiple)
@@ -88,7 +89,10 @@ export default function TasksScreen({
       console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
       setLocalSectionFilter(sectionFilter);
       setLocalStatusFilter(statusFilter);
-      // Clear filters from store AFTER setting local state
+      // Save to current filters for persistence
+      setCurrentSectionFilter(sectionFilter);
+      setCurrentStatusFilter(statusFilter);
+      // Clear navigation filters from store AFTER setting local state
       setTimeout(() => {
         clearSectionFilter();
         clearStatusFilter();
@@ -98,14 +102,56 @@ export default function TasksScreen({
       console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
       setLocalSectionFilter(sectionFilter);
       setLocalStatusFilter("all");
+      // Save to current filters
+      setCurrentSectionFilter(sectionFilter);
+      setCurrentStatusFilter("all");
       clearSectionFilter();
     } else if (statusFilter) {
       // Only status filter set - apply status only
       console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
       setLocalStatusFilter(statusFilter);
+      // Save to current filters (preserve existing section filter)
+      setCurrentStatusFilter(statusFilter);
       clearStatusFilter();
     }
-  }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
+  }, [sectionFilter, statusFilter, setCurrentSectionFilter, setCurrentStatusFilter, clearSectionFilter, clearStatusFilter]);
+
+  // Track if we're restoring filters to avoid updating current filters during restoration
+  const isRestoringFilters = React.useRef(false);
+
+  // Restore filters from current filter state when screen regains focus
+  useFocusEffect(
+    useCallback(() => {
+      // If we have current filters stored, restore them
+      // Only restore if local filters don't match (to avoid unnecessary updates)
+      if (currentSectionFilter && currentSectionFilter !== localSectionFilter) {
+        console.log('🔄 [TasksScreen] Restoring section filter from store:', currentSectionFilter);
+        isRestoringFilters.current = true;
+        setLocalSectionFilter(currentSectionFilter);
+        setTimeout(() => { isRestoringFilters.current = false; }, 100);
+      }
+      if (currentStatusFilter && currentStatusFilter !== localStatusFilter) {
+        console.log('🔄 [TasksScreen] Restoring status filter from store:', currentStatusFilter);
+        isRestoringFilters.current = true;
+        setLocalStatusFilter(currentStatusFilter);
+        setTimeout(() => { isRestoringFilters.current = false; }, 100);
+      }
+    }, [currentSectionFilter, currentStatusFilter, localSectionFilter, localStatusFilter])
+  );
+
+  // Update current filters whenever local filters change (for persistence)
+  // This ensures any manual filter changes are also saved
+  // Skip updating if we're currently restoring filters to avoid circular updates
+  useEffect(() => {
+    if (isRestoringFilters.current) return;
+    
+    if (localSectionFilter !== currentSectionFilter) {
+      setCurrentSectionFilter(localSectionFilter);
+    }
+    if (localStatusFilter !== currentStatusFilter) {
+      setCurrentStatusFilter(localStatusFilter);
+    }
+  }, [localSectionFilter, localStatusFilter, currentSectionFilter, currentStatusFilter, setCurrentSectionFilter, setCurrentStatusFilter]);
 
 
   const onRefresh = useCallback(async () => {

@@ -688,16 +688,6 @@ export default function DashboardScreen({
             "rounded-2xl p-4 mb-4",
             isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
           )}>
-            <View className="flex-row items-center mb-4">
-              {isDarkMode ? (
-                <View className="bg-indigo-500/20 rounded-full p-2">
-                  <Ionicons name="speedometer-outline" size={20} color="#818cf8" />
-                </View>
-              ) : (
-                <Ionicons name="speedometer-outline" size={20} color="#6366f1" />
-              )}
-            </View>
-
             {/* 1. Overdue Section */}
             <View className="mb-4">
               <View className="flex-row items-center mb-3">

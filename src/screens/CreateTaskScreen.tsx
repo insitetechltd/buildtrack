@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -84,6 +84,24 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
   // Get task for editing
   const editTask = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
+
+  // Ensure only the task creator can edit
+  useEffect(() => {
+    if (!editTaskId || !editTask || !user) return;
+
+    if (editTask.assignedBy !== user.id) {
+      Alert.alert(
+        "Permission Denied",
+        "Only the task creator can edit this task.",
+        [
+          {
+            text: "OK",
+            onPress: () => onNavigateBack(),
+          },
+        ]
+      );
+    }
+  }, [editTaskId, editTask?.assignedBy, user?.id, editTask, onNavigateBack]);
 
   // Initial form data
   const getInitialFormData = () => {
@@ -506,6 +524,17 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     setErrors({});
     
     if (!validateForm()) return;
+
+    if (editTaskId) {
+      if (!editTask) {
+        Alert.alert("Task Not Found", "Unable to edit this task because it could not be loaded.");
+        return;
+      }
+      if (!user || editTask.assignedBy !== user.id) {
+        Alert.alert("Permission Denied", "Only the task creator can edit this task.");
+        return;
+      }
+    }
 
     setIsSubmitting(true);
 

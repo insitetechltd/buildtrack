@@ -192,6 +192,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // 1. They created the task, OR
   // 2. They are assigned AND have accepted the task
   const canUpdateProgress = isTaskCreator || (isAssignedToMe && task.accepted === true);
+  const canEditTask = isTaskCreator;
   
   // Users can only create subtasks if:
   // 1. They created the task, OR
@@ -2024,7 +2025,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           }
         } : undefined}
         canUpdate={canUpdateProgress}
-        canEdit={canUpdateProgress}
+        canEdit={canEditTask}
         canCreateSubTask={canCreateSubTask && !!onNavigateToCreateTask}
       />
     </SafeAreaView>

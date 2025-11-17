@@ -283,10 +283,10 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
               </View>
             </View>
 
-            {/* Quick Login User List */}
+            {/* Quick Login - Admin Only */}
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <Text className="text-base font-semibold text-blue-800 mb-3">
-                👥 {t.login.quickLogin} (9 total):
+                🔐 {t.login.quickLogin} (Admin Accounts):
               </Text>
               
               <View className="space-y-3">
@@ -296,26 +296,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'password123')}
                 >
                   <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Admin: Admin Tristan
-                  </Text>
-                </Pressable>
-                
-                {/* Insite Tech Ltd - Managers */}
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('tristan@insitetech.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Manager: Tristan
-                  </Text>
-                </Pressable>
-                
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('dennis@insitetech.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Manager: Dennis
+                    Insite Tech: Admin Tristan
                   </Text>
                 </Pressable>
                 
@@ -325,36 +306,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   onPress={() => handleQuickLogin('admin@buildtrack.com', 'password123')}
                 >
                   <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Admin: Alex Administrator
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Manager */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('manager@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Manager: John Manager
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Workers */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('peter@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Worker: Peter
-                  </Text>
-                </Pressable>
-                
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('worker@buildtrack.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Worker: Sarah Worker
+                    BuildTrack: Alex Administrator
                   </Text>
                 </Pressable>
                 
@@ -364,17 +316,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   onPress={() => handleQuickLogin('admin@eliteelectric.com', 'password123')}
                 >
                   <Text className="text-lg font-semibold text-amber-900">
-                    Elite Electric: Admin: Mike Johnson
-                  </Text>
-                </Pressable>
-                
-                {/* Elite Electric - Worker */}
-                <Pressable 
-                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
-                  onPress={() => handleQuickLogin('lisa@eliteelectric.com', 'password123')}
-                >
-                  <Text className="text-lg font-semibold text-amber-900">
-                    Elite Electric: Worker: Lisa Martinez
+                    Elite Electric: Mike Johnson
                   </Text>
                 </Pressable>
               </View>

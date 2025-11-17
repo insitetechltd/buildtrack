@@ -15,6 +15,9 @@ import { useDatabaseConfig } from '../state/databaseConfigStore';
 import StandardHeader from '../components/StandardHeader';
 import * as databaseUtils from '../utils/databaseUtils';
 
+// SECURITY: Dev Admin Tools are ONLY accessible to Tristan Admin of Insite Tech
+const AUTHORIZED_DEV_ADMIN_EMAIL = 'admin_tristan@insitetech.com';
+
 export default function DevAdminScreen({ navigation }: any) {
   const { user } = useAuthStore();
   const {
@@ -30,6 +33,30 @@ export default function DevAdminScreen({ navigation }: any) {
   const [newEnvName, setNewEnvName] = useState('');
   const [newEnvUrl, setNewEnvUrl] = useState('');
   const [newEnvKey, setNewEnvKey] = useState('');
+
+  // SECURITY CHECK: Only allow Tristan Admin of Insite Tech
+  if (!user || user.email !== AUTHORIZED_DEV_ADMIN_EMAIL) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#f9fafb', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <Ionicons name="shield-off" size={64} color="#ef4444" />
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1f2937', marginTop: 16, textAlign: 'center' }}>
+          Access Denied
+        </Text>
+        <Text style={{ fontSize: 16, color: '#6b7280', marginTop: 8, textAlign: 'center' }}>
+          Dev Admin Tools are restricted to authorized personnel only.
+        </Text>
+        <Text style={{ fontSize: 14, color: '#9ca3af', marginTop: 16, textAlign: 'center' }}>
+          Unauthorized access attempts are logged.
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ marginTop: 24, backgroundColor: '#3b82f6', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: 'white', fontSize: 16, fontWeight: '600' }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   // Test Scripts
   const testScripts = [

@@ -10,6 +10,7 @@ import {
   Platform,
   Modal,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -147,6 +148,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 
   // All hooks must be called before any early returns
   const userProjects = getProjectsByUser(user?.id || "");
@@ -267,14 +269,50 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     }
   }, [userProjects, formData.projectId, selectedProjectId]);
 
-  // Fetch project user assignments when project changes
+  // Fetch project user assignments when project changes (pre-fetch for faster modal loading)
   React.useEffect(() => {
     if (formData.projectId) {
-      console.log('Fetching project user assignments for project:', formData.projectId);
-      // Force fetch project assignments
-      fetchProjectUserAssignments(formData.projectId);
+      console.log('🔄 Pre-fetching project user assignments for project:', formData.projectId);
+      // Pre-fetch project assignments immediately when project is selected
+      fetchProjectUserAssignments(formData.projectId).catch(err => {
+        console.error('Error fetching project user assignments:', err);
+      });
     }
   }, [formData.projectId, fetchProjectUserAssignments]);
+  
+  // Pre-fetch users when "Assign To" button is pressed (before modal opens)
+  const handleOpenUserPicker = useCallback(async () => {
+    if (formData.projectId) {
+      // Check if we already have cached data
+      const existingAssignments = getProjectUserAssignments(formData.projectId);
+      
+      if (existingAssignments.length === 0) {
+        // No cached data, fetch before opening
+        setIsLoadingUsers(true);
+        try {
+          console.log('⚡ Pre-loading users for project:', formData.projectId);
+          await fetchProjectUserAssignments(formData.projectId);
+          console.log('✅ Users loaded, opening modal');
+        } catch (error) {
+          console.error('Error pre-loading users:', error);
+        } finally {
+          setIsLoadingUsers(false);
+          setShowUserPicker(true);
+        }
+      } else {
+        // Data already cached, open immediately and refresh in background
+        console.log('✅ Using cached users, opening modal immediately');
+        setShowUserPicker(true);
+        // Refresh in background for latest data
+        fetchProjectUserAssignments(formData.projectId).catch(err => {
+          console.error('Background refresh error:', err);
+        });
+      }
+    } else {
+      // No project selected, open immediately
+      setShowUserPicker(true);
+    }
+  }, [formData.projectId, fetchProjectUserAssignments, getProjectUserAssignments]);
 
   // Clear selected users when project changes (since eligible users change)
   React.useEffect(() => {
@@ -830,23 +868,31 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Assign To */}
           <InputField label="Assign To" error={errors.assignedTo}>
             <Pressable
-              onPress={() => setShowUserPicker(true)}
+              onPress={handleOpenUserPicker}
+              disabled={isLoadingUsers}
               className={cn(
                 "border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                errors.assignedTo ? "border-red-300" : "border-gray-300"
+                errors.assignedTo ? "border-red-300" : "border-gray-300",
+                isLoadingUsers && "opacity-50"
               )}
             >
               <Text className="text-lg text-gray-900">
-                {selectedUsers.length > 0 
-                  ? `${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} selected`
-                  : "Select users to assign"
+                {isLoadingUsers 
+                  ? "Loading users..."
+                  : selectedUsers.length > 0 
+                    ? `${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} selected`
+                    : "Select users to assign"
                 }
               </Text>
-              <Ionicons 
-                name="chevron-forward" 
-                size={20} 
-                color="#6b7280" 
-              />
+              {isLoadingUsers ? (
+                <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
+              ) : (
+                <Ionicons 
+                  name="chevron-forward" 
+                  size={20} 
+                  color="#6b7280" 
+                />
+              )}
             </Pressable>
           </InputField>
 
@@ -969,7 +1015,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {(["low", "medium", "high", "critical"] as Priority[]).map((priority) => (
+            {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => (
               <Pressable
                 key={priority}
                 onPress={() => {
@@ -1155,6 +1201,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         onRequestClose={() => {
           setShowUserPicker(false);
           setUserSearchQuery("");
+          setIsLoadingUsers(false);
         }}
       >
         <SafeAreaView className="flex-1 bg-gray-50">
@@ -1167,6 +1214,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => {
                 setShowUserPicker(false);
                 setUserSearchQuery("");
+                setIsLoadingUsers(false);
               }}
               className="mr-4 w-10 h-10 items-center justify-center"
             >
@@ -1209,7 +1257,18 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
           {/* User List */}
           <ScrollView className="flex-1 px-6 py-4">
-            {filteredAssignableUsers.length > 0 ? (
+            {isLoadingUsers ? (
+              // Loading state
+              <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text className="text-gray-600 text-center mt-4 font-medium">
+                  Loading users...
+                </Text>
+                <Text className="text-gray-400 text-center mt-2 text-base">
+                  Fetching project team members
+                </Text>
+              </View>
+            ) : filteredAssignableUsers.length > 0 ? (
               filteredAssignableUsers.map((assignableUser) => {
                 const isSelected = selectedUsers.includes(assignableUser.id);
                 const isFavorite = user?.id ? isFavoriteUser(user.id, assignableUser.id) : false;
@@ -1315,6 +1374,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               onPress={() => {
                 setShowUserPicker(false);
                 setUserSearchQuery("");
+                setIsLoadingUsers(false);
               }}
               className="bg-blue-600 rounded-lg py-3 items-center"
             >

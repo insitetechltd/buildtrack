@@ -257,7 +257,7 @@ export default function ProjectForm({
             </View>
 
             {/* Status */}
-            <View>
+            <View className="relative" style={{ zIndex: showStatusPicker ? 1000 : 1 }}>
               <Text className="text-lg font-medium text-gray-700 mb-2">Status</Text>
               
               {/* Custom Status Dropdown */}
@@ -277,7 +277,17 @@ export default function ProjectForm({
               
               {/* Dropdown Options */}
               {showStatusPicker && (
-                <View className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+                <View 
+                  className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
+                  style={{ 
+                    zIndex: 1001,
+                    elevation: 1001,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                  }}
+                >
                   {statusOptions.map((option, index) => (
                     <Pressable
                       key={option.value}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -32,26 +33,108 @@ interface ProjectsScreenProps {
   onNavigateToCreateProject: () => void;
   onNavigateToUserManagement?: () => void;
   onNavigateBack?: () => void;
+  newProjectId?: string;
 }
 
 export default function ProjectsScreen({ 
   onNavigateToProjectDetail, 
   onNavigateToCreateProject,
   onNavigateToUserManagement,
-  onNavigateBack
+  onNavigateBack,
+  newProjectId
 }: ProjectsScreenProps) {
   const t = useTranslation();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getProjectsByCompany, getProjectsByUser, getProjectStats, updateProject, getProjectUserAssignments, assignUserToProject, getLeadPMForProject } = projectStore;
+  const { getProjectsByCompany, getProjectsByUser, getProjectStats, updateProject, getProjectUserAssignments, assignUserToProject, getLeadPMForProject, fetchProjects, fetchUserProjectAssignments } = projectStore;
   const userStore = useUserStoreWithInit();
-  const { getUserById, getUsersByCompany } = userStore;
+  const { getUserById, getUsersByCompany, fetchUsers } = userStore;
   const { getCompanyById, getCompanyBanner } = useCompanyStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch fresh data from database whenever screen is mounted or comes into focus
+  useEffect(() => {
+    const loadData = async () => {
+      if (!user) return;
+      
+      if (newProjectId) {
+        console.log('🔄 ProjectsScreen: Loading fresh data and verifying new project:', newProjectId);
+      } else {
+        console.log('🔄 ProjectsScreen: Loading fresh data from database...');
+      }
+      setIsLoading(true);
+      
+      try {
+        // Retry logic to ensure data is fully loaded
+        let retries = 0;
+        const maxRetries = 10; // Increased for new project verification
+        let dataLoaded = false;
+        
+        while (retries < maxRetries && !dataLoaded) {
+          // Fetch all data in parallel
+          await Promise.all([
+            fetchProjects(),
+            fetchUsers(),
+            fetchUserProjectAssignments(user.id)
+          ]);
+          
+          // Verify data was actually loaded
+          const currentProjects = projectStore.projects;
+          console.log(`📊 ProjectsScreen: Loaded ${currentProjects.length} projects from database`);
+          
+          // If we're looking for a specific new project, verify it exists
+          if (newProjectId) {
+            const newProjectExists = currentProjects.some(p => p.id === newProjectId);
+            
+            if (newProjectExists) {
+              console.log(`✅ ProjectsScreen: New project "${newProjectId}" confirmed in database!`);
+              dataLoaded = true;
+              
+              // Log all projects
+              currentProjects.forEach(p => {
+                const isNew = p.id === newProjectId ? ' ⭐ NEW' : '';
+                console.log(`  - Project: "${p.name}" (ID: ${p.id}, Company: ${p.companyId})${isNew}`);
+              });
+            } else {
+              retries++;
+              console.log(`⏳ ProjectsScreen: New project not found yet, retrying (${retries}/${maxRetries})...`);
+              await new Promise(resolve => setTimeout(resolve, 800));
+            }
+          } else {
+            // No specific project to verify, just ensure we have data
+            if (currentProjects.length > 0 || retries >= maxRetries - 1) {
+              dataLoaded = true;
+              console.log('✅ ProjectsScreen: Fresh data loaded from database');
+              
+              // Log all project IDs and names for debugging
+              currentProjects.forEach(p => {
+                console.log(`  - Project: "${p.name}" (ID: ${p.id}, Company: ${p.companyId})`);
+              });
+            } else {
+              retries++;
+              console.log(`⏳ ProjectsScreen: No projects found, retrying (${retries}/${maxRetries})...`);
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
+        }
+        
+        if (!dataLoaded && newProjectId) {
+          console.warn(`⚠️ ProjectsScreen: Could not verify new project ${newProjectId} after ${maxRetries} attempts`);
+        }
+      } catch (error) {
+        console.error('❌ ProjectsScreen: Error loading data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user?.id, newProjectId, fetchProjects, fetchUsers, fetchUserProjectAssignments]);
 
   if (!user) return null;
 
@@ -226,6 +309,7 @@ export default function ProjectsScreen({
   );
 
   return (
+    <>
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
@@ -292,7 +376,14 @@ export default function ProjectsScreen({
 
         {/* Project List */}
         <View className="px-6 py-4">
-        {filteredProjects.length > 0 ? (
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center py-16">
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text className="text-gray-500 text-lg font-medium mt-4">
+              Loading projects...
+            </Text>
+          </View>
+        ) : filteredProjects.length > 0 ? (
           filteredProjects.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))
@@ -338,7 +429,11 @@ export default function ProjectsScreen({
           Alert.alert("Success", "Project updated successfully");
         }}
       />
+
+    {/* Logout FAB */}
+    <LogoutFAB />
     </SafeAreaView>
+    </>
   );
 }
 
@@ -364,12 +459,7 @@ function EditProjectModal({
     status: "planning" as ProjectStatus,
     startDate: new Date(),
     endDate: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-    location: {
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-    },
+    location: "",
   });
 
   const [selectedLeadPM, setSelectedLeadPM] = useState<string>("");
@@ -452,7 +542,6 @@ function EditProjectModal({
   };
 
   return (
-    <>
     <Modal
       visible={visible}
       animationType="slide"
@@ -573,10 +662,10 @@ function EditProjectModal({
                 <TextInput
                   className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
                   placeholder="Enter full address (street, city, state/province, postal code, country)"
-                  value={formData.location.address}
+                  value={formData.location}
                   onChangeText={(text) => setFormData(prev => ({
                     ...prev,
-                    location: { ...prev.location, address: text }
+                    location: text
                   }))}
                   multiline={true}
                   numberOfLines={5}
@@ -726,9 +815,5 @@ function EditProjectModal({
         )}
       </SafeAreaView>
     </Modal>
-
-    {/* Logout FAB */}
-    <LogoutFAB />
-    </>
   );
 }

@@ -325,7 +325,9 @@ function UserProjectsStack() {
   );
 }
 
-function ProjectsListScreen({ navigation }: { navigation: any }) {
+function ProjectsListScreen({ navigation, route }: { navigation: any; route: any }) {
+  const newProjectId = route.params?.newProjectId;
+  
   return (
     <ProjectsScreen
       onNavigateToProjectDetail={(projectId: string) => {
@@ -334,6 +336,7 @@ function ProjectsListScreen({ navigation }: { navigation: any }) {
       onNavigateToCreateProject={() => navigation.navigate("CreateProject")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
       onNavigateBack={() => navigation.goBack()}
+      newProjectId={newProjectId}
     />
   );
 }
@@ -351,7 +354,10 @@ function ProjectDetailScreenWrapper({ route, navigation }: { route: any; navigat
 function CreateProjectMainScreen({ navigation }: { navigation: any }) {
   return (
     <CreateProjectScreen
-      onNavigateBack={() => navigation.goBack()}
+      onNavigateBack={(projectId?: string) => {
+        // Pass the newly created project ID back to ProjectsScreen
+        navigation.navigate('ProjectsList', { newProjectId: projectId });
+      }}
     />
   );
 }

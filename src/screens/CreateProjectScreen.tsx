@@ -10,12 +10,13 @@ import ProjectForm from "../components/ProjectForm";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 
 interface CreateProjectScreenProps {
-  onNavigateBack: () => void;
+  onNavigateBack: (projectId?: string) => void;
 }
 
 export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScreenProps) {
   const { user } = useAuthStore();
-  const { createProject, assignUserToProject } = useProjectStoreWithCompanyInit(user?.companyId || "");
+  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
+  const { createProject, assignUserToProject, fetchProjects } = projectStore;
   const { getCompanyBanner } = useCompanyStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -34,6 +35,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
     setIsSubmitting(true);
 
     try {
+      console.log('🔨 Creating project...');
       const newProject = await createProject({
         name: formData.name,
         description: formData.description,
@@ -50,26 +52,70 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         companyId: user.companyId,
       });
 
+      console.log('✅ Project created:', newProject?.id);
+      console.log('📋 Project details:', {
+        id: newProject?.id,
+        name: formData.name,
+        companyId: user.companyId,
+        createdBy: user.id
+      });
+
       // Assign Lead PM if selected
       if (formData.selectedLeadPM && newProject) {
+        console.log('👤 Assigning Lead PM...');
         await assignUserToProject(formData.selectedLeadPM, newProject.id, "lead_project_manager", user.id);
+      }
+
+      // Wait a moment for database to fully process
+      console.log('⏳ Waiting for database to process...');
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Increased to 1 second
+
+      // Fetch fresh project data with retry logic - keep trying until successful
+      console.log('🔄 Fetching fresh project list...');
+      let retries = 0;
+      const maxRetries = 10; // Increased max retries
+      let projectExists = false;
+      
+      while (retries < maxRetries && !projectExists) {
+        await fetchProjects();
+        
+        // Log current projects in store
+        console.log(`📊 Current projects in store: ${projectStore.projects.length}`);
+        projectStore.projects.forEach(p => {
+          console.log(`  - "${p.name}" (ID: ${p.id}, Company: ${p.companyId})`);
+        });
+        
+        // Check if the new project is in the store
+        projectExists = projectStore.projects.some(p => p.id === newProject?.id);
+        
+        if (projectExists) {
+          console.log('✅ New project confirmed in store');
+          break;
+        }
+        
+        retries++;
+        console.log(`⏳ Project not found yet, retrying (${retries}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, 800)); // Increased delay
+      }
+
+      if (!projectExists) {
+        console.warn('⚠️ Project created but not yet visible in list. It may appear after a refresh.');
+        Alert.alert(
+          "Project Created", 
+          "Your project was created successfully, but it may take a moment to appear in the list.",
+          [{ text: "OK", onPress: () => onNavigateBack(newProject?.id) }]
+        );
+        return;
       }
 
       // Notify all users about the new project
       notifyDataMutation('project');
 
-      Alert.alert(
-        "Project Created",
-        "Project has been created successfully. You can now assign users to it.",
-        [
-          {
-            text: "OK",
-            onPress: onNavigateBack,
-          },
-        ]
-      );
+      console.log('✅ Navigating back to projects screen with project ID:', newProject?.id);
+      // Navigate back with the new project ID so ProjectsScreen can verify it's loaded
+      onNavigateBack(newProject?.id);
     } catch (error) {
-      console.error("Error creating project:", error);
+      console.error("❌ Error creating project:", error);
       Alert.alert("Error", "Failed to create project. Please try again.");
     } finally {
       setIsSubmitting(false);

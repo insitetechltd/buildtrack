@@ -18,6 +18,7 @@ import { useAuthStore } from "../state/authStore";
 import { useCompanyStore } from "../state/companyStore";
 import { UserRole, CompanyType } from "../types/buildtrack";
 import { cn } from "../utils/cn";
+import { notifyDataMutation } from "../utils/DataRefreshManager";
 
 interface RegisterScreenProps {
   onToggleLogin: () => void;
@@ -158,6 +159,9 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
         );
         return;
       }
+
+      // Notify all users about the new user registration
+      notifyDataMutation('user');
 
       // Show appropriate success message
       if (isFirstUser) {

@@ -20,6 +20,7 @@ interface UserStore {
   getUserById: (id: string) => User | undefined;
   getUsersByRole: (role: UserRole) => User[];
   getUsersByCompany: (companyId: string) => User[];
+  getPendingUsersByCompany: (companyId: string) => User[];
   searchUsers: (query: string) => User[];
   searchUsersByCompany: (query: string, companyId: string) => User[];
   
@@ -27,6 +28,10 @@ interface UserStore {
   getAdminCountByCompany: (companyId: string) => number;
   canDeleteUser: (userId: string) => { canDelete: boolean; reason?: string };
   canChangeUserRole: (userId: string, newRole: UserRole) => { canChange: boolean; reason?: string };
+  
+  // User approval
+  approveUser: (userId: string, approvedBy: string) => Promise<boolean>;
+  rejectUser: (userId: string) => Promise<boolean>;
   
   // Mutations
   createUser: (userData: Omit<User, "id" | "createdAt">) => Promise<string>;
@@ -70,6 +75,9 @@ export const useUserStore = create<UserStore>()(
             ...user,
             companyId: user.company_id || user.companyId, // Handle both field names
             lastSelectedProjectId: user.last_selected_project_id || null,
+            isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
+            approvedBy: user.approved_by || user.approvedBy || null,
+            approvedAt: user.approved_at || user.approvedAt || null,
           }));
 
           set({ 
@@ -114,6 +122,9 @@ export const useUserStore = create<UserStore>()(
             ...user,
             companyId: user.company_id || user.companyId, // Handle both field names
             lastSelectedProjectId: user.last_selected_project_id || null,
+            isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
+            approvedBy: user.approved_by || user.approvedBy || null,
+            approvedAt: user.approved_at || user.approvedAt || null,
           }));
 
           set({ 
@@ -155,6 +166,9 @@ export const useUserStore = create<UserStore>()(
             ...data,
             companyId: data.company_id || data.companyId,
             lastSelectedProjectId: data.last_selected_project_id || null,
+            isPending: data.is_pending ?? data.isPending ?? false, // Transform snake_case to camelCase
+            approvedBy: data.approved_by || data.approvedBy || null,
+            approvedAt: data.approved_at || data.approvedAt || null,
           } : null;
         } catch (error: any) {
           console.error('Error fetching user:', error);
@@ -196,6 +210,11 @@ export const useUserStore = create<UserStore>()(
         console.log('===============================');
         
         return filteredUsers;
+      },
+
+      getPendingUsersByCompany: (companyId) => {
+        const users = get().getUsersByCompany(companyId);
+        return users.filter(user => user.isPending === true || user.is_pending === true);
       },
 
       searchUsers: (query) => {
@@ -251,6 +270,90 @@ export const useUserStore = create<UserStore>()(
         }
 
         return { canChange: true };
+      },
+
+      // APPROVE user
+      approveUser: async (userId, approvedBy) => {
+        if (!supabase) {
+          console.error('Supabase not configured');
+          return false;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          const { error } = await supabase
+            .from('users')
+            .update({
+              is_pending: false,
+              approved_by: approvedBy,
+              approved_at: new Date().toISOString(),
+            })
+            .eq('id', userId);
+
+          if (error) throw error;
+
+          // Update local state
+          set(state => ({
+            users: state.users.map(user =>
+              user.id === userId
+                ? { 
+                    ...user, 
+                    isPending: false, 
+                    is_pending: false,
+                    approvedBy: approvedBy,
+                    approved_by: approvedBy,
+                    approvedAt: new Date().toISOString(),
+                    approved_at: new Date().toISOString(),
+                  }
+                : user
+            ),
+            isLoading: false,
+          }));
+
+          return true;
+        } catch (error: any) {
+          console.error('Error approving user:', error);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
+      },
+
+      // REJECT user (delete pending user)
+      rejectUser: async (userId) => {
+        if (!supabase) {
+          console.error('Supabase not configured');
+          return false;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          // Delete the user from auth
+          const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+          if (authError) {
+            console.warn('Could not delete auth user:', authError);
+            // Continue anyway as we still want to delete from users table
+          }
+
+          // Delete from users table
+          const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', userId);
+
+          if (error) throw error;
+
+          // Update local state
+          set(state => ({
+            users: state.users.filter(user => user.id !== userId),
+            isLoading: false,
+          }));
+
+          return true;
+        } catch (error: any) {
+          console.error('Error rejecting user:', error);
+          set({ error: error.message, isLoading: false });
+          return false;
+        }
       },
 
       // CREATE user in Supabase

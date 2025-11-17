@@ -264,10 +264,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               <Ionicons name="location-outline" size={20} color="#6b7280" />
               <View className="ml-3 flex-1">
                 <Text className="text-base font-medium text-gray-900 mb-1">Location</Text>
-                <Text className="text-base text-gray-600">{project.location.address}</Text>
-                <Text className="text-base text-gray-600">
-                  {project.location.city}, {project.location.state} {project.location.zipCode}
-                </Text>
+                <Text className="text-base text-gray-600">{project.location || "No location specified"}</Text>
               </View>
             </View>
 

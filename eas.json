@@ -68,7 +68,7 @@
     },
     "production-local": {
       "extends": "production",
-      "distribution": "internal",
+      "distribution": "store",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1",

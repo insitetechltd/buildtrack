@@ -24,6 +24,8 @@ import AdminDashboardScreen from "../screens/AdminDashboardScreen";
 import ProjectDetailScreen from "../screens/ProjectDetailScreen";
 import DevAdminScreen from "../screens/DevAdminScreen";
 import ProjectPickerScreen from "../screens/ProjectPickerScreen";
+import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
+import PendingUsersScreen from "../screens/PendingUsersScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -206,6 +208,8 @@ function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="ProfileMain" component={ProfileMainScreen} />
+      <Stack.Screen name="DeveloperSettings" component={DeveloperSettingsScreenWrapper} />
+      <Stack.Screen name="PendingUsers" component={PendingUsersScreenWrapper} />
     </Stack.Navigator>
   );
 }
@@ -213,6 +217,24 @@ function ProfileStack() {
 function ProfileMainScreen({ navigation }: { navigation: any }) {
   return (
     <ProfileScreen
+      onNavigateBack={() => navigation.goBack()}
+      onNavigateToDeveloperSettings={() => navigation.navigate("DeveloperSettings")}
+      onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
+    />
+  );
+}
+
+function PendingUsersScreenWrapper({ navigation }: { navigation: any }) {
+  return (
+    <PendingUsersScreen
+      onNavigateBack={() => navigation.goBack()}
+    />
+  );
+}
+
+function DeveloperSettingsScreenWrapper({ navigation }: { navigation: any }) {
+  return (
+    <DeveloperSettingsScreen
       onNavigateBack={() => navigation.goBack()}
     />
   );

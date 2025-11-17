@@ -75,14 +75,30 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     
     if (!validateForm()) return;
 
-    const success = await login(emailOrPhone, password);
-    
-    if (!success) {
-      Alert.alert(
-        t.login.loginFailed,
-        t.login.invalidCredentials,
-        [{ text: t.common.ok }]
-      );
+    try {
+      const success = await login(emailOrPhone, password);
+      
+      if (!success) {
+        Alert.alert(
+          t.login.loginFailed,
+          t.login.invalidCredentials,
+          [{ text: t.common.ok }]
+        );
+      }
+    } catch (error: any) {
+      if (error.message === 'PENDING_APPROVAL') {
+        Alert.alert(
+          "Approval Pending",
+          "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          t.login.loginFailed,
+          t.login.invalidCredentials,
+          [{ text: t.common.ok }]
+        );
+      }
     }
   };
 
@@ -95,14 +111,30 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     setPassword(password);
     
     // Perform login
-    const success = await login(email, password);
-    
-    if (!success) {
-      Alert.alert(
-        t.login.quickLoginFailed,
-        `${t.login.failedToLogin} ${email}. ${t.login.pleaseTryAgain}`,
-        [{ text: t.common.ok }]
-      );
+    try {
+      const success = await login(email, password);
+      
+      if (!success) {
+        Alert.alert(
+          t.login.quickLoginFailed,
+          `${t.login.failedToLogin} ${email}. ${t.login.pleaseTryAgain}`,
+          [{ text: t.common.ok }]
+        );
+      }
+    } catch (error: any) {
+      if (error.message === 'PENDING_APPROVAL') {
+        Alert.alert(
+          "Approval Pending",
+          "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          t.login.quickLoginFailed,
+          `${t.login.failedToLogin} ${email}. ${t.login.pleaseTryAgain}`,
+          [{ text: t.common.ok }]
+        );
+      }
     }
   };
 

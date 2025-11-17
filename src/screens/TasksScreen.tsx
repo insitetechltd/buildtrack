@@ -49,19 +49,22 @@ export default function TasksScreen({
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectById, getProjectsByUser } = projectStore;
-  const { selectedProjectId, sectionFilter, statusFilter, buttonLabel, currentSectionFilter, currentStatusFilter, setCurrentSectionFilter, setCurrentStatusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
+  const {
+    selectedProjectId,
+    sectionFilter,
+    statusFilter,
+    buttonLabel,
+    showSelfAssignedOnly,
+    sortByPriority,
+    sortByDueDate,
+    setShowSelfAssignedOnly,
+    setSortByPriority,
+    setSortByDueDate,
+  } = useProjectFilterStore();
   const { isDarkMode } = useThemeStore();
-
-  // Initialize local filters from current filters if available, otherwise use defaults
-  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "my_work">(currentSectionFilter || "my_work");
-  const [localStatusFilter, setLocalStatusFilter] = useState<"not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | "all">(currentStatusFilter || "all");
   const [refreshing, setRefreshing] = useState(false);
-  
-  // Sorting options (can apply multiple)
-  const [showSelfAssignedOnly, setShowSelfAssignedOnly] = useState(false);
-  // Three-state sort: null (disabled) → "desc" (high to low) → "asc" (low to high) → null
-  const [sortByPriority, setSortByPriority] = useState<null | "asc" | "desc">(null);
-  const [sortByDueDate, setSortByDueDate] = useState<null | "asc" | "desc">(null);
+  const effectiveSectionFilter = sectionFilter === "all" ? "my_work" : sectionFilter;
+  const activeStatusFilter = statusFilter || "all";
   
   // Toggle handlers for three-state sorting
   const togglePrioritySort = useCallback(() => {
@@ -70,7 +73,7 @@ export default function TasksScreen({
       if (prev === "desc") return "asc"; // Second press: low to high
       return null; // Third press: disabled
     });
-  }, []);
+  }, [setSortByPriority]);
   
   const toggleDueDateSort = useCallback(() => {
     setSortByDueDate(prev => {
@@ -78,80 +81,7 @@ export default function TasksScreen({
       if (prev === "desc") return "asc"; // Second press: later to earlier
       return null; // Third press: disabled
     });
-  }, []);
-
-  // Apply filters from store on mount or when they change
-  // Handle both filters being set simultaneously from Dashboard Quick Overview buttons
-  useEffect(() => {
-    console.log('🔍 [ProjectsTasksScreen] Filter Store Update:', { sectionFilter, statusFilter });
-    if (sectionFilter && statusFilter) {
-      // Both filters set together - apply both immediately
-      console.log('✅ [ProjectsTasksScreen] Setting both filters:', { sectionFilter, statusFilter });
-      setLocalSectionFilter(sectionFilter);
-      setLocalStatusFilter(statusFilter);
-      // Save to current filters for persistence
-      setCurrentSectionFilter(sectionFilter);
-      setCurrentStatusFilter(statusFilter);
-      // Clear navigation filters from store AFTER setting local state
-      setTimeout(() => {
-        clearSectionFilter();
-        clearStatusFilter();
-      }, 0);
-    } else if (sectionFilter) {
-      // Only section filter set - apply section, reset status
-      console.log('✅ [ProjectsTasksScreen] Setting section filter only:', { sectionFilter });
-      setLocalSectionFilter(sectionFilter);
-      setLocalStatusFilter("all");
-      // Save to current filters
-      setCurrentSectionFilter(sectionFilter);
-      setCurrentStatusFilter("all");
-      clearSectionFilter();
-    } else if (statusFilter) {
-      // Only status filter set - apply status only
-      console.log('✅ [ProjectsTasksScreen] Setting status filter only:', { statusFilter });
-      setLocalStatusFilter(statusFilter);
-      // Save to current filters (preserve existing section filter)
-      setCurrentStatusFilter(statusFilter);
-      clearStatusFilter();
-    }
-  }, [sectionFilter, statusFilter, setCurrentSectionFilter, setCurrentStatusFilter, clearSectionFilter, clearStatusFilter]);
-
-  // Track if we're restoring filters to avoid updating current filters during restoration
-  const isRestoringFilters = React.useRef(false);
-
-  // Restore filters from current filter state when screen regains focus
-  useFocusEffect(
-    useCallback(() => {
-      // If we have current filters stored, restore them
-      // Only restore if local filters don't match (to avoid unnecessary updates)
-      if (currentSectionFilter && currentSectionFilter !== localSectionFilter) {
-        console.log('🔄 [TasksScreen] Restoring section filter from store:', currentSectionFilter);
-        isRestoringFilters.current = true;
-        setLocalSectionFilter(currentSectionFilter);
-        setTimeout(() => { isRestoringFilters.current = false; }, 100);
-      }
-      if (currentStatusFilter && currentStatusFilter !== localStatusFilter) {
-        console.log('🔄 [TasksScreen] Restoring status filter from store:', currentStatusFilter);
-        isRestoringFilters.current = true;
-        setLocalStatusFilter(currentStatusFilter);
-        setTimeout(() => { isRestoringFilters.current = false; }, 100);
-      }
-    }, [currentSectionFilter, currentStatusFilter, localSectionFilter, localStatusFilter])
-  );
-
-  // Update current filters whenever local filters change (for persistence)
-  // This ensures any manual filter changes are also saved
-  // Skip updating if we're currently restoring filters to avoid circular updates
-  useEffect(() => {
-    if (isRestoringFilters.current) return;
-    
-    if (localSectionFilter !== currentSectionFilter) {
-      setCurrentSectionFilter(localSectionFilter);
-    }
-    if (localStatusFilter !== currentStatusFilter) {
-      setCurrentStatusFilter(localStatusFilter);
-    }
-  }, [localSectionFilter, localStatusFilter, currentSectionFilter, currentStatusFilter, setCurrentSectionFilter, setCurrentStatusFilter]);
+  }, [setSortByDueDate]);
 
 
   const onRefresh = useCallback(async () => {
@@ -485,14 +415,14 @@ export default function TasksScreen({
       // because reviewing breaks section definitions:
       // - Inbox Reviewing = tasks I CREATED (not in inbox)
       // - Outbox Reviewing = tasks assigned TO ME (not in outbox)
-      if (localStatusFilter === "reviewing") {
+      if (activeStatusFilter === "reviewing") {
         return projectTasks; // Return ALL tasks from project, let filter logic handle it
       }
       
-      if (localSectionFilter === "my_tasks") {
+      if (effectiveSectionFilter === "my_tasks") {
         // "my_tasks" shows ALL tasks assigned to me (including self-assigned)
         return myTasksAll;
-      } else if (localSectionFilter === "inbox") {
+      } else if (effectiveSectionFilter === "inbox") {
         // "inbox" shows only tasks assigned to me by others
         // 🔍 VERIFY: Double-check that all tasks are actually assigned to current user
         const userIdStr = String(user.id);
@@ -509,7 +439,7 @@ export default function TasksScreen({
           return isAssignedToMe;
         });
         return verifiedInboxTasks;
-      } else if (localSectionFilter === "outbox") {
+      } else if (effectiveSectionFilter === "outbox") {
         return outboxTasks;
       } else {
         // For "my_work", behavior depends on status filter:
@@ -529,7 +459,7 @@ export default function TasksScreen({
         });
         
         // For "all" or "done" status, also include outbox tasks
-        if (localStatusFilter === "all" || localStatusFilter === "done") {
+        if (activeStatusFilter === "all" || activeStatusFilter === "done") {
           outboxTasks.forEach(task => {
             uniqueTasks.set(task.id, task);
           });
@@ -549,12 +479,12 @@ export default function TasksScreen({
     // Apply status filters
     const filteredTasks = allProjectTasks.filter(task => {
       // If no status filter, return all tasks from current section
-      if (localStatusFilter === "all") {
+      if (activeStatusFilter === "all") {
         return true;
       }
       
       // Handle "my_work" section with specific status filters (for Priority Summary)
-      if (localSectionFilter === "my_work") {
+      if (effectiveSectionFilter === "my_work") {
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
         const userIdStr = String(user.id);
@@ -584,7 +514,7 @@ export default function TasksScreen({
         const isInInbox = isAssignedToMe && !isCreatedByMe;
         const isInMyTasksOrInbox = isInMyTasks || isInInbox;
         
-        if (localStatusFilter === "overdue") {
+        if (activeStatusFilter === "overdue") {
           // OVERDUE: Tasks assigned TO me that are past due
           // Includes: My self-assigned tasks + Tasks from others assigned to me
           // Excludes: Tasks I assigned to others (Outbox)
@@ -592,7 +522,7 @@ export default function TasksScreen({
                  task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.currentStatus !== "rejected";
-        } else if (localStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip") {
           // WIP: Tasks I'm actively working on (assigned TO me)
           // Includes: Self-assigned tasks + Tasks from others
           // Excludes: Tasks at 100% (complete), Overdue tasks, Review accepted tasks
@@ -615,7 +545,7 @@ export default function TasksScreen({
                    !task.reviewAccepted;
           }
           return false;
-        } else if (localStatusFilter === "done") {
+        } else if (activeStatusFilter === "done") {
           // DONE: All completed and accepted work (My Tasks + Inbox + Outbox)
           // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
           const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
@@ -636,7 +566,7 @@ export default function TasksScreen({
       }
       
       // Apply exact filter logic for each button combination
-      if (localSectionFilter === "my_tasks") {
+      if (effectiveSectionFilter === "my_tasks") {
         // MY TASKS: Self-assigned tasks (I created AND assigned to myself)
         // Also includes rejected tasks I created (reassigned back to me)
         const assignedTo = task.assignedTo || [];
@@ -648,10 +578,10 @@ export default function TasksScreen({
         
         if (!isInMyTasks) return false;
         
-        if (localStatusFilter === "rejected") {
+        if (activeStatusFilter === "rejected") {
           // REJECTED: Tasks that were declined by assignees
           return task.currentStatus === "rejected";
-        } else if (localStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip") {
           // WIP: Self-assigned tasks in progress
           const isSelfAssigned = isCreatedByMe && isAssignedToMe;
           const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
@@ -660,18 +590,18 @@ export default function TasksScreen({
                  !isOverdue(task) &&
                  task.currentStatus !== "rejected" &&
                  !task.reviewAccepted;
-        } else if (localStatusFilter === "done") {
+        } else if (activeStatusFilter === "done") {
           // DONE: Self-assigned tasks completed and auto-accepted
           return task.completionPercentage === 100 &&
                  task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
+        } else if (activeStatusFilter === "overdue") {
           // OVERDUE: Self-assigned tasks past due date
           return task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.currentStatus !== "rejected";
         }
         return false;
-      } else if (localSectionFilter === "inbox") {
+      } else if (effectiveSectionFilter === "inbox") {
         // INBOX: Tasks assigned TO me BY others (not self-assigned)
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
@@ -696,7 +626,7 @@ export default function TasksScreen({
           return false;
         }
         
-        if (localStatusFilter === "reviewing") {
+        if (activeStatusFilter === "reviewing") {
           // REVIEWING: Tasks I CREATED that others submitted for MY review
           // Special case: Breaks inbox definition to show tasks I need to review
           const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
@@ -709,7 +639,7 @@ export default function TasksScreen({
         // Only proceed if task is assigned to me AND not created by me
         if (!isInInbox) return false;
         
-        if (localStatusFilter === "received") {
+        if (activeStatusFilter === "received") {
           // RECEIVED: New tasks from others waiting for my acceptance
           // Not yet responded = accepted === false AND no declineReason AND not rejected
           const isPendingAcceptance = task.accepted === false && 
@@ -732,7 +662,7 @@ export default function TasksScreen({
           }
           
           return isPendingAcceptance;
-        } else if (localStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip") {
           // WIP: Tasks from others I'm actively working on
           // Must be accepted, incomplete or at 100% but not yet submitted for review
           return task.accepted &&
@@ -741,18 +671,18 @@ export default function TasksScreen({
                  (task.completionPercentage < 100 ||
                   (task.completionPercentage === 100 && !task.readyForReview)) &&
                  !task.reviewAccepted;
-        } else if (localStatusFilter === "done") {
+        } else if (activeStatusFilter === "done") {
           // DONE: Tasks from others that I completed and got accepted
           return task.completionPercentage === 100 &&
                  task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
+        } else if (activeStatusFilter === "overdue") {
           // OVERDUE: Tasks from others assigned to me that are past due
           return task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.currentStatus !== "rejected";
         }
         return false;
-      } else if (localSectionFilter === "outbox") {
+      } else if (effectiveSectionFilter === "outbox") {
         // OUTBOX: Tasks I assigned TO others (not self-assigned)
         // Excludes: Self-assigned tasks, Rejected tasks
         const assignedTo = task.assignedTo || [];
@@ -763,7 +693,7 @@ export default function TasksScreen({
         const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
         const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
         
-        if (localStatusFilter === "reviewing") {
+        if (activeStatusFilter === "reviewing") {
           // REVIEWING: Tasks I submitted for review (that OTHERS assigned to ME)
           // Special case: Breaks outbox definition to show my submissions awaiting approval
           return !isCreatedByMe &&
@@ -775,14 +705,14 @@ export default function TasksScreen({
         
         if (!isInOutbox) return false;
         
-        if (localStatusFilter === "assigned") {
+        if (activeStatusFilter === "assigned") {
           // ASSIGNED: Tasks I delegated to others waiting for their acceptance
           // Pending acceptance = accepted === false AND no declineReason AND not rejected
           const isPendingAcceptance = task.accepted === false && 
                                       !task.declineReason && 
                                       task.currentStatus !== "rejected";
           return isPendingAcceptance;
-        } else if (localStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip") {
           // WIP: Tasks I assigned to others that they're working on
           // They've accepted it, working on it, not overdue, not complete/submitted
           return task.accepted &&
@@ -791,11 +721,11 @@ export default function TasksScreen({
                  (task.completionPercentage < 100 ||
                   (task.completionPercentage === 100 && !task.readyForReview)) &&
                  !task.reviewAccepted;
-        } else if (localStatusFilter === "done") {
+        } else if (activeStatusFilter === "done") {
           // DONE: Tasks I assigned to others that were completed and I accepted
           return task.completionPercentage === 100 &&
                  task.reviewAccepted === true;
-        } else if (localStatusFilter === "overdue") {
+        } else if (activeStatusFilter === "overdue") {
           // OVERDUE: Tasks I assigned to others that are past due
           return task.completionPercentage < 100 &&
                  isOverdue(task) &&
@@ -827,7 +757,7 @@ export default function TasksScreen({
   
   // Apply self-assigned filter if enabled
   // BUT: Don't apply to "reviewing" status - those are tasks assigned to others
-  if (showSelfAssignedOnly && localStatusFilter !== "reviewing") {
+  if (showSelfAssignedOnly && activeStatusFilter !== "reviewing") {
     allTasks = allTasks.filter(task => {
       const assignedTo = task.assignedTo || [];
       // 🔍 FIX: Use String() comparison to handle type mismatches
@@ -972,7 +902,7 @@ export default function TasksScreen({
             all: "All",
           };
 
-          const statusLabel = statusLabels[localStatusFilter as string] || "All";
+          const statusLabel = statusLabels[activeStatusFilter as string] || "All";
 
           return `Tasks: ${statusLabel}`;
         })()}
@@ -1158,13 +1088,13 @@ export default function TasksScreen({
               "text-xl font-medium mt-4",
               isDarkMode ? "text-slate-400" : "text-gray-500"
             )}>
-              {localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {activeStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className={cn(
               "text-center mt-2 px-8",
               isDarkMode ? "text-slate-500" : "text-gray-400"
             )}>
-              {localStatusFilter !== "all"
+              {activeStatusFilter !== "all"
                 ? "Try adjusting your filters"
                 : "You haven't been assigned any tasks yet"
               }

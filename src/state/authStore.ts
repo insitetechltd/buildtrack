@@ -20,6 +20,7 @@ interface AuthStore extends AuthState {
     email?: string;
     password: string;
     role?: UserRole;
+    isPending?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;

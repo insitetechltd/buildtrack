@@ -23,7 +23,6 @@ import { useCompanyStore } from "../state/companyStore";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import LogoutFAB from "../components/LogoutFAB"; // Keep for admin screens
 
 interface AdminDashboardScreenProps {
   onNavigateToProjects: () => void;
@@ -38,7 +37,7 @@ export default function AdminDashboardScreen({
   onNavigateToProfile,
   onNavigateToDevAdmin
 }: AdminDashboardScreenProps) {
-  const { user } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const { getProjectsByCompany, userAssignments, fetchProjects } = useProjectStoreWithCompanyInit(user.companyId);
   const userStore = useUserStoreWithInit();
   const { getUsersByCompany, fetchUsers } = userStore;
@@ -56,6 +55,7 @@ export default function AdminDashboardScreen({
     imageUri: "",
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
@@ -383,9 +383,20 @@ export default function AdminDashboardScreen({
       <StandardHeader 
         title="Admin Dashboard"
         rightElement={
-          <Pressable onPress={onNavigateToProfile}>
+          <Pressable 
+            onPress={() => setShowProfileMenu(true)}
+            className="flex-row items-center"
+          >
+            <View className="mr-2">
+              <Text className="text-base font-semibold text-right text-gray-900">
+                {user.name}
+              </Text>
+              <Text className="text-sm text-gray-600 text-right capitalize">
+                {user.role}
+              </Text>
+            </View>
             <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-xl">
+              <Text className="text-white font-bold text-lg">
                 {user.name.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -754,7 +765,89 @@ export default function AdminDashboardScreen({
       </Modal>
 
       {/* Logout FAB */}
-      <LogoutFAB />
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={showProfileMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <Pressable 
+          className="flex-1 bg-black/50"
+          onPress={() => setShowProfileMenu(false)}
+        >
+          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            {/* User Info Header */}
+            <View className="bg-purple-600 px-4 py-3 border-b border-purple-700">
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
+                  <Text className="text-purple-600 font-bold text-lg">
+                    {user.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold text-base" numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text className="text-purple-100 text-sm capitalize">
+                    {user.role}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Menu Options */}
+            <View className="py-2">
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  onNavigateToProfile();
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="person-outline" size={22} color="#9333ea" />
+                <Text className="text-gray-900 text-base font-medium ml-3">
+                  Profile & Settings
+                </Text>
+              </Pressable>
+
+              <View className="h-px bg-gray-200 mx-4" />
+
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  Alert.alert(
+                    "Logout",
+                    "Are you sure you want to logout?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "Logout", 
+                        style: "destructive",
+                        onPress: logout
+                      },
+                    ]
+                  );
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+                <Text className="text-red-600 text-base font-medium ml-3">
+                  Logout
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }

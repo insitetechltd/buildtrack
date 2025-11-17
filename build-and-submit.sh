@@ -59,6 +59,17 @@ echo ""
 echo "✅ Build completed successfully!"
 echo ""
 
+# Locate the freshly built IPA
+LATEST_IPA=$(ls -t build-*.ipa 2>/dev/null | head -1 || true)
+if [ -z "$LATEST_IPA" ]; then
+    echo "❌ Could not find the generated IPA (build-*.ipa)."
+    echo "   Make sure the local build finished and produced an IPA in the project root."
+    exit 1
+fi
+
+echo "📦 Using build artifact: $LATEST_IPA"
+echo ""
+
 # Step 2: Get build info for confirmation
 echo "🔍 Verifying build..."
 echo "----------------------------------------"
@@ -87,8 +98,8 @@ echo "=========================================================="
 echo "Uploading build to App Store Connect for TestFlight distribution..."
 echo ""
 
-# Run submission and capture output
-SUBMIT_OUTPUT=$(npx eas submit --platform "$PLATFORM" --latest --profile "$PROFILE" --non-interactive 2>&1)
+# Run submission with the local IPA and capture output
+SUBMIT_OUTPUT=$(npx eas submit --platform "$PLATFORM" --path "$LATEST_IPA" --profile "$PROFILE" --non-interactive 2>&1)
 SUBMIT_EXIT_CODE=$?
 
 # Display the output

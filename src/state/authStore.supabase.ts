@@ -16,6 +16,7 @@ interface AuthStore extends AuthState {
     email?: string;
     password: string;
     role?: UserRole;
+    isPending?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -87,11 +88,28 @@ export const useAuthStore = create<AuthStore>()(
               return false;
             }
 
+            // Check if user is pending approval
+            if (userData.is_pending) {
+              console.log('User login blocked: pending approval');
+              // Sign out the user from Supabase auth
+              await supabase.auth.signOut();
+              set({ 
+                user: null, 
+                isAuthenticated: false, 
+                isLoading: false 
+              });
+              // Return false with a special indicator that can be checked
+              throw new Error('PENDING_APPROVAL');
+            }
+
             // Transform Supabase data to match local interface
             const transformedUser = {
               ...userData,
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
+              isPending: userData.is_pending,
+              approvedBy: userData.approved_by,
+              approvedAt: userData.approved_at,
             };
 
             // Note: Don't clear selectedProjectId here - DashboardScreen will check database
@@ -185,6 +203,7 @@ export const useAuthStore = create<AuthStore>()(
                 company_id: data.companyId,
                 position: data.position,
                 role: data.role || 'worker',
+                is_pending: data.isPending ?? false,
               }
             }
           });
@@ -207,6 +226,9 @@ export const useAuthStore = create<AuthStore>()(
                 company_id: data.companyId,
                 position: data.position,
                 role: data.role || 'worker',
+                is_pending: data.isPending ?? false,
+                approved_by: data.isPending ? null : authData.user.id, // Auto-approve if not pending
+                approved_at: data.isPending ? null : new Date().toISOString(),
               });
 
             if (userError) {
@@ -235,11 +257,22 @@ export const useAuthStore = create<AuthStore>()(
               return { success: false, error: 'Failed to fetch user data' };
             }
 
-            set({ 
-              user: userData, 
-              isAuthenticated: true, 
-              isLoading: false 
-            });
+            // Only auto-login if user is not pending approval
+            if (!data.isPending) {
+              set({ 
+                user: userData, 
+                isAuthenticated: true, 
+                isLoading: false 
+              });
+            } else {
+              // Don't auto-login pending users
+              set({ 
+                user: null, 
+                isAuthenticated: false, 
+                isLoading: false 
+              });
+            }
+            
             return { success: true };
           }
 

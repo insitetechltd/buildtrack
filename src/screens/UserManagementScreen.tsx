@@ -8,6 +8,7 @@ import {
   Modal,
   Image,
   RefreshControl,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -27,20 +28,22 @@ interface UserManagementScreenProps {
 }
 
 export default function UserManagementScreen({ onNavigateBack }: UserManagementScreenProps) {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, logout } = useAuthStore();
   const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentUser.companyId);
   const userStore = useUserStoreWithInit();
-  const { getUsersByCompany, getAdminCountByCompany, fetchUsers } = userStore;
+  const { getUsersByCompany, getAdminCountByCompany, fetchUsers, approveUser, rejectUser } = userStore;
   const { getCompanyById, getCompanyBanner } = useCompanyStore();
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<UserCategory>("worker");
-  const [activeModal, setActiveModal] = useState<'assign' | 'project' | 'category' | 'success' | 'removeConfirm' | 'invite' | null>(null);
+  const [activeModal, setActiveModal] = useState<'assign' | 'project' | 'category' | 'success' | 'removeConfirm' | 'invite' | 'approveConfirm' | 'rejectConfirm' | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [removeData, setRemoveData] = useState<{userId: string, projectId: string, userName: string, projectName: string} | null>(null);
+  const [pendingUserData, setPendingUserData] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   // Handle pull-to-refresh
   const handleRefresh = async () => {
@@ -178,15 +181,67 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     setRemoveData(null);
   };
 
+  const handleApproveUser = (user: User) => {
+    setPendingUserData(user);
+    setActiveModal('approveConfirm');
+  };
+
+  const handleRejectUser = (user: User) => {
+    setPendingUserData(user);
+    setActiveModal('rejectConfirm');
+  };
+
+  const confirmApproveUser = async () => {
+    if (!pendingUserData) return;
+    
+    try {
+      await approveUser(pendingUserData.id, currentUser.id);
+      
+      // Notify all users about the approval
+      notifyDataMutation('user');
+      
+      setSuccessMessage(`${pendingUserData.name} has been approved and can now log in.`);
+      setActiveModal('success');
+      setPendingUserData(null);
+    } catch (error) {
+      console.error('Error approving user:', error);
+      alert('Failed to approve user. Please try again.');
+      setActiveModal(null);
+      setPendingUserData(null);
+    }
+  };
+
+  const confirmRejectUser = async () => {
+    if (!pendingUserData) return;
+    
+    try {
+      await rejectUser(pendingUserData.id);
+      
+      // Notify all users about the rejection
+      notifyDataMutation('user');
+      
+      setSuccessMessage(`${pendingUserData.name} has been rejected and removed from the system.`);
+      setActiveModal('success');
+      setPendingUserData(null);
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      alert('Failed to reject user. Please try again.');
+      setActiveModal(null);
+      setPendingUserData(null);
+    }
+  };
+
   const UserCard = ({ user }: { user: User }) => {
     const userAssignments = getUserProjectAssignments(user.id);
     const isLastAdmin = user.role === "admin" && getAdminCountByCompany(user.companyId) === 1;
+    const isPending = user.isPending || false;
     
     // Debug logging for user assignments
     console.log(`=== USER ASSIGNMENTS DEBUG for ${user.name} ===`);
     console.log('- User ID:', user.id);
     console.log('- User Assignments:', userAssignments);
     console.log('- Available Projects:', projects.map(p => ({ id: p.id, name: p.name })));
+    console.log('- Is Pending:', isPending);
     console.log('==========================================');
     
     return (
@@ -208,6 +263,12 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                   <Text className="text-purple-700 text-sm font-bold">ADMIN</Text>
                 </View>
               )}
+              {isPending && (
+                <View className="bg-orange-100 px-2 py-1 rounded flex-row items-center">
+                  <Ionicons name="time-outline" size={12} color="#ea580c" />
+                  <Text className="text-orange-700 text-sm font-bold ml-1">Pending</Text>
+                </View>
+              )}
               {isLastAdmin && (
                 <View className="bg-amber-100 px-2 py-1 rounded flex-row items-center">
                   <Ionicons name="shield-checkmark" size={12} color="#d97706" />
@@ -226,57 +287,91 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
           </View>
           
-          <Pressable
-            onPress={() => {
-              setSelectedUser(user);
-              setActiveModal('assign');
-            }}
-            className="px-3 py-2 bg-blue-600 rounded-lg"
-          >
-            <Text className="text-white text-sm font-medium">Assign</Text>
-          </Pressable>
+          {/* Show Approve/Reject buttons for pending users, Assign button for approved users */}
+          {isPending ? (
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={() => handleApproveUser(user)}
+                className="px-3 py-2 bg-green-600 rounded-lg"
+              >
+                <Text className="text-white text-sm font-medium">Approve</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => handleRejectUser(user)}
+                className="px-3 py-2 bg-red-600 rounded-lg"
+              >
+                <Text className="text-white text-sm font-medium">Reject</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setSelectedUser(user);
+                setActiveModal('assign');
+              }}
+              className="px-3 py-2 bg-blue-600 rounded-lg"
+            >
+              <Text className="text-white text-sm font-medium">Assign</Text>
+            </Pressable>
+          )}
         </View>
 
-        {/* Project Assignments */}
-        {userAssignments.length > 0 ? (
-          <View>
-            <Text className="text-base font-medium text-gray-700 mb-2">
-              Project Assignments ({userAssignments.length})
-            </Text>
-            <View className="space-y-2">
-              {userAssignments.map((assignment) => {
-                const project = projects.find(p => p.id === assignment.projectId);
-                if (!project) return null;
-                
-                return (
-                  <View key={assignment.projectId} className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2">
-                    <View className="flex-1">
-                      <Text className="text-base font-medium text-gray-900">
-                        {project.name}
-                      </Text>
-                      <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(assignment.category))}>
-                        <Text className="text-sm font-medium">
-                          {getCategoryLabel(assignment.category)}
-                        </Text>
-                      </View>
-                    </View>
+        {/* Project Assignments - Only show for approved users */}
+        {!isPending && (
+          <>
+            {userAssignments.length > 0 ? (
+              <View>
+                <Text className="text-base font-medium text-gray-700 mb-2">
+                  Project Assignments ({userAssignments.length})
+                </Text>
+                <View className="space-y-2">
+                  {userAssignments.map((assignment) => {
+                    const project = projects.find(p => p.id === assignment.projectId);
+                    if (!project) return null;
                     
-                    <Pressable
-                      onPress={() => handleRemoveUser(user.id, project.id, user.name, project.name)}
-                      className="ml-2 p-1"
-                    >
-                      <Ionicons name="close-circle" size={20} color="#ef4444" />
-                    </Pressable>
-                  </View>
-                );
-              })}
+                    return (
+                      <View key={assignment.projectId} className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2">
+                        <View className="flex-1">
+                          <Text className="text-base font-medium text-gray-900">
+                            {project.name}
+                          </Text>
+                          <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(assignment.category))}>
+                            <Text className="text-sm font-medium">
+                              {getCategoryLabel(assignment.category)}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        <Pressable
+                          onPress={() => handleRemoveUser(user.id, project.id, user.name, project.name)}
+                          className="ml-2 p-1"
+                        >
+                          <Ionicons name="close-circle" size={20} color="#ef4444" />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ) : (
+              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <Text className="text-yellow-800 text-base">
+                  Not assigned to any projects
+                </Text>
+              </View>
+            )}
+          </>
+        )}
+        
+        {/* Pending user message */}
+        {isPending && (
+          <View className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <View className="flex-row items-center">
+              <Ionicons name="time-outline" size={16} color="#ea580c" />
+              <Text className="text-orange-800 text-base ml-2">
+                Awaiting approval - cannot be assigned to projects yet
+              </Text>
             </View>
-          </View>
-        ) : (
-          <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <Text className="text-yellow-800 text-base">
-              Not assigned to any projects
-            </Text>
           </View>
         )}
       </View>
@@ -292,6 +387,26 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
         title="User Management"
         showBackButton={true}
         onBackPress={onNavigateBack}
+        rightElement={
+          <Pressable 
+            onPress={() => setShowProfileMenu(true)}
+            className="flex-row items-center"
+          >
+            <View className="mr-2">
+              <Text className="text-base font-semibold text-right text-gray-900">
+                {currentUser.name}
+              </Text>
+              <Text className="text-sm text-gray-600 text-right capitalize">
+                {currentUser.role}
+              </Text>
+            </View>
+            <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-lg">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          </Pressable>
+        }
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
@@ -652,6 +767,166 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Approve Confirmation Modal */}
+      <Modal
+        visible={activeModal === 'approveConfirm'}
+        transparent
+        animationType="fade"
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-6">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-3">
+                <Ionicons name="checkmark-circle" size={40} color="#10b981" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Approve User</Text>
+              <Text className="text-center text-gray-600">
+                Approve {pendingUserData?.name} to join your company? They will be able to log in and access the app.
+              </Text>
+            </View>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => {
+                  setActiveModal(null);
+                  setPendingUserData(null);
+                }}
+                className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
+              >
+                <Text className="text-gray-900 font-semibold">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmApproveUser}
+                className="flex-1 bg-green-600 rounded-lg py-3 items-center"
+              >
+                <Text className="text-white font-semibold">Approve</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reject Confirmation Modal */}
+      <Modal
+        visible={activeModal === 'rejectConfirm'}
+        transparent
+        animationType="fade"
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-6">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <View className="w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-3">
+                <Ionicons name="close-circle" size={40} color="#ef4444" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Reject User</Text>
+              <Text className="text-center text-gray-600">
+                Reject {pendingUserData?.name}? This will permanently delete their account from the system.
+              </Text>
+            </View>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => {
+                  setActiveModal(null);
+                  setPendingUserData(null);
+                }}
+                className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
+              >
+                <Text className="text-gray-900 font-semibold">Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={confirmRejectUser}
+                className="flex-1 bg-red-600 rounded-lg py-3 items-center"
+              >
+                <Text className="text-white font-semibold">Reject</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Profile Menu Modal */}
+      <Modal
+        visible={showProfileMenu}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowProfileMenu(false)}
+      >
+        <Pressable 
+          className="flex-1 bg-black/50"
+          onPress={() => setShowProfileMenu(false)}
+        >
+          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+          >
+            {/* User Info Header */}
+            <View className="bg-blue-600 px-4 py-3 border-b border-blue-700">
+              <View className="flex-row items-center">
+                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
+                  <Text className="text-blue-600 font-bold text-lg">
+                    {currentUser.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold text-base" numberOfLines={1}>
+                    {currentUser.name}
+                  </Text>
+                  <Text className="text-blue-100 text-sm capitalize">
+                    {currentUser.role}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Menu Options */}
+            <View className="py-2">
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  onNavigateBack();
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="arrow-back-outline" size={22} color="#3b82f6" />
+                <Text className="text-gray-900 text-base font-medium ml-3">
+                  Back to Dashboard
+                </Text>
+              </Pressable>
+
+              <View className="h-px bg-gray-200 mx-4" />
+
+              <Pressable
+                onPress={() => {
+                  setShowProfileMenu(false);
+                  Alert.alert(
+                    "Logout",
+                    "Are you sure you want to logout?",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      { 
+                        text: "Logout", 
+                        style: "destructive",
+                        onPress: logout
+                      },
+                    ]
+                  );
+                }}
+                className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              >
+                <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+                <Text className="text-red-600 text-base font-medium ml-3">
+                  Logout
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

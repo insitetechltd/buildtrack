@@ -3,27 +3,43 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 
+type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
+type StatusFilter =
+  | "not_started"
+  | "in_progress"
+  | "completed"
+  | "rejected"
+  | "pending"
+  | "overdue"
+  | "wip"
+  | "done"
+  | "received"
+  | "reviewing"
+  | "assigned"
+  | "all";
+type SortDirection = "asc" | "desc";
+type SortUpdater = SortDirection | null | ((prev: SortDirection | null) => SortDirection | null);
+
 interface ProjectFilterState {
   selectedProjectId: string | null;
-  sectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | null;
-  statusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
+  sectionFilter: SectionFilter;
+  statusFilter: StatusFilter;
   buttonLabel: string | null; // The label from the Dashboard button
-  
-  // Current active filters (persisted across navigation)
-  currentSectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | null;
-  currentStatusFilter: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null;
+  showSelfAssignedOnly: boolean;
+  sortByPriority: SortDirection | null;
+  sortByDueDate: SortDirection | null;
   
   // Per-user last selected projects
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
   setSelectedProject: (projectId: string | null, userId?: string) => Promise<void>;
-  setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work") => void;
-  setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned") => void;
+  setSectionFilter: (section: SectionFilter) => void;
+  setStatusFilter: (status: StatusFilter) => void;
   setButtonLabel: (label: string | null) => void;
-  setCurrentSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work" | null) => void;
-  setCurrentStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => void;
-  clearSectionFilter: () => void;
-  clearStatusFilter: () => void;
+  setShowSelfAssignedOnly: (value: boolean) => void;
+  setSortByPriority: (updater: SortUpdater) => void;
+  setSortByDueDate: (updater: SortUpdater) => void;
+  resetFilters: () => void;
   getLastSelectedProject: (userId: string) => Promise<string | null>;
 }
 
@@ -31,11 +47,12 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
   persist(
     (set, get) => ({
       selectedProjectId: null,
-      sectionFilter: null,
-      statusFilter: null,
+      sectionFilter: "all",
+      statusFilter: "all",
       buttonLabel: null,
-      currentSectionFilter: null,
-      currentStatusFilter: null,
+      showSelfAssignedOnly: false,
+      sortByPriority: null,
+      sortByDueDate: null,
       lastSelectedProjects: {}, // Store last selected project per user
       
       setSelectedProject: async (projectId: string | null, userId?: string) => {
@@ -95,11 +112,11 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         }
       },
       
-      setSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "all" | null) => {
+      setSectionFilter: (section: SectionFilter) => {
         set({ sectionFilter: section });
       },
       
-      setStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => {
+      setStatusFilter: (status: StatusFilter) => {
         set({ statusFilter: status });
       },
       
@@ -107,20 +124,37 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         set({ buttonLabel: label });
       },
       
-      setCurrentSectionFilter: (section: "my_tasks" | "inbox" | "outbox" | "my_work" | null) => {
-        set({ currentSectionFilter: section });
+      setShowSelfAssignedOnly: (value: boolean) => {
+        set({ showSelfAssignedOnly: value });
       },
       
-      setCurrentStatusFilter: (status: "not_started" | "in_progress" | "completed" | "rejected" | "pending" | "overdue" | "wip" | "done" | "received" | "reviewing" | "assigned" | null) => {
-        set({ currentStatusFilter: status });
+      setSortByPriority: (updater: SortUpdater) => {
+        set(state => ({
+          sortByPriority:
+            typeof updater === "function"
+              ? (updater as (prev: SortDirection | null) => SortDirection | null)(state.sortByPriority)
+              : updater,
+        }));
       },
       
-      clearSectionFilter: () => {
-        set({ sectionFilter: null });
+      setSortByDueDate: (updater: SortUpdater) => {
+        set(state => ({
+          sortByDueDate:
+            typeof updater === "function"
+              ? (updater as (prev: SortDirection | null) => SortDirection | null)(state.sortByDueDate)
+              : updater,
+        }));
       },
       
-      clearStatusFilter: () => {
-        set({ statusFilter: null });
+      resetFilters: () => {
+        set({
+          sectionFilter: "all",
+          statusFilter: "all",
+          buttonLabel: null,
+          showSelfAssignedOnly: false,
+          sortByPriority: null,
+          sortByDueDate: null,
+        });
       },
       
       getLastSelectedProject: async (userId: string): Promise<string | null> => {

@@ -32,12 +32,7 @@ interface ProjectFormData {
   status: ProjectStatus;
   startDate: Date;
   endDate: Date;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-  };
+  location: string;
   clientInfo: {
     name: string;
     email: string;
@@ -64,12 +59,7 @@ export default function ProjectForm({
     status: project?.status || "planning",
     startDate: project?.startDate ? new Date(project.startDate) : new Date(),
     endDate: project?.endDate ? new Date(project.endDate) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-    location: project?.location || {
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-    },
+    location: project?.location || "",
     clientInfo: project?.clientInfo || {
       name: "",
       email: "",
@@ -105,12 +95,7 @@ export default function ProjectForm({
       status: project?.status || "planning",
       startDate: project?.startDate ? new Date(project.startDate) : new Date(),
       endDate: project?.endDate ? new Date(project.endDate) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-      location: project?.location || {
-        address: "",
-        city: "",
-        state: "",
-        zipCode: "",
-      },
+      location: project?.location || "",
       clientInfo: project?.clientInfo || {
         name: "",
         email: "",
@@ -141,8 +126,8 @@ export default function ProjectForm({
       newErrors.description = "Project description is required";
     }
 
-    if (!formData.location.address.trim()) {
-      newErrors.address = "Address is required";
+    if (!formData.location.trim()) {
+      newErrors.location = "Location is required";
     }
 
     if (!formData.clientInfo.name.trim()) {
@@ -178,10 +163,10 @@ export default function ProjectForm({
     setFormData(prev => ({ ...prev, description: text }));
   }, []);
 
-  const handleLocationChange = useCallback((field: string, text: string) => {
+  const handleLocationChange = useCallback((text: string) => {
     setFormData(prev => ({ 
       ...prev, 
-      location: { ...prev.location, [field]: text } 
+      location: text
     }));
   }, []);
 
@@ -328,18 +313,18 @@ export default function ProjectForm({
             <TextInput
               className={cn(
                 "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[130px]",
-                errors.address ? "border-red-300" : "border-gray-300"
+                errors.location ? "border-red-300" : "border-gray-300"
               )}
               placeholder="Enter full address (street, city, state/province, postal code, country)"
-              value={formData.location.address}
-              onChangeText={(text) => handleLocationChange("address", text)}
+              value={formData.location}
+              onChangeText={handleLocationChange}
               multiline={true}
               numberOfLines={5}
               textAlignVertical="top"
               style={{ minHeight: 130 }}
             />
-            {errors.address && (
-              <Text className="text-red-500 text-sm mt-1">{errors.address}</Text>
+            {errors.location && (
+              <Text className="text-red-500 text-sm mt-1">{errors.location}</Text>
             )}
           </View>
         </View>
@@ -411,39 +396,41 @@ export default function ProjectForm({
                 />
               </Pressable>
               
-              {/* Dropdown Options */}
+              {/* Dropdown Options - Opens UPWARD */}
               {showLeadPMPicker && (
-                <View className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                  <Pressable
-                    onPress={() => {
-                      setFormData(prev => ({ ...prev, selectedLeadPM: "" }));
-                      setShowLeadPMPicker(false);
-                    }}
-                    className="px-4 py-3 border-b border-gray-200"
-                  >
-                    <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
-                  </Pressable>
-                  {eligibleLeadPMs.map((user) => (
+                <View className="absolute bottom-full left-0 right-0 z-50 mb-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64">
+                  <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 256 }}>
                     <Pressable
-                      key={user.id}
                       onPress={() => {
-                        setFormData(prev => ({ ...prev, selectedLeadPM: user.id }));
+                        setFormData(prev => ({ ...prev, selectedLeadPM: "" }));
                         setShowLeadPMPicker(false);
                       }}
-                      className={cn(
-                        "px-4 py-3",
-                        user.id === formData.selectedLeadPM && "bg-blue-50",
-                        user.id !== eligibleLeadPMs[eligibleLeadPMs.length - 1].id && "border-b border-gray-200"
-                      )}
+                      className="px-4 py-3 border-b border-gray-200"
                     >
-                      <Text className={cn(
-                        "text-lg",
-                        user.id === formData.selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
-                      )}>
-                        {user.name} ({user.role})
-                      </Text>
+                      <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
                     </Pressable>
-                  ))}
+                    {eligibleLeadPMs.map((user) => (
+                      <Pressable
+                        key={user.id}
+                        onPress={() => {
+                          setFormData(prev => ({ ...prev, selectedLeadPM: user.id }));
+                          setShowLeadPMPicker(false);
+                        }}
+                        className={cn(
+                          "px-4 py-3",
+                          user.id === formData.selectedLeadPM && "bg-blue-50",
+                          user.id !== eligibleLeadPMs[eligibleLeadPMs.length - 1].id && "border-b border-gray-200"
+                        )}
+                      >
+                        <Text className={cn(
+                          "text-lg",
+                          user.id === formData.selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
+                        )}>
+                          {user.name} ({user.role})
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
                 </View>
               )}
             </View>

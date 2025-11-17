@@ -143,10 +143,10 @@ export default function ProjectsScreen({
 
         {/* Project Info */}
         <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
+          <View className="flex-row items-center flex-1 mr-2">
             <Ionicons name="location-outline" size={14} color="#6b7280" />
-            <Text className="text-sm text-gray-500 ml-1">
-              {project.location.city}, {project.location.state}
+            <Text className="text-sm text-gray-500 ml-1 flex-1" numberOfLines={1} ellipsizeMode="tail">
+              {project.location || "No location"}
             </Text>
           </View>
           
@@ -648,41 +648,43 @@ function EditProjectModal({
                     />
                   </Pressable>
                   
-                  {/* Dropdown Options */}
+                  {/* Dropdown Options - Opens UPWARD */}
                   {showLeadPMPicker && (
-                    <View className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                      <Pressable
-                        onPress={() => {
-                          setSelectedLeadPM("");
-                          setShowLeadPMPicker(false);
-                          console.log(`ProjectsScreen: Lead PM changed to: ""`);
-                        }}
-                        className="px-4 py-3 border-b border-gray-200"
-                      >
-                        <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
-                      </Pressable>
-                      {eligibleLeadPMs.map((user) => (
+                    <View className="absolute bottom-full left-0 right-0 z-50 mb-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64">
+                      <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 256 }}>
                         <Pressable
-                          key={user.id}
                           onPress={() => {
-                            setSelectedLeadPM(user.id);
+                            setSelectedLeadPM("");
                             setShowLeadPMPicker(false);
-                            console.log(`ProjectsScreen: Lead PM changed to:`, user.id);
+                            console.log(`ProjectsScreen: Lead PM changed to: ""`);
                           }}
-                          className={cn(
-                            "px-4 py-3",
-                            user.id === selectedLeadPM && "bg-blue-50",
-                            user.id !== eligibleLeadPMs[eligibleLeadPMs.length - 1].id && "border-b border-gray-200"
-                          )}
+                          className="px-4 py-3 border-b border-gray-200"
                         >
-                          <Text className={cn(
-                            "text-lg",
-                            user.id === selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
-                          )}>
-                            {user.name} ({user.role})
-                          </Text>
+                          <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
                         </Pressable>
-                      ))}
+                        {eligibleLeadPMs.map((user) => (
+                          <Pressable
+                            key={user.id}
+                            onPress={() => {
+                              setSelectedLeadPM(user.id);
+                              setShowLeadPMPicker(false);
+                              console.log(`ProjectsScreen: Lead PM changed to:`, user.id);
+                            }}
+                            className={cn(
+                              "px-4 py-3",
+                              user.id === selectedLeadPM && "bg-blue-50",
+                              user.id !== eligibleLeadPMs[eligibleLeadPMs.length - 1].id && "border-b border-gray-200"
+                            )}
+                          >
+                            <Text className={cn(
+                              "text-lg",
+                              user.id === selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
+                            )}>
+                              {user.name} ({user.role})
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
                     </View>
                   )}
                 </View>

@@ -157,16 +157,7 @@ export interface Project {
   startDate: string;
   endDate?: string;
   budget?: number;
-  location: {
-    address: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
+  location: string; // Full address in a single field
   clientInfo: {
     name: string;
     email?: string;
@@ -283,6 +274,16 @@ export interface User {
    * Stored in database for cross-device synchronization
    */
   lastSelectedProjectId?: string | null;
+  
+  /**
+   * User approval status for joining a company
+   * - isPending: true = waiting for admin approval, false = approved/active
+   * - approvedBy: User ID of the admin who approved this user
+   * - approvedAt: Timestamp when user was approved
+   */
+  isPending?: boolean;
+  approvedBy?: string | null;
+  approvedAt?: string | null;
   
   // Project assignments (with PROJECT ROLES) are handled separately 
   // in UserProjectRole or UserProjectAssignment tables

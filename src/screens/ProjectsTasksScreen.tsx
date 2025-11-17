@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -43,24 +43,12 @@ export default function ProjectsTasksScreen({
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectById, getProjectsByUser } = projectStore;
-  const { selectedProjectId, sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
+  const { selectedProjectId, sectionFilter, statusFilter, setSectionFilter, setStatusFilter } = useProjectFilterStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
-  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "pending" | "overdue" | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
-
-  // Apply filters from store on mount
-  useEffect(() => {
-    if (sectionFilter) {
-      setLocalSectionFilter(sectionFilter);
-      clearSectionFilter(); // Clear it after applying so it doesn't persist
-    }
-    if (statusFilter) {
-      setLocalStatusFilter(statusFilter);
-      clearStatusFilter(); // Clear it after applying so it doesn't persist
-    }
-  }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
+  const activeSectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | "all" = sectionFilter ?? "all";
+  const activeStatusFilter: TaskStatus | "pending" | "overdue" | "all" = statusFilter ?? "all";
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);
@@ -201,13 +189,13 @@ export default function ProjectsTasksScreen({
       const outboxTasks = [...assignedParentTasks, ...assignedSubTasks];
       
       // Return tasks based on section filter
-      if (localSectionFilter === "my_tasks") {
+      if (activeSectionFilter === "my_tasks") {
         // "my_tasks" shows ALL tasks assigned to me (including self-assigned)
         return myTasksAll;
-      } else if (localSectionFilter === "inbox") {
+      } else if (activeSectionFilter === "inbox") {
         // "inbox" shows only tasks assigned to me by others
         return inboxTasks;
-      } else if (localSectionFilter === "outbox") {
+      } else if (activeSectionFilter === "outbox") {
         return outboxTasks;
       } else {
         // For "all", return all my tasks (including self-assigned) and outbox tasks
@@ -234,7 +222,7 @@ export default function ProjectsTasksScreen({
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       
       // Handle status filters with new categorization logic
-      if (localStatusFilter === "all") {
+      if (activeStatusFilter === "all") {
         return matchesSearch;
       }
       
@@ -246,19 +234,19 @@ export default function ProjectsTasksScreen({
       };
       
       // Apply new categorization logic
-      if (localStatusFilter === "not_started") {
+      if (activeStatusFilter === "not_started") {
         return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
-      } else if (localStatusFilter === "pending") {
+      } else if (activeStatusFilter === "pending") {
         return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
-      } else if (localStatusFilter === "completed") {
+      } else if (activeStatusFilter === "completed") {
         return matchesSearch && task.accepted && task.completionPercentage === 100;
-      } else if (localStatusFilter === "overdue") {
+      } else if (activeStatusFilter === "overdue") {
         return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
-      } else if (localStatusFilter === "rejected") {
+      } else if (activeStatusFilter === "rejected") {
         return matchesSearch && task.currentStatus === "rejected";
       } else {
         // Fallback to original status matching
-        return matchesSearch && task.currentStatus === localStatusFilter;
+        return matchesSearch && task.currentStatus === activeStatusFilter;
       }
     });
 
@@ -461,10 +449,10 @@ export default function ProjectsTasksScreen({
     label: string 
   }) => (
     <Pressable
-      onPress={() => setLocalSectionFilter(section)}
+      onPress={() => setSectionFilter(section)}
       className={cn(
         "px-3 py-1 rounded-full border mr-2",
-        localSectionFilter === section
+        activeSectionFilter === section
           ? "bg-blue-600 border-blue-600"
           : "bg-white border-gray-300"
       )}
@@ -472,7 +460,7 @@ export default function ProjectsTasksScreen({
       <Text
         className={cn(
           "text-sm font-semibold",
-          localSectionFilter === section
+          activeSectionFilter === section
             ? "text-white"
             : "text-gray-600"
         )}
@@ -490,10 +478,10 @@ export default function ProjectsTasksScreen({
     label: string 
   }) => (
     <Pressable
-      onPress={() => setLocalStatusFilter(status)}
+      onPress={() => setStatusFilter(status)}
       className={cn(
         "px-3 py-1 rounded-full border mr-2",
-        localStatusFilter === status
+        activeStatusFilter === status
           ? "bg-green-600 border-green-600"
           : "bg-white border-gray-300"
       )}
@@ -501,7 +489,7 @@ export default function ProjectsTasksScreen({
       <Text
         className={cn(
           "text-sm font-semibold",
-          localStatusFilter === status
+          activeStatusFilter === status
             ? "text-white"
             : "text-gray-600"
         )}
@@ -586,10 +574,10 @@ export default function ProjectsTasksScreen({
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {searchQuery || activeStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
-              {searchQuery || localStatusFilter !== "all"
+              {searchQuery || activeStatusFilter !== "all"
                 ? "Try adjusting your search or filters"
                 : "You haven't been assigned any tasks yet"
               }

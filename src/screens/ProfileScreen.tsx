@@ -30,9 +30,11 @@ import { detectEnvironment, getEnvironmentStyles } from "../utils/environmentDet
 interface ProfileScreenProps {
   onNavigateBack: () => void;
   onNavigateToCreateTask?: () => void;
+  onNavigateToDeveloperSettings?: () => void;
+  onNavigateToPendingUsers?: () => void;
 }
 
-export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }: ProfileScreenProps) {
+export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, onNavigateToDeveloperSettings, onNavigateToPendingUsers }: ProfileScreenProps) {
   const { user } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
@@ -65,7 +67,12 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
   const { fetchTasks } = taskStore;
   const projectStore = useProjectStoreWithInit();
   const { fetchProjects, fetchUserProjectAssignments } = projectStore;
-  const { fetchUsers } = useUserStore();
+  const userStore = useUserStore();
+  const { fetchUsers, getPendingUsersByCompany } = userStore;
+  
+  // Get pending users count for admin badge
+  const pendingUsers = user?.role === 'admin' ? getPendingUsersByCompany(user.companyId) : [];
+  const pendingCount = pendingUsers.length;
 
   const handleRefresh = async () => {
     if (!user) return;
@@ -142,6 +149,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
     showChevron = true,
     color = "text-gray-900",
     rightText,
+    badge,
   }: {
     title: string;
     icon: string;
@@ -149,6 +157,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
     showChevron?: boolean;
     color?: string;
     rightText?: string;
+    badge?: number;
   }) => (
     <Pressable
       onPress={onPress}
@@ -158,7 +167,14 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
       <Text className={cn("flex-1 ml-3 text-lg", color)}>
         {title}
       </Text>
-      {rightText && (
+      {badge !== undefined && badge > 0 && (
+        <View className="bg-red-500 rounded-full min-w-[24px] h-6 items-center justify-center px-2 mr-2">
+          <Text className="text-white text-xs font-bold">
+            {badge > 99 ? '99+' : badge}
+          </Text>
+        </View>
+      )}
+      {rightText && !badge && (
         <Text className="text-gray-500 text-base mr-2">
           {rightText}
         </Text>
@@ -213,6 +229,14 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
             {t.profile.settings}
           </Text>
           <View className="bg-white border border-gray-200 rounded-xl mx-6">
+            {user.role === 'admin' && (
+              <MenuOption
+                title="Pending Approvals"
+                icon="people-outline"
+                onPress={() => onNavigateToPendingUsers?.()}
+                badge={pendingCount}
+              />
+            )}
             <MenuOption
               title={t.profile.language}
               icon="language-outline"
@@ -249,6 +273,20 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask }
               title={t.profile.helpSupport}
               icon="help-circle-outline"
               onPress={() => Alert.alert(t.profile.helpSupport, "For support, please contact your system administrator or project manager.")}
+            />
+          </View>
+        </View>
+
+        {/* Developer Tools */}
+        <View className="mt-6">
+          <Text className="text-xl font-semibold text-gray-900 px-6 mb-2">
+            Developer
+          </Text>
+          <View className="bg-white border border-gray-200 rounded-xl mx-6">
+            <MenuOption
+              title="Developer Settings"
+              icon="code-slash-outline"
+              onPress={() => onNavigateToDeveloperSettings?.()}
             />
           </View>
         </View>

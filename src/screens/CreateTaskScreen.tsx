@@ -1128,7 +1128,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     {project.name}
                   </Text>
                   <Text className="text-sm text-gray-600 mt-0.5" numberOfLines={1}>
-                    {project.location.city}, {project.location.state}
+                    {project.location || "No location"}
                   </Text>
                 </View>
                 <Ionicons name="folder-outline" size={24} color={formData.projectId === project.id ? "#3b82f6" : "#6b7280"} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -143,6 +144,23 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   }, [taskId, subTaskId, fetchTaskById]);
 
+  // Refresh task data when screen comes into focus (e.g., after returning from update modal)
+  useFocusEffect(
+    useCallback(() => {
+      if (taskId) {
+        console.log('🔄 TaskDetailScreen focused - refreshing task data...');
+        fetchTaskById(taskId).catch((error) => {
+          console.error('🔄❌ Error refreshing task on focus:', error);
+        });
+      }
+      if (subTaskId) {
+        fetchTaskById(subTaskId).catch((error) => {
+          console.error('🔄❌ Error refreshing subtask on focus:', error);
+        });
+      }
+    }, [taskId, subTaskId, fetchTaskById])
+  );
+
   // Mark task as read when viewing
   useEffect(() => {
     if (user && taskId) {
@@ -186,7 +204,25 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
   const assignedTo = task.assignedTo || [];
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-  const isTaskCreator = task.assignedBy === user.id;
+  // Use String() comparison to handle type mismatches (UUID vs string)
+  const isTaskCreator = String(task.assignedBy) === String(user.id);
+  
+  // Debug logging for review banner visibility
+  if (task.completionPercentage === 100 && task.readyForReview) {
+    console.log('🔍 [DEBUG] Review Banner Check:', {
+      title: task.title,
+      taskId: task.id,
+      isTaskCreator,
+      assignedBy: task.assignedBy,
+      assignedByType: typeof task.assignedBy,
+      userId: user.id,
+      userIdType: typeof user.id,
+      readyForReview: task.readyForReview,
+      reviewAccepted: task.reviewAccepted,
+      completionPercentage: task.completionPercentage,
+      shouldShowBanner: isTaskCreator && task.readyForReview && !task.reviewAccepted && task.completionPercentage === 100
+    });
+  }
 
   // Users can only update if:
   // 1. They created the task, OR
@@ -546,10 +582,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       // Use appropriate method based on whether viewing subtask
       if (isViewingSubTask && subTaskId) {
-        addSubTaskUpdate(taskId, subTaskId, updatePayload);
+        await addSubTaskUpdate(taskId, subTaskId, updatePayload);
       } else {
-        addTaskUpdate(task.id, updatePayload);
+        await addTaskUpdate(task.id, updatePayload);
       }
+
+      // Refresh task data to get the latest state
+      await fetchTaskById(task.id);
 
       setUpdateForm({
         description: "",
@@ -563,47 +602,68 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       setShowUpdateModal(false);
       
-      // Check if task reached 100% and prompt for review submission
+      // Check if task reached 100% and automatically submit for review
       if (updateForm.completionPercentage === 100) {
-        // Check if task is self-assigned (no review needed, auto-accepted)
-        const assignedTo = task.assignedTo || [];
-        const isSelfAssigned = task.assignedBy === user.id && 
-                              assignedTo.length === 1 && 
-                              assignedTo[0] === user.id;
+        // Get the freshly updated task from the backend (not from store, which might be stale)
+        const updatedTask = await fetchTaskById(task.id) || task;
         
-        if (!isSelfAssigned && !task.readyForReview) {
-          // Not self-assigned and not already submitted - prompt for review
-          Alert.alert(
-            "Task Complete!",
-            "Great job! Would you like to submit this task for review by the task creator?",
-            [
-              {
-                text: "Not Yet",
-                style: "cancel",
-                onPress: () => {
-                  Alert.alert("Success", "🎉 Task marked as completed!");
-                }
-              },
-              {
-                text: t.taskDetail.submitForReview,
-                onPress: async () => {
-                  try {
-                    if (isViewingSubTask && subTaskId) {
-                      await submitSubTaskForReview(taskId, subTaskId);
-                    } else {
-                      await submitTaskForReview(task.id);
-                    }
-                    Alert.alert(t.errors.success, t.taskDetail.taskSubmitted);
-                  } catch (error) {
-                    Alert.alert(t.errors.error, t.taskDetail.taskSubmitted);
-                  }
-                }
-              }
-            ]
-          );
-        } else {
-          // Self-assigned or already submitted
+        // Check if task is self-assigned (no review needed, auto-accepted)
+        // Use String() comparison to handle type mismatches
+        const assignedTo = updatedTask.assignedTo || [];
+        const userIdStr = String(user.id);
+        const assignedByStr = String(updatedTask.assignedBy || '');
+        const isSelfAssigned = assignedByStr === userIdStr && 
+                              assignedTo.length === 1 && 
+                              String(assignedTo[0]) === userIdStr;
+        
+        // Debug logging
+        console.log('🔍 [DEBUG] Task 100% completion check:', {
+          title: updatedTask.title,
+          taskId: updatedTask.id,
+          completionPercentage: updateForm.completionPercentage,
+          assignedBy: updatedTask.assignedBy,
+          assignedByStr,
+          userId: user.id,
+          userIdStr,
+          assignedTo: assignedTo.map(id => String(id)),
+          isSelfAssigned,
+          readyForReview: updatedTask.readyForReview,
+          reviewAccepted: updatedTask.reviewAccepted,
+          shouldSubmit: !isSelfAssigned && !updatedTask.readyForReview
+        });
+        
+        if (!isSelfAssigned && !updatedTask.readyForReview) {
+          // Not self-assigned and not already submitted - automatically submit for review
+          try {
+            console.log('✅ Task reached 100%, automatically submitting for review...');
+            if (isViewingSubTask && subTaskId) {
+              await submitSubTaskForReview(taskId, subTaskId);
+            } else {
+              await submitTaskForReview(task.id);
+            }
+            // Refresh task after submission to get the updated readyForReview flag
+            await fetchTaskById(task.id);
+            Alert.alert(
+              "Task Complete! 🎉",
+              "Great job! Your task has been automatically submitted for review by the task creator.",
+              [{ text: "OK" }]
+            );
+          } catch (error) {
+            console.error('❌ Error submitting task for review:', error);
+            Alert.alert(
+              "Task Complete! 🎉",
+              "Your task is marked as completed. There was an issue submitting for review - please contact support if this persists.",
+              [{ text: "OK" }]
+            );
+          }
+        } else if (isSelfAssigned) {
+          // Self-assigned - auto-accept
+          console.log('ℹ️ Task is self-assigned, skipping review submission');
           Alert.alert("Success", "🎉 Task marked as completed! Great job!");
+        } else {
+          // Already submitted for review
+          console.log('ℹ️ Task already submitted for review (readyForReview:', updatedTask.readyForReview, ')');
+          Alert.alert("Success", "🎉 Task marked as completed! Already submitted for review.");
         }
       } else {
         // Not 100%, show normal success message
@@ -1893,7 +1953,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       {/* Task Detail Utility FAB */}
       <TaskDetailUtilityFAB
-        onUpdate={() => setShowUpdateModal(true)}
+        onUpdate={() => {
+          // Initialize form with current task's completion percentage
+          setUpdateForm({
+            description: "",
+            photos: [],
+            completionPercentage: task.completionPercentage || 0,
+            status: task.currentStatus || "in_progress",
+          });
+          setShowUpdateModal(true);
+        }}
         onEdit={() => {
           if (onNavigateToCreateTask && task) {
             // Navigate to edit screen by passing the task ID as editTaskId

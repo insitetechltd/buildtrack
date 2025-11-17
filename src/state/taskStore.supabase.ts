@@ -211,6 +211,56 @@ export const useTaskStore = create<TaskStore>()(
             console.log('❌❌❌ TEST TASK NOT IN FETCHED DATA');
           }
 
+          // Fix existing self-assigned tasks that are at 100% but not yet auto-accepted
+          // This handles tasks that were completed before the auto-accept logic was added
+          const tasksToFix: Array<{ id: string; assignedBy: string }> = [];
+          
+          transformedTasks.forEach(task => {
+            if (task.completionPercentage === 100 && 
+                !task.reviewAccepted && 
+                !task.readyForReview) {
+              const assignedBy = task.assignedBy;
+              const assignedTo = task.assignedTo || [];
+              
+              // Check if truly self-assigned: creator is the only assignee
+              const isSelfAssigned = assignedBy && 
+                                    assignedTo.length === 1 && 
+                                    String(assignedTo[0]) === String(assignedBy);
+              
+              if (isSelfAssigned) {
+                tasksToFix.push({ id: task.id, assignedBy });
+              }
+            }
+          });
+          
+          // Auto-accept tasks that need fixing
+          if (tasksToFix.length > 0 && supabase) {
+            console.log(`🔧 Fixing ${tasksToFix.length} self-assigned tasks that should be auto-accepted...`);
+            for (const taskToFix of tasksToFix) {
+              try {
+                await supabase
+                  .from('tasks')
+                  .update({
+                    review_accepted: true,
+                    reviewed_by: taskToFix.assignedBy,
+                    reviewed_at: new Date().toISOString(),
+                  })
+                  .eq('id', taskToFix.id);
+                
+                // Update local state
+                const fixedTask = transformedTasks.find(t => t.id === taskToFix.id);
+                if (fixedTask) {
+                  fixedTask.reviewAccepted = true;
+                  fixedTask.reviewedBy = taskToFix.assignedBy;
+                  fixedTask.reviewedAt = new Date().toISOString();
+                }
+                console.log(`✅ Fixed self-assigned task: ${taskToFix.id}`);
+              } catch (error) {
+                console.error(`❌ Error fixing task ${taskToFix.id}:`, error);
+              }
+            }
+          }
+
           set({ 
             tasks: transformedTasks, 
             isLoading: false 
@@ -505,6 +555,13 @@ export const useTaskStore = create<TaskStore>()(
             attachments: taskData.attachments || [],
             accepted: taskData.accepted,
             declineReason: taskData.decline_reason,
+            // Review workflow fields - CRITICAL: Must include these or review buttons disappear!
+            readyForReview: taskData.ready_for_review || false,
+            reviewedBy: taskData.reviewed_by,
+            reviewedAt: taskData.reviewed_at,
+            reviewAccepted: taskData.review_accepted,
+            // Starring
+            starredByUsers: taskData.starred_by_users || [],
             cancelledAt: taskData.cancelled_at || null,
             cancelledBy: taskData.cancelled_by || undefined,
             createdAt: taskData.created_at,
@@ -653,16 +710,30 @@ export const useTaskStore = create<TaskStore>()(
           const currentTask = get().tasks.find(t => t.id === id);
           
           // Auto-accept self-assigned tasks when they reach 100%
+          // IMPORTANT: Only auto-accept if task is TRULY self-assigned (creator = assignee)
+          // Use String() comparison to handle type mismatches
           if (currentTask && updates.completionPercentage === 100) {
-            const isSelfAssigned = currentTask.assignedBy && 
-                                  currentTask.assignedTo && 
-                                  currentTask.assignedTo.length === 1 && 
-                                  currentTask.assignedTo[0] === currentTask.assignedBy;
+            const assignedBy = currentTask.assignedBy;
+            const assignedTo = currentTask.assignedTo || [];
             
-            if (isSelfAssigned && updates.reviewAccepted === undefined) {
+            // Check if truly self-assigned: creator is the only assignee
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            // Only auto-accept if:
+            // 1. Task is truly self-assigned
+            // 2. reviewAccepted is not already set (don't override existing review)
+            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
+            if (isSelfAssigned && 
+                updates.reviewAccepted === undefined && 
+                !currentTask.readyForReview) {
+              console.log('✅ Auto-accepting self-assigned task:', currentTask.id);
               updates.reviewAccepted = true;
               updates.reviewedBy = currentTask.assignedBy;
               updates.reviewedAt = new Date().toISOString();
+            } else if (isSelfAssigned && currentTask.readyForReview) {
+              console.log('⚠️ Task is self-assigned but readyForReview is true - skipping auto-accept');
             }
           }
           
@@ -981,6 +1052,30 @@ export const useTaskStore = create<TaskStore>()(
             timestamp: new Date().toISOString(),
           };
 
+          // Check if this is a self-assigned task that should be auto-accepted
+          const currentTaskForOptimistic = get().tasks.find(t => t.id === taskId);
+          let shouldAutoAccept = false;
+          let autoAcceptFields = {};
+          
+          if (update.completionPercentage === 100 && currentTaskForOptimistic) {
+            const assignedBy = currentTaskForOptimistic.assignedBy;
+            const assignedTo = currentTaskForOptimistic.assignedTo || [];
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            if (isSelfAssigned && 
+                !currentTaskForOptimistic.reviewAccepted && 
+                !currentTaskForOptimistic.readyForReview) {
+              shouldAutoAccept = true;
+              autoAcceptFields = {
+                reviewAccepted: true,
+                reviewedBy: assignedBy,
+                reviewedAt: new Date().toISOString(),
+              };
+            }
+          }
+
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
           console.log(`⚡ [Optimistic Update] Adding update to task ${taskId} locally before backend sync`);
           set(state => ({
@@ -992,6 +1087,7 @@ export const useTaskStore = create<TaskStore>()(
                     completionPercentage: update.completionPercentage,
                     currentStatus: update.status,
                     updatedAt: new Date().toISOString(),
+                    ...autoAcceptFields, // Include auto-accept fields if applicable
                   }
                 : task
             )
@@ -1011,14 +1107,57 @@ export const useTaskStore = create<TaskStore>()(
 
           if (updateError) throw updateError;
 
+          // Get current task to check if it's self-assigned (for auto-accept)
+          const currentTask = get().tasks.find(t => t.id === taskId);
+          
+          // Auto-accept self-assigned tasks when they reach 100%
+          // IMPORTANT: Only auto-accept if task is TRULY self-assigned (creator = assignee)
+          let reviewAcceptedValue = undefined;
+          let reviewedByValue = undefined;
+          let reviewedAtValue = undefined;
+          
+          if (update.completionPercentage === 100 && currentTask) {
+            const assignedBy = currentTask.assignedBy;
+            const assignedTo = currentTask.assignedTo || [];
+            
+            // Check if truly self-assigned: creator is the only assignee
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            // Only auto-accept if:
+            // 1. Task is truly self-assigned
+            // 2. reviewAccepted is not already set (don't override existing review)
+            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
+            if (isSelfAssigned && 
+                !currentTask.reviewAccepted && 
+                !currentTask.readyForReview) {
+              console.log('✅ Auto-accepting self-assigned task via addTaskUpdate:', taskId);
+              reviewAcceptedValue = true;
+              reviewedByValue = currentTask.assignedBy;
+              reviewedAtValue = new Date().toISOString();
+            } else if (isSelfAssigned && currentTask.readyForReview) {
+              console.log('⚠️ Task is self-assigned but readyForReview is true - skipping auto-accept in addTaskUpdate');
+            }
+          }
+
           // Update the task's completion percentage and status in backend
+          const taskUpdateData: any = {
+            completion_percentage: update.completionPercentage,
+            current_status: update.status,
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Add review fields if auto-accepting
+          if (reviewAcceptedValue !== undefined) {
+            taskUpdateData.review_accepted = reviewAcceptedValue;
+            taskUpdateData.reviewed_by = reviewedByValue;
+            taskUpdateData.reviewed_at = reviewedAtValue;
+          }
+          
           const { error: taskError } = await supabase
             .from('tasks')
-            .update({
-              completion_percentage: update.completionPercentage,
-              current_status: update.status,
-              updated_at: new Date().toISOString(),
-            })
+            .update(taskUpdateData)
             .eq('id', taskId);
 
           if (taskError) throw taskError;
@@ -1073,6 +1212,30 @@ export const useTaskStore = create<TaskStore>()(
             timestamp: new Date().toISOString(),
           };
 
+          // Check if this is a self-assigned subtask that should be auto-accepted
+          const currentSubTaskForOptimistic = get().tasks.find(t => t.id === subTaskId);
+          let shouldAutoAcceptSubTask = false;
+          let autoAcceptSubTaskFields = {};
+          
+          if (update.completionPercentage === 100 && currentSubTaskForOptimistic) {
+            const assignedBy = currentSubTaskForOptimistic.assignedBy;
+            const assignedTo = currentSubTaskForOptimistic.assignedTo || [];
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            if (isSelfAssigned && 
+                !currentSubTaskForOptimistic.reviewAccepted && 
+                !currentSubTaskForOptimistic.readyForReview) {
+              shouldAutoAcceptSubTask = true;
+              autoAcceptSubTaskFields = {
+                reviewAccepted: true,
+                reviewedBy: assignedBy,
+                reviewedAt: new Date().toISOString(),
+              };
+            }
+          }
+
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
           console.log(`⚡ [Optimistic Update] Adding update to subtask ${subTaskId} locally before backend sync`);
           set(state => ({
@@ -1084,6 +1247,7 @@ export const useTaskStore = create<TaskStore>()(
                     completionPercentage: update.completionPercentage,
                     currentStatus: update.status,
                     updatedAt: new Date().toISOString(),
+                    ...autoAcceptSubTaskFields, // Include auto-accept fields if applicable
                   }
                 : task
             )
@@ -1103,14 +1267,48 @@ export const useTaskStore = create<TaskStore>()(
 
           if (updateError) throw updateError;
 
+          // Get current subtask to check if it's self-assigned (for auto-accept)
+          const currentSubTask = get().tasks.find(t => t.id === subTaskId);
+          
+          // Auto-accept self-assigned subtasks when they reach 100%
+          let reviewAcceptedSubTaskValue = undefined;
+          let reviewedBySubTaskValue = undefined;
+          let reviewedAtSubTaskValue = undefined;
+          
+          if (update.completionPercentage === 100 && currentSubTask) {
+            const assignedBy = currentSubTask.assignedBy;
+            const assignedTo = currentSubTask.assignedTo || [];
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            if (isSelfAssigned && 
+                !currentSubTask.reviewAccepted && 
+                !currentSubTask.readyForReview) {
+              console.log('✅ Auto-accepting self-assigned subtask via addSubTaskUpdate:', subTaskId);
+              reviewAcceptedSubTaskValue = true;
+              reviewedBySubTaskValue = currentSubTask.assignedBy;
+              reviewedAtSubTaskValue = new Date().toISOString();
+            }
+          }
+
           // Update the subtask's completion percentage and status in backend
+          const subTaskUpdateData: any = {
+            completion_percentage: update.completionPercentage,
+            current_status: update.status,
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Add review fields if auto-accepting
+          if (reviewAcceptedSubTaskValue !== undefined) {
+            subTaskUpdateData.review_accepted = reviewAcceptedSubTaskValue;
+            subTaskUpdateData.reviewed_by = reviewedBySubTaskValue;
+            subTaskUpdateData.reviewed_at = reviewedAtSubTaskValue;
+          }
+          
           const { error: taskError } = await supabase
             .from('tasks')
-            .update({
-              completion_percentage: update.completionPercentage,
-              current_status: update.status,
-              updated_at: new Date().toISOString(),
-            })
+            .update(subTaskUpdateData)
             .eq('id', subTaskId);
 
           if (taskError) throw taskError;
@@ -1366,16 +1564,30 @@ export const useTaskStore = create<TaskStore>()(
           const currentSubTask = get().tasks.find(t => t.id === subTaskId);
           
           // Auto-accept self-assigned subtasks when they reach 100%
+          // IMPORTANT: Only auto-accept if subtask is TRULY self-assigned (creator = assignee)
+          // Use String() comparison to handle type mismatches
           if (currentSubTask && updates.completionPercentage === 100) {
-            const isSelfAssigned = currentSubTask.assignedBy && 
-                                  currentSubTask.assignedTo && 
-                                  currentSubTask.assignedTo.length === 1 && 
-                                  currentSubTask.assignedTo[0] === currentSubTask.assignedBy;
+            const assignedBy = currentSubTask.assignedBy;
+            const assignedTo = currentSubTask.assignedTo || [];
             
-            if (isSelfAssigned && updates.reviewAccepted === undefined) {
+            // Check if truly self-assigned: creator is the only assignee
+            const isSelfAssigned = assignedBy && 
+                                  assignedTo.length === 1 && 
+                                  String(assignedTo[0]) === String(assignedBy);
+            
+            // Only auto-accept if:
+            // 1. Subtask is truly self-assigned
+            // 2. reviewAccepted is not already set (don't override existing review)
+            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
+            if (isSelfAssigned && 
+                updates.reviewAccepted === undefined && 
+                !currentSubTask.readyForReview) {
+              console.log('✅ Auto-accepting self-assigned subtask:', subTaskId);
               updates.reviewAccepted = true;
               updates.reviewedBy = currentSubTask.assignedBy;
               updates.reviewedAt = new Date().toISOString();
+            } else if (isSelfAssigned && currentSubTask.readyForReview) {
+              console.log('⚠️ Subtask is self-assigned but readyForReview is true - skipping auto-accept');
             }
           }
           

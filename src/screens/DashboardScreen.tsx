@@ -325,7 +325,7 @@ export default function DashboardScreen({
   // Check all loading states: projects, tasks, and users
   if (isAnyDataLoading || !hasInitialized) {
     return (
-      <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+      <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
         <StandardHeader title="Dashboard" />
         
@@ -560,12 +560,13 @@ export default function DashboardScreen({
   const shouldShowEmptyState = userProjectCount > 1 && !selectedProjectId;
 
   return (
-    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+    <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       {/* Header */}
       <StandardHeader 
         title="Dashboard"
+        subtitle={selectedProject ? selectedProject.name : undefined}
         rightElement={
           <Pressable 
             onPress={() => setShowProfileMenu(true)}
@@ -620,17 +621,6 @@ export default function DashboardScreen({
           }
         >
           <View className="px-4 pb-4 pt-1.5">
-            {/* Project Name Display */}
-            {selectedProject && (
-              <View className="mb-4 mt-1.5">
-                <Text className={cn(
-                  "text-2xl font-bold",
-                  isDarkMode ? "text-white" : "text-gray-900"
-                )}>
-                  {selectedProject.name}
-                </Text>
-              </View>
-            )}
             
             {/* Key Tasks Section - Only show if user has starred tasks AND a project is selected */}
         {(() => {

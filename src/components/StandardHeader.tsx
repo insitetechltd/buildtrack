@@ -6,6 +6,7 @@ import {
   Image,
   Animated,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 import { useCompanyStore } from "../state/companyStore";
@@ -38,6 +39,7 @@ export default function StandardHeader({
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
   const t = useTranslation();
+  const insets = useSafeAreaInsets();
 
   // Check Supabase connection on component mount
   useEffect(() => {
@@ -58,16 +60,21 @@ export default function StandardHeader({
 
   const banner = getCompanyBanner(user.companyId);
 
+  // Reduce top padding - use a smaller value to minimize gap
+  // insets.top can be quite large on devices with Dynamic Island (59px)
+  // We'll use a smaller value to bring content closer to the status bar
+  const topPadding = Math.max(insets.top * 0.7, 8); // Use 70% of safe area or minimum 8px
+
   return (
     <View className={cn(
       "border-b px-6 pb-4",
       isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
       className
-    )}>
+    )} style={{ paddingTop: topPadding }}>
 
       {/* Company Banner */}
       {banner && banner.isVisible && (
-        <View className="mb-2 mt-1.5">
+        <View className="mb-2">
           {banner.imageUri ? (
             // Display image banner
             <Image

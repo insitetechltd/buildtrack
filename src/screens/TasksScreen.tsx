@@ -490,7 +490,11 @@ export default function TasksScreen({
         const userIdStr = String(user.id);
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
         const isCreatedByMe = String(task.assignedBy) === userIdStr;
-        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        // Check if truly self-assigned: creator is the only assignee (using String() comparison)
+        const isSelfAssignedOnly = isCreatedByMe && 
+                                   isAssignedToMe && 
+                                   assignedTo.length === 1 && 
+                                   String(assignedTo[0]) === userIdStr;
         
         // 🔍 CRITICAL FIX: "my_work" should ONLY show tasks assigned to me
         // If task is not assigned to me, exclude it immediately
@@ -510,8 +514,10 @@ export default function TasksScreen({
         
         // For "my_work" section: combines My Tasks + Inbox (tasks assigned TO me)
         // Exception: "done" status includes Outbox as well (all completed work)
-        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.currentStatus === "rejected");
-        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        // Use String() comparison for isCreatedByMe to handle type mismatches
+        const isCreatedByMeStr = String(task.assignedBy) === userIdStr;
+        const isInMyTasks = (isAssignedToMe && isCreatedByMeStr) || (isCreatedByMeStr && task.currentStatus === "rejected");
+        const isInInbox = isAssignedToMe && !isCreatedByMeStr;
         const isInMyTasksOrInbox = isInMyTasks || isInInbox;
         
         if (activeStatusFilter === "overdue") {
@@ -548,7 +554,31 @@ export default function TasksScreen({
         } else if (activeStatusFilter === "done") {
           // DONE: All completed and accepted work (My Tasks + Inbox + Outbox)
           // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
-          const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+          // Use String() comparison for consistency
+          const isCreatedByMeForOutbox = String(task.assignedBy) === userIdStr;
+          const isInOutbox = isCreatedByMeForOutbox && !isSelfAssignedOnly && task.currentStatus !== "rejected";
+          
+          // Debug logging for self-assigned tasks
+          if (isInMyTasks && task.completionPercentage === 100) {
+            console.log('🔍 [DEBUG] my_work + done filter check:', {
+              title: task.title,
+              taskId: task.id,
+              isInMyTasks,
+              isInOutbox,
+              isInInbox,
+              isSelfAssignedOnly,
+              completionPercentage: task.completionPercentage,
+              reviewAccepted: task.reviewAccepted,
+              assignedBy: task.assignedBy,
+              assignedByType: typeof task.assignedBy,
+              assignedTo: task.assignedTo,
+              userId: user.id,
+              userIdType: typeof user.id,
+              userIdStr,
+              willMatch: task.completionPercentage === 100 && task.reviewAccepted === true
+            });
+          }
+          
           if (isInOutbox) {
             return task.completionPercentage === 100 &&
                    task.reviewAccepted === true;
@@ -610,7 +640,40 @@ export default function TasksScreen({
         const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isInInbox = isAssignedToMe && !isCreatedByMe;
         
+        // 🔍 SPECIAL CASE: Reviewing status - check FIRST before assignment check
+        // REVIEWING: Tasks I CREATED that others submitted for MY review
+        // This breaks inbox definition - we want tasks I created (not necessarily assigned to me)
+        if (activeStatusFilter === "reviewing") {
+          const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
+          const matchesReviewing = isCreatedByMeForReview &&
+                 task.completionPercentage === 100 &&
+                 task.readyForReview === true &&
+                 task.reviewAccepted !== true;
+          
+          // Debug logging for ALL tasks at 100% that I created
+          if (task.completionPercentage === 100 && isCreatedByMeForReview) {
+            console.log('🔍 [DEBUG] Reviewing task check (Inbox):', {
+              title: task.title,
+              taskId: task.id,
+              isCreatedByMeForReview,
+              completionPercentage: task.completionPercentage,
+              readyForReview: task.readyForReview,
+              reviewAccepted: task.reviewAccepted,
+              assignedBy: task.assignedBy,
+              assignedByType: typeof task.assignedBy,
+              userId: user.id,
+              userIdType: typeof user.id,
+              userIdStr,
+              matchesReviewing,
+              assignedTo: task.assignedTo
+            });
+          }
+          
+          return matchesReviewing;
+        }
+        
         // 🔍 CRITICAL FIX: If task is not assigned to me, immediately exclude it
+        // (But only if NOT in reviewing status, which we already handled above)
         if (!isAssignedToMe) {
           // 🔍 DEBUG: Log tasks that shouldn't be in inbox
           if (task.title?.toLowerCase().includes("photo upload") || task.title?.toLowerCase().includes("test upload")) {
@@ -624,16 +687,6 @@ export default function TasksScreen({
             });
           }
           return false;
-        }
-        
-        if (activeStatusFilter === "reviewing") {
-          // REVIEWING: Tasks I CREATED that others submitted for MY review
-          // Special case: Breaks inbox definition to show tasks I need to review
-          const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
-          return isCreatedByMeForReview &&
-                 task.completionPercentage === 100 &&
-                 task.readyForReview === true &&
-                 task.reviewAccepted !== true;
         }
         
         // Only proceed if task is assigned to me AND not created by me
@@ -879,7 +932,7 @@ export default function TasksScreen({
   };
 
   return (
-    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+    <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       {/* Standard Header */}

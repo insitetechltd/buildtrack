@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { Project, UserProjectAssignment, ProjectStatus, UserCategory } from "../types/buildtrack";
+import { Project, UserProjectAssignment, ProjectStatus, UserCategory, ProjectRole } from "../types/buildtrack";
 
 interface ProjectStore {
   projects: Project[];
@@ -29,9 +29,9 @@ interface ProjectStore {
   deleteProject: (id: string) => Promise<void>;
   
   // User assignments
-  assignUserToProject: (userId: string, projectId: string, category: UserCategory, assignedBy: string) => Promise<void>;
+  assignUserToProject: (userId: string, projectId: string, category: ProjectRole, assignedBy: string) => Promise<void>;
   removeUserFromProject: (userId: string, projectId: string) => Promise<void>;
-  updateUserProjectCategory: (userId: string, projectId: string, category: UserCategory) => Promise<void>;
+  updateUserProjectCategory: (userId: string, projectId: string, category: ProjectRole) => Promise<void>;
   getUserProjectAssignments: (userId: string) => UserProjectAssignment[];
   getProjectUserAssignments: (projectId: string) => UserProjectAssignment[];
   cleanupDuplicateAssignments: (projectId: string) => Promise<void>;
@@ -44,7 +44,7 @@ interface ProjectStore {
   // Admin utilities
   getProjectStats: (projectId: string) => {
     totalUsers: number;
-    usersByCategory: Record<UserCategory, number>;
+    usersByCategory: Record<ProjectRole, number>;
     isActive: boolean;
   };
 }
@@ -728,9 +728,10 @@ export const useProjectStore = create<ProjectStore>()(
         const project = get().getProjectById(projectId);
 
         const usersByCategory = assignments.reduce((acc, assignment) => {
-          acc[assignment.category] = (acc[assignment.category] || 0) + 1;
+          const role = assignment.projectRole || assignment.category;
+          acc[role] = (acc[role] || 0) + 1;
           return acc;
-        }, {} as Record<UserCategory, number>);
+        }, {} as Record<ProjectRole, number>);
 
         return {
           totalUsers: assignments.length,

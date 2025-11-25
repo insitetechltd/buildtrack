@@ -139,3 +139,4 @@ const supabase = createClient(
 **Impact**: Immediate - tasks will appear once project is switched
 **Resolution Time**: <5 seconds
 
+

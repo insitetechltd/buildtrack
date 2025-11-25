@@ -22,7 +22,7 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { Project, ProjectStatus, UserCategory, Task } from "../types/buildtrack";
+import { Project, ProjectStatus, UserCategory, Task, getProjectRole } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ProjectForm from "../components/ProjectForm";
@@ -369,7 +369,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
                       </View>
                       {/* Display PROJECT ROLE (category) - what they do on THIS project */}
                       <Text className="text-base text-gray-600 capitalize">
-                        {assignment.category.replace("_", " ")}
+                        {getProjectRole(assignment).replace("_", " ")}
                       </Text>
                       {member.email && (
                         <Text className="text-sm text-gray-500 mt-1">{member.email}</Text>

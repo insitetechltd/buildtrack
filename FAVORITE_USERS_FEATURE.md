@@ -115,3 +115,4 @@ Potential improvements:
 - Sync favorites to backend (currently only stored locally)
 - Add bulk favorite management screen
 
+

@@ -20,13 +20,14 @@ import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
+import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { Priority, TaskCategory } from "../types/buildtrack";
+import { Priority, TaskCategory, BillingStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
@@ -112,6 +113,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         title: editTask.title,
         description: editTask.description,
         taskReference: editTask.taskReference || "",
+        billingStatus: editTask.billingStatus || "non_billable",
         priority: editTask.priority,
         category: editTask.category,
         dueDate: new Date(editTask.dueDate),
@@ -126,6 +128,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       title: "",
       description: "",
       taskReference: "",
+        billingStatus: "non_billable" as BillingStatus,
       priority: "medium" as Priority,
       category: "general" as TaskCategory,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 1 week from now
@@ -146,6 +149,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [showCompanyPicker, setShowCompanyPicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showBillingStatusPicker, setShowBillingStatusPicker] = useState(false);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -340,6 +344,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     setFormData(prev => ({ ...prev, taskReference: text }));
   }, []);
 
+  const handleBillingStatusChange = useCallback((status: BillingStatus) => {
+    setFormData(prev => ({ ...prev, billingStatus: status }));
+    setShowBillingStatusPicker(false);
+  }, []);
+
   const handlePriorityChange = useCallback((priority: Priority) => {
     setFormData(prev => ({ ...prev, priority }));
   }, []);
@@ -388,10 +397,18 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
               if (results.successful.length > 0) {
                 const newPhotoUrls = results.successful.map(file => file.public_url);
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, ...newPhotoUrls],
-                }));
+                console.log('📋 [Create Task Camera] New photo URLs:', newPhotoUrls);
+                console.log('📋 [Create Task Camera] Current attachments before update:', formData.attachments);
+                
+                setFormData(prev => {
+                  const updated = {
+                    ...prev,
+                    attachments: [...prev.attachments, ...newPhotoUrls],
+                  };
+                  console.log('📋 [Create Task Camera] Updated attachments:', updated.attachments);
+                  return updated;
+                });
+                
                 console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
               }
 
@@ -428,10 +445,18 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
               if (results.successful.length > 0) {
                 const newPhotoUrls = results.successful.map(file => file.public_url);
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, ...newPhotoUrls],
-                }));
+                console.log('📋 [Create Task Library] New photo URLs:', newPhotoUrls);
+                console.log('📋 [Create Task Library] Current attachments before update:', formData.attachments);
+                
+                setFormData(prev => {
+                  const updated = {
+                    ...prev,
+                    attachments: [...prev.attachments, ...newPhotoUrls],
+                  };
+                  console.log('📋 [Create Task Library] Updated attachments:', updated.attachments);
+                  return updated;
+                });
+                
                 console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
               }
 
@@ -488,7 +513,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   if (!user) return null;
 
   // Admin users should not be able to create tasks
-  if (user.role === "admin") {
+  if (isAdmin(user)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -586,6 +611,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
+          billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
@@ -601,6 +627,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
+          billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
@@ -622,10 +649,14 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         }
       } else {
         // Creating a regular task
+        console.log('📋 [Create Task] About to create task with attachments:', formData.attachments);
+        console.log('📋 [Create Task] Attachments count:', formData.attachments.length);
+        
         taskId = await createTask({
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
+          billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
@@ -641,6 +672,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       console.log('- Task ID:', taskId);
       console.log('- Assigned to users:', selectedUsers);
       console.log('- Project ID:', formData.projectId);
+      console.log('- Attachments:', formData.attachments);
       console.log('- Assigned by:', user.id);
       console.log('- Parent Task ID:', parentTaskId);
       console.log('- Parent Sub-Task ID:', parentSubTaskId);
@@ -659,10 +691,14 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           },
         ]
       );
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ [CreateTaskScreen] Error:', error);
+      console.error('❌ [CreateTaskScreen] Error details:', JSON.stringify(error, null, 2));
+      
+      const errorMessage = error?.message || error?.toString() || 'Unknown error';
       Alert.alert(
         t.createTask.error,
-        editTaskId ? t.createTask.failedToUpdateTask : t.createTask.failedToCreateTask,
+        `${editTaskId ? t.createTask.failedToUpdateTask : t.createTask.failedToCreateTask}\n\nError: ${errorMessage}`,
         [{ text: t.common.ok }]
       );
     } finally {
@@ -761,6 +797,21 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 autoCorrect={false}
                 returnKeyType="next"
               />
+          </InputField>
+
+          {/* Billing Status */}
+          <InputField label="Billing Status">
+            <Pressable
+              onPress={() => setShowBillingStatusPicker(true)}
+              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
+            >
+              <Text className="text-lg text-gray-900">
+                {formData.billingStatus === "billable" ? "Billable"
+                  : formData.billingStatus === "non_billable" ? "Non-Billable"
+                  : "Billed"}
+              </Text>
+              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+            </Pressable>
           </InputField>
 
           {/* Project Selection - Read Only */}
@@ -1048,6 +1099,121 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 />
               </Pressable>
             ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Billing Status Picker Modal */}
+      <Modal
+        visible={showBillingStatusPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowBillingStatusPicker(false)}
+      >
+        <SafeAreaView className="flex-1 bg-gray-50">
+          <StatusBar style="dark" />
+          
+          <ModalHandle />
+          
+          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable 
+              onPress={() => setShowBillingStatusPicker(false)}
+              className="mr-4 w-10 h-10 items-center justify-center"
+            >
+              <Ionicons name="close" size={24} color="#374151" />
+            </Pressable>
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
+              Select Billing Status
+            </Text>
+          </View>
+
+          <ScrollView className="flex-1 px-6 py-4">
+            {/* Non-Billable option */}
+            <Pressable
+              onPress={() => handleBillingStatusChange("non_billable")}
+              className={cn(
+                "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
+                formData.billingStatus === "non_billable" ? "border-blue-500 bg-blue-50" : "border-gray-300"
+              )}
+            >
+              <View className={cn(
+                "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
+                formData.billingStatus === "non_billable" ? "border-blue-500" : "border-gray-300"
+              )}>
+                {formData.billingStatus === "non_billable" && (
+                  <View className="w-3 h-3 rounded-full bg-blue-500" />
+                )}
+              </View>
+              <Text className={cn(
+                "text-lg font-medium flex-1",
+                formData.billingStatus === "non_billable" ? "text-blue-900" : "text-gray-900"
+              )}>
+                Non-Billable
+              </Text>
+              <Ionicons 
+                name="ban-outline" 
+                size={24} 
+                color={formData.billingStatus === "non_billable" ? "#3b82f6" : "#6b7280"} 
+              />
+            </Pressable>
+
+            {/* Billable option */}
+            <Pressable
+              onPress={() => handleBillingStatusChange("billable")}
+              className={cn(
+                "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
+                formData.billingStatus === "billable" ? "border-blue-500 bg-blue-50" : "border-gray-300"
+              )}
+            >
+              <View className={cn(
+                "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
+                formData.billingStatus === "billable" ? "border-blue-500" : "border-gray-300"
+              )}>
+                {formData.billingStatus === "billable" && (
+                  <View className="w-3 h-3 rounded-full bg-blue-500" />
+                )}
+              </View>
+              <Text className={cn(
+                "text-lg font-medium flex-1",
+                formData.billingStatus === "billable" ? "text-blue-900" : "text-gray-900"
+              )}>
+                Billable
+              </Text>
+              <Ionicons 
+                name="cash-outline" 
+                size={24} 
+                color={formData.billingStatus === "billable" ? "#3b82f6" : "#6b7280"} 
+              />
+            </Pressable>
+
+            {/* Billed option */}
+            <Pressable
+              onPress={() => handleBillingStatusChange("billed")}
+              className={cn(
+                "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
+                formData.billingStatus === "billed" ? "border-blue-500 bg-blue-50" : "border-gray-300"
+              )}
+            >
+              <View className={cn(
+                "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
+                formData.billingStatus === "billed" ? "border-blue-500" : "border-gray-300"
+              )}>
+                {formData.billingStatus === "billed" && (
+                  <View className="w-3 h-3 rounded-full bg-blue-500" />
+                )}
+              </View>
+              <Text className={cn(
+                "text-lg font-medium flex-1",
+                formData.billingStatus === "billed" ? "text-blue-900" : "text-gray-900"
+              )}>
+                Billed
+              </Text>
+              <Ionicons 
+                name="checkmark-circle-outline" 
+                size={24} 
+                color={formData.billingStatus === "billed" ? "#3b82f6" : "#6b7280"} 
+              />
+            </Pressable>
           </ScrollView>
         </SafeAreaView>
       </Modal>

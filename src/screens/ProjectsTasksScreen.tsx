@@ -237,7 +237,11 @@ export default function ProjectsTasksScreen({
       if (activeStatusFilter === "not_started") {
         return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
       } else if (activeStatusFilter === "pending") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
+        // Include rejected tasks in pending/WIP
+        if (task.currentStatus === "rejected") {
+          return matchesSearch;
+        }
+        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task);
       } else if (activeStatusFilter === "completed") {
         return matchesSearch && task.accepted && task.completionPercentage === 100;
       } else if (activeStatusFilter === "overdue") {
@@ -250,8 +254,13 @@ export default function ProjectsTasksScreen({
       }
     });
 
-    // Sort tasks by priority (high to low) then by due date (earliest first)
+    // Sort tasks: rejected tasks first, then by priority (high to low) then by due date (earliest first)
     return filteredTasks.sort((a, b) => {
+      // First: rejected tasks go to the top
+      const aIsRejected = a.currentStatus === "rejected";
+      const bIsRejected = b.currentStatus === "rejected";
+      if (aIsRejected && !bIsRejected) return -1;
+      if (!aIsRejected && bIsRejected) return 1;
       // First sort by priority
       const priorityA = getPriorityOrder(a.priority);
       const priorityB = getPriorityOrder(b.priority);

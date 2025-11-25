@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
+import { isAdmin, getUserSystemPermission, getProjectRole, ProjectRole } from "../types/buildtrack";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
@@ -36,7 +37,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<UserCategory>("worker");
+  const [selectedCategory, setSelectedCategory] = useState<ProjectRole>("worker");
   const [activeModal, setActiveModal] = useState<'assign' | 'project' | 'category' | 'success' | 'removeConfirm' | 'invite' | 'approveConfirm' | 'rejectConfirm' | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [removeData, setRemoveData] = useState<{userId: string, projectId: string, userName: string, projectName: string} | null>(null);
@@ -58,7 +59,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     }
   };
 
-  if (!currentUser || currentUser.role !== "admin") {
+  if (!isAdmin(currentUser)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -111,7 +112,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
    * Note: "category" refers to PROJECT ROLE, not job title
    * Example: A user with job title "manager" can have category "contractor" on a project
    */
-  const getCategoryColor = (category: UserCategory) => {
+  const getCategoryColor = (category: ProjectRole) => {
     const colors = {
       lead_project_manager: "bg-purple-50 text-purple-600 border-purple-200",
       contractor: "bg-blue-50 text-blue-600 border-blue-200", 
@@ -130,7 +131,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
    * 
    * Note: This is for project-specific roles, not system-wide job titles
    */
-  const getCategoryLabel = (category: UserCategory) => {
+  const getCategoryLabel = (category: ProjectRole) => {
     const labels = {
       lead_project_manager: "Lead Project Manager",
       contractor: "Contractor",
@@ -233,7 +234,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
 
   const UserCard = ({ user }: { user: User }) => {
     const userAssignments = getUserProjectAssignments(user.id);
-    const isLastAdmin = user.role === "admin" && getAdminCountByCompany(user.companyId) === 1;
+    const isLastAdmin = isAdmin(user) && getAdminCountByCompany(user.companyId) === 1;
     const isPending = user.isPending || false;
     
     // Debug logging for user assignments
@@ -254,7 +255,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                 <Text className="font-semibold text-gray-900 text-lg">
                   {user.name}
                 </Text>
-                {user.role === "admin" && (
+                {isAdmin(user) && (
                   <Ionicons name="star" size={16} color="#7c3aed" />
                 )}
               </View>
@@ -282,7 +283,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             <View className="flex-row items-center mt-1">
               <Ionicons name="person-outline" size={14} color="#6b7280" />
               <Text className="text-sm text-gray-500 ml-1 capitalize">
-                {user.role} • {user.position}
+                {getUserSystemPermission(user)} • {user.position}
               </Text>
             </View>
           </View>
@@ -335,9 +336,9 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                           <Text className="text-base font-medium text-gray-900">
                             {project.name}
                           </Text>
-                          <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(assignment.category))}>
+                          <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(getProjectRole(assignment)))}>
                             <Text className="text-sm font-medium">
-                              {getCategoryLabel(assignment.category)}
+                              {getCategoryLabel(getProjectRole(assignment))}
                             </Text>
                           </View>
                         </View>

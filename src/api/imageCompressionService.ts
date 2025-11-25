@@ -1,5 +1,6 @@
 import * as ImageManipulator from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+// Use legacy API to avoid deprecation warnings
+import * as FileSystem from 'expo-file-system/legacy';
 
 /**
  * Image Compression Service

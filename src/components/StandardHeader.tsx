@@ -5,6 +5,8 @@ import {
   Pressable,
   Image,
   Animated,
+  Platform,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -60,10 +62,25 @@ export default function StandardHeader({
 
   const banner = getCompanyBanner(user.companyId);
 
-  // Reduce top padding - use a smaller value to minimize gap
-  // insets.top can be quite large on devices with Dynamic Island (59px)
-  // We'll use a smaller value to bring content closer to the status bar
-  const topPadding = Math.max(insets.top * 0.7, 8); // Use 70% of safe area or minimum 8px
+  // Use FIXED top padding to ensure perfect consistency across all simulators
+  // iPhone 17 Pro and similar devices should all use the same fixed value
+  // This prevents any variations in reported insets.top from causing spacing differences
+  // 
+  // Strategy: Use a fixed 50px for ALL devices that have any top inset (insets.top > 0)
+  // This ensures iPhone 17 Pro simulators all get the same spacing regardless of
+  // variations in reported inset values (e.g., 44px vs 47px vs 59px)
+  // For devices with no inset (web/desktop), use 44px as minimum
+  console.log('insets.top', insets.top);
+  const topPadding = insets.top > 0 ? 40 : 16;
+  
+  // Debug logging to help diagnose spacing issues
+  if (__DEV__) {
+    console.log('[StandardHeader] Top spacing:', {
+      insetsTop: insets.top,
+      calculatedPadding: topPadding,
+      deviceType: Platform.OS,
+    });
+  }
 
   return (
     <View className={cn(

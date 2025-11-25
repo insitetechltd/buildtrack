@@ -3,6 +3,7 @@ import { View, Text, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useAuthStore } from "../state/authStore";
+import { isAdmin } from "../types/buildtrack";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
 import StandardHeader from "../components/StandardHeader";
@@ -16,11 +17,11 @@ interface CreateProjectScreenProps {
 export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScreenProps) {
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { createProject, assignUserToProject, fetchProjects } = projectStore;
+  const { createProject, fetchProjects } = projectStore;
   const { getCompanyBanner } = useCompanyStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (!user || user.role !== "admin") {
+  if (!isAdmin(user)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -59,12 +60,6 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         companyId: user.companyId,
         createdBy: user.id
       });
-
-      // Assign Lead PM if selected
-      if (formData.selectedLeadPM && newProject) {
-        console.log('👤 Assigning Lead PM...');
-        await assignUserToProject(formData.selectedLeadPM, newProject.id, "lead_project_manager", user.id);
-      }
 
       // Wait a moment for database to fully process
       console.log('⏳ Waiting for database to process...');

@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useAuthStore } from "../state/authStore";
+import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
@@ -113,6 +114,10 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
       taskId={taskId}
       subTaskId={subTaskId}
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToTaskDetail={(taskId, subTaskId) => {
+        // Navigate to another TaskDetailScreen for sub-tasks
+        navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
+      }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
         // Navigate to CreateTask at parent level
         navigation.getParent()?.navigate("CreateTask", {
@@ -172,6 +177,10 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
       taskId={taskId}
       subTaskId={subTaskId}
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToTaskDetail={(taskId, subTaskId) => {
+        // Navigate to another TaskDetailScreen for sub-tasks
+        navigation.navigate("TaskDetail", { taskId, subTaskId });
+      }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
         console.log('🚀 Navigation handler called');
         console.log('🚀 parentTaskId:', parentTaskId);
@@ -335,7 +344,7 @@ function ProjectsListScreen({ navigation, route }: { navigation: any; route: any
       }}
       onNavigateToCreateProject={() => navigation.navigate("CreateProject")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
-      onNavigateBack={() => navigation.goBack()}
+      onNavigateBack={() => navigation.navigate("AdminDashboardMain")}
       newProjectId={newProjectId}
     />
   );
@@ -399,7 +408,7 @@ function MainTabs() {
         },
       }}
     >
-      {user?.role !== "admin" && (
+      {!isAdmin(user) && (
         <Tab.Screen
           name="Dashboard"
           component={DashboardStack}
@@ -417,7 +426,7 @@ function MainTabs() {
           }}
         />
       )}
-      {user?.role === "admin" ? (
+      {isAdmin(user) ? (
         <Tab.Screen
           name="AdminDashboard"
           component={AdminDashboardStack}
@@ -429,7 +438,7 @@ function MainTabs() {
           }}
         />
       ) : null}
-      {user?.role !== "admin" && (
+      {!isAdmin(user) && (
         <Tab.Screen
           name="CreateTask"
           component={CreateTaskStack}
@@ -450,7 +459,7 @@ function MainTabs() {
           }}
         />
       )}
-      {user?.role !== "admin" && (
+      {!isAdmin(user) && (
         <Tab.Screen
           name="Reports"
           component={ReportsStack}
@@ -475,7 +484,7 @@ function MainTabs() {
         }}
       />
       {/* Tasks Screen - Hidden from tab bar but accessible via navigation */}
-      {user?.role !== "admin" && (
+      {!isAdmin(user) && (
         <Tab.Screen
           name="Tasks"
           component={TasksStack}

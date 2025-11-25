@@ -12,8 +12,6 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuthStore } from "../state/authStore";
-import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { ProjectStatus, Project } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 
@@ -38,7 +36,6 @@ interface ProjectFormData {
     email: string;
     phone: string;
   };
-  selectedLeadPM: string;
 }
 
 export default function ProjectForm({
@@ -50,8 +47,6 @@ export default function ProjectForm({
   isSubmitting = false,
 }: ProjectFormProps) {
   const { user } = useAuthStore();
-  const { assignUserToProject, removeUserFromProject, getLeadPMForProject } = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getUsersByCompany } = useUserStoreWithInit();
 
   const [formData, setFormData] = useState<ProjectFormData>({
     name: project?.name || "",
@@ -65,26 +60,12 @@ export default function ProjectForm({
       email: "",
       phone: "",
     },
-    selectedLeadPM: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [showStatusPicker, setShowStatusPicker] = useState(false);
-  const [showLeadPMPicker, setShowLeadPMPicker] = useState(false);
-
-  // Get company users for Lead PM selection
-  const companyUsers = React.useMemo(() => 
-    getUsersByCompany(user?.companyId || ""),
-    [getUsersByCompany, user?.companyId]
-  );
-
-  // Only managers can be Lead PM, not admins
-  const eligibleLeadPMs = React.useMemo(() => 
-    companyUsers.filter(u => u.role === "manager"),
-    [companyUsers]
-  );
 
   // Reset form data when mode or project changes
   useEffect(() => {
@@ -101,19 +82,10 @@ export default function ProjectForm({
         email: "",
         phone: "",
       },
-      selectedLeadPM: "",
     });
     setErrors({});
   }, [mode, project?.id]);
 
-  // Set initial Lead PM for edit mode
-  useEffect(() => {
-    if (mode === "edit" && project) {
-      const currentLeadPM = getLeadPMForProject(project.id);
-      console.log('📋 ProjectForm: Setting Lead PM for project', project.id, currentLeadPM);
-      setFormData(prev => ({ ...prev, selectedLeadPM: currentLeadPM || "" }));
-    }
-  }, [mode, project, getLeadPMForProject]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -373,75 +345,6 @@ export default function ProjectForm({
               </Pressable>
               {errors.endDate && (
                 <Text className="text-red-500 text-sm mt-1">{errors.endDate}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Lead Project Manager */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-2xl font-bold text-gray-900 mb-4">Lead Project Manager</Text>
-          
-          <View className="space-y-3">
-            <Text className="text-base text-gray-600">
-              The Lead PM has full visibility to all tasks and subtasks in this project
-            </Text>
-            
-            <View>
-              {/* Custom Dropdown Picker */}
-              <Pressable
-                onPress={() => setShowLeadPMPicker(!showLeadPMPicker)}
-                className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
-              >
-                <Text className="text-gray-900 text-lg">
-                  {formData.selectedLeadPM 
-                    ? eligibleLeadPMs.find(u => u.id === formData.selectedLeadPM)?.name + ` (${eligibleLeadPMs.find(u => u.id === formData.selectedLeadPM)?.role})`
-                    : "No Lead PM (Select one)"
-                  }
-                </Text>
-                <Ionicons 
-                  name={showLeadPMPicker ? "chevron-up" : "chevron-down"} 
-                  size={20} 
-                  color="#6b7280" 
-                />
-              </Pressable>
-              
-              {/* Dropdown Options - Opens UPWARD */}
-              {showLeadPMPicker && (
-                <View className="absolute bottom-full left-0 right-0 z-50 mb-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64">
-                  <ScrollView nestedScrollEnabled={true} style={{ maxHeight: 256 }}>
-                    <Pressable
-                      onPress={() => {
-                        setFormData(prev => ({ ...prev, selectedLeadPM: "" }));
-                        setShowLeadPMPicker(false);
-                      }}
-                      className="px-4 py-3 border-b border-gray-200"
-                    >
-                      <Text className="text-gray-900 text-lg">No Lead PM (Select one)</Text>
-                    </Pressable>
-                    {eligibleLeadPMs.map((user) => (
-                      <Pressable
-                        key={user.id}
-                        onPress={() => {
-                          setFormData(prev => ({ ...prev, selectedLeadPM: user.id }));
-                          setShowLeadPMPicker(false);
-                        }}
-                        className={cn(
-                          "px-4 py-3",
-                          user.id === formData.selectedLeadPM && "bg-blue-50",
-                          user.id !== eligibleLeadPMs[eligibleLeadPMs.length - 1].id && "border-b border-gray-200"
-                        )}
-                      >
-                        <Text className={cn(
-                          "text-lg",
-                          user.id === formData.selectedLeadPM ? "text-blue-900 font-medium" : "text-gray-900"
-                        )}>
-                          {user.name} ({user.role})
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </ScrollView>
-                </View>
               )}
             </View>
           </View>

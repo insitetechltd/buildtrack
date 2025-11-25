@@ -8,6 +8,8 @@ import {
   Modal,
   Platform,
   Image,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -35,11 +37,16 @@ interface ProfileScreenProps {
 }
 
 export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, onNavigateToDeveloperSettings, onNavigateToPendingUsers }: ProfileScreenProps) {
-  const { user } = useAuthStore();
+  const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
   const { getCompanyBanner } = useCompanyStore();
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
   const t = useTranslation();
@@ -270,6 +277,11 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
               onPress={() => Alert.alert(t.phrases.comingSoon, t.phrases.comingSoonMessage)}
             />
             <MenuOption
+              title="Change Password"
+              icon="lock-closed-outline"
+              onPress={() => setShowPasswordChange(true)}
+            />
+            <MenuOption
               title={t.profile.helpSupport}
               icon="help-circle-outline"
               onPress={() => Alert.alert(t.profile.helpSupport, "For support, please contact your system administrator or project manager.")}
@@ -374,6 +386,166 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
         </View>
 
       </ScrollView>
+
+      {/* Password Change Modal */}
+      <Modal
+        visible={showPasswordChange}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => {
+          if (!isChangingPassword) {
+            setShowPasswordChange(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+          }
+        }}
+      >
+        <SafeAreaView className="flex-1 bg-gray-50">
+          <StatusBar style="dark" />
+          
+          <ModalHandle />
+          
+          {/* Modal Header */}
+          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable 
+              onPress={() => {
+                if (!isChangingPassword) {
+                  setShowPasswordChange(false);
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }
+              }}
+              className="mr-4 w-10 h-10 items-center justify-center"
+              disabled={isChangingPassword}
+            >
+              <Ionicons name="close" size={24} color={isChangingPassword ? "#d1d5db" : "#374151"} />
+            </Pressable>
+            <Text className="text-2xl font-semibold text-gray-900 flex-1">
+              Change Password
+            </Text>
+          </View>
+
+          <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
+            {/* Current Password */}
+            <View className="mb-4">
+              <Text className="text-base font-medium text-gray-700 mb-2">
+                Current Password
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder="Enter your current password"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                editable={!isChangingPassword}
+              />
+            </View>
+
+            {/* New Password */}
+            <View className="mb-4">
+              <Text className="text-base font-medium text-gray-700 mb-2">
+                New Password
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder="Enter new password (min. 6 characters)"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                editable={!isChangingPassword}
+              />
+            </View>
+
+            {/* Confirm Password */}
+            <View className="mb-6">
+              <Text className="text-base font-medium text-gray-700 mb-2">
+                Confirm New Password
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                editable={!isChangingPassword}
+              />
+            </View>
+
+            {/* Change Password Button */}
+            <Pressable
+              onPress={async () => {
+                // Validation
+                if (!currentPassword) {
+                  Alert.alert("Error", "Please enter your current password");
+                  return;
+                }
+
+                if (!newPassword || newPassword.length < 6) {
+                  Alert.alert("Error", "New password must be at least 6 characters long");
+                  return;
+                }
+
+                if (newPassword !== confirmPassword) {
+                  Alert.alert("Error", "New passwords do not match");
+                  return;
+                }
+
+                setIsChangingPassword(true);
+                try {
+                  const result = await changePassword(currentPassword, newPassword);
+                  
+                  if (result.success) {
+                    Alert.alert(
+                      "Success",
+                      "Password changed successfully",
+                      [
+                        {
+                          text: "OK",
+                          onPress: () => {
+                            setShowPasswordChange(false);
+                            setCurrentPassword("");
+                            setNewPassword("");
+                            setConfirmPassword("");
+                          }
+                        }
+                      ]
+                    );
+                  } else {
+                    Alert.alert("Error", result.error || "Failed to change password");
+                  }
+                } catch (error: any) {
+                  Alert.alert("Error", error.message || "Failed to change password");
+                } finally {
+                  setIsChangingPassword(false);
+                }
+              }}
+              disabled={isChangingPassword}
+              className={cn(
+                "bg-blue-600 rounded-lg py-4 items-center justify-center",
+                isChangingPassword ? "opacity-50" : ""
+              )}
+            >
+              {isChangingPassword ? (
+                <View className="flex-row items-center">
+                  <ActivityIndicator color="white" size="small" className="mr-2" />
+                  <Text className="text-white font-semibold text-lg">
+                    Changing Password...
+                  </Text>
+                </View>
+              ) : (
+                <Text className="text-white font-semibold text-lg">
+                  Change Password
+                </Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
 
       {/* Language Picker Modal */}
       <Modal

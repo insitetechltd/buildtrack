@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { AuthState, User, UserRole } from "../types/buildtrack";
+import { AuthState, User, UserRole, SystemPermission, getUserSystemPermission } from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
 
 interface AuthStore extends AuthState {
@@ -19,6 +19,7 @@ interface AuthStore extends AuthState {
     isPending?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -55,9 +56,33 @@ export const useAuthStore = create<AuthStore>()(
             return false;
           }
 
+          // Check if username is a phone number or email
+          let email = username;
+          const phoneRegex = /^[\d\s\-\(\)\+]+$/;
+          const isPhoneNumber = phoneRegex.test(username.trim());
+          
+          // If it's a phone number, look up the email from the users table
+          if (isPhoneNumber) {
+            console.log('📱 Phone number login detected, looking up email...');
+            const { data: phoneUserData, error: phoneError } = await supabase
+              .from('users')
+              .select('email')
+              .eq('phone', username.trim())
+              .single();
+            
+            if (phoneError || !phoneUserData || !phoneUserData.email) {
+              console.error('Phone number not found or has no email:', phoneError);
+              set({ isLoading: false });
+              return false;
+            }
+            
+            email = phoneUserData.email;
+            console.log('✅ Found email for phone number:', email);
+          }
+
           // Use Supabase Auth for real authentication
           const { data, error } = await supabase.auth.signInWithPassword({
-            email: username, // Assuming username is email for Supabase
+            email: email,
             password: password,
           });
 
@@ -68,7 +93,7 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (data.user) {
-            // Fetch user details from our users table
+            // Fetch user details from our users table using user ID (more reliable than email)
             const { data: userData, error: userError } = await supabase
               .from('users')
               .select(`
@@ -79,7 +104,7 @@ export const useAuthStore = create<AuthStore>()(
                   type
                 )
               `)
-              .eq('email', data.user.email)
+              .eq('id', data.user.id)
               .single();
 
             if (userError || !userData) {
@@ -103,8 +128,14 @@ export const useAuthStore = create<AuthStore>()(
             }
 
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            // Map database role field to both role (backward compat) and systemPermission (new)
+            const dbRole = userData.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            const transformedUser: User = {
               ...userData,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
               isPending: userData.is_pending,
@@ -257,10 +288,25 @@ export const useAuthStore = create<AuthStore>()(
               return { success: false, error: 'Failed to fetch user data' };
             }
 
+            // Transform user data and map role to systemPermission
+            const dbRole = userData.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            const transformedUser: User = {
+              ...userData,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
+              companyId: userData.company_id || userData.companyId,
+              lastSelectedProjectId: userData.last_selected_project_id || null,
+              isPending: userData.is_pending,
+              approvedBy: userData.approved_by,
+              approvedAt: userData.approved_at,
+            };
+            
             // Only auto-login if user is not pending approval
             if (!data.isPending) {
               set({ 
-                user: userData, 
+                user: transformedUser, 
                 isAuthenticated: true, 
                 isLoading: false 
               });
@@ -305,6 +351,11 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           // Update in Supabase
+          // Map systemPermission back to role for database (backward compatibility)
+          const dbRole = updates.systemPermission 
+            ? (updates.systemPermission === 'member' ? 'worker' : updates.systemPermission)
+            : updates.role;
+          
           const { error } = await supabase
             .from('users')
             .update({
@@ -313,7 +364,7 @@ export const useAuthStore = create<AuthStore>()(
               phone: updates.phone,
               company_id: updates.companyId,
               position: updates.position,
-              role: updates.role,
+              role: dbRole || currentUser.role,
             })
             .eq('id', currentUser.id);
 
@@ -324,7 +375,16 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           // Update local state
-          const updatedUser = { ...currentUser, ...updates };
+          // Ensure systemPermission is set if role is updated
+          const updatedUser: User = { 
+            ...currentUser, 
+            ...updates,
+            // If systemPermission is provided, use it; otherwise derive from role
+            systemPermission: updates.systemPermission || (updates.role 
+              ? (updates.role === 'worker' ? 'member' : updates.role as SystemPermission)
+              : getUserSystemPermission(currentUser)
+            ),
+          };
           set({ user: updatedUser, isLoading: false });
 
           // Update user store cache
@@ -334,6 +394,64 @@ export const useAuthStore = create<AuthStore>()(
           console.error('Error updating user:', error);
           set({ isLoading: false });
           throw error;
+        }
+      },
+
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: 'User not found' };
+        }
+
+        set({ isLoading: true });
+
+        try {
+          if (!supabase) {
+            set({ isLoading: false });
+            return { success: false, error: 'Supabase not configured' };
+          }
+
+          // Validate new password
+          if (!newPassword || newPassword.length < 6) {
+            set({ isLoading: false });
+            return { success: false, error: 'New password must be at least 6 characters long' };
+          }
+
+          // Verify current password by attempting to sign in
+          // Get user email for verification
+          const userEmail = currentUser.email;
+          if (!userEmail) {
+            set({ isLoading: false });
+            return { success: false, error: 'User email not found' };
+          }
+
+          // Verify current password
+          const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password: currentPassword,
+          });
+
+          if (verifyError) {
+            set({ isLoading: false });
+            return { success: false, error: 'Current password is incorrect' };
+          }
+
+          // Update password using Supabase Auth
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: newPassword,
+          });
+
+          if (updateError) {
+            set({ isLoading: false });
+            return { success: false, error: updateError.message || 'Failed to update password' };
+          }
+
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error: any) {
+          console.error('Error changing password:', error);
+          set({ isLoading: false });
+          return { success: false, error: error.message || 'Failed to change password' };
         }
       },
 
@@ -362,10 +480,18 @@ export const useAuthStore = create<AuthStore>()(
 
           if (userData) {
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            const dbRole = userData.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            const transformedUser: User = {
               ...userData,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
+              isPending: userData.is_pending,
+              approvedBy: userData.approved_by,
+              approvedAt: userData.approved_at,
             };
             set({ user: transformedUser });
           }
@@ -394,7 +520,7 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (session?.user) {
-            // Session exists, fetch user data
+            // Session exists, fetch user data using user ID (more reliable than email)
             const { data: userData, error: userError } = await supabase
               .from('users')
               .select(`
@@ -405,7 +531,7 @@ export const useAuthStore = create<AuthStore>()(
                   type
                 )
               `)
-              .eq('email', session.user.email)
+              .eq('id', session.user.id)
               .single();
 
             if (userError || !userData) {
@@ -415,10 +541,18 @@ export const useAuthStore = create<AuthStore>()(
             }
 
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            const dbRole = userData.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            const transformedUser: User = {
               ...userData,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
+              isPending: userData.is_pending,
+              approvedBy: userData.approved_by,
+              approvedAt: userData.approved_at,
             };
 
             set({ 

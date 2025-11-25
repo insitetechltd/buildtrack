@@ -23,6 +23,7 @@ interface AuthStore extends AuthState {
     isPending?: boolean;
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
   // Test-compatible method names
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -66,14 +67,14 @@ export const useAuthStore = create<AuthStore>()(
                   .eq('phone', username.trim())
                   .single();
                 
-                if (phoneError || !phoneUserData) {
-                  console.error('Phone number not found:', phoneError);
+                if (phoneError || !phoneUserData || !phoneUserData.email) {
+                  console.error('Phone number not found or has no email:', phoneError);
                   set({ isLoading: false });
                   return false;
                 }
                 
                 email = phoneUserData.email;
-                console.log('✅ Found email for phone number');
+                console.log('✅ Found email for phone number:', email);
               }
               
               const { data, error } = await supabase.auth.signInWithPassword({
@@ -81,8 +82,14 @@ export const useAuthStore = create<AuthStore>()(
                 password: password,
               });
 
-              if (!error && data.user) {
-                // Fetch user details from our users table
+              if (error) {
+                console.error('Login error:', error.message);
+                set({ isLoading: false });
+                return false;
+              }
+
+              if (data.user) {
+                // Fetch user details from our users table using user ID (more reliable than email)
                 const { data: userData, error: userError } = await supabase
                   .from('users')
                   .select(`
@@ -93,56 +100,69 @@ export const useAuthStore = create<AuthStore>()(
                       type
                     )
                   `)
-                  .eq('email', data.user.email)
+                  .eq('id', data.user.id)
                   .single();
 
-                if (!userError && userData) {
-                  // Transform Supabase data to match local interface
-                  const transformedUser = {
-                    ...userData,
-                    companyId: userData.company_id || userData.companyId, // Handle both field names
-                  };
-                  
-                  console.log('✅ Login successful:', transformedUser.name);
-                  console.log('Setting state: isAuthenticated=true, isLoading=false, isInitialized=true');
-                  
-                  set({ 
-                    user: transformedUser, 
-                    isAuthenticated: true, 
-                    isLoading: false,
-                    isInitialized: true  // Ensure initialized after login
-                  });
-                  
-                  // Trigger data refresh after successful login
-                  setTimeout(() => {
-                    try {
-                      const projectStore = require('./projectStore').useProjectStore.getState();
-                      const taskStore = require('./taskStore').useTaskStore.getState();
-                      const userStore = require('./userStore').useUserStore.getState();
-                      
-                      // Initialize user-specific data
-                      Promise.all([
-                        projectStore._initializeUserData?.(userData.id),
-                        taskStore._initializeUserData?.(userData.id),
-                        userStore.fetchUsers?.()
-                      ]).catch(error => {
-                        console.error('Error initializing user data after login:', error);
-                      });
-                    } catch (error) {
-                      console.error('Error triggering data refresh after login:', error);
-                    }
-                  }, 100);
-                  
-                  return true;
+                if (userError || !userData) {
+                  console.error('Error fetching user data:', userError);
+                  set({ isLoading: false });
+                  return false;
                 }
+
+                // Transform Supabase data to match local interface
+                const transformedUser = {
+                  ...userData,
+                  companyId: userData.company_id || userData.companyId, // Handle both field names
+                  lastSelectedProjectId: userData.last_selected_project_id || null,
+                };
+                
+                console.log('✅ Login successful:', transformedUser.name);
+                console.log('Setting state: isAuthenticated=true, isLoading=false, isInitialized=true');
+                
+                set({ 
+                  user: transformedUser, 
+                  isAuthenticated: true, 
+                  isLoading: false,
+                  isInitialized: true  // Ensure initialized after login
+                });
+                
+                // Trigger data refresh after successful login
+                setTimeout(() => {
+                  try {
+                    const projectStore = require('./projectStore').useProjectStore.getState();
+                    const taskStore = require('./taskStore').useTaskStore.getState();
+                    const userStore = require('./userStore').useUserStore.getState();
+                    
+                    // Initialize user-specific data
+                    Promise.all([
+                      projectStore._initializeUserData?.(userData.id),
+                      taskStore._initializeUserData?.(userData.id),
+                      userStore.fetchUsers?.()
+                    ]).catch(error => {
+                      console.error('Error initializing user data after login:', error);
+                    });
+                  } catch (error) {
+                    console.error('Error triggering data refresh after login:', error);
+                  }
+                }, 100);
+                
+                return true;
               }
             } catch (supabaseError) {
               console.error('Supabase Auth failed:', supabaseError);
+              set({ isLoading: false });
+              return false;
             }
           }
 
-          // Supabase authentication failed
-          console.error('Authentication failed: Supabase not available');
+          // Only show this error if Supabase is actually not available
+          if (!supabase) {
+            console.error('Authentication failed: Supabase not available');
+            set({ isLoading: false });
+            return false;
+          }
+
+          // If we reach here, Supabase exists but authentication failed for other reasons
           set({ isLoading: false });
           return false;
         } catch (error) {
@@ -348,6 +368,64 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      changePassword: async (currentPassword: string, newPassword: string) => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: 'User not found' };
+        }
+
+        set({ isLoading: true });
+
+        try {
+          if (!supabase) {
+            set({ isLoading: false });
+            return { success: false, error: 'Supabase not configured' };
+          }
+
+          // Validate new password
+          if (!newPassword || newPassword.length < 6) {
+            set({ isLoading: false });
+            return { success: false, error: 'New password must be at least 6 characters long' };
+          }
+
+          // Verify current password by attempting to sign in
+          // Get user email for verification
+          const userEmail = currentUser.email;
+          if (!userEmail) {
+            set({ isLoading: false });
+            return { success: false, error: 'User email not found' };
+          }
+
+          // Verify current password
+          const { error: verifyError } = await supabase.auth.signInWithPassword({
+            email: userEmail,
+            password: currentPassword,
+          });
+
+          if (verifyError) {
+            set({ isLoading: false });
+            return { success: false, error: 'Current password is incorrect' };
+          }
+
+          // Update password using Supabase Auth
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: newPassword,
+          });
+
+          if (updateError) {
+            set({ isLoading: false });
+            return { success: false, error: updateError.message || 'Failed to update password' };
+          }
+
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error: any) {
+          console.error('Error changing password:', error);
+          set({ isLoading: false });
+          return { success: false, error: error.message || 'Failed to change password' };
+        }
+      },
+
       refreshUser: async () => {
         const currentUser = get().user;
         if (!currentUser || !supabase) return;
@@ -446,11 +524,11 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (data.user && data.session) {
-            // Fetch user details from users table
+            // Fetch user details from users table using user ID (more reliable than email)
             const { data: userData } = await supabase
               .from('users')
               .select('*')
-              .eq('email', data.user.email)
+              .eq('id', data.user.id)
               .single();
 
             const transformedUser = userData ? {
@@ -536,7 +614,7 @@ export const useAuthStore = create<AuthStore>()(
               const { data: userData } = await supabase
                 .from('users')
                 .select('*')
-                .eq('email', user.email)
+                .eq('id', user.id)
                 .single();
 
               const transformedUser = userData ? {
@@ -625,7 +703,7 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           if (session?.user) {
-            // Session exists, fetch user data
+            // Session exists, fetch user data using user ID (more reliable than email)
             const { data: userData, error: userError } = await supabase
               .from('users')
               .select(`
@@ -636,7 +714,7 @@ export const useAuthStore = create<AuthStore>()(
                   type
                 )
               `)
-              .eq('email', session.user.email)
+              .eq('id', session.user.id)
               .single();
 
             if (userError || !userData) {

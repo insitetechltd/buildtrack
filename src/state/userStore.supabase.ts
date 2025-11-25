@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { User, UserRole } from "../types/buildtrack";
+import { User, UserRole, SystemPermission, getUserSystemPermission, hasSystemPermission } from "../types/buildtrack";
 
 interface UserStore {
   users: User[];
@@ -71,14 +71,21 @@ export const useUserStore = create<UserStore>()(
           if (error) throw error;
 
           // Transform Supabase data to match local interface
-          const transformedUsers = (data || []).map(user => ({
-            ...user,
-            companyId: user.company_id || user.companyId, // Handle both field names
-            lastSelectedProjectId: user.last_selected_project_id || null,
-            isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
-            approvedBy: user.approved_by || user.approvedBy || null,
-            approvedAt: user.approved_at || user.approvedAt || null,
-          }));
+          const transformedUsers = (data || []).map(user => {
+            const dbRole = user.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            return {
+              ...user,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
+              companyId: user.company_id || user.companyId, // Handle both field names
+              lastSelectedProjectId: user.last_selected_project_id || null,
+              isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
+              approvedBy: user.approved_by || user.approvedBy || null,
+              approvedAt: user.approved_at || user.approvedAt || null,
+            };
+          });
 
           set({ 
             users: transformedUsers, 
@@ -118,14 +125,21 @@ export const useUserStore = create<UserStore>()(
           if (error) throw error;
 
           // Transform Supabase data to match local interface
-          const transformedUsers = (data || []).map(user => ({
-            ...user,
-            companyId: user.company_id || user.companyId, // Handle both field names
-            lastSelectedProjectId: user.last_selected_project_id || null,
-            isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
-            approvedBy: user.approved_by || user.approvedBy || null,
-            approvedAt: user.approved_at || user.approvedAt || null,
-          }));
+          const transformedUsers = (data || []).map(user => {
+            const dbRole = user.role || 'worker';
+            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+            
+            return {
+              ...user,
+              role: dbRole as UserRole, // Keep for backward compatibility
+              systemPermission, // New field
+              companyId: user.company_id || user.companyId, // Handle both field names
+              lastSelectedProjectId: user.last_selected_project_id || null,
+              isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
+              approvedBy: user.approved_by || user.approvedBy || null,
+              approvedAt: user.approved_at || user.approvedAt || null,
+            };
+          });
 
           set({ 
             users: transformedUsers, 
@@ -162,14 +176,21 @@ export const useUserStore = create<UserStore>()(
           if (error) throw error;
           
           // Transform Supabase data to match local interface
-          return data ? {
+          if (!data) return null;
+          
+          const dbRole = data.role || 'worker';
+          const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
+          
+          return {
             ...data,
+            role: dbRole as UserRole, // Keep for backward compatibility
+            systemPermission, // New field
             companyId: data.company_id || data.companyId,
             lastSelectedProjectId: data.last_selected_project_id || null,
             isPending: data.is_pending ?? data.isPending ?? false, // Transform snake_case to camelCase
             approvedBy: data.approved_by || data.approvedBy || null,
             approvedAt: data.approved_at || data.approvedAt || null,
-          } : null;
+          };
         } catch (error: any) {
           console.error('Error fetching user:', error);
           return null;
@@ -186,7 +207,10 @@ export const useUserStore = create<UserStore>()(
       },
 
       getUsersByRole: (role) => {
-        return get().users.filter(user => user.role === role);
+        // Support both old (UserRole) and new (SystemPermission) types
+        // Map "worker" to "member" for backward compatibility
+        const targetPermission: SystemPermission = role === 'worker' ? 'member' : (role as SystemPermission);
+        return get().users.filter(user => getUserSystemPermission(user) === targetPermission);
       },
 
       getUsersByCompany: (companyId) => {
@@ -241,7 +265,7 @@ export const useUserStore = create<UserStore>()(
 
       // Admin validation helpers
       getAdminCountByCompany: (companyId) => {
-        return get().getUsersByCompany(companyId).filter(user => user.role === 'admin').length;
+        return get().getUsersByCompany(companyId).filter(user => hasSystemPermission(user, 'admin')).length;
       },
 
       canDeleteUser: (userId) => {
@@ -251,7 +275,7 @@ export const useUserStore = create<UserStore>()(
         }
 
         const adminCount = get().getAdminCountByCompany(user.companyId);
-        if (user.role === 'admin' && adminCount <= 1) {
+        if (hasSystemPermission(user, 'admin') && adminCount <= 1) {
           return { canDelete: false, reason: 'Cannot delete the last admin in the company' };
         }
 
@@ -265,7 +289,8 @@ export const useUserStore = create<UserStore>()(
         }
 
         const adminCount = get().getAdminCountByCompany(user.companyId);
-        if (user.role === 'admin' && newRole !== 'admin' && adminCount <= 1) {
+        const newPermission: SystemPermission = newRole === 'worker' ? 'member' : (newRole as SystemPermission);
+        if (hasSystemPermission(user, 'admin') && newPermission !== 'admin' && adminCount <= 1) {
           return { canChange: false, reason: 'Cannot remove admin role from the last admin in the company' };
         }
 
@@ -423,12 +448,17 @@ export const useUserStore = create<UserStore>()(
 
         set({ isLoading: true, error: null });
         try {
+          // Map systemPermission back to role for database (backward compatibility)
+          const dbRole = updates.systemPermission 
+            ? (updates.systemPermission === 'member' ? 'worker' : updates.systemPermission)
+            : (updates.role === 'member' ? 'worker' : updates.role);
+          
           const { error } = await supabase
             .from('users')
             .update({
               name: updates.name,
               email: updates.email,
-              role: updates.role,
+              role: dbRole,
               company_id: updates.companyId,
               position: updates.position,
               phone: updates.phone,

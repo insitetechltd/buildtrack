@@ -1,4 +1,5 @@
-import * as FileSystem from 'expo-file-system';
+// Use legacy API to avoid deprecation warnings
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 

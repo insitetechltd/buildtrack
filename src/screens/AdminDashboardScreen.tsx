@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
 import { useAuthStore } from "../state/authStore";
+import { isAdmin, getUserSystemPermission } from "../types/buildtrack";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useTaskStore } from "../state/taskStore.supabase";
@@ -74,7 +75,7 @@ export default function AdminDashboardScreen({
     }
   };
 
-  if (!user || user.role !== "admin") {
+  if (!isAdmin(user)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -161,9 +162,9 @@ export default function AdminDashboardScreen({
   };
 
   const usersByRole = {
-    admin: companyUsers.filter(u => u.role === "admin").length,
-    manager: companyUsers.filter(u => u.role === "manager").length,
-    worker: companyUsers.filter(u => u.role === "worker").length,
+    admin: companyUsers.filter(u => getUserSystemPermission(u) === "admin").length,
+    manager: companyUsers.filter(u => getUserSystemPermission(u) === "manager").length,
+    member: companyUsers.filter(u => getUserSystemPermission(u) === "member").length,
   };
 
   const StatCard = ({ 

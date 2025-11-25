@@ -39,9 +39,10 @@ interface TaskDetailScreenProps {
   subTaskId?: string; // Optional: if provided, show only this subtask
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string) => void;
+  onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void; // For navigating to sub-task details
 }
 
-export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask }: TaskDetailScreenProps) {
+export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail }: TaskDetailScreenProps) {
   const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
@@ -91,18 +92,24 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
 
-  // Get the parent task
-  const parentTask = tasks.find(t => t.id === taskId);
+  // Get the task - could be a top-level task or a sub-task
+  const foundTask = tasks.find(t => t.id === taskId);
   
   // ✅ UPDATED: If subTaskId is provided, find the subtask directly from the unified tasks table
   // (not from nested subTasks array - that's the old schema)
+  // Otherwise, if the found task has a parentTaskId, it's a sub-task being viewed directly
   const subTask = subTaskId 
     ? tasks.find(t => t.id === subTaskId)
-    : null;
+    : (foundTask?.parentTaskId ? foundTask : null);
   
-  // Use subtask if viewing subtask, otherwise use parent task
-  const task = subTask || parentTask;
+  // Use subtask if viewing subtask, otherwise use the found task
+  const task = subTask || foundTask;
   const isViewingSubTask = !!subTask;
+  
+  // Get the parent task if viewing a sub-task
+  const parentTask = isViewingSubTask && task?.parentTaskId
+    ? tasks.find(t => t.id === task.parentTaskId)
+    : null;
   
   // Get children tasks from the unified tasks table - memoized to avoid infinite loops
   const childTasks = useMemo(() => 
@@ -224,16 +231,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     });
   }
 
-  // Users can only update if:
+  // Users can update if:
   // 1. They created the task, OR
-  // 2. They are assigned AND have accepted the task
-  const canUpdateProgress = isTaskCreator || (isAssignedToMe && task.accepted === true);
+  // 2. They are assigned to the task (acceptance not required for quick updates)
+  // This allows both creator and assignee to communicate via progress updates
+  const canUpdateProgress = isTaskCreator || isAssignedToMe;
   const canEditTask = isTaskCreator;
   
-  // Users can only create subtasks if:
-  // 1. They created the task, OR
-  // 2. They are assigned AND have accepted the task
-  const canCreateSubTask = isTaskCreator || (isAssignedToMe && task.accepted === true);
+  // DISABLED: Sub-task creation is temporarily disabled for all users
+  const canCreateSubTask = false; // Always disabled - button will be greyed out
 
   const handleAcceptTask = () => {
     Alert.alert(
@@ -246,12 +252,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           onPress: async () => {
             try {
               await acceptTask(task.id, user.id);
-              // Refetch tasks to ensure the dashboard shows updated state
+              // Refresh the specific task to get updated accepted/acceptedBy fields
+              await fetchTaskById(task.id);
+              // Also refetch all tasks to ensure the dashboard shows updated state
               await fetchTasks();
               Alert.alert(t.errors.success, t.taskDetail.taskAccepted);
-            } catch (error) {
+            } catch (error: any) {
               console.error('Error accepting task:', error);
-              Alert.alert(t.errors.error, 'Failed to accept task. Please try again.');
+              Alert.alert(t.errors.error, error.message || 'Failed to accept task. Please try again.');
             }
           }
         }
@@ -271,10 +279,18 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         {
           text: t.taskDetail.decline,
           style: "destructive",
-          onPress: (reason: string | undefined) => {
+          onPress: async (reason: string | undefined) => {
             if (reason && reason.trim()) {
-              declineTask(task.id, user.id, reason.trim());
-              Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclined);
+              try {
+                await declineTask(task.id, user.id, reason.trim());
+                // Refresh the task to get updated status
+                await fetchTaskById(task.id);
+                await fetchTasks();
+                Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclined);
+              } catch (error: any) {
+                console.error('Error declining task:', error);
+                Alert.alert(t.errors.error, error.message || 'Failed to decline task. Please try again.');
+              }
             }
           },
         }
@@ -491,10 +507,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               if (results.successful.length > 0) {
                 const newPhotoUrls = results.successful.map(file => file.public_url);
                 setUpdateForm(prev => ({
-                  ...prev,
+                  description: prev.description || "",
                   photos: [...prev.photos, ...newPhotoUrls],
+                  completionPercentage: task.completionPercentage || prev.completionPercentage,
+                  status: task.currentStatus || prev.status,
                 }));
                 console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
+                // Open update modal after photos are added
+                setShowUpdateModal(true);
               }
 
               if (results.failed.length > 0) {
@@ -525,10 +545,14 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               if (results.successful.length > 0) {
                 const newPhotoUrls = results.successful.map(file => file.public_url);
                 setUpdateForm(prev => ({
-                  ...prev,
+                  description: prev.description || "",
                   photos: [...prev.photos, ...newPhotoUrls],
+                  completionPercentage: task.completionPercentage || prev.completionPercentage,
+                  status: task.currentStatus || prev.status,
                 }));
                 console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
+                // Open update modal after photos are added
+                setShowUpdateModal(true);
               }
 
               if (results.failed.length > 0) {
@@ -690,8 +714,30 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         onBackPress={onNavigateBack}
       />
 
+      {/* Sub-task indicator - Shown when viewing a sub-task */}
+      {isViewingSubTask && (
+        <View className={cn(
+          "flex-row items-center mx-4 mt-2 px-4 py-2.5 rounded-lg",
+          "bg-purple-50 border border-purple-200"
+        )}>
+          <Ionicons name="git-branch-outline" size={18} color="#7c3aed" />
+          <Text className="text-base font-semibold text-purple-700 ml-2">
+            Sub-task
+          </Text>
+          {parentTask && (
+            <Text className="text-sm text-purple-600 ml-2 flex-1" numberOfLines={1}>
+              • Parent: {parentTask.title}
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Accept/Reject Banner - Shown at top when task is pending acceptance */}
-      {isAssignedToMe && task.accepted === false && !task.declineReason && task.currentStatus !== "rejected" && (
+      {/* Show banner if: user is assigned AND no one has accepted/rejected yet */}
+      {isAssignedToMe && 
+       !task.accepted &&  // No one has accepted yet
+       !task.declineReason && 
+       task.currentStatus !== "rejected" && (
         <View className="bg-amber-50 border-4 border-red-500 px-6 py-4 mx-6 mt-4 rounded-lg">
           <View className="flex-row gap-3">
             <Pressable
@@ -756,6 +802,52 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               </Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {/* Submit for Review Banner - Shown when task is at 100% but not yet submitted (for assignee) */}
+      {isAssignedToMe && 
+       !isTaskCreator && 
+       task.completionPercentage === 100 && 
+       !task.readyForReview && 
+       !task.reviewAccepted && (
+        <View className="bg-blue-50 border-b-2 border-blue-200 px-6 py-4">
+          <View className="flex-row items-center mb-3">
+            <View className="w-10 h-10 bg-blue-100 rounded-full items-center justify-center mr-3">
+              <Ionicons name="paper-plane" size={24} color="#2563eb" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-xl font-bold text-blue-900">
+                Task Complete - Submit for Review
+              </Text>
+              <Text className="text-base text-blue-700">
+                Your task is 100% complete. Submit it for review by the task creator.
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={async () => {
+              try {
+                if (isViewingSubTask && subTaskId) {
+                  await submitSubTaskForReview(taskId, subTaskId);
+                } else {
+                  await submitTaskForReview(task.id);
+                }
+                await fetchTaskById(task.id);
+                Alert.alert(
+                  "Submitted for Review! ✅",
+                  "Your task has been submitted for review by the task creator.",
+                  [{ text: "OK" }]
+                );
+              } catch (error: any) {
+                Alert.alert("Error", error.message || "Failed to submit task for review.");
+              }
+            }}
+            className="bg-blue-600 py-3.5 rounded-lg items-center flex-row justify-center"
+          >
+            <Ionicons name="paper-plane" size={20} color="white" />
+            <Text className="text-white font-semibold text-lg ml-2">Submit for Review</Text>
+          </Pressable>
         </View>
       )}
 
@@ -1179,8 +1271,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     <TaskCard 
                       task={subtask}
                       onNavigateToTaskDetail={(taskId, subTaskId) => {
-                        // Navigate to subtask detail
-                        if (onNavigateToCreateTask) {
+                        // Navigate to subtask detail screen
+                        if (onNavigateToTaskDetail) {
+                          onNavigateToTaskDetail(taskId, subTaskId);
+                        } else if (onNavigateToCreateTask) {
+                          // Fallback: if no navigation handler, use create task (for editing)
                           onNavigateToCreateTask(taskId, subTaskId);
                         }
                       }}
@@ -1191,6 +1286,46 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
         )}
 
+        {/* Quick Update Buttons - Available to both creator and assignee */}
+        {canUpdateProgress && !isViewingSubTask && (
+          <View className="mx-4 mt-6 mb-24 flex-row gap-3">
+            {/* Progress Update Button - Left */}
+            <Pressable
+              onPress={() => setShowUpdateModal(true)}
+              className="flex-1 bg-green-600 rounded-xl py-4 px-4 flex-row items-center justify-center"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 4
+              }}
+            >
+              <Ionicons name="create-outline" size={20} color="white" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Update Progress
+              </Text>
+            </Pressable>
+
+            {/* Photo Update Button - Right */}
+            <Pressable
+              onPress={handleAddPhotos}
+              className="flex-1 bg-blue-600 rounded-xl py-4 px-4 flex-row items-center justify-center"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 4
+              }}
+            >
+              <Ionicons name="camera-outline" size={20} color="white" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Add Photos
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
 
       {/* Update Modal */}
@@ -1953,149 +2088,20 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
       {/* Task Detail Utility FAB */}
       <TaskDetailUtilityFAB
-        onUpdate={() => {
-          // Initialize form with current task's completion percentage
-          setUpdateForm({
-            description: "",
-            photos: [],
-            completionPercentage: task.completionPercentage || 0,
-            status: task.currentStatus || "in_progress",
-          });
-          setShowUpdateModal(true);
-        }}
         onEdit={() => {
-          if (onNavigateToCreateTask && task) {
+          if (onNavigateToCreateTask && task && canEditTask) {
             // Navigate to edit screen by passing the task ID as editTaskId
             onNavigateToCreateTask(undefined, undefined, task.id);
           }
         }}
         onCancel={isTaskCreator && !task.cancelledAt && !isViewingSubTask ? handleCancelTask : undefined}
         canCancel={isTaskCreator && !task.cancelledAt && !isViewingSubTask}
-        onCameraUpdate={() => {
-          Alert.alert(
-            "Add Photos or Files",
-            "Choose how you want to add content",
-            [
-              {
-                text: "Take Photo",
-                onPress: async () => {
-                  if (!user || !task) return;
-                  
-                  try {
-                    console.log('📸 [Task Detail FAB] Taking photo from camera...');
-                    
-                    const results: UploadResults = await pickAndUploadImages(
-                      {
-                        entityType: 'task-update',
-                        entityId: task.id,
-                        companyId: user.companyId,
-                        userId: user.id,
-                      },
-                      'camera'
-                    );
-
-                    if (results.successful.length > 0) {
-                      const newPhotoUrls = results.successful.map(file => file.public_url);
-                      setUpdateForm(prev => ({
-                        description: prev.description || "",
-                        photos: [...prev.photos, ...newPhotoUrls],
-                        completionPercentage: task.completionPercentage,
-                        status: task.currentStatus,
-                      }));
-                      setShowUpdateModal(true);
-                      console.log(`✅ [Task Detail FAB] ${results.successful.length} photo(s) uploaded and ready`);
-                    }
-
-                    if (results.failed.length > 0) {
-                      setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-                    }
-                  } catch (error) {
-                    console.error("❌ [Task Detail FAB] Error launching camera:", error);
-                    Alert.alert("Error", "Failed to access camera");
-                  }
-                },
-              },
-              {
-                text: "Choose from Library",
-                onPress: async () => {
-                  if (!user || !task) return;
-                  
-                  try {
-                    console.log('📚 [Task Detail FAB] Selecting photos from library...');
-                    
-                    const results: UploadResults = await pickAndUploadImages(
-                      {
-                        entityType: 'task-update',
-                        entityId: task.id,
-                        companyId: user.companyId,
-                        userId: user.id,
-                      },
-                      'library'
-                    );
-
-                    if (results.successful.length > 0) {
-                      const newPhotoUrls = results.successful.map(file => file.public_url);
-                      setUpdateForm(prev => ({
-                        description: prev.description || "",
-                        photos: [...prev.photos, ...newPhotoUrls],
-                        completionPercentage: task.completionPercentage,
-                        status: task.currentStatus,
-                      }));
-                      setShowUpdateModal(true);
-                      console.log(`✅ [Task Detail FAB] ${results.successful.length} photo(s) uploaded and ready`);
-                    }
-
-                    if (results.failed.length > 0) {
-                      setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-                    }
-                  } catch (error) {
-                    console.error("❌ [Task Detail FAB] Error opening library:", error);
-                    Alert.alert("Error", "Failed to access photo library");
-                  }
-                },
-              },
-              {
-                text: "Upload PDF",
-                onPress: async () => {
-                  try {
-                    const result = await DocumentPicker.getDocumentAsync({
-                      type: 'application/pdf',
-                      copyToCacheDirectory: true,
-                    });
-                    
-                    if (!result.canceled && result.assets && result.assets.length > 0) {
-                      const newFiles = result.assets.map((asset: DocumentPicker.DocumentPickerAsset) => asset.uri);
-                      setUpdateForm(prev => ({
-                        description: prev.description || "",
-                        photos: [...prev.photos, ...newFiles],
-                        completionPercentage: task.completionPercentage,
-                        status: task.currentStatus,
-                      }));
-                      setShowUpdateModal(true);
-                    }
-                  } catch (error) {
-                    console.error("Error picking document:", error);
-                    Alert.alert("Error", "Failed to pick document");
-                  }
-                },
-              },
-              {
-                text: "Cancel",
-                style: "cancel",
-              },
-            ]
-          );
-        }}
         onCreateSubTask={onNavigateToCreateTask ? () => {
-          if (subTaskId) {
-            onNavigateToCreateTask(taskId, subTaskId);
-          } else {
-            onNavigateToCreateTask(taskId);
-          }
+          // Temporarily disabled - do nothing
+          return;
         } : undefined}
-        canUpdate={canUpdateProgress}
         canEdit={canEditTask}
-        canCreateSubTask={canCreateSubTask && !!onNavigateToCreateTask}
+        canCreateSubTask={false} // Always disabled for all users - button will be greyed out
       />
     </SafeAreaView>
   );

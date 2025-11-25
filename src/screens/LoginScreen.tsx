@@ -293,7 +293,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 {/* Insite Tech Ltd - Admin */}
                 <Pressable 
                   className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'password123')}
+                  onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'testing')}
                 >
                   <Text className="text-lg font-semibold text-purple-900">
                     Insite Tech: Admin Tristan
@@ -303,7 +303,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 {/* BuildTrack - Admin */}
                 <Pressable 
                   className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('admin@buildtrack.com', 'password123')}
+                  onPress={() => handleQuickLogin('admin@buildtrack.com', 'testing')}
                 >
                   <Text className="text-lg font-semibold text-emerald-900">
                     BuildTrack: Alex Administrator
@@ -313,7 +313,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 {/* Elite Electric - Admin */}
                 <Pressable 
                   className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
-                  onPress={() => handleQuickLogin('admin@eliteelectric.com', 'password123')}
+                  onPress={() => handleQuickLogin('admin@eliteelectric.com', 'testing')}
                 >
                   <Text className="text-lg font-semibold text-amber-900">
                     Elite Electric: Mike Johnson

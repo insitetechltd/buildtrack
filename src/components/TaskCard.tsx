@@ -21,14 +21,6 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   const { getUserById } = useUserStoreWithInit();
   const { isDarkMode } = useThemeStore();
   
-  // Track if image failed to load
-  const [imageError, setImageError] = useState(false);
-  
-  // Reset error state when attachment URL changes
-  useEffect(() => {
-    setImageError(false);
-  }, [task.attachments?.[0]]);
-  
   // Check if this is a nested task (has a parent)
   const isSubTask = !!task.parentTaskId;
   
@@ -52,6 +44,51 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   
   // Check if task is 100% complete
   const isCompleted = task.completionPercentage === 100;
+
+  // Get the most recent photo from task updates or attachments
+  const getTaskPhoto = () => {
+    console.log(`[TaskCard] Checking photos for task "${task.title}":`, {
+      hasAttachments: !!task.attachments,
+      attachmentsLength: task.attachments?.length || 0,
+      attachments: task.attachments,
+      hasUpdates: !!task.updates,
+      updatesLength: task.updates?.length || 0,
+      updatesWithPhotos: task.updates?.filter(u => u.photos && u.photos.length > 0).length || 0,
+    });
+    
+    // First check if there are attachments (from initial task creation)
+    if (task.attachments && task.attachments.length > 0) {
+      console.log(`[TaskCard] ✅ Found attachment for "${task.title}":`, task.attachments[0]);
+      return task.attachments[0];
+    }
+    
+    // Otherwise, check for photos in task updates (most recent first)
+    if (task.updates && task.updates.length > 0) {
+      // Find the most recent update with photos
+      for (let i = task.updates.length - 1; i >= 0; i--) {
+        const update = task.updates[i];
+        if (update.photos && update.photos.length > 0) {
+          console.log(`[TaskCard] ✅ Found photo in update for "${task.title}":`, update.photos[0]);
+          return update.photos[0];
+        }
+      }
+    }
+    
+    console.log(`[TaskCard] ❌ No photos found for "${task.title}"`);
+    return null;
+  };
+
+  const taskPhoto = getTaskPhoto();
+  const totalPhotos = (task.attachments?.length || 0) + 
+    (task.updates?.reduce((sum, update) => sum + (update.photos?.length || 0), 0) || 0);
+
+  // Track if image failed to load
+  const [imageError, setImageError] = useState(false);
+  
+  // Reset error state when photo URL changes
+  useEffect(() => {
+    setImageError(false);
+  }, [taskPhoto]);
 
   const handleStarPress = (e: any) => {
     e.stopPropagation(); // Prevent opening task detail
@@ -78,8 +115,11 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           taskStore.markTaskAsRead(user.id, task.id);
         }
         
+        // Navigate directly to the task's detail page (works for both top-level and sub-tasks)
+        // For sub-tasks, pass the sub-task ID as taskId and parentTaskId as context
         if (isSubTask && task.parentTaskId) {
-          onNavigateToTaskDetail(task.parentTaskId, task.id);
+          // Navigate to sub-task detail, passing parentTaskId for context if needed
+          onNavigateToTaskDetail(task.id, undefined);
         } else {
           onNavigateToTaskDetail(task.id);
         }
@@ -90,6 +130,32 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
         className || "mb-2"
       )}
     >
+      {/* Rejection indicator - Show at top if task is rejected */}
+      {task.currentStatus === "rejected" && (
+        <View className={cn(
+          "flex-row items-center mb-2 -mx-3 -mt-3 px-3 py-2 rounded-t-lg border-b",
+          isDarkMode ? "bg-red-900/40 border-red-700" : "bg-red-50 border-red-200"
+        )}>
+          <Ionicons name="close-circle" size={14} color={isDarkMode ? "#fca5a5" : "#dc2626"} />
+          <Text className={cn(
+            "text-base ml-2 font-semibold",
+            isDarkMode ? "text-red-300" : "text-red-700"
+          )}>
+            Rejected - Needs Rework
+          </Text>
+          {task.declineReason && (
+            <View className="ml-2 flex-1">
+              <Text className={cn(
+                "text-sm italic",
+                isDarkMode ? "text-red-400" : "text-red-600"
+              )} numberOfLines={1}>
+                • {task.declineReason}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+      
       {/* Sub-task indicator */}
       {isSubTask && (
         <View className={cn(
@@ -234,8 +300,8 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           </View>
         </View>
         
-        {/* Photo on the right (only first photo) */}
-        {task.attachments && task.attachments.length > 0 && (
+        {/* Photo on the right (most recent photo from updates or attachments) */}
+        {taskPhoto && (
           <View className="ml-3">
             {imageError ? (
               // Placeholder when image fails to load
@@ -251,16 +317,16 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               </View>
             ) : (
               <Image
-                source={{ uri: task.attachments[0] }}
+                source={{ uri: taskPhoto }}
                 className="w-20 h-20 rounded-lg"
                 resizeMode="cover"
                 onError={() => setImageError(true)}
               />
             )}
-            {task.attachments.length > 1 && (
+            {totalPhotos > 1 && (
               <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
                 <Text className="text-white text-sm font-semibold">
-                  +{task.attachments.length - 1}
+                  +{totalPhotos - 1}
                 </Text>
               </View>
             )}

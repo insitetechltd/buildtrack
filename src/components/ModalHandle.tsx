@@ -7,7 +7,7 @@ import { View } from "react-native";
  */
 export default function ModalHandle() {
   return (
-    <View className="w-full items-center py-3">
+    <View className="w-full items-center pt-1.5 pb-3">
       <View className="w-10 h-1 bg-gray-300 rounded-full" />
     </View>
   );

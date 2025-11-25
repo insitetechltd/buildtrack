@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus } from "../types/buildtrack";
+import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus } from "../types/buildtrack";
 
 interface TaskStore {
   tasks: Task[];
@@ -138,6 +138,7 @@ export const useTaskStore = create<TaskStore>()(
             title: task.title,
             description: task.description,
             taskReference: task.task_reference || undefined,
+            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
@@ -332,6 +333,7 @@ export const useTaskStore = create<TaskStore>()(
             title: task.title,
             description: task.description,
             taskReference: task.task_reference || undefined,
+            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
@@ -439,6 +441,7 @@ export const useTaskStore = create<TaskStore>()(
             title: task.title,
             description: task.description,
             taskReference: task.task_reference || undefined,
+            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
@@ -544,6 +547,7 @@ export const useTaskStore = create<TaskStore>()(
             title: taskData.title,
             description: taskData.description,
             taskReference: taskData.task_reference || undefined,
+            billingStatus: (taskData.billing_status || "non_billable") as BillingStatus,
             priority: taskData.priority,
             category: taskData.category,
             dueDate: taskData.due_date,
@@ -554,6 +558,8 @@ export const useTaskStore = create<TaskStore>()(
             location: taskData.location,
             attachments: taskData.attachments || [],
             accepted: taskData.accepted,
+            acceptedBy: taskData.accepted_by || undefined,
+            acceptedAt: taskData.accepted_at || undefined,
             declineReason: taskData.decline_reason,
             // Review workflow fields - CRITICAL: Must include these or review buttons disappear!
             readyForReview: taskData.ready_for_review || false,
@@ -622,6 +628,14 @@ export const useTaskStore = create<TaskStore>()(
           // Check if creator is assigned to the task
           const isCreatorAssigned = taskData.assignedTo.includes(taskData.assignedBy);
           
+          console.log('📋 [createTask] Creating task with data:', {
+            project_id: taskData.projectId,
+            title: taskData.title,
+            assigned_to: taskData.assignedTo,
+            assigned_by: taskData.assignedBy,
+            billing_status: taskData.billingStatus || "non_billable",
+          });
+          
           const { data, error } = await supabase
             .from('tasks')
             .insert({
@@ -629,6 +643,7 @@ export const useTaskStore = create<TaskStore>()(
               title: taskData.title,
               description: taskData.description,
               task_reference: taskData.taskReference || null,
+              billing_status: taskData.billingStatus || "non_billable",
               priority: taskData.priority,
               category: taskData.category,
               due_date: taskData.dueDate,
@@ -636,7 +651,7 @@ export const useTaskStore = create<TaskStore>()(
               completion_percentage: 0,
               assigned_to: taskData.assignedTo,
               assigned_by: taskData.assignedBy,
-              attachments: taskData.attachments,
+              attachments: taskData.attachments || [],
               // Auto-accept if creator is assigned to the task
               accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
@@ -645,7 +660,11 @@ export const useTaskStore = create<TaskStore>()(
             .select()
             .single();
 
-          if (error) throw error;
+          if (error) {
+            console.error('❌ [createTask] Database error:', error);
+            console.error('❌ [createTask] Error details:', JSON.stringify(error, null, 2));
+            throw error;
+          }
 
           // Transform Supabase data to match local interface
           const transformedTask = {
@@ -654,6 +673,7 @@ export const useTaskStore = create<TaskStore>()(
             title: data.title,
             description: data.description,
             taskReference: data.task_reference || undefined,
+            billingStatus: (data.billing_status || "non_billable") as BillingStatus,
             priority: data.priority,
             category: data.category,
             dueDate: data.due_date,
@@ -664,7 +684,14 @@ export const useTaskStore = create<TaskStore>()(
             location: data.location,
             attachments: data.attachments || [],
             accepted: data.accepted,
+            acceptedBy: data.accepted_by || undefined,
+            acceptedAt: data.accepted_at || undefined,
             declineReason: data.decline_reason,
+            readyForReview: data.ready_for_review || false,
+            reviewedBy: data.reviewed_by,
+            reviewedAt: data.reviewed_at,
+            reviewAccepted: data.review_accepted,
+            starredByUsers: data.starred_by_users || [],
             createdAt: data.created_at,
             updatedAt: data.updated_at,
             updates: [], // New task has no updates yet
@@ -754,6 +781,7 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.title) updateData.title = updates.title;
           if (updates.description) updateData.description = updates.description;
           if (updates.taskReference !== undefined) updateData.task_reference = updates.taskReference || null;
+          if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
           if (updates.priority) updateData.priority = updates.priority;
           if (updates.category) updateData.category = updates.category;
           if (updates.dueDate) updateData.due_date = updates.dueDate;
@@ -890,6 +918,22 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       acceptTask: async (taskId, userId) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+        
+        // Prevent accepting if already rejected
+        if (task.currentStatus === "rejected" || task.declineReason) {
+          throw new Error('Cannot accept a rejected task');
+        }
+        
+        // Prevent accepting if already accepted (first user already accepted for all)
+        if (task.accepted === true) {
+          console.log('Task already accepted by', task.acceptedBy);
+          return; // Silently return - task is already accepted for all users
+        }
+        
         await get().updateTask(taskId, { 
           accepted: true,
           currentStatus: "in_progress",
@@ -901,7 +945,19 @@ export const useTaskStore = create<TaskStore>()(
       declineTask: async (taskId, userId, reason) => {
         // Get the task to find the creator
         const task = get().tasks.find(t => t.id === taskId);
-        if (!task) return;
+        if (!task) {
+          throw new Error('Task not found');
+        }
+        
+        // Prevent rejecting if already accepted (first user already accepted for all)
+        if (task.accepted === true) {
+          throw new Error('Cannot reject an accepted task');
+        }
+        
+        // Prevent rejecting if already rejected
+        if (task.currentStatus === "rejected" || task.declineReason) {
+          throw new Error('Task is already rejected');
+        }
 
         // Get user who is rejecting to include their name in update
         const rejectingUser = await (async () => {
@@ -1390,6 +1446,7 @@ export const useTaskStore = create<TaskStore>()(
               title: subTaskData.title,
               description: subTaskData.description,
               task_reference: subTaskData.taskReference || null,
+              billing_status: subTaskData.billingStatus || null,
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
@@ -1488,6 +1545,7 @@ export const useTaskStore = create<TaskStore>()(
               title: subTaskData.title,
               description: subTaskData.description,
               task_reference: subTaskData.taskReference || null,
+              billing_status: subTaskData.billingStatus || null,
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
@@ -1599,6 +1657,8 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.dueDate) updateData.due_date = updates.dueDate;
           if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
           if (updates.attachments) updateData.attachments = updates.attachments;
+          if (updates.taskReference !== undefined) updateData.task_reference = updates.taskReference || null;
+          if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
           if (updates.accepted !== undefined) updateData.accepted = updates.accepted;
           if (updates.declineReason) updateData.decline_reason = updates.declineReason;
           if (updates.currentStatus) updateData.current_status = updates.currentStatus;

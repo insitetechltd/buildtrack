@@ -305,7 +305,11 @@ export default function DashboardScreen({
       }
       
       // If current selection is invalid (project no longer accessible), clear it
-      if (selectedProjectId && !currentUserProjects.some(p => p.id === selectedProjectId)) {
+      // BUT: Only validate if we have projects loaded (don't clear if projects are still loading or empty)
+      // This prevents race conditions where projects haven't loaded yet (e.g., after phone login)
+      if (selectedProjectId && 
+          currentUserProjects.length > 0 && // Only validate if projects are actually loaded
+          !currentUserProjects.some(p => p.id === selectedProjectId)) {
         console.log(`⚠️ [DashboardScreen] Current project no longer accessible, clearing selection`);
         await setSelectedProject(null, user.id);
         // Optionally show picker if user has multiple projects
@@ -356,7 +360,7 @@ export default function DashboardScreen({
   const getNestedTasksAssignedBy = (userId: string): Task[] => {
     return projectFilteredTasks.filter(task => 
       isNestedTask(task) && // Is a nested task
-      task.assignedBy === userId
+      String(task.assignedBy) === String(userId) // Use String() comparison for type safety
     );
   };
 
@@ -405,14 +409,18 @@ export default function DashboardScreen({
   // My Tasks: Rejected
   const myRejectedTasks = myTasksAll.filter(task => task.currentStatus === "rejected");
 
-  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not rejected, not review accepted)
+  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not review accepted)
+  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
   const myWIPTasks = myTasksAll.filter(task => {
+    // Include rejected tasks in WIP
+    if (task.currentStatus === "rejected") {
+      return true;
+    }
     const isSelfAssigned = task.assignedBy === user.id;
     const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
     return isAcceptedOrSelfAssigned && 
            task.completionPercentage < 100 &&
            !isOverdue(task) &&
-           task.currentStatus !== "rejected" &&
            !task.reviewAccepted;
   });
   
@@ -446,33 +454,61 @@ export default function DashboardScreen({
   const inboxAll = [...inboxParentTasks, ...inboxNestedTasks];
 
   // Inbox: Received (not yet responded, not rejected)
-  // Helper: Check if task is pending acceptance (accepted === false, no declineReason, not rejected)
+  // Helper: Check if task is pending acceptance
+  // First user to accept/reject decides for all users
+  // Show if: no one has accepted yet AND no one has rejected yet AND not completed
   const isPendingAcceptance = (task: Task) => {
-    return task.accepted === false && 
+    return !task.accepted &&  // No one has accepted yet
            !task.declineReason && 
-           task.currentStatus !== "rejected";
+           task.currentStatus !== "rejected" &&
+           task.completionPercentage < 100; // Exclude completed tasks
   };
   
   const inboxReceivedTasks = inboxAll.filter(task => isPendingAcceptance(task));
   
-  // Inbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review), not review accepted)
-  const inboxWIPTasks = inboxAll.filter(task =>
-    task.accepted && 
-    !isOverdue(task) &&
-    task.currentStatus !== "rejected" &&
-    (task.completionPercentage < 100 ||
-     (task.completionPercentage === 100 && !task.readyForReview)) &&
-    !task.reviewAccepted
-  );
+  // Inbox: WIP (accepted by anyone - first user accepts for all, not overdue, <100% or (100% but not ready for review), not review accepted)
+  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+  const inboxWIPTasks = inboxAll.filter(task => {
+    // Include rejected tasks in WIP
+    if (task.currentStatus === "rejected") {
+      return true;
+    }
+    return task.accepted === true &&  // Accepted by anyone (first user accepts for all)
+           !isOverdue(task) &&
+           (task.completionPercentage < 100 ||
+            (task.completionPercentage === 100 && !task.readyForReview)) &&
+           !task.reviewAccepted;
+  });
 
   // Inbox: Reviewing (tasks I CREATED waiting for my review action)
   // NOTE: Includes both top-level and nested tasks (all tasks I created)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
-    const isCreatedByMeForReview = task.assignedBy === user.id;
-    return isCreatedByMeForReview &&
+    const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
+    const isTopLevel = isTopLevelTask(task);
+    const isNested = isNestedTask(task);
+    const matches = isCreatedByMeForReview &&
            task.completionPercentage === 100 &&
            task.readyForReview === true &&
            task.reviewAccepted !== true;
+    
+    // Debug logging for subtasks
+    if (isNested && task.completionPercentage === 100 && isCreatedByMeForReview) {
+      console.log('🔍 [DEBUG] Dashboard - Reviewing subtask check:', {
+        title: task.title,
+        taskId: task.id,
+        parentTaskId: task.parentTaskId,
+        isTopLevel,
+        isNested,
+        isCreatedByMeForReview,
+        completionPercentage: task.completionPercentage,
+        readyForReview: task.readyForReview,
+        reviewAccepted: task.reviewAccepted,
+        matches,
+        inProjectFiltered: projectFilteredTasks.includes(task)
+      });
+    }
+    
+    return matches;
   });
 
   // Inbox: Done (100% complete, review accepted)
@@ -495,9 +531,35 @@ export default function DashboardScreen({
   const outboxParentTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-    const isCreatedByMe = task.assignedBy === user.id;
+    // Use String() comparison to handle type mismatches
+    const isCreatedByMe = String(task.assignedBy) === String(user.id);
     const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-    return isTopLevelTask(task) && isCreatedByMe && !isSelfAssignedOnly && task.currentStatus !== "rejected"; // Top-level only
+    const isTopLevel = isTopLevelTask(task);
+    const isNotRejected = task.currentStatus !== "rejected";
+    const matches = isTopLevel && isCreatedByMe && !isSelfAssignedOnly && isNotRejected;
+    
+    // Debug logging for Task 3
+    if (task.title?.toLowerCase().includes("task 3") || 
+        (String(task.assignedBy) === String(user.id) && task.completionPercentage === 100)) {
+      console.log('📦 [OUTBOX PARENT DEBUG] Task check:', {
+        id: task.id,
+        title: task.title,
+        assignedBy: task.assignedBy,
+        assignedByType: typeof task.assignedBy,
+        userId: user.id,
+        userIdType: typeof user.id,
+        isCreatedByMe,
+        assignedTo,
+        isAssignedToMe,
+        isSelfAssignedOnly,
+        isTopLevel,
+        isNotRejected,
+        matches,
+        inProjectFiltered: projectFilteredTasks.includes(task)
+      });
+    }
+    
+    return matches;
   });
 
   const outboxNestedTasks = getNestedTasksAssignedBy(user.id)
@@ -515,15 +577,19 @@ export default function DashboardScreen({
     task.currentStatus !== "rejected"
   );
   
-  // Outbox: WIP (accepted, not overdue, not rejected, <100% or (100% but not ready for review), not review accepted)
-  const outboxWIPTasks = outboxAll.filter(task =>
-    task.accepted && 
-    !isOverdue(task) &&
-    task.currentStatus !== "rejected" &&
-    (task.completionPercentage < 100 ||
-     (task.completionPercentage === 100 && !task.readyForReview)) &&
-    !task.reviewAccepted
-  );
+  // Outbox: WIP (accepted, not overdue, <100% or (100% but not ready for review), not review accepted)
+  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+  const outboxWIPTasks = outboxAll.filter(task => {
+    // Include rejected tasks in WIP
+    if (task.currentStatus === "rejected") {
+      return true;
+    }
+    return task.accepted && 
+           !isOverdue(task) &&
+           (task.completionPercentage < 100 ||
+            (task.completionPercentage === 100 && !task.readyForReview)) &&
+           !task.reviewAccepted;
+  });
 
   // Outbox: Reviewing (tasks I'm ASSIGNED TO that I submitted for review)
   // NOTE: Includes both top-level and nested tasks (all tasks assigned to me)
@@ -539,10 +605,34 @@ export default function DashboardScreen({
   });
   
   // Outbox: Done (100% complete, review accepted)
-  const outboxDoneTasks = outboxAll.filter(task =>
-    task.completionPercentage === 100 &&
-    task.reviewAccepted === true
-  );
+  const outboxDoneTasks = outboxAll.filter(task => {
+    const matches = task.completionPercentage === 100 && task.reviewAccepted === true;
+    
+    // Debug logging for Task 3 or tasks that should be in accomplishments
+    if (task.title?.toLowerCase().includes("task 3") || 
+        (task.completionPercentage === 100 && String(task.assignedBy) === String(user.id))) {
+      console.log('📦 [OUTBOX DEBUG] Task check:', {
+        id: task.id,
+        title: task.title,
+        assignedBy: task.assignedBy,
+        assignedByType: typeof task.assignedBy,
+        userId: user.id,
+        userIdType: typeof user.id,
+        isCreatedByMe: task.assignedBy === user.id,
+        isCreatedByMeStr: String(task.assignedBy) === String(user.id),
+        assignedTo: task.assignedTo,
+        completionPercentage: task.completionPercentage,
+        reviewAccepted: task.reviewAccepted,
+        currentStatus: task.currentStatus,
+        isTopLevel: isTopLevelTask(task),
+        inOutboxParent: outboxParentTasks.includes(task),
+        inOutboxAll: outboxAll.includes(task),
+        matchesDoneFilter: matches
+      });
+    }
+    
+    return matches;
+  });
   
   // Outbox: Overdue (<100%, past due, not rejected)
   const outboxOverdueTasks = outboxAll.filter(task =>

@@ -71,7 +71,7 @@ export type BillingStatus = "billable" | "non_billable" | "billed";
  * Describes the type of work in a task.
  * This is different from UserCategory which describes a user's role.
  */
-export type TaskCategory = "safety" | "electrical" | "plumbing" | "structural" | "general" | "materials";
+export type TaskCategory = "safety" | "electrical" | "plumbing" | "structural" | "general" | "materials" | "commercial";
 
 export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled";
 

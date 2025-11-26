@@ -193,7 +193,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -401,7 +401,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
           }
         }}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -554,7 +554,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
         presentationStyle="pageSheet"
         onRequestClose={() => setShowLanguagePicker(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />

@@ -662,6 +662,11 @@ export default function DashboardScreen({
 
   const outboxTotal = outboxAll.length;
 
+  // Rejected tasks across all sections (calculated after inboxAll and outboxAll are defined)
+  const inboxRejectedTasks = inboxAll.filter(task => task.currentStatus === "rejected");
+  const outboxRejectedTasks = outboxAll.filter(task => task.currentStatus === "rejected");
+  const totalRejectedTasks = myRejectedTasks.length + inboxRejectedTasks.length + outboxRejectedTasks.length;
+
   // Determine what to show based on user's project situation
   const shouldShowDashboard = selectedProjectId !== null;
   const shouldShowNoProjects = userProjectCount === 0;
@@ -796,7 +801,7 @@ export default function DashboardScreen({
                 )}>
                   <Ionicons 
                     name="alarm-outline" 
-                    size={18} 
+                    size={20} 
                     color={isDarkMode ? "#fca5a5" : "#dc2626"} 
                   />
                 </View>
@@ -1063,19 +1068,18 @@ export default function DashboardScreen({
             {/* Divider */}
             <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
-            {/* 4. ACCOMPLISHMENTS Section */}
+            {/* 4. RESULTS Section */}
             <View>
               <View className="flex-row items-center mb-3">
-                <Ionicons name="trophy-outline" size={18} color={isDarkMode ? "#34d399" : "#10b981"} />
                 <Text className={cn(
-                  "text-base font-bold ml-2",
-                  isDarkMode ? "text-emerald-400" : "text-green-600"
+                  "text-lg font-bold",
+                  isDarkMode ? "text-slate-300" : "text-gray-700"
                 )}>
-                  {isDarkMode ? "ACCOMPLISHMENTS" : "Accomplishments"}
+                  {isDarkMode ? "RESULTS" : "Results"}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
-                {/* All Done Tasks */}
+                {/* Work Accepted */}
                 <Pressable 
                   className={cn(
                     "flex-1 rounded-xl p-4 items-center",
@@ -1084,7 +1088,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("my_work");
                     setStatusFilter("done");
-                    setButtonLabel("Accomplishments - Work Accepted");
+                    setButtonLabel("Results - Work Accepted");
                     onNavigateToTasks();
                   }}
                 >
@@ -1094,12 +1098,55 @@ export default function DashboardScreen({
                   )}>
                     {myDoneTasks.length + inboxDoneTasks.length + outboxDoneTasks.length}
                   </Text>
+                  <View className="relative items-center justify-center">
+                    <Ionicons 
+                      name="trophy-outline" 
+                      size={20} 
+                      color={isDarkMode ? "#34d399" : "#10b981"} 
+                      style={{ position: 'absolute', left: -26 }}
+                    />
+                    <Text className={cn(
+                      "text-center text-base font-semibold",
+                      isDarkMode ? "text-emerald-200" : "text-green-600"
+                    )} numberOfLines={2}>
+                      Work{'\n'}Accepted
+                    </Text>
+                  </View>
+                </Pressable>
+                
+                {/* Work Rejected */}
+                <Pressable 
+                  className={cn(
+                    "flex-1 rounded-xl p-4 items-center",
+                    isDarkMode ? "bg-red-900 border-2 border-red-600" : "bg-red-50 border border-red-300"
+                  )}
+                  onPress={() => {
+                    setSectionFilter("my_work");
+                    setStatusFilter("rejected");
+                    setButtonLabel("Results - Work Rejected");
+                    onNavigateToTasks();
+                  }}
+                >
                   <Text className={cn(
-                    "text-center text-base font-semibold",
-                    isDarkMode ? "text-emerald-200" : "text-green-600"
-                  )} numberOfLines={2}>
-                    Work{'\n'}Accepted
+                    "text-4xl mb-1",
+                    isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
+                  )}>
+                    {totalRejectedTasks}
                   </Text>
+                  <View className="relative items-center justify-center">
+                    <Ionicons 
+                      name="close-circle-outline" 
+                      size={20} 
+                      color={isDarkMode ? "#f87171" : "#ef4444"} 
+                      style={{ position: 'absolute', left: -26 }}
+                    />
+                    <Text className={cn(
+                      "text-center text-base font-semibold",
+                      isDarkMode ? "text-red-200" : "text-red-600"
+                    )} numberOfLines={2}>
+                      Work{'\n'}Rejected
+                    </Text>
+                  </View>
                 </Pressable>
               </View>
             </View>

@@ -180,7 +180,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
   if (!user || !task) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         
         {/* Header */}
@@ -704,7 +704,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const isOverdue = new Date(task.dueDate) < new Date() && task.currentStatus !== "completed";
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -1334,7 +1334,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -1528,7 +1528,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -1713,7 +1713,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         presentationStyle="pageSheet"
         onRequestClose={() => setShowReassignModal(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1856,7 +1856,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         presentationStyle="pageSheet"
         onRequestClose={() => setShowProgressDetails(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />

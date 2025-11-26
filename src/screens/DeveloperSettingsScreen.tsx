@@ -223,7 +223,7 @@ export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSet
   };
 
   return (
-    <SafeAreaView className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
+    <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       <StandardHeader

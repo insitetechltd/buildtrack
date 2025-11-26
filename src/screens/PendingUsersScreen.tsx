@@ -14,6 +14,7 @@ import { useAuthStore } from "../state/authStore";
 import { useUserStore } from "../state/userStore.supabase";
 import { User } from "../types/buildtrack";
 import { cn } from "../utils/cn";
+import StandardHeader from "../components/StandardHeader";
 
 interface PendingUsersScreenProps {
   onNavigateBack: () => void;
@@ -140,26 +141,16 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
 
-      {/* Header */}
-      <View className="bg-white border-b border-gray-200 px-4 py-3">
-        <View className="flex-row items-center">
-          <Pressable
-            onPress={onNavigateBack}
-            className="mr-3 w-10 h-10 items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={24} color="#1f2937" />
-          </Pressable>
-          <View className="flex-1">
-            <Text className="text-xl font-bold text-gray-900">Pending Approvals</Text>
-            <Text className="text-sm text-gray-600 mt-0.5">
-              {pendingUsers.length} {pendingUsers.length === 1 ? "user" : "users"} waiting
-            </Text>
-          </View>
-        </View>
-      </View>
+      {/* Standard Header */}
+      <StandardHeader 
+        title="Pending Approvals"
+        subtitle={`${pendingUsers.length} ${pendingUsers.length === 1 ? "user" : "users"} waiting`}
+        showBackButton={true}
+        onBackPress={onNavigateBack}
+      />
 
       {/* Content */}
       <FlatList

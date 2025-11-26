@@ -79,7 +79,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
   
   if (!project) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <StandardHeader 
           title="Project Details"
@@ -182,7 +182,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Header */}
@@ -523,7 +523,7 @@ function EditProjectModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         
         <StandardHeader
@@ -647,7 +647,7 @@ function AddMemberModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         
         <ModalHandle />

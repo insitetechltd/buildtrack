@@ -509,7 +509,7 @@ export default function ProjectsTasksScreen({
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}

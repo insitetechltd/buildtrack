@@ -32,7 +32,6 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
-import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useTranslation } from "../utils/useTranslation";
 
@@ -515,7 +514,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   // Admin users should not be able to create tasks
   if (isAdmin(user)) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         
         {/* Header */}
@@ -708,7 +707,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -1015,31 +1014,28 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             </Pressable>
           </View>
 
-          {/* Bottom Spacing for Fixed Button */}
-          <View className="h-24" />
+          {/* Create Task Button */}
+          <View className="mt-6 mb-6">
+            <Pressable
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              className={cn(
+                "rounded-lg py-4 items-center shadow-lg",
+                isSubmitting 
+                  ? "bg-gray-300" 
+                  : "bg-blue-600"
+              )}
+            >
+              <Text className="text-white font-semibold text-lg">
+                {isSubmitting 
+                  ? (editTaskId ? "Updating..." : "Creating...") 
+                  : (editTaskId ? "Update Task" : "Create Task")
+                }
+              </Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Fixed Create Button at Bottom */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4 pb-6">
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={cn(
-            "rounded-lg py-4 items-center shadow-lg",
-            isSubmitting 
-              ? "bg-gray-300" 
-              : "bg-blue-600"
-          )}
-        >
-          <Text className="text-white font-semibold text-lg">
-            {isSubmitting 
-              ? (editTaskId ? "Updating..." : "Creating...") 
-              : (editTaskId ? "Update Task" : "Create Task")
-            }
-          </Text>
-        </Pressable>
-      </View>
 
       {/* Priority Picker Modal */}
       <Modal
@@ -1048,7 +1044,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         presentationStyle="pageSheet"
         onRequestClose={() => setShowPriorityPicker(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1147,7 +1143,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBillingStatusPicker(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1262,7 +1258,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         presentationStyle="pageSheet"
         onRequestClose={() => setShowCategoryPicker(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1280,7 +1276,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {(["general", "safety", "electrical", "plumbing", "structural", "materials"] as TaskCategory[]).map((category) => (
+            {(["general", "safety", "electrical", "plumbing", "structural", "materials", "commercial"] as TaskCategory[]).map((category) => (
               <Pressable
                 key={category}
                 onPress={() => {
@@ -1313,6 +1309,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     category === "plumbing" ? "water" :
                     category === "structural" ? "hammer" :
                     category === "materials" ? "cube" :
+                    category === "commercial" ? "business" :
                     "list"
                   } 
                   size={24} 
@@ -1331,7 +1328,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         presentationStyle="pageSheet"
         onRequestClose={() => setShowProjectPicker(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1407,7 +1404,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           setIsLoadingUsers(false);
         }}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />
@@ -1589,8 +1586,6 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         </SafeAreaView>
       </Modal>
 
-      {/* Logout FAB */}
-      <LogoutFAB />
     </SafeAreaView>
   );
 }

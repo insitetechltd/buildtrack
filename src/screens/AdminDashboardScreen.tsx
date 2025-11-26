@@ -77,7 +77,7 @@ export default function AdminDashboardScreen({
 
   if (!isAdmin(user)) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Access denied. Admin role required.</Text>
@@ -377,7 +377,7 @@ export default function AdminDashboardScreen({
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -536,7 +536,7 @@ export default function AdminDashboardScreen({
         presentationStyle="pageSheet"
         onRequestClose={() => setShowBannerModal(false)}
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <StatusBar style="dark" />
           
           <ModalHandle />

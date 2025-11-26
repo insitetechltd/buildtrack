@@ -120,6 +120,7 @@ export const en = {
     plumbing: "Plumbing",
     structural: "Structural",
     materials: "Materials",
+    commercial: "Commercial",
   },
 
   // Projects

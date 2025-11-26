@@ -66,7 +66,7 @@ function DashboardStack() {
         name="TaskDetailFromDashboard" 
         component={TaskDetailFromDashboardWrapper}
         options={{
-          presentation: "modal"
+          presentation: "card"
         }}
       />
       <Stack.Screen 
@@ -144,14 +144,14 @@ function TasksStack() {
         name="TaskDetail" 
         component={TaskDetailScreenWrapper}
         options={{
-          presentation: "modal"
+          presentation: "card"
         }}
       />
       <Stack.Screen 
         name="CreateTaskFromTask" 
         component={CreateTaskFromTaskWrapper}
         options={{
-          presentation: "modal"
+          presentation: "card"
         }}
       />
     </Stack.Navigator>
@@ -187,14 +187,14 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         console.log('🚀 parentSubTaskId:', parentSubTaskId);
         console.log('🚀 editTaskId:', editTaskId);
         
-        // Navigate within the same stack to CreateTaskFromTask
-        navigation.navigate("CreateTaskFromTask", { 
+        // Navigate to CreateTask tab at parent level (consistent with other FAB navigation)
+        navigation.getParent()?.navigate("CreateTask", { 
           parentTaskId, 
           parentSubTaskId,
           editTaskId
         });
         
-        console.log('🚀 Navigation called to CreateTaskFromTask');
+        console.log('🚀 Navigation called to CreateTask tab');
       }}
     />
   );

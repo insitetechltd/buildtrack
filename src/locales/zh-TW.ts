@@ -120,6 +120,7 @@ export const zhTW = {
     plumbing: "水電",
     structural: "結構",
     materials: "材料",
+    commercial: "商業",
   },
 
   // Projects

@@ -62,16 +62,12 @@ export default function StandardHeader({
 
   const banner = getCompanyBanner(user.companyId);
 
-  // Use FIXED top padding to ensure perfect consistency across all simulators
-  // iPhone 17 Pro and similar devices should all use the same fixed value
-  // This prevents any variations in reported insets.top from causing spacing differences
-  // 
-  // Strategy: Use a fixed 50px for ALL devices that have any top inset (insets.top > 0)
-  // This ensures iPhone 17 Pro simulators all get the same spacing regardless of
-  // variations in reported inset values (e.g., 44px vs 47px vs 59px)
-  // For devices with no inset (web/desktop), use 44px as minimum
+  // Calculate top padding based on safe area insets
+  // Since SafeAreaView already handles the safe area, we only need minimal padding
+  // Use the actual inset value plus a small buffer (8px) for comfortable spacing
+  // For devices with no inset (web/desktop), use 16px as minimum
   console.log('insets.top', insets.top);
-  const topPadding = insets.top > 0 ? 40 : 16;
+  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
   
   // Debug logging to help diagnose spacing issues
   if (__DEV__) {

@@ -61,7 +61,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
 
   if (!isAdmin(currentUser)) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Access denied. Admin role required.</Text>
@@ -380,7 +380,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -496,7 +496,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -594,7 +594,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -654,7 +654,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
           <ModalHandle />
           
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">

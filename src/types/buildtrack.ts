@@ -37,7 +37,7 @@
  * 
  * @deprecated Use SystemPermission instead. UserRole is kept for backward compatibility.
  */
-export type UserRole = "admin" | "manager" | "member";
+export type UserRole = "admin" | "manager" | "worker" | "member";
 
 /**
  * SYSTEM PERMISSION (System-wide access level)
@@ -71,7 +71,7 @@ export type BillingStatus = "billable" | "non_billable" | "billed";
  * Describes the type of work in a task.
  * This is different from UserCategory which describes a user's role.
  */
-export type TaskCategory = "safety" | "electrical" | "plumbing" | "structural" | "general" | "commericals" | "other";
+export type TaskCategory = "safety" | "electrical" | "plumbing" | "structural" | "general" | "materials";
 
 export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled";
 

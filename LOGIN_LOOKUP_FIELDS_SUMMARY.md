@@ -169,3 +169,5 @@ WHERE u.email = 'admin@buildtrack.com' OR u.id IN (
 The most common issue is the **final lookup** (`users.id`) failing because the user doesn't exist in the `users` table even though they authenticated successfully in `auth.users`.
 
 
+
+

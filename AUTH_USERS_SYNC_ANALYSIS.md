@@ -205,3 +205,5 @@ WHERE id NOT IN (SELECT id FROM auth.users);
 5. Run sync check queries to identify and fix existing issues
 
 
+
+

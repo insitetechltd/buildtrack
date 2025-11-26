@@ -20,17 +20,9 @@ echo "  Profile: $PROFILE"
 echo ""
 
 # Determine which build-local script to use
-if [ -f "./build-local-FIXED.sh" ]; then
-    BUILD_LOCAL_SCRIPT="./build-local-FIXED.sh"
-    echo "✅ Using: build-local-FIXED.sh"
-elif [ -f "./build-local.sh" ]; then
-    BUILD_LOCAL_SCRIPT="./build-local.sh"
-    echo "⚠️  Using: build-local.sh (old version)"
-else
-    echo "❌ Error: No build-local script found"
-    exit 1
-fi
-echo ""
+
+BUILD_LOCAL_SCRIPT="./build-local.sh"
+
 
 # Step 1: Build using build-local script
 echo "🔨 Step 1/2: Building (calling $BUILD_LOCAL_SCRIPT)..."

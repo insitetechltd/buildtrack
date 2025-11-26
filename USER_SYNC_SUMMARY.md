@@ -173,3 +173,5 @@ AND (u.email != au.email OR COALESCE(u.phone, '') != COALESCE(au.phone, ''));
 - The trigger in `SYNC_AUTH_USERS_TRIGGER.sql` will prevent future sync issues
 
 
+
+

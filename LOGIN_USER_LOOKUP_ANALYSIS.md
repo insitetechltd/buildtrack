@@ -278,3 +278,5 @@ AND u.email = 'admin@buildtrack.com';
 The most common issue is **Step 3 failure**: User authenticates successfully but doesn't exist in `users` table (sync issue).
 
 
+
+

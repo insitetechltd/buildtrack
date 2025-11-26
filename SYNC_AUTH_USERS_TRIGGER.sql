@@ -149,3 +149,5 @@ WHERE trigger_name = 'on_auth_user_created';
 -- WHERE au.id IS NULL;
 
 
+
+

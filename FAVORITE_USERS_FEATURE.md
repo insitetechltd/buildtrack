@@ -116,3 +116,5 @@ Potential improvements:
 - Add bulk favorite management screen
 
 
+
+

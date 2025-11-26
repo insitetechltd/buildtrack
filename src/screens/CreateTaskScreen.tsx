@@ -1066,39 +1066,76 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => (
-              <Pressable
-                key={priority}
-                onPress={() => {
-                  handlePriorityChange(priority);
-                  setShowPriorityPicker(false);
-                }}
-                className={cn(
-                  "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
-                  formData.priority === priority ? "border-blue-500 bg-blue-50" : "border-gray-300"
-                )}
-              >
-                <View className={cn(
-                  "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
-                  formData.priority === priority ? "border-blue-500" : "border-gray-300"
-                )}>
-                  {formData.priority === priority && (
-                    <View className="w-3 h-3 rounded-full bg-blue-500" />
+            {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
+              // Define colors for each priority
+              const priorityColors = {
+                critical: {
+                  bg: "bg-black",
+                  border: "border-black",
+                  text: "text-white",
+                  icon: "#ffffff",
+                  selectedDot: "bg-white"
+                },
+                high: {
+                  bg: "bg-red-500",
+                  border: "border-red-500",
+                  text: "text-white",
+                  icon: "#ffffff",
+                  selectedDot: "bg-white"
+                },
+                medium: {
+                  bg: "bg-yellow-400",
+                  border: "border-yellow-400",
+                  text: "text-gray-900",
+                  icon: "#1f2937",
+                  selectedDot: "bg-gray-900"
+                },
+                low: {
+                  bg: "bg-green-500",
+                  border: "border-green-500",
+                  text: "text-white",
+                  icon: "#ffffff",
+                  selectedDot: "bg-white"
+                }
+              };
+
+              const colors = priorityColors[priority];
+              const isSelected = formData.priority === priority;
+
+              return (
+                <Pressable
+                  key={priority}
+                  onPress={() => {
+                    handlePriorityChange(priority);
+                    setShowPriorityPicker(false);
+                  }}
+                  className={cn(
+                    "border rounded-lg px-4 py-4 mb-3 flex-row items-center",
+                    isSelected ? `${colors.bg} ${colors.border}` : `${colors.bg} ${colors.border} opacity-60`
                   )}
-                </View>
-                <Text className={cn(
-                  "text-lg font-medium capitalize flex-1",
-                  formData.priority === priority ? "text-blue-900" : "text-gray-900"
-                )}>
-                  {priority}
-                </Text>
-                <Ionicons 
-                  name={priority === "critical" ? "alert-circle" : priority === "high" ? "arrow-up-circle" : priority === "medium" ? "remove-circle" : "arrow-down-circle"} 
-                  size={24} 
-                  color={formData.priority === priority ? "#3b82f6" : "#6b7280"} 
-                />
-              </Pressable>
-            ))}
+                >
+                  <View className={cn(
+                    "w-5 h-5 rounded-full border-2 items-center justify-center mr-3",
+                    isSelected ? "border-white" : "border-white opacity-70"
+                  )}>
+                    {isSelected && (
+                      <View className={cn("w-3 h-3 rounded-full", colors.selectedDot)} />
+                    )}
+                  </View>
+                  <Text className={cn(
+                    "text-lg font-medium capitalize flex-1",
+                    colors.text
+                  )}>
+                    {priority}
+                  </Text>
+                  <Ionicons 
+                    name={priority === "critical" ? "alert-circle" : priority === "high" ? "arrow-up-circle" : priority === "medium" ? "remove-circle" : "arrow-down-circle"} 
+                    size={24} 
+                    color={colors.icon} 
+                  />
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </SafeAreaView>
       </Modal>

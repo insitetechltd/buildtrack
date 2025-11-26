@@ -10,6 +10,9 @@
     "expo-go:clear": "expo start --clear",
     "expo-go:tunnel": "expo start --tunnel",
     "android": "expo run:android",
+    "android:build": "./build-android.sh",
+    "android:build:install": "./build-android.sh --install",
+    "android:build:clean": "./build-android.sh --clean",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "postinstall": "patch-package",
@@ -36,7 +39,8 @@
         "expo-constants",
         "expo-manifests",
         "expo-web-browser",
-        "expo-eas-client"
+        "expo-eas-client",
+        "expo-image"
       ]
     }
   },
@@ -62,7 +66,6 @@
     "expo-application": "~6.1.4",
     "expo-asset": "~12.0.9",
     "expo-auth-session": "^6.0.3",
-    "expo-av": "~15.1.4",
     "expo-background-fetch": "~13.1.5",
     "expo-battery": "~9.1.4",
     "expo-blur": "~14.1.4",
@@ -81,7 +84,6 @@
     "expo-file-system": "~19.0.17",
     "expo-font": "~14.0.9",
     "expo-haptics": "~14.1.4",
-    "expo-image": "~2.1.6",
     "expo-image-manipulator": "~13.1.5",
     "expo-image-picker": "~16.1.4",
     "expo-insights": "~0.9.3",

@@ -125,15 +125,25 @@ export default function DashboardScreen({
   // Track when projects AND user assignments have been initialized
   // Both are needed because getProjectsByUser depends on userAssignments
   useEffect(() => {
+    if (!user) return;
+    
     // Mark as initialized when:
-    // 1. Loading is complete AND we have a user, OR
-    // 2. We have projects in the store (which means at least one fetch completed)
-    // Note: We don't require userAssignments to have data (user might have 0 projects),
-    // but we do require loading to be complete
-    if ((!isLoadingProjects && user) || projects.length > 0) {
-      setHasInitialized(true);
+    // 1. Loading is complete (both projects and assignments have been fetched)
+    // 2. We have either projects in the store OR we've confirmed the user has 0 projects
+    // This ensures getProjectsByUser will return accurate results
+    const hasProjectsLoaded = projects.length > 0;
+    const hasAssignmentsLoaded = !isLoadingProjects; // When loading is false, assignments fetch is complete
+    
+    // Only mark as initialized if loading is complete
+    // This prevents premature initialization before data is fetched
+    if (!isLoadingProjects && (hasProjectsLoaded || userAssignments.length >= 0)) {
+      // Additional check: if we have assignments but no projects, we might still be loading projects
+      // So only mark initialized if we have projects OR we've confirmed user has 0 assignments
+      if (hasProjectsLoaded || (userAssignments.length === 0 && hasAssignmentsLoaded)) {
+        setHasInitialized(true);
+      }
     }
-  }, [projects.length, isLoadingProjects, user]);
+  }, [projects.length, isLoadingProjects, user, userAssignments.length]);
 
   // Check if any critical data is still loading
   const isAnyDataLoading = isLoadingProjects || isLoadingTasks || isLoadingUsers;
@@ -166,6 +176,15 @@ export default function DashboardScreen({
     // Only run once on initial load
     // Wait for initialization AND ensure we're not still loading (to avoid race conditions)
     if (!user || !hasInitialized || hasRunInitialSelection.current || isLoadingProjects) return;
+    
+    // Ensure projects have been fetched - if projects array is empty but we're not loading,
+    // we might need to fetch them first
+    if (projects.length === 0 && !isLoadingProjects) {
+      console.log('⚠️ [DashboardScreen] Projects array is empty but not loading - fetching projects...');
+      fetchProjects();
+      fetchUserProjectAssignments(user.id);
+      return; // Wait for next render after fetch
+    }
     
     // Recalculate userProjects here to ensure we have the latest data
     const currentUserProjects = getProjectsByUser(user.id);

@@ -375,6 +375,22 @@ export interface TaskUpdate {
 }
 
 /**
+ * Task Edit History - Audit log for task metadata changes
+ * Tracks who changed what, when, and why (for fairness and transparency)
+ */
+export interface TaskEditHistory {
+  id: string;
+  taskId: string;
+  editedBy: string;
+  editedAt: string;
+  changes: Record<string, { old: any; new: any }>;
+  editReason?: string;
+  notificationsSent: boolean;
+  notifiedAt?: string;
+  createdAt: string;
+}
+
+/**
  * TASK (Unified)
  * 
  * After migration: tasks and sub_tasks are now unified into a single table.
@@ -439,6 +455,11 @@ export interface Task {
   // Cancellation (soft delete)
   cancelledAt?: string | null; // Timestamp when cancelled, null if not cancelled
   cancelledBy?: string; // User ID who cancelled the task
+  
+  // Edit history and notifications
+  editHistory?: TaskEditHistory[]; // Loaded separately or on-demand
+  hasUnreadChanges?: boolean; // Flag for assignees to know task was edited
+  lastEditedAt?: string; // When was it last edited
 }
 
 /**

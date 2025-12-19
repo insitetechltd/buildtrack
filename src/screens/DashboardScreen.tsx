@@ -107,10 +107,10 @@ export default function DashboardScreen({
       ]);
       
       console.log('✅ Manual refresh completed');
-      Alert.alert('Success', 'Data refreshed successfully!');
+      Alert.alert(t.dashboard.success, t.dashboard.dataRefreshed);
     } catch (error) {
       console.error('❌ Manual refresh failed:', error);
-      Alert.alert('Error', 'Failed to refresh data. Please try again.');
+      Alert.alert(t.dashboard.error, t.dashboard.refreshFailed);
     }
   };
 
@@ -350,12 +350,12 @@ export default function DashboardScreen({
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
-        <StandardHeader title="Dashboard" />
+        <StandardHeader title={t.nav.dashboard} />
         
         <View className="flex-1 items-center justify-center">
           <LoadingIndicator isLoading={true} />
           <Text className={cn("text-base mt-4", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-            {isLoadingProjects ? "Loading projects..." : isLoadingTasks ? "Loading tasks..." : isLoadingUsers ? "Loading users..." : "Loading data..."}
+            {isLoadingProjects ? t.dashboard.loadingProjects : isLoadingTasks ? t.dashboard.loadingTasks : isLoadingUsers ? t.dashboard.loadingUsers : t.dashboard.loadingData}
           </Text>
         </View>
       </SafeAreaView>
@@ -679,7 +679,7 @@ export default function DashboardScreen({
       
       {/* Header */}
       <StandardHeader 
-        title="Dashboard"
+        title={t.nav.dashboard}
         subtitle={selectedProject ? selectedProject.name : undefined}
         rightElement={
           <Pressable 
@@ -709,10 +709,10 @@ export default function DashboardScreen({
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="folder-open-outline" size={64} color={isDarkMode ? "#94a3b8" : "#9ca3af"} />
           <Text className={cn("text-xl font-semibold mt-4 text-center", isDarkMode ? "text-white" : "text-gray-900")}>
-            No Projects Yet
+            {t.dashboard.noProjectsYet}
           </Text>
           <Text className={cn("text-base mt-2 text-center", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-            You haven't been assigned to any projects yet. Contact your admin to get started.
+            {t.dashboard.noProjectsMessage}
           </Text>
         </View>
       ) : shouldShowEmptyState ? (
@@ -720,10 +720,10 @@ export default function DashboardScreen({
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="business-outline" size={64} color={isDarkMode ? "#94a3b8" : "#9ca3af"} />
           <Text className={cn("text-xl font-semibold mt-4 text-center", isDarkMode ? "text-white" : "text-gray-900")}>
-            Select a Project
+            {t.dashboard.selectAProject}
           </Text>
           <Text className={cn("text-base mt-2 text-center", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-            Please select a project to view your dashboard
+            {t.dashboard.selectProjectMessage}
           </Text>
         </View>
       ) : (
@@ -764,7 +764,7 @@ export default function DashboardScreen({
                     "text-lg ml-3",
                     isDarkMode ? "font-bold text-white" : "font-semibold text-gray-900"
                   )}>
-                  Key Tasks ({starredTasks.length})
+                  {t.dashboard.keyTasks} ({starredTasks.length})
                 </Text>
               </View>
               
@@ -809,7 +809,7 @@ export default function DashboardScreen({
                   "text-lg font-bold",
                   isDarkMode ? "text-red-400" : "text-red-600"
                 )}>
-                  {isDarkMode ? "OVERDUE" : "Overdue"}
+                  {t.dashboard.overdue}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -836,7 +836,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-red-200" : "text-red-600"
                   )} numberOfLines={2}>
-                    My Action{'\n'}Required Now
+                    {t.dashboard.myActionRequiredNow}
                   </Text>
                 </Pressable>
                 
@@ -863,7 +863,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-red-200" : "text-red-600"
                   )} numberOfLines={2}>
-                    Follow Up{'\n'}Now
+                    {t.dashboard.followUpNow}
                   </Text>
                 </Pressable>
               </View>
@@ -880,7 +880,7 @@ export default function DashboardScreen({
                   "text-lg font-bold ml-2",
                   isDarkMode ? "text-amber-400" : "text-amber-600"
                 )}>
-                  {isDarkMode ? "TASKS FOR ME" : "Tasks for me"}
+                  {t.dashboard.tasksForMe}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -907,7 +907,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-amber-200" : "text-yellow-600"
                   )} numberOfLines={2}>
-                    New{'\n'}Requests
+                    {t.dashboard.newRequests}
                   </Text>
                 </Pressable>
                 
@@ -934,7 +934,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-violet-200" : "text-orange-600"
                   )} numberOfLines={2}>
-                    Current{'\n'}Tasks
+                    {t.dashboard.currentTasks}
                   </Text>
                 </Pressable>
                 
@@ -961,7 +961,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-cyan-200" : "text-blue-600"
                   )} numberOfLines={2}>
-                    Pending{'\n'}my review
+                    {t.dashboard.pendingMyReview}
                   </Text>
                 </Pressable>
               </View>
@@ -978,7 +978,7 @@ export default function DashboardScreen({
                   "text-lg font-bold ml-2",
                   isDarkMode ? "text-purple-400" : "text-purple-600"
                 )}>
-                  {isDarkMode ? "TASKS FROM ME" : "Tasks from me"}
+                  {t.dashboard.tasksFromMe}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -1005,7 +1005,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-amber-200" : "text-yellow-600"
                   )} numberOfLines={2}>
-                    Pending{'\n'}Acceptance
+                    {t.dashboard.pendingAcceptance}
                   </Text>
                 </Pressable>
                 
@@ -1032,7 +1032,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-violet-200" : "text-orange-600"
                   )} numberOfLines={2}>
-                    Team{'\n'}Proceeding
+                    {t.dashboard.teamProceeding}
                   </Text>
                 </Pressable>
                 
@@ -1059,7 +1059,7 @@ export default function DashboardScreen({
                     "text-center text-base font-semibold",
                     isDarkMode ? "text-cyan-200" : "text-blue-600"
                   )} numberOfLines={2}>
-                    Pending{'\n'}Approval
+                    {t.dashboard.pendingApproval}
                   </Text>
                 </Pressable>
               </View>
@@ -1068,14 +1068,15 @@ export default function DashboardScreen({
             {/* Divider */}
             <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
-            {/* 4. RESULTS Section */}
+            {/* 4. REPORT CARDS Section */}
             <View>
               <View className="flex-row items-center mb-3">
+                <Ionicons name="document-text-outline" size={20} color={isDarkMode ? "#94a3b8" : "#4b5563"} />
                 <Text className={cn(
-                  "text-lg font-bold",
+                  "text-lg font-bold ml-2",
                   isDarkMode ? "text-slate-300" : "text-gray-700"
                 )}>
-                  {isDarkMode ? "RESULTS" : "Results"}
+                  {t.dashboard.accomplishments}
                 </Text>
               </View>
               <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
@@ -1088,7 +1089,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("my_work");
                     setStatusFilter("done");
-                    setButtonLabel("Results - Work Accepted");
+                    setButtonLabel("Report Cards - Work Accepted");
                     onNavigateToTasks();
                   }}
                 >
@@ -1109,7 +1110,7 @@ export default function DashboardScreen({
                       "text-center text-base font-semibold",
                       isDarkMode ? "text-emerald-200" : "text-green-600"
                     )} numberOfLines={2}>
-                      Work{'\n'}Accepted
+                      {t.dashboard.workAccepted}
                     </Text>
                   </View>
                 </Pressable>
@@ -1123,7 +1124,7 @@ export default function DashboardScreen({
                   onPress={() => {
                     setSectionFilter("my_work");
                     setStatusFilter("rejected");
-                    setButtonLabel("Results - Work Rejected");
+                    setButtonLabel("Report Cards - Work Rejected");
                     onNavigateToTasks();
                   }}
                 >
@@ -1144,7 +1145,7 @@ export default function DashboardScreen({
                       "text-center text-base font-semibold",
                       isDarkMode ? "text-red-200" : "text-red-600"
                     )} numberOfLines={2}>
-                      Work{'\n'}Rejected
+                      {t.dashboard.workRejected}
                     </Text>
                   </View>
                 </Pressable>
@@ -1176,7 +1177,7 @@ export default function DashboardScreen({
                   "text-lg font-bold ml-3",
                   isDarkMode ? "text-white" : "text-gray-900"
                 )}>
-                  Quick Overview
+                  {t.dashboard.quickOverview}
                 </Text>
               </View>
               <Ionicons 
@@ -1198,14 +1199,14 @@ export default function DashboardScreen({
                     "text-base font-bold ml-2",
                     isDarkMode ? "text-emerald-400" : "text-gray-900"
                   )}>
-                    My Tasks ({myTasksTotal})
+                    {t.dashboard.myTasks} ({myTasksTotal})
                   </Text>
                 </View>
                 <Text className={cn(
                   "text-sm italic",
                   isDarkMode ? "text-slate-400" : "text-gray-500"
                 )}>
-                  Tap star in Tasks screen
+                  {t.dashboard.tapStarHint}
                 </Text>
               </View>
               
@@ -1230,7 +1231,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>Rejected</Text>
+                    )} numberOfLines={1}>{t.dashboard.rejected}</Text>
                   </Pressable>
                   
                 {/* WIP */}
@@ -1253,7 +1254,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>WIP</Text>
+                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
                   </Pressable>
                   
                 {/* Done */}
@@ -1276,7 +1277,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>Done</Text>
+                    )} numberOfLines={1}>{t.dashboard.done}</Text>
                   </Pressable>
                   
                 {/* Overdue */}
@@ -1299,7 +1300,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>Overdue</Text>
+                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
                   </Pressable>
                 </View>
             </View>
@@ -1316,7 +1317,7 @@ export default function DashboardScreen({
                     "text-base font-bold ml-2",
                     isDarkMode ? "text-blue-400" : "text-gray-900"
                   )}>
-                    Inbox ({inboxTotal})
+                    {t.dashboard.inbox} ({inboxTotal})
                   </Text>
                 </View>
               </View>
@@ -1342,7 +1343,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>Received</Text>
+                    )} numberOfLines={1}>{t.dashboard.received}</Text>
                   </Pressable>
                   
                 {/* WIP */}
@@ -1365,7 +1366,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>WIP</Text>
+                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
                   </Pressable>
                   
                 {/* Reviewing */}
@@ -1388,7 +1389,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
-                    )} numberOfLines={1}>Reviewing</Text>
+                    )} numberOfLines={1}>{t.dashboard.reviewing}</Text>
                   </Pressable>
                   
                 {/* Done */}
@@ -1411,7 +1412,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>Done</Text>
+                    )} numberOfLines={1}>{t.dashboard.done}</Text>
                   </Pressable>
                   
                 {/* Overdue */}
@@ -1434,7 +1435,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>Overdue</Text>
+                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
                   </Pressable>
                 </View>
             </View>
@@ -1451,7 +1452,7 @@ export default function DashboardScreen({
                     "text-base font-bold ml-2",
                     isDarkMode ? "text-purple-400" : "text-gray-900"
                   )}>
-                    Outbox ({outboxTotal})
+                    {t.dashboard.outbox} ({outboxTotal})
                   </Text>
                 </View>
               </View>
@@ -1477,7 +1478,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>Assigned</Text>
+                    )} numberOfLines={1}>{t.dashboard.assigned}</Text>
                   </Pressable>
                   
                 {/* WIP */}
@@ -1500,7 +1501,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>WIP</Text>
+                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
                   </Pressable>
                   
                 {/* Reviewing */}
@@ -1523,7 +1524,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
-                    )} numberOfLines={1}>Reviewing</Text>
+                    )} numberOfLines={1}>{t.dashboard.reviewing}</Text>
                   </Pressable>
                   
                 {/* Done */}
@@ -1546,7 +1547,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>Done</Text>
+                    )} numberOfLines={1}>{t.dashboard.done}</Text>
                   </Pressable>
                   
                 {/* Overdue */}
@@ -1569,7 +1570,7 @@ export default function DashboardScreen({
                     <Text className={cn(
                       "text-center font-medium",
                       isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>Overdue</Text>
+                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
                   </Pressable>
               </View>
                 </View>
@@ -1634,7 +1635,7 @@ export default function DashboardScreen({
               >
                 <Ionicons name="business-outline" size={22} color="#3b82f6" />
                 <Text className="text-gray-900 text-base font-medium ml-3">
-                  Change Project
+                  {t.dashboard.changeProject}
                 </Text>
               </Pressable>
 
@@ -1649,7 +1650,7 @@ export default function DashboardScreen({
               >
                 <Ionicons name="person-outline" size={22} color="#3b82f6" />
                 <Text className="text-gray-900 text-base font-medium ml-3">
-                  Profile & Settings
+                  {t.dashboard.profileAndSettings}
                 </Text>
               </Pressable>
 
@@ -1659,12 +1660,12 @@ export default function DashboardScreen({
                 onPress={() => {
                   setShowProfileMenu(false);
                   Alert.alert(
-                    "Logout",
-                    "Are you sure you want to logout?",
+                    t.dashboard.logout,
+                    t.dashboard.logoutConfirm,
                     [
-                      { text: "Cancel", style: "cancel" },
+                      { text: t.common.cancel, style: "cancel" },
                       { 
-                        text: "Logout", 
+                        text: t.dashboard.logout, 
                         style: "destructive",
                         onPress: logout
                       },
@@ -1675,7 +1676,7 @@ export default function DashboardScreen({
               >
                 <Ionicons name="log-out-outline" size={22} color="#ef4444" />
                 <Text className="text-red-600 text-base font-medium ml-3">
-                  Logout
+                  {t.dashboard.logout}
                 </Text>
               </Pressable>
             </View>
@@ -1698,10 +1699,10 @@ export default function DashboardScreen({
         <View className="absolute inset-0 bg-black/50 items-center justify-center">
           <View className="bg-white rounded-xl p-6 items-center shadow-lg">
             <Text className="text-xl font-semibold text-gray-900 mb-2">
-              Switching Project...
+              {t.dashboard.switchingProject}
                 </Text>
             <Text className="text-base text-gray-600 text-center">
-              Refreshing all data for the new project
+              {t.dashboard.refreshingData}
                 </Text>
           </View>
               </View>

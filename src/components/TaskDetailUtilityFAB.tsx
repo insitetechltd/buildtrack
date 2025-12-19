@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { View, Pressable, Animated, Text, PanResponder, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "../utils/useTranslation";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -14,6 +15,7 @@ interface TaskDetailUtilityFABProps {
 }
 
 export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel, canEdit, canCreateSubTask, canCancel }: TaskDetailUtilityFABProps) {
+  const t = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current; // Edit
@@ -253,7 +255,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
             className="flex-row items-center"
           >
             <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canCancel ? 'bg-gray-800' : 'bg-gray-600'}`}>
-              <Text className={`text-base font-medium ${canCancel ? 'text-white' : 'text-gray-300'}`}>Cancel Task</Text>
+              <Text className={`text-base font-medium ${canCancel ? 'text-white' : 'text-gray-300'}`}>{t.fab.cancelTask}</Text>
             </View>
             <Pressable
               onPress={handleCancel}
@@ -289,7 +291,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
         className="flex-row items-center"
       >
         <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canEdit ? 'bg-gray-800' : 'bg-gray-600'}`}>
-          <Text className={`text-base font-medium ${canEdit ? 'text-white' : 'text-gray-300'}`}>Edit Task Detail</Text>
+          <Text className={`text-base font-medium ${canEdit ? 'text-white' : 'text-gray-300'}`}>{t.fab.editTaskDetail}</Text>
         </View>
         <Pressable
           onPress={handleEdit}
@@ -325,7 +327,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
           className="flex-row items-center"
         >
           <View className={`px-3 py-2 rounded-lg mr-2 shadow-lg ${canCreateSubTask ? 'bg-gray-800' : 'bg-gray-600'}`}>
-            <Text className={`text-base font-medium ${canCreateSubTask ? 'text-white' : 'text-gray-300'}`}>Add Sub-task</Text>
+            <Text className={`text-base font-medium ${canCreateSubTask ? 'text-white' : 'text-gray-300'}`}>{t.fab.addSubTask}</Text>
           </View>
           <Pressable
             onPress={handleCreateSubTask}

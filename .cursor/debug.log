@@ -1,0 +1,16 @@
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765938912524},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765938935230},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765938965785},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765939001436},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765939028318},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765940529548},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765947519988},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765954510526},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765961501080},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765968491501},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765975482027},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765978992239},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"supabase.ts:65","message":"Fetch finally block","data":{"url":"https://zusulknbhaumougqckec.supabase.co/auth/v1/token?grant_type=refresh_token","timestamp":1765985982800},"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1765987519953},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1766032066954},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}
+{"location":"App.tsx:36","message":"Setting up global error handler","data":{"timestamp":1766032070894},"sessionId":"debug-session","runId":"run1","hypothesisId":"E"}

@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import { View, Pressable, Animated, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "../utils/useTranslation";
 
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
@@ -9,6 +10,7 @@ interface ExpandableUtilityFABProps {
 }
 
 export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports }: ExpandableUtilityFABProps) {
+  const t = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
@@ -146,7 +148,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">Reports</Text>
+            <Text className="text-white text-base font-medium">{t.nav.reports}</Text>
           </View>
           <Pressable
             onPress={handleReports}
@@ -182,7 +184,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           className="flex-row items-center"
         >
           <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">Search</Text>
+            <Text className="text-white text-base font-medium">{t.common.search}</Text>
           </View>
           <Pressable
             onPress={handleSearch}
@@ -217,7 +219,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         className="flex-row items-center"
       >
         <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-          <Text className="text-white text-base font-medium">New Task</Text>
+          <Text className="text-white text-base font-medium">{t.fab.newTask}</Text>
         </View>
         <Pressable
           onPress={handleCreateTask}

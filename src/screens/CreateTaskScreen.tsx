@@ -34,6 +34,7 @@ import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useTranslation } from "../utils/useTranslation";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -66,9 +67,18 @@ const InputField = ({
 );
 
 export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId }: CreateTaskScreenProps) {
+  // Debug: Log the props received
+  console.log('🎯 CreateTaskScreen props:', {
+    editTaskId,
+    parentTaskId,
+    parentSubTaskId,
+    hasEditTaskId: !!editTaskId
+  });
+
   const t = useTranslation();
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { createTask, createSubTask, createNestedSubTask, updateTask, tasks } = useTaskStore();
+  const { createTask, createSubTask, createNestedSubTask, updateTask, tasks, fetchTaskById } = useTaskStore();
   const { getUsersByRole, getUserById } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
@@ -79,30 +89,154 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
   // Get parent task information if creating a sub-task
   const parentTask = parentTaskId ? tasks.find(t => t.id === parentTaskId) : null;
-  const parentSubTask = parentTask && parentSubTaskId 
-    ? parentTask.subTasks?.find(st => st.id === parentSubTaskId) 
-    : null;
+  // Note: subTasks are now in the unified tasks table with parentTaskId, not nested
+  const parentSubTask = parentSubTaskId ? tasks.find(t => t.id === parentSubTaskId && t.parentTaskId === parentTaskId) : null;
 
-  // Get task for editing
-  const editTask = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
+  // Get task for editing - use useMemo to ensure it updates when tasks array changes
+  const editTask = React.useMemo(() => {
+    if (!editTaskId) return null;
+    const found = tasks.find(t => t.id === editTaskId);
+    console.log('🔍 editTask memo:', { editTaskId, found: found ? found.title : 'NOT FOUND', tasksCount: tasks.length });
+    return found || null;
+  }, [editTaskId, tasks]);
+
+  // Fetch task data when editing to ensure we have the latest data
+  useEffect(() => {
+    if (editTaskId) {
+      console.log('📥 Fetching task for editing:', editTaskId);
+      console.log('📥 Current tasks in store:', tasks.length);
+      console.log('📥 Looking for task ID:', editTaskId);
+      const taskInStore = tasks.find(t => t.id === editTaskId);
+      console.log('📥 Task found in store?', taskInStore ? 'YES - ' + taskInStore.title : 'NO');
+      
+      // Always try to fetch to ensure we have the latest data
+      fetchTaskById(editTaskId).then((fetchedTask) => {
+        console.log('✅ Task fetched successfully:', fetchedTask?.title);
+        console.log('✅ Task data:', {
+          id: fetchedTask?.id,
+          title: fetchedTask?.title,
+          description: fetchedTask?.description,
+          assignedTo: fetchedTask?.assignedTo,
+        });
+        // After fetch, the tasks array will update and editTask should become available
+        // The form pre-fill useEffect will then trigger
+      }).catch((error) => {
+        console.error('❌ Error fetching task for editing:', error);
+      });
+    }
+  }, [editTaskId, fetchTaskById, tasks]);
+
+  // Also check when screen comes into focus (in case task was just created)
+  useFocusEffect(
+    useCallback(() => {
+      if (editTaskId) {
+        console.log('🔄 Screen focused, checking for task:', editTaskId);
+        const currentTask = tasks.find(t => t.id === editTaskId);
+        if (currentTask) {
+          console.log('✅ Task found in store on focus:', currentTask.title);
+        } else {
+          console.log('⏳ Task not in store, fetching...');
+          fetchTaskById(editTaskId).catch((error) => {
+            console.error('❌ Error fetching task on focus:', error);
+          });
+        }
+      }
+    }, [editTaskId, tasks, fetchTaskById])
+  );
 
   // Ensure only the task creator can edit
+  // Note: Editing is now allowed even after acceptance (with audit logging)
   useEffect(() => {
     if (!editTaskId || !editTask || !user) return;
 
+    // Check if user is the creator
     if (editTask.assignedBy !== user.id) {
       Alert.alert(
-        "Permission Denied",
-        "Only the task creator can edit this task.",
+        t.createTask.permissionDenied,
+        t.createTask.onlyCreatorCanEdit,
         [
           {
-            text: "OK",
+            text: t.common.ok,
             onPress: () => onNavigateBack(),
           },
         ]
       );
+      return;
     }
-  }, [editTaskId, editTask?.assignedBy, user?.id, editTask, onNavigateBack]);
+
+    // Allow editing accepted tasks (changes will be logged)
+    // Allow editing rejected tasks so creator can fix issues and reassign
+  }, [editTaskId, editTask?.assignedBy, editTask?.declineReason, editTask?.currentStatus, user?.id, editTask, onNavigateBack, t]);
+
+  // Track if we've initialized form from editTask to prevent overwriting user changes
+  const [hasInitializedFromEditTask, setHasInitializedFromEditTask] = React.useState(false);
+
+  // Reset initialization flag when editTaskId changes
+  useEffect(() => {
+    setHasInitializedFromEditTask(false);
+  }, [editTaskId]);
+
+  // Update form data when editTask becomes available (e.g., after loading from store)
+  // Only do this once per editTaskId to avoid overwriting user changes
+  useEffect(() => {
+      console.log('🔄 Form pre-fill effect running:', {
+      editTaskId,
+      hasEditTask: !!editTask,
+      editTaskIdMatch: editTask?.id === editTaskId,
+      editTaskTitle: editTask?.title,
+      hasInitialized: hasInitializedFromEditTask,
+      tasksCount: tasks.length
+    });
+
+    if (editTaskId && editTask && editTask.id === editTaskId && !hasInitializedFromEditTask) {
+      console.log('📝 Pre-filling form with task data:', editTask.title);
+      console.log('📝 Full task object:', {
+        id: editTask.id,
+        title: editTask.title,
+        description: editTask.description,
+        priority: editTask.priority,
+        category: editTask.category,
+        assignedTo: editTask.assignedTo,
+        projectId: editTask.projectId,
+        taskReference: editTask.taskReference,
+        billingStatus: editTask.billingStatus,
+        dueDate: editTask.dueDate,
+        attachmentsCount: editTask.attachments?.length || 0,
+      });
+      
+      const newFormData = {
+        title: editTask.title || "",
+        description: editTask.description || "",
+        taskReference: editTask.taskReference || "",
+        billingStatus: editTask.billingStatus || "non_billable",
+        priority: editTask.priority || "medium",
+        category: editTask.category || "general",
+        dueDate: editTask.dueDate ? new Date(editTask.dueDate) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        assignedTo: editTask.assignedTo || [],
+        attachments: editTask.attachments || [],
+        projectId: editTask.projectId || "",
+      };
+      
+      console.log('📝 Setting form data to:', {
+        title: newFormData.title,
+        description: newFormData.description,
+        priority: newFormData.priority,
+        assignedTo: newFormData.assignedTo,
+        projectId: newFormData.projectId,
+      });
+      setFormData(newFormData);
+      // Also update selectedUsers to match assignedTo
+      setSelectedUsers(editTask.assignedTo || []);
+      setHasInitializedFromEditTask(true);
+      console.log('✅ Form pre-filled successfully!');
+    } else if (editTaskId && !editTask) {
+      console.log('⏳ Waiting for task to be loaded... editTaskId:', editTaskId, 'tasks in store:', tasks.length);
+    } else if (editTaskId && hasInitializedFromEditTask) {
+      console.log('ℹ️ Form already initialized, skipping');
+    } else if (editTaskId && editTask && editTask.id !== editTaskId) {
+      console.log('⚠️ Task ID mismatch! editTaskId:', editTaskId, 'editTask.id:', editTask?.id);
+    }
+  }, [editTaskId, editTask, hasInitializedFromEditTask, tasks]); // Watch editTask and tasks array to catch when task becomes available
 
   // Initial form data
   const getInitialFormData = () => {
@@ -137,7 +271,17 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     };
   };
 
-  const [formData, setFormData] = useState(getInitialFormData());
+  // Initialize form data - will be updated by useEffect if editing
+  const [formData, setFormData] = useState(() => {
+    const initial = getInitialFormData();
+    console.log('🔧 Initial form data set:', { 
+      hasEditTaskId: !!editTaskId, 
+      hasEditTask: !!editTask,
+      title: initial.title,
+      description: initial.description 
+    });
+    return initial;
+  });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -152,6 +296,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showProjectPicker, setShowProjectPicker] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [showEditReasonModal, setShowEditReasonModal] = useState(false);
+  const [editReason, setEditReason] = useState("");
+  const [pendingSubmit, setPendingSubmit] = useState(false);
 
   // All hooks must be called before any early returns
   const userProjects = getProjectsByUser(user?.id || "");
@@ -229,9 +376,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   // Reset form every time screen comes into focus (but not for subtasks)
   useFocusEffect(
     useCallback(() => {
-      // Only reset if NOT creating a subtask
-      if (!parentTaskId) {
-        console.log('🔄 Resetting CreateTaskScreen form on focus');
+      // Only reset if NOT editing a task and NOT creating a subtask
+      if (!editTaskId && !parentTaskId) {
+        console.log('🔄 Resetting CreateTaskScreen form on focus (new task mode)');
         setFormData(getInitialFormData());
         setSelectedUsers([]);
         setErrors({});
@@ -241,8 +388,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         setShowCategoryPicker(false);
         setShowProjectPicker(false);
         setShowDatePicker(false);
+      } else if (editTaskId) {
+        console.log('📝 Edit mode - not resetting form on focus');
       }
-    }, [parentTaskId])
+    }, [parentTaskId, editTaskId])
   );
 
   // Inherit parent task title and description when creating sub-task (only once on mount)
@@ -523,7 +672,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             <Ionicons name="arrow-back" size={24} color="#374151" />
           </Pressable>
           <Text className="flex-1 text-2xl font-semibold text-gray-900">
-            Create Task
+            {t.tasks.createTask}
           </Text>
         </View>
 
@@ -534,10 +683,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 <Ionicons name="shield-outline" size={32} color="#f59e0b" />
               </View>
               <Text className="text-xl font-semibold text-amber-900 text-center mb-2">
-                Access Restricted
+                {t.createTask.accessRestricted}
               </Text>
               <Text className="text-base text-amber-800 text-center leading-5">
-                Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.
+                {t.createTask.adminCannotCreateTasks}
               </Text>
             </View>
             <Pressable 
@@ -545,7 +694,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               className="bg-amber-600 rounded-lg py-3 px-4"
             >
               <Text className="text-white font-semibold text-center">
-                Go Back
+                {t.createTask.goBack}
               </Text>
             </Pressable>
           </View>
@@ -581,23 +730,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
-    // Clear any existing errors before validation
-    setErrors({});
-    
-    if (!validateForm()) return;
-
-    if (editTaskId) {
-      if (!editTask) {
-        Alert.alert("Task Not Found", "Unable to edit this task because it could not be loaded.");
-        return;
-      }
-      if (!user || editTask.assignedBy !== user.id) {
-        Alert.alert("Permission Denied", "Only the task creator can edit this task.");
-        return;
-      }
-    }
-
+  const performSubmit = async (providedEditReason?: string) => {
     setIsSubmitting(true);
 
     try {
@@ -606,7 +739,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
       if (editTaskId) {
         // Editing existing task
-        await updateTask(editTaskId, {
+        const updatePayload: any = {
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -617,7 +750,32 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           assignedTo: selectedUsers,
           attachments: formData.attachments,
           projectId: formData.projectId,
-        });
+        };
+
+        // If editing an accepted task, include the edit reason for audit logging
+        if (editTask && editTask.accepted === true && providedEditReason) {
+          updatePayload._editReason = providedEditReason.trim() || undefined;
+        }
+
+        // If editing a rejected task, reset the rejection state so it can be reassigned
+        // This allows the creator to fix issues and send to original or new assignees
+        if (editTask && (editTask.declineReason || editTask.currentStatus === "rejected")) {
+          updatePayload.declineReason = undefined;
+          updatePayload.currentStatus = "not_started";
+          updatePayload.accepted = false;
+          updatePayload.acceptedBy = undefined;
+          updatePayload.acceptedAt = undefined;
+          // Reset review fields for a fresh start
+          updatePayload.readyForReview = false;
+          updatePayload.reviewAccepted = undefined;
+          updatePayload.reviewedBy = undefined;
+          updatePayload.reviewedAt = undefined;
+          // Reset completion for a fresh start
+          updatePayload.completionPercentage = 0;
+          console.log('🔄 Resetting rejection state for task edit - task can now be reassigned');
+        }
+
+        await updateTask(editTaskId, updatePayload);
         successMessage = t.createTask.taskUpdatedSuccess;
         taskId = editTaskId;
       } else if (parentTaskId) {
@@ -705,6 +863,39 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     }
   };
 
+  const handleSubmit = async () => {
+    // Clear any existing errors before validation
+    setErrors({});
+    
+    if (!validateForm()) return;
+
+    if (editTaskId) {
+      if (!editTask) {
+        Alert.alert(t.createTask.taskNotFound, t.createTask.unableToEditTask);
+        return;
+      }
+      if (!user || editTask.assignedBy !== user.id) {
+        Alert.alert(t.createTask.permissionDenied, t.createTask.onlyCreatorCanEdit);
+        return;
+      }
+
+      // If editing an accepted task, show modal to prompt for edit reason
+      if (editTask.accepted === true) {
+        setEditReason("");
+        setShowEditReasonModal(true);
+        return;
+      }
+    }
+
+    // For new tasks or non-accepted tasks, submit directly
+    await performSubmit();
+  };
+
+  const handleEditReasonSubmit = async () => {
+    setShowEditReasonModal(false);
+    await performSubmit(editReason);
+  };
+
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
@@ -712,8 +903,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       
       {/* Standard Header */}
       <StandardHeader 
-        title={
-          editTaskId
+        title={(() => {
+          const title = editTaskId
             ? t.createTask.editTask
             : parentTaskId 
               ? parentSubTaskId && parentSubTask
@@ -721,8 +912,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 : parentTask
                   ? t.createTask.createSubTask
                   : t.createTask.createSubTask
-              : t.createTask.createNewTask
-        }
+              : t.createTask.createNewTask;
+          console.log('📋 Header title determined:', { editTaskId, title, hasEditTaskId: !!editTaskId });
+          return title;
+        })()}
         showBackButton={true}
         onBackPress={onNavigateBack}
       />
@@ -773,7 +966,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
                 )}
-                placeholder="Describe the task in detail..."
+                placeholder={t.createTask.descriptionPlaceholder}
                 value={formData.description}
                 onChangeText={handleDescriptionChange}
                 multiline
@@ -786,10 +979,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </InputField>
 
           {/* Task Reference # */}
-          <InputField label="Task Reference # (Optional)">
+          <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
                 className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
-                placeholder="Enter task reference number"
+                placeholder={t.createTask.taskReferencePlaceholder}
                 value={formData.taskReference}
                 onChangeText={handleTaskReferenceChange}
                 maxLength={50}
@@ -799,22 +992,22 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </InputField>
 
           {/* Billing Status */}
-          <InputField label="Billing Status">
+          <InputField label={t.createTask.billingStatus}>
             <Pressable
               onPress={() => setShowBillingStatusPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
             >
               <Text className="text-lg text-gray-900">
-                {formData.billingStatus === "billable" ? "Billable"
-                  : formData.billingStatus === "non_billable" ? "Non-Billable"
-                  : "Billed"}
+                {formData.billingStatus === "billable" ? t.createTask.billable
+                  : formData.billingStatus === "non_billable" ? t.createTask.nonBillable
+                  : t.createTask.billed}
               </Text>
               <Ionicons name="chevron-forward" size={20} color="#6b7280" />
             </Pressable>
           </InputField>
 
           {/* Project Selection - Read Only */}
-          <InputField label="Project" error={errors.projectId}>
+          <InputField label={t.createTask.project} error={errors.projectId}>
             <View
               className={cn(
                 "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
@@ -827,7 +1020,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               )}>
                 {formData.projectId 
                   ? userProjects.find(p => p.id === formData.projectId)?.name 
-                  : "Select a project"
+                  : t.createTask.selectProject
                 }
               </Text>
               <Ionicons name="lock-closed" size={16} color="#9ca3af" />
@@ -835,33 +1028,33 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           </InputField>
 
           {/* Priority */}
-          <InputField label="Priority">
+          <InputField label={t.tasks.priority}>
             <Pressable
               onPress={() => setShowPriorityPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-lg text-gray-900 capitalize flex-1">
-                {formData.priority}
+              <Text className="text-lg text-gray-900 flex-1">
+                {t.tasks[formData.priority as keyof typeof t.tasks] || formData.priority}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Pressable>
           </InputField>
 
           {/* Category */}
-          <InputField label="Category">
+          <InputField label={t.tasks.category}>
             <Pressable
               onPress={() => setShowCategoryPicker(true)}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
-              <Text className="text-lg text-gray-900 capitalize flex-1">
-                {formData.category}
+              <Text className="text-lg text-gray-900 flex-1">
+                {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
               </Text>
               <Ionicons name="chevron-down" size={20} color="#6b7280" />
             </Pressable>
           </InputField>
 
           {/* Due Date */}
-          <InputField label="Due Date" error={errors.dueDate}>
+          <InputField label={t.tasks.dueDate} error={errors.dueDate}>
             <Pressable
               onPress={() => setShowDatePicker(!showDatePicker)}
               className={cn(
@@ -873,12 +1066,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 "text-lg",
                 showDatePicker ? "text-blue-600" : "text-gray-900"
               )}>
-                {formData.dueDate.toLocaleDateString("en-US", { 
-                  weekday: 'short',
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
+                {dateFormatter.formatDateWithWeekday(formData.dueDate)}
               </Text>
               <Ionicons 
                 name={showDatePicker ? "calendar" : "calendar-outline"} 
@@ -896,6 +1084,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 mode="date"
                 display="spinner"
                 minimumDate={new Date()}
+                locale={dateFormatter.locale}
                 onChange={(_event, selectedDate) => {
                   if (selectedDate) {
                     handleDateChange(selectedDate);
@@ -909,14 +1098,14 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   onPress={() => setShowDatePicker(false)}
                   className="bg-blue-600 px-6 py-2 rounded-lg"
                 >
-                  <Text className="text-white font-semibold">Done</Text>
+                  <Text className="text-white font-semibold">{t.common.done}</Text>
                 </Pressable>
               </View>
             </View>
           )}
 
           {/* Assign To */}
-          <InputField label="Assign To" error={errors.assignedTo}>
+          <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
             <Pressable
               onPress={handleOpenUserPicker}
               disabled={isLoadingUsers}
@@ -928,10 +1117,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Text className="text-lg text-gray-900">
                 {isLoadingUsers 
-                  ? "Loading users..."
+                  ? t.createTask.loadingUsers
                   : selectedUsers.length > 0 
-                    ? `${selectedUsers.length} user${selectedUsers.length > 1 ? "s" : ""} selected`
-                    : "Select users to assign"
+                    ? t.createTask.usersSelected(selectedUsers.length)
+                    : t.createTask.selectUsersToAssign
                 }
               </Text>
               {isLoadingUsers ? (
@@ -949,7 +1138,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Show selected users */}
           {selectedUsers.length > 0 && (
             <View className="bg-gray-50 border border-gray-200 rounded-lg p-3 -mt-6 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">Selected Users:</Text>
+              <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
               <View className="flex-row flex-wrap">
                 {selectedUsers.map((userId) => {
                   const user = allAssignableUsers.find(u => u.id === userId);
@@ -971,7 +1160,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           <View className="mb-6">
             <View className="flex-row items-center mb-2">
               <Text className="text-lg font-semibold text-gray-900">
-                Attachments
+                {t.createTask.attachments}
               </Text>
             </View>
             
@@ -1007,9 +1196,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
             >
               <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-              <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
+              <Text className="text-gray-600 font-medium mt-3">{t.createTask.tapToAddFiles}</Text>
               <Text className="text-gray-400 text-base mt-1">
-                {formData.attachments.length === 0 ? "No attachments added" : `${formData.attachments.length} file(s) added`}
+                {formData.attachments.length === 0 ? t.createTask.noAttachmentsAdded : t.createTask.filesAdded(formData.attachments.length)}
               </Text>
             </Pressable>
           </View>
@@ -1028,8 +1217,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             >
               <Text className="text-white font-semibold text-lg">
                 {isSubmitting 
-                  ? (editTaskId ? "Updating..." : "Creating...") 
-                  : (editTaskId ? "Update Task" : "Create Task")
+                  ? (editTaskId ? t.createTask.updating : t.createTask.creating) 
+                  : (editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton)
                 }
               </Text>
             </Pressable>
@@ -1057,7 +1246,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Select Priority
+              {t.createTask.selectPriority}
             </Text>
           </View>
 
@@ -1119,10 +1308,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     )}
                   </View>
                   <Text className={cn(
-                    "text-lg font-medium capitalize flex-1",
+                    "text-lg font-medium flex-1",
                     colors.text
                   )}>
-                    {priority}
+                    {t.tasks[priority as keyof typeof t.tasks] || priority}
                   </Text>
                   <Ionicons 
                     name={priority === "critical" ? "alert-circle" : priority === "high" ? "arrow-up-circle" : priority === "medium" ? "remove-circle" : "arrow-down-circle"} 
@@ -1156,7 +1345,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Select Billing Status
+              {t.createTask.selectBillingStatus}
             </Text>
           </View>
 
@@ -1181,7 +1370,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 "text-lg font-medium flex-1",
                 formData.billingStatus === "non_billable" ? "text-blue-900" : "text-gray-900"
               )}>
-                Non-Billable
+                {t.createTask.nonBillable}
               </Text>
               <Ionicons 
                 name="ban-outline" 
@@ -1210,7 +1399,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 "text-lg font-medium flex-1",
                 formData.billingStatus === "billable" ? "text-blue-900" : "text-gray-900"
               )}>
-                Billable
+                {t.createTask.billable}
               </Text>
               <Ionicons 
                 name="cash-outline" 
@@ -1239,7 +1428,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 "text-lg font-medium flex-1",
                 formData.billingStatus === "billed" ? "text-blue-900" : "text-gray-900"
               )}>
-                Billed
+                {t.createTask.billed}
               </Text>
               <Ionicons 
                 name="checkmark-circle-outline" 
@@ -1271,7 +1460,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Select Category
+              {t.createTask.selectCategory}
             </Text>
           </View>
 
@@ -1297,10 +1486,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                   )}
                 </View>
                 <Text className={cn(
-                  "text-lg font-medium capitalize flex-1",
+                  "text-lg font-medium flex-1",
                   formData.category === category ? "text-blue-900" : "text-gray-900"
                 )}>
-                  {category}
+                  {t.tasks[category as keyof typeof t.tasks] || category}
                 </Text>
                 <Ionicons 
                   name={
@@ -1309,7 +1498,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     category === "plumbing" ? "water" :
                     category === "structural" ? "hammer" :
                     category === "materials" ? "cube" :
-                    category === "commercial" ? "business" :
+                    category === "commercial" ? "logo-usd" :
                     "list"
                   } 
                   size={24} 
@@ -1341,7 +1530,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Select Project
+              {t.createTask.selectProject}
             </Text>
           </View>
 
@@ -1374,7 +1563,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                     {project.name}
                   </Text>
                   <Text className="text-sm text-gray-600 mt-0.5" numberOfLines={1}>
-                    {project.location || "No location"}
+                    {project.location || t.createTask.noLocation}
                   </Text>
                 </View>
                 <Ionicons name="folder-outline" size={24} color={formData.projectId === project.id ? "#3b82f6" : "#6b7280"} />
@@ -1385,7 +1574,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <Ionicons name="folder-open-outline" size={48} color="#9ca3af" />
                 <Text className="text-gray-500 text-center mt-2">
-                  No projects available
+                  {t.createTask.noProjectsAvailable}
                 </Text>
               </View>
             )}
@@ -1421,10 +1610,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="close" size={24} color="#374151" />
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Assign To
+              {t.createTask.assignTo}
             </Text>
             <Text className="text-base text-blue-600 font-medium">
-              {selectedUsers.length} selected
+              {selectedUsers.length} {t.common.selected.toLowerCase()}
             </Text>
           </View>
 
@@ -1434,7 +1623,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Ionicons name="search" size={20} color="#6b7280" />
               <TextInput
                 className="flex-1 ml-2 text-lg text-gray-900"
-                placeholder="Search by name, email, position, or role..."
+                placeholder={t.createTask.searchPlaceholder}
                 placeholderTextColor="#9ca3af"
                 value={userSearchQuery}
                 onChangeText={setUserSearchQuery}
@@ -1450,8 +1639,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             
             {/* Results count */}
             <Text className="text-sm text-gray-600 mt-2">
-              {filteredAssignableUsers.length} user{filteredAssignableUsers.length !== 1 ? 's' : ''} available
-              {userSearchQuery && ` (filtered from ${allAssignableUsers.length})`}
+              {t.createTask.usersAvailable(filteredAssignableUsers.length, userSearchQuery ? allAssignableUsers.length : undefined)}
             </Text>
           </View>
 
@@ -1462,10 +1650,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <ActivityIndicator size="large" color="#3b82f6" />
                 <Text className="text-gray-600 text-center mt-4 font-medium">
-                  Loading users...
+                  {t.createTask.loadingUsers}
                 </Text>
                 <Text className="text-gray-400 text-center mt-2 text-base">
-                  Fetching project team members
+                  {t.createTask.fetchingTeamMembers}
                 </Text>
               </View>
             ) : filteredAssignableUsers.length > 0 ? (
@@ -1542,16 +1730,16 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <Ionicons name="search-outline" size={48} color="#9ca3af" />
                 <Text className="text-gray-500 text-center mt-3 font-medium">
-                  No users found
+                  {t.createTask.noUsersFound}
                 </Text>
                 <Text className="text-gray-400 text-center mt-1 text-base">
-                  Try adjusting your search
+                  {t.createTask.tryAdjustingSearch}
                 </Text>
                 <Pressable
                   onPress={() => setUserSearchQuery("")}
                   className="mt-4 bg-blue-600 px-4 py-2 rounded-lg"
                 >
-                  <Text className="text-white font-medium">Clear Search</Text>
+                  <Text className="text-white font-medium">{t.createTask.clearSearch}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -1559,10 +1747,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <Ionicons name="people-outline" size={48} color="#9ca3af" />
                 <Text className="text-gray-500 text-center mt-3 font-medium">
-                  No users assigned to this project
+                  {t.createTask.noUsersAssigned}
                 </Text>
                 <Text className="text-gray-400 text-center mt-1 text-base">
-                  Add team members to the project first
+                  {t.createTask.addTeamMembersFirst}
                 </Text>
               </View>
             )}
@@ -1579,9 +1767,84 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               className="bg-blue-600 rounded-lg py-3 items-center"
             >
               <Text className="text-white font-semibold text-lg">
-                Done ({selectedUsers.length} selected)
+                {t.createTask.doneSelected(selectedUsers.length)}
               </Text>
             </Pressable>
+          </View>
+        </SafeAreaView>
+      </Modal>
+
+      {/* Edit Reason Modal - Shown when editing an accepted task */}
+      <Modal
+        visible={showEditReasonModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEditReasonModal(false)}
+      >
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+          <StatusBar style="dark" />
+          
+          <ModalHandle />
+
+          {/* Modal Header */}
+          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable onPress={() => setShowEditReasonModal(false)} className="mr-4">
+              <Ionicons name="close" size={24} color="#374151" />
+            </Pressable>
+            <Text className="flex-1 text-xl font-semibold text-gray-900">
+              {t.taskDetail.editReasonTitle}
+            </Text>
+          </View>
+
+          {/* Modal Content */}
+          <ScrollView className="flex-1 px-6 py-6">
+            <Text className="text-base text-gray-700 mb-4">
+              {t.taskDetail.editReasonPrompt}
+            </Text>
+
+            <TextInput
+              value={editReason}
+              onChangeText={setEditReason}
+              placeholder={t.taskDetail.editReasonPlaceholder}
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={6}
+              className="bg-white border border-gray-300 rounded-lg p-4 text-gray-900 text-base"
+              style={{
+                textAlignVertical: 'top',
+                minHeight: 120,
+              }}
+            />
+          </ScrollView>
+
+          {/* Modal Footer */}
+          <View className="bg-white border-t border-gray-200 px-6 py-4">
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => {
+                  setShowEditReasonModal(false);
+                  setEditReason("");
+                }}
+                className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
+              >
+                <Text className="text-gray-700 font-semibold text-lg">
+                  {t.common.cancel}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleEditReasonSubmit}
+                disabled={isSubmitting}
+                className="flex-1 bg-blue-600 rounded-lg py-3 items-center disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text className="text-white font-semibold text-lg">
+                    {t.common.save}
+                  </Text>
+                )}
+              </Pressable>
+            </View>
           </View>
         </SafeAreaView>
       </Modal>

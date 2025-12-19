@@ -15,12 +15,14 @@ import { useUserStore } from "../state/userStore.supabase";
 import { User } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import { useTranslation } from "../utils/useTranslation";
 
 interface PendingUsersScreenProps {
   onNavigateBack: () => void;
 }
 
 export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScreenProps) {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const { 
     getPendingUsersByCompany, 
@@ -55,19 +57,19 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
     if (!user?.id) return;
 
     Alert.alert(
-      "Approve User",
-      `Approve ${userName} to join your company?`,
+      t.userManagement.approveUser,
+      t.userManagement.approveMessage.replace('{name}', userName),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t.common.cancel, style: "cancel" },
         {
-          text: "Approve",
+          text: t.userManagement.approve,
           onPress: async () => {
             const success = await approveUser(userId, user.id);
             if (success) {
-              Alert.alert("Success", `${userName} has been approved and can now log in.`);
+              Alert.alert(t.errors.success, t.userManagement.approveSuccess.replace('{name}', userName));
               await loadPendingUsers();
             } else {
-              Alert.alert("Error", "Failed to approve user. Please try again.");
+              Alert.alert(t.errors.error, t.userManagement.approveFailed);
             }
           },
         },
@@ -77,20 +79,20 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
 
   const handleReject = async (userId: string, userName: string) => {
     Alert.alert(
-      "Reject User",
-      `Reject ${userName}'s request to join your company? This will delete their account.`,
+      t.userManagement.rejectUser,
+      t.userManagement.rejectMessage.replace('{name}', userName),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t.common.cancel, style: "cancel" },
         {
-          text: "Reject",
+          text: t.userManagement.reject,
           style: "destructive",
           onPress: async () => {
             const success = await rejectUser(userId);
             if (success) {
-              Alert.alert("Rejected", `${userName}'s request has been rejected.`);
+              Alert.alert(t.userManagement.reject, t.userManagement.rejectSuccess.replace('{name}', userName));
               await loadPendingUsers();
             } else {
-              Alert.alert("Error", "Failed to reject user. Please try again.");
+              Alert.alert(t.errors.error, t.userManagement.rejectFailed);
             }
           },
         },
@@ -116,7 +118,7 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
           </View>
         </View>
         <View className="bg-yellow-100 px-3 py-1 rounded-full">
-          <Text className="text-xs font-medium text-yellow-800">Pending</Text>
+          <Text className="text-xs font-medium text-yellow-800">{t.userManagement.pending}</Text>
         </View>
       </View>
 
@@ -126,7 +128,7 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
           className="flex-1 bg-green-600 py-3 rounded-lg flex-row items-center justify-center"
         >
           <Ionicons name="checkmark-circle-outline" size={20} color="white" />
-          <Text className="text-white font-semibold ml-2">Approve</Text>
+          <Text className="text-white font-semibold ml-2">{t.userManagement.approve}</Text>
         </Pressable>
 
         <Pressable
@@ -134,7 +136,7 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
           className="flex-1 bg-red-600 py-3 rounded-lg flex-row items-center justify-center"
         >
           <Ionicons name="close-circle-outline" size={20} color="white" />
-          <Text className="text-white font-semibold ml-2">Reject</Text>
+          <Text className="text-white font-semibold ml-2">{t.userManagement.reject}</Text>
         </Pressable>
       </View>
     </View>
@@ -146,8 +148,8 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
 
       {/* Standard Header */}
       <StandardHeader 
-        title="Pending Approvals"
-        subtitle={`${pendingUsers.length} ${pendingUsers.length === 1 ? "user" : "users"} waiting`}
+        title={t.userManagement.pendingApprovals}
+        subtitle={`${pendingUsers.length} ${pendingUsers.length === 1 ? t.userManagement.userWaiting : t.userManagement.usersWaiting}`}
         showBackButton={true}
         onBackPress={onNavigateBack}
       />
@@ -167,10 +169,10 @@ export default function PendingUsersScreen({ onNavigateBack }: PendingUsersScree
               <Ionicons name="checkmark-done-outline" size={40} color="#9ca3af" />
             </View>
             <Text className="text-lg font-semibold text-gray-900 mb-2">
-              No Pending Approvals
+              {t.userManagement.noPendingApprovals}
             </Text>
             <Text className="text-gray-600 text-center px-8">
-              All user requests have been processed. New requests will appear here.
+              {t.userManagement.allRequestsProcessed}
             </Text>
           </View>
         }

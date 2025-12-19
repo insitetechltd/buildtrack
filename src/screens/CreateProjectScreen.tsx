@@ -9,12 +9,14 @@ import { useCompanyStore } from "../state/companyStore";
 import StandardHeader from "../components/StandardHeader";
 import ProjectForm from "../components/ProjectForm";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
+import { useTranslation } from "../utils/useTranslation";
 
 interface CreateProjectScreenProps {
   onNavigateBack: (projectId?: string) => void;
 }
 
 export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScreenProps) {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { createProject, fetchProjects } = projectStore;
@@ -26,7 +28,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">Access denied. Admin role required.</Text>
+          <Text className="text-gray-500">{t.userManagement.accessDenied}</Text>
         </View>
       </SafeAreaView>
     );
@@ -96,9 +98,9 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
       if (!projectExists) {
         console.warn('⚠️ Project created but not yet visible in list. It may appear after a refresh.');
         Alert.alert(
-          "Project Created", 
-          "Your project was created successfully, but it may take a moment to appear in the list.",
-          [{ text: "OK", onPress: () => onNavigateBack(newProject?.id) }]
+          t.projects.projectCreated, 
+          t.projects.projectCreatedMessage,
+          [{ text: t.common.ok, onPress: () => onNavigateBack(newProject?.id) }]
         );
         return;
       }
@@ -111,7 +113,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
       onNavigateBack(newProject?.id);
     } catch (error) {
       console.error("❌ Error creating project:", error);
-      Alert.alert("Error", "Failed to create project. Please try again.");
+      Alert.alert(t.errors.error, t.projects.failedToCreateProject);
     } finally {
       setIsSubmitting(false);
     }
@@ -122,7 +124,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
       <StatusBar style="dark" />
       
       <StandardHeader
-        title="Create New Project"
+        title={t.projects.createNewProject}
         showBackButton={true}
         onBackPress={onNavigateBack}
       />
@@ -131,7 +133,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         mode="create"
         onSubmit={handleSubmit}
         onCancel={onNavigateBack}
-        submitButtonText="Create"
+        submitButtonText={t.projects.create}
         isSubmitting={isSubmitting}
       />
     </SafeAreaView>

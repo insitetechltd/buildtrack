@@ -20,6 +20,7 @@ import { useProjectStoreWithInit, useProjectStore } from "../state/projectStore.
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useThemeStore } from "../state/themeStore";
+import { useTranslation } from "../utils/useTranslation";
 import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -62,6 +63,7 @@ export default function TasksScreen({
     setSortByDueDate,
   } = useProjectFilterStore();
   const { isDarkMode } = useThemeStore();
+  const t = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const effectiveSectionFilter = sectionFilter === "all" ? "my_work" : sectionFilter;
   const activeStatusFilter = statusFilter || "all";
@@ -625,6 +627,10 @@ export default function TasksScreen({
                    task.reviewAccepted === true;
           }
           return false;
+        } else if (activeStatusFilter === "rejected") {
+          // REJECTED: Tasks I created that were rejected by assignees
+          // These tasks come back to me (the creator) after rejection
+          return isCreatedByMe && task.currentStatus === "rejected";
         }
         // For other statuses, return false for "my_work" section
         return false;
@@ -995,26 +1001,67 @@ export default function TasksScreen({
       {/* Standard Header */}
       <StandardHeader 
         title={(() => {
-          // Use button label if available (already includes section header)
-          if (buttonLabel) {
-            return buttonLabel;
-          }
-
-          // Fallback: derive from status
+          // Generate title dynamically from section and status filters
           const statusLabels: Record<string, string> = {
-            rejected: "Rejected",
-            wip: "WIP",
-            done: "Done",
-            overdue: "Overdue",
-            received: "Received",
-            reviewing: "Reviewing",
-            assigned: "Assigned",
-            all: "All",
+            rejected: t.tasks.rejected,
+            wip: t.tasks.wip,
+            done: t.common.done,
+            overdue: t.dashboard.overdue,
+            received: t.tasks.received,
+            reviewing: t.dashboard.reviewing,
+            assigned: t.dashboard.assigned,
+            all: t.tasks.all,
           };
 
-          const statusLabel = statusLabels[activeStatusFilter as string] || "All";
+          const statusLabel = statusLabels[activeStatusFilter as string] || t.tasks.all;
 
-          return `Tasks: ${statusLabel}`;
+          // Section-specific labels (using header versions without newlines)
+          if (sectionFilter === "my_work") {
+            if (activeStatusFilter === "overdue") {
+              return `${t.dashboard.overdue} - ${t.dashboard.myActionRequiredNowHeader}`;
+            }
+            if (activeStatusFilter === "wip") {
+              return `${t.dashboard.tasksForMe} - ${t.dashboard.currentTasksHeader}`;
+            }
+            if (activeStatusFilter === "done") {
+              return `${t.dashboard.accomplishments} - ${t.dashboard.workAcceptedHeader}`;
+            }
+            if (activeStatusFilter === "rejected") {
+              return `${t.dashboard.accomplishments} - ${t.dashboard.workRejectedHeader}`;
+            }
+          }
+
+          if (sectionFilter === "outbox") {
+            if (activeStatusFilter === "overdue") {
+              return `${t.dashboard.overdue} - ${t.dashboard.followUpNowHeader}`;
+            }
+            if (activeStatusFilter === "assigned") {
+              return `${t.dashboard.tasksFromMe} - ${t.dashboard.pendingAcceptanceHeader}`;
+            }
+            if (activeStatusFilter === "wip") {
+              return `${t.dashboard.tasksFromMe} - ${t.dashboard.teamProceedingHeader}`;
+            }
+            if (activeStatusFilter === "reviewing") {
+              return `${t.dashboard.tasksFromMe} - ${t.dashboard.pendingApprovalHeader}`;
+            }
+            return `${t.dashboard.outbox} - ${statusLabel}`;
+          }
+
+          if (sectionFilter === "inbox") {
+            if (activeStatusFilter === "received") {
+              return `${t.dashboard.tasksForMe} - ${t.dashboard.newRequestsHeader}`;
+            }
+            if (activeStatusFilter === "reviewing") {
+              return `${t.dashboard.tasksForMe} - ${t.dashboard.pendingMyReviewHeader}`;
+            }
+            return `${t.dashboard.inbox} - ${statusLabel}`;
+          }
+
+          if (sectionFilter === "my_tasks") {
+            return `${t.dashboard.myTasks} - ${statusLabel}`;
+          }
+
+          return `${t.tasks.tasks}: ${statusLabel}`;
         })()}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
@@ -1047,7 +1094,7 @@ export default function TasksScreen({
                   "ml-1.5 text-sm font-medium",
                   showSelfAssignedOnly ? "text-white" : isDarkMode ? "text-slate-300" : "text-gray-700"
                 )}>
-                  Self-Assigned
+                  {t.tasks.selfAssigned}
                 </Text>
               </Pressable>
               
@@ -1076,7 +1123,7 @@ export default function TasksScreen({
                   "ml-1.5 text-sm font-medium",
                   sortByPriority ? "text-white" : isDarkMode ? "text-slate-300" : "text-gray-700"
                 )}>
-                  Priority
+                  {t.tasks.priority}
                 </Text>
               </Pressable>
               
@@ -1105,7 +1152,7 @@ export default function TasksScreen({
                   "ml-1.5 text-sm font-medium",
                   sortByDueDate ? "text-white" : isDarkMode ? "text-slate-300" : "text-gray-700"
                 )}>
-                  Due Date
+                  {t.tasks.dueDate}
                 </Text>
               </Pressable>
             </View>
@@ -1122,7 +1169,7 @@ export default function TasksScreen({
               "text-base font-semibold mb-3",
               isDarkMode ? "text-slate-400" : "text-gray-600"
             )}>
-              {allTasks.length} task{allTasks.length !== 1 ? "s" : ""}
+              {allTasks.length} {allTasks.length !== 1 ? t.tasks.tasksPlural : t.tasks.task}
                   </Text>
             
             {/* Render parent tasks with their subtasks */}
@@ -1198,15 +1245,15 @@ export default function TasksScreen({
               "text-xl font-medium mt-4",
               isDarkMode ? "text-slate-400" : "text-gray-500"
             )}>
-              {activeStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {activeStatusFilter !== "all" ? t.tasks.noMatchingTasks : t.tasks.noTasks}
             </Text>
             <Text className={cn(
               "text-center mt-2 px-8",
               isDarkMode ? "text-slate-500" : "text-gray-400"
             )}>
               {activeStatusFilter !== "all"
-                ? "Try adjusting your filters"
-                : "You haven't been assigned any tasks yet"
+                ? t.tasks.tryAdjustingFilters
+                : t.tasks.noTasksMessage
               }
             </Text>
           </View>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { View, Text, Pressable, Image, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, Priority, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -7,6 +7,8 @@ import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useThemeStore } from "../state/themeStore";
+import { useTranslation } from "../utils/useTranslation";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 // ✅ UPDATED: Task can now have parentTaskId to indicate it's nested
 interface TaskCardProps {
@@ -16,6 +18,8 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onNavigateToTaskDetail, className }: TaskCardProps) {
+  const t = useTranslation();
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const { getUserById } = useUserStoreWithInit();
@@ -227,7 +231,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               "text-sm",
               isDarkMode ? "text-slate-400" : "text-gray-600"
             )}>
-              Due: {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              {t.taskDetail.due}: {dateFormatter.formatDate(task.dueDate, { month: 'short', day: 'numeric' })}
             </Text>
             
             {/* Center: Completion status with review states */}
@@ -267,36 +271,81 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
       
           {/* Line 3: Assigner → Assignees */}
           <View className="flex-row items-center">
-            <View className={cn(
-              "w-4 h-4 rounded-full items-center justify-center mr-1",
-              isDarkMode ? "bg-blue-900" : "bg-blue-100"
-            )}>
-              <Ionicons name="person" size={8} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
-            </View>
-            <Text className={cn(
-              "text-sm mr-1 font-medium",
-              isDarkMode ? "text-slate-300" : "text-gray-600"
-            )} numberOfLines={1}>
-              {assigner?.name || 'Unknown'}
-            </Text>
+            {/* Assigner - Clickable to call */}
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent opening task detail
+                if (assigner?.phone) {
+                  Linking.openURL(`tel:${assigner.phone}`).catch((err) => {
+                    console.error('Failed to open phone dialer:', err);
+                  });
+                }
+              }}
+              disabled={!assigner?.phone}
+              className="flex-row items-center"
+            >
+              <View className={cn(
+                "w-4 h-4 rounded-full items-center justify-center mr-1",
+                isDarkMode ? "bg-blue-900" : "bg-blue-100"
+              )}>
+                <Ionicons name="person" size={8} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
+              </View>
+              <Text className={cn(
+                "text-sm mr-1 font-medium",
+                isDarkMode ? "text-slate-300" : "text-gray-600",
+                assigner?.phone ? "underline" : ""
+              )} numberOfLines={1}>
+                {assigner?.name || 'Unknown'}
+              </Text>
+            </Pressable>
             <Ionicons name="arrow-forward" size={10} color={isDarkMode ? "#64748b" : "#9ca3af"} />
-            <View className={cn(
-              "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
-              isDarkMode ? "bg-green-900" : "bg-green-100"
-            )}>
-              <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
-            </View>
-            <Text className={cn(
-              "text-sm flex-1 font-medium",
-              isDarkMode ? "text-slate-300" : "text-gray-600"
-            )} numberOfLines={1}>
-              {assignees.length > 0 
-                ? assignees.length === 1 
-                  ? assignees[0]?.name 
-                  : `${assignees[0]?.name} +${assignees.length - 1}`
-                : 'Unassigned'
-              }
-            </Text>
+            {/* Assignees - Clickable to call (first assignee only) */}
+            {assignees.length > 0 ? (
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation(); // Prevent opening task detail
+                  if (assignees[0]?.phone) {
+                    Linking.openURL(`tel:${assignees[0].phone}`).catch((err) => {
+                      console.error('Failed to open phone dialer:', err);
+                    });
+                  }
+                }}
+                disabled={!assignees[0]?.phone}
+                className="flex-row items-center flex-1"
+              >
+                <View className={cn(
+                  "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
+                  isDarkMode ? "bg-green-900" : "bg-green-100"
+                )}>
+                  <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
+                </View>
+                <Text className={cn(
+                  "text-sm flex-1 font-medium",
+                  isDarkMode ? "text-slate-300" : "text-gray-600",
+                  assignees[0]?.phone ? "underline" : ""
+                )} numberOfLines={1}>
+                  {assignees.length === 1 
+                    ? assignees[0]?.name 
+                    : `${assignees[0]?.name} +${assignees.length - 1}`
+                  }
+                </Text>
+              </Pressable>
+            ) : (
+              <View className="flex-row items-center flex-1">
+                <View className={cn(
+                  "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
+                  isDarkMode ? "bg-green-900" : "bg-green-100"
+                )}>
+                  <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
+                </View>
+                <Text className={cn(
+                  "text-sm flex-1 font-medium",
+                  isDarkMode ? "text-slate-300" : "text-gray-600"
+                )} numberOfLines={1}>
+                  Unassigned
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         

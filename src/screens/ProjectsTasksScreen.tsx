@@ -21,6 +21,7 @@ import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/bui
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -36,6 +37,7 @@ export default function ProjectsTasksScreen({
   onNavigateToCreateTask,
   onNavigateBack 
 }: ProjectsTasksScreenProps) {
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const tasks = taskStore.tasks;
@@ -436,7 +438,7 @@ export default function ProjectsTasksScreen({
               <View className="flex-row items-center">
                 <Ionicons name="calendar-outline" size={14} color="#6b7280" />
                 <Text className="text-sm text-gray-600 ml-1">
-                  {new Date(task.dueDate).toLocaleDateString()}
+                  {dateFormatter.formatDateShort(task.dueDate)}
                 </Text>
               </View>
               <Text className="text-sm text-gray-500">

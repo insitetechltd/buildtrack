@@ -31,6 +31,17 @@ let _supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl,
     
     // Don't detect session in URL (not needed for mobile)
     detectSessionInUrl: false,
+    
+    // Handle auth state changes (e.g., token refresh errors)
+    onAuthStateChange: async (event, session) => {
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('✅ Token refreshed successfully');
+      } else if (event === 'SIGNED_OUT') {
+        console.log('👤 User signed out');
+      } else if (event === 'USER_UPDATED') {
+        console.log('👤 User updated');
+      }
+    },
   },
   
   // Global fetch options for better performance

@@ -119,12 +119,20 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
-        // Navigate to CreateTask at parent level
-        navigation.getParent()?.navigate("CreateTask", {
-          parentTaskId,
-          parentSubTaskId,
-          editTaskId
-        });
+        console.log('🚀 Dashboard Navigation handler called');
+        console.log('🚀 editTaskId:', editTaskId);
+        // Navigate to CreateTask at parent level with nested params
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.navigate("CreateTask", {
+            screen: "CreateTaskMain",
+            params: {
+              parentTaskId,
+              parentSubTaskId,
+              editTaskId
+            }
+          });
+        }
       }}
     />
   );
@@ -187,14 +195,22 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         console.log('🚀 parentSubTaskId:', parentSubTaskId);
         console.log('🚀 editTaskId:', editTaskId);
         
-        // Navigate to CreateTask tab at parent level (consistent with other FAB navigation)
-        navigation.getParent()?.navigate("CreateTask", { 
-          parentTaskId, 
-          parentSubTaskId,
-          editTaskId
-        });
-        
-        console.log('🚀 Navigation called to CreateTask tab');
+        // Navigate to CreateTask tab at parent level with params
+        // For nested navigators, we need to use the nested format
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.navigate("CreateTask", {
+            screen: "CreateTaskMain",
+            params: {
+              parentTaskId, 
+              parentSubTaskId,
+              editTaskId
+            }
+          });
+          console.log('🚀 Navigation called to CreateTask tab with nested params');
+        } else {
+          console.error('❌ No parent navigation found!');
+        }
       }}
     />
   );
@@ -276,7 +292,25 @@ function CreateTaskStack() {
 }
 
 function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: any }) {
-  const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
+  // Try both direct params and nested params (for tab navigation)
+  const params = route.params || {};
+  const parentTaskId = params.parentTaskId;
+  const parentSubTaskId = params.parentSubTaskId;
+  const editTaskId = params.editTaskId;
+  
+  // Log params whenever route changes
+  React.useEffect(() => {
+    console.log('🎯 CreateTaskMainScreen route params changed:', {
+      parentTaskId,
+      parentSubTaskId,
+      editTaskId,
+      hasEditTaskId: !!editTaskId,
+      allParams: params,
+      routeName: route.name,
+      routeKey: route.key
+    });
+  }, [route.params, parentTaskId, parentSubTaskId, editTaskId]);
+  
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}

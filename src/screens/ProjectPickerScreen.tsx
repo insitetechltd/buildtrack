@@ -17,6 +17,7 @@ import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import { useTranslation } from "../utils/useTranslation";
 
 interface ProjectPickerScreenProps {
   onNavigateBack: () => void;
@@ -27,6 +28,7 @@ export default function ProjectPickerScreen({
   onNavigateBack, 
   allowBack = true 
 }: ProjectPickerScreenProps) {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithInit();
   const { getProjectsByUser, fetchProjects, fetchUserProjectAssignments } = projectStore;
@@ -76,7 +78,7 @@ export default function ProjectPickerScreen({
       <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       <StandardHeader 
-        title="Select a Project"
+        title={t.projects.selectProject}
         showBackButton={allowBack}
         onBackPress={allowBack ? onNavigateBack : undefined}
       />
@@ -87,7 +89,7 @@ export default function ProjectPickerScreen({
           "text-sm font-semibold uppercase mb-2 mt-2",
           isDarkMode ? "text-slate-400" : "text-gray-500"
         )}>
-          Your Projects ({userProjects.length})
+          {t.projects.yourProjects} ({userProjects.length})
         </Text>
         
         {userProjects.length === 0 ? (
@@ -97,13 +99,13 @@ export default function ProjectPickerScreen({
               "text-xl font-medium mt-4",
               isDarkMode ? "text-slate-400" : "text-gray-500"
             )}>
-              No projects available
+              {t.projects.noProjectsAvailable}
             </Text>
             <Text className={cn(
               "text-center mt-2 px-8",
               isDarkMode ? "text-slate-500" : "text-gray-400"
             )}>
-              You haven't been assigned to any projects yet
+              {t.projects.noProjectsMessage}
             </Text>
           </View>
         ) : (

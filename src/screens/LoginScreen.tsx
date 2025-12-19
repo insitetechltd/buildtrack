@@ -46,9 +46,9 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     const newErrors: { emailOrPhone?: string; password?: string } = {};
 
     if (!emailOrPhone) {
-      newErrors.emailOrPhone = "Email or phone number is required";
+      newErrors.emailOrPhone = t.login.emailOrPhoneRequired;
     } else if (!isEmail(emailOrPhone) && !isPhoneNumber(emailOrPhone)) {
-      newErrors.emailOrPhone = "Please enter a valid email or phone number";
+      newErrors.emailOrPhone = t.login.invalidEmailOrPhone;
     }
 
     if (!password) {
@@ -88,9 +88,9 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     } catch (error: any) {
       if (error.message === 'PENDING_APPROVAL') {
         Alert.alert(
-          "Approval Pending",
-          "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
-          [{ text: "OK" }]
+          t.login.approvalPending,
+          t.login.approvalPendingMessage,
+          [{ text: t.common.ok }]
         );
       } else {
         Alert.alert(
@@ -124,9 +124,9 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     } catch (error: any) {
       if (error.message === 'PENDING_APPROVAL') {
         Alert.alert(
-          "Approval Pending",
-          "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
-          [{ text: "OK" }]
+          t.login.approvalPending,
+          t.login.approvalPendingMessage,
+          [{ text: t.common.ok }]
         );
       } else {
         Alert.alert(
@@ -182,7 +182,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
               {/* Email or Phone Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Email or Phone Number
+                  {t.login.emailOrPhone}
                 </Text>
                 <View
                   className={cn(
@@ -199,7 +199,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="email@example.com or +1234567890"
+                    placeholder={t.login.emailOrPhonePlaceholder}
                     value={emailOrPhone}
                     onChangeText={handleEmailOrPhoneChange}
                     keyboardType="default"

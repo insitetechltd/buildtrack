@@ -27,6 +27,7 @@ import StandardHeader from "../components/StandardHeader";
 import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
 import ModalHandle from "../components/ModalHandle";
 import { useTranslation } from "../utils/useTranslation";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface ProjectsScreenProps {
   onNavigateToProjectDetail: (projectId: string) => void;
@@ -44,6 +45,7 @@ export default function ProjectsScreen({
   newProjectId
 }: ProjectsScreenProps) {
   const t = useTranslation();
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByCompany, getProjectsByUser, getProjectStats, updateProject, getProjectUserAssignments, assignUserToProject, getLeadPMForProject, fetchProjects, fetchUserProjectAssignments } = projectStore;
@@ -219,7 +221,7 @@ export default function ProjectsScreen({
           <View className="bg-purple-50 border border-purple-200 rounded-lg px-2 py-1 mb-3 flex-row items-center">
             <Ionicons name="star" size={12} color="#7c3aed" />
             <Text className="text-sm text-purple-700 font-medium ml-1">
-              Lead PM: {leadPM.name}
+              {t.projects.leadPM}: {leadPM.name}
             </Text>
           </View>
         )}
@@ -229,14 +231,14 @@ export default function ProjectsScreen({
           <View className="flex-row items-center flex-1 mr-2">
             <Ionicons name="location-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1 flex-1" numberOfLines={1} ellipsizeMode="tail">
-              {project.location || "No location"}
+              {project.location || t.projects.noLocation}
             </Text>
           </View>
           
           <View className="flex-row items-center">
             <Ionicons name="people-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1">
-              {projectStats.totalUsers} member{projectStats.totalUsers !== 1 ? "s" : ""}
+              {projectStats.totalUsers} {projectStats.totalUsers !== 1 ? t.projects.members : t.projects.member}
             </Text>
           </View>
         </View>
@@ -253,7 +255,7 @@ export default function ProjectsScreen({
           <View className="flex-row items-center">
             <Ionicons name="calendar-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1">
-              {new Date(project.startDate).toLocaleDateString()}
+              {dateFormatter.formatDateShort(project.startDate)}
             </Text>
           </View>
         </View>
@@ -264,13 +266,13 @@ export default function ProjectsScreen({
             <View className="flex-row items-center">
               <Ionicons name="cash-outline" size={14} color="#6b7280" />
               <Text className="text-sm text-gray-500 ml-1">
-                Budget: ${project.budget.toLocaleString()}
+                {t.projects.budget}: ${project.budget.toLocaleString()}
               </Text>
             </View>
             
             <View className="flex-row items-center">
               <Text className="text-sm text-gray-500">
-                Created by {createdBy?.name || "Unknown"}
+                {t.projects.createdBy} {createdBy?.name || t.projects.unknown}
               </Text>
             </View>
           </View>
@@ -315,7 +317,7 @@ export default function ProjectsScreen({
       
       {/* Standard Header */}
       <StandardHeader 
-        title="Projects"
+        title={t.projects.projects}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
         rightElement={
@@ -347,7 +349,7 @@ export default function ProjectsScreen({
             <Ionicons name="search-outline" size={20} color="#6b7280" />
             <TextInput
               className="flex-1 ml-2 text-gray-900"
-              placeholder="Search projects..."
+              placeholder={t.projects.searchProjects}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -355,8 +357,8 @@ export default function ProjectsScreen({
 
           {/* Project Count */}
           <Text className="text-base text-gray-600 mb-4">
-            {filteredProjects.length} project{filteredProjects.length !== 1 ? "s" : ""}
-            {user.role !== "admin" && " assigned to you"}
+            {filteredProjects.length} {filteredProjects.length !== 1 ? t.projects.projectsPlural : t.projects.project}
+            {user.role !== "admin" && ` ${t.projects.assignedToYou}`}
           </Text>
         </View>
 
@@ -364,12 +366,12 @@ export default function ProjectsScreen({
         <View className="bg-white border-b border-gray-200 px-6 py-3">
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row">
-              <StatusFilterButton status="all" label="All" />
-              <StatusFilterButton status="active" label="Active" />
-              <StatusFilterButton status="planning" label="Planning" />
-              <StatusFilterButton status="on_hold" label="On Hold" />
-              <StatusFilterButton status="completed" label="Completed" />
-              <StatusFilterButton status="cancelled" label="Cancelled" />
+              <StatusFilterButton status="all" label={t.projects.all} />
+              <StatusFilterButton status="active" label={t.projects.active} />
+              <StatusFilterButton status="planning" label={t.projects.planning} />
+              <StatusFilterButton status="on_hold" label={t.projects.onHold} />
+              <StatusFilterButton status="completed" label={t.projects.completed} />
+              <StatusFilterButton status="cancelled" label={t.projects.cancelled} />
             </View>
           </ScrollView>
         </View>
@@ -380,7 +382,7 @@ export default function ProjectsScreen({
           <View className="flex-1 items-center justify-center py-16">
             <ActivityIndicator size="large" color="#2563eb" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              Loading projects...
+              {t.projects.loadingProjects}
             </Text>
           </View>
         ) : filteredProjects.length > 0 ? (
@@ -391,14 +393,14 @@ export default function ProjectsScreen({
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-xl font-medium mt-4">
-              {searchQuery ? "No projects found" : "No projects yet"}
+              {searchQuery ? t.projects.noProjectsFound : t.projects.noProjects}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
               {searchQuery 
-                ? "Try adjusting your search or filters"
+                ? t.projects.tryAdjustingSearch
                 : user.role === "admin"
-                  ? "Create your first project to get started"
-                  : "You haven't been assigned to any projects yet"
+                  ? t.projects.createFirstProject
+                  : t.projects.noProjectsMessage
               }
             </Text>
             {user.role === "admin" && !searchQuery && (
@@ -406,7 +408,7 @@ export default function ProjectsScreen({
                 onPress={onNavigateToCreateProject}
                 className="mt-6 px-6 py-3 bg-blue-600 rounded-lg"
               >
-                <Text className="text-white font-semibold">Create Project</Text>
+                <Text className="text-white font-semibold">{t.projects.createProject}</Text>
               </Pressable>
             )}
           </View>
@@ -426,7 +428,7 @@ export default function ProjectsScreen({
           updateProject(updatedProject.id, updatedProject);
           setShowEditModal(false);
           setEditingProject(null);
-          Alert.alert("Success", "Project updated successfully");
+          Alert.alert(t.errors.success, t.projects.projectUpdated);
         }}
       />
 
@@ -449,6 +451,7 @@ function EditProjectModal({
   onClose: () => void;
   onSave: (project: Project) => void;
 }) {
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const { getUsersByCompany } = useUserStoreWithInit();
   const { getLeadPMForProject, assignUserToProject, getProjectUserAssignments, removeUserFromProject } = useProjectStoreWithCompanyInit(user?.companyId || "");
@@ -686,7 +689,7 @@ function EditProjectModal({
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
                     <Text className="text-gray-900 text-lg">
-                      {formData.startDate.toLocaleDateString()}
+                      {dateFormatter.formatDateShort(formData.startDate)}
                     </Text>
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
                   </Pressable>
@@ -699,7 +702,7 @@ function EditProjectModal({
                     className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
                   >
                     <Text className="text-gray-900 text-lg">
-                      {formData.endDate.toLocaleDateString()}
+                      {dateFormatter.formatDateShort(formData.endDate)}
                     </Text>
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
                   </Pressable>

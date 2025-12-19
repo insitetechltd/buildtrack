@@ -19,12 +19,14 @@ import { useCompanyStore } from "../state/companyStore";
 import { UserRole, CompanyType } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
+import { useTranslation } from "../utils/useTranslation";
 
 interface RegisterScreenProps {
   onToggleLogin: () => void;
 }
 
 export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
+  const t = useTranslation();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -58,46 +60,46 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t.registration.nameRequired;
     }
 
     if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
+      newErrors.phone = t.registration.phoneRequired;
     } else if (!/^\d{8}$/.test(formData.phone.replace(/\s/g, ""))) {
-      newErrors.phone = "Phone number must be exactly 8 digits";
+      newErrors.phone = t.registration.phoneInvalid;
     }
 
     // Email is optional, but if provided, must be valid
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t.registration.invalidEmail;
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t.registration.passwordRequired;
     } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+      newErrors.password = t.registration.passwordTooShort;
     }
 
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = t.registration.confirmPasswordRequired;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t.registration.passwordsDoNotMatch;
     }
 
     if (!formData.promoCode.trim()) {
-      newErrors.promoCode = "Promo code is required";
+      newErrors.promoCode = t.registration.promoCodeRequired;
     } else if (formData.promoCode.toLowerCase() !== VALID_PROMO_CODE.toLowerCase()) {
-      newErrors.promoCode = "Invalid promo code";
+      newErrors.promoCode = t.registration.invalidPromoCode;
     }
 
     // Company selection validation
     if (!formData.companySelection) {
-      newErrors.company = "Please select a company option";
+      newErrors.company = t.registration.selectCompanyOption;
     } else if (formData.companySelection === "existing" && !formData.selectedCompanyId) {
-      newErrors.company = "Please select a company";
+      newErrors.company = t.registration.selectCompanyRequired;
     } else if (formData.companySelection === "new") {
       if (!formData.newCompanyName.trim()) {
-        newErrors.company = "Company name is required";
+        newErrors.company = t.registration.companyNameRequired;
       }
     }
 
@@ -153,9 +155,9 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
       
       if (!result.success) {
         Alert.alert(
-          "Registration Failed",
-          result.error || "An error occurred during registration.",
-          [{ text: "OK" }]
+          t.registration.registrationFailed,
+          result.error || t.registration.unexpectedError,
+          [{ text: t.common.ok }]
         );
         return;
       }
@@ -166,23 +168,23 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
       // Show appropriate success message
       if (isFirstUser) {
         Alert.alert(
-          "Welcome!",
-          "Your company has been created and you are now the administrator. You can start creating projects and inviting team members.",
-          [{ text: "Get Started" }]
+          t.registration.welcomeNewCompany,
+          t.registration.welcomeNewCompanyMessage,
+          [{ text: t.registration.getStarted }]
         );
       } else {
         Alert.alert(
-          "Registration Submitted",
-          "Your registration request has been sent to the company administrator for approval. You will be notified once approved.",
-          [{ text: "OK", onPress: onToggleLogin }]
+          t.registration.registrationSubmitted,
+          t.registration.registrationSubmittedMessage,
+          [{ text: t.common.ok, onPress: onToggleLogin }]
         );
       }
     } catch (error: any) {
       console.error("Registration error:", error);
       Alert.alert(
-        "Registration Failed",
-        error.message || "An unexpected error occurred. Please try again.",
-        [{ text: "OK" }]
+        t.registration.registrationFailed,
+        error.message || t.registration.unexpectedError,
+        [{ text: t.common.ok }]
       );
     }
   };
@@ -241,7 +243,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
   const getSelectedCompanyName = () => {
     const company = companies.find(c => c.id === formData.selectedCompanyId);
-    return company?.name || "Select a company";
+    return company?.name || t.registration.selectACompany;
   };
 
   return (
@@ -262,10 +264,10 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 <Ionicons name="construct" size={24} color="white" />
               </View>
               <Text className="text-3xl font-bold text-gray-900 mb-1">
-                Join Taskr
+                {t.registration.joinTaskr}
               </Text>
               <Text className="text-gray-600 text-center">
-                Create your account to get started
+                {t.registration.createAccount}
               </Text>
             </View>
 
@@ -274,7 +276,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Name Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Full Name
+                  {t.registration.fullName}
                 </Text>
                 <View
                   className={cn(
@@ -291,7 +293,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Enter your full name"
+                    placeholder={t.registration.enterFullName}
                     value={formData.name}
                     onChangeText={handleNameChange}
                     autoComplete="name"
@@ -307,7 +309,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Phone Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Phone Number <Text className="text-red-500">*</Text>
+                  {t.registration.phoneNumber} <Text className="text-red-500">*</Text>
                 </Text>
                 <View
                   className={cn(
@@ -324,7 +326,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Enter 8-digit phone number"
+                    placeholder={t.registration.phoneNumberPlaceholder}
                     value={formData.phone}
                     onChangeText={handlePhoneChange}
                     keyboardType="numeric"
@@ -343,7 +345,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Email Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Email Address <Text className="text-gray-400">(Optional)</Text>
+                  {t.registration.emailAddress} <Text className="text-gray-400">({t.registration.optional})</Text>
                 </Text>
                 <View
                   className={cn(
@@ -360,7 +362,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Enter your email (optional)"
+                    placeholder={t.registration.enterEmailOptional}
                     value={formData.email}
                     onChangeText={handleEmailChange}
                     keyboardType="email-address"
@@ -379,7 +381,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Password Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Password
+                  {t.auth.password}
                 </Text>
                 <View
                   className={cn(
@@ -396,7 +398,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Enter your password"
+                    placeholder={t.registration.enterPassword}
                     value={formData.password}
                     onChangeText={handlePasswordChange}
                     secureTextEntry={!showPassword}
@@ -427,7 +429,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Confirm Password Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Confirm Password
+                  {t.registration.confirmPassword}
                 </Text>
                 <View
                   className={cn(
@@ -444,7 +446,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Confirm your password"
+                    placeholder={t.registration.confirmPasswordPlaceholder}
                     value={formData.confirmPassword}
                     onChangeText={handleConfirmPasswordChange}
                     secureTextEntry={!showConfirmPassword}
@@ -475,7 +477,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
               {/* Promo Code Input */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Promo Code <Text className="text-red-500">*</Text>
+                  {t.registration.promoCode} <Text className="text-red-500">*</Text>
                 </Text>
                 <View
                   className={cn(
@@ -494,7 +496,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     className="flex-1 ml-3 text-gray-900"
-                    placeholder="Enter promo code to continue"
+                    placeholder={t.registration.enterPromoCode}
                     value={formData.promoCode}
                     onChangeText={handlePromoCodeChange}
                     autoCapitalize="none"
@@ -511,14 +513,14 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   <Text className="text-red-500 text-sm mt-1">{errors.promoCode}</Text>
                 )}
                 {!errors.promoCode && formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode && (
-                  <Text className="text-green-600 text-sm mt-1">✓ Valid promo code!</Text>
+                  <Text className="text-green-600 text-sm mt-1">✓ {t.registration.validPromoCode}</Text>
                 )}
               </View>
 
               {/* Company Selection */}
               <View>
                 <Text className="text-base font-medium text-gray-700 mb-2">
-                  Company <Text className="text-red-500">*</Text>
+                  {t.registration.company} <Text className="text-red-500">*</Text>
                 </Text>
                 
                 {/* Company Selection Buttons */}
@@ -545,7 +547,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                           : "text-gray-700"
                       )}
                     >
-                      Join Existing
+                      {t.registration.joinExisting}
                     </Text>
                   </Pressable>
 
@@ -571,7 +573,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                           : "text-gray-700"
                       )}
                     >
-                      Create New
+                      {t.registration.createNew}
                     </Text>
                   </Pressable>
                 </View>
@@ -594,7 +596,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                       onPress={() => setShowCompanyPicker(true)}
                       className="ml-2"
                     >
-                      <Text className="text-blue-600 text-sm">Change</Text>
+                      <Text className="text-blue-600 text-sm">{t.registration.change}</Text>
                     </Pressable>
                   </Pressable>
                 )}
@@ -617,7 +619,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                       />
                       <TextInput
                         className="flex-1 ml-3 text-gray-900"
-                        placeholder="Enter your company name"
+                        placeholder={t.registration.enterCompanyName}
                         value={formData.newCompanyName}
                         onChangeText={handleNewCompanyNameChange}
                         autoCorrect={false}
@@ -628,7 +630,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                       <View className="flex-row items-start">
                         <Ionicons name="information-circle" size={20} color="#2563eb" />
                         <Text className="flex-1 ml-2 text-sm text-blue-800">
-                          You will be the first user and administrator of this company.
+                          {t.registration.firstUserAdmin}
                         </Text>
                       </View>
                     </View>
@@ -650,15 +652,15 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 )}
               >
                 <Text className="text-white font-semibold text-xl">
-                  {isLoading ? "Creating Account..." : "Create Account"}
+                  {isLoading ? t.registration.creatingAccount : t.registration.createAccountButton}
                 </Text>
               </Pressable>
 
               {/* Login Link */}
               <View className="flex-row justify-center mt-6">
-                <Text className="text-gray-600">{"Already have an account? "}</Text>
+                <Text className="text-gray-600">{t.registration.alreadyHaveAccount} </Text>
                 <Pressable onPress={onToggleLogin}>
-                  <Text className="text-blue-600 font-semibold">Sign In</Text>
+                  <Text className="text-blue-600 font-semibold">{t.login.signIn}</Text>
                 </Pressable>
               </View>
             </View>
@@ -677,7 +679,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
           <View className="bg-white rounded-t-3xl max-h-[70%]">
             {/* Modal Header */}
             <View className="flex-row items-center justify-between px-6 py-4 border-b border-gray-200">
-              <Text className="text-xl font-bold text-gray-900">Select Company</Text>
+              <Text className="text-xl font-bold text-gray-900">{t.registration.selectCompany}</Text>
               <Pressable
                 onPress={() => setShowCompanyPicker(false)}
                 className="w-8 h-8 items-center justify-center"
@@ -695,7 +697,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 <View className="py-12 items-center">
                   <Ionicons name="business-outline" size={48} color="#d1d5db" />
                   <Text className="text-gray-500 mt-4 text-center">
-                    No companies available
+                    {t.registration.noCompaniesAvailable}
                   </Text>
                 </View>
               }

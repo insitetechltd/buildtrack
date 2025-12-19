@@ -24,7 +24,7 @@ import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { TaskStatus, Priority, Task } from "../types/buildtrack";
+import { TaskStatus, Priority, Task, TaskEditHistory } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
@@ -33,6 +33,7 @@ import TaskCard from "../components/TaskCard";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useUploadFailureStore } from "../state/uploadFailureStore";
 import { useTranslation } from "../utils/useTranslation";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -44,6 +45,7 @@ interface TaskDetailScreenProps {
 
 export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail }: TaskDetailScreenProps) {
   const t = useTranslation();
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const fetchTasks = useTaskStore(state => state.fetchTasks);
@@ -66,6 +68,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
   const rejectSubTaskCompletion = useTaskStore(state => state.rejectSubTaskCompletion);
   const cancelTask = useTaskStore(state => state.cancelTask);
+  const fetchTaskEditHistory = useTaskStore(state => state.fetchTaskEditHistory);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
@@ -87,10 +90,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedUsersForReassign, setSelectedUsersForReassign] = useState<string[]>([]);
   const [reassignSearchQuery, setReassignSearchQuery] = useState("");
-  const [showProgressDetails, setShowProgressDetails] = useState(false);
-  const [selectedUpdateId, setSelectedUpdateId] = useState<string | null>(null);
+  const [expandedUpdateIds, setExpandedUpdateIds] = useState<Set<string>>(new Set());
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [editHistory, setEditHistory] = useState<TaskEditHistory[]>([]);
+  const [showEditHistory, setShowEditHistory] = useState(false);
 
   // Get the task - could be a top-level task or a sub-task
   const foundTask = tasks.find(t => t.id === taskId);
@@ -178,6 +182,40 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   }, [taskId, subTaskId, user?.id, markTaskAsRead]);
 
+  // Fetch edit history when task loads
+  useEffect(() => {
+    const loadEditHistory = async () => {
+      const taskIdToLoad = subTaskId || taskId;
+      if (taskIdToLoad) {
+        try {
+          console.log('📚 Fetching edit history for task:', taskIdToLoad);
+          const history = await fetchTaskEditHistory(taskIdToLoad);
+          console.log('📚 Edit history fetched:', history.length, 'entries');
+          setEditHistory(history);
+        } catch (error) {
+          console.error('Error fetching edit history:', error);
+        }
+      }
+    };
+    loadEditHistory();
+  }, [taskId, subTaskId, fetchTaskEditHistory]);
+
+  // Refresh edit history when screen comes into focus (e.g., after editing)
+  useFocusEffect(
+    useCallback(() => {
+      const taskIdToLoad = subTaskId || taskId;
+      if (taskIdToLoad) {
+        console.log('🔄 Screen focused, refreshing edit history for task:', taskIdToLoad);
+        fetchTaskEditHistory(taskIdToLoad).then((history) => {
+          console.log('🔄 Edit history refreshed:', history.length, 'entries');
+          setEditHistory(history);
+        }).catch((error) => {
+          console.error('Error refreshing edit history:', error);
+        });
+      }
+    }, [taskId, subTaskId, fetchTaskEditHistory])
+  );
+
   if (!user || !task) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
@@ -233,9 +271,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
   // Users can update if:
   // 1. They created the task, OR
-  // 2. They are assigned to the task (acceptance not required for quick updates)
-  // This allows both creator and assignee to communicate via progress updates
-  const canUpdateProgress = isTaskCreator || isAssignedToMe;
+  // 2. They are assigned to the task AND the task has been accepted
+  // Task must be accepted before progress updates are allowed
+  const canUpdateProgress = (isTaskCreator || isAssignedToMe) && task.accepted === true;
   const canEditTask = isTaskCreator;
   
   // DISABLED: Sub-task creation is temporarily disabled for all users
@@ -286,7 +324,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 // Refresh the task to get updated status
                 await fetchTaskById(task.id);
                 await fetchTasks();
-                Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclined);
+                Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclinedMessage);
               } catch (error: any) {
                 console.error('Error declining task:', error);
                 Alert.alert(t.errors.error, error.message || 'Failed to decline task. Please try again.');
@@ -691,7 +729,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         }
       } else {
         // Not 100%, show normal success message
-        Alert.alert("Success", "Progress update added successfully!");
+        Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
       }
     } catch (error) {
       Alert.alert(t.errors.error, t.taskDetail.failedToSubmitUpdate);
@@ -901,8 +939,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 ✓ {t.taskDetail.taskApproved}
               </Text>
               <Text className="text-base text-green-700">
-                {t.taskDetail.reviewedAndApproved} {getUserById(task.reviewedBy)?.name || "Unknown"}
-                {task.reviewedAt && ` on ${new Date(task.reviewedAt).toLocaleDateString()}`}
+                {t.taskDetail.reviewedAndApproved} {getUserById(task.reviewedBy)?.name || t.projects.unknown}
+                {task.reviewedAt && ` ${dateFormatter.formatDateShort(task.reviewedAt)}`}
               </Text>
             </View>
           </View>
@@ -1027,7 +1065,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               <Ionicons name="calendar-outline" size={16} color="#6b7280" />
               <Text className="text-base font-medium text-gray-600 ml-1">{t.taskDetail.due} </Text>
               <Text className="text-base font-semibold text-gray-900">
-                {new Date(task.dueDate).toLocaleDateString()}
+                {dateFormatter.formatDateShort(task.dueDate)}
               </Text>
             </View>
             <View className={cn(
@@ -1072,6 +1110,105 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {task.description}
             </Text>
           </View>
+
+          {/* Edit History Section - Inside task information card */}
+          {editHistory.length > 0 && (
+            <>
+              <View className="border-t border-gray-200 my-4" />
+              <Pressable
+                onPress={() => setShowEditHistory(!showEditHistory)}
+                className="flex-row items-center justify-between mb-2 active:opacity-70"
+              >
+                <View className="flex-row items-center">
+                  <Ionicons name="time-outline" size={20} color="#6b7280" style={{ marginRight: 8 }} />
+                  <Text className="text-lg font-semibold text-gray-900">{t.taskDetail.editHistory}</Text>
+                  {task.hasUnreadChanges && (
+                    <View className="ml-2 w-2 h-2 bg-blue-500 rounded-full" />
+                  )}
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-sm text-gray-500 mr-1">{editHistory.length} {editHistory.length === 1 ? 'edit' : 'edits'}</Text>
+                  <Ionicons 
+                    name={showEditHistory ? "chevron-up" : "chevron-down"} 
+                    size={16} 
+                    color="#6b7280" 
+                  />
+                </View>
+              </Pressable>
+
+              {showEditHistory && (
+                <View className="mt-2">
+                  {editHistory.map((edit, index) => {
+                    const editor = getUserById(edit.editedBy);
+                    return (
+                      <View 
+                        key={edit.id} 
+                        className={index < editHistory.length - 1 ? "mb-4 pb-4 border-b border-gray-100" : ""}
+                      >
+                        <View className="flex-row justify-between mb-2">
+                          <View className="flex-row items-center">
+                            <Ionicons name="pencil" size={16} color="#6b7280" style={{ marginRight: 8 }} />
+                            <Text className="font-medium text-gray-900">
+                              {t.taskDetail.editedBy} {editor?.name || 'Unknown'}
+                            </Text>
+                          </View>
+                          <Text className="text-gray-500 text-sm">
+                            {dateFormatter.formatDateTime(edit.editedAt)}
+                          </Text>
+                        </View>
+                        
+                        {edit.editReason && (
+                          <View className="mb-2 p-2 bg-blue-50 rounded-lg">
+                            <Text className="text-sm font-medium text-gray-700 mb-1">{t.taskDetail.editReason}:</Text>
+                            <Text className="text-sm text-gray-600">{edit.editReason}</Text>
+                          </View>
+                        )}
+
+                        <View className="space-y-2">
+                          {Object.entries(edit.changes).map(([field, change]) => {
+                            const fieldLabel = field === 'dueDate' ? t.tasks.dueDate :
+                                              field === 'assignedTo' ? t.taskDetail.assignees :
+                                              field === 'taskReference' ? t.createTask.taskReference :
+                                              field.charAt(0).toUpperCase() + field.slice(1);
+                            
+                            const formatValue = (value: any, fieldName: string) => {
+                              if (fieldName === 'dueDate') {
+                                return value ? dateFormatter.formatDateShort(value) : t.projects.noLocation;
+                              }
+                              if (fieldName === 'assignedTo' && Array.isArray(value)) {
+                                return value.map(id => getUserById(id)?.name || id).join(', ') || t.taskDetail.noAssignees;
+                              }
+                              if (fieldName === 'priority' || fieldName === 'category') {
+                                return String(value).charAt(0).toUpperCase() + String(value).slice(1);
+                              }
+                              return String(value || '');
+                            };
+
+                            return (
+                              <View key={field} className="p-2 bg-gray-50 rounded">
+                                <Text className="text-sm font-medium text-gray-700 mb-1">
+                                  {fieldLabel}
+                                </Text>
+                                <View className="flex-row items-center">
+                                  <Text className="text-sm text-red-600 line-through mr-2">
+                                    {formatValue(change.old, field)}
+                                  </Text>
+                                  <Ionicons name="arrow-forward" size={14} color="#6b7280" />
+                                  <Text className="text-sm text-green-600 ml-2 font-medium">
+                                    {formatValue(change.new, field)}
+                                  </Text>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </>
+          )}
         </View>
 
         {/* Attachments Section */}
@@ -1123,31 +1260,22 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         )}
 
         {/* Progress & Updates Combined Section */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-3 mb-4">
-          {/* Header with Progress */}
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-xl font-semibold text-gray-900">Comp. %</Text>
-            <Text className="text-2xl font-bold text-blue-600">{task.completionPercentage}%</Text>
-          </View>
-          
-          {/* Progress Bar */}
-          <View className="w-full bg-gray-200 rounded-full h-3 mb-1">
-            <View 
-              className={cn(
-                "h-3 rounded-full",
-                task.completionPercentage === 100 ? "bg-green-500" :
-                task.completionPercentage >= 75 ? "bg-blue-500" :
-                task.completionPercentage >= 50 ? "bg-yellow-500" :
-                task.completionPercentage >= 25 ? "bg-orange-500" :
-                "bg-gray-400"
-              )}
-              style={{ width: `${task.completionPercentage}%` }}
-            />
+        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
+          {/* Header with Comp. % and Progress */}
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center">
+              <Text className="text-xl font-semibold text-gray-900 mr-3">Comp. %</Text>
+              <Text className="text-2xl font-bold text-blue-600">{task.completionPercentage}%</Text>
+            </View>
+            <View className="flex-row items-center">
+              <Text className="text-lg font-semibold text-gray-900 mr-2">{t.tasks.progress}</Text>
+              <Text className="text-sm text-gray-500 mr-1">{task.updates.length} updates</Text>
+            </View>
           </View>
           
           {/* Completion Message */}
           {task.completionPercentage === 100 && (
-            <View className="flex-row items-center mt-2 mb-3 p-2 bg-green-50 rounded-lg">
+            <View className="flex-row items-center mb-4 p-2 bg-green-50 rounded-lg">
               <Ionicons name="checkmark-circle" size={16} color="#10b981" />
               <Text className="text-green-700 text-base font-medium ml-2">
                 Completed! 🎉
@@ -1155,92 +1283,166 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
           )}
 
-          {/* Divider */}
-          <View className="border-t border-gray-200 my-3" />
+          {/* Update Progress and Photos Updates Buttons */}
+          {canUpdateProgress && (
+            <View className="flex-row gap-3 mb-4">
+              {/* Progress Update Button - Left */}
+              <Pressable
+                onPress={() => setShowUpdateModal(true)}
+                className={cn(
+                  "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center bg-green-600"
+                )}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4
+                }}
+              >
+                <Ionicons 
+                  name="create-outline" 
+                  size={18} 
+                  color="white" 
+                />
+                <Text className="font-semibold text-base ml-2 text-white">
+                  {t.taskDetail.updateTask}
+                </Text>
+              </Pressable>
 
-          {/* Updates Header - Clickable */}
-          <Pressable 
-            onPress={() => {
-              setSelectedUpdateId(null); // Reset selection when opening from header
-              setShowProgressDetails(true);
-            }}
-            className="flex-row items-center justify-between mb-2 active:opacity-70"
-          >
-            <Text className="text-lg font-semibold text-gray-900">{t.tasks.progress}</Text>
-            <View className="flex-row items-center">
-              <Text className="text-sm text-gray-500 mr-1">{task.updates.length} updates</Text>
-              <Ionicons name="chevron-forward" size={16} color="#6b7280" />
+              {/* Photo Update Button - Right */}
+              <Pressable
+                onPress={() => handleAddPhotos()}
+                className={cn(
+                  "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center bg-blue-600"
+                )}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4
+                }}
+              >
+                <Ionicons 
+                  name="camera-outline" 
+                  size={18} 
+                  color="white" 
+                />
+                <Text className="font-semibold text-base ml-2 text-white">
+                  {t.taskDetail.photosUpdates}
+                </Text>
+              </Pressable>
             </View>
-          </Pressable>
+          )}
+
+          {/* Divider */}
+          {task.updates.length > 0 && <View className="border-t border-gray-200 my-3" />}
           
-          {/* Updates List */}
+          {/* Updates List - Expandable */}
           {task.updates.length > 0 ? (
             <View className="space-y-3">
               {task.updates.map((update) => {
                 const updateUser = getUserById(update.userId);
+                const isExpanded = expandedUpdateIds.has(update.id);
+                
                 return (
-                  <Pressable 
-                    key={update.id} 
-                    onPress={() => {
-                      setSelectedUpdateId(update.id);
-                      setShowProgressDetails(true);
-                    }}
-                    className="border-l-4 border-blue-200 pl-4 active:opacity-70"
-                  >
-                    <View className="flex-row items-center justify-between mb-2">
-                      <Text className="font-medium text-gray-900">
-                        {updateUser?.name || "Unknown User"}
-                      </Text>
-                      <Text className="text-sm text-gray-500">
-                        {new Date(update.timestamp).toLocaleString()}
-                      </Text>
-                    </View>
-                    <Text className="text-gray-700 mb-2">{update.description}</Text>
-                    <View className="flex-row items-center space-x-4 mb-2">
-                      <Text className="text-base text-gray-500">
-                        Progress: {update.completionPercentage}%
-                      </Text>
-                      <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                        <Text className="text-sm capitalize">
-                          {update.status.replace("_", " ")}
-                        </Text>
-                      </View>
-                    </View>
-                    
-                    {/* Photos in update */}
-                    {update.photos && update.photos.length > 0 && (
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1">
-                        <View className="flex-row gap-2">
-                          {update.photos.map((photo, photoIndex) => {
-                            const isPDF = photo.toLowerCase().endsWith('.pdf') || photo.includes('application/pdf');
-                            
-                            return (
-                              <Pressable
-                                key={photoIndex}
-                                onPress={() => handleAttachmentPress(photo)}
-                                className="relative"
-                              >
-                                {isPDF ? (
-                                  <View className="w-16 h-16 rounded-lg bg-red-50 border border-red-200 items-center justify-center">
-                                    <Ionicons name="document-text" size={24} color="#dc2626" />
-                                  </View>
-                                ) : (
-                                  <Image
-                                    source={{ uri: photo }}
-                                    className="w-16 h-16 rounded-lg"
-                                    resizeMode="cover"
-                                  />
-                                )}
-                                <View className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5">
-                                  <Ionicons name="expand" size={8} color="white" />
-                                </View>
-                              </Pressable>
-                            );
-                          })}
+                  <View key={update.id} className="border-l-4 border-blue-200 pl-4">
+                    <Pressable 
+                      onPress={() => {
+                        const newExpanded = new Set(expandedUpdateIds);
+                        if (isExpanded) {
+                          newExpanded.delete(update.id);
+                        } else {
+                          newExpanded.add(update.id);
+                        }
+                        setExpandedUpdateIds(newExpanded);
+                      }}
+                      className="flex-row items-center justify-between active:opacity-70"
+                    >
+                      <View className="flex-1">
+                        <View className="flex-row items-center justify-between mb-1">
+                          <Text className="font-medium text-gray-900">
+                            {updateUser?.name || "Unknown User"}
+                          </Text>
+                          <Text className="text-sm text-gray-500">
+                            {dateFormatter.formatDateTime(update.timestamp)}
+                          </Text>
                         </View>
-                      </ScrollView>
+                        {!isExpanded && (
+                          <View className="flex-row items-center space-x-4 mt-1">
+                            <Text className="text-sm text-gray-500">
+                              Progress: {update.completionPercentage}%
+                            </Text>
+                            <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
+                              <Text className="text-xs capitalize">
+                                {update.status.replace("_", " ")}
+                              </Text>
+                            </View>
+                          </View>
+                        )}
+                      </View>
+                      <Ionicons 
+                        name={isExpanded ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color="#6b7280" 
+                        style={{ marginLeft: 8 }}
+                      />
+                    </Pressable>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <View className="mt-3">
+                        {update.description && (
+                          <Text className="text-gray-700 mb-3">{update.description}</Text>
+                        )}
+                        <View className="flex-row items-center space-x-4 mb-3">
+                          <Text className="text-base text-gray-500">
+                            Progress: {update.completionPercentage}%
+                          </Text>
+                          <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
+                            <Text className="text-sm capitalize">
+                              {update.status.replace("_", " ")}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        {/* Photos in update */}
+                        {update.photos && update.photos.length > 0 && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
+                            <View className="flex-row gap-2">
+                              {update.photos.map((photo, photoIndex) => {
+                                const isPDF = photo.toLowerCase().endsWith('.pdf') || photo.includes('application/pdf');
+                                
+                                return (
+                                  <Pressable
+                                    key={photoIndex}
+                                    onPress={() => handleAttachmentPress(photo)}
+                                    className="relative"
+                                  >
+                                    {isPDF ? (
+                                      <View className="w-16 h-16 rounded-lg bg-red-50 border border-red-200 items-center justify-center">
+                                        <Ionicons name="document-text" size={24} color="#dc2626" />
+                                      </View>
+                                    ) : (
+                                      <Image
+                                        source={{ uri: photo }}
+                                        className="w-16 h-16 rounded-lg"
+                                        resizeMode="cover"
+                                      />
+                                    )}
+                                    <View className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5">
+                                      <Ionicons name="expand" size={8} color="white" />
+                                    </View>
+                                  </Pressable>
+                                );
+                              })}
+                            </View>
+                          </ScrollView>
+                        )}
+                      </View>
                     )}
-                  </Pressable>
+                  </View>
                 );
               })}
             </View>
@@ -1286,13 +1488,20 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
         )}
 
-        {/* Quick Update Buttons - Available to both creator and assignee */}
-        {canUpdateProgress && !isViewingSubTask && (
-          <View className="mx-4 mt-6 mb-24 flex-row gap-3">
-            {/* Progress Update Button - Left */}
+        {/* Task Edit Button - Only for creator/assigner */}
+        {!isViewingSubTask && canEditTask && (
+          <View className="mx-4 mt-6 mb-24">
             <Pressable
-              onPress={() => setShowUpdateModal(true)}
-              className="flex-1 bg-green-600 rounded-xl py-4 px-4 flex-row items-center justify-center"
+              onPress={() => {
+                if (onNavigateToCreateTask) {
+                  // When editing, pass undefined for parentTaskId and parentSubTaskId
+                  // Only pass the task.id as editTaskId (third parameter)
+                  onNavigateToCreateTask(undefined, undefined, task.id);
+                }
+              }}
+              className={cn(
+                "rounded-xl py-4 px-4 flex-row items-center justify-center bg-purple-600"
+              )}
               style={{
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
@@ -1301,27 +1510,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 elevation: 4
               }}
             >
-              <Ionicons name="create-outline" size={20} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">
-                Update Progress
-              </Text>
-            </Pressable>
-
-            {/* Photo Update Button - Right */}
-            <Pressable
-              onPress={handleAddPhotos}
-              className="flex-1 bg-blue-600 rounded-xl py-4 px-4 flex-row items-center justify-center"
-              style={{
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 4
-              }}
-            >
-              <Ionicons name="camera-outline" size={20} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">
-                Add Photos
+              <Ionicons 
+                name="create-outline" 
+                size={20} 
+                color="white" 
+              />
+              <Text className="font-semibold text-base ml-2 text-white">
+                {t.taskDetail.editTaskDetails}
               </Text>
             </Pressable>
           </View>
@@ -1346,10 +1541,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               }}
               className="mr-4"
             >
-              <Text className="text-blue-600 font-medium">Cancel</Text>
+              <Text className="text-blue-600 font-medium">{t.common.cancel}</Text>
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Progress Update
+              {t.taskDetail.progressUpdate}
             </Text>
             <Pressable
               onPress={handleSubmitUpdate}
@@ -1360,7 +1555,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               )}
             >
               <Text className="text-white font-medium">
-                {isSubmitting ? "Submitting..." : "Submit"}
+                {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
               </Text>
             </Pressable>
           </View>
@@ -1369,7 +1564,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             {/* Photos & Files - Top Section */}
             <View className="mb-6">
               <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Photos & Files
+                {t.taskDetail.photosAndFiles}
               </Text>
               
               {updateForm.photos.length > 0 ? (
@@ -1460,9 +1655,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
               >
                 <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-600 font-medium mt-3">Tap to Add Files</Text>
+                <Text className="text-gray-600 font-medium mt-3">{t.taskDetail.tapToAddFiles}</Text>
                 <Text className="text-gray-400 text-base mt-1">
-                  {updateForm.photos.length === 0 ? "No files added" : `${updateForm.photos.length} file(s) added`}
+                  {updateForm.photos.length === 0 ? t.taskDetail.noFilesAdded : `${updateForm.photos.length} file(s) added`}
                 </Text>
               </Pressable>
             </View>
@@ -1498,10 +1693,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               
               {/* Current Progress Indicator */}
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base text-gray-600">Current: {task.completionPercentage}%</Text>
+                <Text className="text-base text-gray-600">{t.taskDetail.current}: {task.completionPercentage}%</Text>
                 <View className="flex-row items-center">
                   <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
-                  <Text className="text-base text-red-600 font-medium">Previous</Text>
+                  <Text className="text-base text-red-600 font-medium">{t.taskDetail.previous}</Text>
                 </View>
               </View>
               
@@ -1579,10 +1774,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   <View className="flex-row items-center">
                     <Ionicons name="calendar-outline" size={20} color="#6b7280" />
                     <View className="ml-3 flex-1">
-                      <Text className="text-base text-gray-500">Due Date</Text>
+                      <Text className="text-base text-gray-500">{t.tasks.dueDate}</Text>
                       <Text className={cn("font-medium", new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.currentStatus !== "completed" ? "text-red-600" : "text-gray-900")}>
-                        {new Date(selectedTaskForDetail.dueDate).toLocaleDateString()} 
-                        {new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.currentStatus !== "completed" && " (Overdue)"}
+                        {dateFormatter.formatDateShort(selectedTaskForDetail.dueDate)} 
+                        {new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.currentStatus !== "completed" && ` (${t.dashboard.overdue})`}
                       </Text>
                     </View>
                   </View>
@@ -1849,197 +2044,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </SafeAreaView>
       </Modal>
 
-      {/* Progress Details Modal */}
-      <Modal
-        visible={showProgressDetails}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowProgressDetails(false)}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-          <StatusBar style="dark" />
-          
-          <ModalHandle />
-          
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setShowProgressDetails(false)}
-              className="mr-4 w-10 h-10 items-center justify-center"
-            >
-              <Ionicons name="close" size={24} color="#374151" />
-            </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Progress Details
-            </Text>
-            <Text className="text-base text-blue-600 font-medium">
-              {task.updates.length} updates
-            </Text>
-          </View>
-
-          <ScrollView className="flex-1 px-6 py-4">
-            {/* Overall Progress */}
-            <View className="bg-white rounded-xl p-4 mb-4 border border-gray-200">
-              <Text className="text-base font-semibold text-gray-700 mb-2">Overall Completion</Text>
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-4xl font-bold text-blue-600">{task.completionPercentage}%</Text>
-                <View className={cn(
-                  "px-3 py-1 rounded-full",
-                  task.completionPercentage === 100 ? "bg-green-50" :
-                  task.completionPercentage >= 50 ? "bg-blue-50" : "bg-gray-50"
-                )}>
-                  <Text className={cn(
-                    "text-sm font-medium capitalize",
-                    task.completionPercentage === 100 ? "text-green-700" :
-                    task.completionPercentage >= 50 ? "text-blue-700" : "text-gray-700"
-                  )}>
-                    {task.currentStatus.replace("_", " ")}
-                  </Text>
-                </View>
-              </View>
-              
-              {/* Progress Bar */}
-              <View className="w-full bg-gray-200 rounded-full h-3">
-                <View 
-                  className={cn(
-                    "h-3 rounded-full",
-                    task.completionPercentage === 100 ? "bg-green-500" :
-                    task.completionPercentage >= 75 ? "bg-blue-500" :
-                    task.completionPercentage >= 50 ? "bg-yellow-500" :
-                    task.completionPercentage >= 25 ? "bg-orange-500" : "bg-red-500"
-                  )}
-                  style={{ width: `${task.completionPercentage}%` }}
-                />
-              </View>
-            </View>
-
-            {/* Progress History */}
-            <Text className="text-base font-semibold text-gray-700 mb-3">Update History</Text>
-            
-            {task.updates.length > 0 ? (
-              <View className="space-y-4">
-                {task.updates.map((update, index) => {
-                  const updateUser = getUserById(update.userId);
-                  const isLatest = index === task.updates.length - 1;
-                  const isSelected = selectedUpdateId === update.id;
-                  
-                  return (
-                    <View 
-                      key={update.id} 
-                      className={cn(
-                        "bg-white rounded-xl p-4 border-l-4",
-                        isSelected ? "border-purple-500 border-4 shadow-lg" : 
-                        isLatest ? "border-blue-500 border-2" : "border-gray-300 border"
-                      )}
-                    >
-                      {/* Header */}
-                      <View className="flex-row items-center justify-between mb-2">
-                        <View className="flex-row items-center flex-1">
-                          <View className={cn(
-                            "w-8 h-8 rounded-full items-center justify-center mr-2",
-                            isSelected ? "bg-purple-100" : isLatest ? "bg-blue-100" : "bg-gray-100"
-                          )}>
-                            <Ionicons 
-                              name="person" 
-                              size={16} 
-                              color={isSelected ? "#9333ea" : isLatest ? "#3b82f6" : "#6b7280"} 
-                            />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="font-semibold text-gray-900">
-                              {updateUser?.name || "Unknown User"}
-                            </Text>
-                            <Text className="text-sm text-gray-500">
-                              {new Date(update.timestamp).toLocaleString()}
-                            </Text>
-                          </View>
-                        </View>
-                        {isSelected ? (
-                          <View className="bg-purple-100 px-2 py-1 rounded">
-                            <Text className="text-sm font-medium text-purple-700">Selected</Text>
-                          </View>
-                        ) : isLatest ? (
-                          <View className="bg-blue-100 px-2 py-1 rounded">
-                            <Text className="text-sm font-medium text-blue-700">Latest</Text>
-                          </View>
-                        ) : null}
-                      </View>
-
-                      {/* Progress Change */}
-                      <View className="flex-row items-center mb-2">
-                        <Text className={cn(
-                          "text-3xl font-bold mr-2",
-                          isSelected ? "text-purple-600" : "text-blue-600"
-                        )}>
-                          {update.completionPercentage}%
-                        </Text>
-                        <View className={cn("px-2 py-1 rounded", getStatusColor(update.status))}>
-                          <Text className="text-sm capitalize font-medium">
-                            {update.status.replace("_", " ")}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Description */}
-                      {update.description && (
-                        <Text className="text-gray-700 mb-3">{update.description}</Text>
-                      )}
-
-                      {/* Photos */}
-                      {update.photos && update.photos.length > 0 && (
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2">
-                          <View className="flex-row gap-2">
-                            {update.photos.map((photo, photoIndex) => {
-                              const isPDF = photo.toLowerCase().endsWith('.pdf') || photo.includes('application/pdf');
-                              
-                              return (
-                                <Pressable
-                                  key={photoIndex}
-                                  onPress={() => handleAttachmentPress(photo)}
-                                  className="relative"
-                                >
-                                  {isPDF ? (
-                                    // PDF preview
-                                    <View className="w-20 h-20 rounded-lg bg-red-50 border border-red-200 items-center justify-center">
-                                      <Ionicons name="document-text" size={32} color="#dc2626" />
-                                      <Text className="text-sm text-red-700 font-semibold">PDF</Text>
-                                    </View>
-                                  ) : (
-                                    // Image preview
-                                    <Image
-                                      source={{ uri: photo }}
-                                      className="w-20 h-20 rounded-lg"
-                                      resizeMode="cover"
-                                    />
-                                  )}
-                                  
-                                  {/* Preview indicator */}
-                                  <View className="absolute top-1 right-1 bg-black/60 rounded-full p-0.5">
-                                    <Ionicons name="expand" size={10} color="white" />
-                                  </View>
-                                </Pressable>
-                              );
-                            })}
-                          </View>
-                        </ScrollView>
-                      )}
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View className="bg-white rounded-xl p-8 items-center border border-gray-200">
-                <Ionicons name="time-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-500 text-center mt-3">
-                  No progress updates yet
-                </Text>
-              </View>
-            )}
-            
-            {/* Bottom spacing */}
-            <View className="h-6" />
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
 
       {/* Image Preview Modal */}
       <Modal

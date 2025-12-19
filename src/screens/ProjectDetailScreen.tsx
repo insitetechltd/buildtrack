@@ -27,6 +27,7 @@ import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ProjectForm from "../components/ProjectForm";
 import ModalHandle from "../components/ModalHandle";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface ProjectDetailScreenProps {
   projectId: string;
@@ -34,6 +35,7 @@ interface ProjectDetailScreenProps {
 }
 
 export default function ProjectDetailScreen({ projectId, onNavigateBack }: ProjectDetailScreenProps) {
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { 
@@ -277,11 +279,11 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               <View className="ml-3 flex-1">
                 <Text className="text-base font-medium text-gray-900 mb-1">Timeline</Text>
                 <Text className="text-base text-gray-600">
-                  Start: {new Date(project.startDate).toLocaleDateString()}
+                  Start: {dateFormatter.formatDateShort(project.startDate)}
                 </Text>
                 {project.endDate && (
                   <Text className="text-base text-gray-600">
-                    End: {new Date(project.endDate).toLocaleDateString()}
+                    End: {dateFormatter.formatDateShort(project.endDate)}
                   </Text>
                 )}
               </View>

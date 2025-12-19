@@ -121,3 +121,4 @@ adb shell am start -n com.buildtrack.app/.MainActivity
 - `app.json` - Expo build properties
 - `package.json` - Dependencies and scripts
 
+

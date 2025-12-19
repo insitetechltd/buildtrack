@@ -17,6 +17,8 @@ import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStore } from "../state/projectStore";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
+import { useTranslation } from "../utils/useTranslation";
+import { useDateFormatter } from "../utils/dateFormatter";
 import { Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -31,6 +33,8 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
   const { getUserById } = useUserStore();
   const { selectedProjectId } = useProjectFilterStore();
   const { getCompanyBanner } = useCompanyStore();
+  const t = useTranslation();
+  const dateFormatter = useDateFormatter();
 
   const [reportType, setReportType] = useState<"my_tasks" | "assigned_tasks">("my_tasks");
   const [dateRange, setDateRange] = useState({
@@ -147,19 +151,19 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
 
     // In a real app, this would generate and export a PDF or CSV
     Alert.alert(
-      "Report Generated",
-      `Report contains ${filteredTasks.length} tasks from ${dateRange.from.toLocaleDateString()} to ${dateRange.to.toLocaleDateString()}.\n\nIn a production app, this would be exported as PDF or CSV.`,
+      t.reports.reportGenerated,
+      `${t.reports.reportContains} ${filteredTasks.length} ${t.reports.tasksFrom} ${dateFormatter.formatDateShort(dateRange.from)} ${t.reports.toDate} ${dateFormatter.formatDateShort(dateRange.to)}.\n\n${t.reports.exportAsPDF}`,
       [
         {
-          text: "View Summary",
+          text: t.reports.viewSummary,
           onPress: () => {
             Alert.alert(
-              "Report Summary",
-              `Total Tasks: ${stats.total}\nCompleted: ${stats.completed}\nIn Progress: ${stats.inProgress}\nOverdue: ${stats.overdue}\nAvg Completion: ${stats.averageCompletion}%`
+              t.reports.reportSummary,
+              `${t.reports.totalTasks}: ${stats.total}\n${t.reports.completed}: ${stats.completed}\n${t.reports.inProgress}: ${stats.inProgress}\n${t.reports.overdue}: ${stats.overdue}\n${t.reports.avgCompletion}: ${stats.averageCompletion}%`
             );
           }
         },
-        { text: "OK" }
+        { text: t.common.ok }
       ]
     );
   };
@@ -204,7 +208,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
       </View>
       <View className="flex-row items-center justify-between">
         <Text className="text-sm text-gray-500">
-          Due: {new Date(task.dueDate).toLocaleDateString()}
+          {t.taskDetail.due}: {dateFormatter.formatDateShort(task.dueDate)}
         </Text>
         <Text className="text-sm text-gray-500">
           {task.completionPercentage}% complete
@@ -219,7 +223,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
       
       {/* Standard Header */}
       <StandardHeader 
-        title="Reports"
+        title={t.nav.reports}
         showBackButton={true}
         onBackPress={onNavigateBack}
         rightElement={
@@ -227,7 +231,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
             onPress={generateReport}
             className="px-4 py-2 bg-blue-600 rounded-lg"
           >
-            <Text className="text-white font-medium">Export</Text>
+            <Text className="text-white font-medium">{t.common.done}</Text>
           </Pressable>
         }
       />
@@ -237,12 +241,12 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         {/* Report Configuration */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <Text className="text-xl font-semibold text-gray-900 mb-4">
-            Report Configuration
+            {t.reports.reportConfiguration}
           </Text>
 
           {/* Report Type */}
           <View className="mb-4">
-            <Text className="text-base font-medium text-gray-700 mb-2">Report Type</Text>
+            <Text className="text-base font-medium text-gray-700 mb-2">{t.reports.reportType}</Text>
             <View className="flex-row space-x-2">
               <Pressable
                 onPress={() => setReportType("my_tasks")}
@@ -257,7 +261,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                   "text-center font-medium",
                   reportType === "my_tasks" ? "text-blue-700" : "text-gray-700"
                 )}>
-                  My Tasks
+                  {t.reports.myTasks}
                 </Text>
               </Pressable>
               {assignedTasks.length > 0 && (
@@ -274,7 +278,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                     "text-center font-medium",
                     reportType === "assigned_tasks" ? "text-blue-700" : "text-gray-700"
                   )}>
-                    Assigned Tasks
+                    {t.reports.assignedTasks}
                   </Text>
                 </Pressable>
               )}
@@ -283,14 +287,14 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
 
           {/* Date Range */}
           <View className="mb-4">
-            <Text className="text-base font-medium text-gray-700 mb-2">Date Range</Text>
+            <Text className="text-base font-medium text-gray-700 mb-2">{t.reports.dateRange}</Text>
             <View className="flex-row space-x-2">
               <Pressable
                 onPress={() => setShowFromDatePicker(true)}
                 className="flex-1 py-2 px-3 bg-gray-50 border border-gray-300 rounded-lg"
               >
                 <Text className="text-gray-900 text-center">
-                  From: {dateRange.from.toLocaleDateString()}
+                  {t.reports.from}: {dateFormatter.formatDateShort(dateRange.from)}
                 </Text>
               </Pressable>
               <Pressable
@@ -298,7 +302,7 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                 className="flex-1 py-2 px-3 bg-gray-50 border border-gray-300 rounded-lg"
               >
                 <Text className="text-gray-900 text-center">
-                  To: {dateRange.to.toLocaleDateString()}
+                  {t.reports.to}: {dateFormatter.formatDateShort(dateRange.to)}
                 </Text>
               </Pressable>
             </View>
@@ -308,33 +312,33 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         {/* Statistics Overview */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <Text className="text-xl font-semibold text-gray-900 mb-4">
-            Statistics Overview
+            {t.reports.statisticsOverview}
           </Text>
 
           <View className="flex-row flex-wrap -mr-3">
             <StatCard
-              label="Total Tasks"
+              label={t.reports.totalTasks}
               value={stats.total}
               icon="list-outline"
               color="bg-blue-50"
               textColor="text-blue-600"
             />
             <StatCard
-              label="Completed"
+              label={t.reports.completed}
               value={stats.completed}
               icon="checkmark-circle-outline"
               color="bg-green-50"
               textColor="text-green-600"
             />
             <StatCard
-              label="In Progress"
+              label={t.reports.inProgress}
               value={stats.inProgress}
               icon="timer-outline"
               color="bg-yellow-50"
               textColor="text-yellow-600"
             />
             <StatCard
-              label="Overdue"
+              label={t.reports.overdue}
               value={stats.overdue}
               icon="warning-outline"
               color="bg-red-50"
@@ -345,10 +349,10 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
                 <Ionicons name="trending-up-outline" size={20} color="#6b7280" />
                 <Text className="text-2xl font-bold text-purple-600">{stats.averageCompletion}%</Text>
               </View>
-              <Text className="text-base text-gray-600">Avg Completion</Text>
+              <Text className="text-base text-gray-600">{t.reports.avgCompletion}</Text>
             </View>
             <StatCard
-              label="Critical Priority"
+              label={t.reports.criticalPriority}
               value={stats.byPriority.critical}
               icon="alert-circle-outline"
               color="bg-red-50"
@@ -361,10 +365,10 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-xl font-semibold text-gray-900">
-              Task Preview
+              {t.reports.taskPreview}
             </Text>
             <Text className="text-base text-gray-500">
-              {filteredTasks.length} tasks
+              {filteredTasks.length} {t.tasks.tasksPlural}
             </Text>
           </View>
 
@@ -375,16 +379,16 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
               ))}
               {filteredTasks.length > 5 && (
                 <Text className="text-center text-gray-500 text-base mt-2">
-                  + {filteredTasks.length - 5} more tasks in full report
+                  + {filteredTasks.length - 5} {t.reports.moreTasksInReport}
                 </Text>
               )}
             </View>
           ) : (
             <View className="py-8 items-center">
               <Ionicons name="document-outline" size={48} color="#d1d5db" />
-              <Text className="text-gray-500 mt-2">No tasks found</Text>
+              <Text className="text-gray-500 mt-2">{t.reports.noTasksFound}</Text>
               <Text className="text-gray-400 text-base text-center mt-1">
-                Adjust your date range or report type
+                {t.reports.adjustDateRange}
               </Text>
             </View>
           )}

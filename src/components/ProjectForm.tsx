@@ -14,6 +14,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuthStore } from "../state/authStore";
 import { ProjectStatus, Project } from "../types/buildtrack";
 import { cn } from "../utils/cn";
+import { useDateFormatter } from "../utils/dateFormatter";
 
 interface ProjectFormProps {
   mode: "create" | "edit";
@@ -46,6 +47,7 @@ export default function ProjectForm({
   submitButtonText,
   isSubmitting = false,
 }: ProjectFormProps) {
+  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
 
   const [formData, setFormData] = useState<ProjectFormData>({
@@ -170,7 +172,9 @@ export default function ProjectForm({
           <View className="space-y-4">
             {/* Client Name */}
             <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">Client</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">
+                Client <Text className="text-red-500">*</Text>
+              </Text>
               <TextInput
                 className={cn(
                   "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
@@ -208,7 +212,9 @@ export default function ProjectForm({
 
             {/* Description */}
             <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">Description</Text>
+              <Text className="text-lg font-medium text-gray-700 mb-2">
+                Description <Text className="text-red-500">*</Text>
+              </Text>
               <TextInput
                 className={cn(
                   "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[90px]",
@@ -289,7 +295,10 @@ export default function ProjectForm({
 
         {/* Location */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-2xl font-bold text-gray-900 mb-3">Location</Text>
+          <View className="flex-row items-center mb-3">
+            <Text className="text-2xl font-bold text-gray-900">Location</Text>
+            <Text className="text-red-500 text-2xl font-bold ml-1">*</Text>
+          </View>
           
           <View>
             <TextInput
@@ -323,7 +332,7 @@ export default function ProjectForm({
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
               >
                 <Text className="text-gray-900 text-lg">
-                  {formData.startDate.toLocaleDateString()}
+                  {dateFormatter.formatDateShort(formData.startDate)}
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#6b7280" />
               </Pressable>
@@ -339,7 +348,7 @@ export default function ProjectForm({
                 )}
               >
                 <Text className="text-gray-900 text-lg">
-                  {formData.endDate.toLocaleDateString()}
+                  {dateFormatter.formatDateShort(formData.endDate)}
                 </Text>
                 <Ionicons name="calendar-outline" size={20} color="#6b7280" />
               </Pressable>

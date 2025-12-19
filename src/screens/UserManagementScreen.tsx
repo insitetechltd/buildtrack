@@ -23,12 +23,14 @@ import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
+import { useTranslation } from "../utils/useTranslation";
 
 interface UserManagementScreenProps {
   onNavigateBack: () => void;
 }
 
 export default function UserManagementScreen({ onNavigateBack }: UserManagementScreenProps) {
+  const t = useTranslation();
   const { user: currentUser, logout } = useAuthStore();
   const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentUser.companyId);
   const userStore = useUserStoreWithInit();
@@ -64,9 +66,9 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">Access denied. Admin role required.</Text>
+          <Text className="text-gray-500">{t.userManagement.accessDenied}</Text>
           <Pressable onPress={onNavigateBack} className="mt-4 px-4 py-2 bg-blue-600 rounded-lg">
-            <Text className="text-white">Go Back</Text>
+            <Text className="text-white">{t.userManagement.goBack}</Text>
           </Pressable>
         </View>
       </SafeAreaView>

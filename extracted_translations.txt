@@ -1,0 +1,63 @@
+
+--- Page 1 ---
+Item English Chinese 1 Dashboard 儀表板 2 <Project Name> <Project Name> 3 Overdue 逾期 4 My Action Required  Now 立即行動 5 Follow Up Now 立即跟進 6 Tasks for me 我的工作 7 New Requests 新工作請求 8 Current Tasks 目前任務 9 Pending my review 等待我的審核 10 Tasks from me 發送工作 11 Pending Acceptance 等待接受 12 Team Proceeding 團隊進行中 13 Pending Approval 等待審批 14 Accomplishments 完成的工作 15 Work Accepted 接受的工作 16 Quick Overview 概覽 17 My Tasks 我的工作 18 Rejected 被拒絕 19 WIP 進行中 20 Done 完成 Item English Chinese 21 Overdue 逾期 22 Inbox 收件箱 23 Received 已收到 24 Reviewing 檢閱中 25 Outbox 寄件箱 26 Assigned 已分配 27 Work Rejected 工作被拒絕 We should review the  English version of the  labels to see if we can  simplify them. Dashboard Screen
+
+--- Page 2 ---
+Item English Chinese 1 Reports 數據及報告 2 Search 搜尋 3 New Task 新增工作 Action Menu @ Dashboard Screen
+
+--- Page 3 ---
+Item English Chinese 1 <Username> <Username> 2 <Role> <Chinese Version of Role> 3 Change Project 選擇項目 4 Profile & Settings 用家資料及 設定 5 Logout 登出 User Menu @ Any Screen
+
+--- Page 4 ---
+Item English Chinese 1 Select a Project 選擇項目 2 Your Projects (n) 你的項目 Select a Project Screen
+
+--- Page 5 ---
+Item English Chinese 1 Logout 登出 2 Are you sure you want to  logout 確認是否登出 3 Cancel 取消 Logout Confirmation Prompt Pop - Up
+
+--- Page 6 ---
+Item English Chinese 1 Create New Task 新增工作 2 Title 工作名稱 3 Enter task Title 輸入工作名稱 4 Description 工作內容 5 Describe the task in detail … 描述工作內容 6 Task Reference (Optional) 工作參考 7 Enter task reference information 輸入工作參考資料 8 Billing Status 賬單狀態 9 Project 項目 10 Priority 排序 11 Category 類別 12 Due Date 到期日 13 Assign To 分配工 人 14 Select users to assign 選擇分配 工 人 15 Attachments 附件 16 Tap to add files 點擊新增文件 17 No attachments added 沒有新增附件 18 Create Task 創建 工作 Create New Task Screen
+
+--- Page 7 ---
+Item English Chinese 1 Task Created 工作 創建 完成 2 Task created successfully  and assigned to the  selected user(s). 工作創建成功及分派給相關人 士 3 Ok Ok Task Created Pop - Up Message
+
+--- Page 8 ---
+Item English Chinese 1 Select Category 選擇 類別 2 General 一般 3 Safety 安全 4 Electrical 電工 5 Plumbing 渠務 6 Structural 結構 7 Materials 物料 8 Commercial 商務 List of Category Modal
+
+--- Page 9 ---
+List of Priority Modal Item English Chinese 1 Select Priority 選擇 排序 2 Critical 緊急 3 High 高 4 Medium 中 5 Low 低
+
+--- Page 10 ---
+Task List Screen  –   <Filter Name> Item English Chinese 1 <List Page Name> See <List Page Name> Slide 2 Self - Assigned 分配 3 Priority 排序 4 Due Date 到期日 5 # tasks # 工作 6 <Task Title> <Task Title> 7 Due 到期日 8 Comp. 進度 9 <Priority Value> <Priority Value in Chinese>
+
+--- Page 11 ---
+Item English Chinese 1 Tasks for me  –   New Request 我的工作   - 新工作請求 2 Task Title <Task Title> 3 Accept 接受 4 Decline 拒絕 5 Assigned by 分配者 6 Assigned to 被分配者 7 Due 到期日 8 Status (Not Started) 狀態 9 <Priority Value> <Priority Value in Chinese> 10 Comp. % 進度 % 11 Progress 進度內容 12 No updates yet 尚未有內容 13 Edit Task Detail 更改工作細節 14 Add Sub - task 新增子工作 15 Update Progress 更新進度 16 Photos Updates 相片更新 Task Details Screen  –   Yet to Accept
+
+--- Page 12 ---
+Task Details Screen  –   Accept Task Pop Up Message Item English Chinese 1 Accept Task 接受 工作 2 Are you sure you want to  accept this task? “Update  location database for  project”? 是否確認接受此工作： <Task  Title> 3 Cancel 取消 4 Accept 接受
+
+--- Page 13 ---
+Task Details Screen  –   Accept Task Success Message Item English Chinese 1 Success 成功 2 Task Accepted 工作接受成功 3 Ok Ok
+
+--- Page 14 ---
+Task Details Screen  –   Decline Task Pop - Up Prompt Item English Chinese 1 Decline Task 拒絕工作 2 Are you sure you want to  decline this task? 是否確定拒絕此工作？ 3 Decline 拒絕 4 Cancel 取消
+
+--- Page 15 ---
+Task Details Screen  –   Decline Confirmation Pop - Up Message Item English Chinese 1 This task was declined by the  assignee 此工作已被分配的工人拒絕 2 Ok Ok
+
+--- Page 16 ---
+Task Details Screen Item English Chinese 1 <Task Title> <Task Title> 2 Assigned By 分配者 3 Assigned To 被分配者 4 Due 到期日 5 <Status Value> <Status Value> 6 <Priority Value> <Priority Value> 7 Comp % 進度 % 8 Progress 進度內容 9 <#> updates <#> 次更新 10 Update Progress 更新進度 11 Add Photos 相片更新
+
+--- Page 17 ---
+Task Details Screen  –   Update Progress Modal Item English Chinese 1 Cancel 取消 2 Progress Update 進度更新 3 Submit 提交 4 Photos & Files 相片 & 文件 5 Tap to Add Files 點擊新增文件 6 No files added 沒有新增文件 7 Update Description 進度更新 內容 8 Describe what you’ve done … 請描述進度內容 9 Completion Percentage 進度百分比 10 Current 現在 11 Previous 之前
+
+--- Page 18 ---
+Task Details Screen  –   Add Photos Pop - up Prompt Item English Chinese 1 Add Photos 新增相片 2 Choose how you want to add  photos 請選擇相片新增方法 3 Take Photo 影相 4 Choose from Library 從相簿選擇 5 Paste from Clipboard 從剪接簿貼上 6 Cancel 取消
+
+--- Page 19 ---
+Task Details Screen  –   Declined task details screen Item English Chinese 1 <Task Title> <Task Title> 2 Task Rejected 工作被拒絕 3 This task was declined by the  assignee 此工作被工人拒絕 4 Reason: 原因 5 Reassign to Another User 分配給其他工人 6 Edit Task Details 更改工作內容
+
+--- Page 20 ---
+Profile Screen
+
+--- Page 21 ---
+Status

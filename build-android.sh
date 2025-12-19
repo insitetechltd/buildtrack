@@ -175,3 +175,4 @@ if [ "$INSTALL_ON_EMULATOR" = false ]; then
   echo -e "  adb install -r $APK_PATH && adb shell am start -n com.buildtrack.app/.MainActivity"
 fi
 
+

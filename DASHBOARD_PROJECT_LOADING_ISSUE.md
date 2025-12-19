@@ -85,3 +85,4 @@ The most likely issue is that `hasInitialized` is being set to `true` before pro
 
 **Fix**: Modify the initialization check to ensure both projects and assignments are loaded before marking as initialized.
 
+

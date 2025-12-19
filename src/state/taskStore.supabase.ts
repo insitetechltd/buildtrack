@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus } from "../types/buildtrack";
+import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory } from "../types/buildtrack";
 
 interface TaskStore {
   tasks: Task[];
@@ -72,6 +72,11 @@ interface TaskStore {
   getTaskDescendants: (taskId: string) => Task[];
   getTaskAncestors: (taskId: string) => Task[];
   countTaskDescendants: (taskId: string) => number;
+  
+  // Task edit history (audit logging)
+  trackTaskEdit: (taskId: string, userId: string, oldTask: Task, newTask: Partial<Task>, editReason?: string) => Promise<void>;
+  fetchTaskEditHistory: (taskId: string) => Promise<TaskEditHistory[]>;
+  notifyTaskEdit: (taskId: string, editedBy: string, changes: Partial<Task>) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>()(
@@ -574,6 +579,9 @@ export const useTaskStore = create<TaskStore>()(
             updatedAt: taskData.updated_at,
             updates: transformedUpdates,
             subTasks: [],
+            // Edit history and notifications
+            hasUnreadChanges: taskData.has_unread_changes || false,
+            lastEditedAt: taskData.last_edited_at || undefined,
           };
 
           // Update the task in the store (add if doesn't exist)
@@ -736,6 +744,14 @@ export const useTaskStore = create<TaskStore>()(
           // Get current task to check if it's self-assigned
           const currentTask = get().tasks.find(t => t.id === id);
           
+          // Track changes if this is an edit after acceptance (for audit logging)
+          const isEditAfterAcceptance = currentTask?.accepted === true && currentTask?.createdAt;
+          // Extract editReason from updates if provided (will be removed from updateData before saving)
+          const editReason = (updates as any)._editReason as string | undefined;
+          
+          // Store old task state for comparison (deep copy)
+          const oldTaskState = currentTask ? JSON.parse(JSON.stringify(currentTask)) : null;
+          
           // Auto-accept self-assigned tasks when they reach 100%
           // IMPORTANT: Only auto-accept if task is TRULY self-assigned (creator = assignee)
           // Use String() comparison to handle type mismatches
@@ -776,29 +792,36 @@ export const useTaskStore = create<TaskStore>()(
             error: null,
           }));
           
-          // Prepare data for backend
+          // Prepare data for backend (exclude internal fields like _editReason)
           const updateData: any = {};
-          if (updates.title) updateData.title = updates.title;
-          if (updates.description) updateData.description = updates.description;
-          if (updates.taskReference !== undefined) updateData.task_reference = updates.taskReference || null;
-          if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
-          if (updates.priority) updateData.priority = updates.priority;
-          if (updates.category) updateData.category = updates.category;
-          if (updates.dueDate) updateData.due_date = updates.dueDate;
-          if (updates.assignedTo) updateData.assigned_to = updates.assignedTo;
-          if (updates.attachments) updateData.attachments = updates.attachments;
-          if (updates.accepted !== undefined) updateData.accepted = updates.accepted;
-          if (updates.acceptedBy) updateData.accepted_by = updates.acceptedBy;
-          if (updates.acceptedAt) updateData.accepted_at = updates.acceptedAt;
-          if (updates.declineReason) updateData.decline_reason = updates.declineReason;
-          if (updates.currentStatus) updateData.current_status = updates.currentStatus;
-          if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
-          if (updates.starredByUsers !== undefined) updateData.starred_by_users = updates.starredByUsers;
+          // Remove internal fields that shouldn't be saved
+          const { _editReason, ...cleanUpdates } = updates as any;
+          
+          if (cleanUpdates.title) updateData.title = cleanUpdates.title;
+          if (cleanUpdates.description) updateData.description = cleanUpdates.description;
+          if (cleanUpdates.taskReference !== undefined) updateData.task_reference = cleanUpdates.taskReference || null;
+          if (cleanUpdates.billingStatus !== undefined) updateData.billing_status = cleanUpdates.billingStatus || "non_billable";
+          if (cleanUpdates.priority) updateData.priority = cleanUpdates.priority;
+          if (cleanUpdates.category) updateData.category = cleanUpdates.category;
+          if (cleanUpdates.dueDate) updateData.due_date = cleanUpdates.dueDate;
+          if (cleanUpdates.assignedTo) updateData.assigned_to = cleanUpdates.assignedTo;
+          if (cleanUpdates.attachments) updateData.attachments = cleanUpdates.attachments;
+          if (cleanUpdates.accepted !== undefined) updateData.accepted = cleanUpdates.accepted;
+          if (cleanUpdates.acceptedBy !== undefined) updateData.accepted_by = cleanUpdates.acceptedBy || null;
+          if (cleanUpdates.acceptedAt !== undefined) updateData.accepted_at = cleanUpdates.acceptedAt || null;
+          // Handle declineReason: can be set to clear it (undefined) or set a new value
+          if ('declineReason' in cleanUpdates) updateData.decline_reason = cleanUpdates.declineReason || null;
+          if (cleanUpdates.currentStatus) updateData.current_status = cleanUpdates.currentStatus;
+          if (cleanUpdates.completionPercentage !== undefined) updateData.completion_percentage = cleanUpdates.completionPercentage;
+          if (cleanUpdates.starredByUsers !== undefined) updateData.starred_by_users = cleanUpdates.starredByUsers;
           // Review workflow fields
-          if (updates.readyForReview !== undefined) updateData.ready_for_review = updates.readyForReview;
-          if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
-          if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
-          if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
+          if (cleanUpdates.readyForReview !== undefined) updateData.ready_for_review = cleanUpdates.readyForReview;
+          if ('reviewedBy' in cleanUpdates) updateData.reviewed_by = cleanUpdates.reviewedBy || null;
+          if ('reviewedAt' in cleanUpdates) updateData.reviewed_at = cleanUpdates.reviewedAt || null;
+          if (cleanUpdates.reviewAccepted !== undefined) updateData.review_accepted = cleanUpdates.reviewAccepted;
+          // Edit history and notifications
+          if (cleanUpdates.hasUnreadChanges !== undefined) updateData.has_unread_changes = cleanUpdates.hasUnreadChanges;
+          if (cleanUpdates.lastEditedAt) updateData.last_edited_at = cleanUpdates.lastEditedAt;
 
           // Send update to backend
           const { error } = await supabase
@@ -810,6 +833,28 @@ export const useTaskStore = create<TaskStore>()(
 
           // Success - backend confirmed the update
           console.log(`✅ [Optimistic Update] Backend confirmed update for task ${id}`);
+          
+          // Track changes if this was an edit after acceptance
+          if (isEditAfterAcceptance && oldTaskState) {
+            try {
+              // Only creator can edit, so use assignedBy as the editor ID
+              const editorId = oldTaskState.assignedBy;
+              
+              // Get updated task state for comparison (use the optimistically updated state)
+              const updatedTask = get().tasks.find(t => t.id === id);
+              if (updatedTask && editorId) {
+                // Compare old task state with the full updated task state
+                await get().trackTaskEdit(id, editorId, oldTaskState, updatedTask, editReason);
+                
+                // Notify assignees of changes
+                await get().notifyTaskEdit(id, editorId, cleanUpdates);
+              }
+            } catch (trackError) {
+              console.error('Error tracking task edit:', trackError);
+              // Don't fail the update if tracking fails
+            }
+          }
+          
           set({ isLoading: false });
           
         } catch (error: any) {
@@ -1958,6 +2003,168 @@ export const useTaskStore = create<TaskStore>()(
       // Count all descendants
       countTaskDescendants: (taskId: string): number => {
         return get().getTaskDescendants(taskId).length;
+      },
+
+      // Track task edit for audit logging
+      trackTaskEdit: async (taskId, userId, oldTask, newTask, editReason) => {
+        if (!supabase) {
+          console.warn('Supabase not configured - cannot track task edit');
+          return;
+        }
+
+        const changes: Record<string, { old: any; new: any }> = {};
+
+        // Compare and track changes for editable fields
+        const fieldsToTrack = [
+          'title',
+          'description',
+          'dueDate',
+          'priority',
+          'category',
+          'billingStatus',
+          'assignedTo',
+          'taskReference',
+        ];
+
+        fieldsToTrack.forEach((field) => {
+          const oldValue = (oldTask as any)[field];
+          const newValue = (newTask as any)[field];
+
+          // Skip if new value is undefined (field wasn't updated)
+          if (newValue === undefined) return;
+
+          // Handle arrays (assignedTo)
+          if (Array.isArray(oldValue) && Array.isArray(newValue)) {
+            const oldSorted = [...oldValue].sort().join(',');
+            const newSorted = [...newValue].sort().join(',');
+            if (oldSorted !== newSorted) {
+              changes[field] = { old: oldValue, new: newValue };
+            }
+          } else if (oldValue !== newValue) {
+            // Handle date strings (normalize for comparison)
+            if (field === 'dueDate') {
+              const oldDate = oldValue ? new Date(oldValue).toISOString() : null;
+              const newDate = newValue ? new Date(newValue).toISOString() : null;
+              if (oldDate !== newDate) {
+                changes[field] = { old: oldValue, new: newValue };
+              }
+            } else {
+              changes[field] = { old: oldValue, new: newValue };
+            }
+          }
+        });
+
+        // Only log if there are actual changes
+        if (Object.keys(changes).length === 0) {
+          console.log('No changes detected, skipping edit history entry');
+          return;
+        }
+
+        try {
+          // Insert into database
+          const { error } = await supabase.from('task_edit_history').insert({
+            task_id: taskId,
+            edited_by: userId,
+            changes: changes,
+            edit_reason: editReason || null,
+            notifications_sent: false,
+          });
+
+          if (error) {
+            console.error('Error tracking task edit:', error);
+            // Don't throw - edit should still succeed even if logging fails
+          } else {
+            console.log(`✅ Task edit tracked for task ${taskId}:`, Object.keys(changes));
+          }
+        } catch (error: any) {
+          console.error('Exception tracking task edit:', error);
+          // Don't throw - edit should still succeed even if logging fails
+        }
+      },
+
+      // Fetch task edit history
+      fetchTaskEditHistory: async (taskId: string): Promise<TaskEditHistory[]> => {
+        if (!supabase) {
+          console.warn('Supabase not configured - cannot fetch edit history');
+          return [];
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('task_edit_history')
+            .select('*')
+            .eq('task_id', taskId)
+            .order('edited_at', { ascending: false });
+
+          if (error) {
+            console.error('Error fetching task edit history:', error);
+            return [];
+          }
+
+          // Transform Supabase data to match TaskEditHistory interface
+          const history: TaskEditHistory[] =
+            data?.map((item) => ({
+              id: item.id,
+              taskId: item.task_id,
+              editedBy: item.edited_by,
+              editedAt: item.edited_at,
+              changes: item.changes || {},
+              editReason: item.edit_reason || undefined,
+              notificationsSent: item.notifications_sent || false,
+              notifiedAt: item.notified_at || undefined,
+              createdAt: item.created_at,
+            })) || [];
+
+          return history;
+        } catch (error: any) {
+          console.error('Exception fetching task edit history:', error);
+          return [];
+        }
+      },
+
+      // Notify assignees of task edits
+      notifyTaskEdit: async (taskId, editedBy, changes) => {
+        if (!supabase) return;
+
+        const task = get().tasks.find((t) => t.id === taskId);
+        if (!task) return;
+
+        // Get assignees who should be notified (exclude the editor)
+        const assignees = task.assignedTo.filter((id) => id !== editedBy);
+
+        if (assignees.length === 0) return;
+
+        try {
+          // Mark task as having unread changes
+          await get().updateTask(taskId, {
+            hasUnreadChanges: true,
+            lastEditedAt: new Date().toISOString(),
+          });
+
+          // Update the latest edit history entry to mark notifications as sent
+          const { data: latestEdit } = await supabase
+            .from('task_edit_history')
+            .select('id')
+            .eq('task_id', taskId)
+            .order('edited_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (latestEdit) {
+            await supabase
+              .from('task_edit_history')
+              .update({
+                notifications_sent: true,
+                notified_at: new Date().toISOString(),
+              })
+              .eq('id', latestEdit.id);
+          }
+
+          console.log(`✅ Notified ${assignees.length} assignee(s) of task edit`);
+        } catch (error: any) {
+          console.error('Error notifying task edit:', error);
+          // Don't throw - notification failure shouldn't block the edit
+        }
       },
     }),
     {

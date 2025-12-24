@@ -102,41 +102,6 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
     }
   };
 
-  const handleQuickLogin = async (email: string, password: string) => {
-    // Clear any existing errors
-    setErrors({});
-    
-    // Set the form fields for visual feedback
-    setEmailOrPhone(email);
-    setPassword(password);
-    
-    // Perform login
-    try {
-      const success = await login(email, password);
-      
-      if (!success) {
-        Alert.alert(
-          t.login.quickLoginFailed,
-          `${t.login.failedToLogin} ${email}. ${t.login.pleaseTryAgain}`,
-          [{ text: t.common.ok }]
-        );
-      }
-    } catch (error: any) {
-      if (error.message === 'PENDING_APPROVAL') {
-        Alert.alert(
-          t.login.approvalPending,
-          t.login.approvalPendingMessage,
-          [{ text: t.common.ok }]
-        );
-      } else {
-        Alert.alert(
-          t.login.quickLoginFailed,
-          `${t.login.failedToLogin} ${email}. ${t.login.pleaseTryAgain}`,
-          [{ text: t.common.ok }]
-        );
-      }
-    }
-  };
 
   const appVersion = Constants.expoConfig?.version || "1.0.0";
   const buildNumber = Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "0";
@@ -281,49 +246,6 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   <Text className="text-blue-600 font-semibold">{t.login.signUp}</Text>
                 </Pressable>
               </View>
-            </View>
-
-            {/* Quick Login - Admin Only */}
-            <View className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <Text className="text-base font-semibold text-blue-800 mb-3">
-                🔐 {t.login.quickLogin} (Admin Accounts):
-              </Text>
-              
-              <View className="space-y-3">
-                {/* Insite Tech Ltd - Admin */}
-                <Pressable 
-                  className="bg-purple-50 border border-purple-200 rounded-lg py-4 px-4 active:bg-purple-100"
-                  onPress={() => handleQuickLogin('admin_tristan@insitetech.com', 'testing')}
-                >
-                  <Text className="text-lg font-semibold text-purple-900">
-                    Insite Tech: Admin Tristan
-                  </Text>
-                </Pressable>
-                
-                {/* BuildTrack - Admin */}
-                <Pressable 
-                  className="bg-emerald-50 border border-emerald-200 rounded-lg py-4 px-4 active:bg-emerald-100"
-                  onPress={() => handleQuickLogin('admin@buildtrack.com', 'testing')}
-                >
-                  <Text className="text-lg font-semibold text-emerald-900">
-                    BuildTrack: Alex Administrator
-                  </Text>
-                </Pressable>
-                
-                {/* Elite Electric - Admin */}
-                <Pressable 
-                  className="bg-amber-50 border border-amber-200 rounded-lg py-4 px-4 active:bg-amber-100"
-                  onPress={() => handleQuickLogin('admin@eliteelectric.com', 'testing')}
-                >
-                  <Text className="text-lg font-semibold text-amber-900">
-                    Elite Electric: Mike Johnson
-                  </Text>
-                </Pressable>
-              </View>
-              
-              <Text className="text-sm text-gray-600 mt-2 italic">
-                💡 {t.login.tapToLogin}
-              </Text>
             </View>
           </View>
         </ScrollView>

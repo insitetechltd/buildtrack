@@ -451,6 +451,36 @@ export const en = {
     taskAlreadyRejected: "This task has already been rejected. It can no longer be edited.",
     taskNotFound: "Task Not Found",
     unableToEditTask: "Unable to edit this task because it could not be loaded.",
+    // Voice input and LLM assistant
+    voiceInput: "Voice Input",
+    textInput: "Text Input",
+    enterCantoneseOrEnglish: "Enter task details in Cantonese or English",
+    textInputPlaceholder: "Describe the task...",
+    aiSuggestions: "AI Suggestions",
+    applySuggestions: "Apply Suggestions",
+    clearSuggestions: "Clear AI Suggestions",
+    suggestionPreview: "Suggestion Preview",
+    acceptField: "Accept",
+    rejectField: "Reject",
+    noSuggestions: "No suggestions available",
+    processingVoice: "Processing voice input...",
+    processingText: "Processing text input...",
+  },
+
+  // Voice Input
+  voiceInput: {
+    title: "Voice Input",
+    startRecording: "Start Recording",
+    stopRecording: "Stop Recording",
+    recordingHint: "Speak clearly in Cantonese or English",
+    permissionDenied: "Permission Denied",
+    microphonePermissionRequired: "Microphone permission is required to record voice input.",
+    failedToStartRecording: "Failed to start recording. Please try again.",
+    failedToStopRecording: "Failed to stop recording. Please try again.",
+    error: "Error",
+    processing: "Processing...",
+    transcribing: "Transcribing...",
+    extracting: "Extracting task information...",
   },
 
   // Task Detail

@@ -17,6 +17,7 @@ NC='\033[0m' # No Color
 EMULATOR_ID="emulator-5554"  # Default emulator, can be overridden
 INSTALL_ON_EMULATOR=false    # Set to true to auto-install after build
 CLEAN_BUILD=false            # Set to true to do a clean build
+INCREMENT_VERSION=false      # Set to true to auto-increment version code
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -29,6 +30,10 @@ while [[ $# -gt 0 ]]; do
       CLEAN_BUILD=true
       shift
       ;;
+    --increment|-v)
+      INCREMENT_VERSION=true
+      shift
+      ;;
     --emulator|-e)
       EMULATOR_ID="$2"
       shift 2
@@ -39,12 +44,14 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  -i, --install       Install APK on emulator after build"
       echo "  -c, --clean         Perform clean build"
+      echo "  -v, --increment     Increment version code before building"
       echo "  -e, --emulator ID   Specify emulator ID (default: emulator-5554)"
       echo "  -h, --help          Show this help message"
       echo ""
       echo "Examples:"
       echo "  $0                  # Build APK only"
       echo "  $0 --install         # Build and install on default emulator"
+      echo "  $0 --increment       # Increment version and build"
       echo "  $0 --clean --install # Clean build and install"
       echo "  $0 -i -e emulator-5556  # Build and install on specific emulator"
       exit 0
@@ -77,7 +84,14 @@ if [ ! -f ".env" ]; then
   echo -e "${YELLOW}Warning: .env file not found. Some environment variables may be missing.${NC}"
 fi
 
-# Step 1: Clean build if requested
+# Step 1: Increment version code if requested
+if [ "$INCREMENT_VERSION" = true ]; then
+  echo -e "${BLUE}🔢 Incrementing version code...${NC}"
+  ./increment-android-version.sh
+  echo ""
+fi
+
+# Step 2: Clean build if requested
 if [ "$CLEAN_BUILD" = true ]; then
   echo -e "${YELLOW}🧹 Cleaning previous build...${NC}"
   cd android
@@ -87,13 +101,13 @@ if [ "$CLEAN_BUILD" = true ]; then
   echo ""
 fi
 
-# Step 2: Run Expo prebuild (regenerates native code)
+# Step 3: Run Expo prebuild (regenerates native code)
 echo -e "${BLUE}📱 Running Expo prebuild...${NC}"
 npx expo prebuild --platform android --clean
 echo -e "${GREEN}✅ Prebuild complete${NC}"
 echo ""
 
-# Step 3: Build release APK
+# Step 4: Build release APK
 echo -e "${BLUE}🔨 Building release APK...${NC}"
 cd android
 
@@ -107,7 +121,7 @@ fi
 
 cd ..
 
-# Step 4: Locate the APK
+# Step 5: Locate the APK
 APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
 
 if [ ! -f "$APK_PATH" ]; then
@@ -121,7 +135,7 @@ echo -e "${GREEN}📦 APK location: $APK_PATH${NC}"
 echo -e "${GREEN}📊 APK size: $APK_SIZE${NC}"
 echo ""
 
-# Step 5: Install on emulator if requested
+# Step 6: Install on emulator if requested
 if [ "$INSTALL_ON_EMULATOR" = true ]; then
   echo -e "${BLUE}📲 Installing on emulator ($EMULATOR_ID)...${NC}"
   

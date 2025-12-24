@@ -37,6 +37,11 @@ yarn-error.*
 ios/
 android/
 
+# Android Keystore (explicit - android/ is already ignored but being explicit)
+*.keystore
+keystore.properties
+**/keystore.properties
+
 # Build artifacts
 *.bundle/
 **/*.bundle/
@@ -58,3 +63,4 @@ Expo Go.app/
 ExpoGo.app/
 *.app.tar.gz
 archive/
+google-service-account.json

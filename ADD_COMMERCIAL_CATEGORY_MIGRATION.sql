@@ -18,3 +18,4 @@ CHECK (category IN ('safety', 'electrical', 'plumbing', 'structural', 'general',
 -- AND conname = 'tasks_category_check';
 
 
+

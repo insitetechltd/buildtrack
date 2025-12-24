@@ -451,6 +451,36 @@ export const zhTW = {
     taskAlreadyRejected: "此任務已被拒絕，無法再編輯。",
     taskNotFound: "找不到任務",
     unableToEditTask: "無法編輯此任務，因為無法載入。",
+    // Voice input and LLM assistant
+    voiceInput: "語音輸入",
+    textInput: "文字輸入",
+    enterCantoneseOrEnglish: "以粵語或英文輸入任務詳情",
+    textInputPlaceholder: "描述任務...",
+    aiSuggestions: "AI 建議",
+    applySuggestions: "套用建議",
+    clearSuggestions: "清除 AI 建議",
+    suggestionPreview: "建議預覽",
+    acceptField: "接受",
+    rejectField: "拒絕",
+    noSuggestions: "沒有可用建議",
+    processingVoice: "處理語音輸入中...",
+    processingText: "處理文字輸入中...",
+  },
+
+  // Voice Input
+  voiceInput: {
+    title: "語音輸入",
+    startRecording: "開始錄音",
+    stopRecording: "停止錄音",
+    recordingHint: "請清晰地用粵語或英文說話",
+    permissionDenied: "權限被拒絕",
+    microphonePermissionRequired: "需要麥克風權限才能錄製語音輸入。",
+    failedToStartRecording: "開始錄音失敗。請重試。",
+    failedToStopRecording: "停止錄音失敗。請重試。",
+    error: "錯誤",
+    processing: "處理中...",
+    transcribing: "轉錄中...",
+    extracting: "提取任務資訊中...",
   },
 
   // Task Detail

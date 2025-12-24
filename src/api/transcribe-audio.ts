@@ -7,9 +7,10 @@ You can use this function to transcribe audio files, and it will return the text
 /**
  * Transcribe an audio file
  * @param localAudioUri - The local URI of the audio file to transcribe. Obtained via the expo-av library.
+ * @param language - Language code for transcription. Supports "en" (English), "zh" (Chinese/Cantonese), or "yue" (Cantonese). Defaults to "en".
  * @returns The text of the audio file
  */
-export const transcribeAudio = async (localAudioUri: string) => {
+export const transcribeAudio = async (localAudioUri: string, language: "en" | "zh" | "yue" = "en") => {
   try {
     // Create FormData for the audio file
     const formData = new FormData();
@@ -19,7 +20,11 @@ export const transcribeAudio = async (localAudioUri: string) => {
       name: "recording.m4a",
     } as any);
     formData.append("model", "gpt-4o-transcribe");
-    formData.append("language", "en");
+    
+    // Map language codes: "yue" (Cantonese) and "zh" both map to "zh" for OpenAI
+    // OpenAI's transcription API uses "zh" for Chinese (which includes Cantonese)
+    const openAILanguage = language === "yue" ? "zh" : language;
+    formData.append("language", openAILanguage);
 
     const OPENAI_API_KEY = process.env.EXPO_PUBLIC_VIBECODE_OPENAI_API_KEY;
     if (!OPENAI_API_KEY) {

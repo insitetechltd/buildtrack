@@ -55,3 +55,4 @@ CREATE INDEX IF NOT EXISTS idx_tasks_has_unread_changes ON tasks(has_unread_chan
 -- - has_unread_changes flag helps assignees see which tasks were edited
 -- - last_edited_at helps with sorting and filtering recently edited tasks
 
+

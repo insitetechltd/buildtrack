@@ -8,13 +8,6 @@ module.exports = {
         android: null, // Disable Android autolinking
       },
     },
-    // Exclude expo-av from autolinking due to native library compatibility issues
-    'expo-av': {
-      platforms: {
-        ios: null, // Disable iOS autolinking
-        android: null, // Disable Android autolinking
-      },
-    },
   },
 };
 

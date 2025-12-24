@@ -122,3 +122,4 @@ adb shell am start -n com.buildtrack.app/.MainActivity
 - `package.json` - Dependencies and scripts
 
 
+

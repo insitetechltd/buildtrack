@@ -712,6 +712,40 @@ export const useTaskStore = create<TaskStore>()(
             isLoading: false,
           }));
 
+          // Get creator's name to include in update
+          const creatorName = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', taskData.assignedBy)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          // Create an update entry documenting the task creation
+          await get().addTaskUpdate(data.id, {
+            userId: taskData.assignedBy,
+            description: `Task created by ${creatorName}`,
+            photos: [],
+            completionPercentage: 0,
+            status: "not_started"
+          });
+
+          // If task is auto-accepted (creator is assigned), also log acceptance
+          if (isCreatorAssigned) {
+            await get().addTaskUpdate(data.id, {
+              userId: taskData.assignedBy,
+              description: `Task accepted by ${creatorName}`,
+              photos: [],
+              completionPercentage: 0,
+              status: "in_progress"
+            });
+          }
+
           return data.id;
         } catch (error: any) {
           console.error('Error creating task:', error);
@@ -834,28 +868,32 @@ export const useTaskStore = create<TaskStore>()(
           // Success - backend confirmed the update
           console.log(`✅ [Optimistic Update] Backend confirmed update for task ${id}`);
           
-          // Track changes if this was an edit after acceptance
-          if (isEditAfterAcceptance && oldTaskState) {
-            try {
-              // Only creator can edit, so use assignedBy as the editor ID
-              const editorId = oldTaskState.assignedBy;
-              
-              // Get updated task state for comparison (use the optimistically updated state)
-              const updatedTask = get().tasks.find(t => t.id === id);
-              if (updatedTask && editorId) {
-                // Compare old task state with the full updated task state
-                await get().trackTaskEdit(id, editorId, oldTaskState, updatedTask, editReason);
-                
-                // Notify assignees of changes
-                await get().notifyTaskEdit(id, editorId, cleanUpdates);
-              }
-            } catch (trackError) {
-              console.error('Error tracking task edit:', trackError);
-              // Don't fail the update if tracking fails
-            }
-          }
-          
+          // Mark as not loading immediately to restore UI responsiveness
           set({ isLoading: false });
+          
+          // Track changes if this was an edit after acceptance (run in background - don't block UI)
+          if (isEditAfterAcceptance && oldTaskState) {
+            // Run tracking and notification in background without blocking the UI
+            (async () => {
+              try {
+                // Only creator can edit, so use assignedBy as the editor ID
+                const editorId = oldTaskState.assignedBy;
+                
+                // Get updated task state for comparison (use the optimistically updated state)
+                const updatedTask = get().tasks.find(t => t.id === id);
+                if (updatedTask && editorId) {
+                  // Compare old task state with the full updated task state
+                  await get().trackTaskEdit(id, editorId, oldTaskState, updatedTask, editReason);
+                  
+                  // Notify assignees of changes
+                  await get().notifyTaskEdit(id, editorId, cleanUpdates);
+                }
+              } catch (trackError) {
+                console.error('Error tracking task edit:', trackError);
+                // Don't fail the update if tracking fails - these are background operations
+              }
+            })();
+          }
           
         } catch (error: any) {
           console.error('❌ [Optimistic Update] Backend failed, rolling back:', error);
@@ -984,6 +1022,29 @@ export const useTaskStore = create<TaskStore>()(
           currentStatus: "in_progress",
           acceptedBy: userId,
           acceptedAt: new Date().toISOString()
+        });
+
+        // Get user who is accepting to include their name in update
+        const acceptingUser = await (async () => {
+          try {
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', userId)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
+        // Create an update entry documenting the acceptance
+        await get().addTaskUpdate(taskId, {
+          userId: userId,
+          description: `Task accepted by ${acceptingUser}`,
+          photos: [],
+          completionPercentage: task.completionPercentage,
+          status: "in_progress"
         });
       },
 

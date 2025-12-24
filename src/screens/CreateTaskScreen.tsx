@@ -35,6 +35,9 @@ import StandardHeader from "../components/StandardHeader";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
+import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
+// Temporarily disabled due to expo-av CMake build issues
+// import VoiceTaskInput, { Language } from "../components/VoiceTaskInput";
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -299,6 +302,20 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
   const [editReason, setEditReason] = useState("");
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  
+  // LLM Assistant state
+  const {
+    suggestTaskFromText,
+    suggestTaskFromVoice,
+    isLoading: isLLMLoading,
+    error: llmError,
+    lastSuggestion,
+    clearError: clearLLMError,
+    clearSuggestion,
+  } = useTaskLLMAssistant();
+  const [textInput, setTextInput] = useState("");
+  const [showSuggestionPreview, setShowSuggestionPreview] = useState(false);
+  const [acceptedFields, setAcceptedFields] = useState<Set<string>>(new Set());
 
   // All hooks must be called before any early returns
   const userProjects = getProjectsByUser(user?.id || "");
@@ -943,6 +960,338 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           className="flex-1 px-6 py-4" 
           keyboardShouldPersistTaps="handled"
         >
+          {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
+          {/* <VoiceTaskInput
+            onTranscriptionComplete={async (audioUri, language) => {
+              try {
+                const suggestion = await suggestTaskFromVoice(audioUri, language, editTask || undefined);
+                if (suggestion) {
+                  setShowSuggestionPreview(true);
+                  setAcceptedFields(new Set());
+                }
+              } catch (error) {
+                console.error("Voice input error:", error);
+              }
+            }}
+            onError={(error) => {
+              Alert.alert(t.voiceInput.error, error);
+            }}
+            defaultLanguage="yue"
+          /> */}
+
+          {/* Text Input for Manual Entry */}
+          <View className="mb-4">
+            <Text className="text-base font-semibold text-gray-700 mb-2">
+              {t.createTask.textInput}
+            </Text>
+            <View className="flex-row gap-2">
+              <TextInput
+                className="flex-1 border rounded-lg px-3 py-3 text-base text-gray-900 bg-white border-gray-300"
+                placeholder={t.createTask.textInputPlaceholder}
+                value={textInput}
+                onChangeText={setTextInput}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              <Pressable
+                onPress={async () => {
+                  if (!textInput.trim()) {
+                    Alert.alert(t.errors.error, "Please enter some text");
+                    return;
+                  }
+                  try {
+                    const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
+                    if (suggestion) {
+                      setShowSuggestionPreview(true);
+                      setAcceptedFields(new Set());
+                      setTextInput("");
+                    }
+                  } catch (error) {
+                    console.error("Text input error:", error);
+                  }
+                }}
+                disabled={isLLMLoading || !textInput.trim()}
+                className={cn(
+                  "px-4 py-3 rounded-lg bg-blue-500",
+                  (isLLMLoading || !textInput.trim()) && "opacity-50"
+                )}
+              >
+                {isLLMLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Ionicons name="send" size={20} color="white" />
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          {/* LLM Error Display */}
+          {llmError && (
+            <View className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-red-700 text-sm flex-1">{llmError}</Text>
+                <Pressable onPress={clearLLMError}>
+                  <Ionicons name="close" size={20} color="#991b1b" />
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Suggestion Preview */}
+          {lastSuggestion && showSuggestionPreview && (
+            <View className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-base font-semibold text-gray-900">
+                  {t.createTask.aiSuggestions}
+                </Text>
+                <Pressable
+                  onPress={() => {
+                    setShowSuggestionPreview(false);
+                    clearSuggestion();
+                    setAcceptedFields(new Set());
+                  }}
+                >
+                  <Ionicons name="close" size={20} color="#1e40af" />
+                </Pressable>
+              </View>
+
+              {lastSuggestion.title && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.tasks.title}</Text>
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => {
+                          if (acceptedFields.has("title")) {
+                            setAcceptedFields((prev) => {
+                              const next = new Set(prev);
+                              next.delete("title");
+                              return next;
+                            });
+                          } else {
+                            setAcceptedFields((prev) => new Set(prev).add("title"));
+                            setFormData((prev) => ({ ...prev, title: lastSuggestion.title! }));
+                          }
+                        }}
+                        className={cn(
+                          "px-2 py-1 rounded",
+                          acceptedFields.has("title") ? "bg-green-200" : "bg-gray-200"
+                        )}
+                      >
+                        <Text className="text-xs">
+                          {acceptedFields.has("title") ? t.createTask.acceptField : t.createTask.rejectField}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.title}</Text>
+                </View>
+              )}
+
+              {lastSuggestion.description && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.tasks.description}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("description")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("description");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("description"));
+                          setFormData((prev) => ({ ...prev, description: lastSuggestion.description! }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("description") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("description") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.description}</Text>
+                </View>
+              )}
+
+              {lastSuggestion.category && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.tasks.category}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("category")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("category");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("category"));
+                          setFormData((prev) => ({ ...prev, category: lastSuggestion.category! }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("category") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("category") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.category}</Text>
+                </View>
+              )}
+
+              {lastSuggestion.priority && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.tasks.priority}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("priority")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("priority");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("priority"));
+                          setFormData((prev) => ({ ...prev, priority: lastSuggestion.priority! }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("priority") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("priority") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.priority}</Text>
+                </View>
+              )}
+
+              {lastSuggestion.dueDate && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.tasks.dueDate}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("dueDate")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("dueDate");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("dueDate"));
+                          setFormData((prev) => ({ ...prev, dueDate: new Date(lastSuggestion.dueDate!) }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("dueDate") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("dueDate") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">
+                    {dateFormatter.formatDate(new Date(lastSuggestion.dueDate))}
+                  </Text>
+                </View>
+              )}
+
+              {lastSuggestion.billingStatus && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.createTask.billingStatus}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("billingStatus")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("billingStatus");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("billingStatus"));
+                          setFormData((prev) => ({ ...prev, billingStatus: lastSuggestion.billingStatus! }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("billingStatus") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("billingStatus") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.billingStatus}</Text>
+                </View>
+              )}
+
+              {lastSuggestion.taskReference && (
+                <View className="mb-3">
+                  <View className="flex-row items-center justify-between mb-1">
+                    <Text className="text-sm font-medium text-gray-700">{t.createTask.taskReference}</Text>
+                    <Pressable
+                      onPress={() => {
+                        if (acceptedFields.has("taskReference")) {
+                          setAcceptedFields((prev) => {
+                            const next = new Set(prev);
+                            next.delete("taskReference");
+                            return next;
+                          });
+                        } else {
+                          setAcceptedFields((prev) => new Set(prev).add("taskReference"));
+                          setFormData((prev) => ({ ...prev, taskReference: lastSuggestion.taskReference! }));
+                        }
+                      }}
+                      className={cn(
+                        "px-2 py-1 rounded",
+                        acceptedFields.has("taskReference") ? "bg-green-200" : "bg-gray-200"
+                      )}
+                    >
+                      <Text className="text-xs">
+                        {acceptedFields.has("taskReference") ? t.createTask.acceptField : t.createTask.rejectField}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  <Text className="text-sm text-gray-600">{lastSuggestion.taskReference}</Text>
+                </View>
+              )}
+
+              <Pressable
+                onPress={() => {
+                  setShowSuggestionPreview(false);
+                  clearSuggestion();
+                  setAcceptedFields(new Set());
+                }}
+                className="mt-2 px-4 py-2 bg-blue-500 rounded-lg"
+              >
+                <Text className="text-white text-center font-semibold">
+                  {t.createTask.clearSuggestions}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* Title */}
           <InputField label={t.tasks.title} error={errors.title}>
               <TextInput

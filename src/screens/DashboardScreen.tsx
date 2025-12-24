@@ -425,9 +425,6 @@ export default function DashboardScreen({
 
   const myTasksAll = [...myTasksParent, ...myTasksNested];
 
-  // My Tasks: Rejected
-  const myRejectedTasks = myTasksAll.filter(task => task.currentStatus === "rejected");
-
   // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not review accepted)
   // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
   const myWIPTasks = myTasksAll.filter(task => {
@@ -661,11 +658,6 @@ export default function DashboardScreen({
   );
 
   const outboxTotal = outboxAll.length;
-
-  // Rejected tasks across all sections (calculated after inboxAll and outboxAll are defined)
-  const inboxRejectedTasks = inboxAll.filter(task => task.currentStatus === "rejected");
-  const outboxRejectedTasks = outboxAll.filter(task => task.currentStatus === "rejected");
-  const totalRejectedTasks = myRejectedTasks.length + inboxRejectedTasks.length + outboxRejectedTasks.length;
 
   // Determine what to show based on user's project situation
   const shouldShowDashboard = selectedProjectId !== null;
@@ -1114,41 +1106,6 @@ export default function DashboardScreen({
                     </Text>
                   </View>
                 </Pressable>
-                
-                {/* Work Rejected */}
-                <Pressable 
-                  className={cn(
-                    "flex-1 rounded-xl p-4 items-center",
-                    isDarkMode ? "bg-red-900 border-2 border-red-600" : "bg-red-50 border border-red-300"
-                  )}
-                  onPress={() => {
-                    setSectionFilter("my_work");
-                    setStatusFilter("rejected");
-                    setButtonLabel("Report Cards - Work Rejected");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className={cn(
-                    "text-4xl mb-1",
-                    isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
-                  )}>
-                    {totalRejectedTasks}
-                  </Text>
-                  <View className="relative items-center justify-center">
-                    <Ionicons 
-                      name="close-circle-outline" 
-                      size={20} 
-                      color={isDarkMode ? "#f87171" : "#ef4444"} 
-                      style={{ position: 'absolute', left: -26 }}
-                    />
-                    <Text className={cn(
-                      "text-center text-base font-semibold",
-                      isDarkMode ? "text-red-200" : "text-red-600"
-                    )} numberOfLines={2}>
-                      {t.dashboard.workRejected}
-                    </Text>
-                  </View>
-                </Pressable>
               </View>
             </View>
           </View>
@@ -1211,29 +1168,6 @@ export default function DashboardScreen({
               </View>
               
               <View className="flex-row gap-2">
-                {/* Rejected */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-amber-900 border border-amber-600" : "bg-yellow-50 border border-yellow-300"
-                    )}
-                    onPress={() => {
-                    setSectionFilter("my_tasks");
-                      setStatusFilter("rejected");
-                      setButtonLabel("My Tasks - Rejected");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
-                    )}>{myRejectedTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>{t.dashboard.rejected}</Text>
-                  </Pressable>
-                  
                 {/* WIP */}
                   <Pressable 
                     className={cn(

@@ -118,9 +118,10 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
         console.log('🚀 Dashboard Navigation handler called');
         console.log('🚀 editTaskId:', editTaskId);
+        console.log('🚀 actionType:', actionType);
         // Navigate to CreateTask at parent level with nested params
         const parentNav = navigation.getParent();
         if (parentNav) {
@@ -129,7 +130,11 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
             params: {
               parentTaskId,
               parentSubTaskId,
-              editTaskId
+              editTaskId,
+              actionType,
+              sourceTaskId: editTaskId ? taskId : undefined,
+              sourceSubTaskId: editTaskId ? subTaskId : undefined,
+              sourceScreen: 'dashboard'
             }
           });
         }
@@ -189,11 +194,12 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
         console.log('🚀 Navigation handler called');
         console.log('🚀 parentTaskId:', parentTaskId);
         console.log('🚀 parentSubTaskId:', parentSubTaskId);
         console.log('🚀 editTaskId:', editTaskId);
+        console.log('🚀 actionType:', actionType);
         
         // Navigate to CreateTask tab at parent level with params
         // For nested navigators, we need to use the nested format
@@ -204,7 +210,11 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
             params: {
               parentTaskId, 
               parentSubTaskId,
-              editTaskId
+              editTaskId,
+              actionType,
+              sourceTaskId: editTaskId ? taskId : undefined,
+              sourceSubTaskId: editTaskId ? subTaskId : undefined,
+              sourceScreen: 'tasks'
             }
           });
           console.log('🚀 Navigation called to CreateTask tab with nested params');
@@ -297,6 +307,10 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   const parentTaskId = params.parentTaskId;
   const parentSubTaskId = params.parentSubTaskId;
   const editTaskId = params.editTaskId;
+  const actionType = params.actionType || 'edit';
+  const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
+  const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
+  const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use
   
   // Log params whenever route changes
   React.useEffect(() => {
@@ -304,19 +318,57 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       parentTaskId,
       parentSubTaskId,
       editTaskId,
+      actionType,
+      sourceTaskId,
+      sourceSubTaskId,
+      sourceScreen,
       hasEditTaskId: !!editTaskId,
       allParams: params,
       routeName: route.name,
       routeKey: route.key
     });
-  }, [route.params, parentTaskId, parentSubTaskId, editTaskId]);
+  }, [route.params, parentTaskId, parentSubTaskId, editTaskId, actionType, sourceTaskId, sourceSubTaskId, sourceScreen]);
   
+  // Handle back navigation - if editing, navigate back to TaskDetail screen
+  const handleNavigateBack = React.useCallback(() => {
+    if (editTaskId && sourceScreen && sourceTaskId) {
+      // Navigate back to the TaskDetail screen we came from
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        if (sourceScreen === 'dashboard') {
+          parentNav.navigate("Dashboard", {
+            screen: "TaskDetailFromDashboard",
+            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
+          });
+        } else if (sourceScreen === 'tasks') {
+          // For TasksStack, we need to navigate to the Tasks tab first, then to TaskDetail
+          parentNav.navigate("Tasks", {
+            screen: "TaskDetail",
+            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
+          });
+        } else {
+          // Fallback to goBack
+          navigation.goBack();
+        }
+      } else {
+        navigation.goBack();
+      }
+    } else {
+      // Not editing or no source info, use default goBack
+      navigation.goBack();
+    }
+  }, [editTaskId, sourceScreen, sourceTaskId, sourceSubTaskId, navigation]);
+  
+  // Route to appropriate screen based on actionType
+  // For now, all actions go through CreateTaskScreen which will handle them
+  // In the future, we can create separate screens for each action type
   return (
     <CreateTaskScreen
-      onNavigateBack={() => navigation.goBack()}
+      onNavigateBack={handleNavigateBack}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
+      actionType={actionType}
     />
   );
 }

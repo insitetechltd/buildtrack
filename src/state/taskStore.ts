@@ -861,7 +861,7 @@ export const useTaskStore = create<TaskStore>()(
           // Handle cases where dueDate might be undefined or invalid
           if (!task.dueDate) return false;
           const dueDate = new Date(task.dueDate);
-          return !isNaN(dueDate.getTime()) && dueDate < now && task.currentStatus !== 'completed';
+          return !isNaN(dueDate.getTime()) && dueDate < now && task.status !== 'approved' && task.completionPercentage < 100;
         });
         if (projectId) {
           tasks = tasks.filter(task => task.projectId === projectId);
@@ -870,7 +870,7 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       getTasksByStatus: (status, projectId) => {
-        let tasks = get().tasks.filter(task => task.currentStatus === status);
+        let tasks = get().tasks.filter(task => task.status === status);
         if (projectId) {
           tasks = tasks.filter(task => task.projectId === projectId);
         }

@@ -388,16 +388,8 @@ export default function AdminDashboardScreen({
             onPress={() => setShowProfileMenu(true)}
             className="flex-row items-center"
           >
-            <View className="mr-2">
-              <Text className="text-base font-semibold text-right text-gray-900">
-                {user.name}
-              </Text>
-              <Text className="text-sm text-gray-600 text-right capitalize">
-                {user.role}
-              </Text>
-            </View>
-            <View className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-lg">
+            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-base">
                 {user.name.charAt(0).toUpperCase()}
               </Text>
             </View>

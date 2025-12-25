@@ -34,12 +34,29 @@ let _supabaseClient = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl,
     
     // Handle auth state changes (e.g., token refresh errors)
     onAuthStateChange: async (event, session) => {
-      if (event === 'TOKEN_REFRESHED') {
-        console.log('✅ Token refreshed successfully');
-      } else if (event === 'SIGNED_OUT') {
-        console.log('👤 User signed out');
-      } else if (event === 'USER_UPDATED') {
-        console.log('👤 User updated');
+      try {
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('✅ Token refreshed successfully');
+        } else if (event === 'SIGNED_OUT') {
+          console.log('👤 User signed out');
+        } else if (event === 'USER_UPDATED') {
+          console.log('👤 User updated');
+        }
+      } catch (error: any) {
+        // Handle refresh token errors silently
+        if (error?.message?.includes('Invalid Refresh Token') || 
+            error?.message?.includes('Refresh Token Not Found')) {
+          console.log('🔴 Invalid refresh token - clearing session');
+          // Clear the session from AsyncStorage
+          try {
+            await AsyncStorage.removeItem('supabase.auth.token');
+            await AsyncStorage.removeItem('sb-' + supabaseUrl?.split('//')[1]?.split('.')[0] + '-auth-token');
+          } catch (storageError) {
+            console.error('Error clearing auth storage:', storageError);
+          }
+        } else {
+          console.error('Auth state change error:', error);
+        }
       }
     },
   },

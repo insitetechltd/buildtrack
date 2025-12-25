@@ -9,6 +9,8 @@ import {
   Image,
   Linking,
   RefreshControl,
+  Dimensions,
+  PanResponder,
 } from "react-native";
 import Modal from "react-native-modal";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -108,6 +110,26 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [expandedUpdateIds, setExpandedUpdateIds] = useState<Set<string>>(new Set());
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [selectedActivityPhotos, setSelectedActivityPhotos] = useState<string[]>([]);
+  const [selectedActivityInfo, setSelectedActivityInfo] = useState<any>(null);
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const imageScrollViewRef = useRef<ScrollView>(null);
+  
+  // Reset photo index and scroll to clicked photo when modal opens
+  useEffect(() => {
+    if (showImagePreview && selectedActivityPhotos.length > 0 && selectedPhotoIndex >= 0) {
+      setCurrentPhotoIndex(selectedPhotoIndex);
+      const SCREEN_WIDTH = Dimensions.get('window').width;
+      const cardWidth = SCREEN_WIDTH - 20; // card width + margin
+      setTimeout(() => {
+        imageScrollViewRef.current?.scrollTo({
+          x: selectedPhotoIndex * cardWidth,
+          animated: false,
+        });
+      }, 100);
+    }
+  }, [showImagePreview, selectedPhotoIndex, selectedActivityPhotos.length]);
   const [editHistory, setEditHistory] = useState<TaskEditHistory[]>([]);
   const [showEditHistory, setShowEditHistory] = useState(false);
 
@@ -290,10 +312,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   }, [task.activities, task.updates, task.status, isTaskCreator]);
 
   // Collect all files from the task (attachments + photos from activities/updates)
-  const allTaskFiles = useMemo(() => {
+  // Also create a mapping of file URLs to activity IDs for expanding related activities
+  const { allTaskFiles, fileToActivityMap } = useMemo(() => {
     const files: string[] = [];
+    const fileMap: Record<string, string> = {}; // Maps file URL to activity ID
     
-    // Add task attachments
+    // Add task attachments (these don't have associated activities)
     if (task.attachments && task.attachments.length > 0) {
       files.push(...task.attachments);
     }
@@ -303,7 +327,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       task.activities.forEach((activity: any) => {
         const photos = (activity.data as any)?.photos || [];
         if (photos && photos.length > 0) {
-          files.push(...photos);
+          photos.forEach((photo: string) => {
+            files.push(photo);
+            fileMap[photo] = activity.id;
+          });
         }
       });
     }
@@ -312,13 +339,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     if (task.updates && task.updates.length > 0) {
       task.updates.forEach((update: any) => {
         if (update.photos && update.photos.length > 0) {
-          files.push(...update.photos);
+          update.photos.forEach((photo: string) => {
+            files.push(photo);
+            fileMap[photo] = update.id;
+          });
         }
       });
     }
     
     // Remove duplicates and return
-    return Array.from(new Set(files));
+    const uniqueFiles = Array.from(new Set(files));
+    return { allTaskFiles: uniqueFiles, fileToActivityMap: fileMap };
   }, [task.attachments, task.activities, task.updates]);
 
   // Panel animation functions
@@ -657,15 +688,70 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const handleAttachmentPress = (uri: string) => {
     const isPDF = uri.toLowerCase().endsWith('.pdf') || uri.includes('application/pdf');
     
-    if (isPDF) {
-      // Open PDF in browser or external viewer
-      Linking.openURL(uri).catch(() => {
-        Alert.alert("Error", "Unable to open PDF file");
-      });
+    // Check if this file is associated with an activity/update
+    const relatedActivityId = fileToActivityMap[uri];
+    if (relatedActivityId) {
+      // Expand the related activity in the Progress Log
+      const newExpanded = new Set(expandedUpdateIds);
+      if (!newExpanded.has(relatedActivityId)) {
+        newExpanded.add(relatedActivityId);
+        setExpandedUpdateIds(newExpanded);
+      }
+      
+      // Find the activity and get all its photos
+      const allActivities = task.activities || task.updates.map((update: any) => ({
+        id: update.id,
+        activityType: update.status ? 'status_change' : 'progress_update',
+        timestamp: update.timestamp,
+        userId: update.userId,
+        description: update.description,
+        completionPercentage: update.completionPercentage,
+        status: update.status,
+        data: { photos: update.photos || [] },
+      }));
+      
+      const activity = allActivities.find((a: any) => a.id === relatedActivityId);
+      if (activity) {
+        const photos = (activity.data as any)?.photos || [];
+        const photoIndex = photos.indexOf(uri);
+        
+        if (photoIndex !== -1 && photos.length > 0) {
+          setSelectedActivityPhotos(photos);
+          setSelectedActivityInfo(activity);
+          setSelectedPhotoIndex(photoIndex);
+          setSelectedImageUri(uri);
+          setShowImagePreview(true);
+        } else {
+          // Fallback: just show the single image
+          setSelectedActivityPhotos([uri]);
+          setSelectedActivityInfo(null);
+          setSelectedPhotoIndex(0);
+          setSelectedImageUri(uri);
+          setShowImagePreview(true);
+        }
+      } else {
+        // Fallback: just show the single image
+        setSelectedActivityPhotos([uri]);
+        setSelectedActivityInfo(null);
+        setSelectedPhotoIndex(0);
+        setSelectedImageUri(uri);
+        setShowImagePreview(true);
+      }
     } else {
-      // Open image in preview modal
-      setSelectedImageUri(uri);
-      setShowImagePreview(true);
+      // File not associated with an activity (e.g., task attachment)
+      if (isPDF) {
+        // Open PDF in browser or external viewer
+        Linking.openURL(uri).catch(() => {
+          Alert.alert("Error", "Unable to open PDF file");
+        });
+      } else {
+        // Open image in preview modal without activity info
+        setSelectedActivityPhotos([uri]);
+        setSelectedActivityInfo(null);
+        setSelectedPhotoIndex(0);
+        setSelectedImageUri(uri);
+        setShowImagePreview(true);
+      }
     }
   };
 
@@ -1189,29 +1275,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
-      <ScrollView 
-        className="flex-1" 
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
-            onRefresh={async () => {
-              setRefreshing(true);
-              try {
-                if (subTaskId) {
-                  await fetchTaskById(subTaskId);
-                } else {
-                  await fetchTaskById(taskId);
-                }
-              } catch (error) {
-                console.error('Error refreshing task:', error);
-              } finally {
-                setRefreshing(false);
-              }
-            }} 
-          />
-        }
-      >
+      <View className="flex-1">
         {/* Assignment Information Card - Side by Side Layout */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
@@ -1497,7 +1561,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         )}
 
         {/* Progress & Updates Combined Section */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
+        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 flex-1" style={{ minHeight: 0, marginBottom: 80 }}>
           {/* Header with Progress Log title, sort toggle, and completion percentage */}
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center flex-1">
@@ -1528,10 +1592,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Divider */}
           {(task.activities?.length || task.updates.length) > 0 && <View className="border-t border-gray-200 mt-2 mb-3" />}
           
-          {/* Activities List - Expandable (unified from task_activities) */}
+          {/* Activities List - Expandable (unified from task_activities) - Scrollable */}
           {(task.activities?.length || task.updates.length) > 0 ? (
-            <View className="space-y-3">
-              {(() => {
+            <ScrollView 
+              className="flex-1"
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              style={{ minHeight: 0 }}
+            >
+              <View className="space-y-3">
+                {(() => {
                 // Get all activities
                 const allActivities = task.activities || task.updates.map((update: any) => ({
                   id: update.id,
@@ -1648,65 +1718,70 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       </View>
                     </Pressable>
 
-                    {/* Expanded Content */}
+                    {/* Expanded Content - Standardized Format for All Activity Types */}
                     {isExpanded && (() => {
-                      const hasDescription = !!activity.description;
-                      const hasStatusChange = activityType === 'status_change' && activity.data && 
-                        !(activityType === 'status_change' && activity.data && 
-                          ((activity.data as any).fromStatus === 'new' && 
-                           ((activity.data as any).toStatus === 'accepted' || (activity.data as any).toStatus === 'in_progress')));
-                      const hasMetadataEdit = activityType === 'metadata_edit' && activity.data;
-                      const hasPhotos = ((activity.data as any)?.photos || update.photos || []).length > 0;
+                      // Extract reason from activity.data if available (for status_change, review_rejection, etc.)
+                      const activityData = activity.data as any;
+                      const reason = activityData?.reason;
                       
-                      // Determine which sections have content and their order
-                      const sections: JSX.Element[] = [];
+                      // Parse description to separate action from reason (for backward compatibility)
+                      // If description contains "Reason:", split it
+                      let actionText = activity.description || '';
+                      let extractedReason: string | undefined = undefined;
                       
-                      // Add activity type as first line
-                      sections.push(
-                        <Text key="activity-type" className="text-base font-medium text-gray-900 capitalize mb-2">
-                          {activityType?.replace(/_/g, " ") || activityType}
-                        </Text>
-                      );
-                      
-                      if (activity.description) {
-                        sections.push(
-                          <Text key="description" className="text-gray-700">{activity.description}</Text>
-                        );
+                      if (reason) {
+                        // Use reason from activity.data if available (preferred)
+                        extractedReason = reason;
+                        // Try to remove reason from description if it's embedded
+                        const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+                        actionText = actionText.replace(reasonPattern, '').trim();
+                      } else if (activity.description?.includes('Reason:')) {
+                        // Fallback: extract from description for backward compatibility
+                        const reasonMatch = activity.description.match(/Reason:\s*(.+)$/i);
+                        if (reasonMatch) {
+                          extractedReason = reasonMatch[1].trim();
+                          actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
+                        }
                       }
                       
-                      if (hasStatusChange && activityType === 'status_change' && activity.data) {
-                        sections.push(
-                          <View key="status" className={sections.length > 0 ? "mt-3" : ""}>
-                            <Text className="text-sm text-gray-600">
-                              Status: {(activity.data as any).fromStatus || 'N/A'} → {(activity.data as any).toStatus || 'N/A'}
-                            </Text>
-                            {(activity.data as any).reason && (
-                              <Text className="text-sm text-gray-500 mt-1">
-                                Reason: {(activity.data as any).reason}
+                      return (
+                        <View className="mt-3">
+                          {/* 1. Activity Type Label - Always shown */}
+                          <Text className="text-base font-medium text-gray-900 capitalize mb-2">
+                            {activityType?.replace(/_/g, " ") || activityType}
+                          </Text>
+                          
+                          {/* 2. Action/Description - Always shown if exists */}
+                          {actionText && (
+                            <Text className="text-gray-700 mb-2">{actionText}</Text>
+                          )}
+                          
+                          {/* 2b. Reason - Shown if available (for declined, rejected, etc.) */}
+                          {extractedReason && (
+                            <View className="mb-3">
+                              <Text className="text-sm text-gray-700">
+                                <Text className="font-medium">Reason:</Text> {extractedReason}
                               </Text>
-                            )}
-                          </View>
-                        );
-                      }
-                      
-                      if (hasMetadataEdit && activityType === 'metadata_edit' && activity.data) {
-                        sections.push(
-                          <View key="metadata" className={sections.length > 0 ? "mt-3" : ""}>
-                            <Text className="text-sm font-medium text-gray-700 mb-2">Changes:</Text>
-                            {Object.entries((activity.data as any).changes || {}).map(([field, change]: [string, any]) => (
-                              <View key={field} className="mb-2">
-                                <Text className="text-sm text-gray-600 capitalize">{field}:</Text>
-                                <Text className="text-xs text-gray-500">Old: {String(change.old || 'N/A')}</Text>
-                                <Text className="text-xs text-gray-500">New: {String(change.new || 'N/A')}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        );
-                      }
-                      
-                      if (hasPhotos) {
-                        sections.push(
-                          <View key="photos" className={sections.length > 0 ? "mt-3" : ""}>
+                            </View>
+                          )}
+                          
+                          {/* 3. Metadata Edit Changes - Only for metadata_edit activities */}
+                          {activityType === 'metadata_edit' && activity.data && (activity.data as any).changes && (
+                            <View className="mb-3">
+                              <Text className="text-sm font-medium text-gray-700 mb-2">Changes:</Text>
+                              {Object.entries((activity.data as any).changes || {}).map(([field, change]: [string, any]) => (
+                                <View key={field} className="mb-2">
+                                  <Text className="text-sm text-gray-600 capitalize">{field}:</Text>
+                                  <Text className="text-xs text-gray-500">Old: {String(change.old || 'N/A')}</Text>
+                                  <Text className="text-xs text-gray-500">New: {String(change.new || 'N/A')}</Text>
+                                </View>
+                              ))}
+                            </View>
+                          )}
+                          
+                          {/* 4. Photos - Always shown if exists (for all activity types) */}
+                          {((activity.data as any)?.photos || update.photos || []).length > 0 && (
+                          <View>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                               <View className="flex-row gap-2">
                                 {((activity.data as any)?.photos || update.photos || []).map((photo: string, photoIndex: number) => {
@@ -1738,12 +1813,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                               </View>
                             </ScrollView>
                           </View>
-                        );
-                      }
-                      
-                      return (
-                        <View className="mt-3">
-                          {sections}
+                          )}
                         </View>
                       );
                     })()}
@@ -1751,7 +1821,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 );
               });
               })()}
-            </View>
+              </View>
+            </ScrollView>
           ) : (
             <View className="py-6 items-center">
               <Ionicons name="chatbubble-outline" size={40} color="#d1d5db" />
@@ -1794,7 +1865,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
         )}
 
-      </ScrollView>
+      </View>
 
       {/* Fixed Bottom Action Bar */}
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
@@ -2726,51 +2797,233 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       />
 
 
-      {/* Image Preview Modal */}
+      {/* Image Preview Modal with Activity Info */}
       <Modal
         isVisible={showImagePreview}
-        onBackdropPress={() => setShowImagePreview(false)}
+        onSwipeComplete={() => {
+          setShowImagePreview(false);
+          setSelectedImageUri(null);
+          setSelectedActivityPhotos([]);
+          setSelectedActivityInfo(null);
+        }}
+        swipeDirection="up"
+        swipeThreshold={150}
+        propagateSwipe={true}
         animationIn="fadeIn"
         animationOut="fadeOut"
         style={{ margin: 0 }}
         backdropOpacity={1}
+        onBackdropPress={() => {}} // Disable backdrop press
       >
-        <View className="flex-1 bg-black">
-          {/* Image - Full screen */}
-          <View className="flex-1 items-center justify-center">
-            {selectedImageUri && (
-              <Image
-                source={{ uri: selectedImageUri }}
-                className="w-full h-full"
-                resizeMode="contain"
-              />
-            )}
-          </View>
-
-          {/* Close Button - Positioned lower and larger for easy reach */}
-          <SafeAreaView className="absolute top-0 left-0 right-0">
-            <View className="px-6 pt-4">
-              <Pressable
-                onPress={() => setShowImagePreview(false)}
-                className="w-12 h-12 items-center justify-center bg-black/60 rounded-full self-start"
-                style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }}
-              >
-                <Ionicons name="close" size={28} color="white" />
-              </Pressable>
+        {(() => {
+          const SCREEN_WIDTH = Dimensions.get('window').width;
+          const SCREEN_HEIGHT = Dimensions.get('window').height;
+          
+          const handleScroll = (event: any) => {
+            const contentOffsetX = event.nativeEvent.contentOffset.x;
+            const cardWidth = SCREEN_WIDTH - 20; // card width + margin
+            const newIndex = Math.round(contentOffsetX / cardWidth);
+            if (newIndex >= 0 && newIndex < selectedActivityPhotos.length) {
+              setCurrentPhotoIndex(newIndex);
+            }
+          };
+          
+          const getActivityIcon = (type: string) => {
+            switch (type) {
+              case 'creation': return 'add-circle';
+              case 'assignment': return 'person-add';
+              case 'status_change': return 'sync';
+              case 'progress_update': return 'trending-up';
+              case 'metadata_edit': return 'create';
+              case 'review_submission': return 'send';
+              case 'review_acceptance': return 'checkmark-circle';
+              case 'review_rejection': return 'close-circle';
+              case 'cancellation': return 'ban';
+              case 'assigner_comment': return 'chatbubble';
+              default: return 'document-text';
+            }
+          };
+          
+          const getActivityColor = (type: string) => {
+            switch (type) {
+              case 'creation': return '#10b981';
+              case 'assignment': return '#3b82f6';
+              case 'status_change': return '#8b5cf6';
+              case 'progress_update': return '#f59e0b';
+              case 'metadata_edit': return '#6366f1';
+              case 'review_submission': return '#06b6d4';
+              case 'review_acceptance': return '#10b981';
+              case 'review_rejection': return '#ef4444';
+              case 'cancellation': return '#6b7280';
+              case 'assigner_comment': return '#3b82f6';
+              default: return '#6b7280';
+            }
+          };
+          
+          const activity = selectedActivityInfo;
+          const activityType = activity?.activityType || (activity?.status ? 'status_change' : 'progress_update');
+          const activityUserId = activity?.userId;
+          const activityUser = activityUserId ? getUserById(activityUserId) : null;
+          
+          // Extract reason from activity.data if available
+          const activityData = activity?.data as any;
+          const reason = activityData?.reason;
+          let actionText = activity?.description || '';
+          let extractedReason: string | undefined = undefined;
+          
+          if (reason) {
+            extractedReason = reason;
+            const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+            actionText = actionText.replace(reasonPattern, '').trim();
+          } else if (activity?.description?.includes('Reason:')) {
+            const reasonMatch = activity.description.match(/Reason:\s*(.+)$/i);
+            if (reasonMatch) {
+              extractedReason = reasonMatch[1].trim();
+              actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
+            }
+          }
+          
+          const handleClose = () => {
+            setShowImagePreview(false);
+            setSelectedImageUri(null);
+            setSelectedActivityPhotos([]);
+            setSelectedActivityInfo(null);
+          };
+          
+          return (
+            <View className="flex-1 bg-black">
+              {/* Swipe Up Hint - Fixed at top */}
+              <SafeAreaView className="absolute top-0 left-0 right-0 z-20" edges={['top']}>
+                <View className="px-6 pt-4 items-center">
+                  <View className="bg-black/60 px-4 py-2 rounded-full">
+                    <View className="flex-row items-center">
+                      <Ionicons name="chevron-up" size={16} color="white" />
+                      <Text className="text-white/90 text-sm ml-2">Swipe up to exit</Text>
+                    </View>
+                  </View>
+                </View>
+              </SafeAreaView>
+              
+              {/* Photo Counter */}
+              {selectedActivityPhotos.length > 1 && (
+                <View className="absolute top-16 right-6 z-20 bg-black/60 px-3 py-1.5 rounded-full">
+                  <Text className="text-white text-sm font-medium">
+                    {currentPhotoIndex + 1} / {selectedActivityPhotos.length}
+                  </Text>
+                </View>
+              )}
+              
+              {/* Main Content Container - Moved down to show top of photos */}
+              <View className="flex-1" style={{ paddingTop: 80 }}>
+                {/* Photos Section - Top of Modal - Swipe horizontally here */}
+                <View style={{ height: SCREEN_HEIGHT * 0.55 }}>
+                  <ScrollView
+                    ref={imageScrollViewRef}
+                    horizontal={true}
+                    pagingEnabled={false}
+                    snapToInterval={SCREEN_WIDTH - 20}
+                    snapToAlignment="start"
+                    decelerationRate="fast"
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={{ 
+                      paddingHorizontal: 20,
+                    }}
+                    bounces={false}
+                    scrollEnabled={true}
+                    nestedScrollEnabled={true}
+                    directionalLockEnabled={true}
+                    removeClippedSubviews={false}
+                  >
+                    {selectedActivityPhotos.map((photoUri, index) => (
+                      <View
+                        key={index}
+                        style={{ 
+                          width: SCREEN_WIDTH - 40, 
+                          height: SCREEN_HEIGHT * 0.55,
+                          marginRight: 20,
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                        className="bg-white rounded-2xl overflow-hidden shadow-lg"
+                      >
+                        <Image
+                          source={{ uri: photoUri }}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                          }}
+                          resizeMode="contain"
+                        />
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+                
+                {/* Activity Information Section - Bottom of Modal */}
+                {activity && (
+                  <View 
+                    className="w-full bg-black/90 px-4 py-4" 
+                    style={{ height: SCREEN_HEIGHT * 0.35 }}
+                  >
+                  <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
+                    <View className="border-l-4 pl-3" style={{ borderLeftColor: getActivityColor(activityType) }}>
+                      {/* Activity Type */}
+                      <Text className="text-base font-medium text-white capitalize mb-1">
+                        {activityType?.replace(/_/g, " ") || activityType}
+                      </Text>
+                      
+                      {/* User and Timestamp */}
+                      <View className="flex-row items-center mb-2">
+                        <Ionicons 
+                          name={getActivityIcon(activityType) as any} 
+                          size={14} 
+                          color={getActivityColor(activityType)} 
+                          style={{ marginRight: 6 }}
+                        />
+                        <Text className="text-sm text-white/80">
+                          {activityUser?.name || "Unknown User"} • {dateFormatter.formatDateShort(activity.timestamp)} {dateFormatter.formatTime(activity.timestamp)}
+                        </Text>
+                      </View>
+                      
+                      {/* Description */}
+                      {actionText && (
+                        <Text className="text-sm text-white/90 mb-2">{actionText}</Text>
+                      )}
+                      
+                      {/* Reason */}
+                      {extractedReason && (
+                        <Text className="text-sm text-white/90 mb-2">
+                          <Text className="font-medium">Reason:</Text> {extractedReason}
+                        </Text>
+                      )}
+                      
+                      {/* Progress and Status */}
+                      {(activity.completionPercentage !== undefined || activity.status) && (
+                        <View className="flex-row items-center gap-3 mt-1">
+                          {activity.completionPercentage !== undefined && (
+                            <Text className="text-sm text-white/80">
+                              Progress: {activity.completionPercentage}%
+                            </Text>
+                          )}
+                          {activity.status && (
+                            <View className="px-2 py-0.5 rounded" style={{ backgroundColor: getActivityColor(activityType) + '40' }}>
+                              <Text className="text-xs text-white capitalize">
+                                {activity.status.replace(/_/g, " ")}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  </ScrollView>
+                </View>
+              )}
             </View>
-          </SafeAreaView>
-
-          {/* Optional: Tap anywhere to close hint */}
-          <Pressable 
-            className="absolute bottom-0 left-0 right-0 pb-8 items-center"
-            onPress={() => setShowImagePreview(false)}
-            style={{ pointerEvents: 'box-none' }}
-          >
-            <View className="bg-black/60 px-4 py-2 rounded-full">
-              <Text className="text-white/80 text-sm">Tap anywhere to close</Text>
-            </View>
-          </Pressable>
-        </View>
+          );
+        })()}
       </Modal>
 
       {/* Task Detail Utility FAB */}

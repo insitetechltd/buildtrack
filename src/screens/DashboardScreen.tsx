@@ -425,32 +425,21 @@ export default function DashboardScreen({
 
   const myTasksAll = [...myTasksParent, ...myTasksNested];
 
-  // My Tasks: WIP (self-assigned, accepted or doesn't need acceptance, not complete, not overdue, not review accepted)
-  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+  // My Tasks: WIP (in_progress or rejected for rework, not overdue)
   const myWIPTasks = myTasksAll.filter(task => {
-    // Include rejected tasks in WIP
-    if (task.currentStatus === "rejected") {
-      return true;
-    }
-    const isSelfAssigned = task.assignedBy === user.id;
-    const isAcceptedOrSelfAssigned = task.accepted || (isSelfAssigned && !task.accepted);
-    return isAcceptedOrSelfAssigned && 
-           task.completionPercentage < 100 &&
-           !isOverdue(task) &&
-           !task.reviewAccepted;
+    return (task.status === "in_progress" || task.status === "rejected") &&
+           !isOverdue(task);
   });
   
-  // My Tasks: Done (100% complete, review accepted)
+  // My Tasks: Done (approved status)
   const myDoneTasks = myTasksAll.filter(task => 
-    task.completionPercentage === 100 &&
-    task.reviewAccepted === true
+    task.status === "approved"
   );
   
-  // My Tasks: Overdue (<100%, past due, not rejected)
+  // My Tasks: Overdue (in_progress or accepted, past due)
   const myOverdueTasks = myTasksAll.filter(task =>
-    task.completionPercentage < 100 && 
-    isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    (task.status === "in_progress" || task.status === "accepted") &&
+    isOverdue(task)
   );
   
   const myTasksTotal = myTasksAll.length;
@@ -469,81 +458,40 @@ export default function DashboardScreen({
 
   const inboxAll = [...inboxParentTasks, ...inboxNestedTasks];
 
-  // Inbox: Received (not yet responded, not rejected)
-  // Helper: Check if task is pending acceptance
-  // First user to accept/reject decides for all users
-  // Show if: no one has accepted yet AND no one has rejected yet AND not completed
-  const isPendingAcceptance = (task: Task) => {
-    return !task.accepted &&  // No one has accepted yet
-           !task.declineReason && 
-           task.currentStatus !== "rejected" &&
-           task.completionPercentage < 100; // Exclude completed tasks
-  };
+  // Inbox: Received (new status - waiting for assignee response)
+  const inboxReceivedTasks = inboxAll.filter(task => 
+    task.status === "new"
+  );
   
-  const inboxReceivedTasks = inboxAll.filter(task => isPendingAcceptance(task));
-  
-  // Inbox: WIP (accepted by anyone - first user accepts for all, not overdue, <100% or (100% but not ready for review), not review accepted)
-  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+  // Inbox: WIP (in_progress or rejected for rework, not overdue)
   const inboxWIPTasks = inboxAll.filter(task => {
-    // Include rejected tasks in WIP
-    if (task.currentStatus === "rejected") {
-      return true;
-    }
-    return task.accepted === true &&  // Accepted by anyone (first user accepts for all)
-           !isOverdue(task) &&
-           (task.completionPercentage < 100 ||
-            (task.completionPercentage === 100 && !task.readyForReview)) &&
-           !task.reviewAccepted;
+    return (task.status === "in_progress" || task.status === "rejected") &&
+           !isOverdue(task);
   });
 
-  // Inbox: Reviewing (tasks I CREATED waiting for my review action)
+  // Inbox: Reviewing (tasks I CREATED that are submitted_for_review OR declined by assignee)
   // NOTE: Includes both top-level and nested tasks (all tasks I created)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
     const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
-    const isTopLevel = isTopLevelTask(task);
-    const isNested = isNestedTask(task);
-    const matches = isCreatedByMeForReview &&
-           task.completionPercentage === 100 &&
-           task.readyForReview === true &&
-           task.reviewAccepted !== true;
-    
-    // Debug logging for subtasks
-    if (isNested && task.completionPercentage === 100 && isCreatedByMeForReview) {
-      console.log('🔍 [DEBUG] Dashboard - Reviewing subtask check:', {
-        title: task.title,
-        taskId: task.id,
-        parentTaskId: task.parentTaskId,
-        isTopLevel,
-        isNested,
-        isCreatedByMeForReview,
-        completionPercentage: task.completionPercentage,
-        readyForReview: task.readyForReview,
-        reviewAccepted: task.reviewAccepted,
-        matches,
-        inProjectFiltered: projectFilteredTasks.includes(task)
-      });
-    }
-    
-    return matches;
+    return isCreatedByMeForReview && 
+           (task.status === "submitted_for_review" || task.status === "declined");
   });
 
-  // Inbox: Done (100% complete, review accepted)
+  // Inbox: Done (approved status)
   const inboxDoneTasks = inboxAll.filter(task =>
-    task.completionPercentage === 100 &&
-    task.reviewAccepted === true
+    task.status === "approved"
   );
   
-  // Inbox: Overdue (<100%, past due, not rejected)
+  // Inbox: Overdue (in_progress or accepted, past due)
   const inboxOverdueTasks = inboxAll.filter(task =>
-    task.completionPercentage < 100 && 
-    isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    (task.status === "in_progress" || task.status === "accepted") &&
+    isOverdue(task)
   );
 
   const inboxTotal = inboxAll.length;
 
   // ===== OUTBOX SECTION =====
-  // Outbox: Tasks I assigned TO others (not self-assigned only, not rejected)
+  // Outbox: Tasks I assigned TO others (not self-assigned only, not cancelled)
   const outboxParentTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
@@ -551,8 +499,8 @@ export default function DashboardScreen({
     const isCreatedByMe = String(task.assignedBy) === String(user.id);
     const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
     const isTopLevel = isTopLevelTask(task);
-    const isNotRejected = task.currentStatus !== "rejected";
-    const matches = isTopLevel && isCreatedByMe && !isSelfAssignedOnly && isNotRejected;
+    const isNotCancelled = task.status !== "cancelled";
+    const matches = isTopLevel && isCreatedByMe && !isSelfAssignedOnly && isNotCancelled;
     
     // Debug logging for Task 3
     if (task.title?.toLowerCase().includes("task 3") || 
@@ -569,7 +517,7 @@ export default function DashboardScreen({
         isAssignedToMe,
         isSelfAssignedOnly,
         isTopLevel,
-        isNotRejected,
+        isNotCancelled,
         matches,
         inProjectFiltered: projectFilteredTasks.includes(task)
       });
@@ -586,75 +534,52 @@ export default function DashboardScreen({
 
   const outboxAll = [...outboxParentTasks, ...outboxNestedTasks];
 
-  // Outbox: Assigned (pending acceptance, not rejected)
+  // Outbox: Assigned (new status - waiting for assignee acceptance)
   const outboxAssignedTasks = outboxAll.filter(task =>
-    task.accepted === false && 
-    !task.declineReason && 
-    task.currentStatus !== "rejected"
+    task.status === "new"
   );
   
-  // Outbox: WIP (accepted, not overdue, <100% or (100% but not ready for review), not review accepted)
-  // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+  // Outbox: WIP (accepted, in_progress, or rejected/declined for rework, but NOT tasks submitted for review)
   const outboxWIPTasks = outboxAll.filter(task => {
-    // Include rejected tasks in WIP
-    if (task.currentStatus === "rejected") {
+    // Exclude tasks submitted for review - they should only appear in "reviewing" filter
+    if (task.status === "submitted_for_review") {
+      return false;
+    }
+    // Include rejected/declined tasks (needs rework)
+    if (task.status === "rejected" || task.status === "declined") {
       return true;
     }
-    return task.accepted && 
+    // Include tasks at 100% that are rejected (but not submitted_for_review)
+    if (task.completionPercentage === 100 && task.status === "rejected") {
+      return true;
+    }
+    // Include accepted or in_progress tasks that are not complete
+    return (task.status === "accepted" || task.status === "in_progress") &&
            !isOverdue(task) &&
-           (task.completionPercentage < 100 ||
-            (task.completionPercentage === 100 && !task.readyForReview)) &&
-           !task.reviewAccepted;
+           task.completionPercentage < 100 &&
+           task.status !== "approved";
   });
 
-  // Outbox: Reviewing (tasks I'm ASSIGNED TO that I submitted for review)
-  // NOTE: Includes both top-level and nested tasks (all tasks assigned to me)
+  // Outbox: Reviewing (tasks assigned to others that are submitted_for_review)
+  // NOTE: Includes both top-level and nested tasks (all tasks assigned to others)
   const outboxReviewingTasks = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
     const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
     const isCreatedByMe = task.assignedBy === user.id;
     return !isCreatedByMe &&
            isAssignedToMe &&
-           task.completionPercentage === 100 &&
-           task.readyForReview === true &&
-           task.reviewAccepted !== true;
+           task.status === "submitted_for_review";
   });
   
-  // Outbox: Done (100% complete, review accepted)
-  const outboxDoneTasks = outboxAll.filter(task => {
-    const matches = task.completionPercentage === 100 && task.reviewAccepted === true;
-    
-    // Debug logging for Task 3 or tasks that should be in accomplishments
-    if (task.title?.toLowerCase().includes("task 3") || 
-        (task.completionPercentage === 100 && String(task.assignedBy) === String(user.id))) {
-      console.log('📦 [OUTBOX DEBUG] Task check:', {
-        id: task.id,
-        title: task.title,
-        assignedBy: task.assignedBy,
-        assignedByType: typeof task.assignedBy,
-        userId: user.id,
-        userIdType: typeof user.id,
-        isCreatedByMe: task.assignedBy === user.id,
-        isCreatedByMeStr: String(task.assignedBy) === String(user.id),
-        assignedTo: task.assignedTo,
-        completionPercentage: task.completionPercentage,
-        reviewAccepted: task.reviewAccepted,
-        currentStatus: task.currentStatus,
-        isTopLevel: isTopLevelTask(task),
-        inOutboxParent: outboxParentTasks.includes(task),
-        inOutboxAll: outboxAll.includes(task),
-        matchesDoneFilter: matches
-      });
-    }
-    
-    return matches;
-  });
+  // Outbox: Done (approved status)
+  const outboxDoneTasks = outboxAll.filter(task => 
+    task.status === "approved"
+  );
   
-  // Outbox: Overdue (<100%, past due, not rejected)
+  // Outbox: Overdue (in_progress or accepted, past due)
   const outboxOverdueTasks = outboxAll.filter(task =>
-    task.completionPercentage < 100 && 
-    isOverdue(task) &&
-    task.currentStatus !== "rejected"
+    (task.status === "in_progress" || task.status === "accepted") &&
+    isOverdue(task)
   );
 
   const outboxTotal = outboxAll.length;
@@ -678,14 +603,6 @@ export default function DashboardScreen({
             onPress={() => setShowProfileMenu(true)}
             className="flex-row items-center"
           >
-            <View className="mr-2">
-              <Text className={cn("text-base font-semibold text-right", isDarkMode ? "text-white" : "text-gray-900")}>
-                {user.name}
-            </Text>
-              <Text className={cn("text-sm text-right capitalize", isDarkMode ? "text-slate-400" : "text-gray-600")}>
-                {user.role}
-              </Text>
-            </View>
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
               <Text className="text-white font-bold text-base">
                 {user.name.charAt(0).toUpperCase()}

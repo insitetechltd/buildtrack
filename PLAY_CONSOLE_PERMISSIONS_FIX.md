@@ -118,3 +118,5 @@ Before retrying submission, verify:
 **Key Point**: Owner role in Google Cloud Console is correct, but you ALSO need explicit permissions in Google Play Console for the service account to submit apps.
 
 
+
+

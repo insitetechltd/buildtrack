@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -55,6 +56,21 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
 
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      if (user?.companyId && projectId) {
+        await cleanupDuplicateAssignments(projectId);
+        await fetchProjectUserAssignments(projectId);
+      }
+    } catch (error) {
+      console.error('Error refreshing project:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [projectId, user?.companyId, fetchProjectUserAssignments, cleanupDuplicateAssignments]);
 
   // Refresh project assignments when component mounts and when screen comes into focus
   React.useEffect(() => {
@@ -204,7 +220,13 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
         }
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Project Header */}
         <View className="bg-white border-b border-gray-200 px-6 py-4">
           <View className="flex-row items-start justify-between mb-3">

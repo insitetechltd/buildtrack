@@ -9,12 +9,13 @@ echo "🎨 Syncing App Icons"
 echo "===================="
 echo ""
 
-ICON_SOURCE="./assets/icon.png"
+ICON_SOURCE="./assets/icon-1024.png"
 IOS_ICON_DEST="./ios/BuildTrack/Images.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png"
 
 # Check if source icon exists
 if [ ! -f "$ICON_SOURCE" ]; then
     echo "❌ Error: Icon not found at $ICON_SOURCE"
+    echo "   Looking for: $ICON_SOURCE"
     exit 1
 fi
 
@@ -25,16 +26,20 @@ echo "   Source icon: $DIMENSIONS"
 
 if [[ ! "$DIMENSIONS" =~ "1024 x 1024" ]]; then
     echo "⚠️  Warning: Icon should be 1024x1024 pixels for best results"
+    echo "   Current size: $DIMENSIONS"
 fi
 
 # Sync to iOS
 if [ -d "./ios/BuildTrack/Images.xcassets/AppIcon.appiconset" ]; then
     echo ""
     echo "📱 Syncing to iOS..."
+    mkdir -p "$(dirname "$IOS_ICON_DEST")"
     cp "$ICON_SOURCE" "$IOS_ICON_DEST"
-    echo "   ✅ iOS icon updated"
+    echo "   ✅ iOS icon updated: $IOS_ICON_DEST"
+    echo "   ✅ Copied from: $ICON_SOURCE"
 else
     echo "   ⚠️  iOS assets directory not found (run npx expo prebuild first)"
+    echo "   Expected: ./ios/BuildTrack/Images.xcassets/AppIcon.appiconset"
 fi
 
 # Note about Android

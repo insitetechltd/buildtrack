@@ -61,7 +61,8 @@ export type TaskStatus =
 | From Status | To Status | Trigger | Who Can Do It |
 |------------|-----------|---------|---------------|
 | `new` | `accepted` | Assignee accepts task | Assignee |
-| `new` | `declined` | Assignee declines task | Assignee |
+| `new` | `declined` | Assignee declines task | Assignee (affects only that assignee) |
+| `new` | `in_progress` | Self-assigned task auto-transitions | System (for self-assigned tasks only) |
 | `declined` | `new` | Assigner modifies/reassigns | Assigner (creator) |
 | `accepted` | `in_progress` | Assignee starts work | Assignee |
 | `in_progress` | `submitted_for_review` | Assignee completes (100%) | Assignee |
@@ -69,6 +70,11 @@ export type TaskStatus =
 | `submitted_for_review` | `rejected` | Assigner rejects completion | Assigner (creator) |
 | `rejected` | `in_progress` | Assignee starts rework | Assignee |
 | Any | `cancelled` | Creator cancels task | Creator only |
+
+**Special Rules:**
+- **Self-assigned tasks**: Automatically transition from `new` → `in_progress` (skips `accepted` state)
+- **Multiple assignees**: If one assignee declines, only that assignee's relationship is marked as `declined`. Other assignees can still accept. The task status remains `new` until at least one assignee accepts.
+- **Status history**: All status changes are kept forever in `task_status_history` table for complete audit trail
 
 ### New Task Interface Fields
 
@@ -211,10 +217,20 @@ function mapOldStatusToNew(task: OldTask): TaskStatus {
   - ✅ **Approved** - Reviewer approves the completed work
   - ❌ **Rejected** - Reviewer rejects the completed work (needs rework)
 
-## Questions to Consider
+## Decisions Made
 
-1. **Self-assigned tasks**: Should they auto-transition from `new` → `accepted` → `in_progress`?
-2. **Multiple assignees**: If one declines, does the task go to `declined` for all, or only for that assignee?
-3. **Status history retention**: How long should we keep status change history?
-4. **Backward compatibility**: Do we need to support old status format during migration period?
+1. **Self-assigned tasks**: ✅ Auto-transition from `new` → `in_progress` (skips `accepted` state)
+2. **Multiple assignees**: ✅ Decline affects only the specific assignee (not all assignees)
+3. **Status history retention**: ✅ Keep history forever (complete audit trail)
+4. **Backward compatibility**: ❌ No need to support old status format - purge all old tasks during migration
+
+## Migration Strategy
+
+Since we're not maintaining backward compatibility, the migration will:
+1. **Delete all existing tasks** from the database
+2. Create new `task_status_history` table
+3. Update all code to use the new unified status system
+4. Users will start fresh with the new system
+
+This is a clean break approach that ensures no legacy code or data remains.
 

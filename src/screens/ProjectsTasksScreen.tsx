@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,7 +21,6 @@ import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/bui
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
-import { useDateFormatter } from "../utils/dateFormatter";
 
 interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -37,7 +36,6 @@ export default function ProjectsTasksScreen({
   onNavigateToCreateTask,
   onNavigateBack 
 }: ProjectsTasksScreenProps) {
-  const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const tasks = taskStore.tasks;
@@ -45,12 +43,24 @@ export default function ProjectsTasksScreen({
   const { getUserById } = userStore;
   const projectStore = useProjectStoreWithInit();
   const { getProjectById, getProjectsByUser } = projectStore;
-  const { selectedProjectId, sectionFilter, statusFilter, setSectionFilter, setStatusFilter } = useProjectFilterStore();
+  const { selectedProjectId, sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "pending" | "overdue" | "all">("all");
   const [refreshing, setRefreshing] = useState(false);
-  const activeSectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | "all" = sectionFilter ?? "all";
-  const activeStatusFilter: TaskStatus | "pending" | "overdue" | "all" = statusFilter ?? "all";
+
+  // Apply filters from store on mount
+  useEffect(() => {
+    if (sectionFilter) {
+      setLocalSectionFilter(sectionFilter);
+      clearSectionFilter(); // Clear it after applying so it doesn't persist
+    }
+    if (statusFilter) {
+      setLocalStatusFilter(statusFilter);
+      clearStatusFilter(); // Clear it after applying so it doesn't persist
+    }
+  }, [sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter]);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchQuery(text);
@@ -58,15 +68,15 @@ export default function ProjectsTasksScreen({
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Force stores to re-read from state
-    useTaskStore.setState({ isLoading: taskStore.isLoading });
-    useProjectStore.setState({ isLoading: projectStore.isLoading });
-    
-    // Simulate network delay for UX
-    setTimeout(() => {
+    try {
+      await taskStore.fetchTasks();
+      await projectStore.fetchProjects();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
       setRefreshing(false);
-    }, 500);
-  }, []);
+    }
+  }, [taskStore, projectStore]);
 
   if (!user) return null;
 
@@ -191,13 +201,13 @@ export default function ProjectsTasksScreen({
       const outboxTasks = [...assignedParentTasks, ...assignedSubTasks];
       
       // Return tasks based on section filter
-      if (activeSectionFilter === "my_tasks") {
+      if (localSectionFilter === "my_tasks") {
         // "my_tasks" shows ALL tasks assigned to me (including self-assigned)
         return myTasksAll;
-      } else if (activeSectionFilter === "inbox") {
+      } else if (localSectionFilter === "inbox") {
         // "inbox" shows only tasks assigned to me by others
         return inboxTasks;
-      } else if (activeSectionFilter === "outbox") {
+      } else if (localSectionFilter === "outbox") {
         return outboxTasks;
       } else {
         // For "all", return all my tasks (including self-assigned) and outbox tasks
@@ -224,7 +234,7 @@ export default function ProjectsTasksScreen({
                            task.description.toLowerCase().includes(searchQuery.toLowerCase());
       
       // Handle status filters with new categorization logic
-      if (activeStatusFilter === "all") {
+      if (localStatusFilter === "all") {
         return matchesSearch;
       }
       
@@ -236,33 +246,24 @@ export default function ProjectsTasksScreen({
       };
       
       // Apply new categorization logic
-      if (activeStatusFilter === "not_started") {
+      if (localStatusFilter === "not_started") {
         return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
-      } else if (activeStatusFilter === "pending") {
-        // Include rejected tasks in pending/WIP
-        if (task.currentStatus === "rejected") {
-          return matchesSearch;
-        }
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task);
-      } else if (activeStatusFilter === "completed") {
+      } else if (localStatusFilter === "pending") {
+        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
+      } else if (localStatusFilter === "completed") {
         return matchesSearch && task.accepted && task.completionPercentage === 100;
-      } else if (activeStatusFilter === "overdue") {
+      } else if (localStatusFilter === "overdue") {
         return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
-      } else if (activeStatusFilter === "rejected") {
+      } else if (localStatusFilter === "rejected") {
         return matchesSearch && task.currentStatus === "rejected";
       } else {
         // Fallback to original status matching
-        return matchesSearch && task.currentStatus === activeStatusFilter;
+        return matchesSearch && task.currentStatus === localStatusFilter;
       }
     });
 
-    // Sort tasks: rejected tasks first, then by priority (high to low) then by due date (earliest first)
+    // Sort tasks by priority (high to low) then by due date (earliest first)
     return filteredTasks.sort((a, b) => {
-      // First: rejected tasks go to the top
-      const aIsRejected = a.currentStatus === "rejected";
-      const bIsRejected = b.currentStatus === "rejected";
-      if (aIsRejected && !bIsRejected) return -1;
-      if (!aIsRejected && bIsRejected) return 1;
       // First sort by priority
       const priorityA = getPriorityOrder(a.priority);
       const priorityB = getPriorityOrder(b.priority);
@@ -438,7 +439,7 @@ export default function ProjectsTasksScreen({
               <View className="flex-row items-center">
                 <Ionicons name="calendar-outline" size={14} color="#6b7280" />
                 <Text className="text-sm text-gray-600 ml-1">
-                  {dateFormatter.formatDateShort(task.dueDate)}
+                  {new Date(task.dueDate).toLocaleDateString()}
                 </Text>
               </View>
               <Text className="text-sm text-gray-500">
@@ -460,10 +461,10 @@ export default function ProjectsTasksScreen({
     label: string 
   }) => (
     <Pressable
-      onPress={() => setSectionFilter(section)}
+      onPress={() => setLocalSectionFilter(section)}
       className={cn(
         "px-3 py-1 rounded-full border mr-2",
-        activeSectionFilter === section
+        localSectionFilter === section
           ? "bg-blue-600 border-blue-600"
           : "bg-white border-gray-300"
       )}
@@ -471,7 +472,7 @@ export default function ProjectsTasksScreen({
       <Text
         className={cn(
           "text-sm font-semibold",
-          activeSectionFilter === section
+          localSectionFilter === section
             ? "text-white"
             : "text-gray-600"
         )}
@@ -489,10 +490,10 @@ export default function ProjectsTasksScreen({
     label: string 
   }) => (
     <Pressable
-      onPress={() => setStatusFilter(status)}
+      onPress={() => setLocalStatusFilter(status)}
       className={cn(
         "px-3 py-1 rounded-full border mr-2",
-        activeStatusFilter === status
+        localStatusFilter === status
           ? "bg-green-600 border-green-600"
           : "bg-white border-gray-300"
       )}
@@ -500,7 +501,7 @@ export default function ProjectsTasksScreen({
       <Text
         className={cn(
           "text-sm font-semibold",
-          activeStatusFilter === status
+          localStatusFilter === status
             ? "text-white"
             : "text-gray-600"
         )}
@@ -511,7 +512,7 @@ export default function ProjectsTasksScreen({
   );
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -562,7 +563,13 @@ export default function ProjectsTasksScreen({
         </View>
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        className="flex-1" 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Flat Tasks List */}
         <View className="px-6 py-4">
         {allTasks.length > 0 ? (
@@ -585,10 +592,10 @@ export default function ProjectsTasksScreen({
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              {searchQuery || activeStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
-              {searchQuery || activeStatusFilter !== "all"
+              {searchQuery || localStatusFilter !== "all"
                 ? "Try adjusting your search or filters"
                 : "You haven't been assigned any tasks yet"
               }

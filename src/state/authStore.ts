@@ -697,7 +697,19 @@ export const useAuthStore = create<AuthStore>()(
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
           if (sessionError) {
-            console.error('Error getting session during init:', sessionError);
+            // Handle refresh token errors gracefully
+            if (sessionError.message?.includes('Invalid Refresh Token') || 
+                sessionError.message?.includes('Refresh Token Not Found')) {
+              console.log('🔴 Invalid refresh token during init - clearing session');
+              // Clear auth storage
+              try {
+                await supabase.auth.signOut();
+              } catch (signOutError) {
+                // Ignore sign out errors if already signed out
+              }
+            } else {
+              console.error('Error getting session during init:', sessionError);
+            }
             set({ isLoading: false, isAuthenticated: false, user: null, session: null, isInitialized: true });
             return;
           }

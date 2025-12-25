@@ -61,7 +61,16 @@ export type InvitationStatus = "pending" | "accepted" | "declined" | "expired";
 
 export type Priority = "low" | "medium" | "high" | "critical";
 
-export type TaskStatus = "not_started" | "in_progress" | "rejected" | "completed";
+// Unified task status system - replaces old currentStatus + accepted + readyForReview + reviewAccepted
+export type TaskStatus = 
+  | "new"                    // Created by assigner, waiting for assignee response
+  | "declined"               // Declined by assignee (goes back to assigner)
+  | "accepted"               // Accepted by assignee (ready to start work)
+  | "in_progress"            // Work has started (after acceptance)
+  | "submitted_for_review"   // Completed and submitted for review (100% complete)
+  | "approved"               // Review approved by assigner
+  | "rejected"               // Review rejected by assigner (needs rework)
+  | "cancelled";             // Task cancelled by creator
 
 export type BillingStatus = "billable" | "non_billable" | "billed";
 
@@ -375,8 +384,25 @@ export interface TaskUpdate {
 }
 
 /**
+ * Task Status Change History
+ * Tracks all status transitions for audit trail and progress display
+ */
+export interface TaskStatusChange {
+  id: string;
+  taskId: string;
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  changedBy: string; // User ID
+  changedAt: string; // Timestamp
+  reason?: string; // Optional reason (for declined/rejected)
+  notes?: string; // Optional additional notes
+}
+
+/**
  * Task Edit History - Audit log for task metadata changes
  * Tracks who changed what, when, and why (for fairness and transparency)
+ * 
+ * @deprecated Use TaskActivity with activityType 'metadata_edit' instead
  */
 export interface TaskEditHistory {
   id: string;
@@ -387,6 +413,113 @@ export interface TaskEditHistory {
   editReason?: string;
   notificationsSent: boolean;
   notifiedAt?: string;
+  createdAt: string;
+}
+
+/**
+ * Unified Task Activity
+ * 
+ * Replaces TaskUpdate, TaskStatusChange, and TaskEditHistory with a single
+ * unified structure that tracks all task activities in chronological order.
+ * 
+ * All task changes (progress updates, status changes, metadata edits, etc.)
+ * are now tracked in the task_activities table.
+ */
+export type ActivityType = 
+  | 'progress_update'
+  | 'status_change'
+  | 'metadata_edit'
+  | 'assignment'
+  | 'creation'
+  | 'cancellation'
+  | 'review_submission'
+  | 'review_acceptance'
+  | 'review_rejection'
+  | 'assigner_comment';
+
+// Type-specific data structures for each activity type
+export interface ProgressUpdateData {
+  description: string;
+  photos: string[];
+  completionPercentage: number;
+  status: TaskStatus;
+}
+
+export interface StatusChangeData {
+  fromStatus: TaskStatus;
+  toStatus: TaskStatus;
+  reason?: string;
+  notes?: string;
+}
+
+export interface MetadataEditData {
+  changes: Record<string, { old: any; new: any }>;
+  editReason?: string;
+}
+
+export interface AssignmentData {
+  assignedTo: string[];
+  assignedBy: string;
+}
+
+export interface CreationData {
+  title: string;
+  assignedTo: string[];
+  assignedBy: string;
+}
+
+export interface CancellationData {
+  reason?: string;
+}
+
+export interface ReviewSubmissionData {
+  completionPercentage: number;
+}
+
+export interface ReviewAcceptanceData {
+  reviewedBy: string;
+}
+
+export interface ReviewRejectionData {
+  reviewedBy: string;
+  reason: string;
+}
+
+export interface AssignerCommentData {
+  description: string;
+  photos: string[];
+  completionPercentage?: number; // Completion percentage at the time of the comment
+}
+
+export interface TaskActivity {
+  id: string;
+  taskId: string;
+  userId: string;
+  activityType: ActivityType;
+  timestamp: string;
+  
+  // Activity-specific data (type-safe based on activityType)
+  data: 
+    | ProgressUpdateData
+    | StatusChangeData
+    | MetadataEditData
+    | AssignmentData
+    | CreationData
+    | CancellationData
+    | ReviewSubmissionData
+    | ReviewAcceptanceData
+    | ReviewRejectionData
+    | AssignerCommentData;
+  
+  // Common fields
+  description: string; // Human-readable description
+  completionPercentage?: number; // Snapshot at time of activity (0-100)
+  status?: TaskStatus; // Snapshot at time of activity
+  
+  // Notification tracking
+  notificationsSent?: boolean;
+  notifiedAt?: string;
+  
   createdAt: string;
 }
 
@@ -426,12 +559,24 @@ export interface Task {
   originalAssignedBy?: string; // Original creator before any delegation
   createdAt: string;
   updates: TaskUpdate[];
-  currentStatus: TaskStatus;
-  completionPercentage: number;
-  accepted?: boolean;
-  acceptedBy?: string; // User ID who accepted the task
-  acceptedAt?: string; // When the task was accepted
-  declineReason?: string;
+  
+  // UNIFIED STATUS (replaces currentStatus, accepted, readyForReview, reviewAccepted)
+  status: TaskStatus;
+  completionPercentage: number; // 0-100
+  
+  // STATUS METADATA (for logging and history)
+  statusHistory?: TaskStatusChange[]; // Array of all status changes (loaded separately) - @deprecated use activities
+  declinedReason?: string; // Reason when status = "declined" (renamed from declineReason)
+  rejectedReason?: string; // Reason when status = "rejected"
+  
+  // UNIFIED ACTIVITY LOG (replaces updates, statusHistory, and editHistory)
+  activities?: TaskActivity[]; // All task activities in chronological order
+  
+  // AUDIT TRAIL FIELDS (kept for historical tracking)
+  acceptedBy?: string; // User ID who accepted (when status changes to "accepted")
+  acceptedAt?: string; // When status changed to "accepted"
+  reviewedBy?: string; // User ID who reviewed (when status changes to "approved"/"rejected")
+  reviewedAt?: string; // When status changed to "approved"/"rejected"
   
   // Client-side only: Children loaded dynamically
   children?: Task[]; // For tree rendering - populated by app logic
@@ -446,20 +591,17 @@ export interface Task {
   // Today's Tasks feature
   starredByUsers?: string[];
   
-  // Review workflow
-  readyForReview?: boolean;
-  reviewedBy?: string;
-  reviewedAt?: string;
-  reviewAccepted?: boolean;
-  
   // Cancellation (soft delete)
   cancelledAt?: string | null; // Timestamp when cancelled, null if not cancelled
   cancelledBy?: string; // User ID who cancelled the task
   
   // Edit history and notifications
-  editHistory?: TaskEditHistory[]; // Loaded separately or on-demand
+  editHistory?: TaskEditHistory[]; // Loaded separately or on-demand - @deprecated use activities
   hasUnreadChanges?: boolean; // Flag for assignees to know task was edited
   lastEditedAt?: string; // When was it last edited
+  
+  // Note: activities array above replaces updates, statusHistory, and editHistory
+  // For backward compatibility, old fields are kept but should use activities instead
 }
 
 /**

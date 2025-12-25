@@ -236,3 +236,5 @@ https://play.google.com/console
 **AAB Location**: android/app/build/outputs/bundle/release/app-release.aab
 
 
+
+

@@ -8,7 +8,30 @@ console.log("[index] Project ID is: ", process.env.EXPO_PUBLIC_VIBECODE_PROJECT_
 import "./global.css";
 import "react-native-get-random-values";
 import { LogBox } from "react-native";
-LogBox.ignoreLogs(["Expo AV has been deprecated", "Disconnected from Metro", "AbortError"]);
+LogBox.ignoreLogs([
+  "Expo AV has been deprecated", 
+  "Disconnected from Metro", 
+  "AbortError",
+  "Invalid Refresh Token",
+  "Refresh Token Not Found"
+]);
+
+// Suppress console errors for refresh token issues (they're handled gracefully)
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  const errorMessage = args[0]?.message || args[0] || '';
+  const errorString = String(errorMessage);
+  
+  // Suppress refresh token errors - they're handled by auth store
+  if (errorString.includes('Invalid Refresh Token') || 
+      errorString.includes('Refresh Token Not Found')) {
+    // Silently handle - auth store will clear session
+    return;
+  }
+  
+  // Call original console.error for all other errors
+  originalConsoleError.apply(console, args);
+};
 
 import { registerRootComponent } from "expo";
 

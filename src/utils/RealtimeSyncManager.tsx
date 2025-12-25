@@ -61,18 +61,23 @@ export function RealtimeSyncManager() {
           // No filter needed - RLS handles security
         },
         async (payload) => {
-          console.log('🔴 [Realtime] Task change detected:', payload.eventType, payload.new?.id || payload.old?.id);
+          const taskId = (payload.new as any)?.id || (payload.old as any)?.id;
+          console.log('🔴 [Realtime] Task change detected:', payload.eventType, taskId);
           
           const taskStore = useTaskStore.getState();
           
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             // Fetch the updated task to get full data with relations
-            if (payload.new?.id) {
-              await taskStore.fetchTaskById(payload.new.id);
+            const newTaskId = (payload.new as any)?.id;
+            if (newTaskId) {
+              await taskStore.fetchTaskById(newTaskId);
             }
           } else if (payload.eventType === 'DELETE') {
             // Remove task from local store
-            await taskStore.deleteTask(payload.old.id);
+            const oldTaskId = (payload.old as any)?.id;
+            if (oldTaskId) {
+              await taskStore.deleteTask(oldTaskId);
+            }
           }
         }
       )
@@ -88,36 +93,36 @@ export function RealtimeSyncManager() {
         }
       });
 
-    // Subscribe to task_updates table changes (new progress updates)
-    const taskUpdatesChannel = supabase
-      .channel('task-updates-changes')
+    // Subscribe to task_activities table changes (unified activity log)
+    const taskActivitiesChannel = supabase
+      .channel('task-activities-changes')
       .on(
         'postgres_changes',
         {
-          event: 'INSERT', // Only listen for new updates
+          event: 'INSERT', // Only listen for new activities
           schema: 'public',
-          table: 'task_updates',
+          table: 'task_activities',
         },
         async (payload) => {
-          console.log('🔴 [Realtime] Task update detected:', payload.new?.task_id);
+          console.log('🔴 [Realtime] Task activity detected:', payload.new?.task_id, payload.new?.activity_type);
           
           const taskStore = useTaskStore.getState();
           
-          // Refresh the task to get updated completion percentage
-          if (payload.new?.task_id) {
-            await taskStore.fetchTaskById(payload.new.task_id);
+          // Refresh the task to get updated completion percentage and activities
+          if (payload.new && 'task_id' in payload.new && payload.new.task_id) {
+            await taskStore.fetchTaskById(payload.new.task_id as string);
           }
         }
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ [Realtime] Task updates channel subscribed');
+          console.log('✅ [Realtime] Task activities channel subscribed');
         } else if (status === 'CHANNEL_ERROR') {
-          handleSubscriptionError('task_updates', 'Channel error - Realtime may not be enabled for task_updates table');
+          handleSubscriptionError('task_activities', 'Channel error - Realtime may not be enabled for task_activities table');
         } else if (status === 'TIMED_OUT') {
-          console.warn('⚠️ [Realtime] Task updates channel subscription timed out');
+          console.warn('⚠️ [Realtime] Task activities channel subscription timed out');
         } else if (status === 'CLOSED') {
-          console.warn('⚠️ [Realtime] Task updates channel closed');
+          console.warn('⚠️ [Realtime] Task activities channel closed');
         }
       });
 
@@ -134,7 +139,8 @@ export function RealtimeSyncManager() {
           // No filter needed - RLS handles security
         },
         async (payload) => {
-          console.log('🔴 [Realtime] Project change detected:', payload.eventType, payload.new?.id || payload.old?.id);
+          const projectId = (payload.new as any)?.id || (payload.old as any)?.id;
+          console.log('🔴 [Realtime] Project change detected:', payload.eventType, projectId);
           
           const projectStore = useProjectStore.getState();
           
@@ -143,7 +149,10 @@ export function RealtimeSyncManager() {
             await projectStore.fetchProjects();
           } else if (payload.eventType === 'DELETE') {
             // Remove project from local store
-            await projectStore.deleteProject(payload.old.id);
+            const oldProjectId = (payload.old as any)?.id;
+            if (oldProjectId) {
+              await projectStore.deleteProject(oldProjectId);
+            }
           }
         }
       )
@@ -199,15 +208,18 @@ export function RealtimeSyncManager() {
       });
 
     // Store channels for cleanup
-    channelsRef.current = [tasksChannel, taskUpdatesChannel, projectsChannel, usersChannel];
+    channelsRef.current = [tasksChannel, taskActivitiesChannel, projectsChannel, usersChannel];
 
     // Cleanup on unmount
     return () => {
       console.log('🔴 [Realtime] Manager stopping - unsubscribing from channels');
       
-      channelsRef.current.forEach((channel) => {
-        supabase.removeChannel(channel);
-      });
+      const supabaseClient = supabase;
+      if (supabaseClient) {
+        channelsRef.current.forEach((channel) => {
+          supabaseClient.removeChannel(channel);
+        });
+      }
       
       channelsRef.current = [];
     };

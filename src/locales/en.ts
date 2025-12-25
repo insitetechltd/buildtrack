@@ -91,7 +91,7 @@ export const en = {
     overdue: "Overdue",
     tasksForMe: "Tasks for me",
     tasksFromMe: "Tasks from me",
-    accomplishments: "Accomplishments",
+    accomplishments: "My Completed Work",
     // Overdue section
     myActionRequiredNow: "My Action\nRequired Now",
     myActionRequiredNowHeader: "My Action Required Now",
@@ -567,7 +567,7 @@ export const en = {
     // Photos popup
     addPhotos: "Add Photos",
     choosePhotoMethod: "Choose how you want to add photos",
-    photosUpdates: "Photos Updates",
+    photosUpdates: "Add Photos",
     // Task list header
     tasksForMeNewRequest: "Tasks for me – New Request",
     // Edit history

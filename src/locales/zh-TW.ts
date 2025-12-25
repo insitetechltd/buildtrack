@@ -567,7 +567,7 @@ export const zhTW = {
     // Photos popup - per PDF
     addPhotos: "新增相片",
     choosePhotoMethod: "請選擇相片新增方法",
-    photosUpdates: "相片更新",
+    photosUpdates: "新增相片",
     // Task list header - per PDF
     tasksForMeNewRequest: "我的工作 - 新工作請求",
     // Edit history

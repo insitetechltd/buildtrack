@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory } from "../types/buildtrack";
+import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
 
 interface TaskStore {
   tasks: Task[];
@@ -17,7 +17,7 @@ interface TaskStore {
   fetchTaskById: (id: string) => Promise<Task | null>;
   
   // Task management
-  createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "currentStatus" | "completionPercentage">) => Promise<string>;
+  createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   cancelTask: (taskId: string, userId: string) => Promise<void>; // Cancel task (only creator can cancel)
@@ -34,19 +34,22 @@ interface TaskStore {
   // Review workflow
   submitTaskForReview: (taskId: string) => Promise<void>;
   acceptTaskCompletion: (taskId: string, userId: string) => Promise<void>;
-  rejectTaskCompletion: (taskId: string, userId: string, reason: string) => Promise<void>;
+  rejectTaskCompletion: (taskId: string, userId: string, reason: string, photos?: string[]) => Promise<void>;
   submitSubTaskForReview: (taskId: string, subTaskId: string) => Promise<void>;
   acceptSubTaskCompletion: (taskId: string, subTaskId: string, userId: string) => Promise<void>;
-  rejectSubTaskCompletion: (taskId: string, subTaskId: string, userId: string, reason: string) => Promise<void>;
+  rejectSubTaskCompletion: (taskId: string, subTaskId: string, userId: string, reason: string, photos?: string[]) => Promise<void>;
   
   // Progress tracking
   addTaskUpdate: (taskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
   addSubTaskUpdate: (taskId: string, subTaskId: string, update: Omit<TaskUpdate, "id" | "timestamp">) => Promise<void>;
   updateTaskStatus: (taskId: string, status: TaskStatus, completionPercentage: number) => Promise<void>;
   
+  // Assigner comments
+  addAssignerComment: (taskId: string, comment: { description: string; photos?: string[]; userId: string }) => Promise<void>;
+  
   // Subtask management
-  createSubTask: (taskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "currentStatus" | "completionPercentage">) => Promise<string>;
-  createNestedSubTask: (taskId: string, parentSubTaskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "currentStatus" | "completionPercentage">) => Promise<string>;
+  createSubTask: (taskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage">) => Promise<string>;
+  createNestedSubTask: (taskId: string, parentSubTaskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage">) => Promise<string>;
   updateSubTask: (taskId: string, subTaskId: string, updates: Partial<SubTask>) => Promise<void>;
   deleteSubTask: (taskId: string, subTaskId: string) => Promise<void>;
   updateSubTaskStatus: (taskId: string, subTaskId: string, status: TaskStatus, completionPercentage: number) => Promise<void>;
@@ -107,29 +110,34 @@ export const useTaskStore = create<TaskStore>()(
 
           if (tasksError) throw tasksError;
 
-          // Fetch all task updates
-          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
-            .from('task_updates')
+          // Fetch all task activities (unified table)
+          const { data: taskActivitiesData, error: taskActivitiesError } = await supabase
+            .from('task_activities')
             .select('*')
             .order('timestamp', { ascending: true });
 
-          if (taskUpdatesError) throw taskUpdatesError;
+          if (taskActivitiesError) throw taskActivitiesError;
 
-          // Group task updates by task_id
-          const updatesByTaskId: { [key: string]: any[] } = {};
-          (taskUpdatesData || []).forEach((update: any) => {
-            const taskId = update.task_id;
-            if (!updatesByTaskId[taskId]) {
-              updatesByTaskId[taskId] = [];
+          // Group task activities by task_id and transform to TaskActivity format
+          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+          (taskActivitiesData || []).forEach((activity: any) => {
+            const taskId = activity.task_id;
+            if (!activitiesByTaskId[taskId]) {
+              activitiesByTaskId[taskId] = [];
             }
-            updatesByTaskId[taskId].push({
-              id: update.id,
-              description: update.description,
-              photos: update.photos || [],
-              completionPercentage: update.completion_percentage,
-              status: update.status,
-              timestamp: update.timestamp,
-              userId: update.user_id,
+            activitiesByTaskId[taskId].push({
+              id: activity.id,
+              taskId: activity.task_id,
+              userId: activity.user_id,
+              activityType: activity.activity_type as ActivityType,
+              timestamp: activity.timestamp,
+              data: activity.data, // JSONB data field
+              description: activity.description || '',
+              completionPercentage: activity.completion_percentage,
+              status: activity.status as TaskStatus | undefined,
+              notificationsSent: activity.notifications_sent || false,
+              notifiedAt: activity.notified_at,
+              createdAt: activity.created_at,
             });
           });
 
@@ -147,24 +155,38 @@ export const useTaskStore = create<TaskStore>()(
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
-            currentStatus: task.current_status,
+            status: (task.current_status || 'new') as TaskStatus,
             completionPercentage: task.completion_percentage,
             assignedTo: task.assigned_to || [],
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
             starredByUsers: task.starred_by_users || [],
-            accepted: task.accepted,
-            declineReason: task.decline_reason,
-            readyForReview: task.ready_for_review || false,
-            reviewedBy: task.reviewed_by,
-            reviewedAt: task.reviewed_at,
-            reviewAccepted: task.review_accepted,
+            // Legacy fields for backward compatibility (derived from status)
+            acceptedBy: task.accepted_by || undefined,
+            acceptedAt: task.accepted_at || undefined,
+            declinedReason: task.decline_reason || undefined,
+            reviewedBy: task.reviewed_by || undefined,
+            reviewedAt: task.reviewed_at || undefined,
             cancelledAt: task.cancelled_at || null,
             cancelledBy: task.cancelled_by || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: updatesByTaskId[task.id] || [],
+            activities: activitiesByTaskId[task.id] || [],
+            // Backward compatibility: also populate updates from activities for now
+            updates: (activitiesByTaskId[task.id] || [])
+              .filter((activity: TaskActivity) => 
+                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+              )
+              .map((activity: TaskActivity) => ({
+                id: activity.id,
+                description: activity.description,
+                photos: (activity.data as any)?.photos || [],
+                completionPercentage: activity.completionPercentage || 0,
+                status: activity.status || 'not_started' as TaskStatus,
+                timestamp: activity.timestamp,
+                userId: activity.userId,
+              })),
             // Note: children are built client-side when needed via buildTaskTree()
           }));
 
@@ -176,8 +198,7 @@ export const useTaskStore = create<TaskStore>()(
             parentTaskId: t.parentTaskId,
             assignedTo: t.assignedTo, 
             assignedBy: t.assignedBy,
-            accepted: t.accepted,
-            currentStatus: t.currentStatus
+            status: t.status
           })));
           
           // 🔍 SPECIAL CHECK: Look for the test task
@@ -195,8 +216,7 @@ export const useTaskStore = create<TaskStore>()(
               assignedToContents: Array.isArray(testTask.assignedTo) ? JSON.stringify(testTask.assignedTo) : testTask.assignedTo,
               assignedToValues: Array.isArray(testTask.assignedTo) ? testTask.assignedTo.map((id, idx) => ({ idx, id, type: typeof id, string: String(id) })) : [],
               assignedBy: testTask.assignedBy,
-              accepted: testTask.accepted,
-              currentStatus: testTask.currentStatus
+              status: testTask.status
             });
             
             // Check if Peter's ID is in the array
@@ -223,8 +243,8 @@ export const useTaskStore = create<TaskStore>()(
           
           transformedTasks.forEach(task => {
             if (task.completionPercentage === 100 && 
-                !task.reviewAccepted && 
-                !task.readyForReview) {
+                task.status !== "approved" && 
+                task.status !== "submitted_for_review") {
               const assignedBy = task.assignedBy;
               const assignedTo = task.assignedTo || [];
               
@@ -256,7 +276,7 @@ export const useTaskStore = create<TaskStore>()(
                 // Update local state
                 const fixedTask = transformedTasks.find(t => t.id === taskToFix.id);
                 if (fixedTask) {
-                  fixedTask.reviewAccepted = true;
+                  fixedTask.status = "approved" as TaskStatus;
                   fixedTask.reviewedBy = taskToFix.assignedBy;
                   fixedTask.reviewedAt = new Date().toISOString();
                 }
@@ -298,33 +318,38 @@ export const useTaskStore = create<TaskStore>()(
 
           if (tasksError) throw tasksError;
 
-          // Fetch task updates for tasks in this project
+          // Fetch task activities for tasks in this project (unified table)
           const taskIds = (allTasksData || []).map(t => t.id);
-          const { data: taskUpdatesData, error: taskUpdatesError } = taskIds.length > 0
+          const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
             ? await supabase
-                .from('task_updates')
+                .from('task_activities')
                 .select('*')
                 .in('task_id', taskIds)
                 .order('timestamp', { ascending: true })
             : { data: [], error: null };
 
-          if (taskUpdatesError) throw taskUpdatesError;
+          if (taskActivitiesError) throw taskActivitiesError;
 
-          // Group task updates by task_id
-          const updatesByTaskId: { [key: string]: any[] } = {};
-          (taskUpdatesData || []).forEach((update: any) => {
-            const taskId = update.task_id;
-            if (!updatesByTaskId[taskId]) {
-              updatesByTaskId[taskId] = [];
+          // Group task activities by task_id and transform to TaskActivity format
+          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+          (taskActivitiesData || []).forEach((activity: any) => {
+            const taskId = activity.task_id;
+            if (!activitiesByTaskId[taskId]) {
+              activitiesByTaskId[taskId] = [];
             }
-            updatesByTaskId[taskId].push({
-              id: update.id,
-              description: update.description,
-              photos: update.photos || [],
-              completionPercentage: update.completion_percentage,
-              status: update.status,
-              timestamp: update.timestamp,
-              userId: update.user_id,
+            activitiesByTaskId[taskId].push({
+              id: activity.id,
+              taskId: activity.task_id,
+              userId: activity.user_id,
+              activityType: activity.activity_type as ActivityType,
+              timestamp: activity.timestamp,
+              data: activity.data,
+              description: activity.description || '',
+              completionPercentage: activity.completion_percentage,
+              status: activity.status as TaskStatus | undefined,
+              notificationsSent: activity.notifications_sent || false,
+              notifiedAt: activity.notified_at,
+              createdAt: activity.created_at,
             });
           });
 
@@ -342,22 +367,36 @@ export const useTaskStore = create<TaskStore>()(
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
-            currentStatus: task.current_status,
+            status: (task.current_status || 'new') as TaskStatus,
             completionPercentage: task.completion_percentage,
             assignedTo: task.assigned_to || [],
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
             starredByUsers: task.starred_by_users || [],
-            accepted: task.accepted,
-            declineReason: task.decline_reason,
-            readyForReview: task.ready_for_review || false,
-            reviewedBy: task.reviewed_by,
-            reviewedAt: task.reviewed_at,
-            reviewAccepted: task.review_accepted,
+            // Legacy fields for backward compatibility (derived from status)
+            acceptedBy: task.accepted_by || undefined,
+            acceptedAt: task.accepted_at || undefined,
+            declinedReason: task.decline_reason || undefined,
+            reviewedBy: task.reviewed_by || undefined,
+            reviewedAt: task.reviewed_at || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: updatesByTaskId[task.id] || [],
+            activities: activitiesByTaskId[task.id] || [],
+            // Backward compatibility: also populate updates from activities
+            updates: (activitiesByTaskId[task.id] || [])
+              .filter((activity: TaskActivity) => 
+                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+              )
+              .map((activity: TaskActivity) => ({
+                id: activity.id,
+                description: activity.description,
+                photos: (activity.data as any)?.photos || [],
+                completionPercentage: activity.completionPercentage || 0,
+                status: activity.status || 'not_started' as TaskStatus,
+                timestamp: activity.timestamp,
+                userId: activity.userId,
+              })),
             // Note: children are built client-side when needed
           }));
 
@@ -393,29 +432,37 @@ export const useTaskStore = create<TaskStore>()(
 
           // Fetch task updates for these tasks
           const taskIds = (data || []).map(t => t.id);
-          const { data: taskUpdatesData, error: taskUpdatesError } = await supabase
-            .from('task_updates')
-            .select('*')
-            .in('task_id', taskIds)
-            .order('created_at', { ascending: true });
+          // Fetch task activities for tasks in this project (unified table)
+          const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
+            ? await supabase
+                .from('task_activities')
+                .select('*')
+                .in('task_id', taskIds)
+                .order('timestamp', { ascending: true })
+            : { data: [], error: null };
 
-          if (taskUpdatesError) throw taskUpdatesError;
+          if (taskActivitiesError) throw taskActivitiesError;
 
-          // Group task updates by task_id
-          const updatesByTaskId: { [key: string]: any[] } = {};
-          (taskUpdatesData || []).forEach((update: any) => {
-            const taskId = update.task_id;
-            if (!updatesByTaskId[taskId]) {
-              updatesByTaskId[taskId] = [];
+          // Group task activities by task_id and transform to TaskActivity format
+          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+          (taskActivitiesData || []).forEach((activity: any) => {
+            const taskId = activity.task_id;
+            if (!activitiesByTaskId[taskId]) {
+              activitiesByTaskId[taskId] = [];
             }
-            updatesByTaskId[taskId].push({
-              id: update.id,
-              description: update.description,
-              photos: update.photos || [],
-              completionPercentage: update.completion_percentage,
-              status: update.status,
-              timestamp: update.timestamp,
-              userId: update.user_id,
+            activitiesByTaskId[taskId].push({
+              id: activity.id,
+              taskId: activity.task_id,
+              userId: activity.user_id,
+              activityType: activity.activity_type as ActivityType,
+              timestamp: activity.timestamp,
+              data: activity.data,
+              description: activity.description || '',
+              completionPercentage: activity.completion_percentage,
+              status: activity.status as TaskStatus | undefined,
+              notificationsSent: activity.notifications_sent || false,
+              notifiedAt: activity.notified_at,
+              createdAt: activity.created_at,
             });
           });
 
@@ -450,23 +497,37 @@ export const useTaskStore = create<TaskStore>()(
             priority: task.priority,
             category: task.category,
             dueDate: task.due_date,
-            currentStatus: task.current_status,
+            status: (task.current_status || 'new') as TaskStatus,
             completionPercentage: task.completion_percentage,
             assignedTo: task.assigned_to,
             assignedBy: task.assigned_by,
             location: task.location,
             attachments: task.attachments || [],
             starredByUsers: task.starred_by_users || [],
-            accepted: task.accepted,
-            declineReason: task.decline_reason,
-            readyForReview: task.ready_for_review || false,
-            reviewedBy: task.reviewed_by,
-            reviewedAt: task.reviewed_at,
-            reviewAccepted: task.review_accepted,
+            // Legacy fields for backward compatibility (derived from status)
+            acceptedBy: task.accepted_by || undefined,
+            acceptedAt: task.accepted_at || undefined,
+            declinedReason: task.decline_reason || undefined,
+            reviewedBy: task.reviewed_by || undefined,
+            reviewedAt: task.reviewed_at || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
-            updates: updatesByTaskId[task.id] || [],
-            subTasks: (nestedTasksByParent[task.id] || []).map((st: any) => ({
+            activities: activitiesByTaskId[task.id] || [],
+            // Backward compatibility: also populate updates from activities
+            updates: (activitiesByTaskId[task.id] || [])
+              .filter((activity: TaskActivity) => 
+                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+              )
+              .map((activity: TaskActivity) => ({
+                id: activity.id,
+                description: activity.description,
+                photos: (activity.data as any)?.photos || [],
+                completionPercentage: activity.completionPercentage || 0,
+                status: activity.status || 'new' as TaskStatus,
+                timestamp: activity.timestamp,
+                userId: activity.userId,
+              })),
+            children: (nestedTasksByParent[task.id] || []).map((st: any) => ({
               id: st.id,
               parentTaskId: st.parent_task_id,
               parentSubTaskId: st.parent_sub_task_id,
@@ -477,19 +538,34 @@ export const useTaskStore = create<TaskStore>()(
               priority: st.priority,
               category: st.category,
               dueDate: st.due_date,
-              currentStatus: st.current_status,
+              status: (st.current_status || 'new') as TaskStatus,
               completionPercentage: st.completion_percentage,
               assignedTo: st.assigned_to || [],
               assignedBy: st.assigned_by,
-              accepted: st.accepted,
-              declineReason: st.decline_reason,
-              readyForReview: st.ready_for_review || false,
-              reviewedBy: st.reviewed_by,
-              reviewedAt: st.reviewed_at,
-              reviewAccepted: st.review_accepted,
+              attachments: st.attachments || [],
+              // Legacy fields for backward compatibility (derived from status)
+              acceptedBy: st.accepted_by || undefined,
+              acceptedAt: st.accepted_at || undefined,
+              declinedReason: st.decline_reason || undefined,
+              reviewedBy: st.reviewed_by || undefined,
+              reviewedAt: st.reviewed_at || undefined,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
-              updates: updatesByTaskId[task.id] || [],
+              activities: activitiesByTaskId[st.id] || [],
+            // Backward compatibility: also populate updates from activities
+            updates: (activitiesByTaskId[st.id] || [])
+              .filter((activity: TaskActivity) => 
+                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+              )
+              .map((activity: TaskActivity) => ({
+                id: activity.id,
+                description: activity.description,
+                photos: (activity.data as any)?.photos || [],
+                completionPercentage: activity.completionPercentage || 0,
+                status: activity.status || 'new' as TaskStatus,
+                timestamp: activity.timestamp,
+                userId: activity.userId,
+              })),
             })),
           }));
 
@@ -522,28 +598,48 @@ export const useTaskStore = create<TaskStore>()(
 
           if (taskError) throw taskError;
 
-          // Fetch task updates
-          const { data: updatesData, error: updatesError } = await supabase
-            .from('task_updates')
+          // Fetch task activities (unified table)
+          const { data: activitiesData, error: activitiesError } = await supabase
+            .from('task_activities')
             .select('*')
             .eq('task_id', id)
             .order('timestamp', { ascending: true });
 
-          if (updatesError) {
-            console.error('Error fetching task updates:', updatesError);
-            // Continue without updates rather than failing completely
+          if (activitiesError) {
+            console.error('Error fetching task activities:', activitiesError);
+            // Continue without activities rather than failing completely
           }
 
-          // Transform updates data
-          const transformedUpdates = (updatesData || []).map(update => ({
-            id: update.id,
-            userId: update.user_id,
-            description: update.description,
-            photos: update.photos || [],
-            completionPercentage: update.completion_percentage,
-            status: update.status,
-            timestamp: update.timestamp,
+          // Transform activities data to TaskActivity format
+          const transformedActivities: TaskActivity[] = (activitiesData || []).map(activity => ({
+            id: activity.id,
+            taskId: activity.task_id,
+            userId: activity.user_id,
+            activityType: activity.activity_type as ActivityType,
+            timestamp: activity.timestamp,
+            data: activity.data,
+            description: activity.description || '',
+            completionPercentage: activity.completion_percentage,
+            status: activity.status as TaskStatus | undefined,
+            notificationsSent: activity.notifications_sent || false,
+            notifiedAt: activity.notified_at,
+            createdAt: activity.created_at,
           }));
+
+          // Backward compatibility: also create updates array from activities
+          const transformedUpdates = transformedActivities
+            .filter((activity: TaskActivity) => 
+              activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+            )
+            .map((activity: TaskActivity) => ({
+              id: activity.id,
+              userId: activity.userId,
+              description: activity.description,
+              photos: (activity.data as any)?.photos || [],
+              completionPercentage: activity.completionPercentage || 0,
+              status: activity.status || 'not_started' as TaskStatus,
+              timestamp: activity.timestamp,
+            }));
 
           // Transform Supabase data to match local interface
           const transformedTask = {
@@ -556,29 +652,27 @@ export const useTaskStore = create<TaskStore>()(
             priority: taskData.priority,
             category: taskData.category,
             dueDate: taskData.due_date,
-            currentStatus: taskData.current_status,
+            status: (taskData.current_status || 'new') as TaskStatus,
             completionPercentage: taskData.completion_percentage,
             assignedTo: taskData.assigned_to,
             assignedBy: taskData.assigned_by,
             location: taskData.location,
             attachments: taskData.attachments || [],
-            accepted: taskData.accepted,
+            // Legacy fields for backward compatibility (derived from status)
             acceptedBy: taskData.accepted_by || undefined,
             acceptedAt: taskData.accepted_at || undefined,
-            declineReason: taskData.decline_reason,
-            // Review workflow fields - CRITICAL: Must include these or review buttons disappear!
-            readyForReview: taskData.ready_for_review || false,
-            reviewedBy: taskData.reviewed_by,
-            reviewedAt: taskData.reviewed_at,
-            reviewAccepted: taskData.review_accepted,
+            declinedReason: taskData.decline_reason || undefined,
+            reviewedBy: taskData.reviewed_by || undefined,
+            reviewedAt: taskData.reviewed_at || undefined,
             // Starring
             starredByUsers: taskData.starred_by_users || [],
             cancelledAt: taskData.cancelled_at || null,
             cancelledBy: taskData.cancelled_by || undefined,
             createdAt: taskData.created_at,
             updatedAt: taskData.updated_at,
-            updates: transformedUpdates,
-            subTasks: [],
+            activities: transformedActivities,
+            updates: transformedUpdates, // Backward compatibility
+            children: [],
             // Edit history and notifications
             hasUnreadChanges: taskData.has_unread_changes || false,
             lastEditedAt: taskData.last_edited_at || undefined,
@@ -618,7 +712,7 @@ export const useTaskStore = create<TaskStore>()(
             id: Date.now().toString(),
             createdAt: new Date().toISOString(),
             updates: [], // New task has no updates yet
-            currentStatus: "not_started",
+            status: "new" as TaskStatus,
             completionPercentage: 0,
             delegationHistory: [],
             originalAssignedBy: taskData.assignedBy,
@@ -634,7 +728,7 @@ export const useTaskStore = create<TaskStore>()(
         set({ isLoading: true, error: null });
         try {
           // Check if creator is assigned to the task
-          const isCreatorAssigned = taskData.assignedTo.includes(taskData.assignedBy);
+          const isCreatorAssigned = taskData.assignedTo && taskData.assignedTo.includes(taskData.assignedBy);
           
           console.log('📋 [createTask] Creating task with data:', {
             project_id: taskData.projectId,
@@ -655,7 +749,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: taskData.priority,
               category: taskData.category,
               due_date: taskData.dueDate,
-              current_status: "not_started",
+              current_status: "new",
               completion_percentage: 0,
               assigned_to: taskData.assignedTo,
               assigned_by: taskData.assignedBy,
@@ -685,25 +779,23 @@ export const useTaskStore = create<TaskStore>()(
             priority: data.priority,
             category: data.category,
             dueDate: data.due_date,
-            currentStatus: data.current_status,
+            status: (data.current_status || 'new') as TaskStatus,
             completionPercentage: data.completion_percentage,
             assignedTo: data.assigned_to,
             assignedBy: data.assigned_by,
             location: data.location,
             attachments: data.attachments || [],
-            accepted: data.accepted,
+            // Legacy fields for backward compatibility (derived from status)
             acceptedBy: data.accepted_by || undefined,
             acceptedAt: data.accepted_at || undefined,
-            declineReason: data.decline_reason,
-            readyForReview: data.ready_for_review || false,
-            reviewedBy: data.reviewed_by,
-            reviewedAt: data.reviewed_at,
-            reviewAccepted: data.review_accepted,
+            declinedReason: data.decline_reason || undefined,
+            reviewedBy: data.reviewed_by || undefined,
+            reviewedAt: data.reviewed_at || undefined,
             starredByUsers: data.starred_by_users || [],
             createdAt: data.created_at,
             updatedAt: data.updated_at,
             updates: [], // New task has no updates yet
-            subTasks: [],
+            children: [],
           };
 
           // Update local state
@@ -726,24 +818,48 @@ export const useTaskStore = create<TaskStore>()(
             }
           })();
 
-          // Create an update entry documenting the task creation
-          await get().addTaskUpdate(data.id, {
-            userId: taskData.assignedBy,
-            description: `Task created by ${creatorName}`,
-            photos: [],
-            completionPercentage: 0,
-            status: "not_started"
-          });
+          // Create a creation activity entry (unified table)
+          const creationData = {
+            title: taskData.title,
+            assignedTo: taskData.assignedTo,
+            assignedBy: taskData.assignedBy,
+          };
 
-          // If task is auto-accepted (creator is assigned), also log acceptance
-          if (isCreatorAssigned) {
-            await get().addTaskUpdate(data.id, {
-              userId: taskData.assignedBy,
-              description: `Task accepted by ${creatorName}`,
-              photos: [],
-              completionPercentage: 0,
-              status: "in_progress"
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: data.id,
+              user_id: taskData.assignedBy,
+              activity_type: 'creation' as ActivityType,
+              timestamp: new Date().toISOString(),
+              data: creationData,
+              description: `Task created by ${creatorName}`,
+              completion_percentage: 0,
+              status: "new",
             });
+
+          // If task is auto-accepted (creator is assigned), also log acceptance as status_change
+          if (isCreatorAssigned) {
+            const statusChangeData = {
+              fromStatus: "new" as TaskStatus,
+              toStatus: "in_progress" as TaskStatus,
+              reason: `Task auto-accepted by ${creatorName}`,
+            };
+
+            if (!supabase) throw new Error('Supabase not configured');
+            
+            await supabase
+              .from('task_activities')
+              .insert({
+                task_id: data.id,
+                user_id: taskData.assignedBy,
+                activity_type: 'status_change' as ActivityType,
+                timestamp: new Date().toISOString(),
+                data: statusChangeData,
+                description: `Task accepted by ${creatorName}`,
+                completion_percentage: 0,
+                status: "in_progress",
+              });
           }
 
           return data.id;
@@ -778,8 +894,7 @@ export const useTaskStore = create<TaskStore>()(
           // Get current task to check if it's self-assigned
           const currentTask = get().tasks.find(t => t.id === id);
           
-          // Track changes if this is an edit after acceptance (for audit logging)
-          const isEditAfterAcceptance = currentTask?.accepted === true && currentTask?.createdAt;
+          // Track ALL task edits for audit logging (not just after acceptance)
           // Extract editReason from updates if provided (will be removed from updateData before saving)
           const editReason = (updates as any)._editReason as string | undefined;
           
@@ -800,17 +915,18 @@ export const useTaskStore = create<TaskStore>()(
             
             // Only auto-accept if:
             // 1. Task is truly self-assigned
-            // 2. reviewAccepted is not already set (don't override existing review)
-            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
+            // 2. status is not already "approved" (don't override existing review)
+            // 3. status is not "submitted_for_review" (don't auto-accept if already submitted for review)
             if (isSelfAssigned && 
-                updates.reviewAccepted === undefined && 
-                !currentTask.readyForReview) {
+                currentTask.status !== "approved" && 
+                currentTask.status !== "submitted_for_review" &&
+                (updates.status === undefined || updates.status !== "approved")) {
               console.log('✅ Auto-accepting self-assigned task:', currentTask.id);
-              updates.reviewAccepted = true;
+              updates.status = "approved" as TaskStatus;
               updates.reviewedBy = currentTask.assignedBy;
               updates.reviewedAt = new Date().toISOString();
-            } else if (isSelfAssigned && currentTask.readyForReview) {
-              console.log('⚠️ Task is self-assigned but readyForReview is true - skipping auto-accept');
+            } else if (isSelfAssigned && currentTask.status === "submitted_for_review") {
+              console.log('⚠️ Task is self-assigned but status is submitted_for_review - skipping auto-accept');
             }
           }
           
@@ -840,19 +956,29 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.dueDate) updateData.due_date = cleanUpdates.dueDate;
           if (cleanUpdates.assignedTo) updateData.assigned_to = cleanUpdates.assignedTo;
           if (cleanUpdates.attachments) updateData.attachments = cleanUpdates.attachments;
-          if (cleanUpdates.accepted !== undefined) updateData.accepted = cleanUpdates.accepted;
+          // Legacy accepted field - map to status if needed
+          if ('accepted' in cleanUpdates && cleanUpdates.accepted === true && !cleanUpdates.status) {
+            updateData.current_status = 'in_progress';
+            updateData.accepted = true;
+          } else if ('accepted' in cleanUpdates && cleanUpdates.accepted === false) {
+            updateData.accepted = false;
+          }
           if (cleanUpdates.acceptedBy !== undefined) updateData.accepted_by = cleanUpdates.acceptedBy || null;
           if (cleanUpdates.acceptedAt !== undefined) updateData.accepted_at = cleanUpdates.acceptedAt || null;
           // Handle declineReason: can be set to clear it (undefined) or set a new value
           if ('declineReason' in cleanUpdates) updateData.decline_reason = cleanUpdates.declineReason || null;
-          if (cleanUpdates.currentStatus) updateData.current_status = cleanUpdates.currentStatus;
+          // Unified status field
+          if (cleanUpdates.status) updateData.current_status = cleanUpdates.status;
           if (cleanUpdates.completionPercentage !== undefined) updateData.completion_percentage = cleanUpdates.completionPercentage;
           if (cleanUpdates.starredByUsers !== undefined) updateData.starred_by_users = cleanUpdates.starredByUsers;
-          // Review workflow fields
-          if (cleanUpdates.readyForReview !== undefined) updateData.ready_for_review = cleanUpdates.readyForReview;
+          // Legacy status fields (for backward compatibility with database)
+          if ('acceptedBy' in cleanUpdates) updateData.accepted_by = cleanUpdates.acceptedBy || null;
+          if ('acceptedAt' in cleanUpdates) updateData.accepted_at = cleanUpdates.acceptedAt || null;
+          if ('declinedReason' in cleanUpdates || 'declinedReason' in cleanUpdates) updateData.decline_reason = (cleanUpdates as any).declinedReason || (cleanUpdates as any).declineReason || null;
+          if ('readyForReview' in cleanUpdates) updateData.ready_for_review = (cleanUpdates as any).readyForReview;
           if ('reviewedBy' in cleanUpdates) updateData.reviewed_by = cleanUpdates.reviewedBy || null;
           if ('reviewedAt' in cleanUpdates) updateData.reviewed_at = cleanUpdates.reviewedAt || null;
-          if (cleanUpdates.reviewAccepted !== undefined) updateData.review_accepted = cleanUpdates.reviewAccepted;
+          if ('reviewAccepted' in cleanUpdates) updateData.review_accepted = (cleanUpdates as any).reviewAccepted;
           // Edit history and notifications
           if (cleanUpdates.hasUnreadChanges !== undefined) updateData.has_unread_changes = cleanUpdates.hasUnreadChanges;
           if (cleanUpdates.lastEditedAt) updateData.last_edited_at = cleanUpdates.lastEditedAt;
@@ -871,8 +997,12 @@ export const useTaskStore = create<TaskStore>()(
           // Mark as not loading immediately to restore UI responsiveness
           set({ isLoading: false });
           
-          // Track changes if this was an edit after acceptance (run in background - don't block UI)
-          if (isEditAfterAcceptance && oldTaskState) {
+          // Track ALL task edits for audit logging (run in background - don't block UI)
+          // Skip tracking if this is a status change workflow action (status_change activities handle those)
+          const isStatusChange = cleanUpdates.status && oldTaskState && oldTaskState.status !== cleanUpdates.status;
+          const shouldTrackEdit = oldTaskState && !isStatusChange;
+          
+          if (shouldTrackEdit) {
             // Run tracking and notification in background without blocking the UI
             (async () => {
               try {
@@ -885,8 +1015,11 @@ export const useTaskStore = create<TaskStore>()(
                   // Compare old task state with the full updated task state
                   await get().trackTaskEdit(id, editorId, oldTaskState, updatedTask, editReason);
                   
-                  // Notify assignees of changes
-                  await get().notifyTaskEdit(id, editorId, cleanUpdates);
+                  // Notify assignees of changes (only if task is accepted/in_progress)
+                  const isEditAfterAcceptance = (oldTaskState.status === "accepted" || oldTaskState.status === "in_progress");
+                  if (isEditAfterAcceptance) {
+                    await get().notifyTaskEdit(id, editorId, cleanUpdates);
+                  }
                 }
               } catch (trackError) {
                 console.error('Error tracking task edit:', trackError);
@@ -966,6 +1099,20 @@ export const useTaskStore = create<TaskStore>()(
             throw new Error('Task is already cancelled');
           }
 
+          // Get user who is cancelling to include their name in update
+          const cancellingUser = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
           // Update task with cancelled_at timestamp
           const { error } = await supabase
             .from('tasks')
@@ -977,6 +1124,26 @@ export const useTaskStore = create<TaskStore>()(
             .eq('id', taskId);
 
           if (error) throw error;
+
+          // Create a cancellation activity entry (unified table)
+          const cancellationData = {
+            reason: `Task cancelled by ${cancellingUser}`,
+          };
+
+          if (!supabase) throw new Error('Supabase not configured');
+          
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: userId,
+              activity_type: 'cancellation' as ActivityType,
+              timestamp: new Date().toISOString(),
+              data: cancellationData,
+              description: `Task cancelled by ${cancellingUser}`,
+              completion_percentage: task.completionPercentage || 0,
+              status: "cancelled",
+            });
 
           // Update local state - remove from tasks array (since it's filtered out)
           set(state => ({
@@ -997,7 +1164,67 @@ export const useTaskStore = create<TaskStore>()(
 
       // Task assignment methods
       assignTask: async (taskId, userIds) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        // Get assigner's name (the person assigning the task)
+        const assignerName = await (async () => {
+          try {
+            if (!supabase) return 'Unknown User';
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', task.assignedBy)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
+        // Get assignees' names
+        const assigneeNames = await Promise.all(
+          userIds.map(async (userId) => {
+            try {
+              if (!supabase) return 'Unknown User';
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })
+        );
+
+        const assigneesList = assigneeNames.join(', ');
+        
+        // Update the task assignment
         await get().updateTask(taskId, { assignedTo: userIds });
+
+        // Create an activity entry for the assignment (unified table)
+        if (!supabase) return;
+        const assignmentData = {
+          assignedTo: userIds,
+          assignedBy: task.assignedBy,
+        };
+
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: task.assignedBy,
+            activity_type: 'assignment' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: assignmentData,
+            description: `Task assigned to ${assigneesList} by ${assignerName}`,
+            completion_percentage: task.completionPercentage || 0,
+            status: task.status || "new",
+          });
       },
 
       acceptTask: async (taskId, userId) => {
@@ -1006,20 +1233,19 @@ export const useTaskStore = create<TaskStore>()(
           throw new Error('Task not found');
         }
         
-        // Prevent accepting if already rejected
-        if (task.currentStatus === "rejected" || task.declineReason) {
-          throw new Error('Cannot accept a rejected task');
+        // Prevent accepting if already declined
+        if (task.status === "declined" || task.declinedReason) {
+          throw new Error('Cannot accept a declined task');
         }
         
         // Prevent accepting if already accepted (first user already accepted for all)
-        if (task.accepted === true) {
-          console.log('Task already accepted by', task.acceptedBy);
+        if (task.status === "accepted" || task.status === "in_progress") {
+          console.log('Task already accepted, status:', task.status);
           return; // Silently return - task is already accepted for all users
         }
         
         await get().updateTask(taskId, { 
-          accepted: true,
-          currentStatus: "in_progress",
+          status: "in_progress" as TaskStatus,
           acceptedBy: userId,
           acceptedAt: new Date().toISOString()
         });
@@ -1027,6 +1253,7 @@ export const useTaskStore = create<TaskStore>()(
         // Get user who is accepting to include their name in update
         const acceptingUser = await (async () => {
           try {
+            if (!supabase) return 'Unknown User';
             const { data } = await supabase
               .from('users')
               .select('name')
@@ -1038,14 +1265,27 @@ export const useTaskStore = create<TaskStore>()(
           }
         })();
 
-        // Create an update entry documenting the acceptance
-        await get().addTaskUpdate(taskId, {
-          userId: userId,
-          description: `Task accepted by ${acceptingUser}`,
-          photos: [],
-          completionPercentage: task.completionPercentage,
-          status: "in_progress"
-        });
+        // Create a status_change activity entry (unified table)
+        const statusChangeData = {
+          fromStatus: task.status || "new",
+          toStatus: "in_progress" as TaskStatus,
+          reason: `Task accepted by ${acceptingUser}`,
+        };
+
+        if (!supabase) throw new Error('Supabase not configured');
+        
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'status_change' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: statusChangeData,
+            description: `Task accepted by ${acceptingUser}`,
+            completion_percentage: task.completionPercentage || 0,
+            status: "in_progress",
+          });
       },
 
       declineTask: async (taskId, userId, reason) => {
@@ -1056,18 +1296,19 @@ export const useTaskStore = create<TaskStore>()(
         }
         
         // Prevent rejecting if already accepted (first user already accepted for all)
-        if (task.accepted === true) {
+        if (task.status === "accepted" || task.status === "in_progress") {
           throw new Error('Cannot reject an accepted task');
         }
         
-        // Prevent rejecting if already rejected
-        if (task.currentStatus === "rejected" || task.declineReason) {
-          throw new Error('Task is already rejected');
+        // Prevent declining if already declined
+        if (task.status === "declined" || task.declinedReason) {
+          throw new Error('Task is already declined');
         }
 
-        // Get user who is rejecting to include their name in update
-        const rejectingUser = await (async () => {
+        // Get user who is declining to include their name in update
+        const decliningUser = await (async () => {
           try {
+            if (!supabase) return 'Unknown User';
             const { data } = await supabase
               .from('users')
               .select('name')
@@ -1079,22 +1320,34 @@ export const useTaskStore = create<TaskStore>()(
           }
         })();
 
-        // Re-assign task to creator and mark as rejected
+        // Mark task as declined (don't automatically reassign - let creator decide)
         await get().updateTask(taskId, { 
-          accepted: false, 
-          declineReason: reason,
-          currentStatus: "rejected",
-          assignedTo: [task.assignedBy], // Re-assign to creator
+          status: "declined" as TaskStatus,
+          declinedReason: reason,
+          // Keep assignedTo as is - don't automatically reassign to creator
         });
 
-        // Create an update entry documenting the rejection
-        await get().addTaskUpdate(taskId, {
-          userId: task.assignedBy, // Update is on behalf of the creator
-          description: `Task rejected by ${rejectingUser}. Reason: ${reason}`,
-          photos: [],
-          completionPercentage: task.completionPercentage,
-          status: "rejected"
-        });
+        // Create a status_change activity entry (unified table)
+        const statusChangeData = {
+          fromStatus: task.status || "new",
+          toStatus: "declined" as TaskStatus,
+          reason: reason,
+        };
+
+        if (!supabase) throw new Error('Supabase not configured');
+        
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: userId, // The user who declined the task
+            activity_type: 'status_change' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: statusChangeData,
+            description: `Task declined by ${decliningUser}. Reason: ${reason}`,
+            completion_percentage: task.completionPercentage || 0,
+            status: "declined",
+          });
       },
 
       // Today's Tasks - Star/Unstar functionality
@@ -1124,62 +1377,186 @@ export const useTaskStore = create<TaskStore>()(
 
       // Review workflow methods
       submitTaskForReview: async (taskId) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        // Get user who is submitting for review
+        const submittingUser = await (async () => {
+          try {
+            if (!supabase) return 'Unknown User';
+            // Try to get the assignee (person who accepted the task)
+            const userId = task.acceptedBy || task.assignedTo?.[0];
+            if (userId) {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            }
+            return 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
         await get().updateTask(taskId, {
-          readyForReview: true
+          status: "submitted_for_review" as TaskStatus
         });
+
+        // Create a review_submission activity entry (unified table)
+        const reviewSubmissionData = {
+          completionPercentage: task.completionPercentage || 100,
+        };
+
+        if (!supabase) throw new Error('Supabase not configured');
+
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: task.acceptedBy || task.assignedTo?.[0] || task.assignedBy,
+            activity_type: 'review_submission' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: reviewSubmissionData,
+            description: `Task submitted for review by ${submittingUser}`,
+            completion_percentage: task.completionPercentage || 100,
+            status: task.status || "in_progress",
+          });
       },
 
       acceptTaskCompletion: async (taskId, userId) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        // Get reviewer's name
+        const reviewerName = await (async () => {
+          try {
+            if (!supabase) return 'Unknown User';
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', userId)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
         await get().updateTask(taskId, {
-          readyForReview: false,
+          status: "approved" as TaskStatus,
           reviewedBy: userId,
           reviewedAt: new Date().toISOString(),
-          reviewAccepted: true,
-          currentStatus: "completed",
           completionPercentage: 100,
           starredByUsers: [] // Un-star task when accepted
         });
+
+        // Create a review_acceptance activity entry (unified table)
+        const reviewAcceptanceData = {
+          reviewedBy: userId,
+        };
+
+        if (!supabase) throw new Error('Supabase not configured');
+
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'review_acceptance' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: reviewAcceptanceData,
+            description: `Task completion accepted by ${reviewerName}`,
+            completion_percentage: 100,
+            status: "approved",
+          });
       },
 
-      rejectTaskCompletion: async (taskId, userId, reason) => {
+      rejectTaskCompletion: async (taskId, userId, reason, photos = []) => {
+        const task = get().tasks.find(t => t.id === taskId);
+        if (!task) {
+          throw new Error('Task not found');
+        }
+
+        // Get reviewer's name
+        const reviewerName = await (async () => {
+          try {
+            if (!supabase) return 'Unknown User';
+            const { data } = await supabase
+              .from('users')
+              .select('name')
+              .eq('id', userId)
+              .single();
+            return data?.name || 'Unknown User';
+          } catch {
+            return 'Unknown User';
+          }
+        })();
+
         await get().updateTask(taskId, {
-          readyForReview: false,
+          status: "rejected" as TaskStatus,
           reviewedBy: userId,
           reviewedAt: new Date().toISOString(),
-          reviewAccepted: false,
-          currentStatus: "rejected",
-          declineReason: reason,
+          declinedReason: reason,
+          completionPercentage: task.completionPercentage || 100, // Preserve existing completion percentage
           // Keep completion at 100% - they submitted it, just needs rework
         });
+
+        // Create a review_rejection activity entry (unified table)
+        const reviewRejectionData = {
+          reviewedBy: userId,
+          reason: reason,
+          photos: photos || [],
+        };
+
+        if (!supabase) throw new Error('Supabase not configured');
+
+        await supabase
+          .from('task_activities')
+          .insert({
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'review_rejection' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: reviewRejectionData,
+            description: `Task completion rejected by ${reviewerName}. Reason: ${reason}`,
+            completion_percentage: task.completionPercentage || 100,
+            status: "rejected",
+          });
       },
 
       submitSubTaskForReview: async (taskId, subTaskId) => {
         await get().updateSubTask(taskId, subTaskId, {
-          readyForReview: true
+          status: "submitted_for_review" as TaskStatus
         });
       },
 
       acceptSubTaskCompletion: async (taskId, subTaskId, userId) => {
         await get().updateSubTask(taskId, subTaskId, {
-          readyForReview: false,
+          status: "approved" as TaskStatus,
           reviewedBy: userId,
           reviewedAt: new Date().toISOString(),
-          reviewAccepted: true,
-          currentStatus: "completed",
           completionPercentage: 100,
           starredByUsers: [] // Un-star subtask when accepted
         });
       },
 
-      rejectSubTaskCompletion: async (taskId, subTaskId, userId, reason) => {
+      rejectSubTaskCompletion: async (taskId, subTaskId, userId, reason, photos = []) => {
+        // Get the current subtask to preserve its completion percentage
+        const subTask = get().tasks.find(t => t.id === subTaskId);
         await get().updateSubTask(taskId, subTaskId, {
-          readyForReview: false,
+          status: "rejected" as TaskStatus,
           reviewedBy: userId,
           reviewedAt: new Date().toISOString(),
-          reviewAccepted: false,
-          currentStatus: "rejected",
-          declineReason: reason,
+          declinedReason: reason,
+          completionPercentage: subTask?.completionPercentage || 100, // Preserve existing completion percentage
           // Keep completion at 100% - they submitted it, just needs rework
+          // Note: Photos are stored in the reason field for subtasks (can be enhanced later)
         });
       },
 
@@ -1214,31 +1591,8 @@ export const useTaskStore = create<TaskStore>()(
             timestamp: new Date().toISOString(),
           };
 
-          // Check if this is a self-assigned task that should be auto-accepted
-          const currentTaskForOptimistic = get().tasks.find(t => t.id === taskId);
-          let shouldAutoAccept = false;
-          let autoAcceptFields = {};
-          
-          if (update.completionPercentage === 100 && currentTaskForOptimistic) {
-            const assignedBy = currentTaskForOptimistic.assignedBy;
-            const assignedTo = currentTaskForOptimistic.assignedTo || [];
-            const isSelfAssigned = assignedBy && 
-                                  assignedTo.length === 1 && 
-                                  String(assignedTo[0]) === String(assignedBy);
-            
-            if (isSelfAssigned && 
-                !currentTaskForOptimistic.reviewAccepted && 
-                !currentTaskForOptimistic.readyForReview) {
-              shouldAutoAccept = true;
-              autoAcceptFields = {
-                reviewAccepted: true,
-                reviewedBy: assignedBy,
-                reviewedAt: new Date().toISOString(),
-              };
-            }
-          }
-
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
+          // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           console.log(`⚡ [Optimistic Update] Adding update to task ${taskId} locally before backend sync`);
           set(state => ({
             tasks: state.tasks.map(task =>
@@ -1247,75 +1601,43 @@ export const useTaskStore = create<TaskStore>()(
                     ...task, 
                     updates: [...task.updates, newUpdate],
                     completionPercentage: update.completionPercentage,
-                    currentStatus: update.status,
+                    status: update.status,
                     updatedAt: new Date().toISOString(),
-                    ...autoAcceptFields, // Include auto-accept fields if applicable
                   }
                 : task
             )
           }));
 
-          // Insert the task update to backend
+          // Insert the task activity to backend (unified table)
+          const activityData = {
+            description: update.description,
+            photos: update.photos || [],
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+          };
+
           const { error: updateError } = await supabase
-            .from('task_updates')
+            .from('task_activities')
             .insert({
               task_id: taskId,
               user_id: update.userId,
+              activity_type: 'progress_update' as ActivityType,
+              timestamp: new Date().toISOString(),
+              data: activityData,
               description: update.description,
-              photos: update.photos,
               completion_percentage: update.completionPercentage,
               status: update.status,
             });
 
           if (updateError) throw updateError;
 
-          // Get current task to check if it's self-assigned (for auto-accept)
-          const currentTask = get().tasks.find(t => t.id === taskId);
-          
-          // Auto-accept self-assigned tasks when they reach 100%
-          // IMPORTANT: Only auto-accept if task is TRULY self-assigned (creator = assignee)
-          let reviewAcceptedValue = undefined;
-          let reviewedByValue = undefined;
-          let reviewedAtValue = undefined;
-          
-          if (update.completionPercentage === 100 && currentTask) {
-            const assignedBy = currentTask.assignedBy;
-            const assignedTo = currentTask.assignedTo || [];
-            
-            // Check if truly self-assigned: creator is the only assignee
-            const isSelfAssigned = assignedBy && 
-                                  assignedTo.length === 1 && 
-                                  String(assignedTo[0]) === String(assignedBy);
-            
-            // Only auto-accept if:
-            // 1. Task is truly self-assigned
-            // 2. reviewAccepted is not already set (don't override existing review)
-            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
-            if (isSelfAssigned && 
-                !currentTask.reviewAccepted && 
-                !currentTask.readyForReview) {
-              console.log('✅ Auto-accepting self-assigned task via addTaskUpdate:', taskId);
-              reviewAcceptedValue = true;
-              reviewedByValue = currentTask.assignedBy;
-              reviewedAtValue = new Date().toISOString();
-            } else if (isSelfAssigned && currentTask.readyForReview) {
-              console.log('⚠️ Task is self-assigned but readyForReview is true - skipping auto-accept in addTaskUpdate');
-            }
-          }
-
           // Update the task's completion percentage and status in backend
+          // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           const taskUpdateData: any = {
             completion_percentage: update.completionPercentage,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
-          
-          // Add review fields if auto-accepting
-          if (reviewAcceptedValue !== undefined) {
-            taskUpdateData.review_accepted = reviewAcceptedValue;
-            taskUpdateData.reviewed_by = reviewedByValue;
-            taskUpdateData.reviewed_at = reviewedAtValue;
-          }
           
           const { error: taskError } = await supabase
             .from('tasks')
@@ -1354,7 +1676,7 @@ export const useTaskStore = create<TaskStore>()(
                     ...task, 
                     updates: [...(task.updates || []), newUpdate],
                     completionPercentage: update.completionPercentage,
-                    currentStatus: update.status,
+                    status: update.status,
                     updatedAt: new Date().toISOString(),
                   }
                 : task
@@ -1374,31 +1696,8 @@ export const useTaskStore = create<TaskStore>()(
             timestamp: new Date().toISOString(),
           };
 
-          // Check if this is a self-assigned subtask that should be auto-accepted
-          const currentSubTaskForOptimistic = get().tasks.find(t => t.id === subTaskId);
-          let shouldAutoAcceptSubTask = false;
-          let autoAcceptSubTaskFields = {};
-          
-          if (update.completionPercentage === 100 && currentSubTaskForOptimistic) {
-            const assignedBy = currentSubTaskForOptimistic.assignedBy;
-            const assignedTo = currentSubTaskForOptimistic.assignedTo || [];
-            const isSelfAssigned = assignedBy && 
-                                  assignedTo.length === 1 && 
-                                  String(assignedTo[0]) === String(assignedBy);
-            
-            if (isSelfAssigned && 
-                !currentSubTaskForOptimistic.reviewAccepted && 
-                !currentSubTaskForOptimistic.readyForReview) {
-              shouldAutoAcceptSubTask = true;
-              autoAcceptSubTaskFields = {
-                reviewAccepted: true,
-                reviewedBy: assignedBy,
-                reviewedAt: new Date().toISOString(),
-              };
-            }
-          }
-
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
+          // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           console.log(`⚡ [Optimistic Update] Adding update to subtask ${subTaskId} locally before backend sync`);
           set(state => ({
             tasks: state.tasks.map(task =>
@@ -1407,66 +1706,43 @@ export const useTaskStore = create<TaskStore>()(
                     ...task, 
                     updates: [...(task.updates || []), newUpdate],
                     completionPercentage: update.completionPercentage,
-                    currentStatus: update.status,
+                    status: update.status,
                     updatedAt: new Date().toISOString(),
-                    ...autoAcceptSubTaskFields, // Include auto-accept fields if applicable
                   }
                 : task
             )
           }));
 
-          // Insert the task update to backend
+          // Insert the task activity to backend (unified table)
+          const activityData = {
+            description: update.description,
+            photos: update.photos || [],
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+          };
+
           const { error: updateError } = await supabase
-            .from('task_updates')
+            .from('task_activities')
             .insert({
               task_id: subTaskId,  // ✅ Subtasks are now tasks, use subTaskId directly
               user_id: update.userId,
+              activity_type: 'progress_update' as ActivityType,
+              timestamp: new Date().toISOString(),
+              data: activityData,
               description: update.description,
-              photos: update.photos,
               completion_percentage: update.completionPercentage,
               status: update.status,
             });
 
           if (updateError) throw updateError;
 
-          // Get current subtask to check if it's self-assigned (for auto-accept)
-          const currentSubTask = get().tasks.find(t => t.id === subTaskId);
-          
-          // Auto-accept self-assigned subtasks when they reach 100%
-          let reviewAcceptedSubTaskValue = undefined;
-          let reviewedBySubTaskValue = undefined;
-          let reviewedAtSubTaskValue = undefined;
-          
-          if (update.completionPercentage === 100 && currentSubTask) {
-            const assignedBy = currentSubTask.assignedBy;
-            const assignedTo = currentSubTask.assignedTo || [];
-            const isSelfAssigned = assignedBy && 
-                                  assignedTo.length === 1 && 
-                                  String(assignedTo[0]) === String(assignedBy);
-            
-            if (isSelfAssigned && 
-                !currentSubTask.reviewAccepted && 
-                !currentSubTask.readyForReview) {
-              console.log('✅ Auto-accepting self-assigned subtask via addSubTaskUpdate:', subTaskId);
-              reviewAcceptedSubTaskValue = true;
-              reviewedBySubTaskValue = currentSubTask.assignedBy;
-              reviewedAtSubTaskValue = new Date().toISOString();
-            }
-          }
-
           // Update the subtask's completion percentage and status in backend
+          // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           const subTaskUpdateData: any = {
             completion_percentage: update.completionPercentage,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
-          
-          // Add review fields if auto-accepting
-          if (reviewAcceptedSubTaskValue !== undefined) {
-            subTaskUpdateData.review_accepted = reviewAcceptedSubTaskValue;
-            subTaskUpdateData.reviewed_by = reviewedBySubTaskValue;
-            subTaskUpdateData.reviewed_at = reviewedAtSubTaskValue;
-          }
           
           const { error: taskError } = await supabase
             .from('tasks')
@@ -1491,9 +1767,51 @@ export const useTaskStore = create<TaskStore>()(
 
       updateTaskStatus: async (taskId, status, completionPercentage) => {
         await get().updateTask(taskId, { 
-          currentStatus: status, 
+          status: status, 
           completionPercentage 
         });
+      },
+
+      addAssignerComment: async (taskId, comment) => {
+        if (!supabase) {
+          console.error('Supabase not configured, cannot add assigner comment');
+          throw new Error('Supabase not configured');
+        }
+
+        try {
+          // Fetch current task to get completion percentage at the time of comment
+          const currentTask = get().tasks.find(t => t.id === taskId);
+          const completionPercentage = currentTask?.completionPercentage ?? 0;
+
+          // Insert the assigner comment as a task activity
+          const activityData = {
+            description: comment.description,
+            photos: comment.photos || [],
+            completionPercentage: completionPercentage,
+          };
+
+          const { error: insertError } = await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: comment.userId,
+              activity_type: 'assigner_comment' as ActivityType,
+              timestamp: new Date().toISOString(),
+              data: activityData,
+              description: comment.description,
+              completion_percentage: completionPercentage, // Also store in the completion_percentage column
+            });
+
+          if (insertError) throw insertError;
+
+          // Refresh task data to get the new activity
+          await get().fetchTaskById(taskId);
+
+          console.log(`✅ Assigner comment added to task ${taskId}`);
+        } catch (error: any) {
+          console.error('❌ Error adding assigner comment:', error);
+          throw error;
+        }
       },
 
       // Subtask management methods
@@ -1505,7 +1823,7 @@ export const useTaskStore = create<TaskStore>()(
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            currentStatus: "not_started",
+            status: "new" as TaskStatus,
             completionPercentage: 0,
             updates: [], // New subtask has no updates yet
             delegationHistory: [],
@@ -1515,7 +1833,7 @@ export const useTaskStore = create<TaskStore>()(
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === taskId
-                ? { ...task, subTasks: [...(task.subTasks || []), newSubTask] }
+                ? { ...task, children: [...(task.children || []), newSubTask] }
                 : task
             )
           }));
@@ -1556,7 +1874,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
-              current_status: "not_started",
+              current_status: "new",
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
@@ -1587,13 +1905,12 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              currentStatus: data.current_status,
+              status: (data.current_status || 'new') as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
               location: data.location,
               attachments: data.attachments || [],
-              accepted: data.accepted,
               createdAt: data.created_at,
               updates: [],
             }]
@@ -1614,7 +1931,7 @@ export const useTaskStore = create<TaskStore>()(
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            currentStatus: "not_started",
+            status: "new" as TaskStatus,
             completionPercentage: 0,
             updates: [], // New nested subtask has no updates yet
             delegationHistory: [],
@@ -1624,7 +1941,7 @@ export const useTaskStore = create<TaskStore>()(
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === taskId
-                ? { ...task, subTasks: [...(task.subTasks || []), newSubTask] }
+                ? { ...task, children: [...(task.children || []), newSubTask] }
                 : task
             )
           }));
@@ -1655,7 +1972,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
-              current_status: "not_started",
+              current_status: "new",
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
@@ -1684,13 +2001,12 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              currentStatus: data.current_status,
+              status: (data.current_status || 'new') as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
               location: data.location,
               attachments: data.attachments || [],
-              accepted: data.accepted,
               createdAt: data.created_at,
               updates: [],
             }]
@@ -1711,7 +2027,7 @@ export const useTaskStore = create<TaskStore>()(
               task.id === taskId
                 ? {
                     ...task,
-                    subTasks: task.subTasks?.map(subTask =>
+                    children: task.children?.map(subTask =>
                       subTask.id === subTaskId
                         ? { ...subTask, ...updates }
                         : subTask
@@ -1741,17 +2057,17 @@ export const useTaskStore = create<TaskStore>()(
             
             // Only auto-accept if:
             // 1. Subtask is truly self-assigned
-            // 2. reviewAccepted is not already set (don't override existing review)
-            // 3. readyForReview is not true (don't auto-accept if already submitted for review)
+            // 2. Status is not already approved (don't override existing review)
+            // 3. Status is not submitted_for_review (don't auto-accept if already submitted for review)
             if (isSelfAssigned && 
-                updates.reviewAccepted === undefined && 
-                !currentSubTask.readyForReview) {
+                updates.status !== "approved" && 
+                currentSubTask.status !== "submitted_for_review") {
               console.log('✅ Auto-accepting self-assigned subtask:', subTaskId);
-              updates.reviewAccepted = true;
+              updates.status = "approved" as TaskStatus;
               updates.reviewedBy = currentSubTask.assignedBy;
               updates.reviewedAt = new Date().toISOString();
-            } else if (isSelfAssigned && currentSubTask.readyForReview) {
-              console.log('⚠️ Subtask is self-assigned but readyForReview is true - skipping auto-accept');
+            } else if (isSelfAssigned && currentSubTask.status === "submitted_for_review") {
+              console.log('⚠️ Subtask is self-assigned but status is submitted_for_review - skipping auto-accept');
             }
           }
           
@@ -1765,15 +2081,33 @@ export const useTaskStore = create<TaskStore>()(
           if (updates.attachments) updateData.attachments = updates.attachments;
           if (updates.taskReference !== undefined) updateData.task_reference = updates.taskReference || null;
           if (updates.billingStatus !== undefined) updateData.billing_status = updates.billingStatus || "non_billable";
-          if (updates.accepted !== undefined) updateData.accepted = updates.accepted;
-          if (updates.declineReason) updateData.decline_reason = updates.declineReason;
-          if (updates.currentStatus) updateData.current_status = updates.currentStatus;
+          // Legacy accepted field - map to status if needed
+          if ('accepted' in updates && (updates as any).accepted === true && !updates.status) {
+            updateData.current_status = 'in_progress';
+            updateData.accepted = true;
+          } else if ('accepted' in updates) {
+            updateData.accepted = (updates as any).accepted;
+          }
+          if ('declinedReason' in updates || 'declineReason' in updates) {
+            updateData.decline_reason = (updates as any).declinedReason || (updates as any).declineReason || null;
+          }
+          if (updates.status) updateData.current_status = updates.status;
           if (updates.completionPercentage !== undefined) updateData.completion_percentage = updates.completionPercentage;
-          // Review workflow fields
-          if (updates.readyForReview !== undefined) updateData.ready_for_review = updates.readyForReview;
+          // Review workflow fields (legacy - map to status if needed)
+          if ('readyForReview' in updates && (updates as any).readyForReview === true && !updates.status) {
+            updateData.current_status = 'submitted_for_review';
+            updateData.ready_for_review = true;
+          } else if ('readyForReview' in updates) {
+            updateData.ready_for_review = (updates as any).readyForReview;
+          }
           if (updates.reviewedBy) updateData.reviewed_by = updates.reviewedBy;
           if (updates.reviewedAt) updateData.reviewed_at = updates.reviewedAt;
-          if (updates.reviewAccepted !== undefined) updateData.review_accepted = updates.reviewAccepted;
+          if ('reviewAccepted' in updates && (updates as any).reviewAccepted === true && !updates.status) {
+            updateData.current_status = 'approved';
+            updateData.review_accepted = true;
+          } else if ('reviewAccepted' in updates) {
+            updateData.review_accepted = (updates as any).reviewAccepted;
+          }
 
           const { error } = await supabase
             .from('tasks')  // ✅ Changed to unified tasks table
@@ -1823,15 +2157,14 @@ export const useTaskStore = create<TaskStore>()(
 
       updateSubTaskStatus: async (taskId, subTaskId, status, completionPercentage) => {
         await get().updateSubTask(taskId, subTaskId, { 
-          currentStatus: status, 
+          status: status, 
           completionPercentage 
         });
       },
 
       acceptSubTask: async (taskId, subTaskId, userId) => {
         await get().updateSubTask(taskId, subTaskId, { 
-          accepted: true,
-          currentStatus: "in_progress",
+          status: "in_progress" as TaskStatus,
           acceptedBy: userId,
           acceptedAt: new Date().toISOString()
         });
@@ -1842,24 +2175,25 @@ export const useTaskStore = create<TaskStore>()(
         const task = get().tasks.find(t => t.id === taskId);
         if (!task) return;
 
-        const findSubTask = (subTasks: any[] | undefined, id: string): any => {
-          if (!subTasks) return null;
-          for (const st of subTasks) {
+        const findSubTask = (children: any[] | undefined, id: string): any => {
+          if (!children) return null;
+          for (const st of children) {
             if (st.id === id) return st;
-            if (st.subTasks) {
-              const found = findSubTask(st.subTasks, id);
+            if (st.children) {
+              const found = findSubTask(st.children, id);
               if (found) return found;
             }
           }
           return null;
         };
 
-        const subTask = findSubTask(task.subTasks, subTaskId);
+        const subTask = findSubTask(task.children, subTaskId);
         if (!subTask) return;
 
         // Get user who is rejecting to include their name in update
         const rejectingUser = await (async () => {
           try {
+            if (!supabase) return 'Unknown User';
             const { data } = await supabase
               .from('users')
               .select('name')
@@ -1873,9 +2207,8 @@ export const useTaskStore = create<TaskStore>()(
 
         // Re-assign subtask to creator and mark as rejected
         await get().updateSubTask(taskId, subTaskId, { 
-          accepted: false, 
-          declineReason: reason,
-          currentStatus: "rejected",
+          status: "rejected" as TaskStatus,
+          declinedReason: reason,
           assignedTo: [subTask.assignedBy], // Re-assign to creator
         });
 
@@ -1895,7 +2228,7 @@ export const useTaskStore = create<TaskStore>()(
         set(state => ({
           taskReadStatuses: [
             ...state.taskReadStatuses.filter(s => !(s.userId === userId && s.taskId === taskId)),
-            { userId, taskId, readAt: new Date().toISOString() }
+            { userId, taskId, isRead: true, readAt: new Date().toISOString() }
           ]
         }));
 
@@ -1952,7 +2285,7 @@ export const useTaskStore = create<TaskStore>()(
       getOverdueTasks: (projectId) => {
         const now = new Date();
         let tasks = get().tasks.filter(task => 
-          new Date(task.dueDate) < now && task.currentStatus !== 'completed'
+          new Date(task.dueDate) < now && task.status !== 'approved'
         );
         if (projectId) {
           tasks = tasks.filter(task => task.projectId === projectId);
@@ -1961,7 +2294,7 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       getTasksByStatus: (status, projectId) => {
-        let tasks = get().tasks.filter(task => task.currentStatus === status);
+        let tasks = get().tasks.filter(task => task.status === status);
         if (projectId) {
           tasks = tasks.filter(task => task.projectId === projectId);
         }
@@ -2122,12 +2455,19 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
-          // Insert into database
-          const { error } = await supabase.from('task_edit_history').insert({
-            task_id: taskId,
-            edited_by: userId,
+          // Insert into unified task_activities table
+          const activityData = {
             changes: changes,
-            edit_reason: editReason || null,
+            editReason: editReason || null,
+          };
+
+          const { error } = await supabase.from('task_activities').insert({
+            task_id: taskId,
+            user_id: userId,
+            activity_type: 'metadata_edit' as ActivityType,
+            timestamp: new Date().toISOString(),
+            data: activityData,
+            description: editReason || `Task metadata edited: ${Object.keys(changes).join(', ')}`,
             notifications_sent: false,
           });
 
@@ -2143,7 +2483,7 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      // Fetch task edit history
+      // Fetch task edit history (from unified task_activities table)
       fetchTaskEditHistory: async (taskId: string): Promise<TaskEditHistory[]> => {
         if (!supabase) {
           console.warn('Supabase not configured - cannot fetch edit history');
@@ -2151,30 +2491,35 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
+          // Fetch metadata_edit activities from unified table
           const { data, error } = await supabase
-            .from('task_edit_history')
+            .from('task_activities')
             .select('*')
             .eq('task_id', taskId)
-            .order('edited_at', { ascending: false });
+            .eq('activity_type', 'metadata_edit')
+            .order('timestamp', { ascending: false });
 
           if (error) {
             console.error('Error fetching task edit history:', error);
             return [];
           }
 
-          // Transform Supabase data to match TaskEditHistory interface
+          // Transform activities data to match TaskEditHistory interface (for backward compatibility)
           const history: TaskEditHistory[] =
-            data?.map((item) => ({
-              id: item.id,
-              taskId: item.task_id,
-              editedBy: item.edited_by,
-              editedAt: item.edited_at,
-              changes: item.changes || {},
-              editReason: item.edit_reason || undefined,
-              notificationsSent: item.notifications_sent || false,
-              notifiedAt: item.notified_at || undefined,
-              createdAt: item.created_at,
-            })) || [];
+            data?.map((activity) => {
+              const activityData = activity.data as any;
+              return {
+                id: activity.id,
+                taskId: activity.task_id,
+                editedBy: activity.user_id,
+                editedAt: activity.timestamp,
+                changes: activityData?.changes || {},
+                editReason: activityData?.editReason || undefined,
+                notificationsSent: activity.notifications_sent || false,
+                notifiedAt: activity.notified_at || undefined,
+                createdAt: activity.created_at,
+              };
+            }) || [];
 
           return history;
         } catch (error: any) {
@@ -2202,18 +2547,19 @@ export const useTaskStore = create<TaskStore>()(
             lastEditedAt: new Date().toISOString(),
           });
 
-          // Update the latest edit history entry to mark notifications as sent
+          // Update the latest edit history entry to mark notifications as sent (from unified table)
           const { data: latestEdit } = await supabase
-            .from('task_edit_history')
+            .from('task_activities')
             .select('id')
             .eq('task_id', taskId)
-            .order('edited_at', { ascending: false })
+            .eq('activity_type', 'metadata_edit')
+            .order('timestamp', { ascending: false })
             .limit(1)
             .single();
 
           if (latestEdit) {
             await supabase
-              .from('task_edit_history')
+              .from('task_activities')
               .update({
                 notifications_sent: true,
                 notified_at: new Date().toISOString(),

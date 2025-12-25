@@ -24,6 +24,7 @@ interface StandardHeaderProps {
   showBackButton?: boolean;
   onBackPress?: () => void;
   rightElement?: React.ReactNode;
+  onProfilePress?: () => void;
   className?: string;
 }
 
@@ -33,6 +34,7 @@ export default function StandardHeader({
   showBackButton = false,
   onBackPress,
   rightElement,
+  onProfilePress,
   className = "",
 }: StandardHeaderProps) {
   const { user } = useAuthStore();
@@ -142,8 +144,19 @@ export default function StandardHeader({
           )}
         </View>
         
-        {/* Custom right element */}
-        {rightElement}
+        {/* User Icon - Always shown, or custom right element if provided */}
+        {rightElement || (
+          <Pressable 
+            onPress={onProfilePress}
+            className="flex-row items-center"
+          >
+            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
+              <Text className="text-white font-bold text-base">
+                {user.name.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          </Pressable>
+        )}
       </View>
     </View>
   );

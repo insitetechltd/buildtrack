@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect } from "@react-navigation/native";
@@ -23,6 +24,8 @@ import { useAuthStore } from "../state/authStore";
 import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
+import { useUserStore } from "../state/userStore.supabase";
+import { TaskStatus } from "../types/buildtrack";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
@@ -32,6 +35,7 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
+import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
@@ -44,6 +48,7 @@ interface CreateTaskScreenProps {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
+  actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
 }
 
 // InputField component defined outside to prevent re-creation
@@ -69,14 +74,25 @@ const InputField = ({
   </View>
 );
 
-export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId }: CreateTaskScreenProps) {
+export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType = 'edit' }: CreateTaskScreenProps) {
   // Debug: Log the props received
   console.log('🎯 CreateTaskScreen props:', {
     editTaskId,
     parentTaskId,
     parentSubTaskId,
+    actionType,
     hasEditTaskId: !!editTaskId
   });
+  
+  // For non-edit actions, show full-screen implementations
+  // These provide the tab switch transition experience
+  if (actionType && actionType !== 'edit' && editTaskId) {
+    return <TaskActionScreen 
+      actionType={actionType} 
+      taskId={editTaskId} 
+      onNavigateBack={onNavigateBack}
+    />;
+  }
 
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
@@ -959,6 +975,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         <ScrollView 
           className="flex-1 px-6 py-4" 
           keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 100 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -979,52 +996,54 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             defaultLanguage="yue"
           /> */}
 
-          {/* Text Input for Manual Entry */}
-          <View className="mb-4">
-            <Text className="text-base font-semibold text-gray-700 mb-2">
-              {t.createTask.textInput}
-            </Text>
-            <View className="flex-row gap-2">
-              <TextInput
-                className="flex-1 border rounded-lg px-3 py-3 text-base text-gray-900 bg-white border-gray-300"
-                placeholder={t.createTask.textInputPlaceholder}
-                value={textInput}
-                onChangeText={setTextInput}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-              <Pressable
-                onPress={async () => {
-                  if (!textInput.trim()) {
-                    Alert.alert(t.errors.error, "Please enter some text");
-                    return;
-                  }
-                  try {
-                    const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
-                    if (suggestion) {
-                      setShowSuggestionPreview(true);
-                      setAcceptedFields(new Set());
-                      setTextInput("");
+          {/* Text Input for Manual Entry - HIDDEN FOR NOW */}
+          {false && (
+            <View className="mb-4">
+              <Text className="text-base font-semibold text-gray-700 mb-2">
+                {t.createTask.textInput}
+              </Text>
+              <View className="flex-row gap-2">
+                <TextInput
+                  className="flex-1 border rounded-lg px-3 py-3 text-base text-gray-900 bg-white border-gray-300"
+                  placeholder={t.createTask.textInputPlaceholder}
+                  value={textInput}
+                  onChangeText={setTextInput}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
+                <Pressable
+                  onPress={async () => {
+                    if (!textInput.trim()) {
+                      Alert.alert(t.errors.error, "Please enter some text");
+                      return;
                     }
-                  } catch (error) {
-                    console.error("Text input error:", error);
-                  }
-                }}
-                disabled={isLLMLoading || !textInput.trim()}
-                className={cn(
-                  "px-4 py-3 rounded-lg bg-blue-500",
-                  (isLLMLoading || !textInput.trim()) && "opacity-50"
-                )}
-              >
-                {isLLMLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Ionicons name="send" size={20} color="white" />
-                )}
-              </Pressable>
+                    try {
+                      const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
+                      if (suggestion) {
+                        setShowSuggestionPreview(true);
+                        setAcceptedFields(new Set());
+                        setTextInput("");
+                      }
+                    } catch (error) {
+                      console.error("Text input error:", error);
+                    }
+                  }}
+                  disabled={isLLMLoading || !textInput.trim()}
+                  className={cn(
+                    "px-4 py-3 rounded-lg bg-blue-500",
+                    (isLLMLoading || !textInput.trim()) && "opacity-50"
+                  )}
+                >
+                  {isLLMLoading ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Ionicons name="send" size={20} color="white" />
+                  )}
+                </Pressable>
+              </View>
             </View>
-          </View>
+          )}
 
           {/* LLM Error Display */}
           {llmError && (
@@ -1551,9 +1570,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               </Text>
             </Pressable>
           </View>
+        </ScrollView>
 
-          {/* Create Task Button */}
-          <View className="mt-6 mb-6">
+        {/* Fixed Bottom Bar with Create Task Button */}
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+          <SafeAreaView edges={['bottom']}>
             <Pressable
               onPress={handleSubmit}
               disabled={isSubmitting}
@@ -1571,8 +1592,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 }
               </Text>
             </Pressable>
-          </View>
-        </ScrollView>
+          </SafeAreaView>
+        </View>
       </KeyboardAvoidingView>
 
       {/* Priority Picker Modal */}
@@ -2199,5 +2220,560 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       </Modal>
 
     </SafeAreaView>
+  );
+}
+
+// TaskActionScreen - Handles non-edit actions (update, photos, comment, reassign)
+function TaskActionScreen({ 
+  actionType, 
+  taskId, 
+  onNavigateBack 
+}: { 
+  actionType: 'update' | 'photos' | 'comment' | 'reassign';
+  taskId: string;
+  onNavigateBack: () => void;
+}) {
+  const t = useTranslation();
+  const { user } = useAuthStore();
+  const tasks = useTaskStore(state => state.tasks);
+  const fetchTaskById = useTaskStore(state => state.fetchTaskById);
+  const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
+  const addAssignerComment = useTaskStore(state => state.addAssignerComment);
+  const updateTask = useTaskStore(state => state.updateTask);
+  const { getUserById } = useUserStore();
+  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
+  const { getProjectUserAssignments } = projectStore;
+  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
+  const { pickAndUploadImages } = useFileUpload();
+
+  const task = tasks.find(t => t.id === taskId);
+  
+  // Update form state
+  const [updateForm, setUpdateForm] = useState({
+    description: "",
+    photos: [] as string[],
+    completionPercentage: task?.completionPercentage || 0,
+    status: (task?.status || "in_progress") as TaskStatus,
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
+
+  // Comment form state
+  const [commentForm, setCommentForm] = useState({
+    description: "",
+    photos: [] as string[],
+  });
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
+
+  // Initialize form when task loads
+  useEffect(() => {
+    if (task && actionType === 'update') {
+      setUpdateForm(prev => ({
+        ...prev,
+        completionPercentage: task.completionPercentage || 0,
+      }));
+    }
+  }, [task, actionType]);
+
+  // Fetch task on mount
+  useEffect(() => {
+    if (taskId) {
+      fetchTaskById(taskId);
+    }
+  }, [taskId, fetchTaskById]);
+
+  const handleAddPhotos = async () => {
+    if (!user || !task) return;
+
+    Alert.alert(
+      "Add Photos",
+      "Choose how you want to add photos",
+      [
+        {
+          text: "Take Photo",
+          onPress: async () => {
+            try {
+              const results: UploadResults = await pickAndUploadImages(
+                {
+                  entityType: 'task-update',
+                  entityId: task.id,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'camera'
+              );
+
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
+                if (actionType === 'update') {
+                  setUpdateForm(prev => ({
+                    ...prev,
+                    photos: [...prev.photos, ...newPhotoUrls],
+                  }));
+                } else if (actionType === 'comment') {
+                  setCommentForm(prev => ({
+                    ...prev,
+                    photos: [...prev.photos, ...newPhotoUrls],
+                  }));
+                }
+              }
+
+              if (results.failed.length > 0) {
+                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
+              }
+            } catch (error) {
+              console.error('Failed to take photo:', error);
+              Alert.alert("Error", "Failed to take photo");
+            }
+          }
+        },
+        {
+          text: "Choose from Library",
+          onPress: async () => {
+            try {
+              const results: UploadResults = await pickAndUploadImages(
+                {
+                  entityType: 'task-update',
+                  entityId: task.id,
+                  companyId: user.companyId,
+                  userId: user.id,
+                },
+                'library'
+              );
+
+              if (results.successful.length > 0) {
+                const newPhotoUrls = results.successful.map(file => file.public_url);
+                if (actionType === 'update') {
+                  setUpdateForm(prev => ({
+                    ...prev,
+                    photos: [...prev.photos, ...newPhotoUrls],
+                  }));
+                } else if (actionType === 'comment') {
+                  setCommentForm(prev => ({
+                    ...prev,
+                    photos: [...prev.photos, ...newPhotoUrls],
+                  }));
+                }
+              }
+
+              if (results.failed.length > 0) {
+                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
+              }
+            } catch (error) {
+              console.error('Failed to pick images:', error);
+              Alert.alert("Error", "Failed to pick images");
+            }
+          }
+        },
+        { text: "Cancel", style: "cancel" }
+      ]
+    );
+  };
+
+  const handleSubmitUpdate = async () => {
+    if (!updateForm.description.trim()) {
+      Alert.alert("Error", "Please provide a description for this update");
+      return;
+    }
+
+    if (!user || !task) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const calculatedStatus: TaskStatus = 
+        (task.status === "accepted" || task.status === "in_progress" || task.status === "submitted_for_review") ? 
+          "in_progress" :
+        task.status || "in_progress";
+
+      await addTaskUpdate(task.id, {
+        description: updateForm.description,
+        photos: updateForm.photos,
+        completionPercentage: updateForm.completionPercentage,
+        status: calculatedStatus,
+        userId: user.id,
+      });
+
+      await fetchTaskById(task.id);
+
+      Alert.alert("Success", updateForm.completionPercentage === 100 
+        ? "🎉 Task marked as 100% complete! You can submit it for review when ready."
+        : t.taskDetail.progressUpdateAdded);
+      
+      onNavigateBack();
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "Failed to submit update");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitComment = async () => {
+    if (!commentForm.description.trim()) {
+      Alert.alert("Error", "Please provide a comment");
+      return;
+    }
+
+    if (!user || !task) return;
+
+    setIsSubmittingComment(true);
+
+    try {
+      await addAssignerComment(task.id, {
+        description: commentForm.description,
+        photos: commentForm.photos,
+        userId: user.id,
+      });
+
+      await fetchTaskById(task.id);
+      Alert.alert("Success", "Comment added successfully");
+      onNavigateBack();
+    } catch (error: any) {
+      console.error('Error adding comment:', error);
+      Alert.alert("Error", error.message || "Failed to add comment");
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
+
+  const handleReassignTask = async (selectedUserIds: string[]) => {
+    if (selectedUserIds.length === 0) {
+      Alert.alert(t.errors.error, t.taskDetail.selectUsers);
+      return;
+    }
+
+    if (!task) return;
+
+    try {
+      await updateTask(task.id, {
+        assignedTo: selectedUserIds,
+        accepted: false,
+        status: "new" as TaskStatus,
+        declineReason: undefined,
+      });
+
+      Alert.alert(
+        t.taskDetail.taskReassigned,
+        `${t.taskDetail.taskReassigned} ${selectedUserIds.length} ${t.phrases.users}.`,
+        [{ text: t.common.ok, onPress: onNavigateBack }]
+      );
+    } catch (error) {
+      console.error("Error reassigning task:", error);
+      Alert.alert(t.errors.error, t.taskDetail.taskReassigned);
+    }
+  };
+
+  if (!task) {
+    return (
+      <View className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['top']} className="flex-1">
+          <StandardHeader
+            title={actionType === 'update' ? 'Update Progress' : 
+                   actionType === 'photos' ? 'Add Photos' :
+                   actionType === 'comment' ? 'Add Comment' :
+                   actionType === 'reassign' ? 'Reassign Task' : 'Task Actions'}
+            onBackPress={onNavigateBack}
+          />
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text className="text-gray-500 mt-4">Loading task...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Render based on action type
+  if (actionType === 'update') {
+    return (
+      <View className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['top']} className="flex-1">
+          <StandardHeader
+            title={t.taskDetail.progressUpdate}
+            onBackPress={onNavigateBack}
+          />
+          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Photos Section */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                {t.taskDetail.photosAndFiles}
+              </Text>
+              
+              {updateForm.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                  <View className="flex-row">
+                    {updateForm.photos.map((photo, index) => (
+                      <View key={index} className="mr-3 relative">
+                        <Image
+                          source={{ uri: photo }}
+                          className="w-24 h-24 rounded-lg"
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => {
+                            setUpdateForm(prev => ({
+                              ...prev,
+                              photos: prev.photos.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+
+              <Pressable
+                onPress={handleAddPhotos}
+                className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+              >
+                <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
+                <Text className="text-gray-600 font-medium mt-3">{t.taskDetail.tapToAddFiles}</Text>
+              </Pressable>
+            </View>
+
+            {/* Description */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                {t.taskDetail.updateDescription}
+              </Text>
+              <TextInput
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder={t.taskDetail.updateDescriptionPlaceholder}
+                value={updateForm.description}
+                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                style={{ height: 120 }}
+              />
+            </View>
+
+            {/* Completion Percentage */}
+            <View className="mb-6">
+              <View className="flex-row items-center justify-between mb-3">
+                <Text className="text-xl font-semibold text-gray-900">
+                  {t.taskDetail.completionPercentage}
+                </Text>
+                <Text className="text-3xl font-bold text-blue-600">
+                  {updateForm.completionPercentage}%
+                </Text>
+              </View>
+              
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={5}
+                value={updateForm.completionPercentage}
+                onValueChange={(value: number) => setUpdateForm(prev => ({ ...prev, completionPercentage: value }))}
+                minimumTrackTintColor="#3b82f6"
+                maximumTrackTintColor="#d1d5db"
+                thumbTintColor="#3b82f6"
+              />
+            </View>
+          </ScrollView>
+
+          {/* Fixed Bottom Bar */}
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+            <SafeAreaView edges={['bottom']}>
+              <Pressable
+                onPress={handleSubmitUpdate}
+                disabled={isSubmitting}
+                className={cn(
+                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
+                  isSubmitting ? "bg-gray-300" : "bg-blue-600"
+                )}
+              >
+                <Ionicons name="checkmark-circle-outline" size={18} color="white" />
+                <Text className="text-white font-semibold text-base ml-2">
+                  {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
+                </Text>
+              </Pressable>
+            </SafeAreaView>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  if (actionType === 'comment') {
+    return (
+      <View className="flex-1 bg-gray-50">
+        <SafeAreaView edges={['top']} className="flex-1">
+          <StandardHeader
+            title="Add Comment"
+            onBackPress={onNavigateBack}
+          />
+          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Photos Section */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                Photos (Optional)
+              </Text>
+              
+              {commentForm.photos.length > 0 ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                  <View className="flex-row">
+                    {commentForm.photos.map((photo, index) => (
+                      <View key={index} className="mr-3 relative">
+                        <Image
+                          source={{ uri: photo }}
+                          className="w-24 h-24 rounded-lg"
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          onPress={() => {
+                            setCommentForm(prev => ({
+                              ...prev,
+                              photos: prev.photos.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                </ScrollView>
+              ) : null}
+
+              <Pressable
+                onPress={handleAddPhotos}
+                className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
+              >
+                <Ionicons name="camera-outline" size={24} color="#6b7280" />
+                <Text className="text-gray-600 ml-2 font-medium">
+                  Add Photos
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Comment Text */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                Comment
+              </Text>
+              <TextInput
+                className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
+                placeholder="Add your comment here..."
+                value={commentForm.description}
+                onChangeText={(text) => setCommentForm(prev => ({ ...prev, description: text }))}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          </ScrollView>
+
+          {/* Fixed Bottom Bar */}
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+            <SafeAreaView edges={['bottom']}>
+              <Pressable
+                onPress={handleSubmitComment}
+                disabled={isSubmittingComment || !commentForm.description.trim()}
+                className={cn(
+                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
+                  (isSubmittingComment || !commentForm.description.trim()) ? "bg-gray-300" : "bg-indigo-600"
+                )}
+              >
+                <Ionicons name="send-outline" size={18} color="white" />
+                <Text className="text-white font-semibold text-base ml-2">
+                  {isSubmittingComment ? t.common.loading : "Post"}
+                </Text>
+              </Pressable>
+            </SafeAreaView>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  if (actionType === 'reassign') {
+    return (
+      <View className="flex-1 bg-transparent">
+        <ReassignTaskModal
+          visible={true}
+          taskId={taskId}
+          onClose={onNavigateBack}
+          onReassign={handleReassignTask}
+        />
+      </View>
+    );
+  }
+
+  // Photos action - same as update but just for photos
+  return (
+    <View className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['top']} className="flex-1">
+        <StandardHeader
+          title="Add Photos"
+          onBackPress={onNavigateBack}
+        />
+        <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+          <View className="mb-6">
+            <Text className="text-xl font-semibold text-gray-900 mb-3">
+              Photos
+            </Text>
+            
+            {updateForm.photos.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                <View className="flex-row">
+                  {updateForm.photos.map((photo, index) => (
+                    <View key={index} className="mr-3 relative">
+                      <Image
+                        source={{ uri: photo }}
+                        className="w-24 h-24 rounded-lg"
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        onPress={() => {
+                          setUpdateForm(prev => ({
+                            ...prev,
+                            photos: prev.photos.filter((_, i) => i !== index)
+                          }));
+                        }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                      >
+                        <Ionicons name="close" size={14} color="white" />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : null}
+
+            <Pressable
+              onPress={handleAddPhotos}
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+            >
+              <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
+              <Text className="text-gray-600 font-medium mt-3">Tap to add photos</Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+          <SafeAreaView edges={['bottom']}>
+            <Pressable
+              onPress={() => {
+                Alert.alert("Success", "Photos added. You can now submit an update with these photos.");
+                onNavigateBack();
+              }}
+              className="w-full rounded-xl py-3 px-4 flex-row items-center justify-center bg-blue-600"
+            >
+              <Ionicons name="checkmark-circle-outline" size={18} color="white" />
+              <Text className="text-white font-semibold text-base ml-2">
+                Done
+              </Text>
+            </Pressable>
+          </SafeAreaView>
+        </View>
+      </SafeAreaView>
+    </View>
   );
 }

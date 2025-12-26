@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -31,6 +31,10 @@ export default function FullScreenImageViewer({
 }: FullScreenImageViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const scrollViewRef = React.useRef<ScrollView>(null);
+  const insets = useSafeAreaInsets();
+  
+  // Calculate top padding same as StandardHeader
+  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
 
   // Reset to initial index when modal opens
   React.useEffect(() => {
@@ -77,55 +81,77 @@ export default function FullScreenImageViewer({
   return (
     <Modal
       visible={visible}
-      animationType="fade"
+      animationType="slide"
       transparent={false}
       onRequestClose={onClose}
     >
-      <StatusBar style="light" />
-      <SafeAreaView className="flex-1 bg-black" edges={['left', 'right', 'bottom']}>
-        {/* Header */}
-        <View className="absolute top-0 left-0 right-0 z-10 bg-black/80 px-4 py-3" style={{ paddingTop: Platform.OS === 'ios' ? 50 : (RNStatusBar.currentHeight || 0) + 16 }}>
-          <View className="flex-row items-center justify-between">
+      <View className="bg-gray-50" style={{ height: '90%', marginTop: 'auto' }}>
+        <StatusBar style="dark" />
+        {/* Top Handle */}
+        <View className="w-full items-center pt-2 pb-1">
+          <View className="w-12 h-1.5 bg-gray-300 rounded-full" />
+        </View>
+        <SafeAreaView className="flex-1 bg-gray-50" edges={['bottom', 'left', 'right']}>
+          <View className="flex-1 bg-gray-50">
+          {/* Header Banner with Back Arrow - Same pattern as StandardHeader */}
+          <View 
+            className="flex-row items-center justify-between px-6 pb-4 bg-white border-b border-gray-200"
+            style={{ paddingTop: topPadding }}
+          >
             <Pressable
               onPress={onClose}
-              className="flex-row items-center p-2 -ml-2"
+              className="flex-row items-center"
             >
-              <Ionicons name="close" size={28} color="white" />
-              <Text className="text-white text-lg font-medium ml-2">Close</Text>
+              <Ionicons name="arrow-back" size={24} color="#374151" />
+              <Text className="text-gray-700 text-base font-medium ml-2">Back</Text>
             </Pressable>
-            <Text className="text-white text-lg font-medium">
-              {currentIndex + 1} / {images.length}
-            </Text>
+            
+            {images.length > 1 && (
+              <View className="bg-gray-100 px-3 py-1.5 rounded-full">
+                <Text className="text-gray-700 text-sm font-medium">
+                  {currentIndex + 1} / {images.length}
+                </Text>
+              </View>
+            )}
           </View>
-        </View>
 
-        {/* Image Gallery */}
-        <ScrollView
-          ref={scrollViewRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          className="flex-1"
-        >
+        {/* Image Gallery - Swipe horizontally to navigate */}
+        <View className="flex-1">
+          <ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            className="flex-1"
+            directionalLockEnabled={false}
+            scrollEnabled={true}
+          >
           {images.map((imageUri, index) => (
             <View
               key={index}
-              style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
-              className="items-center justify-center"
+              style={{ 
+                width: SCREEN_WIDTH, 
+                height: SCREEN_HEIGHT,
+                paddingHorizontal: 20,
+                justifyContent: 'center',
+                alignItems: 'center',
+                backgroundColor: '#ffffff',
+              }}
             >
               <Image
                 source={{ uri: imageUri }}
                 style={{
-                  width: SCREEN_WIDTH,
-                  height: SCREEN_HEIGHT,
+                  width: '100%',
+                  height: '100%',
                 }}
                 resizeMode="contain"
               />
             </View>
           ))}
         </ScrollView>
+        </View>
 
         {/* Navigation Arrows */}
         {images.length > 1 && (
@@ -134,10 +160,10 @@ export default function FullScreenImageViewer({
             {currentIndex > 0 && (
               <Pressable
                 onPress={goToPrevious}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/60 rounded-full items-center justify-center"
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
                 style={{ transform: [{ translateY: -24 }] }}
               >
-                <Ionicons name="chevron-back" size={28} color="white" />
+                <Ionicons name="chevron-back" size={28} color="#374151" />
               </Pressable>
             )}
 
@@ -145,10 +171,10 @@ export default function FullScreenImageViewer({
             {currentIndex < images.length - 1 && (
               <Pressable
                 onPress={goToNext}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/60 rounded-full items-center justify-center"
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-white/90 rounded-full items-center justify-center shadow-lg"
                 style={{ transform: [{ translateY: -24 }] }}
               >
-                <Ionicons name="chevron-forward" size={28} color="white" />
+                <Ionicons name="chevron-forward" size={28} color="#374151" />
               </Pressable>
             )}
           </>
@@ -156,7 +182,7 @@ export default function FullScreenImageViewer({
 
         {/* Bottom Thumbnail Bar (optional, for multiple images) */}
         {images.length > 1 && (
-          <View className="absolute bottom-0 left-0 right-0 bg-black/80 px-4 py-3">
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3">
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -186,7 +212,9 @@ export default function FullScreenImageViewer({
             </ScrollView>
           </View>
         )}
-      </SafeAreaView>
+        </View>
+        </SafeAreaView>
+      </View>
     </Modal>
   );
 }

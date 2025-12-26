@@ -10,13 +10,12 @@ import {
   Linking,
   RefreshControl,
   Dimensions,
-  PanResponder,
 } from "react-native";
-import Modal from "react-native-modal";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Modal from "react-native-modal";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -32,7 +31,6 @@ import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
-import ReassignTaskModal from "../components/ReassignTaskModal";
 import TaskCard from "../components/TaskCard";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useUploadFailureStore } from "../state/uploadFailureStore";
@@ -48,6 +46,7 @@ interface TaskDetailScreenProps {
 }
 
 export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail }: TaskDetailScreenProps) {
+  const navigation = useNavigation<any>();
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
@@ -81,55 +80,13 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const { getFailuresForTask, dismissFailure, incrementRetryCount } = useUploadFailureStore();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [showUpdatePanel, setShowUpdatePanel] = useState(false);
-  const [showCommentPanel, setShowCommentPanel] = useState(false);
-  const [showRejectPanel, setShowRejectPanel] = useState(false);
-  const [updateForm, setUpdateForm] = useState({
-    description: "",
-    photos: [] as string[],
-    completionPercentage: 0,
-    status: "in_progress" as TaskStatus,
-  });
-  const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [commentForm, setCommentForm] = useState({
-    description: "",
-    photos: [] as string[],
-  });
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [rejectForm, setRejectForm] = useState({
-    reason: "",
-    photos: [] as string[],
-  });
-  const [isSubmittingReject, setIsSubmittingReject] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
   const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
-  const [showReassignModal, setShowReassignModal] = useState(false);
   const [progressLogSortOrder, setProgressLogSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedUpdateIds, setExpandedUpdateIds] = useState<Set<string>>(new Set());
-  const [showImagePreview, setShowImagePreview] = useState(false);
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
-  const [selectedActivityPhotos, setSelectedActivityPhotos] = useState<string[]>([]);
-  const [selectedActivityInfo, setSelectedActivityInfo] = useState<any>(null);
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
-  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
-  const imageScrollViewRef = useRef<ScrollView>(null);
-  
-  // Reset photo index and scroll to clicked photo when modal opens
-  useEffect(() => {
-    if (showImagePreview && selectedActivityPhotos.length > 0 && selectedPhotoIndex >= 0) {
-      setCurrentPhotoIndex(selectedPhotoIndex);
-      const SCREEN_WIDTH = Dimensions.get('window').width;
-      const cardWidth = SCREEN_WIDTH - 20; // card width + margin
-      setTimeout(() => {
-        imageScrollViewRef.current?.scrollTo({
-          x: selectedPhotoIndex * cardWidth,
-          animated: false,
-        });
-      }, 100);
-    }
-  }, [showImagePreview, selectedPhotoIndex, selectedActivityPhotos.length]);
+  const [isAssigneesExpanded, setIsAssigneesExpanded] = useState(false);
+  // Photo viewer navigation is now handled via navigation to PhotoViewerScreen
   const [editHistory, setEditHistory] = useState<TaskEditHistory[]>([]);
   const [showEditHistory, setShowEditHistory] = useState(false);
 
@@ -352,32 +309,26 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     return { allTaskFiles: uniqueFiles, fileToActivityMap: fileMap };
   }, [task.attachments, task.activities, task.updates]);
 
-  // Panel animation functions
+  // Navigation functions for screens
   const openUpdatePanel = () => {
-    setShowUpdatePanel(true);
-  };
-
-  const closeUpdatePanel = () => {
-    setShowUpdatePanel(false);
-    setFailedUploadsInSession([]);
+    navigation.navigate("UpdateProgress", {
+      taskId: task?.id,
+      subTaskId: subTaskId,
+      initialCompletionPercentage: task?.completionPercentage || 0,
+    });
   };
 
   const openCommentPanel = () => {
-    setShowCommentPanel(true);
-  };
-
-  const closeCommentPanel = () => {
-    setShowCommentPanel(false);
-    setCommentForm({ description: "", photos: [] });
+    navigation.navigate("AddComment", {
+      taskId: task?.id,
+    });
   };
 
   const openRejectPanel = () => {
-    setShowRejectPanel(true);
-  };
-
-  const closeRejectPanel = () => {
-    setShowRejectPanel(false);
-    setRejectForm({ reason: "", photos: [] });
+    navigation.navigate("RejectTask", {
+      taskId: task?.id,
+      subTaskId: subTaskId,
+    });
   };
 
   
@@ -534,7 +485,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       Alert.alert(
         t.taskDetail.taskReassigned,
         `${t.taskDetail.taskReassigned} ${selectedUserIds.length} ${t.phrases.users}.`,
-        [{ text: t.common.ok, onPress: () => setShowReassignModal(false) }]
+        [{ text: t.common.ok }]
       );
     } catch (error) {
       console.error("Error reassigning task:", error);
@@ -574,116 +525,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     openRejectPanel();
   };
 
-  const handleAddPhotosToReject = async () => {
-    if (!user || !task) return;
-
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setRejectForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
-              }
-            } catch (error: any) {
-              console.error('Error adding photos:', error);
-              Alert.alert("Error", error.message || "Failed to add photos");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setRejectForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
-              }
-            } catch (error: any) {
-              console.error('Error adding photos:', error);
-              Alert.alert("Error", error.message || "Failed to add photos");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
-  };
-
-  const handleSubmitReject = async () => {
-    if (!rejectForm.reason.trim()) {
-      Alert.alert("Error", "Please provide a reason for rejecting this task");
-      return;
-    }
-
-    if (!user || !task) return;
-
-    setIsSubmittingReject(true);
-
-    try {
-      if (isViewingSubTask && subTaskId) {
-        await rejectSubTaskCompletion(taskId, subTaskId, user.id, rejectForm.reason.trim(), rejectForm.photos);
-      } else {
-        await rejectTaskCompletion(task.id, user.id, rejectForm.reason.trim(), rejectForm.photos);
-      }
-      await fetchTaskById(task.id);
-      
-      // Reset form
-      setRejectForm({
-        reason: "",
-        photos: [],
-      });
-
-      closeRejectPanel();
-      Alert.alert(
-        "Task Rejected", 
-        "The task has been sent back to the assignee for corrections."
-      );
-    } catch (error: any) {
-      console.error('Error rejecting task:', error);
-      Alert.alert("Error", error.message || "Failed to reject task.");
-    } finally {
-      setIsSubmittingReject(false);
-    }
-  };
 
   const handleAttachmentPress = (uri: string) => {
     const isPDF = uri.toLowerCase().endsWith('.pdf') || uri.includes('application/pdf');
@@ -712,30 +553,34 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       
       const activity = allActivities.find((a: any) => a.id === relatedActivityId);
       if (activity) {
+        // Get photos from activity.data.photos
         const photos = (activity.data as any)?.photos || [];
+        console.log('Activity photos found:', photos.length, photos);
         const photoIndex = photos.indexOf(uri);
+        console.log('Clicked photo index:', photoIndex, 'URI:', uri);
         
         if (photoIndex !== -1 && photos.length > 0) {
-          setSelectedActivityPhotos(photos);
-          setSelectedActivityInfo(activity);
-          setSelectedPhotoIndex(photoIndex);
-          setSelectedImageUri(uri);
-          setShowImagePreview(true);
+          // Navigate to PhotoViewerScreen
+          navigation.navigate("PhotoViewer", {
+            photos: photos,
+            initialIndex: photoIndex,
+            activityInfo: activity,
+          });
         } else {
           // Fallback: just show the single image
-          setSelectedActivityPhotos([uri]);
-          setSelectedActivityInfo(null);
-          setSelectedPhotoIndex(0);
-          setSelectedImageUri(uri);
-          setShowImagePreview(true);
+          navigation.navigate("PhotoViewer", {
+            photos: [uri],
+            initialIndex: 0,
+            activityInfo: null,
+          });
         }
       } else {
         // Fallback: just show the single image
-        setSelectedActivityPhotos([uri]);
-        setSelectedActivityInfo(null);
-        setSelectedPhotoIndex(0);
-        setSelectedImageUri(uri);
-        setShowImagePreview(true);
+        navigation.navigate("PhotoViewer", {
+          photos: [uri],
+          initialIndex: 0,
+          activityInfo: null,
+        });
       }
     } else {
       // File not associated with an activity (e.g., task attachment)
@@ -745,60 +590,16 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           Alert.alert("Error", "Unable to open PDF file");
         });
       } else {
-        // Open image in preview modal without activity info
-        setSelectedActivityPhotos([uri]);
-        setSelectedActivityInfo(null);
-        setSelectedPhotoIndex(0);
-        setSelectedImageUri(uri);
-        setShowImagePreview(true);
+        // Navigate to PhotoViewerScreen without activity info
+        navigation.navigate("PhotoViewer", {
+          photos: [uri],
+          initialIndex: 0,
+          activityInfo: null,
+        });
       }
     }
   };
 
-  const handleRetryUpload = async (failedUpload: { fileName: string; error: string; originalFile: any }) => {
-    if (!user || !task) return;
-
-    try {
-      console.log(`🔄 [Task Detail] Retrying upload for ${failedUpload.fileName}...`);
-      
-      // Import the uploadFileWithVerification directly
-      const { uploadFileWithVerification } = require('../api/fileUploadService');
-      
-      const result = await uploadFileWithVerification({
-        file: failedUpload.originalFile,
-        entityType: 'task-update',
-        entityId: task.id,
-        companyId: user.companyId,
-        userId: user.id,
-      });
-
-      if (result.success && result.file) {
-        // Success - add to photos
-        setUpdateForm(prev => ({
-          ...prev,
-          photos: [...prev.photos, result.file!.public_url],
-        }));
-        
-        // Remove from failed list
-        setFailedUploadsInSession(prev => 
-          prev.filter(f => f.fileName !== failedUpload.fileName)
-        );
-        
-        Alert.alert("Success", `${failedUpload.fileName} uploaded successfully!`);
-        console.log(`✅ [Task Detail] Retry successful for ${failedUpload.fileName}`);
-      } else {
-        // Still failed
-        Alert.alert(
-          "Retry Failed", 
-          result.error || "Upload failed again. Please check your connection and try again."
-        );
-        console.error(`❌ [Task Detail] Retry failed:`, result.error);
-      }
-    } catch (error: any) {
-      console.error('❌ [Task Detail] Retry error:', error);
-      Alert.alert("Error", error.message || "Retry failed. Please try again.");
-    }
-  };
 
   const handleAddPhotos = async () => {
     if (!user || !task) return;
@@ -824,20 +625,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               );
 
               if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setUpdateForm(prev => ({
-                  description: prev.description || "",
-                  photos: [...prev.photos, ...newPhotoUrls],
-                  completionPercentage: task.completionPercentage || prev.completionPercentage,
-                  status: task.status || prev.status,
-                }));
-                console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
-                // Open update panel after photos are added
-                openUpdatePanel();
+                console.log(`✅ ${results.successful.length} photo(s) uploaded and ready`);
+                // Navigate to update progress screen after photos are added
+                navigation.navigate("UpdateProgress", {
+                  taskId: task.id,
+                  subTaskId: subTaskId,
+                  initialCompletionPercentage: task.completionPercentage || 0,
+                });
               }
 
               if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
+                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
               }
             } catch (error) {
               console.error('❌ [Task Detail] Failed to take photo:', error);
@@ -862,20 +660,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               );
 
               if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setUpdateForm(prev => ({
-                  description: prev.description || "",
-                  photos: [...prev.photos, ...newPhotoUrls],
-                  completionPercentage: task.completionPercentage || prev.completionPercentage,
-                  status: task.status || prev.status,
-                }));
-                console.log(`✅ [Task Detail] ${results.successful.length} photo(s) uploaded and ready`);
-                // Open update panel after photos are added
-                openUpdatePanel();
+                console.log(`✅ ${results.successful.length} photo(s) uploaded and ready`);
+                // Navigate to update progress screen after photos are added
+                navigation.navigate("UpdateProgress", {
+                  taskId: task.id,
+                  subTaskId: subTaskId,
+                  initialCompletionPercentage: task.completionPercentage || 0,
+                });
               }
 
               if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
+                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
               }
             } catch (error) {
               console.error('❌ [Task Detail] Failed to pick images:', error);
@@ -900,175 +695,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     );
   };
 
-  const handleSubmitUpdate = async () => {
-    if (!updateForm.description.trim()) {
-      Alert.alert("Error", "Please provide a description for this update");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Status is automatically calculated based on completion percentage
-      // Use valid status values from the unified status system
-      // Note: 100% completion does NOT automatically submit for review - user must submit manually
-      const calculatedStatus: TaskStatus = 
-        (task.status === "accepted" || task.status === "in_progress" || task.status === "submitted_for_review") ? 
-          "in_progress" :
-        task.status || "in_progress";
-
-      const updatePayload = {
-        description: updateForm.description,
-        photos: updateForm.photos,
-        completionPercentage: updateForm.completionPercentage,
-        status: calculatedStatus,
-        userId: user.id,
-      };
-
-      // Use appropriate method based on whether viewing subtask
-      if (isViewingSubTask && subTaskId) {
-        await addSubTaskUpdate(taskId, subTaskId, updatePayload);
-      } else {
-        await addTaskUpdate(task.id, updatePayload);
-      }
-
-      // Refresh task data to get the latest state
-      await fetchTaskById(task.id);
-
-      setUpdateForm({
-        description: "",
-        photos: [],
-        completionPercentage: updateForm.completionPercentage,
-        status: calculatedStatus,
-      });
-
-      // Clear failed uploads after successful submission
-      setFailedUploadsInSession([]);
-
-      closeUpdatePanel();
-      
-      // Show success message
-      if (updateForm.completionPercentage === 100) {
-        Alert.alert("Success", "🎉 Task marked as 100% complete! You can submit it for review when ready.");
-      } else {
-        Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
-      }
-    } catch (error) {
-      Alert.alert(t.errors.error, t.taskDetail.failedToSubmitUpdate);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleSubmitComment = async () => {
-    if (!commentForm.description.trim()) {
-      Alert.alert("Error", "Please provide a comment");
-      return;
-    }
-
-    if (!user || !task) return;
-
-    setIsSubmittingComment(true);
-
-    try {
-      await addAssignerComment(task.id, {
-        description: commentForm.description,
-        photos: commentForm.photos,
-        userId: user.id,
-      });
-
-      // Refresh task data to get the new comment
-      await fetchTaskById(task.id);
-
-      // Reset form
-      setCommentForm({
-        description: "",
-        photos: [],
-      });
-
-      closeCommentPanel();
-      Alert.alert("Success", "Comment added successfully");
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      Alert.alert("Error", error.message || "Failed to add comment");
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  const handleAddPhotosToComment = async () => {
-    if (!user || !task) return;
-
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setCommentForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              console.error('Failed to take photo:', error);
-              Alert.alert("Error", "Failed to take photo");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setCommentForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              console.error('Failed to pick photos:', error);
-              Alert.alert("Error", "Failed to pick photos");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
-  };
 
   const isOverdue = new Date(task.dueDate) < new Date() && task.status !== "approved" && task.completionPercentage < 100;
 
@@ -1173,43 +799,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
-      {/* Approval Banner - Shown when task is submitted for review and user is the creator */}
-      {isTaskCreator && 
-       task.status === "submitted_for_review" && 
-       task.completionPercentage === 100 && (
-        <View className="bg-purple-50 border-b-2 border-purple-200 px-6 py-4">
-          <View className="flex-row items-center mb-3">
-            <View className="w-10 h-10 bg-purple-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="eye" size={24} color="#9333ea" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-purple-900">
-                {t.taskDetail.readyForReview}
-              </Text>
-              <Text className="text-base text-purple-700">
-                {t.taskDetail.assigneeSubmitted}
-              </Text>
-            </View>
-          </View>
-          <View className="flex-row gap-3">
-            <Pressable
-              onPress={handleRejectTask}
-              className="flex-1 bg-red-600 py-3.5 rounded-lg items-center flex-row justify-center"
-            >
-              <Ionicons name="close-circle" size={20} color="white" />
-              <Text className="text-white font-semibold text-lg ml-2">{t.taskDetail.reject}</Text>
-            </Pressable>
-            <Pressable
-              onPress={handleApproveTask}
-              className="flex-1 bg-green-600 py-3.5 rounded-lg items-center flex-row justify-center"
-            >
-              <Ionicons name="checkmark-done-circle" size={20} color="white" />
-              <Text className="text-white font-semibold text-lg ml-2">{t.taskDetail.accept}</Text>
-            </Pressable>
-          </View>
-        </View>
-      )}
-
       {/* Task Approved Banner - Shown when task is approved */}
       {task.status === "approved" && task.reviewedBy && (
         <View className="bg-green-50 border-b-2 border-green-200 px-6 py-4">
@@ -1231,25 +820,38 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       )}
 
       {/* Declined Task Banner - Shown when task is declined (before acceptance) and user is the assigner */}
-      {task.status === "declined" && task.assignedBy === user.id && (
-        <View className="bg-red-50 border-b-2 border-red-200 px-6 py-4">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 bg-red-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="close-circle" size={24} color="#dc2626" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-red-900">
-                {t.taskDetail.taskDeclined}
-              </Text>
-              {task.declinedReason && (
-                <Text className="text-base text-red-600 mt-1 italic">
-                  {t.taskDetail.reason} {task.declinedReason}
+      {task.status === "declined" && task.assignedBy === user.id && (() => {
+        // Find the user who declined the task from activities
+        const declineActivity = task.activities?.find((activity: any) => 
+          activity.activityType === 'status_change' && 
+          activity.status === 'declined'
+        );
+        const declinedByUserId = declineActivity?.userId;
+        const declinedByUser = declinedByUserId ? getUserById(declinedByUserId) : null;
+        
+        return (
+          <View className="bg-red-50 border-b-2 border-red-200 px-6 py-4">
+            <View className="flex-row items-center">
+              <View className="w-10 h-10 bg-red-100 rounded-full items-center justify-center mr-3">
+                <Ionicons name="close-circle" size={24} color="#dc2626" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xl font-bold text-red-900">
+                  {declinedByUser 
+                    ? `Task Declined by ${declinedByUser.name}`
+                    : t.taskDetail.taskDeclined
+                  }
                 </Text>
-              )}
+                {task.declinedReason && (
+                  <Text className="text-base text-red-600 mt-1 italic">
+                    {t.taskDetail.reason} {task.declinedReason}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        );
+      })()}
 
       {/* Rejected Task Banner - Shown when task is rejected after completion (100%) and user is the assigner */}
       {task.status === "rejected" && task.completionPercentage === 100 && task.assignedBy === user.id && (
@@ -1311,45 +913,105 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
             {/* Assigned To Card */}
             <View className="flex-1 bg-gray-50 rounded-lg p-3">
-              <Text className="text-sm font-medium text-gray-500 mb-2">{t.taskDetail.assignedTo}</Text>
+              <Pressable
+                onPress={() => {
+                  if (assignedUsers.length > 1) {
+                    setIsAssigneesExpanded(!isAssigneesExpanded);
+                  }
+                }}
+                disabled={assignedUsers.length <= 1}
+                className="flex-row items-center justify-between mb-2"
+              >
+                <Text className="text-sm font-medium text-gray-500">
+                  {t.taskDetail.assignedTo} {assignedUsers.length > 1 && `(${assignedUsers.length})`}
+                </Text>
+                {assignedUsers.length > 1 && (
+                  <Ionicons 
+                    name={isAssigneesExpanded ? "chevron-up" : "chevron-down"} 
+                    size={18} 
+                    color="#6b7280" 
+                  />
+                )}
+              </Pressable>
               {assignedUsers.length > 0 ? (
-                assignedUsers.map((assignedUser, index) => {
-                  if (!assignedUser) return null;
-                  
-                  // Get progress for this user
-                  const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
-                  const latestUpdate = userUpdates[userUpdates.length - 1];
-                  const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
-                  
-                  return (
-                    <Pressable 
-                      key={assignedUser.id} 
-                      className={index > 0 ? "mt-3 pt-3 border-t border-gray-200" : ""}
-                      onPress={() => {
-                        if (assignedUser.phone && assignedUser.id !== user.id) {
-                          Linking.openURL(`tel:${assignedUser.phone}`);
-                        }
-                      }}
-                      disabled={!assignedUser.phone || assignedUser.id === user.id}
-                    >
-                      <View className="flex-row items-center mb-2">
-                        <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
-                          <Ionicons name="person" size={16} color="#10b981" />
-                        </View>
-                        <View className="flex-1">
-                          <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                            {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
-                          </Text>
-                          {assignedUser.phone && (
-                            <Text className="text-sm text-gray-500">
-                              {assignedUser.phone}
+                <>
+                  {/* Always show first assignee */}
+                  {assignedUsers[0] && (() => {
+                    const assignedUser = assignedUsers[0];
+                    const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
+                    const latestUpdate = userUpdates[userUpdates.length - 1];
+                    const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
+                    
+                    return (
+                      <Pressable 
+                        onPress={() => {
+                          if (assignedUser.phone && assignedUser.id !== user.id) {
+                            Linking.openURL(`tel:${assignedUser.phone}`);
+                          }
+                        }}
+                        disabled={!assignedUser.phone || assignedUser.id === user.id}
+                      >
+                        <View className="flex-row items-center mb-2">
+                          <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
+                            <Ionicons name="person" size={16} color="#10b981" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
+                              {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
                             </Text>
-                          )}
+                            {assignedUser.phone && (
+                              <Text className="text-sm text-gray-500">
+                                {assignedUser.phone}
+                              </Text>
+                            )}
+                          </View>
                         </View>
-                      </View>
-                    </Pressable>
-                  );
-                })
+                      </Pressable>
+                    );
+                  })()}
+                  
+                  {/* Show remaining assignees if expanded */}
+                  {isAssigneesExpanded && assignedUsers.length > 1 && (
+                    <View className="mt-2">
+                      {assignedUsers.slice(1).map((assignedUser) => {
+                        if (!assignedUser) return null;
+                        
+                        const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
+                        const latestUpdate = userUpdates[userUpdates.length - 1];
+                        const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
+                        
+                        return (
+                          <Pressable 
+                            key={assignedUser.id} 
+                            className="mt-3 pt-3 border-t border-gray-200"
+                            onPress={() => {
+                              if (assignedUser.phone && assignedUser.id !== user.id) {
+                                Linking.openURL(`tel:${assignedUser.phone}`);
+                              }
+                            }}
+                            disabled={!assignedUser.phone || assignedUser.id === user.id}
+                          >
+                            <View className="flex-row items-center mb-2">
+                              <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
+                                <Ionicons name="person" size={16} color="#10b981" />
+                              </View>
+                              <View className="flex-1">
+                                <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
+                                  {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
+                                </Text>
+                                {assignedUser.phone && (
+                                  <Text className="text-sm text-gray-500">
+                                    {assignedUser.phone}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  )}
+                </>
               ) : (
                 <Text className="text-sm text-gray-500">{t.taskDetail.noAssignees}</Text>
               )}
@@ -1561,7 +1223,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         )}
 
         {/* Progress & Updates Combined Section */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 flex-1" style={{ minHeight: 0, marginBottom: 80 }}>
+        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4" style={{ marginBottom: 80 }}>
           {/* Header with Progress Log title, sort toggle, and completion percentage */}
           <View className="flex-row items-center justify-between mb-2">
             <View className="flex-row items-center flex-1">
@@ -1595,10 +1257,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Activities List - Expandable (unified from task_activities) - Scrollable */}
           {(task.activities?.length || task.updates.length) > 0 ? (
             <ScrollView 
-              className="flex-1"
               showsVerticalScrollIndicator={true}
               nestedScrollEnabled={true}
-              style={{ minHeight: 0 }}
+              style={{ maxHeight: 400 }}
             >
               <View className="space-y-3">
                 {(() => {
@@ -1698,8 +1359,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             </Text>
                           </View>
                           <View className="flex-row items-center" style={{ flex: 1, justifyContent: 'flex-end', zIndex: 1 }}>
-                            {/* Show progress % on right side */}
-                            {(activity.completionPercentage !== undefined || activityType === 'assigner_comment') && (
+                            {/* Show progress % on right side - Only for activities that actually update progress */}
+                            {/* Exclude metadata_edit, creation, assignment, etc. that don't affect completion % */}
+                            {activityType !== 'metadata_edit' && 
+                             activityType !== 'creation' && 
+                             activityType !== 'assignment' &&
+                             (activity.completionPercentage !== undefined || activityType === 'assigner_comment') && (
                               <Text className="text-base font-bold text-gray-500 mr-2">
                                 {activityType === 'assigner_comment' 
                                   ? (activity.completionPercentage ?? (activity.data as any)?.completionPercentage ?? 0)
@@ -1747,8 +1412,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       return (
                         <View className="mt-3">
                           {/* 1. Activity Type Label - Always shown */}
+                          {/* For metadata_edit, show "Task Information" instead of "Metadata Edit" */}
                           <Text className="text-base font-medium text-gray-900 capitalize mb-2">
-                            {activityType?.replace(/_/g, " ") || activityType}
+                            {activityType === 'metadata_edit' 
+                              ? 'Task Information' 
+                              : (activityType?.replace(/_/g, " ") || activityType)}
                           </Text>
                           
                           {/* 2. Action/Description - Always shown if exists */}
@@ -1765,21 +1433,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                             </View>
                           )}
                           
-                          {/* 3. Metadata Edit Changes - Only for metadata_edit activities */}
-                          {activityType === 'metadata_edit' && activity.data && (activity.data as any).changes && (
-                            <View className="mb-3">
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Changes:</Text>
-                              {Object.entries((activity.data as any).changes || {}).map(([field, change]: [string, any]) => (
-                                <View key={field} className="mb-2">
-                                  <Text className="text-sm text-gray-600 capitalize">{field}:</Text>
-                                  <Text className="text-xs text-gray-500">Old: {String(change.old || 'N/A')}</Text>
-                                  <Text className="text-xs text-gray-500">New: {String(change.new || 'N/A')}</Text>
-                                </View>
-                              ))}
-                            </View>
-                          )}
-                          
-                          {/* 4. Photos - Always shown if exists (for all activity types) */}
+                          {/* 3. Photos - Always shown if exists (for all activity types) */}
                           {((activity.data as any)?.photos || update.photos || []).length > 0 && (
                           <View>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -2011,7 +1665,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   {isTaskCreator && task.status === "declined" && (
                     <Pressable
                       onPress={() => {
-                        setShowReassignModal(true);
+                        navigation.navigate("ReassignTask", {
+                          taskId: task.id,
+                          onReassign: handleReassignTask,
+                        });
                       }}
                       className={cn(
                         "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
@@ -2123,433 +1780,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </SafeAreaView>
       </View>
 
-      {/* Update Panel - React Native Modal */}
-      <Modal
-        isVisible={showUpdatePanel}
-        onBackdropPress={closeUpdatePanel}
-        onSwipeComplete={closeUpdatePanel}
-        swipeDirection="right"
-        animationIn="slideInRight"
-        animationOut="slideOutRight"
-        style={{ margin: 0 }}
-        backdropOpacity={0.5}
-        swipeThreshold={100}
-        propagateSwipe={true}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4 pt-3">
-            <Pressable 
-              onPress={closeUpdatePanel}
-              className="w-10 h-10 items-center justify-center mr-3"
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              {t.taskDetail.progressUpdate}
-            </Text>
-          </View>
-
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Photos & Files - Top Section */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.photosAndFiles}
-              </Text>
-              
-              {updateForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {updateForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        {/* Success badge */}
-                        <View className="absolute top-1 left-1 w-6 h-6 bg-green-500 rounded-full items-center justify-center">
-                          <Ionicons name="checkmark" size={14} color="white" />
-                        </View>
-                        {/* Remove button */}
-                        <Pressable
-                          onPress={() => {
-                            setUpdateForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_, i) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              {/* Failed Uploads Section with Retry */}
-              {failedUploadsInSession.length > 0 && (
-                <View className="mb-3">
-                  <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
-                    <View className="flex-row items-center mb-2">
-                      <Ionicons name="alert-circle" size={20} color="#dc2626" />
-                      <Text className="text-red-800 font-semibold ml-2">
-                        {failedUploadsInSession.length} photo(s) failed to upload
-                      </Text>
-                    </View>
-                    <Text className="text-red-700 text-sm">
-                      Check your connection and tap retry below
-                    </Text>
-                  </View>
-
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View className="flex-row">
-                      {failedUploadsInSession.map((failedUpload, index) => (
-                        <View key={index} className="mr-3 w-24">
-                          <View className="w-24 h-24 rounded-lg bg-red-100 border-2 border-red-300 items-center justify-center mb-2">
-                            <Ionicons name="close-circle" size={40} color="#dc2626" />
-                          </View>
-                          <Text className="text-xs text-gray-700 mb-1" numberOfLines={1}>
-                            {failedUpload.fileName}
-                          </Text>
-                          <Text className="text-xs text-red-600 mb-2" numberOfLines={2}>
-                            {failedUpload.error}
-                          </Text>
-                          <Pressable
-                            onPress={() => handleRetryUpload(failedUpload)}
-                            className="bg-blue-600 py-2 rounded-lg items-center"
-                          >
-                            <Text className="text-white text-xs font-semibold">Retry</Text>
-                          </Pressable>
-                          <Pressable
-                            onPress={() => {
-                              setFailedUploadsInSession(prev => 
-                                prev.filter((_, i) => i !== index)
-                              );
-                            }}
-                            className="mt-1 py-1"
-                          >
-                            <Text className="text-gray-500 text-xs text-center">Dismiss</Text>
-                          </Pressable>
-                        </View>
-                      ))}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
-              
-              <Pressable
-                onPress={handleAddPhotos}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
-              >
-                <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-600 font-medium mt-3">{t.taskDetail.tapToAddFiles}</Text>
-                <Text className="text-gray-400 text-base mt-1">
-                  {updateForm.photos.length === 0 ? t.taskDetail.noFilesAdded : `${updateForm.photos.length} file(s) added`}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Update Description */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.updateDescription}
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-                placeholder={t.taskDetail.updateDescriptionPlaceholder}
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                maxLength={500}
-                style={{ height: 120 }}
-              />
-            </View>
-
-            {/* Completion Percentage - Bottom with Horizontal Slider */}
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xl font-semibold text-gray-900">
-                  {t.taskDetail.completionPercentage}
-                </Text>
-                <Text className="text-3xl font-bold text-blue-600">
-                  {updateForm.completionPercentage}%
-                </Text>
-              </View>
-              
-              {/* Current Progress Indicator */}
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-base text-gray-600">{t.taskDetail.current}: {task.completionPercentage}%</Text>
-                <View className="flex-row items-center">
-                  <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
-                  <Text className="text-base text-red-600 font-medium">{t.taskDetail.previous}</Text>
-                </View>
-              </View>
-              
-              {/* Horizontal Slider */}
-              <Slider
-                style={{ width: '100%', height: 40 }}
-                minimumValue={0}
-                maximumValue={100}
-                step={5}
-                value={updateForm.completionPercentage}
-                onValueChange={(value: number) => setUpdateForm(prev => ({ ...prev, completionPercentage: value }))}
-                minimumTrackTintColor="#ffffff"
-                maximumTrackTintColor="#d1d5db"
-                thumbTintColor="#ffffff"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitUpdate}
-                disabled={isSubmitting}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  isSubmitting ? "bg-gray-300" : "bg-blue-600"
-                )}
-              >
-                <Ionicons 
-                  name="checkmark-circle-outline" 
-                  size={18} 
-                  color="white" 
-                />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Comment Panel - React Native Modal */}
-      <Modal
-        isVisible={showCommentPanel}
-        onBackdropPress={closeCommentPanel}
-        onSwipeComplete={closeCommentPanel}
-        swipeDirection="right"
-        animationIn="slideInRight"
-        animationOut="slideOutRight"
-        style={{ margin: 0 }}
-        backdropOpacity={0.5}
-        swipeThreshold={100}
-        propagateSwipe={true}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4 pt-3">
-            <Pressable 
-              onPress={closeCommentPanel}
-              className="w-10 h-10 items-center justify-center mr-3"
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Add Comment
-            </Text>
-          </View>
-
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Photos Section */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Photos (Optional)
-              </Text>
-              
-              {commentForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {commentForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => {
-                            setCommentForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_, i) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              <Pressable
-                onPress={handleAddPhotosToComment}
-                className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
-              >
-                <Ionicons name="camera-outline" size={24} color="#6b7280" />
-                <Text className="text-gray-600 ml-2 font-medium">
-                  Add Photos
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Comment Text */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Comment
-              </Text>
-              <TextInput
-                className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
-                placeholder="Add your comment here..."
-                value={commentForm.description}
-                onChangeText={(text) => setCommentForm(prev => ({ ...prev, description: text }))}
-                multiline
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitComment}
-                disabled={isSubmittingComment || !commentForm.description.trim()}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  (isSubmittingComment || !commentForm.description.trim()) ? "bg-gray-300" : "bg-indigo-600"
-                )}
-              >
-                <Ionicons 
-                  name="send-outline" 
-                  size={18} 
-                  color="white" 
-                />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmittingComment ? t.common.loading : "Post"}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Reject Panel - React Native Modal */}
-      <Modal
-        isVisible={showRejectPanel}
-        onBackdropPress={closeRejectPanel}
-        onSwipeComplete={closeRejectPanel}
-        swipeDirection="right"
-        animationIn="slideInRight"
-        animationOut="slideOutRight"
-        style={{ margin: 0 }}
-        backdropOpacity={0.5}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right', 'top']} className="flex-1 bg-gray-50">
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={closeRejectPanel}
-              className="w-10 h-10 items-center justify-center mr-3"
-            >
-              <Ionicons name="arrow-back" size={24} color="#374151" />
-            </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Reject Task
-            </Text>
-          </View>
-
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Photos Section */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Photos (Optional)
-              </Text>
-              
-              {rejectForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {rejectForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => {
-                            setRejectForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_, i) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              <Pressable
-                onPress={handleAddPhotosToReject}
-                className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
-              >
-                <Ionicons name="camera-outline" size={24} color="#6b7280" />
-                <Text className="text-gray-600 ml-2 font-medium">
-                  Add Photos
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Rejection Reason Text */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Reason for Rejection <Text className="text-red-500">*</Text>
-              </Text>
-              <TextInput
-                className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
-                placeholder="Please provide a reason for rejecting this task..."
-                value={rejectForm.reason}
-                onChangeText={(text) => setRejectForm(prev => ({ ...prev, reason: text }))}
-                multiline
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitReject}
-                disabled={isSubmittingReject || !rejectForm.reason.trim()}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  (isSubmittingReject || !rejectForm.reason.trim()) ? "bg-gray-300" : "bg-red-600"
-                )}
-              >
-                <Ionicons 
-                  name="close-circle-outline" 
-                  size={18} 
-                  color="white" 
-                />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmittingReject ? t.common.loading : t.taskDetail.reject}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-        </SafeAreaView>
-      </Modal>
 
       {/* Task Detail Slider Modal */}
       <Modal
@@ -2788,243 +2018,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </SafeAreaView>
       </Modal>
 
-      {/* Reassign Modal */}
-      <ReassignTaskModal
-        visible={showReassignModal}
-        taskId={taskId}
-        onClose={() => setShowReassignModal(false)}
-        onReassign={handleReassignTask}
-      />
-
-
-      {/* Image Preview Modal with Activity Info */}
-      <Modal
-        isVisible={showImagePreview}
-        onSwipeComplete={() => {
-          setShowImagePreview(false);
-          setSelectedImageUri(null);
-          setSelectedActivityPhotos([]);
-          setSelectedActivityInfo(null);
-        }}
-        swipeDirection="up"
-        swipeThreshold={150}
-        propagateSwipe={true}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-        style={{ margin: 0 }}
-        backdropOpacity={1}
-        onBackdropPress={() => {}} // Disable backdrop press
-      >
-        {(() => {
-          const SCREEN_WIDTH = Dimensions.get('window').width;
-          const SCREEN_HEIGHT = Dimensions.get('window').height;
-          
-          const handleScroll = (event: any) => {
-            const contentOffsetX = event.nativeEvent.contentOffset.x;
-            const cardWidth = SCREEN_WIDTH - 20; // card width + margin
-            const newIndex = Math.round(contentOffsetX / cardWidth);
-            if (newIndex >= 0 && newIndex < selectedActivityPhotos.length) {
-              setCurrentPhotoIndex(newIndex);
-            }
-          };
-          
-          const getActivityIcon = (type: string) => {
-            switch (type) {
-              case 'creation': return 'add-circle';
-              case 'assignment': return 'person-add';
-              case 'status_change': return 'sync';
-              case 'progress_update': return 'trending-up';
-              case 'metadata_edit': return 'create';
-              case 'review_submission': return 'send';
-              case 'review_acceptance': return 'checkmark-circle';
-              case 'review_rejection': return 'close-circle';
-              case 'cancellation': return 'ban';
-              case 'assigner_comment': return 'chatbubble';
-              default: return 'document-text';
-            }
-          };
-          
-          const getActivityColor = (type: string) => {
-            switch (type) {
-              case 'creation': return '#10b981';
-              case 'assignment': return '#3b82f6';
-              case 'status_change': return '#8b5cf6';
-              case 'progress_update': return '#f59e0b';
-              case 'metadata_edit': return '#6366f1';
-              case 'review_submission': return '#06b6d4';
-              case 'review_acceptance': return '#10b981';
-              case 'review_rejection': return '#ef4444';
-              case 'cancellation': return '#6b7280';
-              case 'assigner_comment': return '#3b82f6';
-              default: return '#6b7280';
-            }
-          };
-          
-          const activity = selectedActivityInfo;
-          const activityType = activity?.activityType || (activity?.status ? 'status_change' : 'progress_update');
-          const activityUserId = activity?.userId;
-          const activityUser = activityUserId ? getUserById(activityUserId) : null;
-          
-          // Extract reason from activity.data if available
-          const activityData = activity?.data as any;
-          const reason = activityData?.reason;
-          let actionText = activity?.description || '';
-          let extractedReason: string | undefined = undefined;
-          
-          if (reason) {
-            extractedReason = reason;
-            const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
-            actionText = actionText.replace(reasonPattern, '').trim();
-          } else if (activity?.description?.includes('Reason:')) {
-            const reasonMatch = activity.description.match(/Reason:\s*(.+)$/i);
-            if (reasonMatch) {
-              extractedReason = reasonMatch[1].trim();
-              actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
-            }
-          }
-          
-          const handleClose = () => {
-            setShowImagePreview(false);
-            setSelectedImageUri(null);
-            setSelectedActivityPhotos([]);
-            setSelectedActivityInfo(null);
-          };
-          
-          return (
-            <View className="flex-1 bg-black">
-              {/* Swipe Up Hint - Fixed at top */}
-              <SafeAreaView className="absolute top-0 left-0 right-0 z-20" edges={['top']}>
-                <View className="px-6 pt-4 items-center">
-                  <View className="bg-black/60 px-4 py-2 rounded-full">
-                    <View className="flex-row items-center">
-                      <Ionicons name="chevron-up" size={16} color="white" />
-                      <Text className="text-white/90 text-sm ml-2">Swipe up to exit</Text>
-                    </View>
-                  </View>
-                </View>
-              </SafeAreaView>
-              
-              {/* Photo Counter */}
-              {selectedActivityPhotos.length > 1 && (
-                <View className="absolute top-16 right-6 z-20 bg-black/60 px-3 py-1.5 rounded-full">
-                  <Text className="text-white text-sm font-medium">
-                    {currentPhotoIndex + 1} / {selectedActivityPhotos.length}
-                  </Text>
-                </View>
-              )}
-              
-              {/* Main Content Container - Moved down to show top of photos */}
-              <View className="flex-1" style={{ paddingTop: 80 }}>
-                {/* Photos Section - Top of Modal - Swipe horizontally here */}
-                <View style={{ height: SCREEN_HEIGHT * 0.55 }}>
-                  <ScrollView
-                    ref={imageScrollViewRef}
-                    horizontal={true}
-                    pagingEnabled={false}
-                    snapToInterval={SCREEN_WIDTH - 20}
-                    snapToAlignment="start"
-                    decelerationRate="fast"
-                    showsHorizontalScrollIndicator={false}
-                    onScroll={handleScroll}
-                    scrollEventThrottle={16}
-                    style={{ flex: 1 }}
-                    contentContainerStyle={{ 
-                      paddingHorizontal: 20,
-                    }}
-                    bounces={false}
-                    scrollEnabled={true}
-                    nestedScrollEnabled={true}
-                    directionalLockEnabled={true}
-                    removeClippedSubviews={false}
-                  >
-                    {selectedActivityPhotos.map((photoUri, index) => (
-                      <View
-                        key={index}
-                        style={{ 
-                          width: SCREEN_WIDTH - 40, 
-                          height: SCREEN_HEIGHT * 0.55,
-                          marginRight: 20,
-                          justifyContent: 'center',
-                          alignItems: 'center'
-                        }}
-                        className="bg-white rounded-2xl overflow-hidden shadow-lg"
-                      >
-                        <Image
-                          source={{ uri: photoUri }}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                          }}
-                          resizeMode="contain"
-                        />
-                      </View>
-                    ))}
-                  </ScrollView>
-                </View>
-                
-                {/* Activity Information Section - Bottom of Modal */}
-                {activity && (
-                  <View 
-                    className="w-full bg-black/90 px-4 py-4" 
-                    style={{ height: SCREEN_HEIGHT * 0.35 }}
-                  >
-                  <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-                    <View className="border-l-4 pl-3" style={{ borderLeftColor: getActivityColor(activityType) }}>
-                      {/* Activity Type */}
-                      <Text className="text-base font-medium text-white capitalize mb-1">
-                        {activityType?.replace(/_/g, " ") || activityType}
-                      </Text>
-                      
-                      {/* User and Timestamp */}
-                      <View className="flex-row items-center mb-2">
-                        <Ionicons 
-                          name={getActivityIcon(activityType) as any} 
-                          size={14} 
-                          color={getActivityColor(activityType)} 
-                          style={{ marginRight: 6 }}
-                        />
-                        <Text className="text-sm text-white/80">
-                          {activityUser?.name || "Unknown User"} • {dateFormatter.formatDateShort(activity.timestamp)} {dateFormatter.formatTime(activity.timestamp)}
-                        </Text>
-                      </View>
-                      
-                      {/* Description */}
-                      {actionText && (
-                        <Text className="text-sm text-white/90 mb-2">{actionText}</Text>
-                      )}
-                      
-                      {/* Reason */}
-                      {extractedReason && (
-                        <Text className="text-sm text-white/90 mb-2">
-                          <Text className="font-medium">Reason:</Text> {extractedReason}
-                        </Text>
-                      )}
-                      
-                      {/* Progress and Status */}
-                      {(activity.completionPercentage !== undefined || activity.status) && (
-                        <View className="flex-row items-center gap-3 mt-1">
-                          {activity.completionPercentage !== undefined && (
-                            <Text className="text-sm text-white/80">
-                              Progress: {activity.completionPercentage}%
-                            </Text>
-                          )}
-                          {activity.status && (
-                            <View className="px-2 py-0.5 rounded" style={{ backgroundColor: getActivityColor(activityType) + '40' }}>
-                              <Text className="text-xs text-white capitalize">
-                                {activity.status.replace(/_/g, " ")}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  </ScrollView>
-                </View>
-              )}
-            </View>
-          );
-        })()}
-      </Modal>
 
       {/* Task Detail Utility FAB */}
       <TaskDetailUtilityFAB

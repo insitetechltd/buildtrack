@@ -74,21 +74,25 @@ const InputField = ({
   </View>
 );
 
-export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType = 'edit' }: CreateTaskScreenProps) {
+export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType }: CreateTaskScreenProps) {
+  // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
+  const effectiveActionType = actionType || (editTaskId ? 'edit' : undefined);
+  
   // Debug: Log the props received
   console.log('🎯 CreateTaskScreen props:', {
     editTaskId,
     parentTaskId,
     parentSubTaskId,
     actionType,
+    effectiveActionType,
     hasEditTaskId: !!editTaskId
   });
   
   // For non-edit actions, show full-screen implementations
   // These provide the tab switch transition experience
-  if (actionType && actionType !== 'edit' && editTaskId) {
+  if (effectiveActionType && effectiveActionType !== 'edit' && editTaskId) {
     return <TaskActionScreen 
-      actionType={actionType} 
+      actionType={effectiveActionType} 
       taskId={editTaskId} 
       onNavigateBack={onNavigateBack}
     />;
@@ -699,15 +703,12 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
         
-        {/* Header */}
-        <View className="flex-row items-center justify-between px-6 py-4 bg-white border-b border-gray-200">
-          <Pressable onPress={onNavigateBack} className="mr-4">
-            <Ionicons name="arrow-back" size={24} color="#374151" />
-          </Pressable>
-          <Text className="flex-1 text-2xl font-semibold text-gray-900">
-            {t.tasks.createTask}
-          </Text>
-        </View>
+        {/* Standard Header */}
+        <StandardHeader 
+          title={t.tasks.createTask}
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+        />
 
         <View className="flex-1 items-center justify-center px-6">
           <View className="bg-amber-50 border border-amber-200 rounded-xl p-6 w-full max-w-sm">
@@ -1571,30 +1572,43 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             </Pressable>
           </View>
         </ScrollView>
-
-        {/* Fixed Bottom Bar with Create Task Button */}
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
-          <SafeAreaView edges={['bottom']}>
-            <Pressable
-              onPress={handleSubmit}
-              disabled={isSubmitting}
-              className={cn(
-                "rounded-lg py-4 items-center shadow-lg",
-                isSubmitting 
-                  ? "bg-gray-300" 
-                  : "bg-blue-600"
-              )}
-            >
-              <Text className="text-white font-semibold text-lg">
-                {isSubmitting 
-                  ? (editTaskId ? t.createTask.updating : t.createTask.creating) 
-                  : (editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton)
-                }
-              </Text>
-            </Pressable>
-          </SafeAreaView>
-        </View>
       </KeyboardAvoidingView>
+
+      {/* Fixed Bottom Bar with Create Task Button */}
+      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+          elevation: 8
+        }}
+      >
+        <SafeAreaView edges={['bottom']}>
+          <Pressable
+            onPress={handleSubmit}
+            disabled={isSubmitting}
+            className={cn(
+              "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
+              isSubmitting 
+                ? "bg-gray-300" 
+                : "bg-blue-600"
+            )}
+          >
+            <Ionicons 
+              name={editTaskId ? "checkmark-circle-outline" : "add-circle-outline"} 
+              size={18} 
+              color="white" 
+            />
+            <Text className="text-white font-semibold text-base ml-2">
+              {isSubmitting 
+                ? (editTaskId ? t.createTask.updating : t.createTask.creating) 
+                : (editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton)
+              }
+            </Text>
+          </Pressable>
+        </SafeAreaView>
+      </View>
 
       {/* Priority Picker Modal */}
       <Modal
@@ -2579,7 +2593,15 @@ function TaskActionScreen({
           </ScrollView>
 
           {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 8
+            }}
+          >
             <SafeAreaView edges={['bottom']}>
               <Pressable
                 onPress={handleSubmitUpdate}
@@ -2671,7 +2693,15 @@ function TaskActionScreen({
           </ScrollView>
 
           {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: -2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 8
+            }}
+          >
             <SafeAreaView edges={['bottom']}>
               <Pressable
                 onPress={handleSubmitComment}
@@ -2757,7 +2787,15 @@ function TaskActionScreen({
           </View>
         </ScrollView>
 
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-6 py-4">
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+            elevation: 8
+          }}
+        >
           <SafeAreaView edges={['bottom']}>
             <Pressable
               onPress={() => {

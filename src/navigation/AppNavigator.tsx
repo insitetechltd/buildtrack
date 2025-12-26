@@ -27,6 +27,11 @@ import DevAdminScreen from "../screens/DevAdminScreen";
 import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
 import PendingUsersScreen from "../screens/PendingUsersScreen";
+import PhotoViewerScreen from "../screens/PhotoViewerScreen";
+import UpdateProgressScreen from "../screens/UpdateProgressScreen";
+import AddCommentScreen from "../screens/AddCommentScreen";
+import RejectTaskScreen from "../screens/RejectTaskScreen";
+import ReassignTaskScreen from "../screens/ReassignTaskScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -76,6 +81,41 @@ function DashboardStack() {
           presentation: "card"
         }}
       />
+      <Stack.Screen 
+        name="UpdateProgress" 
+        component={UpdateProgressScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="AddComment" 
+        component={AddCommentScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="RejectTask" 
+        component={RejectTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="ReassignTask" 
+        component={ReassignTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="CreateTask" 
+        component={CreateTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -84,7 +124,15 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
   return (
     <DashboardScreen
       onNavigateToTasks={() => navigation.getParent()?.navigate("Tasks")}
-      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
+      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask", {
+        screen: "CreateTaskMain",
+        params: {
+          parentTaskId: undefined,
+          parentSubTaskId: undefined,
+          editTaskId: undefined,
+          actionType: undefined,
+        }
+      })}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
@@ -119,25 +167,13 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
-        console.log('🚀 Dashboard Navigation handler called');
-        console.log('🚀 editTaskId:', editTaskId);
-        console.log('🚀 actionType:', actionType);
-        // Navigate to CreateTask at parent level with nested params
-        const parentNav = navigation.getParent();
-        if (parentNav) {
-          parentNav.navigate("CreateTask", {
-            screen: "CreateTaskMain",
-            params: {
-              parentTaskId,
-              parentSubTaskId,
-              editTaskId,
-              actionType,
-              sourceTaskId: editTaskId ? taskId : undefined,
-              sourceSubTaskId: editTaskId ? subTaskId : undefined,
-              sourceScreen: 'dashboard'
-            }
-          });
-        }
+        // Navigate to CreateTask screen in the same stack with card transition
+        navigation.navigate("CreateTask", {
+          parentTaskId,
+          parentSubTaskId,
+          editTaskId,
+          actionType,
+        });
       }}
     />
   );
@@ -167,6 +203,48 @@ function TasksStack() {
           presentation: "card"
         }}
       />
+      <Stack.Screen 
+        name="PhotoViewer" 
+        component={PhotoViewerScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="UpdateProgress" 
+        component={UpdateProgressScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="AddComment" 
+        component={AddCommentScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="RejectTask" 
+        component={RejectTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="ReassignTask" 
+        component={ReassignTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="CreateTask" 
+        component={CreateTaskScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -177,7 +255,15 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask")}
+      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask", {
+        screen: "CreateTaskMain",
+        params: {
+          parentTaskId: undefined,
+          parentSubTaskId: undefined,
+          editTaskId: undefined,
+          actionType: undefined,
+        }
+      })}
       onNavigateBack={() => navigation.getParent()?.navigate("Dashboard")}
     />
   );
@@ -195,32 +281,13 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
-        console.log('🚀 Navigation handler called');
-        console.log('🚀 parentTaskId:', parentTaskId);
-        console.log('🚀 parentSubTaskId:', parentSubTaskId);
-        console.log('🚀 editTaskId:', editTaskId);
-        console.log('🚀 actionType:', actionType);
-        
-        // Navigate to CreateTask tab at parent level with params
-        // For nested navigators, we need to use the nested format
-        const parentNav = navigation.getParent();
-        if (parentNav) {
-          parentNav.navigate("CreateTask", {
-            screen: "CreateTaskMain",
-            params: {
-              parentTaskId, 
-              parentSubTaskId,
-              editTaskId,
-              actionType,
-              sourceTaskId: editTaskId ? taskId : undefined,
-              sourceSubTaskId: editTaskId ? subTaskId : undefined,
-              sourceScreen: 'tasks'
-            }
-          });
-          console.log('🚀 Navigation called to CreateTask tab with nested params');
-        } else {
-          console.error('❌ No parent navigation found!');
-        }
+        // Navigate to CreateTask screen in the same stack with card transition
+        navigation.navigate("CreateTask", {
+          parentTaskId, 
+          parentSubTaskId,
+          editTaskId,
+          actionType,
+        });
       }}
     />
   );
@@ -235,6 +302,55 @@ function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigati
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
     />
+  );
+}
+
+function PhotoViewerScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  const { photos, initialIndex, activityInfo } = route.params || {};
+  return (
+    <PhotoViewerScreen
+      photos={photos || []}
+      initialIndex={initialIndex || 0}
+      activityInfo={activityInfo}
+      onNavigateBack={() => navigation.goBack()}
+    />
+  );
+}
+
+function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  const { parentTaskId, parentSubTaskId, editTaskId, actionType } = route.params || {};
+  return (
+    <CreateTaskScreen
+      onNavigateBack={() => navigation.goBack()}
+      parentTaskId={parentTaskId}
+      parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
+      actionType={actionType}
+    />
+  );
+}
+
+function UpdateProgressScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  return (
+    <UpdateProgressScreen />
+  );
+}
+
+function AddCommentScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  return (
+    <AddCommentScreen />
+  );
+}
+
+function RejectTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  return (
+    <RejectTaskScreen />
+  );
+}
+
+function ReassignTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  return (
+    <ReassignTaskScreen />
   );
 }
 
@@ -307,7 +423,8 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   const parentTaskId = params.parentTaskId;
   const parentSubTaskId = params.parentSubTaskId;
   const editTaskId = params.editTaskId;
-  const actionType = params.actionType || 'edit';
+  // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
+  const actionType = params.actionType || (editTaskId ? 'edit' : undefined);
   const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
   const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use

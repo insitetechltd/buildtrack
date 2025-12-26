@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, Pressable, Image, Linking } from "react-native";
+import { View, Text, Pressable, Image, Linking, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, Priority, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -49,50 +49,41 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   // Check if task is 100% complete
   const isCompleted = task.completionPercentage === 100;
 
-  // Get the most recent photo from task updates or attachments
-  const getTaskPhoto = () => {
-    console.log(`[TaskCard] Checking photos for task "${task.title}":`, {
-      hasAttachments: !!task.attachments,
-      attachmentsLength: task.attachments?.length || 0,
-      attachments: task.attachments,
-      hasUpdates: !!task.updates,
-      updatesLength: task.updates?.length || 0,
-      updatesWithPhotos: task.updates?.filter(u => u.photos && u.photos.length > 0).length || 0,
-    });
+  // Get all photos from task updates and attachments
+  const getAllTaskPhotos = () => {
+    const photos: string[] = [];
     
-    // First check if there are attachments (from initial task creation)
+    // Add attachments (from initial task creation)
     if (task.attachments && task.attachments.length > 0) {
-      console.log(`[TaskCard] ✅ Found attachment for "${task.title}":`, task.attachments[0]);
-      return task.attachments[0];
+      photos.push(...task.attachments);
     }
     
-    // Otherwise, check for photos in task updates (most recent first)
+    // Add photos from task updates (most recent first)
     if (task.updates && task.updates.length > 0) {
-      // Find the most recent update with photos
       for (let i = task.updates.length - 1; i >= 0; i--) {
         const update = task.updates[i];
         if (update.photos && update.photos.length > 0) {
-          console.log(`[TaskCard] ✅ Found photo in update for "${task.title}":`, update.photos[0]);
-          return update.photos[0];
+          photos.push(...update.photos);
         }
       }
     }
     
-    console.log(`[TaskCard] ❌ No photos found for "${task.title}"`);
-    return null;
+    return photos;
   };
 
-  const taskPhoto = getTaskPhoto();
-  const totalPhotos = (task.attachments?.length || 0) + 
-    (task.updates?.reduce((sum, update) => sum + (update.photos?.length || 0), 0) || 0);
+  const taskPhotos = getAllTaskPhotos();
 
-  // Track if image failed to load
-  const [imageError, setImageError] = useState(false);
+  // Track which images failed to load
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   
-  // Reset error state when photo URL changes
+  // Reset error state when photos change
   useEffect(() => {
-    setImageError(false);
-  }, [taskPhoto]);
+    setImageErrors(new Set());
+  }, [taskPhotos.length]);
+  
+  const handleImageError = (index: number) => {
+    setImageErrors(prev => new Set(prev).add(index));
+  };
 
   const handleStarPress = (e: any) => {
     e.stopPropagation(); // Prevent opening task detail
@@ -109,6 +100,36 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
       case "low": return "text-green-600 bg-green-50 border-green-200";
       default: return "text-gray-600 bg-gray-50 border-gray-200";
     }
+  };
+
+  const getStatusColor = (status: TaskStatus | string | undefined) => {
+    if (!status) return "text-gray-600 bg-gray-50 border-gray-200";
+    const statusLower = status.toLowerCase();
+    switch (statusLower) {
+      case "approved":
+      case "completed":
+      case "accepted":
+        return "text-green-700 bg-green-50 border-green-200";
+      case "in_progress":
+      case "wip":
+        return "text-blue-700 bg-blue-50 border-blue-200";
+      case "submitted_for_review":
+      case "reviewing":
+        return "text-purple-700 bg-purple-50 border-purple-200";
+      case "rejected":
+      case "declined":
+        return "text-red-700 bg-red-50 border-red-200";
+      case "new":
+      case "assigned":
+        return "text-amber-700 bg-amber-50 border-amber-200";
+      default:
+        return "text-gray-700 bg-gray-50 border-gray-200";
+    }
+  };
+
+  const formatStatus = (status: TaskStatus | string | undefined) => {
+    if (!status) return "New";
+    return status.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
@@ -200,187 +221,210 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
         </View>
       )}
       
-      <View className="flex-row">
-        {/* Text content */}
-        <View className="flex-1">
-          {/* Line 1: Star, Title */}
-          <View className="flex-row items-center mb-2">
-            {/* Star button */}
-            <Pressable
-              onPress={handleStarPress}
-              className="mr-2"
-            >
-              <Ionicons
-                name={isStarred ? "star" : "star-outline"}
-                size={16}
-                color={isStarred ? "#f59e0b" : "#9ca3af"}
-              />
-            </Pressable>
-            <Text className={cn(
-              "text-lg font-semibold flex-1",
-              isDarkMode ? "text-white" : "text-gray-900"
-            )} numberOfLines={1}>
-              {task.title}
-            </Text>
-          </View>
-      
-          {/* Line 2: Due Date (left), Comp% (center), Priority (right) */}
-          <View className="flex-row items-center justify-between mb-2">
-            {/* Left: Due Date */}
-            <Text className={cn(
-              "text-sm",
-              isDarkMode ? "text-slate-400" : "text-gray-600"
-            )}>
-              {t.taskDetail.due}: {dateFormatter.formatDate(task.dueDate, { month: 'short', day: 'numeric' })}
-            </Text>
+      {/* Text content */}
+      <View className="flex-1">
+        {/* Line 1: Star, Title */}
+        <View className="flex-row items-center mb-2">
+          {/* Star button */}
+          <Pressable
+            onPress={handleStarPress}
+            className="mr-2"
+          >
+            <Ionicons
+              name={isStarred ? "star" : "star-outline"}
+              size={16}
+              color={isStarred ? "#f59e0b" : "#9ca3af"}
+            />
+          </Pressable>
+          <Text className={cn(
+            "text-lg font-semibold flex-1",
+            isDarkMode ? "text-white" : "text-gray-900"
+          )} numberOfLines={1}>
+            {task.title}
+          </Text>
+        </View>
+    
+        {/* Line 2: Due Date, Status, Priority, and Completion */}
+        <View className="flex-row items-center justify-between mb-2 flex-wrap gap-2">
+          {/* Left: Due Date */}
+          <Text className={cn(
+            "text-sm",
+            isDarkMode ? "text-slate-400" : "text-gray-600"
+          )}>
+            {t.taskDetail.due}: {dateFormatter.formatDate(task.dueDate, { month: 'short', day: 'numeric' })}
+          </Text>
+          
+          {/* Right side: Status, Priority, and Completion in a row */}
+          <View className="flex-row items-center gap-2">
+            {/* Status Badge */}
+            <View className={cn("px-2 py-0.5 rounded border", getStatusColor(task.status || task.currentStatus))}>
+              <Text className="text-xs font-semibold capitalize">
+                {formatStatus(task.status || task.currentStatus)}
+              </Text>
+            </View>
             
-            {/* Center: Completion status with review states */}
+            {/* Priority Badge */}
+            <View className={cn("px-2 py-0.5 rounded border", getPriorityColor(task.priority))}>
+              <Text className="text-xs font-semibold capitalize">
+                {task.priority}
+              </Text>
+            </View>
+            
+            {/* Completion percentage */}
             {isCompleted && task.reviewAccepted ? (
               // Green bubble: 100% and accepted by assigner
-              <View className="bg-green-500 px-2 py-1 rounded-full flex-row items-center">
-                <Ionicons name="checkmark-circle" size={12} color="white" />
-                <Text className="text-white text-sm font-semibold ml-1">
-                  Closed
+              <View className="bg-green-500 px-2 py-0.5 rounded-full flex-row items-center">
+                <Ionicons name="checkmark-circle" size={10} color="white" />
+                <Text className="text-white text-xs font-semibold ml-1">
+                  {task.completionPercentage}%
                 </Text>
               </View>
             ) : isCompleted && task.readyForReview ? (
               // Blue bubble: 100% and submitted for review
-              <View className="bg-blue-500 px-2 py-1 rounded-full flex-row items-center">
-                <Ionicons name="eye" size={12} color="white" />
-                <Text className="text-white text-sm font-semibold ml-1">
-                  Reviewing
+              <View className="bg-blue-500 px-2 py-0.5 rounded-full flex-row items-center">
+                <Ionicons name="eye" size={10} color="white" />
+                <Text className="text-white text-xs font-semibold ml-1">
+                  {task.completionPercentage}%
                 </Text>
               </View>
             ) : (
               // Plain text: 0-100% normal display
               <Text className={cn(
-                "text-sm font-semibold",
+                "text-xs font-semibold",
                 isDarkMode ? "text-slate-400" : "text-gray-500"
               )}>
-                Comp. {task.completionPercentage}%
+                {task.completionPercentage}%
               </Text>
             )}
-            
-            {/* Right: Priority Badge */}
-            <View className={cn("px-2 py-1 rounded", getPriorityColor(task.priority))}>
-              <Text className="text-sm font-semibold capitalize">
-                {task.priority}
-              </Text>
-            </View>
           </View>
-      
-          {/* Line 3: Assigner → Assignees */}
-          <View className="flex-row items-center">
-            {/* Assigner - Clickable to call */}
+        </View>
+    
+        {/* Line 3: Assigner → Assignees */}
+        <View className="flex-row items-center">
+          {/* Assigner - Clickable to call */}
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation(); // Prevent opening task detail
+              if (assigner?.phone) {
+                Linking.openURL(`tel:${assigner.phone}`).catch((err) => {
+                  console.error('Failed to open phone dialer:', err);
+                });
+              }
+            }}
+            disabled={!assigner?.phone}
+            className="flex-row items-center"
+          >
+            <View className={cn(
+              "w-4 h-4 rounded-full items-center justify-center mr-1",
+              isDarkMode ? "bg-blue-900" : "bg-blue-100"
+            )}>
+              <Ionicons name="person" size={8} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
+            </View>
+            <Text className={cn(
+              "text-sm mr-1 font-medium",
+              isDarkMode ? "text-slate-300" : "text-gray-600",
+              assigner?.phone ? "underline" : ""
+            )} numberOfLines={1}>
+              {assigner?.name || 'Unknown'}
+            </Text>
+          </Pressable>
+          <Ionicons name="arrow-forward" size={10} color={isDarkMode ? "#64748b" : "#9ca3af"} />
+          {/* Assignees - Clickable to call (first assignee only) */}
+          {assignees.length > 0 ? (
             <Pressable
               onPress={(e) => {
                 e.stopPropagation(); // Prevent opening task detail
-                if (assigner?.phone) {
-                  Linking.openURL(`tel:${assigner.phone}`).catch((err) => {
+                if (assignees[0]?.phone) {
+                  Linking.openURL(`tel:${assignees[0].phone}`).catch((err) => {
                     console.error('Failed to open phone dialer:', err);
                   });
                 }
               }}
-              disabled={!assigner?.phone}
-              className="flex-row items-center"
+              disabled={!assignees[0]?.phone}
+              className="flex-row items-center flex-1"
             >
               <View className={cn(
-                "w-4 h-4 rounded-full items-center justify-center mr-1",
-                isDarkMode ? "bg-blue-900" : "bg-blue-100"
+                "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
+                isDarkMode ? "bg-green-900" : "bg-green-100"
               )}>
-                <Ionicons name="person" size={8} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
+                <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
               </View>
               <Text className={cn(
-                "text-sm mr-1 font-medium",
+                "text-sm flex-1 font-medium",
                 isDarkMode ? "text-slate-300" : "text-gray-600",
-                assigner?.phone ? "underline" : ""
+                assignees[0]?.phone ? "underline" : ""
               )} numberOfLines={1}>
-                {assigner?.name || 'Unknown'}
+                {assignees.length === 1 
+                  ? assignees[0]?.name 
+                  : `${assignees[0]?.name} +${assignees.length - 1}`
+                }
               </Text>
             </Pressable>
-            <Ionicons name="arrow-forward" size={10} color={isDarkMode ? "#64748b" : "#9ca3af"} />
-            {/* Assignees - Clickable to call (first assignee only) */}
-            {assignees.length > 0 ? (
-              <Pressable
-                onPress={(e) => {
-                  e.stopPropagation(); // Prevent opening task detail
-                  if (assignees[0]?.phone) {
-                    Linking.openURL(`tel:${assignees[0].phone}`).catch((err) => {
-                      console.error('Failed to open phone dialer:', err);
-                    });
-                  }
-                }}
-                disabled={!assignees[0]?.phone}
-                className="flex-row items-center flex-1"
-              >
-                <View className={cn(
-                  "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
-                  isDarkMode ? "bg-green-900" : "bg-green-100"
-                )}>
-                  <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
-                </View>
-                <Text className={cn(
-                  "text-sm flex-1 font-medium",
-                  isDarkMode ? "text-slate-300" : "text-gray-600",
-                  assignees[0]?.phone ? "underline" : ""
-                )} numberOfLines={1}>
-                  {assignees.length === 1 
-                    ? assignees[0]?.name 
-                    : `${assignees[0]?.name} +${assignees.length - 1}`
-                  }
-                </Text>
-              </Pressable>
-            ) : (
-              <View className="flex-row items-center flex-1">
-                <View className={cn(
-                  "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
-                  isDarkMode ? "bg-green-900" : "bg-green-100"
-                )}>
-                  <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
-                </View>
-                <Text className={cn(
-                  "text-sm flex-1 font-medium",
-                  isDarkMode ? "text-slate-300" : "text-gray-600"
-                )} numberOfLines={1}>
-                  Unassigned
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-        
-        {/* Photo on the right (most recent photo from updates or attachments) */}
-        {taskPhoto && (
-          <View className="ml-3">
-            {imageError ? (
-              // Placeholder when image fails to load
+          ) : (
+            <View className="flex-row items-center flex-1">
               <View className={cn(
-                "w-20 h-20 rounded-lg items-center justify-center",
-                isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                "w-4 h-4 rounded-full items-center justify-center ml-1 mr-1",
+                isDarkMode ? "bg-green-900" : "bg-green-100"
               )}>
-                <Ionicons 
-                  name="image-outline" 
-                  size={32} 
-                  color={isDarkMode ? "#64748b" : "#9ca3af"} 
-                />
+                <Ionicons name="people" size={8} color={isDarkMode ? "#34d399" : "#10b981"} />
               </View>
-            ) : (
-              <Image
-                source={{ uri: taskPhoto }}
-                className="w-20 h-20 rounded-lg"
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-              />
-            )}
-            {totalPhotos > 1 && (
-              <View className="absolute bottom-1 right-1 bg-black/70 rounded px-1.5 py-0.5">
-                <Text className="text-white text-sm font-semibold">
-                  +{totalPhotos - 1}
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
+              <Text className={cn(
+                "text-sm flex-1 font-medium",
+                isDarkMode ? "text-slate-300" : "text-gray-600"
+              )} numberOfLines={1}>
+                Unassigned
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+      
+      {/* Photos section - Always present for consistent layout */}
+      <View className={cn(
+        "mt-3 pt-3",
+        taskPhotos.length > 0 && "border-t",
+        isDarkMode ? "border-slate-700" : "border-gray-200"
+      )} style={{ minHeight: taskPhotos.length > 0 ? 0 : 0 }}>
+        {taskPhotos.length > 0 ? (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingRight: 4 }}
+          >
+            <View className="flex-row gap-2">
+              {taskPhotos.slice(0, 5).map((photo, index) => (
+                <View key={index} className="relative">
+                  {imageErrors.has(index) ? (
+                    <View className={cn(
+                      "w-14 h-14 rounded-lg items-center justify-center",
+                      isDarkMode ? "bg-slate-700" : "bg-gray-200"
+                    )}>
+                      <Ionicons 
+                        name="image-outline" 
+                        size={20} 
+                        color={isDarkMode ? "#64748b" : "#9ca3af"} 
+                      />
+                    </View>
+                  ) : (
+                    <Image
+                      source={{ uri: photo }}
+                      className="w-14 h-14 rounded-lg"
+                      resizeMode="cover"
+                      onError={() => handleImageError(index)}
+                    />
+                  )}
+                  {index === 4 && taskPhotos.length > 5 && (
+                    <View className="absolute inset-0 bg-black/50 rounded-lg items-center justify-center">
+                      <Text className="text-white text-xs font-semibold">
+                        +{taskPhotos.length - 5}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        ) : null}
       </View>
     </Pressable>
   );

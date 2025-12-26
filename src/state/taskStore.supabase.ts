@@ -2454,6 +2454,55 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
+        // Helper function to format field values for display
+        const formatFieldValue = (field: string, value: any): string => {
+          if (value === null || value === undefined || value === '') {
+            return 'none';
+          }
+          
+          switch (field) {
+            case 'priority':
+            case 'category':
+            case 'billingStatus':
+              const str = String(value);
+              return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
+            case 'dueDate':
+              if (value) {
+                try {
+                  const date = new Date(value);
+                  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                } catch {
+                  return String(value);
+                }
+              }
+              return 'none';
+            case 'assignedTo':
+              if (Array.isArray(value)) {
+                if (value.length === 0) return 'none';
+                return value.length === 1 ? '1 user' : `${value.length} users`;
+              }
+              return 'none';
+            case 'title':
+            case 'description':
+            case 'taskReference':
+              const text = String(value).trim();
+              return text || 'none';
+            default:
+              return String(value) || 'none';
+          }
+        };
+
+        // Generate descriptive change messages
+        const changeDescriptions: string[] = [];
+        Object.entries(changes).forEach(([field, change]) => {
+          const fieldName = field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1').trim();
+          const oldValue = formatFieldValue(field, change.old);
+          const newValue = formatFieldValue(field, change.new);
+          changeDescriptions.push(`Task ${fieldName.toLowerCase()} changed from ${oldValue} to ${newValue}`);
+        });
+
+        const description = editReason || changeDescriptions.join('. ');
+
         try {
           // Insert into unified task_activities table
           const activityData = {
@@ -2467,7 +2516,7 @@ export const useTaskStore = create<TaskStore>()(
             activity_type: 'metadata_edit' as ActivityType,
             timestamp: new Date().toISOString(),
             data: activityData,
-            description: editReason || `Task metadata edited: ${Object.keys(changes).join(', ')}`,
+            description: description,
             notifications_sent: false,
           });
 

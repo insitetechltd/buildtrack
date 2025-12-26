@@ -539,25 +539,36 @@ export default function DashboardScreen({
     task.status === "new"
   );
   
-  // Outbox: WIP (accepted, in_progress, or rejected/declined for rework, but NOT tasks submitted for review)
+  // Outbox: WIP (accepted, in_progress, or rejected for rework, but NOT tasks submitted for review)
+  // Includes tasks at 100% that haven't been submitted for review yet
+  // NOTE: Declined tasks should NOT appear here - they appear in "Pending my review" only
   const outboxWIPTasks = outboxAll.filter(task => {
     // Exclude tasks submitted for review - they should only appear in "reviewing" filter
     if (task.status === "submitted_for_review") {
       return false;
     }
-    // Include rejected/declined tasks (needs rework)
-    if (task.status === "rejected" || task.status === "declined") {
+    // Exclude approved tasks (they're done)
+    if (task.status === "approved") {
+      return false;
+    }
+    // Exclude declined tasks - they should only appear in "Pending my review"
+    if (task.status === "declined") {
+      return false;
+    }
+    // Include rejected tasks (needs rework)
+    if (task.status === "rejected") {
       return true;
     }
-    // Include tasks at 100% that are rejected (but not submitted_for_review)
-    if (task.completionPercentage === 100 && task.status === "rejected") {
+    // Include tasks at 100% that are NOT submitted for review and NOT approved
+    // These are tasks where assignee completed work but hasn't submitted for review yet
+    if (task.completionPercentage === 100 && 
+        (task.status === "accepted" || task.status === "in_progress")) {
       return true;
     }
     // Include accepted or in_progress tasks that are not complete
     return (task.status === "accepted" || task.status === "in_progress") &&
            !isOverdue(task) &&
-           task.completionPercentage < 100 &&
-           task.status !== "approved";
+           task.completionPercentage < 100;
   });
 
   // Outbox: Reviewing (tasks assigned to others that are submitted_for_review)

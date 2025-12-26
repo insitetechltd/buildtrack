@@ -806,25 +806,37 @@ export default function TasksScreen({
           // WIP: Tasks I assigned to others that they're working on
           // Includes: 
           // - Accepted tasks they're working on (not complete or not yet submitted)
+          // - Tasks at 100% that haven't been submitted for review yet
           // - Tasks at 100% that are rejected (needs rework)
-          // - Rejected/declined tasks (needs rework)
+          // - Rejected tasks (needs rework)
           // Excludes: Approved tasks, overdue tasks, tasks submitted for review (those go to "reviewing" filter)
-          if (task.status === "rejected" || task.status === "declined") {
-            return true; // Include rejected/declined tasks in WIP
+          // NOTE: Declined tasks should NOT appear here - they appear in "Pending my review" only
+          // Exclude declined tasks - they should only appear in "Pending my review"
+          if (task.status === "declined") {
+            return false;
+          }
+          // Include rejected tasks (needs rework)
+          if (task.status === "rejected") {
+            return true;
           }
           // Exclude tasks submitted for review - they should only appear in "reviewing" filter
           if (task.status === "submitted_for_review") {
             return false;
           }
-          // Include tasks at 100% that are rejected (but not submitted_for_review)
-          if (task.completionPercentage === 100 && task.status === "rejected") {
+          // Exclude approved tasks (they're done)
+          if (task.status === "approved") {
+            return false;
+          }
+          // Include tasks at 100% that are NOT submitted for review and NOT approved
+          // These are tasks where assignee completed work but hasn't submitted for review yet
+          if (task.completionPercentage === 100 && 
+              (task.status === "accepted" || task.status === "in_progress")) {
             return true;
           }
           // Include regular in-progress tasks
           return (task.status === "accepted" || task.status === "in_progress") &&
                  !isOverdue(task) &&
-                 task.completionPercentage < 100 &&
-                 task.status !== "approved";
+                 task.completionPercentage < 100;
         } else if (activeStatusFilter === "done") {
           // DONE: Tasks I assigned to others that were completed and I accepted
           return task.status === "approved";
@@ -1140,16 +1152,8 @@ export default function TasksScreen({
                     const parentNumber = taskNumber;
                     return (
                       <View key={group.parent.id} className="mb-1">
-                        {/* Parent task with number */}
-                        <View className="flex-row items-start">
-                          <Text className={cn(
-                            "text-lg font-bold mr-2 mt-3",
-                            isDarkMode ? "text-slate-300" : "text-gray-700"
-                          )}>{parentNumber}.</Text>
-                          <View className="flex-1">
-                            <TaskCard task={group.parent} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
-                          </View>
-                        </View>
+                        {/* Parent task */}
+                        <TaskCard task={group.parent} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
                         
                         {/* Subtasks indented below parent */}
                         {group.subtasks.length > 0 && (
@@ -1160,14 +1164,8 @@ export default function TasksScreen({
                             {group.subtasks.map((subtask) => {
                               taskNumber++;
                               return (
-                                <View key={subtask.id} className="mb-1 flex-row items-start">
-                                  <Text className={cn(
-                                    "text-base font-semibold mr-2 mt-3",
-                                    isDarkMode ? "text-slate-400" : "text-gray-600"
-                                  )}>{taskNumber}.</Text>
-                                  <View className="flex-1">
-                                    <TaskCard task={subtask} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
-                                  </View>
+                                <View key={subtask.id} className="mb-1">
+                                  <TaskCard task={subtask} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
                                 </View>
                               );
                             })}
@@ -1181,14 +1179,8 @@ export default function TasksScreen({
                   {groupedTasks.standalone.map((task) => {
                     taskNumber++;
                     return (
-                      <View key={task.id} className="mb-1 flex-row items-start">
-                        <Text className={cn(
-                          "text-lg font-bold mr-2 mt-3",
-                          isDarkMode ? "text-slate-300" : "text-gray-700"
-                        )}>{taskNumber}.</Text>
-                        <View className="flex-1">
-                          <TaskCard task={task} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
-                        </View>
+                      <View key={task.id} className="mb-1">
+                        <TaskCard task={task} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
                       </View>
                     );
                   })}

@@ -373,6 +373,15 @@ export default function DashboardScreen({
   const projectFilteredTasks = selectedProjectId && selectedProjectId !== ""
     ? tasks.filter(task => task.projectId === selectedProjectId)
     : []; // No tasks shown if no project selected (should not reach here due to early returns)
+  
+  // Debug: Log project filtering
+  console.log('🔍 [DASHBOARD DEBUG] Project filtering:', {
+    selectedProjectId,
+    totalTasks: tasks.length,
+    projectFilteredTasksCount: projectFilteredTasks.length,
+    projectFilteredTaskIds: projectFilteredTasks.map(t => t.id),
+    allTaskProjects: [...new Set(tasks.map(t => t.projectId))]
+  });
 
   // ✅ UPDATED: Simplified for unified tasks table
   // Get all nested tasks (tasks with parentTaskId) assigned by a user
@@ -385,11 +394,12 @@ export default function DashboardScreen({
 
   // Get all nested tasks assigned to a user
   const getNestedTasksAssignedTo = (userId: string): Task[] => {
+    const userIdStr = String(userId);
     return projectFilteredTasks.filter(task => {
       const assignedTo = task.assignedTo || [];
       return isNestedTask(task) && // Is a nested task
              Array.isArray(assignedTo) && 
-             assignedTo.includes(userId);
+             assignedTo.some(id => String(id) === userIdStr);
     });
   };
 
@@ -413,34 +423,145 @@ export default function DashboardScreen({
   // ===== MY TASKS SECTION =====
   // My Tasks: Tasks I created and assigned to myself (self-assigned)
   // Now includes both top-level and nested tasks (all in one table!)
+  const userIdStr = String(user.id);
   const myTasksParent = projectFilteredTasks.filter(task => {
     const assignedTo = task.assignedTo || [];
-    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-    const isCreatedByMe = task.assignedBy === user.id;
-    return isTopLevelTask(task) && isAssignedToMe && isCreatedByMe; // Top-level only
+    // Use String() comparison to handle type mismatches (string vs number)
+    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+    const isCreatedByMe = String(task.assignedBy) === userIdStr;
+    const matches = isTopLevelTask(task) && isAssignedToMe && isCreatedByMe;
+    
+    // Debug logging for Den's tasks - check if task is created by Den OR assigned to Den
+    const denUserIds = ['68a2ad9a-b7f1-44c1-9f27-77a91679b79b']; // Den's known ID from debug output
+    const isCreatedByDen = denUserIds.some(denId => String(task.assignedBy) === denId);
+    const isAssignedToDen = denUserIds.some(denId => Array.isArray(assignedTo) && assignedTo.some(id => String(id) === denId));
+    
+    if (isCreatedByDen || isAssignedToDen || task.title?.toLowerCase().includes('den')) {
+      console.log('🔍 [MY TASKS DEBUG] Den-related task check:', {
+        id: task.id,
+        title: task.title,
+        assignedBy: task.assignedBy,
+        assignedByType: typeof task.assignedBy,
+        assignedTo,
+        assignedToTypes: Array.isArray(assignedTo) ? assignedTo.map((id: any) => typeof id) : [],
+        currentUserId: user.id,
+        currentUserIdType: typeof user.id,
+        currentUserIdStr: userIdStr,
+        isAssignedToMe,
+        isCreatedByMe,
+        isTopLevel: isTopLevelTask(task),
+        projectId: task.projectId,
+        selectedProjectId,
+        matches,
+        inProjectFiltered: projectFilteredTasks.includes(task),
+        isCreatedByDen,
+        isAssignedToDen,
+        isSelfAssignedByDen: isCreatedByDen && isAssignedToDen
+      });
+    }
+    
+    return matches; // Top-level only
   });
 
   const myTasksNested = getNestedTasksAssignedTo(user.id)
-    .filter(task => task.assignedBy === user.id);
+    .filter(task => String(task.assignedBy) === userIdStr);
 
   const myTasksAll = [...myTasksParent, ...myTasksNested];
 
-  // My Tasks: WIP (in_progress or rejected for rework, not overdue)
+  // Debug: Log all self-assigned tasks found
+  console.log('🔍 [MY TASKS] Total self-assigned tasks found:', myTasksAll.length);
+  console.log('🔍 [MY TASKS] Current user:', { id: user.id, name: user.name, idType: typeof user.id });
+  myTasksAll.forEach(task => {
+    console.log('  - Task:', {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      currentStatus: (task as any).currentStatus,
+      assignedBy: task.assignedBy,
+      assignedByType: typeof task.assignedBy,
+      assignedTo: task.assignedTo,
+      assignedToTypes: Array.isArray(task.assignedTo) ? task.assignedTo.map((id: any) => typeof id) : [],
+      projectId: task.projectId,
+      selectedProjectId,
+      isSelfAssigned: String(task.assignedBy) === String(user.id) && 
+                     Array.isArray(task.assignedTo) && 
+                     task.assignedTo.some((id: any) => String(id) === String(user.id))
+    });
+  });
+  
+  // Also check for Den's self-assigned tasks specifically (regardless of current user)
+  const denUserIds = ['68a2ad9a-b7f1-44c1-9f27-77a91679b79b']; // Den's ID from debug output
+  const denSelfAssignedTasks = projectFilteredTasks.filter(task => {
+    const assignedTo = task.assignedTo || [];
+    return denUserIds.some(denId => {
+      const isCreatedByDen = String(task.assignedBy) === String(denId);
+      const isAssignedToDen = Array.isArray(assignedTo) && assignedTo.some((id: any) => String(id) === String(denId));
+      return isCreatedByDen && isAssignedToDen;
+    });
+  });
+  if (denSelfAssignedTasks.length > 0) {
+    console.log(`🔍 [DEN SELF-ASSIGNED] Found ${denSelfAssignedTasks.length} Den self-assigned tasks in selected project:`, 
+      denSelfAssignedTasks.map(t => ({ 
+        id: t.id, 
+        title: t.title, 
+        status: t.status,
+        assignedBy: t.assignedBy,
+        assignedTo: t.assignedTo,
+        projectId: t.projectId
+      }))
+    );
+  } else {
+    console.log('🔍 [DEN SELF-ASSIGNED] No Den self-assigned tasks found in selected project');
+    // Check all projects
+    const denSelfAssignedAllProjects = tasks.filter(task => {
+      const assignedTo = task.assignedTo || [];
+      return denUserIds.some(denId => {
+        const isCreatedByDen = String(task.assignedBy) === String(denId);
+        const isAssignedToDen = Array.isArray(assignedTo) && assignedTo.some((id: any) => String(id) === String(denId));
+        return isCreatedByDen && isAssignedToDen;
+      });
+    });
+    if (denSelfAssignedAllProjects.length > 0) {
+      console.log(`🔍 [DEN SELF-ASSIGNED] But found ${denSelfAssignedAllProjects.length} Den self-assigned tasks in ALL projects:`, 
+        denSelfAssignedAllProjects.map(t => ({ 
+          id: t.id, 
+          title: t.title, 
+          status: t.status,
+          projectId: t.projectId,
+          inSelectedProject: t.projectId === selectedProjectId,
+          selectedProjectId
+        }))
+      );
+    } else {
+      console.log('🔍 [DEN SELF-ASSIGNED] ⚠️ No Den self-assigned tasks found in tasks array at all!');
+      console.log('🔍 [DEN SELF-ASSIGNED] Total tasks in store:', tasks.length);
+      console.log('🔍 [DEN SELF-ASSIGNED] All task IDs:', tasks.map(t => t.id));
+    }
+  }
+
+  // My Tasks: WIP (in_progress, new, accepted, or rejected for rework, not overdue)
+  // Use status or currentStatus (for backward compatibility)
+  // NOTE: Self-assigned tasks with "new" status should be included (they're auto-accepted)
+  const getTaskStatus = (task: any) => task.status || task.currentStatus || 'not_started';
   const myWIPTasks = myTasksAll.filter(task => {
-    return (task.status === "in_progress" || task.status === "rejected") &&
+    const status = getTaskStatus(task);
+    // Include: in_progress, new (self-assigned auto-accepted), accepted, or rejected
+    return (status === "in_progress" || status === "new" || status === "accepted" || status === "rejected") &&
            !isOverdue(task);
   });
   
   // My Tasks: Done (approved status)
-  const myDoneTasks = myTasksAll.filter(task => 
-    task.status === "approved"
-  );
+  const myDoneTasks = myTasksAll.filter(task => {
+    const status = getTaskStatus(task);
+    return status === "approved";
+  });
   
   // My Tasks: Overdue (in_progress or accepted, past due)
-  const myOverdueTasks = myTasksAll.filter(task =>
-    (task.status === "in_progress" || task.status === "accepted") &&
-    isOverdue(task)
-  );
+  const myOverdueTasks = myTasksAll.filter(task => {
+    const status = getTaskStatus(task);
+    return (status === "in_progress" || status === "accepted") &&
+           isOverdue(task);
+  });
   
   const myTasksTotal = myTasksAll.length;
 

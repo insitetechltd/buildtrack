@@ -9,8 +9,9 @@ import {
   Image,
   Linking,
   RefreshControl,
-  Dimensions,
+  FlatList,
 } from "react-native";
+import { ScrollView as GestureScrollView } from "react-native-gesture-handler";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -72,6 +73,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
   const rejectSubTaskCompletion = useTaskStore(state => state.rejectSubTaskCompletion);
   const cancelTask = useTaskStore(state => state.cancelTask);
+  const deleteTaskById = useTaskStore(state => state.deleteTaskById);
+  const archiveTask = useTaskStore(state => state.archiveTask);
   const fetchTaskEditHistory = useTaskStore(state => state.fetchTaskEditHistory);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
@@ -89,6 +92,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   // Photo viewer navigation is now handled via navigation to PhotoViewerScreen
   const [editHistory, setEditHistory] = useState<TaskEditHistory[]>([]);
   const [showEditHistory, setShowEditHistory] = useState(false);
+  
 
   // Get the task - could be a top-level task or a sub-task
   const foundTask = tasks.find(t => t.id === taskId);
@@ -331,6 +335,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     });
   };
 
+
   
   // Debug logging for review banner visibility
   if (task.completionPercentage === 100 && task.status === "submitted_for_review") {
@@ -532,7 +537,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     // Check if this file is associated with an activity/update
     const relatedActivityId = fileToActivityMap[uri];
     if (relatedActivityId) {
-      // Expand the related activity in the Progress Log
+      // Expand the related activity in the Activities section
       const newExpanded = new Set(expandedUpdateIds);
       if (!newExpanded.has(relatedActivityId)) {
         newExpanded.add(relatedActivityId);
@@ -877,7 +882,11 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         </View>
       )}
 
-      <View className="flex-1">
+      <ScrollView 
+        className="flex-1"
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
         {/* Assignment Information Card - Side by Side Layout */}
         <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
           
@@ -1223,29 +1232,68 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         )}
 
         {/* Progress & Updates Combined Section */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4" style={{ marginBottom: 80 }}>
-          {/* Header with Progress Log title, sort toggle, and completion percentage */}
-          <View className="flex-row items-center justify-between mb-2">
-            <View className="flex-row items-center flex-1">
-              <Text className="text-xl font-semibold text-gray-900">Progress Log</Text>
+        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
+          {/* Header with Activities title, sort toggle, expand/collapse all, and completion percentage */}
+          <View className="flex-row items-center justify-between mb-2" style={{ flexShrink: 1 }}>
+            <View className="flex-row items-center flex-1" style={{ minWidth: 0 }}>
+              <Text className="text-lg font-semibold text-gray-900" numberOfLines={1}>Activities</Text>
               <Pressable
                 onPress={() => setProgressLogSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                className="ml-3 flex-row items-center px-2 py-1.5 bg-gray-100 rounded-lg"
+                className="ml-2 flex-row items-center px-1.5 py-1 bg-gray-100 rounded-lg"
+                style={{ flexShrink: 0 }}
               >
                 <Ionicons 
                   name={progressLogSortOrder === 'asc' ? "arrow-up" : "arrow-down"} 
-                  size={18} 
+                  size={16} 
                   color="#374151" 
                 />
-                <Text className="text-sm text-gray-700 ml-1.5 font-medium">
-                  {progressLogSortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
+                <Text className="text-base text-gray-700 ml-1 font-medium" numberOfLines={1}>
+                  {progressLogSortOrder === 'asc' ? 'Oldest' : 'Newest'}
                 </Text>
               </Pressable>
+              {(() => {
+                // Get all activity IDs to check if all are expanded (include all activities, including creation)
+                const allActivities = task.activities || task.updates.map((update: any) => ({
+                  id: update.id,
+                }));
+                const allActivityIds = new Set(allActivities.map((a: any) => a.id));
+                const allExpanded = allActivityIds.size > 0 && 
+                  Array.from(allActivityIds).every(id => expandedUpdateIds.has(id));
+                
+                return (
+                  <Pressable
+                    onPress={() => {
+                      if (allExpanded) {
+                        // Collapse all
+                        setExpandedUpdateIds(new Set());
+                      } else {
+                        // Expand all
+                        setExpandedUpdateIds(new Set(allActivityIds));
+                      }
+                    }}
+                    className="ml-1.5 flex-row items-center px-1.5 py-1 bg-blue-100 rounded-lg"
+                    style={{ flexShrink: 0 }}
+                  >
+                    <Ionicons 
+                      name={allExpanded ? "chevron-up" : "chevron-down"} 
+                      size={16} 
+                      color="#2563eb" 
+                    />
+                    <Text className="text-base text-blue-700 ml-1 font-medium" numberOfLines={1}>
+                      {allExpanded ? 'Collapse' : 'Expand'}
+                    </Text>
+                  </Pressable>
+                );
+              })()}
             </View>
-            <Text className={cn(
-              "text-2xl font-bold",
-              task.completionPercentage === 100 ? "text-green-600" : "text-gray-900"
-            )}>
+            <Text 
+              className={cn(
+                "text-lg font-bold ml-2",
+                task.completionPercentage === 100 ? "text-green-600" : "text-gray-900"
+              )}
+              numberOfLines={1}
+              style={{ flexShrink: 0 }}
+            >
               {task.completionPercentage}%
             </Text>
           </View>
@@ -1254,15 +1302,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Divider */}
           {(task.activities?.length || task.updates.length) > 0 && <View className="border-t border-gray-200 mt-2 mb-3" />}
           
-          {/* Activities List - Expandable (unified from task_activities) - Scrollable */}
+          {/* Activities List - Expandable (unified from task_activities) - Dynamic height container for up to 10 collapsed activities */}
           {(task.activities?.length || task.updates.length) > 0 ? (
-            <ScrollView 
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-              style={{ maxHeight: 400 }}
-            >
-              <View className="space-y-3">
-                {(() => {
+            <View>
+              {(() => {
                 // Get all activities
                 const allActivities = task.activities || task.updates.map((update: any) => ({
                   id: update.id,
@@ -1275,26 +1318,39 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   data: { photos: update.photos || [] },
                 }));
                 
-                // Filter out first item (creation activity)
-                const filteredActivities = allActivities.filter((_: any, index: number) => index !== 0);
-                
-                // Sort by timestamp
-                const sortedActivities = [...filteredActivities].sort((a: any, b: any) => {
+                // Sort by timestamp (include all activities, including creation)
+                const sortedActivities = [...allActivities].sort((a: any, b: any) => {
                   const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
                   const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
                   return progressLogSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
                 });
                 
-                return sortedActivities.map((activity: any) => {
-                // Use activities if available, otherwise fall back to updates
-                const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
-                const update = activity;
-                const activityUserId = activity.userId || update.userId;
-                const activityUser = getUserById(activityUserId);
-                const isExpanded = expandedUpdateIds.has(activity.id);
+                // Calculate dynamic height: ~60px per collapsed activity, up to 10 activities
+                // Each collapsed activity is approximately 60px tall (including padding and spacing)
+                const activityCount = sortedActivities.length;
+                const maxDisplayCount = 10;
+                const activityHeight = 60; // Approximate height of a collapsed activity item
+                const gap = 12; // Gap between activities (handled by ItemSeparatorComponent)
+                const containerPadding = 8; // Bottom padding only (top padding not needed)
+                // Calculate height: if fewer than 10 activities, use actual count; otherwise use 10
+                const displayCount = Math.min(activityCount, maxDisplayCount);
+                // Height = (number of items * item height) + (number of gaps * gap size) + padding
+                // For n items, there are (n-1) gaps between them
+                const dynamicHeight = displayCount > 0 
+                  ? (displayCount * activityHeight) + ((displayCount - 1) * gap) + containerPadding
+                  : 0;
                 
-                // Get activity type icon and color
-                const getActivityIcon = (type: string) => {
+                // Render function for each activity item
+                const renderActivityItem = ({ item: activity }: { item: any }) => {
+                  // Use activities if available, otherwise fall back to updates
+                  const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
+                  const update = activity;
+                  const activityUserId = activity.userId || update.userId;
+                  const activityUser = getUserById(activityUserId);
+                  const isExpanded = expandedUpdateIds.has(activity.id);
+                  
+                  // Get activity type icon and color
+                  const getActivityIcon = (type: string) => {
                   switch (type) {
                     case 'creation': return 'add-circle';
                     case 'assignment': return 'person-add';
@@ -1326,8 +1382,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   }
                 };
                 
-                return (
-                  <View key={activity.id} className="border-l-4 pl-4" style={{ borderLeftColor: getActivityColor(activityType) }}>
+                  return (
+                    <View className="border-l-4 pl-4" style={{ borderLeftColor: getActivityColor(activityType) }}>
                     <Pressable 
                       onPress={() => {
                         const newExpanded = new Set(expandedUpdateIds);
@@ -1471,12 +1527,29 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         </View>
                       );
                     })()}
+                    </View>
+                  );
+                };
+                
+                return (
+                  <View style={{ height: dynamicHeight, overflow: 'hidden' }}>
+                    <FlatList
+                      data={sortedActivities}
+                      renderItem={renderActivityItem}
+                      keyExtractor={(item) => item.id}
+                      nestedScrollEnabled={true}
+                      scrollEnabled={true}
+                      showsVerticalScrollIndicator={true}
+                      contentContainerStyle={{ paddingBottom: 8 }}
+                      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                      style={{ flex: 1 }}
+                      bounces={false}
+                      keyboardShouldPersistTaps="handled"
+                    />
                   </View>
                 );
-              });
               })()}
-              </View>
-            </ScrollView>
+            </View>
           ) : (
             <View className="py-6 items-center">
               <Ionicons name="chatbubble-outline" size={40} color="#d1d5db" />
@@ -1519,7 +1592,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             </View>
         )}
 
-      </View>
+      </ScrollView>
 
       {/* Fixed Bottom Action Bar */}
       <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"

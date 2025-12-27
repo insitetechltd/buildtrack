@@ -595,6 +595,14 @@ export interface Task {
   cancelledAt?: string | null; // Timestamp when cancelled, null if not cancelled
   cancelledBy?: string; // User ID who cancelled the task
   
+  // Deletion (soft delete - for audit trail)
+  deletedAt?: string | null; // Timestamp when deleted, null if not deleted
+  deletedBy?: string; // User ID who deleted the task (only assigner can delete)
+  
+  // Archiving (soft delete)
+  archivedAt?: string | null; // Timestamp when archived, null if not archived
+  archivedBy?: string; // User ID who archived the task
+  
   // Edit history and notifications
   editHistory?: TaskEditHistory[]; // Loaded separately or on-demand - @deprecated use activities
   hasUnreadChanges?: boolean; // Flag for assignees to know task was edited

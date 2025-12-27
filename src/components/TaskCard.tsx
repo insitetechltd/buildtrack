@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, Pressable, Image, Linking, ScrollView } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, Text, Pressable, Image, Linking, ScrollView, Alert, Animated, Dimensions } from "react-native";
+import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, Priority, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -132,7 +133,130 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
     return status.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  return (
+  // Swipeable ref
+  const swipeableRef = useRef<Swipeable>(null);
+
+  // Check permissions for archive and delete
+  const isTaskCreator = user && String(task.assignedBy) === String(user.id);
+  const isAssignee = user && Array.isArray(task.assignedTo) && task.assignedTo.includes(user.id);
+  const isAssigner = user && String(task.assignedBy) === String(user.id);
+  const canArchive = task.status === 'approved' && (isAssigner || isAssignee) && !task.archivedAt;
+  const canDelete = isTaskCreator && !task.deletedAt;
+
+  // Archive handler
+  const handleArchive = async () => {
+    if (!user || !canArchive) return;
+    
+    Alert.alert(
+      'Archive Task',
+      'Are you sure you want to archive this task?',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await taskStore.archiveTask(task.id, user.id);
+              Alert.alert('Success', 'Task archived successfully.');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to archive task.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Delete handler
+  const handleDelete = async () => {
+    if (!user || !canDelete) return;
+    
+    Alert.alert(
+      'Delete Task',
+      'Are you sure you want to delete this task? The task will be hidden from both you and the assignee, but will remain in the database for audit purposes.',
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await taskStore.deleteTaskById(task.id, user.id);
+              Alert.alert('Success', 'Task deleted successfully.');
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to delete task.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Render right action (delete - swipe left)
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    if (!canDelete) return null;
+
+    return (
+      <View style={{ flexDirection: 'row', height: '100%', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
+        <Pressable
+          onPress={handleDelete}
+          style={{ 
+            width: 100,
+            marginLeft: 8,
+            marginTop: 0,
+            backgroundColor: '#dc2626',
+            borderRadius: 8, // rounded-lg = 8px
+            borderWidth: 1, // border class = 1px (matches card border)
+            borderColor: 'transparent', // border but transparent
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100%', // Match full height - padding is internal to card, not part of outer dimensions
+          }}
+        >
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="trash-outline" size={32} color="white" />
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginTop: 6 }}>Delete</Text>
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
+
+  // Render left action (archive - swipe right)
+  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    if (!canArchive) return null;
+
+    return (
+      <View style={{ flexDirection: 'row', height: '100%', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
+        <Pressable
+          onPress={handleArchive}
+          style={{ 
+            width: 100,
+            marginRight: 8,
+            marginTop: 0,
+            backgroundColor: '#2563eb',
+            borderRadius: 8, // rounded-lg = 8px
+            borderWidth: 1, // border class = 1px (matches card border)
+            borderColor: 'transparent', // border but transparent
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100%', // Match full height - padding is internal to card, not part of outer dimensions
+          }}
+        >
+          <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="archive-outline" size={32} color="white" />
+            <Text style={{ color: 'white', fontSize: 16, fontWeight: 'bold', marginTop: 6 }}>Archive</Text>
+          </View>
+        </Pressable>
+      </View>
+    );
+  };
+
+  // Determine if card should have margin (only when not in Swipeable)
+  const cardMarginClass = (canArchive || canDelete) ? "" : (className || "mb-2");
+
+  const cardContent = (
     <Pressable
       onPress={() => {
         // Mark task as read when opened
@@ -152,7 +276,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
       className={cn(
         "rounded-lg p-3 border",
         isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
-        className || "mb-2"
+        cardMarginClass
       )}
     >
       {/* Rejection indicator - Show at top if task is rejected */}
@@ -379,13 +503,12 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
         </View>
       </View>
       
-      {/* Photos section - Always present for consistent layout */}
-      <View className={cn(
-        "mt-3 pt-3",
-        taskPhotos.length > 0 && "border-t",
-        isDarkMode ? "border-slate-700" : "border-gray-200"
-      )} style={{ minHeight: taskPhotos.length > 0 ? 0 : 0 }}>
-        {taskPhotos.length > 0 ? (
+      {/* Photos section - Only show when there are photos */}
+      {taskPhotos.length > 0 && (
+        <View className={cn(
+          "mt-3 pt-3 border-t",
+          isDarkMode ? "border-slate-700" : "border-gray-200"
+        )}>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
@@ -424,9 +547,29 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               ))}
             </View>
           </ScrollView>
-        ) : null}
-      </View>
+        </View>
+      )}
     </Pressable>
   );
+
+  // Wrap in Swipeable if user can archive or delete
+  if (canArchive || canDelete) {
+    return (
+      <Swipeable
+        ref={swipeableRef}
+        renderLeftActions={canArchive ? renderLeftActions : undefined}
+        renderRightActions={canDelete ? renderRightActions : undefined}
+        leftThreshold={40}
+        rightThreshold={40}
+        overshootLeft={false}
+        overshootRight={false}
+      >
+        {cardContent}
+      </Swipeable>
+    );
+  }
+
+  // Return without swipeable if no actions available
+  return cardContent;
 }
 

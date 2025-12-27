@@ -19,8 +19,10 @@ interface TaskStore {
   // Task management
   createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
-  deleteTask: (id: string) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>; // Legacy method - kept for backward compatibility
+  deleteTaskById: (taskId: string, userId: string) => Promise<void>; // Soft delete task (only assigner can delete, maintains audit trail)
   cancelTask: (taskId: string, userId: string) => Promise<void>; // Cancel task (only creator can cancel)
+  archiveTask: (taskId: string, userId: string) => Promise<void>; // Archive task (both assigner and assignee can archive when approved)
   
   // Task assignment
   assignTask: (taskId: string, userIds: string[]) => Promise<void>;
@@ -101,11 +103,13 @@ export const useTaskStore = create<TaskStore>()(
         set({ isLoading: true, error: null });
         try {
           // Fetch all tasks (unified table includes top-level + nested)
-          // Filter out cancelled tasks (cancelled_at IS NULL)
+          // Filter out cancelled, archived, and deleted tasks
           const { data: allTasksData, error: tasksError } = await supabase
             .from('tasks')
             .select('*')
             .is('cancelled_at', null) // Only fetch non-cancelled tasks
+            .is('archived_at', null) // Only fetch non-archived tasks
+            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .order('created_at', { ascending: false });
 
           if (tasksError) throw tasksError;
@@ -142,7 +146,16 @@ export const useTaskStore = create<TaskStore>()(
           });
 
           // Transform all tasks from unified table
-          const transformedTasks = (allTasksData || []).map(task => ({
+          const transformedTasks = (allTasksData || []).map(task => {
+            // Normalize assigned_to array: ensure all IDs are strings
+            const normalizedAssignedTo = Array.isArray(task.assigned_to) 
+              ? task.assigned_to.map((id: any) => String(id))
+              : [];
+            
+            // Normalize assigned_by: ensure it's a string
+            const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
+            
+            return {
             id: task.id,
             projectId: task.project_id,
             parentTaskId: task.parent_task_id, // ✅ NEW: for nested tasks
@@ -157,8 +170,8 @@ export const useTaskStore = create<TaskStore>()(
             dueDate: task.due_date,
             status: (task.current_status || 'new') as TaskStatus,
             completionPercentage: task.completion_percentage,
-            assignedTo: task.assigned_to || [],
-            assignedBy: task.assigned_by,
+            assignedTo: normalizedAssignedTo,
+            assignedBy: normalizedAssignedBy,
             location: task.location,
             attachments: task.attachments || [],
             starredByUsers: task.starred_by_users || [],
@@ -170,6 +183,10 @@ export const useTaskStore = create<TaskStore>()(
             reviewedAt: task.reviewed_at || undefined,
             cancelledAt: task.cancelled_at || null,
             cancelledBy: task.cancelled_by || undefined,
+            deletedAt: task.deleted_at || undefined,
+            deletedBy: task.deleted_by || undefined,
+            archivedAt: task.archived_at || undefined,
+            archivedBy: task.archived_by || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
             activities: activitiesByTaskId[task.id] || [],
@@ -188,7 +205,8 @@ export const useTaskStore = create<TaskStore>()(
                 userId: activity.userId,
               })),
             // Note: children are built client-side when needed via buildTaskTree()
-          }));
+            };
+          });
 
           console.log('✅✅✅ Fetched tasks from Supabase:', transformedTasks.length);
           console.log('✅✅✅ Task details:', transformedTasks.map(t => ({ 
@@ -314,6 +332,9 @@ export const useTaskStore = create<TaskStore>()(
             .from('tasks')
             .select('*')
             .eq('project_id', projectId)
+            .is('cancelled_at', null) // Only fetch non-cancelled tasks
+            .is('archived_at', null) // Only fetch non-archived tasks
+            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .order('created_at', { ascending: false });
 
           if (tasksError) throw tasksError;
@@ -382,6 +403,12 @@ export const useTaskStore = create<TaskStore>()(
             reviewedAt: task.reviewed_at || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
+            cancelledAt: task.cancelled_at || undefined,
+            cancelledBy: task.cancelled_by || undefined,
+            deletedAt: task.deleted_at || undefined,
+            deletedBy: task.deleted_by || undefined,
+            archivedAt: task.archived_at || undefined,
+            archivedBy: task.archived_by || undefined,
             activities: activitiesByTaskId[task.id] || [],
             // Backward compatibility: also populate updates from activities
             updates: (activitiesByTaskId[task.id] || [])
@@ -426,6 +453,9 @@ export const useTaskStore = create<TaskStore>()(
             .from('tasks')
             .select('*')
             .contains('assigned_to', [userId])
+            .is('cancelled_at', null) // Only fetch non-cancelled tasks
+            .is('archived_at', null) // Only fetch non-archived tasks
+            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .order('created_at', { ascending: false });
 
           if (error) throw error;
@@ -471,6 +501,9 @@ export const useTaskStore = create<TaskStore>()(
             .from('tasks')
             .select('*')
             .in('parent_task_id', taskIds)
+            .is('cancelled_at', null) // Only fetch non-cancelled tasks
+            .is('archived_at', null) // Only fetch non-archived tasks
+            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .order('created_at', { ascending: true });
 
           // Group nested tasks by parent
@@ -512,6 +545,12 @@ export const useTaskStore = create<TaskStore>()(
             reviewedAt: task.reviewed_at || undefined,
             createdAt: task.created_at,
             updatedAt: task.updated_at,
+            cancelledAt: task.cancelled_at || undefined,
+            cancelledBy: task.cancelled_by || undefined,
+            deletedAt: task.deleted_at || undefined,
+            deletedBy: task.deleted_by || undefined,
+            archivedAt: task.archived_at || undefined,
+            archivedBy: task.archived_by || undefined,
             activities: activitiesByTaskId[task.id] || [],
             // Backward compatibility: also populate updates from activities
             updates: (activitiesByTaskId[task.id] || [])
@@ -527,7 +566,16 @@ export const useTaskStore = create<TaskStore>()(
                 timestamp: activity.timestamp,
                 userId: activity.userId,
               })),
-            children: (nestedTasksByParent[task.id] || []).map((st: any) => ({
+            children: (nestedTasksByParent[task.id] || []).map((st: any) => {
+              // Normalize assigned_to array: ensure all IDs are strings
+              const normalizedAssignedTo = Array.isArray(st.assigned_to) 
+                ? st.assigned_to.map((id: any) => String(id))
+                : [];
+              
+              // Normalize assigned_by: ensure it's a string
+              const normalizedAssignedBy = st.assigned_by ? String(st.assigned_by) : '';
+              
+              return {
               id: st.id,
               parentTaskId: st.parent_task_id,
               parentSubTaskId: st.parent_sub_task_id,
@@ -540,8 +588,8 @@ export const useTaskStore = create<TaskStore>()(
               dueDate: st.due_date,
               status: (st.current_status || 'new') as TaskStatus,
               completionPercentage: st.completion_percentage,
-              assignedTo: st.assigned_to || [],
-              assignedBy: st.assigned_by,
+              assignedTo: normalizedAssignedTo,
+              assignedBy: normalizedAssignedBy,
               attachments: st.attachments || [],
               // Legacy fields for backward compatibility (derived from status)
               acceptedBy: st.accepted_by || undefined,
@@ -551,6 +599,12 @@ export const useTaskStore = create<TaskStore>()(
               reviewedAt: st.reviewed_at || undefined,
               createdAt: st.created_at,
               updatedAt: st.updated_at,
+              cancelledAt: st.cancelled_at || undefined,
+              cancelledBy: st.cancelled_by || undefined,
+              deletedAt: st.deleted_at || undefined,
+              deletedBy: st.deleted_by || undefined,
+              archivedAt: st.archived_at || undefined,
+              archivedBy: st.archived_by || undefined,
               activities: activitiesByTaskId[st.id] || [],
             // Backward compatibility: also populate updates from activities
             updates: (activitiesByTaskId[st.id] || [])
@@ -566,7 +620,8 @@ export const useTaskStore = create<TaskStore>()(
                 timestamp: activity.timestamp,
                 userId: activity.userId,
               })),
-            })),
+              };
+            }),
           }));
 
           set({ 
@@ -588,12 +643,14 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
-          // Fetch task data (exclude cancelled tasks)
+          // Fetch task data (exclude cancelled, archived, and deleted tasks)
           const { data: taskData, error: taskError } = await supabase
             .from('tasks')
             .select('*')
             .eq('id', id)
             .is('cancelled_at', null) // Only fetch non-cancelled tasks
+            .is('archived_at', null) // Only fetch non-archived tasks
+            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .single();
 
           if (taskError) throw taskError;
@@ -738,6 +795,9 @@ export const useTaskStore = create<TaskStore>()(
             billing_status: taskData.billingStatus || "non_billable",
           });
           
+          // For self-assigned tasks, set status to "in_progress" immediately (auto-accepted)
+          const initialStatus = isCreatorAssigned ? 'in_progress' : 'new';
+          
           const { data, error } = await supabase
             .from('tasks')
             .insert({
@@ -749,7 +809,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: taskData.priority,
               category: taskData.category,
               due_date: taskData.dueDate,
-              current_status: "new",
+              current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: taskData.assignedTo,
               assigned_by: taskData.assignedBy,
@@ -1040,7 +1100,7 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      // DELETE task in Supabase
+      // DELETE task in Supabase (soft delete - maintains audit trail)
       deleteTask: async (id) => {
         if (!supabase) {
           // Fallback to local deletion
@@ -1052,18 +1112,101 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
+          // Get the task to verify it exists and get user info
+          const task = get().tasks.find(t => t.id === id);
+          if (!task) {
+            throw new Error('Task not found');
+          }
+
+          // Get current user from auth store (we need userId for deleted_by)
+          // Note: This assumes we have access to the user ID - we'll need to pass it as a parameter
+          // For now, we'll need to update the method signature
+          throw new Error('deleteTask requires userId parameter - use deleteTaskById instead');
+        } catch (error: any) {
+          console.error('Error deleting task:', error);
+          set({ 
+            error: error.message, 
+            isLoading: false 
+          });
+          throw error;
+        }
+      },
+
+      // DELETE task by ID with user ID (soft delete - maintains audit trail)
+      deleteTaskById: async (taskId: string, userId: string) => {
+        if (!supabase) {
+          // Fallback to local deletion
+          set(state => ({
+            tasks: state.tasks.filter(task => task.id !== taskId)
+          }));
+          return;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          // Get the task to verify it exists
+          const task = get().tasks.find(t => t.id === taskId);
+          if (!task) {
+            throw new Error('Task not found');
+          }
+
+          // Check if task is already deleted
+          if (task.deletedAt) {
+            throw new Error('Task is already deleted');
+          }
+
+          // Get user who is deleting to include their name in activity
+          const deletingUser = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          // Soft delete: Update task with deleted_at timestamp
           const { error } = await supabase
             .from('tasks')
-            .delete()
-            .eq('id', id);
+            .update({
+              deleted_at: new Date().toISOString(),
+              deleted_by: userId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', taskId);
 
           if (error) throw error;
 
+          // Create deletion activity
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: userId,
+              activity_type: 'cancellation' as ActivityType, // Using cancellation type for deletion
+              timestamp: new Date().toISOString(),
+              data: { reason: `Task deleted by ${deletingUser}` },
+              description: `Task deleted by ${deletingUser}`,
+              completion_percentage: task.completionPercentage,
+              status: task.status,
+            });
+
           // Update local state
           set(state => ({
-            tasks: state.tasks.filter(task => task.id !== id),
+            tasks: state.tasks.map(t =>
+              t.id === taskId
+                ? { ...t, deletedAt: new Date().toISOString(), deletedBy: userId }
+                : t
+            ),
             isLoading: false,
           }));
+
+          // Refresh tasks to get updated data
+          await get().fetchTasks();
         } catch (error: any) {
           console.error('Error deleting task:', error);
           set({ 
@@ -1157,6 +1300,101 @@ export const useTaskStore = create<TaskStore>()(
           set({ 
             error: error.message, 
             isLoading: false 
+          });
+          throw error;
+        }
+      },
+
+      // ARCHIVE task (both assigner and assignee can archive when task is approved)
+      archiveTask: async (taskId, userId) => {
+        if (!supabase) {
+          console.error('Supabase not configured');
+          throw new Error('Supabase not configured');
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          // First, verify the task exists and get it
+          const task = get().tasks.find(t => t.id === taskId);
+          if (!task) {
+            throw new Error('Task not found');
+          }
+
+          // Check if task is approved (completed and approved)
+          if (task.status !== 'approved') {
+            throw new Error('Task must be completed and approved before it can be archived');
+          }
+
+          // Check if user is assigner or assignee
+          const isAssigner = task.assignedBy === userId;
+          const isAssignee = Array.isArray(task.assignedTo) && task.assignedTo.includes(userId);
+          
+          if (!isAssigner && !isAssignee) {
+            throw new Error('Only the task assigner or assignee can archive this task');
+          }
+
+          // Check if task is already archived
+          if (task.archivedAt) {
+            throw new Error('Task is already archived');
+          }
+
+          // Get user who is archiving to include their name in activity
+          const archivingUser = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', userId)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          // Update task with archived_at timestamp
+          const { error } = await supabase
+            .from('tasks')
+            .update({
+              archived_at: new Date().toISOString(),
+              archived_by: userId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', taskId);
+
+          if (error) throw error;
+
+          // Create archive activity
+          await supabase
+            .from('task_activities')
+            .insert({
+              task_id: taskId,
+              user_id: userId,
+              activity_type: 'cancellation' as ActivityType, // Using cancellation type for archive
+              timestamp: new Date().toISOString(),
+              data: { reason: `Task archived by ${archivingUser}` },
+              description: `Task archived by ${archivingUser}`,
+              completion_percentage: task.completionPercentage,
+              status: task.status,
+            });
+
+          // Update local state
+          set(state => ({
+            tasks: state.tasks.map(t =>
+              t.id === taskId
+                ? { ...t, archivedAt: new Date().toISOString(), archivedBy: userId }
+                : t
+            ),
+            isLoading: false,
+          }));
+
+          // Refresh tasks to get updated data
+          await get().fetchTasks();
+        } catch (error: any) {
+          console.error('Error archiving task:', error);
+          set({
+            error: error.message,
+            isLoading: false,
           });
           throw error;
         }

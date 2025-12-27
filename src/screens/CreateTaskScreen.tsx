@@ -773,6 +773,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
       if (editTaskId) {
         // Editing existing task
+        // Normalize user IDs to strings to prevent type mismatches
+        const normalizedAssignedTo = selectedUsers.map(id => String(id));
+        
         const updatePayload: any = {
           title: formData.title,
           description: formData.description,
@@ -781,7 +784,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
-          assignedTo: selectedUsers,
+          assignedTo: normalizedAssignedTo,
           attachments: formData.attachments,
           projectId: formData.projectId,
         };
@@ -814,6 +817,24 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         taskId = editTaskId;
       } else if (parentTaskId) {
         // Creating a sub-task
+        // Normalize user IDs to strings to prevent type mismatches
+        const normalizedAssignedTo = selectedUsers.map(id => String(id));
+        const normalizedAssignedBy = String(user.id);
+        
+        // Debug: Check for ID mismatches when self-assigning subtasks
+        if (normalizedAssignedTo.includes(normalizedAssignedBy)) {
+          console.log('🔍 [SELF-ASSIGN DEBUG] Creating self-assigned subtask:', {
+            assignedBy: normalizedAssignedBy,
+            assignedByType: typeof user.id,
+            assignedTo: normalizedAssignedTo,
+            assignedToTypes: selectedUsers.map(id => typeof id),
+            userId: user.id,
+            userIdType: typeof user.id,
+            selectedUsersRaw: selectedUsers,
+            match: normalizedAssignedTo.includes(normalizedAssignedBy)
+          });
+        }
+        
         const subTaskPayload = {
           title: formData.title,
           description: formData.description,
@@ -822,8 +843,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
-          assignedTo: selectedUsers,
-          assignedBy: user.id,
+          assignedTo: normalizedAssignedTo,
+          assignedBy: normalizedAssignedBy,
           attachments: formData.attachments,
           projectId: formData.projectId,
           updates: [],
@@ -843,6 +864,24 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         console.log('📋 [Create Task] About to create task with attachments:', formData.attachments);
         console.log('📋 [Create Task] Attachments count:', formData.attachments.length);
         
+        // Normalize user IDs to strings to prevent type mismatches
+        const normalizedAssignedTo = selectedUsers.map(id => String(id));
+        const normalizedAssignedBy = String(user.id);
+        
+        // Debug: Check for ID mismatches when self-assigning
+        if (normalizedAssignedTo.includes(normalizedAssignedBy)) {
+          console.log('🔍 [SELF-ASSIGN DEBUG] Creating self-assigned task:', {
+            assignedBy: normalizedAssignedBy,
+            assignedByType: typeof user.id,
+            assignedTo: normalizedAssignedTo,
+            assignedToTypes: selectedUsers.map(id => typeof id),
+            userId: user.id,
+            userIdType: typeof user.id,
+            selectedUsersRaw: selectedUsers,
+            match: normalizedAssignedTo.includes(normalizedAssignedBy)
+          });
+        }
+        
         taskId = await createTask({
           title: formData.title,
           description: formData.description,
@@ -851,8 +890,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           priority: formData.priority,
           category: formData.category,
           dueDate: formData.dueDate.toISOString(),
-          assignedTo: selectedUsers,
-          assignedBy: user.id,
+          assignedTo: normalizedAssignedTo,
+          assignedBy: normalizedAssignedBy,
           attachments: formData.attachments,
           projectId: formData.projectId,
         });

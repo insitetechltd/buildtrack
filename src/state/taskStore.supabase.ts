@@ -9,12 +9,14 @@ interface TaskStore {
   taskReadStatuses: TaskReadStatus[];
   isLoading: boolean;
   error: string | null;
+  // Cache timestamps for tasks (track when each task was last fetched)
+  taskFetchTimestamps: Record<string, number>; // taskId -> timestamp
   
   // Fetching
   fetchTasks: () => Promise<void>;
   fetchTasksByProject: (projectId: string) => Promise<void>;
   fetchTasksByUser: (userId: string) => Promise<void>;
-  fetchTaskById: (id: string) => Promise<Task | null>;
+  fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
   
   // Task management
   createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
@@ -91,6 +93,7 @@ export const useTaskStore = create<TaskStore>()(
       taskReadStatuses: [],
       isLoading: false,
       error: null,
+      taskFetchTimestamps: {}, // Track when tasks were last fetched
 
       // FETCH from Supabase
       fetchTasks: async () => {
@@ -637,9 +640,29 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      fetchTaskById: async (id: string) => {
+      fetchTaskById: async (id: string, forceRefresh: boolean = false) => {
         if (!supabase) {
           return get().tasks.find(task => task.id === id) || null;
+        }
+
+        // CACHE-FIRST STRATEGY: Check if task exists in store and is fresh
+        const CACHE_TTL_MS = 30 * 1000; // 30 seconds cache TTL
+        const now = Date.now();
+        const cachedTask = get().tasks.find(task => task.id === id);
+        const lastFetchTime = get().taskFetchTimestamps[id];
+        const isCacheFresh = lastFetchTime && (now - lastFetchTime) < CACHE_TTL_MS;
+
+        // Return cached task if it exists and is fresh (unless force refresh)
+        if (cachedTask && isCacheFresh && !forceRefresh) {
+          console.log(`✅ [Cache Hit] Using cached task ${id} (age: ${Math.round((now - lastFetchTime!) / 1000)}s)`);
+          return cachedTask;
+        }
+
+        // Cache miss or stale - fetch from database
+        if (cachedTask && !forceRefresh) {
+          console.log(`🔄 [Cache Stale] Refreshing task ${id} (age: ${lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 'unknown'}s)`);
+        } else {
+          console.log(`🌐 [Cache Miss] Fetching task ${id} from database`);
         }
 
         try {
@@ -738,21 +761,23 @@ export const useTaskStore = create<TaskStore>()(
           // Update the task in the store (add if doesn't exist)
           set(state => {
             const existingTaskIndex = state.tasks.findIndex(task => task.id === id);
-            if (existingTaskIndex >= 0) {
-              // Update existing task
-              return {
-                tasks: state.tasks.map(task => 
-                  task.id === id ? transformedTask : task
-                )
-              };
-            } else {
-              // Add new task if it doesn't exist
-              return {
-                tasks: [...state.tasks, transformedTask]
-              };
-            }
+            const updatedTasks = existingTaskIndex >= 0
+              ? state.tasks.map(task => task.id === id ? transformedTask : task)
+              : [...state.tasks, transformedTask];
+            
+            // Update fetch timestamp
+            const updatedTimestamps = {
+              ...state.taskFetchTimestamps,
+              [id]: Date.now(),
+            };
+            
+            return {
+              tasks: updatedTasks,
+              taskFetchTimestamps: updatedTimestamps,
+            };
           });
 
+          console.log(`✅ [Fetch Complete] Task ${id} fetched and cached`);
           return transformedTask;
         } catch (error: any) {
           console.error('Error fetching task:', error);
@@ -828,7 +853,116 @@ export const useTaskStore = create<TaskStore>()(
             throw error;
           }
 
+          // Get creator's name to include in update
+          const creatorName = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', taskData.assignedBy)
+                .single();
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          // Create activities FIRST before transforming task
+          // This ensures activities are available when we add the task to the store
+          const creationData = {
+            title: taskData.title,
+            assignedTo: taskData.assignedTo,
+            assignedBy: taskData.assignedBy,
+          };
+
+          const creationTimestamp = new Date().toISOString();
+          
+          // Create creation activity
+          const { data: creationActivity, error: creationError } = await supabase
+            .from('task_activities')
+            .insert({
+              task_id: data.id,
+              user_id: taskData.assignedBy,
+              activity_type: 'creation' as ActivityType,
+              timestamp: creationTimestamp,
+              data: creationData,
+              description: `Task created by ${creatorName}`,
+              completion_percentage: 0,
+              status: "new",
+            })
+            .select()
+            .single();
+
+          if (creationError) {
+            console.error('Error creating creation activity:', creationError);
+          }
+
+          // If task is auto-accepted (creator is assigned), also log acceptance as status_change
+          let statusChangeActivity = null;
+          if (isCreatorAssigned) {
+            const statusChangeData = {
+              fromStatus: "new" as TaskStatus,
+              toStatus: "in_progress" as TaskStatus,
+              reason: `Task auto-accepted by ${creatorName}`,
+            };
+
+            const statusChangeTimestamp = new Date().toISOString();
+            
+            const { data: statusActivity, error: statusError } = await supabase
+              .from('task_activities')
+              .insert({
+                task_id: data.id,
+                user_id: taskData.assignedBy,
+                activity_type: 'status_change' as ActivityType,
+                timestamp: statusChangeTimestamp,
+                data: statusChangeData,
+                description: `Task accepted by ${creatorName}`,
+                completion_percentage: 0,
+                status: "in_progress",
+              })
+              .select()
+              .single();
+
+            if (statusError) {
+              console.error('Error creating status change activity:', statusError);
+            } else {
+              statusChangeActivity = statusActivity;
+            }
+          }
+
+          // Build activities array for the transformed task
+          const activities: TaskActivity[] = [];
+          if (creationActivity) {
+            activities.push({
+              id: creationActivity.id,
+              taskId: creationActivity.task_id,
+              userId: creationActivity.user_id,
+              activityType: creationActivity.activity_type as ActivityType,
+              timestamp: creationActivity.timestamp,
+              data: creationActivity.data,
+              description: creationActivity.description,
+              completionPercentage: creationActivity.completion_percentage,
+              status: creationActivity.status as TaskStatus,
+              createdAt: creationActivity.timestamp, // Use timestamp as createdAt
+            });
+          }
+          if (statusChangeActivity) {
+            activities.push({
+              id: statusChangeActivity.id,
+              taskId: statusChangeActivity.task_id,
+              userId: statusChangeActivity.user_id,
+              activityType: statusChangeActivity.activity_type as ActivityType,
+              timestamp: statusChangeActivity.timestamp,
+              data: statusChangeActivity.data,
+              description: statusChangeActivity.description,
+              completionPercentage: statusChangeActivity.completion_percentage,
+              status: statusChangeActivity.status as TaskStatus,
+              createdAt: statusChangeActivity.timestamp, // Use timestamp as createdAt
+            });
+          }
+
           // Transform Supabase data to match local interface
+          // Include activities to prevent layout shifts when activities are later fetched
           const transformedTask = {
             id: data.id,
             projectId: data.project_id,
@@ -854,73 +988,29 @@ export const useTaskStore = create<TaskStore>()(
             starredByUsers: data.starred_by_users || [],
             createdAt: data.created_at,
             updatedAt: data.updated_at,
-            updates: [], // New task has no updates yet
+            activities: activities, // Include activities from the start
+            // Backward compatibility: populate updates from activities
+            updates: activities
+              .filter((activity: TaskActivity) => 
+                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+              )
+              .map((activity: TaskActivity) => ({
+                id: activity.id,
+                description: activity.description,
+                photos: (activity.data as any)?.photos || [],
+                completionPercentage: activity.completionPercentage || 0,
+                status: activity.status || 'new' as TaskStatus,
+                timestamp: activity.timestamp,
+                userId: activity.userId,
+              })),
             children: [],
           };
 
-          // Update local state
+          // Update local state with complete task data including activities
           set(state => ({
             tasks: [...state.tasks, transformedTask],
             isLoading: false,
           }));
-
-          // Get creator's name to include in update
-          const creatorName = await (async () => {
-            try {
-              const { data } = await supabase
-                .from('users')
-                .select('name')
-                .eq('id', taskData.assignedBy)
-                .single();
-              return data?.name || 'Unknown User';
-            } catch {
-              return 'Unknown User';
-            }
-          })();
-
-          // Create a creation activity entry (unified table)
-          const creationData = {
-            title: taskData.title,
-            assignedTo: taskData.assignedTo,
-            assignedBy: taskData.assignedBy,
-          };
-
-          await supabase
-            .from('task_activities')
-            .insert({
-              task_id: data.id,
-              user_id: taskData.assignedBy,
-              activity_type: 'creation' as ActivityType,
-              timestamp: new Date().toISOString(),
-              data: creationData,
-              description: `Task created by ${creatorName}`,
-              completion_percentage: 0,
-              status: "new",
-            });
-
-          // If task is auto-accepted (creator is assigned), also log acceptance as status_change
-          if (isCreatorAssigned) {
-            const statusChangeData = {
-              fromStatus: "new" as TaskStatus,
-              toStatus: "in_progress" as TaskStatus,
-              reason: `Task auto-accepted by ${creatorName}`,
-            };
-
-            if (!supabase) throw new Error('Supabase not configured');
-            
-            await supabase
-              .from('task_activities')
-              .insert({
-                task_id: data.id,
-                user_id: taskData.assignedBy,
-                activity_type: 'status_change' as ActivityType,
-                timestamp: new Date().toISOString(),
-                data: statusChangeData,
-                description: `Task accepted by ${creatorName}`,
-                completion_percentage: 0,
-                status: "in_progress",
-              });
-          }
 
           return data.id;
         } catch (error: any) {
@@ -953,6 +1043,23 @@ export const useTaskStore = create<TaskStore>()(
         try {
           // Get current task to check if it's self-assigned
           const currentTask = get().tasks.find(t => t.id === id);
+          
+          // VALIDATION: Prevent changing assignees once task is accepted
+          // Once a task is accepted (status is "accepted" or "in_progress"), 
+          // the assignees cannot be changed to maintain workflow integrity
+          if (currentTask && updates.assignedTo) {
+            const isTaskAccepted = currentTask.status === "accepted" || 
+                                  currentTask.status === "in_progress";
+            
+            // Check if assignees are actually changing
+            const currentAssignees = (currentTask.assignedTo || []).map(String).sort().join(',');
+            const newAssignees = (updates.assignedTo || []).map(String).sort().join(',');
+            const assigneesChanged = currentAssignees !== newAssignees;
+            
+            if (isTaskAccepted && assigneesChanged) {
+              throw new Error('Cannot change assignees once a task has been accepted. Please reassign the task before it is accepted, or decline it first.');
+            }
+          }
           
           // Track ALL task edits for audit logging (not just after acceptance)
           // Extract editReason from updates if provided (will be removed from updateData before saving)
@@ -1057,33 +1164,105 @@ export const useTaskStore = create<TaskStore>()(
           // Mark as not loading immediately to restore UI responsiveness
           set({ isLoading: false });
           
-          // Track ALL task edits for audit logging (run in background - don't block UI)
-          // Skip tracking if this is a status change workflow action (status_change activities handle those)
-          const isStatusChange = cleanUpdates.status && oldTaskState && oldTaskState.status !== cleanUpdates.status;
-          const shouldTrackEdit = oldTaskState && !isStatusChange;
+          // ============================================================================
+          // ACTIVITY LOGGING - Always logs activities regardless of acceptance status
+          // ============================================================================
+          // Activity logging starts from task creation and tracks all changes:
+          // 1. Assignment changes → logged as 'assignment' activity
+          // 2. Status changes → logged as 'status_change' activity (handled by workflow methods)
+          // 3. Metadata changes → logged as 'metadata_edit' activity (default behavior)
+          // ============================================================================
           
-          if (shouldTrackEdit) {
-            // Run tracking and notification in background without blocking the UI
+          if (!oldTaskState || !currentTask) {
+            // No old state to compare against, skip activity logging
+            return;
+          }
+          
+          // Check what changed
+          const isStatusChange = cleanUpdates.status && oldTaskState.status !== cleanUpdates.status;
+          const assigneesChanged = cleanUpdates.assignedTo && 
+            (oldTaskState.assignedTo || []).map(String).sort().join(',') !== 
+            (cleanUpdates.assignedTo || []).map(String).sort().join(',');
+          
+          // 1. Log assignment activity if assignees changed (works before/after acceptance)
+          if (assigneesChanged && supabase) {
             (async () => {
               try {
-                // Only creator can edit, so use assignedBy as the editor ID
-                const editorId = oldTaskState.assignedBy;
+                const assignerName = await (async () => {
+                  try {
+                    const { data } = await supabase!
+                      .from('users')
+                      .select('name')
+                      .eq('id', currentTask.assignedBy)
+                      .single();
+                    return data?.name || 'Unknown User';
+                  } catch {
+                    return 'Unknown User';
+                  }
+                })();
                 
-                // Get updated task state for comparison (use the optimistically updated state)
+                const assigneeNames = await Promise.all(
+                  (cleanUpdates.assignedTo || []).map(async (userId: string) => {
+                    try {
+                      const { data } = await supabase!
+                        .from('users')
+                        .select('name')
+                        .eq('id', userId)
+                        .single();
+                      return data?.name || 'Unknown User';
+                    } catch {
+                      return 'Unknown User';
+                    }
+                  })
+                );
+                
+                const assigneesList = assigneeNames.join(', ');
+                
+                await supabase!
+                  .from('task_activities')
+                  .insert({
+                    task_id: id,
+                    user_id: currentTask.assignedBy,
+                    activity_type: 'assignment' as ActivityType,
+                    timestamp: new Date().toISOString(),
+                    data: {
+                      assignedTo: cleanUpdates.assignedTo,
+                      assignedBy: currentTask.assignedBy,
+                      previousAssignees: oldTaskState.assignedTo || [],
+                    },
+                    description: assigneesList 
+                      ? `Task assigned to ${assigneesList} by ${assignerName}`
+                      : `Task assignment updated by ${assignerName}`,
+                    completion_percentage: currentTask.completionPercentage || 0,
+                    status: currentTask.status || "new",
+                  });
+              } catch (error) {
+                console.error('Error logging assignment activity:', error);
+              }
+            })();
+          }
+          
+          // 2. Log metadata changes (title, description, dueDate, priority, category, etc.)
+          // Skip if this is ONLY a status change or ONLY an assignment change
+          // (those are handled separately above or by workflow methods)
+          if (!isStatusChange && !assigneesChanged) {
+            (async () => {
+              try {
+                const editorId = oldTaskState.assignedBy;
                 const updatedTask = get().tasks.find(t => t.id === id);
+                
                 if (updatedTask && editorId) {
-                  // Compare old task state with the full updated task state
+                  // Track metadata changes - works before/after acceptance
                   await get().trackTaskEdit(id, editorId, oldTaskState, updatedTask, editReason);
                   
-                  // Notify assignees of changes (only if task is accepted/in_progress)
+                  // Notify assignees only if task is accepted/in_progress
                   const isEditAfterAcceptance = (oldTaskState.status === "accepted" || oldTaskState.status === "in_progress");
                   if (isEditAfterAcceptance) {
                     await get().notifyTaskEdit(id, editorId, cleanUpdates);
                   }
                 }
-              } catch (trackError) {
-                console.error('Error tracking task edit:', trackError);
-                // Don't fail the update if tracking fails - these are background operations
+              } catch (error) {
+                console.error('Error tracking metadata changes:', error);
               }
             })();
           }
@@ -2646,19 +2825,20 @@ export const useTaskStore = create<TaskStore>()(
 
         const changes: Record<string, { old: any; new: any }> = {};
 
-        // Compare and track changes for editable fields
-        const fieldsToTrack = [
+        // Compare and track changes for metadata fields
+        // Note: 'assignedTo' is tracked separately as 'assignment' activity
+        // Note: 'status' is tracked separately as 'status_change' activity
+        const metadataFields = [
           'title',
           'description',
           'dueDate',
           'priority',
           'category',
           'billingStatus',
-          'assignedTo',
           'taskReference',
         ];
 
-        fieldsToTrack.forEach((field) => {
+        metadataFields.forEach((field) => {
           const oldValue = (oldTask as any)[field];
           const newValue = (newTask as any)[field];
 

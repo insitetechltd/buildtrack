@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, Pressable, Image, Linking, ScrollView, Alert, Animated, Dimensions } from "react-native";
+import { View, Text, Pressable, Linking, ScrollView, Alert, Animated, Dimensions } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, Priority, TaskStatus } from "../types/buildtrack";
@@ -10,6 +10,8 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
+import CachedImage from "./CachedImage";
+import { isDesktop } from "../utils/platformUtils";
 
 // ✅ UPDATED: Task can now have parentTaskId to indicate it's nested
 interface TaskCardProps {
@@ -255,24 +257,27 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
 
   // Determine if card should have margin (only when not in Swipeable)
   const cardMarginClass = (canArchive || canDelete) ? "" : (className || "mb-2");
+  // Cache platform detection to prevent re-renders
+  const isDesktopPlatform = React.useMemo(() => isDesktop(), []);
 
   const cardContent = (
-    <Pressable
-      onPress={() => {
-        // Mark task as read when opened
-        if (user && isNew) {
-          taskStore.markTaskAsRead(user.id, task.id);
-        }
-        
-        // Navigate directly to the task's detail page (works for both top-level and sub-tasks)
-        // For sub-tasks, pass the sub-task ID as taskId and parentTaskId as context
-        if (isSubTask && task.parentTaskId) {
-          // Navigate to sub-task detail, passing parentTaskId for context if needed
-          onNavigateToTaskDetail(task.id, undefined);
-        } else {
-          onNavigateToTaskDetail(task.id);
-        }
-      }}
+    <View className={cn("relative", cardMarginClass)}>
+      <Pressable
+        onPress={() => {
+          // Mark task as read when opened
+          if (user && isNew) {
+            taskStore.markTaskAsRead(user.id, task.id);
+          }
+          
+          // Navigate directly to the task's detail page (works for both top-level and sub-tasks)
+          // For sub-tasks, pass the sub-task ID as taskId and parentTaskId as context
+          if (isSubTask && task.parentTaskId) {
+            // Navigate to sub-task detail, passing parentTaskId for context if needed
+            onNavigateToTaskDetail(task.id, undefined);
+          } else {
+            onNavigateToTaskDetail(task.id);
+          }
+        }}
       className={cn(
         "rounded-lg p-3 border",
         isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
@@ -529,8 +534,8 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
                       />
                     </View>
                   ) : (
-                    <Image
-                      source={{ uri: photo }}
+                    <CachedImage
+                      uri={photo}
                       className="w-14 h-14 rounded-lg"
                       resizeMode="cover"
                       onError={() => handleImageError(index)}
@@ -549,11 +554,46 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           </ScrollView>
         </View>
       )}
-    </Pressable>
+      </Pressable>
+      
+      {/* Desktop action buttons (shown on macOS/desktop instead of swipe) */}
+      {isDesktopPlatform && (canArchive || canDelete) && (
+        <View className="absolute top-3 right-3 flex-row gap-2 z-10">
+          {canArchive && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent opening task detail
+                handleArchive();
+              }}
+              className={cn(
+                "w-9 h-9 items-center justify-center rounded-lg",
+                isDarkMode ? "bg-blue-600" : "bg-blue-500"
+              )}
+            >
+              <Ionicons name="archive-outline" size={18} color="white" />
+            </Pressable>
+          )}
+          {canDelete && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation(); // Prevent opening task detail
+                handleDelete();
+              }}
+              className={cn(
+                "w-9 h-9 items-center justify-center rounded-lg",
+                isDarkMode ? "bg-red-600" : "bg-red-500"
+              )}
+            >
+              <Ionicons name="trash-outline" size={18} color="white" />
+            </Pressable>
+          )}
+        </View>
+      )}
+    </View>
   );
 
-  // Wrap in Swipeable if user can archive or delete
-  if (canArchive || canDelete) {
+  // Wrap in Swipeable if user can archive or delete AND on touch device
+  if (!isDesktopPlatform && (canArchive || canDelete)) {
     return (
       <Swipeable
         ref={swipeableRef}
@@ -569,7 +609,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
     );
   }
 
-  // Return without swipeable if no actions available
+  // Return without swipeable if no actions available or on desktop
   return cardContent;
 }
 

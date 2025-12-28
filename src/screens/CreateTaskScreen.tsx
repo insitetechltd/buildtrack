@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -115,6 +115,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   // Note: subTasks are now in the unified tasks table with parentTaskId, not nested
   const parentSubTask = parentSubTaskId ? tasks.find(t => t.id === parentSubTaskId && t.parentTaskId === parentTaskId) : null;
 
+  // ScrollView ref for scrolling to top
+  const scrollViewRef = useRef<ScrollView>(null);
+
   // Get task for editing - use useMemo to ensure it updates when tasks array changes
   const editTask = React.useMemo(() => {
     if (!editTaskId) return null;
@@ -152,6 +155,14 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   // Also check when screen comes into focus (in case task was just created)
   useFocusEffect(
     useCallback(() => {
+      // Scroll to top when screen is focused (for both new task and edit task)
+      if (scrollViewRef.current) {
+        // Use setTimeout to ensure the ScrollView is fully rendered
+        setTimeout(() => {
+          scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+        }, 100);
+      }
+
       if (editTaskId) {
         console.log('🔄 Screen focused, checking for task:', editTaskId);
         const currentTask = tasks.find(t => t.id === editTaskId);
@@ -773,6 +784,28 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
       if (editTaskId) {
         // Editing existing task
+        
+        // VALIDATION: Prevent changing assignees once task is accepted
+        if (editTask) {
+          const isTaskAccepted = editTask.status === "accepted" || 
+                                editTask.status === "in_progress" ||
+                                editTask.accepted === true;
+          
+          // Check if assignees are actually changing
+          const currentAssignees = (editTask.assignedTo || []).map(String).sort().join(',');
+          const newAssignees = selectedUsers.map(String).sort().join(',');
+          const assigneesChanged = currentAssignees !== newAssignees;
+          
+          if (isTaskAccepted && assigneesChanged) {
+            Alert.alert(
+              t.errors.error || "Cannot Change Assignees",
+              "Cannot change assignees once a task has been accepted. Please reassign the task before it is accepted, or decline it first."
+            );
+            setIsSubmitting(false);
+            return;
+          }
+        }
+        
         // Normalize user IDs to strings to prevent type mismatches
         const normalizedAssignedTo = selectedUsers.map(id => String(id));
         
@@ -1013,6 +1046,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         className="flex-1"
       >
         <ScrollView 
+          ref={scrollViewRef}
           className="flex-1 px-6 py-4" 
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 100 }}
@@ -1514,33 +1548,53 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
           {/* Assign To */}
           <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
-            <Pressable
-              onPress={handleOpenUserPicker}
-              disabled={isLoadingUsers}
-              className={cn(
-                "border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                errors.assignedTo ? "border-red-300" : "border-gray-300",
-                isLoadingUsers && "opacity-50"
-              )}
-            >
-              <Text className="text-lg text-gray-900">
-                {isLoadingUsers 
-                  ? t.createTask.loadingUsers
-                  : selectedUsers.length > 0 
-                    ? t.createTask.usersSelected(selectedUsers.length)
-                    : t.createTask.selectUsersToAssign
-                }
-              </Text>
-              {isLoadingUsers ? (
-                <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
-              ) : (
-                <Ionicons 
-                  name="chevron-forward" 
-                  size={20} 
-                  color="#6b7280" 
-                />
-              )}
-            </Pressable>
+            {(() => {
+              // Check if task is accepted - if so, disable assignee editing
+              const isTaskAccepted = editTask && (
+                editTask.status === "accepted" || 
+                editTask.status === "in_progress" ||
+                editTask.accepted === true
+              );
+              const isDisabled = isLoadingUsers || isTaskAccepted;
+              
+              return (
+                <Pressable
+                  onPress={handleOpenUserPicker}
+                  disabled={isDisabled}
+                  className={cn(
+                    "border rounded-lg px-3 py-3 flex-row items-center justify-between",
+                    isTaskAccepted ? "bg-gray-100" : "bg-white",
+                    errors.assignedTo ? "border-red-300" : "border-gray-300",
+                    isDisabled && "opacity-50"
+                  )}
+                >
+                  <Text className={cn(
+                    "text-lg",
+                    isTaskAccepted ? "text-gray-500" : "text-gray-900"
+                  )}>
+                    {isLoadingUsers 
+                      ? t.createTask.loadingUsers
+                      : isTaskAccepted
+                        ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
+                      : selectedUsers.length > 0 
+                        ? t.createTask.usersSelected(selectedUsers.length)
+                        : t.createTask.selectUsersToAssign
+                    }
+                  </Text>
+                  {isLoadingUsers ? (
+                    <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
+                  ) : isTaskAccepted ? (
+                    <Ionicons name="lock-closed" size={20} color="#9ca3af" />
+                  ) : (
+                    <Ionicons 
+                      name="chevron-forward" 
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  )}
+                </Pressable>
+              );
+            })()}
           </InputField>
 
           {/* Show selected users */}

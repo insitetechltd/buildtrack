@@ -6,7 +6,6 @@ import {
   Pressable,
   TextInput,
   Alert,
-  Image,
   Linking,
   RefreshControl,
   FlatList,
@@ -37,6 +36,8 @@ import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { useUploadFailureStore } from "../state/uploadFailureStore";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
+import CachedImage from "../components/CachedImage";
+import { getCachedFileUri } from "../utils/useFileCache";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -157,11 +158,12 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     }
   }, [taskId, subTaskId, fetchTaskById]);
 
-  // Refresh task data when screen comes into focus (e.g., after returning from update modal)
+  // Refresh task data when screen comes into focus (cache-first - only fetches if stale)
+  // This uses cache-first strategy: returns cached data if fresh (< 30s), otherwise fetches
   useFocusEffect(
     useCallback(() => {
       if (taskId) {
-        console.log('🔄 TaskDetailScreen focused - refreshing task data...');
+        // Cache-first: only fetches if data is stale (> 30s old)
         fetchTaskById(taskId).catch((error) => {
           console.error('🔄❌ Error refreshing task on focus:', error);
         });
@@ -380,7 +382,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             try {
               await acceptTask(task.id, user.id);
               // Refresh the specific task to get updated accepted/acceptedBy fields
-              await fetchTaskById(task.id);
+              await fetchTaskById(task.id, true); // Force refresh after acceptance
               // Also refetch all tasks to ensure the dashboard shows updated state
               await fetchTasks();
               Alert.alert(t.errors.success, t.taskDetail.taskAccepted);
@@ -411,7 +413,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               try {
                 await declineTask(task.id, user.id, reason.trim());
                 // Refresh the task to get updated status
-                await fetchTaskById(task.id);
+                await fetchTaskById(task.id, true); // Force refresh after decline
                 await fetchTasks();
                 Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclinedMessage);
               } catch (error: any) {
@@ -467,21 +469,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     if (!user || !task) return;
 
     try {
-      // Update task assignment
+      // Update task assignment and reset acceptance fields
+      // This ensures the task appears as "new" for the new assignee
+      // and disappears from the original assignee's inbox
+      // Note: updateTask will automatically log an "assignment" activity
       await updateTask(task.id, {
         assignedTo: selectedUserIds,
         status: "new" as TaskStatus,
         declinedReason: undefined,
-      });
-
-      // Create an update for the reassignment
-      const reassignedUserNames = selectedUserIds.map(id => getUserById(id)?.name || "Unknown").join(", ");
-      await addTaskUpdate(task.id, {
-        userId: user.id,
-        description: `Task reassigned to ${reassignedUserNames}.`,
-        photos: [],
-        completionPercentage: task.completionPercentage,
-        status: "new" as TaskStatus,
+        accepted: false,
+        acceptedBy: null,
+        acceptedAt: null,
       });
 
       // Refresh task data
@@ -514,7 +512,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               } else {
                 await acceptTaskCompletion(task.id, user.id);
               }
-              await fetchTaskById(task.id);
+              await fetchTaskById(task.id, true); // Force refresh after completion acceptance
               Alert.alert(t.errors.success, t.taskDetail.completionAccepted);
             } catch (error: any) {
               Alert.alert(t.errors.error, error.message || t.taskDetail.completionAccepted);
@@ -531,7 +529,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   };
 
 
-  const handleAttachmentPress = (uri: string) => {
+  const handleAttachmentPress = async (uri: string) => {
     const isPDF = uri.toLowerCase().endsWith('.pdf') || uri.includes('application/pdf');
     
     // Check if this file is associated with an activity/update
@@ -590,10 +588,21 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     } else {
       // File not associated with an activity (e.g., task attachment)
       if (isPDF) {
-        // Open PDF in browser or external viewer
-        Linking.openURL(uri).catch(() => {
-          Alert.alert("Error", "Unable to open PDF file");
-        });
+        // Get cached PDF URI (downloads if not cached)
+        // Cached URI will have file:// protocol for local files
+        try {
+          const cachedUri = await getCachedFileUri(uri, 'application/pdf');
+          // Open cached PDF (local file:// URI) or original remote URL
+          Linking.openURL(cachedUri).catch(() => {
+            Alert.alert("Error", "Unable to open PDF file");
+          });
+        } catch (error) {
+          console.error('Error getting cached PDF:', error);
+          // Fallback to original URI
+          Linking.openURL(uri).catch(() => {
+            Alert.alert("Error", "Unable to open PDF file");
+          });
+        }
       } else {
         // Navigate to PhotoViewerScreen without activity info
         navigation.navigate("PhotoViewer", {
@@ -769,7 +778,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 } else {
                   await submitTaskForReview(task.id);
                 }
-                await fetchTaskById(task.id);
+                await fetchTaskById(task.id, true); // Force refresh after submission
                 Alert.alert(
                   "Submitted for Review! ✅",
                   "Your task has been submitted for review by the task creator.",
@@ -1212,8 +1221,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         </View>
                       ) : (
                         // Image preview
-                        <Image
-                          source={{ uri: file }}
+                        <CachedImage
+                          uri={file}
                           className="w-28 h-28 rounded-xl"
                           resizeMode="cover"
                         />
@@ -1304,7 +1313,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           
           {/* Activities List - Expandable (unified from task_activities) - Dynamic height container for up to 10 collapsed activities */}
           {(task.activities?.length || task.updates.length) > 0 ? (
-            <View>
+            <View style={{ margin: 0, padding: 0 }}>
               {(() => {
                 // Get all activities
                 const allActivities = task.activities || task.updates.map((update: any) => ({
@@ -1325,20 +1334,79 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   return progressLogSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
                 });
                 
-                // Calculate dynamic height: ~60px per collapsed activity, up to 10 activities
-                // Each collapsed activity is approximately 60px tall (including padding and spacing)
                 const activityCount = sortedActivities.length;
                 const maxDisplayCount = 10;
-                const activityHeight = 60; // Approximate height of a collapsed activity item
-                const gap = 12; // Gap between activities (handled by ItemSeparatorComponent)
-                const containerPadding = 8; // Bottom padding only (top padding not needed)
-                // Calculate height: if fewer than 10 activities, use actual count; otherwise use 10
+                
+                // Use onLayout to measure actual heights instead of estimating
+                // Store measured heights in state so container updates when heights change
+                const [measuredHeights, setMeasuredHeights] = React.useState<Map<string, number>>(new Map());
+                
+                // Calculate dynamic height: Use measured heights when available, fallback to estimates
+                const collapsedHeight = 42; // More accurate collapsed height (measured)
+                const gap = 12; // Gap between activities
+                
+                // Calculate height for each activity based on expanded state
+                const calculateActivityHeight = (activity: any, index: number) => {
+                  // Use measured height if available
+                  const measuredHeight = measuredHeights.get(activity.id);
+                  if (measuredHeight !== undefined) {
+                    return measuredHeight;
+                  }
+                  
+                  // Fallback to estimation
+                  const isExpanded = expandedUpdateIds.has(activity.id);
+                  if (!isExpanded) {
+                    return collapsedHeight;
+                  }
+                  
+                  // Estimate expanded height (conservative estimates)
+                  const activityData = activity.data as any;
+                  const hasPhotos = ((activityData?.photos || activity.photos || []).length > 0);
+                  const hasReason = !!(activityData?.reason || activity.description?.includes('Reason:'));
+                  
+                  let actionText = activity.description || '';
+                  if (activityData?.reason) {
+                    const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${activityData.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
+                    actionText = actionText.replace(reasonPattern, '').trim();
+                  } else if (activity.description?.includes('Reason:')) {
+                    actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
+                  }
+                  const hasDescription = !!actionText;
+                  
+                  let expandedHeight = collapsedHeight; // Start with collapsed height
+                  expandedHeight += 12; // mt-3
+                  expandedHeight += 28; // Label (text-base font-medium + mb-2)
+                  
+                  if (hasDescription) {
+                    const estimatedLines = Math.max(1, Math.ceil(actionText.length / 50));
+                    expandedHeight += (estimatedLines * 20) + 8; // Text + mb-2
+                  }
+                  
+                  if (hasReason) {
+                    expandedHeight += 30; // Reason section
+                  }
+                  
+                  if (hasPhotos) {
+                    expandedHeight += 80; // Photos section
+                  }
+                  
+                  return expandedHeight;
+                };
+                
+                // Calculate total height for displayed activities (up to 10)
                 const displayCount = Math.min(activityCount, maxDisplayCount);
-                // Height = (number of items * item height) + (number of gaps * gap size) + padding
-                // For n items, there are (n-1) gaps between them
-                const dynamicHeight = displayCount > 0 
-                  ? (displayCount * activityHeight) + ((displayCount - 1) * gap) + containerPadding
-                  : 0;
+                let totalHeight = 0;
+                
+                if (displayCount > 0) {
+                  for (let i = 0; i < displayCount; i++) {
+                    totalHeight += calculateActivityHeight(sortedActivities[i], i);
+                    if (i < displayCount - 1) {
+                      totalHeight += gap;
+                    }
+                  }
+                }
+                
+                const dynamicHeight = totalHeight;
                 
                 // Render function for each activity item
                 const renderActivityItem = ({ item: activity }: { item: any }) => {
@@ -1383,7 +1451,20 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 };
                 
                   return (
-                    <View className="border-l-4 pl-4" style={{ borderLeftColor: getActivityColor(activityType) }}>
+                    <View 
+                      className="border-l-4 pl-4" 
+                      style={{ borderLeftColor: getActivityColor(activityType) }}
+                      onLayout={(event) => {
+                        const { height } = event.nativeEvent.layout;
+                        if (height > 0 && height !== measuredHeights.get(activity.id)) {
+                          setMeasuredHeights(prev => {
+                            const newMap = new Map(prev);
+                            newMap.set(activity.id, height);
+                            return newMap;
+                          });
+                        }
+                      }}
+                    >
                     <Pressable 
                       onPress={() => {
                         const newExpanded = new Set(expandedUpdateIds);
@@ -1508,8 +1589,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                                           <Ionicons name="document-text" size={24} color="#dc2626" />
                                         </View>
                                       ) : (
-                                        <Image
-                                          source={{ uri: photo }}
+                                        <CachedImage
+                                          uri={photo}
                                           className="w-16 h-16 rounded-lg"
                                           resizeMode="cover"
                                         />
@@ -1531,21 +1612,57 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                   );
                 };
                 
+                // Determine if scrolling is needed
+                // Scrolling is needed if:
+                // 1. There are more than 10 activities (need to scroll to see beyond first 10)
+                // 2. OR the calculated height exceeds the max display height (activities expanded beyond viewport)
+                const maxCollapsedHeight = maxDisplayCount * collapsedHeight + (maxDisplayCount - 1) * gap;
+                const needsScrolling = activityCount > maxDisplayCount || dynamicHeight > maxCollapsedHeight;
+                
+                // When there are 10 or fewer activities, completely remove height constraint
+                // This eliminates any phantom space from miscalculations
+                // When there are more than 10, use fixed height to show exactly 10 with scrolling
+                const shouldUseFixedHeight = activityCount > maxDisplayCount;
+                
                 return (
-                  <View style={{ height: dynamicHeight, overflow: 'hidden' }}>
-                    <FlatList
-                      data={sortedActivities}
-                      renderItem={renderActivityItem}
-                      keyExtractor={(item) => item.id}
+                  <View 
+                    style={{ 
+                      // For 10 or fewer: use maxHeight to eliminate empty space (allows shrinking to content)
+                      // For more than 10: use fixed height to show exactly 10 with scrolling
+                      ...(shouldUseFixedHeight 
+                        ? { height: dynamicHeight, overflow: 'hidden' } 
+                        : {
+                            maxHeight: dynamicHeight > 0 ? dynamicHeight : undefined,
+                            overflow: 'hidden',
+                          })
+                    }}
+                  >
+                    <ScrollView
                       nestedScrollEnabled={true}
-                      scrollEnabled={true}
-                      showsVerticalScrollIndicator={true}
-                      contentContainerStyle={{ paddingBottom: 8 }}
-                      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-                      style={{ flex: 1 }}
+                      scrollEnabled={needsScrolling}
+                      showsVerticalScrollIndicator={needsScrolling}
+                      contentContainerStyle={{ 
+                        paddingBottom: 0,
+                        paddingTop: 0,
+                        paddingLeft: 0,
+                        paddingRight: 0,
+                        flexGrow: 0,
+                        flexShrink: 0,
+                      }}
+                      style={{
+                        margin: 0,
+                        padding: 0,
+                      }}
                       bounces={false}
                       keyboardShouldPersistTaps="handled"
-                    />
+                    >
+                      {sortedActivities.map((activity: any, index: number) => (
+                        <View key={activity.id} style={{ margin: 0, padding: 0 }}>
+                          {renderActivityItem({ item: activity })}
+                          {index < sortedActivities.length - 1 && <View style={{ height: 12, margin: 0, padding: 0 }} />}
+                        </View>
+                      ))}
+                    </ScrollView>
                   </View>
                 );
               })()}

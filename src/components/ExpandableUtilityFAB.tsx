@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { View, Pressable, Animated, Text } from "react-native";
+import { View, Pressable, Animated, Text, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "../utils/useTranslation";
 
@@ -124,12 +124,16 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 999,
+            zIndex: 998, // Lower than FAB buttons (1001)
           }}
         />
       )}
       
-      <View className="absolute bottom-8 right-6 items-end" style={{ zIndex: 1000 }}>
+      <View 
+        className="absolute bottom-8 right-6 items-end" 
+        style={{ zIndex: 1001 }}
+        pointerEvents="box-none" // Allow touches to pass through to buttons
+      >
         {/* Reports Button - appears when expanded */}
         {/* Custom position: Center at -108px */}
         {onReports && (
@@ -214,6 +218,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
             })}
           ],
           opacity: scaleAnim1,
+          zIndex: 1001, // Higher than backdrop to ensure it's clickable
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
         className="flex-row items-center"
@@ -222,7 +227,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           <Text className="text-white text-base font-medium">{t.fab.newTask}</Text>
         </View>
         <Pressable
-          onPress={handleCreateTask}
+          onPress={(e) => {
+            e.stopPropagation(); // Prevent backdrop from intercepting
+            handleCreateTask();
+          }}
           className="w-12 h-12 bg-yellow-500 rounded-full items-center justify-center shadow-lg"
           style={{
             shadowColor: "#000",

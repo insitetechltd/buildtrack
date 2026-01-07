@@ -22,11 +22,15 @@ import { useTranslation } from "../utils/useTranslation";
 interface ProjectPickerScreenProps {
   onNavigateBack: () => void;
   allowBack?: boolean; // If false, prevent going back (required selection)
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
 export default function ProjectPickerScreen({ 
   onNavigateBack, 
-  allowBack = true 
+  allowBack = true,
+  onNavigateToProfile,
+  onNavigateToProjectPicker
 }: ProjectPickerScreenProps) {
   const t = useTranslation();
   const { user } = useAuthStore();
@@ -81,6 +85,8 @@ export default function ProjectPickerScreen({
         title={t.projects.selectProject}
         showBackButton={allowBack}
         onBackPress={allowBack ? onNavigateBack : undefined}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <ScrollView className="flex-1 px-6 py-4">

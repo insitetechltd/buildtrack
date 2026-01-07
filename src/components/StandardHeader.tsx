@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../state/authStore";
 import { useCompanyStore } from "../state/companyStore";
@@ -17,6 +18,7 @@ import { useTranslation } from "../utils/useTranslation";
 import { cn } from "../utils/cn";
 import { checkSupabaseConnection } from "../api/supabase";
 import { detectEnvironment, getEnvironmentStyles } from "../utils/environmentDetector";
+import ProfileMenu from "./ProfileMenu";
 
 interface StandardHeaderProps {
   title: string;
@@ -25,6 +27,8 @@ interface StandardHeaderProps {
   onBackPress?: () => void;
   rightElement?: React.ReactNode;
   onProfilePress?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
   className?: string;
 }
 
@@ -35,15 +39,34 @@ export default function StandardHeader({
   onBackPress,
   rightElement,
   onProfilePress,
+  onNavigateToProfile,
+  onNavigateToProjectPicker,
   className = "",
 }: StandardHeaderProps) {
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
   const { isDarkMode } = useThemeStore();
+  const navigation = useNavigation<any>();
   const [supabaseStatus, setSupabaseStatus] = useState<"checking" | "connected" | "disconnected">("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const t = useTranslation();
   const insets = useSafeAreaInsets();
+
+  // Provide default navigation functions if not provided as props
+  const handleNavigateToProfile = onNavigateToProfile || (() => {
+    navigation.getParent()?.navigate("Profile");
+  });
+
+  const handleNavigateToProjectPicker = onNavigateToProjectPicker || ((allowBack?: boolean) => {
+    navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+  });
+
+  // Calculate top padding based on safe area insets
+  // Since SafeAreaView already handles the safe area, we only need minimal padding
+  // Use the actual inset value plus a small buffer (8px) for comfortable spacing
+  // For devices with no inset (web/desktop), use 16px as minimum
+  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
 
   // Check Supabase connection on component mount
   useEffect(() => {
@@ -60,16 +83,37 @@ export default function StandardHeader({
     checkConnection();
   }, []);
 
-  if (!user) return null;
+  if (!user) {
+    // Return a minimal header when user is not loaded yet
+    return (
+      <View className={cn(
+        "border-b px-6 pb-4",
+        isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-200",
+        className
+      )} style={{ paddingTop: topPadding }}>
+        <View className="flex-row items-center">
+          <View className="flex-1">
+            <Text className={cn(
+              "text-2xl font-bold",
+              isDarkMode ? "text-white" : "text-gray-900"
+            )}>
+              {title}
+            </Text>
+            {subtitle && (
+              <Text className={cn(
+                "text-base mt-0.5",
+                isDarkMode ? "text-slate-400" : "text-gray-600"
+              )} numberOfLines={1}>
+                {subtitle}
+              </Text>
+            )}
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   const banner = getCompanyBanner(user.companyId);
-
-  // Calculate top padding based on safe area insets
-  // Since SafeAreaView already handles the safe area, we only need minimal padding
-  // Use the actual inset value plus a small buffer (8px) for comfortable spacing
-  // For devices with no inset (web/desktop), use 16px as minimum
-  console.log('insets.top', insets.top);
-  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
   
   // Debug logging to help diagnose spacing issues
   if (__DEV__) {
@@ -147,7 +191,13 @@ export default function StandardHeader({
         {/* User Icon - Always shown, or custom right element if provided */}
         {rightElement || (
           <Pressable 
-            onPress={onProfilePress}
+            onPress={() => {
+              if (onProfilePress) {
+                onProfilePress();
+              } else {
+                setShowProfileMenu(true);
+              }
+            }}
             className="flex-row items-center"
           >
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
@@ -158,6 +208,16 @@ export default function StandardHeader({
           </Pressable>
         )}
       </View>
+
+      {/* Profile Menu - Only render when user is available */}
+      {user && (
+        <ProfileMenu
+          visible={showProfileMenu}
+          onClose={() => setShowProfileMenu(false)}
+          onNavigateToProfile={handleNavigateToProfile}
+          onNavigateToProjectPicker={handleNavigateToProjectPicker}
+        />
+      )}
     </View>
   );
 }

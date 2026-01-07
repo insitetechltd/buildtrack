@@ -14,16 +14,19 @@
         "expo-build-properties",
         {
           "ios": {
-            "deploymentTarget": "15.1",
+            "deploymentTarget": "16.0",
             "useFrameworks": "static",
             "clangCxxLanguageStandard": "c++20",
             "clangCxxLibrary": "libc++"
           },
         "android": {
-          "extraMavenRepos": [],
+          "extraMavenRepos": [
+            "https://artifactory.img.ly/artifactory/maven"
+          ],
           "compileSdkVersion": 35,
           "targetSdkVersion": 35,
-          "buildToolsVersion": "35.0.0"
+          "buildToolsVersion": "35.0.0",
+          "minSdkVersion": 24
         }
         }
       ]
@@ -31,7 +34,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buildtrack.app.local",
-      "buildNumber": "105",
+      "buildNumber": "121",
       "icon": "./assets/icon-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

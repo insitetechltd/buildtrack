@@ -24,7 +24,12 @@ interface ReassignTaskScreenParams {
   onReassign?: (selectedUserIds: string[]) => Promise<void>;
 }
 
-export default function ReassignTaskScreen() {
+interface ReassignTaskScreenProps {
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+}
+
+export default function ReassignTaskScreen({ onNavigateToProfile, onNavigateToProjectPicker }: ReassignTaskScreenProps = {}) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { taskId, onReassign: onReassignCallback } = (route.params || {}) as ReassignTaskScreenParams;
@@ -108,6 +113,8 @@ export default function ReassignTaskScreen() {
           title="Reassign Task"
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -125,6 +132,8 @@ export default function ReassignTaskScreen() {
         title="Reassign Task"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       {/* Search */}

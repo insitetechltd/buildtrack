@@ -22,7 +22,12 @@ interface AddCommentScreenParams {
   taskId: string;
 }
 
-export default function AddCommentScreen() {
+interface AddCommentScreenProps {
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+}
+
+export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProjectPicker }: AddCommentScreenProps = {}) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { taskId } = (route.params || {}) as AddCommentScreenParams;
@@ -145,6 +150,8 @@ export default function AddCommentScreen() {
           title="Add Comment"
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -162,6 +169,8 @@ export default function AddCommentScreen() {
         title="Add Comment"
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>

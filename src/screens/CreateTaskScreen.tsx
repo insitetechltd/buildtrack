@@ -19,7 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
@@ -37,6 +37,7 @@ import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
@@ -49,6 +50,9 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
+  uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
 // InputField component defined outside to prevent re-creation
@@ -74,7 +78,7 @@ const InputField = ({
   </View>
 );
 
-export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType }: CreateTaskScreenProps) {
+export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType, uploadedPhotoUrls, onNavigateToProfile, onNavigateToProjectPicker }: CreateTaskScreenProps) {
   // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
   const effectiveActionType = actionType || (editTaskId ? 'edit' : undefined);
   
@@ -107,6 +111,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const { selectedProjectId } = useProjectFilterStore();
   const { pickAndUploadImages, isUploading, isCompressing } = useFileUpload();
+  const { showPhotoSelectionDialog } = usePhotoSelection();
+  const navigation = useNavigation<any>();
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
 
@@ -568,141 +574,31 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const handleAddPhotos = async () => {
     if (!user) return;
 
-    Alert.alert(
-      t.createTask.addPhotos,
-      t.createTask.photosUploadMessage,
-      [
-        {
-          text: t.createTask.takePhoto,
-          onPress: async () => {
-            try {
-              console.log('📸 [Create Task] Taking photo from camera...');
-              
-              // Use a temporary task ID for upload path
-              const tempTaskId = `temp-${Date.now()}`;
-              
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task',
-                  entityId: tempTaskId,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
+    // For new tasks, we need a temporary task ID
+    // For editing tasks, use the existing task ID
+    const taskId = editTaskId || `temp-${Date.now()}`;
 
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                console.log('📋 [Create Task Camera] New photo URLs:', newPhotoUrls);
-                console.log('📋 [Create Task Camera] Current attachments before update:', formData.attachments);
-                
-                setFormData(prev => {
-                  const updated = {
-                    ...prev,
-                    attachments: [...prev.attachments, ...newPhotoUrls],
-                  };
-                  console.log('📋 [Create Task Camera] Updated attachments:', updated.attachments);
-                  return updated;
-                });
-                
-                console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
-              }
-
-              if (results.failed.length > 0) {
-                Alert.alert(
-                  t.createTask.uploadWarning,
-                  `${results.failed.length} ${t.createTask.photosFailedUpload}`
-                );
-              }
-            } catch (error) {
-              console.error('❌ [Create Task] Failed to take photo:', error);
-              Alert.alert(t.createTask.error, t.createTask.failedToTakePhoto);
-            }
-          },
-        },
-        {
-          text: t.createTask.chooseFromLibrary,
-          onPress: async () => {
-            try {
-              console.log('📚 [Create Task] Selecting photos from library...');
-              
-              // Use a temporary task ID for upload path
-              const tempTaskId = `temp-${Date.now()}`;
-              
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task',
-                  entityId: tempTaskId,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                console.log('📋 [Create Task Library] New photo URLs:', newPhotoUrls);
-                console.log('📋 [Create Task Library] Current attachments before update:', formData.attachments);
-                
-                setFormData(prev => {
-                  const updated = {
-                    ...prev,
-                    attachments: [...prev.attachments, ...newPhotoUrls],
-                  };
-                  console.log('📋 [Create Task Library] Updated attachments:', updated.attachments);
-                  return updated;
-                });
-                
-                console.log(`✅ [Create Task] ${results.successful.length} photo(s) uploaded to Supabase`);
-              }
-
-              if (results.failed.length > 0) {
-                Alert.alert(
-                  'Upload Warning',
-                  `${results.failed.length} photo(s) failed to upload. Please try again.`
-                );
-              }
-              } catch (error) {
-                console.error('❌ [Create Task] Failed to pick images:', error);
-                Alert.alert(t.createTask.error, t.createTask.failedToPickImages);
-              }
-            },
-          },
-          {
-            text: t.createTask.pasteFromClipboard,
-          onPress: async () => {
-            try {
-              const hasImage = await Clipboard.hasImageAsync();
-              
-              if (!hasImage) {
-                Alert.alert(t.createTask.error, t.createTask.noImageInClipboard);
-                return;
-              }
-
-              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
-              
-              if (imageUri && imageUri.data) {
-                const uri = `data:image/png;base64,${imageUri.data}`;
-                setFormData(prev => ({
-                  ...prev,
-                  attachments: [...prev.attachments, uri],
-                }));
-                Alert.alert(t.errors.success, t.createTask.imagePasted);
-              } else {
-                Alert.alert(t.createTask.error, t.createTask.pasteImageError);
-              }
-            } catch (error) {
-              console.error("Clipboard paste error:", error);
-              Alert.alert(t.createTask.error, t.createTask.failedToPaste);
-            }
-          },
-        },
-        {
-          text: t.common.cancel,
-          style: "cancel",
-        },
-      ]
-    );
+    // Use unified photo selection utility
+    showPhotoSelectionDialog({
+      onPhotosSelected: (photos) => {
+        // Navigate to PhotoSelectionScreen
+        navigation.navigate("PhotoSelection", {
+          taskId: taskId,
+          subTaskId: undefined,
+          companyId: user.companyId,
+          userId: user.id,
+          initialCompletionPercentage: 0,
+          initialPhotos: photos,
+          returnScreen: 'CreateTask',
+          parentTaskId: parentTaskId,
+          parentSubTaskId: parentSubTaskId,
+          editTaskId: editTaskId,
+          actionType: actionType,
+        });
+      },
+      allowClipboard: true,
+      allowMultiple: true,
+    });
   };
 
   // Early returns AFTER all hooks
@@ -719,6 +615,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           title={t.tasks.createTask}
           showBackButton={true}
           onBackPress={onNavigateBack}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
 
         <View className="flex-1 items-center justify-center px-6">
@@ -1024,6 +922,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         })()}
         showBackButton={true}
         onBackPress={onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       {/* Parent Task Info Banner */}
@@ -1655,13 +1555,17 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             
             <Pressable
               onPress={handleAddPhotos}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+              className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
             >
-              <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-              <Text className="text-gray-600 font-medium mt-3">{t.createTask.tapToAddFiles}</Text>
-              <Text className="text-gray-400 text-base mt-1">
-                {formData.attachments.length === 0 ? t.createTask.noAttachmentsAdded : t.createTask.filesAdded(formData.attachments.length)}
-              </Text>
+              <View className="flex-row items-center flex-1">
+                <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
+                <Text className="text-gray-600 font-medium ml-2 text-sm">
+                  {formData.attachments.length === 0 ? t.createTask.tapToAddFiles : t.createTask.filesAdded(formData.attachments.length)}
+                </Text>
+              </View>
+              {formData.attachments.length > 0 && (
+                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              )}
             </Pressable>
           </View>
         </ScrollView>
@@ -2393,89 +2297,24 @@ function TaskActionScreen({
   const handleAddPhotos = async () => {
     if (!user || !task) return;
 
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                if (actionType === 'update') {
-                  setUpdateForm(prev => ({
-                    ...prev,
-                    photos: [...prev.photos, ...newPhotoUrls],
-                  }));
-                } else if (actionType === 'comment') {
-                  setCommentForm(prev => ({
-                    ...prev,
-                    photos: [...prev.photos, ...newPhotoUrls],
-                  }));
-                }
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              console.error('Failed to take photo:', error);
-              Alert.alert("Error", "Failed to take photo");
-            }
-          }
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                if (actionType === 'update') {
-                  setUpdateForm(prev => ({
-                    ...prev,
-                    photos: [...prev.photos, ...newPhotoUrls],
-                  }));
-                } else if (actionType === 'comment') {
-                  setCommentForm(prev => ({
-                    ...prev,
-                    photos: [...prev.photos, ...newPhotoUrls],
-                  }));
-                }
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              console.error('Failed to pick images:', error);
-              Alert.alert("Error", "Failed to pick images");
-            }
-          }
-        },
-        { text: "Cancel", style: "cancel" }
-      ]
-    );
+    // Use unified photo selection utility
+    showPhotoSelectionDialog({
+      onPhotosSelected: (photos) => {
+        // Navigate to PhotoSelectionScreen
+        navigation.navigate("PhotoSelection", {
+          taskId: task.id,
+          subTaskId: undefined,
+          companyId: user.companyId,
+          userId: user.id,
+          initialCompletionPercentage: task.completionPercentage || 0,
+          initialPhotos: photos,
+          returnScreen: actionType === 'update' ? 'UpdateProgress' : actionType === 'comment' ? 'AddComment' : 'CreateTask',
+          actionType: actionType,
+        });
+      },
+      allowClipboard: true,
+      allowMultiple: true,
+    });
   };
 
   const handleSubmitUpdate = async () => {
@@ -2581,6 +2420,8 @@ function TaskActionScreen({
                    actionType === 'comment' ? 'Add Comment' :
                    actionType === 'reassign' ? 'Reassign Task' : 'Task Actions'}
             onBackPress={onNavigateBack}
+            onNavigateToProfile={onNavigateToProfile}
+            onNavigateToProjectPicker={onNavigateToProjectPicker}
           />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#3b82f6" />
@@ -2599,6 +2440,8 @@ function TaskActionScreen({
           <StandardHeader
             title={t.taskDetail.progressUpdate}
             onBackPress={onNavigateBack}
+            onNavigateToProfile={onNavigateToProfile}
+            onNavigateToProjectPicker={onNavigateToProjectPicker}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
             {/* Photos Section */}
@@ -2636,10 +2479,15 @@ function TaskActionScreen({
 
               <Pressable
                 onPress={handleAddPhotos}
-                className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+                className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
               >
-                <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-                <Text className="text-gray-600 font-medium mt-3">{t.taskDetail.tapToAddFiles}</Text>
+                <View className="flex-row items-center flex-1">
+                  <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
+                  <Text className="text-gray-600 font-medium ml-2 text-sm">{t.taskDetail.tapToAddFiles}</Text>
+                </View>
+                {updateForm.photos.length > 0 && (
+                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                )}
               </Pressable>
             </View>
 
@@ -2723,6 +2571,8 @@ function TaskActionScreen({
           <StandardHeader
             title="Add Comment"
             onBackPress={onNavigateBack}
+            onNavigateToProfile={onNavigateToProfile}
+            onNavigateToProjectPicker={onNavigateToProjectPicker}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
             {/* Photos Section */}
@@ -2836,6 +2686,8 @@ function TaskActionScreen({
         <StandardHeader
           title="Add Photos"
           onBackPress={onNavigateBack}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
           <View className="mb-6">
@@ -2872,10 +2724,15 @@ function TaskActionScreen({
 
             <Pressable
               onPress={handleAddPhotos}
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+              className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
             >
-              <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-              <Text className="text-gray-600 font-medium mt-3">Tap to add photos</Text>
+              <View className="flex-row items-center flex-1">
+                <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
+                <Text className="text-gray-600 font-medium ml-2 text-sm">Tap to add photos</Text>
+              </View>
+              {commentForm.photos.length > 0 && (
+                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              )}
             </Pressable>
           </View>
         </ScrollView>

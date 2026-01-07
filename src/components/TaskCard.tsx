@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, Pressable, Linking, ScrollView, Alert, Animated, Dimensions } from "react-native";
+import { View, Text, Pressable, Linking, ScrollView, Alert, Animated, Dimensions, Image, Platform } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import { Ionicons } from "@expo/vector-icons";
 import { Task, Priority, TaskStatus } from "../types/buildtrack";
@@ -10,8 +10,6 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
-import CachedImage from "./CachedImage";
-import { isDesktop } from "../utils/platformUtils";
 
 // ✅ UPDATED: Task can now have parentTaskId to indicate it's nested
 interface TaskCardProps {
@@ -257,8 +255,10 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
 
   // Determine if card should have margin (only when not in Swipeable)
   const cardMarginClass = (canArchive || canDelete) ? "" : (className || "mb-2");
-  // Cache platform detection to prevent re-renders
-  const isDesktopPlatform = React.useMemo(() => isDesktop(), []);
+  // Check if running on desktop (macOS/Windows)
+  const isDesktopPlatform = React.useMemo(() => {
+    return Platform.OS === 'macos' || Platform.OS === 'web';
+  }, []);
 
   const cardContent = (
     <View className={cn("relative", cardMarginClass)}>
@@ -285,7 +285,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
       )}
     >
       {/* Rejection indicator - Show at top if task is rejected */}
-      {task.currentStatus === "rejected" && (
+      {task.status === "rejected" && (
         <View className={cn(
           "flex-row items-center mb-2 -mx-3 -mt-3 px-3 py-2 rounded-t-lg border-b",
           isDarkMode ? "bg-red-900/40 border-red-700" : "bg-red-50 border-red-200"
@@ -297,13 +297,13 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           )}>
             Rejected - Needs Rework
           </Text>
-          {task.declineReason && (
+          {task.rejectedReason && (
             <View className="ml-2 flex-1">
               <Text className={cn(
                 "text-sm italic",
                 isDarkMode ? "text-red-400" : "text-red-600"
               )} numberOfLines={1}>
-                • {task.declineReason}
+                • {task.rejectedReason}
               </Text>
             </View>
           )}
@@ -386,9 +386,9 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
           {/* Right side: Status, Priority, and Completion in a row */}
           <View className="flex-row items-center gap-2">
             {/* Status Badge */}
-            <View className={cn("px-2 py-0.5 rounded border", getStatusColor(task.status || task.currentStatus))}>
+            <View className={cn("px-2 py-0.5 rounded border", getStatusColor(task.status))}>
               <Text className="text-xs font-semibold capitalize">
-                {formatStatus(task.status || task.currentStatus)}
+                {formatStatus(task.status)}
               </Text>
             </View>
             
@@ -399,16 +399,16 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
               </Text>
             </View>
             
-            {/* Completion percentage */}
-            {isCompleted && task.reviewAccepted ? (
-              // Green bubble: 100% and accepted by assigner
+            {/* Completion percentage - Use status to determine display */}
+            {isCompleted && task.status === "approved" ? (
+              // Green bubble: 100% and approved
               <View className="bg-green-500 px-2 py-0.5 rounded-full flex-row items-center">
                 <Ionicons name="checkmark-circle" size={10} color="white" />
                 <Text className="text-white text-xs font-semibold ml-1">
                   {task.completionPercentage}%
                 </Text>
               </View>
-            ) : isCompleted && task.readyForReview ? (
+            ) : isCompleted && task.status === "submitted_for_review" ? (
               // Blue bubble: 100% and submitted for review
               <View className="bg-blue-500 px-2 py-0.5 rounded-full flex-row items-center">
                 <Ionicons name="eye" size={10} color="white" />
@@ -534,9 +534,10 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
                       />
                     </View>
                   ) : (
-                    <CachedImage
-                      uri={photo}
+                    <Image
+                      source={{ uri: photo }}
                       className="w-14 h-14 rounded-lg"
+                      style={{ width: 56, height: 56, borderRadius: 8 }}
                       resizeMode="cover"
                       onError={() => handleImageError(index)}
                     />

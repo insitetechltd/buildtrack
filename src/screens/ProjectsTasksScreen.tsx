@@ -26,6 +26,8 @@ interface ProjectsTasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: () => void;
   onNavigateBack?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
 // Type for task list items (can be Task or SubTask)
@@ -34,7 +36,9 @@ type TaskListItem = Task | (SubTask & { isSubTask: true });
 export default function ProjectsTasksScreen({ 
   onNavigateToTaskDetail, 
   onNavigateToCreateTask,
-  onNavigateBack 
+  onNavigateBack,
+  onNavigateToProfile,
+  onNavigateToProjectPicker
 }: ProjectsTasksScreenProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
@@ -520,6 +524,8 @@ export default function ProjectsTasksScreen({
         title="Tasks"
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">

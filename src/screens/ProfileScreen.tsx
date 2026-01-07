@@ -34,9 +34,11 @@ interface ProfileScreenProps {
   onNavigateToCreateTask?: () => void;
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToPendingUsers?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
-export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, onNavigateToDeveloperSettings, onNavigateToPendingUsers }: ProfileScreenProps) {
+export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, onNavigateToDeveloperSettings, onNavigateToPendingUsers, onNavigateToProfile, onNavigateToProjectPicker }: ProfileScreenProps) {
   const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
@@ -201,6 +203,8 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
         title={t.profile.profile}
         showBackButton={true}
         onBackPress={onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -289,8 +293,8 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
           </View>
         </View>
 
-        {/* Developer Tools */}
-        <View className="mt-6">
+        {/* Developer Tools - Hidden for all users */}
+        {/* <View className="mt-6">
           <Text className="text-xl font-semibold text-gray-900 px-6 mb-2">
             Developer
           </Text>
@@ -301,7 +305,7 @@ export default function ProfileScreen({ onNavigateBack, onNavigateToCreateTask, 
               onPress={() => onNavigateToDeveloperSettings?.()}
             />
           </View>
-        </View>
+        </View> */}
 
         {/* App Info */}
         <View className="mt-6">

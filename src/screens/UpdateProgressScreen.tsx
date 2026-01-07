@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
@@ -19,15 +19,24 @@ import { TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
+import { useCallback } from "react";
 
 interface UpdateProgressScreenParams {
   taskId: string;
   subTaskId?: string;
   initialCompletionPercentage?: number;
+  uploadedPhotoUrls?: string[];
+  actionType?: string;
 }
 
-export default function UpdateProgressScreen() {
+interface UpdateProgressScreenProps {
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+}
+
+export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateToProjectPicker }: UpdateProgressScreenProps = {}) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { taskId, subTaskId, initialCompletionPercentage } = (route.params || {}) as UpdateProgressScreenParams;
@@ -38,6 +47,7 @@ export default function UpdateProgressScreen() {
   const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
   const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
   const { pickAndUploadImages } = useFileUpload();
+  const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const task = tasks.find(t => t.id === taskId);
   const isViewingSubTask = !!subTaskId;
@@ -61,79 +71,44 @@ export default function UpdateProgressScreen() {
     }
   }, [task?.completionPercentage]);
 
+  // Handle uploaded photo URLs from PhotoSelectionScreen
+  useFocusEffect(
+    useCallback(() => {
+      // Check for uploaded photo URLs in navigation params
+      const params = route.params as UpdateProgressScreenParams;
+      if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
+        // Update form data with uploaded photo URLs
+        setUpdateForm(prev => ({
+          ...prev,
+          photos: [...prev.photos, ...params.uploadedPhotoUrls!],
+        }));
+        console.log('✅ [UpdateProgress] Added uploaded photos to form:', params.uploadedPhotoUrls);
+        // Clear the params to prevent re-adding
+        navigation.setParams({ uploadedPhotoUrls: undefined });
+      }
+    }, [route.params, navigation])
+  );
+
   const handleAddPhotos = async () => {
     if (!user || !task) return;
 
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setUpdateForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to take photo");
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setUpdateForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-
-              if (results.failed.length > 0) {
-                setFailedUploadsInSession(prev => [...prev, ...results.failed]);
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to pick images");
-            }
-          },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
+    // Use unified photo selection utility
+    showPhotoSelectionDialog({
+      onPhotosSelected: (photos) => {
+        // Navigate to PhotoSelectionScreen
+        navigation.navigate("PhotoSelection", {
+          taskId: task.id,
+          subTaskId: subTaskId,
+          companyId: user.companyId,
+          userId: user.id,
+          initialCompletionPercentage: task.completionPercentage || 0,
+          initialPhotos: photos,
+          returnScreen: 'UpdateProgress',
+        });
+      },
+      allowClipboard: true,
+      allowMultiple: true,
+    });
   };
 
   const handleRetryUpload = async (failedUpload: { fileName: string; error: string; originalFile: any }) => {
@@ -228,6 +203,8 @@ export default function UpdateProgressScreen() {
           title={t.taskDetail.progressUpdate}
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -245,6 +222,8 @@ export default function UpdateProgressScreen() {
         title={t.taskDetail.progressUpdate}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
@@ -337,13 +316,17 @@ export default function UpdateProgressScreen() {
           
           <Pressable
             onPress={handleAddPhotos}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 items-center bg-gray-50"
+            className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
           >
-            <Ionicons name="cloud-upload-outline" size={48} color="#9ca3af" />
-            <Text className="text-gray-600 font-medium mt-3">{t.taskDetail.tapToAddFiles}</Text>
-            <Text className="text-gray-400 text-base mt-1">
-              {updateForm.photos.length === 0 ? t.taskDetail.noFilesAdded : `${updateForm.photos.length} file(s) added`}
-            </Text>
+            <View className="flex-row items-center flex-1">
+              <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
+              <Text className="text-gray-600 font-medium ml-2 text-sm">
+                {updateForm.photos.length === 0 ? t.taskDetail.tapToAddFiles : `${updateForm.photos.length} file(s) added`}
+              </Text>
+            </View>
+            {updateForm.photos.length > 0 && (
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+            )}
           </Pressable>
         </View>
 

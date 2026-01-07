@@ -1,20 +1,18 @@
 import React, { useState, useRef } from "react";
-import { View, Pressable, Animated, Text, Dimensions } from "react-native";
+import { View, Pressable, Animated, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "../utils/useTranslation";
 
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
-  onSearch?: () => void;
   onReports?: () => void;
 }
 
-export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports }: ExpandableUtilityFABProps) {
+export default function ExpandableUtilityFAB({ onCreateTask, onReports }: ExpandableUtilityFABProps) {
   const t = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current;
-  const scaleAnim2 = useRef(new Animated.Value(0)).current;
   const scaleAnim3 = useRef(new Animated.Value(0)).current;
 
   const toggleExpand = () => {
@@ -31,12 +29,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         useNativeDriver: true,
         friction: 7,
         delay: isExpanded ? 0 : 100,
-      }),
-      Animated.spring(scaleAnim2, {
-        toValue,
-        useNativeDriver: true,
-        friction: 7,
-        delay: isExpanded ? 0 : 50,
       }),
       Animated.spring(scaleAnim3, {
         toValue,
@@ -58,7 +50,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
     // Stop all running animations
     rotateAnim.stopAnimation();
     scaleAnim1.stopAnimation();
-    scaleAnim2.stopAnimation();
     scaleAnim3.stopAnimation();
     
     // Reset all animations to collapsed state immediately
@@ -69,11 +60,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim1, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim2, {
         toValue: 0,
         duration: 150,
         useNativeDriver: true,
@@ -93,13 +79,6 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
     setTimeout(() => onCreateTask(), 200);
   };
 
-  const handleSearch = () => {
-    collapseImmediately();
-    if (onSearch) {
-      setTimeout(() => onSearch(), 200);
-    }
-  };
-
   const handleReports = () => {
     collapseImmediately();
     if (onReports) {
@@ -116,24 +95,31 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
     <>
       {/* Full-screen backdrop - tap to close when expanded */}
       {isExpanded && (
-        <Pressable
-          onPress={toggleExpand}
+        <View
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 998, // Lower than FAB buttons (1001)
+            zIndex: 998,
           }}
-        />
+          pointerEvents="box-none"
+        >
+          <Pressable
+            onPress={toggleExpand}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+          />
+        </View>
       )}
       
-      <View 
-        className="absolute bottom-8 right-6 items-end" 
-        style={{ zIndex: 1001 }}
-        pointerEvents="box-none" // Allow touches to pass through to buttons
-      >
+      <View className="absolute bottom-8 right-6 items-end" style={{ zIndex: 1001 }} pointerEvents="box-none">
         {/* Reports Button - appears when expanded */}
         {/* Custom position: Center at -108px */}
         {onReports && (
@@ -147,6 +133,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
               })}
             ],
             opacity: scaleAnim3,
+            zIndex: 1002,
           }}
           pointerEvents={isExpanded ? 'auto' : 'none'}
           className="flex-row items-center"
@@ -155,7 +142,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
             <Text className="text-white text-base font-medium">{t.nav.reports}</Text>
           </View>
           <Pressable
-            onPress={handleReports}
+            onPress={(e) => {
+              e.stopPropagation();
+              handleReports();
+            }}
             className="w-12 h-12 bg-green-600 rounded-full items-center justify-center shadow-lg"
             style={{
               shadowColor: "#000",
@@ -163,45 +153,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
               shadowOpacity: 0.25,
               shadowRadius: 3.84,
               elevation: 5,
+              zIndex: 1003,
             }}
           >
             <Ionicons name="bar-chart" size={20} color="white" />
-          </Pressable>
-        </Animated.View>
-      )}
-
-      {/* Search Button - appears when expanded */}
-      {/* Custom position: Center at -72px */}
-      {onSearch && (
-        <Animated.View
-          style={{
-            transform: [
-              { scale: scaleAnim2 },
-              { translateY: scaleAnim2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, -72]
-              })}
-            ],
-            opacity: scaleAnim2,
-          }}
-          pointerEvents={isExpanded ? 'auto' : 'none'}
-          className="flex-row items-center"
-        >
-          <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
-            <Text className="text-white text-base font-medium">{t.common.search}</Text>
-          </View>
-          <Pressable
-            onPress={handleSearch}
-            className="w-12 h-12 bg-purple-600 rounded-full items-center justify-center shadow-lg"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 3.84,
-              elevation: 5,
-            }}
-          >
-            <Ionicons name="search" size={20} color="white" />
           </Pressable>
         </Animated.View>
       )}
@@ -218,7 +173,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
             })}
           ],
           opacity: scaleAnim1,
-          zIndex: 1001, // Higher than backdrop to ensure it's clickable
+          zIndex: 1002,
         }}
         pointerEvents={isExpanded ? 'auto' : 'none'}
         className="flex-row items-center"
@@ -228,7 +183,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
         </View>
         <Pressable
           onPress={(e) => {
-            e.stopPropagation(); // Prevent backdrop from intercepting
+            e.stopPropagation();
             handleCreateTask();
           }}
           className="w-12 h-12 bg-yellow-500 rounded-full items-center justify-center shadow-lg"
@@ -238,6 +193,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
             shadowOpacity: 0.25,
             shadowRadius: 3.84,
             elevation: 5,
+            zIndex: 1003,
           }}
         >
           <Ionicons name="add" size={24} color="white" />
@@ -246,7 +202,10 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
 
       {/* Main Utility FAB */}
       <Pressable
-        onPress={handlePress}
+        onPress={(e) => {
+          e.stopPropagation();
+          handlePress();
+        }}
         className="w-14 h-14 bg-blue-600 rounded-full items-center justify-center shadow-lg"
         style={{
           shadowColor: '#000',
@@ -254,6 +213,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onSearch, onReports
           shadowOpacity: 0.3,
           shadowRadius: 8,
           elevation: 8,
+          zIndex: 1004,
         }}
       >
         <Animated.View style={{ transform: [{ rotate }] }}>

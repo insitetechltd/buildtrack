@@ -1,209 +1,196 @@
-# Android Production Signing Setup Guide
+# Android Production Signing Setup
 
-This guide explains the production signing setup for Android Play Store releases.
+This guide explains how to set up local production signing for Android builds.
 
-## ✅ What Has Been Configured
+## Overview
 
-### 1. Production Keystore Generation Script
-- **File**: `generate-keystore.sh`
-- **Purpose**: Generates a production keystore with secure random passwords
-- **Location**: `android/app/release.keystore`
-- **Credentials**: Stored in `android/keystore.properties`
+For Play Store submission, your AAB must be signed with the same production keystore that matches your Google Play Console configuration. The build system uses a `keystore.properties` file (gitignored) to store keystore credentials.
 
-### 2. Version Code Management
-- **File**: `android/version-code.txt`
-- **Current Version Code**: 12
-- **Increment Script**: `increment-android-version.sh`
-- **Auto-sync**: Build.gradle reads from this file
+## Setup Steps
 
-### 3. Build Configuration
-- **File**: `android/app/build.gradle`
-- **Production Signing**: Configured to use `release.keystore`
-- **Fallback**: Uses debug keystore if production keystore not found (for development)
-- **Version Management**: Automatically reads version code and version name
+### Option 1: Get Keystore from EAS (Recommended)
 
-### 4. Build Script Updates
-- **File**: `build-android.sh`
-- **New Option**: `--increment` or `-v` to auto-increment version code before building
+If you've been using EAS builds, your keystore is stored securely with EAS. To download it:
 
-## 🔐 Generating the Production Keystore
+#### Method 1: Using EAS CLI (Recommended)
 
-### Step 1: Generate Keystore
-
-Run the keystore generation script:
-
-```bash
-./generate-keystore.sh
-```
-
-This will:
-- Generate a secure production keystore
-- Create `android/app/release.keystore`
-- Create `android/keystore.properties` with passwords
-- Set secure file permissions (600)
-
-### Step 2: Backup the Keystore (CRITICAL!)
-
-**⚠️ IMPORTANT**: If you lose the keystore, you **cannot** update your app on Play Store!
-
-1. **Copy the keystore file** to a secure location:
+1. **Ensure you're logged in to EAS**:
    ```bash
-   cp android/app/release.keystore ~/secure-backup/
+   npx eas login
    ```
 
-2. **Save the passwords** from `android/keystore.properties`:
+2. **Navigate to your project directory**:
    ```bash
-   cat android/keystore.properties
+   cd /path/to/your/project
    ```
-   
-   Save these in a secure password manager:
-   - Store Password
-   - Key Password
-   - Key Alias: `buildtrack-release`
 
-3. **Store in multiple secure locations**:
-   - Password manager (1Password, LastPass, etc.)
-   - Encrypted cloud storage
-   - Secure physical backup
+3. **Run the credentials command**:
+   ```bash
+   npx eas credentials --platform android
+   ```
 
-### Step 3: Verify Keystore
+4. **Follow the interactive prompts**:
+   - Select the build profile (usually `production` for Play Store builds)
+   - Choose: `credentials.json: Upload/Download credentials between EAS servers and your local json`
+   - Select: `Download credentials from EAS to credentials.json`
 
-Check that the keystore was created:
+5. **Extract the keystore from credentials.json**:
+   - A `credentials.json` file will be created in your project root
+   - Open `credentials.json` and look for the `keystore` object
+   - The keystore object contains:
+     - `keystore`: Base64-encoded keystore data
+     - `keystorePassword`: The keystore password
+     - `keyAlias`: The key alias
+     - `keyPassword`: The key password
 
-```bash
-ls -lh android/app/release.keystore
-keytool -list -v -keystore android/app/release.keystore -storepass <your-store-password>
-```
+6. **Save the keystore file**:
+   ```bash
+   # Extract base64 keystore from credentials.json
+   # You can use a script or manually decode it
+   # For example, if keystore is base64-encoded:
+   cat credentials.json | jq -r '.android.keystore.keystore' | base64 -d > android/app/release-key.keystore
+   ```
 
-## 📦 Building for Production
+   Or manually:
+   - Copy the base64 string from `credentials.json` → `android.keystore.keystore`
+   - Decode it: `echo "BASE64_STRING" | base64 -d > android/app/release-key.keystore`
 
-### Build Release APK
+7. **Create keystore.properties**:
+   ```bash
+   cp keystore.properties.template android/keystore.properties
+   ```
 
-```bash
-# Standard build
-./build-android.sh
-
-# Build with version increment
-./build-android.sh --increment
-
-# Clean build with version increment
-./build-android.sh --clean --increment
-```
-
-### Build Android App Bundle (AAB) for Play Store
-
-```bash
-cd android
-./gradlew bundleRelease
-cd ..
-
-# AAB location: android/app/build/outputs/bundle/release/app-release.aab
-```
-
-### Manual Version Code Increment
-
-```bash
-./increment-android-version.sh
-```
-
-## 🔍 How It Works
-
-### Version Code Management
-
-1. **Version Code File**: `android/version-code.txt`
-   - Contains a single integer (currently: 12)
-   - Must increment for each Play Store release
-   - Managed by `increment-android-version.sh`
-
-2. **Version Name**: Read from `app.json`
-   - Current: "1.1.2"
-   - User-visible version
-   - Can be the same across multiple releases
-
-3. **Build.gradle Integration**:
-   - Automatically reads version code from `version-code.txt`
-   - Automatically reads version name from `app.json`
-   - No manual editing needed
-
-### Signing Configuration
-
-1. **Keystore Properties**: `android/keystore.properties`
+   Edit `android/keystore.properties`:
    ```properties
-   storeFile=release.keystore
-   storePassword=<generated-password>
-   keyAlias=buildtrack-release
-   keyPassword=<generated-password>
+   storeFile=release-key.keystore
+   storePassword=<from credentials.json: android.keystore.keystorePassword>
+   keyAlias=<from credentials.json: android.keystore.keyAlias>
+   keyPassword=<from credentials.json: android.keystore.keyPassword>
    ```
 
-2. **Build.gradle Logic**:
-   - Checks if `keystore.properties` exists
-   - If found: Uses production signing
-   - If not found: Falls back to debug signing (for development)
+   **OR use the automated script**:
+   ```bash
+   ./scripts/extract-keystore-from-eas.sh
+   ```
+   This script automatically extracts the keystore and creates `keystore.properties` for you.
 
-3. **Security**:
-   - Keystore files are in `.gitignore`
-   - Properties file has secure permissions (600)
-   - Never committed to git
+8. **Clean up** (optional but recommended):
+   ```bash
+   # credentials.json contains sensitive data, remove it after extracting keystore
+   rm credentials.json
+   ```
 
-## 📋 Play Store Submission Checklist
+#### Method 2: Contact EAS Support
 
-Before submitting to Play Store:
+If the CLI method doesn't work or you need assistance:
 
-- [ ] Production keystore generated
-- [ ] Keystore backed up securely
-- [ ] Version code incremented (if needed)
-- [ ] Version name updated in `app.json` (if needed)
-- [ ] AAB built successfully
-- [ ] AAB tested on device
-- [ ] All features working correctly
+- **Email**: support@expo.dev
+- **Request**: Download of Android production keystore for package `com.buildtrack.app`
+- **Provide**: 
+  - Your EAS account email
+  - Project ID (from `app.json` → `extra.eas.projectId` or `eas.json`)
+  - Package name: `com.buildtrack.app`
 
-## 🚨 Troubleshooting
+### Option 2: Use Existing Keystore
+
+If you already have your production keystore file:
+
+1. Place your `.keystore` or `.jks` file in `android/app/` directory
+   ```bash
+   cp /path/to/your/release-key.keystore android/app/
+   ```
+
+2. Copy the template and configure it:
+   ```bash
+   cp keystore.properties.template android/keystore.properties
+   ```
+
+3. Edit `android/keystore.properties` with your keystore details:
+   ```properties
+   # Path is relative to android/app/ directory
+   storeFile=release-key.keystore
+   storePassword=your-store-password
+   keyAlias=your-key-alias
+   keyPassword=your-key-password
+   ```
+
+### Option 3: Generate New Keystore (Only if starting fresh)
+
+⚠️ **WARNING**: Only do this if you haven't published the app to Play Store yet. If you already have published versions, you MUST use the same keystore.
+
+```bash
+cd android/app
+keytool -genkeypair -v -storetype PKCS12 -keystore release-key.keystore -alias release-key -keyalg RSA -keysize 2048 -validity 10000
+```
+
+Then create `android/keystore.properties`:
+```properties
+# Path is relative to android/app/ directory
+storeFile=release-key.keystore
+storePassword=your-store-password
+keyAlias=release-key
+keyPassword=your-key-password
+```
+
+## Verification
+
+After setting up `keystore.properties`, verify the signing:
+
+```bash
+./build-and-submit-android.sh --track production
+```
+
+The build should complete and the AAB should be signed with the production key. You can verify the signature:
+
+```bash
+keytool -list -v -keystore android/app/release-key.keystore
+jarsigner -verify -verbose -certs android/app/build/outputs/bundle/release/app-release.aab
+```
+
+The SHA-1 fingerprint should match what's configured in Google Play Console.
+
+## Security Notes
+
+- ⚠️ **NEVER commit `keystore.properties` or `.keystore` files to git**
+- ⚠️ Store keystore files securely (password manager, encrypted storage)
+- ⚠️ Keep backups of your keystore in a secure location
+- ⚠️ If you lose the keystore, you cannot update the app on Play Store
+
+## Troubleshooting
+
+### "The Android App Bundle was signed with the wrong key"
+
+This means the keystore you're using doesn't match the upload key registered in Google Play Console. 
+
+**If you have Google Play App Signing enabled** (which manages the app signing key separately), you may need to reset the upload key in Play Console if you can't find the original upload key.
+
+**See**: [`KEYSTORE_MISMATCH_TROUBLESHOOTING.md`](./KEYSTORE_MISMATCH_TROUBLESHOOTING.md) for detailed steps on:
+- How to reset the upload key in Google Play Console
+- Verifying the upload key certificate
+- Alternative solutions using EAS-managed keys
+
+**Quick steps if you have the original upload key:**
+1. Use the exact same keystore that was used for the first upload
+2. Contact EAS support to download your keystore if it was managed by EAS
+3. Check Google Play Console → Setup → App integrity → App signing → Upload key certificate to see the expected SHA1 fingerprint
 
 ### "keystore.properties not found"
 
-**Solution**: Run `./generate-keystore.sh` to create the keystore and properties file.
+If you see this warning during build:
+1. Copy `keystore.properties.template` to `android/keystore.properties`
+2. Fill in your keystore details
+3. Ensure the keystore file path is correct (relative to android/ directory)
 
-### "Invalid keystore password"
+### Build still uses debug signing
 
-**Solution**: Check `android/keystore.properties` for the correct passwords.
+Check that:
+1. `keystore.properties` exists in the `android/` directory (not in `android/app/`)
+2. All properties are filled in correctly
+3. The keystore file path is correct (relative to `android/app/`) and the file exists
+4. File permissions allow reading the keystore file
 
-### "Version code must be incremented"
+## Related Files
 
-**Solution**: Run `./increment-android-version.sh` before building.
-
-### Build uses debug keystore
-
-**Check**:
-1. Does `android/keystore.properties` exist?
-2. Does `android/app/release.keystore` exist?
-3. Check build logs for signing config messages
-
-## 📝 File Locations
-
-- **Keystore**: `android/app/release.keystore`
-- **Keystore Properties**: `android/keystore.properties`
-- **Version Code**: `android/version-code.txt`
-- **Build Script**: `build-android.sh`
-- **Version Increment Script**: `increment-android-version.sh`
-- **Keystore Generator**: `generate-keystore.sh`
-
-## 🔗 Related Documentation
-
-- [Android Play Store Checklist](./ANDROID_PLAY_STORE_CHECKLIST.md)
-- [Build Android README](./BUILD_ANDROID_README.md)
-
-## 📞 Support
-
-For issues or questions:
-- Check build logs: `android/app/build/outputs/logs/`
-- Verify keystore: `keytool -list -v -keystore android/app/release.keystore`
-- Check Gradle logs: `cd android && ./gradlew bundleRelease --info`
-
----
-
-**Last Updated**: After production signing setup
-**Google Developer Account**: insite.tech.ltd@gmail.com
-
-
-
-
+- `keystore.properties.template` - Template for keystore configuration (copy to `android/keystore.properties`)
+- `android/app/build.gradle` - Contains signing configuration
+- `.gitignore` - Ensures keystore files are not committed

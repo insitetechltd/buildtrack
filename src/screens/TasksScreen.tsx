@@ -31,6 +31,8 @@ interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: () => void;
   onNavigateBack?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
 // ✅ UPDATED: All tasks are now in unified table (with optional parentTaskId)
@@ -39,7 +41,9 @@ type TaskListItem = Task;
 export default function TasksScreen({ 
   onNavigateToTaskDetail, 
   onNavigateToCreateTask,
-  onNavigateBack 
+  onNavigateBack,
+  onNavigateToProfile,
+  onNavigateToProjectPicker
 }: TasksScreenProps) {
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
@@ -250,28 +254,6 @@ export default function TasksScreen({
     const allProjectTasks = userProjects.flatMap(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
       
-      // Debug: Check for Den's self-assigned tasks in this project
-      const denSelfAssignedInProject = projectTasks.filter(task => {
-        const assignedTo = task.assignedTo || [];
-        const userIdStr = String(user.id);
-        const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
-        const isCreated = String(task.assignedBy) === userIdStr;
-        return isAssigned && isCreated;
-      });
-      
-      if (denSelfAssignedInProject.length > 0) {
-        console.log(`🔍 [PROJECT TASKS] Found ${denSelfAssignedInProject.length} Den self-assigned tasks in project ${project.name}:`, 
-          denSelfAssignedInProject.map(t => ({ 
-            id: t.id, 
-            title: t.title, 
-            status: t.status, 
-            assignedBy: t.assignedBy,
-            assignedTo: t.assignedTo,
-            projectId: t.projectId
-          }))
-        );
-      }
-      
       // 🔍 DEBUG: Check if task is in this project
       if (projectTasks.some(t => t.title?.toLowerCase().includes("testing sub task"))) {
         console.log('🔍 [DEBUG] Task found in project:', {
@@ -282,79 +264,28 @@ export default function TasksScreen({
       }
 
       // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only, top-level)
-      const userIdStr = String(user.id);
       const myTasksParent = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
+        const userIdStr = String(user.id);
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
         const isCreatedByMe = String(task.assignedBy) === userIdStr;
-        const isTopLevel = isTopLevelTask(task);
-        const matches = isTopLevel && isDirectlyAssigned && isCreatedByMe;
-        
-        // Debug logging for Den's self-assigned tasks
-        if (isCreatedByMe && (String(task.assignedBy).includes('den') || task.title?.toLowerCase().includes('den'))) {
-          console.log('🔍 [MY_TASKS PARENT DEBUG] Task check:', {
-            title: task.title,
-            id: task.id,
-            projectId: task.projectId,
-            projectName: project.name,
-            assignedBy: task.assignedBy,
-            assignedByType: typeof task.assignedBy,
-            assignedTo,
-            assignedToTypes: assignedTo.map((id: any) => typeof id),
-            userId: user.id,
-            userIdStr,
-            isDirectlyAssigned,
-            isCreatedByMe,
-            isTopLevel,
-            matches,
-            status: task.status
-          });
-        }
-        
         // Include top-level tasks assigned to me AND created by me (self-assigned)
-        return matches;
+        return isTopLevelTask(task) && isDirectlyAssigned && isCreatedByMe;
       });
       
       // Get nested tasks I created and assigned to myself - filter from current project's tasks
       const myTasksNested = projectTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
-        const isNested = isNestedTask(task);
-        const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
-        const isCreated = String(task.assignedBy) === userIdStr;
-        const matches = isNested && isAssigned && isCreated;
-        
-        // Debug logging for Den's self-assigned nested tasks
-        if (isCreated && (String(task.assignedBy).includes('den') || task.title?.toLowerCase().includes('den'))) {
-          console.log('🔍 [MY_TASKS NESTED DEBUG] Task check:', {
-            title: task.title,
-            id: task.id,
-            projectId: task.projectId,
-            projectName: project.name,
-            assignedBy: task.assignedBy,
-            assignedTo,
-            userId: user.id,
-            userIdStr,
-            isNested,
-            isAssigned,
-            isCreated,
-            matches,
-            status: task.status
-          });
-        }
-        
-        return matches;
+        const userIdStr = String(user.id);
+        return isNestedTask(task) && // Is a nested task
+               Array.isArray(assignedTo) && 
+               assignedTo.some(id => String(id) === userIdStr) &&
+               String(task.assignedBy) === userIdStr; // Created by me
       });
       
       const myTasksAll = [...myTasksParent, ...myTasksNested];
-      
-      // Debug: Log all self-assigned tasks found for this project
-      if (myTasksAll.length > 0) {
-        console.log(`🔍 [MY_TASKS] Found ${myTasksAll.length} self-assigned tasks in project ${project.name}:`, 
-          myTasksAll.map(t => ({ id: t.id, title: t.title, status: t.status }))
-        );
-      }
       
       // Get INBOX tasks (tasks assigned to me by OTHERS only, not self-assigned)
       const inboxParentTasks = projectTasks.filter(task => {
@@ -520,11 +451,6 @@ export default function TasksScreen({
         // Use a Map to ensure unique tasks by ID
         const uniqueTasks = new Map();
         
-        // Debug: Log self-assigned tasks before adding
-        console.log(`🔍 [MY_WORK] Found ${myTasksAll.length} self-assigned tasks to include:`, 
-          myTasksAll.map(t => ({ id: t.id, title: t.title, status: t.status, projectId: t.projectId }))
-        );
-        
         // Add all my tasks (including self-assigned)
         myTasksAll.forEach(task => {
           uniqueTasks.set(task.id, task);
@@ -542,10 +468,7 @@ export default function TasksScreen({
           });
         }
         
-        const allTasks = Array.from(uniqueTasks.values());
-        console.log(`🔍 [MY_WORK] Total tasks after combining: ${allTasks.length} (${myTasksAll.length} self-assigned + ${inboxTasks.length} inbox + ${activeStatusFilter === "all" || activeStatusFilter === "done" ? outboxTasks.length : 0} outbox)`);
-        
-        return allTasks;
+        return Array.from(uniqueTasks.values());
       }
     });
 
@@ -555,62 +478,142 @@ export default function TasksScreen({
       const now = new Date();
       return dueDate < now;
     };
-    
-    // Debug: Log all tasks before filtering
-    console.log(`🔍 [FILTER DEBUG] Before status filtering: ${allProjectTasks.length} tasks in allProjectTasks`);
-    const userIdStr = String(user.id);
-    const denTasksBeforeFilter = allProjectTasks.filter(task => {
-      const assignedTo = task.assignedTo || [];
-      const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
-      const isCreated = String(task.assignedBy) === userIdStr;
-      return isAssigned && isCreated;
-    });
-    if (denTasksBeforeFilter.length > 0) {
-      console.log(`🔍 [FILTER DEBUG] Den's self-assigned tasks in allProjectTasks:`, 
-        denTasksBeforeFilter.map(t => ({ id: t.id, title: t.title, status: t.status, projectId: t.projectId }))
-      );
-    } else {
-      console.log(`🔍 [FILTER DEBUG] ⚠️ No Den self-assigned tasks found in allProjectTasks!`);
-      // Check if they exist in tasks array at all
-      const allDenTasks = tasks.filter(task => {
-        const assignedTo = task.assignedTo || [];
-        const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
-        const isCreated = String(task.assignedBy) === userIdStr;
-        return isAssigned && isCreated;
-      });
-      if (allDenTasks.length > 0) {
-        console.log(`🔍 [FILTER DEBUG] But found ${allDenTasks.length} Den self-assigned tasks in tasks array:`, 
-          allDenTasks.map(t => ({ 
-            id: t.id, 
-            title: t.title, 
-            status: t.status, 
-            projectId: t.projectId,
-            inUserProjects: userProjects.some(p => p.id === t.projectId)
-          }))
-        );
-      }
-    }
 
     // Apply status filters
     const filteredTasks = allProjectTasks.filter(task => {
-      // Debug: Check self-assigned tasks before filtering
-      const assignedTo = task.assignedTo || [];
-      const userIdStr = String(user.id);
-      const isAssigned = Array.isArray(assignedTo) && assignedTo.some((id: any) => String(id) === userIdStr);
-      const isCreated = String(task.assignedBy) === userIdStr;
-      const isSelfAssigned = isAssigned && isCreated;
+      // CATCH-ALL: Special handling for uncovered tasks (debugging tool)
+      if (buttonLabel === "Catch-All - Uncovered Tasks") {
+        const assignedTo = task.assignedTo || [];
+        const userIdStr = String(user.id);
+        const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+        const isCreatedByMe = String(task.assignedBy) === userIdStr;
+        
+        // Only include tasks related to the user
+        if (!isAssignedToMe && !isCreatedByMe) {
+          return false;
+        }
+        
+        const status = task.status || task.currentStatus || 'not_started';
+        const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.status === "rejected");
+        const isInInbox = isAssignedToMe && !isCreatedByMe;
+        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.status !== "rejected";
+        
+        // Helper to check if overdue
+        const isOverdue = (task: any) => {
+          const dueDate = new Date(task.dueDate);
+          const now = new Date();
+          return dueDate < now;
+        };
+        
+        // Exclude cancelled tasks
+        if (task.status === "cancelled" || status === "cancelled") {
+          return false;
+        }
+        
+        // Exclude declined tasks with 0% completion ONLY if user is the assignee (not the creator)
+        // For assigners: Declined tasks should appear in "Pending my review" so they can modify/reassign
+        // For assignees: Declined tasks with 0% completion don't appear (they rejected it)
+        if (task.status === "declined" && task.completionPercentage === 0 && isInInbox) {
+          return false; // Assignee rejected it, don't show in catch-all
+        }
+        // Note: Declined tasks created by me are covered by "Pending my review" button
+        
+        // Exclude tasks that match any of the 9 main button criteria (same logic as dashboard)
+        
+        // 1. My Action Required Now (my_work + overdue)
+        if (isInMyTasks || isInInbox) {
+          if (task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected") {
+            return false;
+          }
+        }
+        
+        // 2. Follow Up Now (outbox + overdue)
+        if (isInOutbox) {
+          if ((status === "in_progress" || status === "accepted") && isOverdue(task)) {
+            return false;
+          }
+        }
+        
+        // 3. New Requests (inbox + received)
+        if (isInInbox && status === "new" && !task.declinedReason && task.completionPercentage < 100) {
+          return false;
+        }
+        
+        // 4. Current Tasks (my_work + wip)
+        if (isInMyTasks || isInInbox) {
+          if (task.status === "rejected" && !isOverdue(task)) {
+            return false;
+          }
+          if (isInMyTasks) {
+            const isAcceptedOrInProgress = status === "accepted" || status === "in_progress" || status === "new";
+            if (isAcceptedOrInProgress && task.completionPercentage < 100 && !isOverdue(task) && status !== "approved") {
+              return false;
+            }
+          }
+          if (isInInbox) {
+            if ((status === "accepted" || status === "in_progress") && !isOverdue(task) && 
+                (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+                status !== "approved") {
+              return false;
+            }
+          }
+        }
+        
+        // 5. Pending my review (inbox + reviewing)
+        // Include tasks I created that are:
+        // - Submitted for review at 100% completion, OR
+        // - Declined at any completion % (so assigner can see what was declined and modify/reassign)
+        if (isCreatedByMe && 
+            ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
+             (task.status === "declined"))) {
+          return false;
+        }
+        
+        // 6. Pending Acceptance (outbox + assigned)
+        if (isInOutbox && status === "new" && !task.declinedReason) {
+          return false;
+        }
+        
+        // 7. Team Proceeding (outbox + wip)
+        if (isInOutbox) {
+          if (task.status === "rejected") {
+            return false;
+          }
+          if ((status === "accepted" || status === "in_progress") && !isOverdue(task) &&
+              (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+              status !== "approved") {
+            return false;
+          }
+        }
+        
+        // 8. Pending Approval (outbox + reviewing)
+        if (!isCreatedByMe && isAssignedToMe && task.completionPercentage === 100 && task.status === "submitted_for_review") {
+          return false;
+        }
+        
+        // 9. Work Accepted (my_work + done)
+        if (isInOutbox && status === "approved") {
+          return false;
+        }
+        if (isInMyTasks) {
+          if (isSelfAssignedOnly && task.completionPercentage === 100) {
+            return false;
+          }
+          if (status === "approved") {
+            return false;
+          }
+        }
+        if (isInInbox && status === "approved") {
+          return false;
+        }
+        
+        // If we get here, the task is not covered by any of the 9 main buttons
+        return true;
+      }
       
       // If no status filter, return all tasks from current section
       if (activeStatusFilter === "all") {
-        if (isSelfAssigned) {
-          console.log('🔍 [ALL FILTER] Self-assigned task will be shown:', {
-            id: task.id,
-            title: task.title,
-            status: task.status,
-            currentStatus: (task as any).currentStatus,
-            section: effectiveSectionFilter
-          });
-        }
         return true;
       }
       
@@ -629,28 +632,15 @@ export default function TasksScreen({
         
         // Use String() comparison for isCreatedByMe to handle type mismatches
         const isCreatedByMeStr = String(task.assignedBy) === userIdStr;
-        const isInMyTasks = (isAssignedToMe && isCreatedByMeStr) || (isCreatedByMeStr && (task.status === "rejected" || task.status === "declined"));
+        const isInMyTasks = (isAssignedToMe && isCreatedByMeStr) || (isCreatedByMeStr && task.status === "rejected");
         const isInInbox = isAssignedToMe && !isCreatedByMeStr;
         const isInMyTasksOrInbox = isInMyTasks || isInInbox;
-        
-        // Debug logging for self-assigned tasks
-        if (isSelfAssignedOnly && activeStatusFilter === "all") {
-          console.log('🔍 [SELF-ASSIGNED ALL FILTER] Task:', {
-            title: task.title,
-            id: task.id,
-            status: task.status,
-            assignedBy: task.assignedBy,
-            assignedTo: task.assignedTo,
-            isInMyTasks,
-            willShow: true // "all" filter shows everything
-          });
-        }
         
         // For "done" status: include outbox tasks (created by me, assigned to others)
         // For other statuses: "my_work" should ONLY show tasks assigned to me
         if (activeStatusFilter === "done") {
           // Allow outbox tasks (created by me but not assigned to me) for "done" status
-          const isInOutbox = isCreatedByMeStr && !isAssignedToMe && task.status !== "rejected" && task.status !== "declined";
+          const isInOutbox = isCreatedByMeStr && !isAssignedToMe && task.status !== "rejected";
           if (isInOutbox) {
             // This will be handled in the "done" filter below
           } else if (!isAssignedToMe) {
@@ -681,49 +671,23 @@ export default function TasksScreen({
           return isInMyTasksOrInbox &&
                  task.completionPercentage < 100 &&
                  isOverdue(task) &&
-                 task.status !== "rejected" &&
-                 task.status !== "declined";
+                 task.status !== "rejected";
         } else if (activeStatusFilter === "wip") {
           // WIP: Tasks I'm actively working on (assigned TO me)
-          // Includes: Self-assigned tasks + Tasks from others + Rejected/Declined tasks (needs rework)
+          // Includes: Self-assigned tasks + Tasks from others + Rejected tasks (needs rework)
           // Excludes: Tasks at 100% (complete), Overdue tasks, Review accepted tasks
-          // Rejected/Declined tasks are included and shown at top for rework
-          if ((task.status === "rejected" || task.status === "declined") && (isInMyTasks || isInInbox)) {
-            return true; // Include rejected/declined tasks in WIP
+          // Rejected tasks are included and shown at top for rework
+          if (task.status === "rejected" && (isInMyTasks || isInInbox)) {
+            return true; // Include rejected tasks in WIP
           }
           if (isInMyTasks) {
-            // Self-assigned WIP: Include self-assigned tasks that are:
-            // - "new" status (just created, auto-accepted but status not yet updated)
-            // - "accepted" status (explicitly accepted)
-            // - "in_progress" status (actively working)
-            // Exclude: completed (100%), overdue, or approved tasks
+            // Self-assigned WIP: Auto-accepted or explicitly accepted
             const isSelfAssigned = isCreatedByMe && isAssignedToMe;
-            const taskStatus = task.status || (task as any).currentStatus || 'new';
-            const isNewOrAcceptedOrInProgress = taskStatus === "new" || 
-                                                taskStatus === "accepted" || 
-                                                taskStatus === "in_progress";
-            
-            // Debug logging for self-assigned tasks
-            if (isSelfAssigned) {
-              console.log('🔍 [SELF-ASSIGNED WIP CHECK]', {
-                title: task.title,
-                status: taskStatus,
-                taskStatusField: task.status,
-                currentStatusField: (task as any).currentStatus,
-                completionPercentage: task.completionPercentage,
-                isNewOrAcceptedOrInProgress,
-                isOverdue: isOverdue(task),
-                willMatch: isNewOrAcceptedOrInProgress &&
-                          task.completionPercentage < 100 &&
-                          !isOverdue(task) &&
-                          taskStatus !== "approved"
-              });
-            }
-            
-            return isNewOrAcceptedOrInProgress &&
+            const isAcceptedOrInProgress = task.status === "accepted" || task.status === "in_progress" || (isSelfAssigned && (task.status === "accepted" || task.status === "in_progress"));
+            return isAcceptedOrInProgress &&
                    task.completionPercentage < 100 &&
                    !isOverdue(task) &&
-                   taskStatus !== "approved";
+                   task.status !== "approved";
           } else if (isInInbox) {
             // Inbox WIP: Must be accepted or in progress, can be at 100% if not yet submitted for review
             return (task.status === "accepted" || task.status === "in_progress") &&
@@ -738,7 +702,7 @@ export default function TasksScreen({
           // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
           // Use String() comparison for consistency
           const isCreatedByMeForOutbox = String(task.assignedBy) === userIdStr;
-          const isInOutbox = isCreatedByMeForOutbox && !isSelfAssignedOnly && task.status !== "rejected" && task.status !== "declined";
+          const isInOutbox = isCreatedByMeForOutbox && !isSelfAssignedOnly && task.status !== "rejected";
           
           // Debug logging for outbox and self-assigned tasks
           if ((isInOutbox || isInMyTasks) && task.completionPercentage === 100) {
@@ -794,19 +758,19 @@ export default function TasksScreen({
       // Apply exact filter logic for each button combination
       if (effectiveSectionFilter === "my_tasks") {
         // MY TASKS: Self-assigned tasks (I created AND assigned to myself)
-        // Also includes rejected/declined tasks I created (reassigned back to me)
+        // Also includes rejected tasks I created (reassigned back to me)
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
         const userIdStr = String(user.id);
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
         const isCreatedByMe = String(task.assignedBy) === userIdStr;
-        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && (task.status === "rejected" || task.status === "declined"));
+        const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.status === "rejected");
         
         if (!isInMyTasks) return false;
         
         if (activeStatusFilter === "rejected") {
-          // REJECTED: Tasks that were declined by assignees (before acceptance) or rejected after completion
-          return task.status === "rejected" || task.status === "declined";
+          // REJECTED: Tasks that were declined by assignees
+          return task.status === "rejected";
         } else if (activeStatusFilter === "wip") {
           // WIP: Self-assigned tasks in progress
           const isSelfAssigned = isCreatedByMe && isAssignedToMe;
@@ -836,17 +800,19 @@ export default function TasksScreen({
         const isInInbox = isAssignedToMe && !isCreatedByMe;
         
         // 🔍 SPECIAL CASE: Reviewing status - check FIRST before assignment check
-        // REVIEWING: Tasks I CREATED that others submitted for MY review OR declined by assignee
+        // REVIEWING: Tasks I CREATED that others submitted for MY review
         // This breaks inbox definition - we want tasks I created (not necessarily assigned to me)
         // NOTE: Includes both top-level tasks AND subtasks
         if (activeStatusFilter === "reviewing") {
           const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
           const isTopLevel = isTopLevelTask(task);
           const isNested = isNestedTask(task);
-          // Include tasks submitted for review (at 100%) OR tasks declined by assignee
+          // Include tasks I created that are:
+          // 1. Submitted for review at 100% completion, OR
+          // 2. Declined at any completion percentage (assigner needs to see what was declined)
           const matchesReviewing = isCreatedByMeForReview &&
-                 ((task.completionPercentage === 100 && task.status === "submitted_for_review") ||
-                  task.status === "declined");
+                 ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
+                  (task.status === "declined"));
           
           // Debug logging for ALL tasks at 100% that I created
           if (task.completionPercentage === 100 && isCreatedByMeForReview) {
@@ -940,16 +906,14 @@ export default function TasksScreen({
         return false;
       } else if (effectiveSectionFilter === "outbox") {
         // OUTBOX: Tasks I assigned TO others (not self-assigned)
-        // Excludes: Self-assigned tasks
-        // Note: Rejected/declined tasks are included in outbox (they need to be reassigned or reworked)
+        // Excludes: Self-assigned tasks, Rejected tasks
         const assignedTo = task.assignedTo || [];
         // 🔍 FIX: Use String() comparison to handle type mismatches
         const userIdStr = String(user.id);
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
         const isCreatedByMe = String(task.assignedBy) === userIdStr;
         const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
-        // Allow rejected/declined tasks in outbox - they can be shown in WIP filter for rework
-        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly;
+        const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.status !== "rejected";
         
         if (activeStatusFilter === "reviewing") {
           // REVIEWING: Tasks I submitted for review (that OTHERS assigned to ME)
@@ -965,48 +929,22 @@ export default function TasksScreen({
         if (activeStatusFilter === "assigned") {
           // ASSIGNED: Tasks I delegated to others waiting for their acceptance
           // Pending acceptance = status is "new" AND no declinedReason
-          // Exclude rejected/declined tasks from assigned filter
-          if (task.status === "rejected" || task.status === "declined") {
-            return false;
-          }
           const isPendingAcceptance = task.status === "new" && 
                                       !task.declinedReason;
           return isPendingAcceptance;
         } else if (activeStatusFilter === "wip") {
           // WIP: Tasks I assigned to others that they're working on
-          // Includes: 
-          // - Accepted tasks they're working on (not complete or not yet submitted)
-          // - Tasks at 100% that haven't been submitted for review yet
-          // - Tasks at 100% that are rejected (needs rework)
-          // - Rejected tasks (needs rework)
-          // Excludes: Approved tasks, overdue tasks, tasks submitted for review (those go to "reviewing" filter)
-          // NOTE: Declined tasks should NOT appear here - they appear in "Pending my review" only
-          // Exclude declined tasks - they should only appear in "Pending my review"
-          if (task.status === "declined") {
-            return false;
-          }
-          // Include rejected tasks (needs rework)
+          // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
+          // They've accepted it, working on it, not overdue, not complete/submitted
+          // OR rejected tasks (show at top for rework)
           if (task.status === "rejected") {
-            return true;
+            return true; // Include rejected tasks in WIP
           }
-          // Exclude tasks submitted for review - they should only appear in "reviewing" filter
-          if (task.status === "submitted_for_review") {
-            return false;
-          }
-          // Exclude approved tasks (they're done)
-          if (task.status === "approved") {
-            return false;
-          }
-          // Include tasks at 100% that are NOT submitted for review and NOT approved
-          // These are tasks where assignee completed work but hasn't submitted for review yet
-          if (task.completionPercentage === 100 && 
-              (task.status === "accepted" || task.status === "in_progress")) {
-            return true;
-          }
-          // Include regular in-progress tasks
           return (task.status === "accepted" || task.status === "in_progress") &&
                  !isOverdue(task) &&
-                 task.completionPercentage < 100;
+                 (task.completionPercentage < 100 ||
+                  (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+                 task.status !== "approved";
         } else if (activeStatusFilter === "done") {
           // DONE: Tasks I assigned to others that were completed and I accepted
           return task.status === "approved";
@@ -1024,28 +962,6 @@ export default function TasksScreen({
   });
 
   // Sort tasks: rejected tasks first, then by priority (high to low) then by due date (earliest first)
-    // Debug: Log final filtered tasks count and Den's self-assigned tasks
-    const denTasksFinal = filteredTasks.filter(task => {
-      const assignedTo = task.assignedTo || [];
-      const userIdStr = String(user.id);
-      const isAssigned = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
-      const isCreated = String(task.assignedBy) === userIdStr;
-      return isAssigned && isCreated;
-    });
-    console.log(`🔍 [FINAL FILTER] Total filtered tasks: ${filteredTasks.length}, Den's self-assigned: ${denTasksFinal.length}`);
-    if (denTasksFinal.length === 0 && denTasksBeforeFilter && denTasksBeforeFilter.length > 0) {
-      console.log(`🔍 [FINAL FILTER] ⚠️ ERROR: ${denTasksBeforeFilter.length} Den self-assigned tasks were filtered out!`, {
-        activeStatusFilter,
-        effectiveSectionFilter,
-        tasksLost: denTasksBeforeFilter.map(t => ({ 
-          id: t.id, 
-          title: t.title, 
-          status: t.status,
-          completionPercentage: t.completionPercentage
-        }))
-      });
-    }
-    
     return filteredTasks.sort((a, b) => {
     // First: rejected tasks go to the top
     const aIsRejected = a.status === "rejected";
@@ -1067,21 +983,6 @@ export default function TasksScreen({
   };
 
   let allTasks = getAllTasks();
-  
-  // Debug: Log tasks after getAllTasks()
-  const userIdStr = String(user.id);
-  const denTasksAfterGetAll = allTasks.filter(task => {
-    const assignedTo = task.assignedTo || [];
-    const isAssigned = Array.isArray(assignedTo) && assignedTo.some((id: any) => String(id) === userIdStr);
-    const isCreated = String(task.assignedBy) === userIdStr;
-    return isAssigned && isCreated;
-  });
-  console.log(`🔍 [AFTER GET_ALL] Total tasks: ${allTasks.length}, Den's self-assigned: ${denTasksAfterGetAll.length}`);
-  if (denTasksAfterGetAll.length > 0) {
-    console.log(`🔍 [AFTER GET_ALL] Den's self-assigned tasks:`, 
-      denTasksAfterGetAll.map(t => ({ id: t.id, title: t.title, status: t.status }))
-    );
-  }
   
   // Apply self-assigned filter if enabled
   // BUT: Don't apply to "reviewing" status - those are tasks assigned to others
@@ -1140,19 +1041,7 @@ export default function TasksScreen({
     const taskMap = new Map<string, { parent: Task; subtasks: Task[] }>();
     const standaloneSubtasks: Task[] = [];
     
-    console.log('🔍 [GROUPING] Grouping tasks. Total tasks:', allTasks.length);
-    const userIdStrForGrouping = String(user.id);
-    const denTasksInGrouping = allTasks.filter(task => {
-      const assignedTo = task.assignedTo || [];
-      const isAssigned = Array.isArray(assignedTo) && assignedTo.some((id: any) => String(id) === userIdStrForGrouping);
-      const isCreated = String(task.assignedBy) === userIdStrForGrouping;
-      return isAssigned && isCreated;
-    });
-    if (denTasksInGrouping.length > 0) {
-      console.log(`🔍 [GROUPING] Den's self-assigned tasks in grouping: ${denTasksInGrouping.length}`);
-    } else {
-      console.log(`🔍 [GROUPING] ⚠️ No Den self-assigned tasks in grouping!`);
-    }
+    console.log('🔍 Grouping tasks. Total tasks:', allTasks.length);
     
     allTasks.forEach(task => {
       const isSubTask = !!task.parentTaskId; // Check if has parent
@@ -1248,6 +1137,8 @@ export default function TasksScreen({
         })()}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <View className={cn(
@@ -1371,8 +1262,16 @@ export default function TasksScreen({
                     const parentNumber = taskNumber;
                     return (
                       <View key={group.parent.id} className="mb-1">
-                        {/* Parent task */}
-                        <TaskCard task={group.parent} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                        {/* Parent task with number */}
+                        <View className="flex-row items-start">
+                          <Text className={cn(
+                            "text-lg font-bold mr-2 mt-3",
+                            isDarkMode ? "text-slate-300" : "text-gray-700"
+                          )}>{parentNumber}.</Text>
+                          <View className="flex-1">
+                            <TaskCard task={group.parent} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                          </View>
+                        </View>
                         
                         {/* Subtasks indented below parent */}
                         {group.subtasks.length > 0 && (
@@ -1383,8 +1282,14 @@ export default function TasksScreen({
                             {group.subtasks.map((subtask) => {
                               taskNumber++;
                               return (
-                                <View key={subtask.id} className="mb-1">
-                                  <TaskCard task={subtask} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                                <View key={subtask.id} className="mb-1 flex-row items-start">
+                                  <Text className={cn(
+                                    "text-base font-semibold mr-2 mt-3",
+                                    isDarkMode ? "text-slate-400" : "text-gray-600"
+                                  )}>{taskNumber}.</Text>
+                                  <View className="flex-1">
+                                    <TaskCard task={subtask} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                                  </View>
                                 </View>
                               );
                             })}
@@ -1398,8 +1303,14 @@ export default function TasksScreen({
                   {groupedTasks.standalone.map((task) => {
                     taskNumber++;
                     return (
-                      <View key={task.id} className="mb-1">
-                        <TaskCard task={task} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                      <View key={task.id} className="mb-1 flex-row items-start">
+                        <Text className={cn(
+                          "text-lg font-bold mr-2 mt-3",
+                          isDarkMode ? "text-slate-300" : "text-gray-700"
+                        )}>{taskNumber}.</Text>
+                        <View className="flex-1">
+                          <TaskCard task={task} onNavigateToTaskDetail={onNavigateToTaskDetail} className="" />
+                        </View>
                       </View>
                     );
                   })}

@@ -9,6 +9,8 @@ import {
   Linking,
   RefreshControl,
   FlatList,
+  Image,
+  Dimensions,
 } from "react-native";
 import { ScrollView as GestureScrollView } from "react-native-gesture-handler";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,18 +28,18 @@ import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { TaskStatus, Priority, Task, TaskEditHistory } from "../types/buildtrack";
+import { TaskStatus, Priority, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
 import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
 import TaskCard from "../components/TaskCard";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import { uploadFileWithVerification } from "../api/fileUploadService";
 import { useUploadFailureStore } from "../state/uploadFailureStore";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
-import CachedImage from "../components/CachedImage";
-import { getCachedFileUri } from "../utils/useFileCache";
+import { usePhotoSelection } from "../utils/usePhotoSelection";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -45,13 +47,16 @@ interface TaskDetailScreenProps {
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string, actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign') => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void; // For navigating to sub-task details
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
-export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail }: TaskDetailScreenProps) {
+export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail, onNavigateToProfile, onNavigateToProjectPicker }: TaskDetailScreenProps) {
   const navigation = useNavigation<any>();
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
+  const { showPhotoSelectionDialog } = usePhotoSelection();
   const tasks = useTaskStore(state => state.tasks);
   const fetchTasks = useTaskStore(state => state.fetchTasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
@@ -76,7 +81,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const cancelTask = useTaskStore(state => state.cancelTask);
   const deleteTaskById = useTaskStore(state => state.deleteTaskById);
   const archiveTask = useTaskStore(state => state.archiveTask);
-  const fetchTaskEditHistory = useTaskStore(state => state.fetchTaskEditHistory);
   const { getUserById, getAllUsers } = useUserStore();
   const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getCompanyBanner } = useCompanyStore();
@@ -90,9 +94,10 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const [progressLogSortOrder, setProgressLogSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedUpdateIds, setExpandedUpdateIds] = useState<Set<string>>(new Set());
   const [isAssigneesExpanded, setIsAssigneesExpanded] = useState(false);
+  const [highlightedPhotoUri, setHighlightedPhotoUri] = useState<string | null>(null);
+  const activityScrollViewRef = useRef<ScrollView>(null);
+  const activityPositionsRef = useRef<Map<string, number>>(new Map());
   // Photo viewer navigation is now handled via navigation to PhotoViewerScreen
-  const [editHistory, setEditHistory] = useState<TaskEditHistory[]>([]);
-  const [showEditHistory, setShowEditHistory] = useState(false);
   
 
   // Get the task - could be a top-level task or a sub-task
@@ -185,40 +190,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       }
     }
   }, [taskId, subTaskId, user?.id, markTaskAsRead]);
-
-  // Fetch edit history when task loads
-  useEffect(() => {
-    const loadEditHistory = async () => {
-      const taskIdToLoad = subTaskId || taskId;
-      if (taskIdToLoad) {
-        try {
-          console.log('📚 Fetching edit history for task:', taskIdToLoad);
-          const history = await fetchTaskEditHistory(taskIdToLoad);
-          console.log('📚 Edit history fetched:', history.length, 'entries');
-          setEditHistory(history);
-        } catch (error) {
-          console.error('Error fetching edit history:', error);
-        }
-      }
-    };
-    loadEditHistory();
-  }, [taskId, subTaskId, fetchTaskEditHistory]);
-
-  // Refresh edit history when screen comes into focus (e.g., after editing)
-  useFocusEffect(
-    useCallback(() => {
-      const taskIdToLoad = subTaskId || taskId;
-      if (taskIdToLoad) {
-        console.log('🔄 Screen focused, refreshing edit history for task:', taskIdToLoad);
-        fetchTaskEditHistory(taskIdToLoad).then((history) => {
-          console.log('🔄 Edit history refreshed:', history.length, 'entries');
-          setEditHistory(history);
-        }).catch((error) => {
-          console.error('Error refreshing edit history:', error);
-        });
-      }
-    }, [taskId, subTaskId, fetchTaskEditHistory])
-  );
 
   if (!user || !task) {
     return (
@@ -532,6 +503,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
   const handleAttachmentPress = async (uri: string) => {
     const isPDF = uri.toLowerCase().endsWith('.pdf') || uri.includes('application/pdf');
     
+    // For PDFs, always open immediately (no highlight needed)
+    if (isPDF) {
     // Check if this file is associated with an activity/update
     const relatedActivityId = fileToActivityMap[uri];
     if (relatedActivityId) {
@@ -542,6 +515,34 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         setExpandedUpdateIds(newExpanded);
       }
       
+        // Scroll to the activity after a short delay to allow expansion
+        setTimeout(() => {
+          const activityPosition = activityPositionsRef.current.get(relatedActivityId);
+          if (activityPosition !== undefined && activityScrollViewRef.current) {
+            const scrollOffset = Math.max(0, activityPosition - 20);
+            activityScrollViewRef.current.scrollTo({
+              y: scrollOffset,
+              animated: true,
+            });
+          }
+        }, 100);
+      }
+      
+      // Open PDF directly
+      Linking.openURL(uri).catch(() => {
+        Alert.alert("Error", "Unable to open PDF file");
+      });
+      return;
+    }
+    
+    // For images: First press highlights, second press opens viewer
+    if (highlightedPhotoUri === uri) {
+      // Second press on the same photo - navigate to PhotoViewerScreen
+      setHighlightedPhotoUri(null); // Clear highlight
+      
+      // Check if this file is associated with an activity/update
+      const relatedActivityId = fileToActivityMap[uri];
+      if (relatedActivityId) {
       // Find the activity and get all its photos
       const allActivities = task.activities || task.updates.map((update: any) => ({
         id: update.id,
@@ -558,9 +559,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
       if (activity) {
         // Get photos from activity.data.photos
         const photos = (activity.data as any)?.photos || [];
-        console.log('Activity photos found:', photos.length, photos);
         const photoIndex = photos.indexOf(uri);
-        console.log('Clicked photo index:', photoIndex, 'URI:', uri);
         
         if (photoIndex !== -1 && photos.length > 0) {
           // Navigate to PhotoViewerScreen
@@ -569,53 +568,72 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             initialIndex: photoIndex,
             activityInfo: activity,
           });
-        } else {
-          // Fallback: just show the single image
-          navigation.navigate("PhotoViewer", {
-            photos: [uri],
-            initialIndex: 0,
-            activityInfo: null,
-          });
+            return;
+          }
         }
-      } else {
+      }
+      
         // Fallback: just show the single image
         navigation.navigate("PhotoViewer", {
           photos: [uri],
           initialIndex: 0,
           activityInfo: null,
         });
-      }
     } else {
-      // File not associated with an activity (e.g., task attachment)
-      if (isPDF) {
-        // Get cached PDF URI (downloads if not cached)
-        // Cached URI will have file:// protocol for local files
-        try {
-          const cachedUri = await getCachedFileUri(uri, 'application/pdf');
-          // Open cached PDF (local file:// URI) or original remote URL
-          Linking.openURL(cachedUri).catch(() => {
-            Alert.alert("Error", "Unable to open PDF file");
-          });
-        } catch (error) {
-          console.error('Error getting cached PDF:', error);
-          // Fallback to original URI
-          Linking.openURL(uri).catch(() => {
-            Alert.alert("Error", "Unable to open PDF file");
-          });
+      // First press - highlight the photo and expand related activity
+      setHighlightedPhotoUri(uri);
+      
+      // Check if this file is associated with an activity/update
+      const relatedActivityId = fileToActivityMap[uri];
+      if (relatedActivityId) {
+        // Expand the related activity in the Activities section
+        const newExpanded = new Set(expandedUpdateIds);
+        if (!newExpanded.has(relatedActivityId)) {
+          newExpanded.add(relatedActivityId);
+          setExpandedUpdateIds(newExpanded);
         }
-      } else {
-        // Navigate to PhotoViewerScreen without activity info
-        navigation.navigate("PhotoViewer", {
-          photos: [uri],
-          initialIndex: 0,
-          activityInfo: null,
-        });
+        
+        // Scroll to the activity after a short delay to allow expansion
+        setTimeout(() => {
+          const activityPosition = activityPositionsRef.current.get(relatedActivityId);
+          if (activityPosition !== undefined && activityScrollViewRef.current) {
+            // Scroll to the activity, but try to position it at the top
+            // If the position is too close to the top, scroll to 0
+            const scrollOffset = Math.max(0, activityPosition - 20); // 20px padding from top
+            activityScrollViewRef.current.scrollTo({
+              y: scrollOffset,
+              animated: true,
+            });
+          }
+        }, 100);
       }
     }
   };
 
 
   const handleAddPhotos = async () => {
+    if (!user || !task) return;
+
+    // Use unified photo selection utility
+    showPhotoSelectionDialog({
+      onPhotosSelected: (photos) => {
+        // Navigate to photo selection screen with the selected photos
+        navigation.navigate("PhotoSelection", {
+          taskId: task.id,
+          subTaskId: subTaskId,
+          companyId: user.companyId,
+          userId: user.id,
+          initialCompletionPercentage: task.completionPercentage || 0,
+          initialPhotos: photos,
+        });
+      },
+      allowClipboard: true,
+      allowMultiple: true,
+    });
+  };
+
+  // Old implementation - keeping for reference but not used
+  const handleAddPhotos_OLD = async () => {
     if (!user || !task) return;
 
     Alert.alert(
@@ -628,30 +646,108 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             try {
               console.log('📸 [Task Detail] Taking photo from camera...');
               
-              const results: UploadResults = await pickAndUploadImages(
-                {
+              const { status } = await ImagePicker.requestCameraPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                allowsEditing: false,
+                quality: 0.8,
+              });
+
+              if (result.canceled || !result.assets || result.assets.length === 0) {
+                return;
+              }
+
+              const photoUri = result.assets[0].uri;
+              const photoFileName = result.assets[0].fileName || `photo_${Date.now()}.jpg`;
+              
+              console.log('📸 Photo selected, showing annotation prompt...');
+              
+              // Ask if user wants to annotate
+              Alert.alert(
+                "Annotate Photo?",
+                "Would you like to draw or add comments on this photo before uploading?",
+                [
+                  {
+                    text: "Skip",
+                    style: "cancel",
+                    onPress: async () => {
+                      // Upload the selected photo directly without annotation
+                      try {
+                        const result = await uploadFileWithVerification({
+                          file: {
+                            uri: photoUri,
+                            name: photoFileName,
+                            type: 'image/jpeg',
+                          },
                   entityType: 'task-update',
                   entityId: task.id,
                   companyId: user.companyId,
                   userId: user.id,
-                },
-                'camera'
-              );
+                        });
 
-              if (results.successful.length > 0) {
-                console.log(`✅ ${results.successful.length} photo(s) uploaded and ready`);
-                // Navigate to update progress screen after photos are added
+                        if (result.success && result.file) {
                 navigation.navigate("UpdateProgress", {
                   taskId: task.id,
                   subTaskId: subTaskId,
                   initialCompletionPercentage: task.completionPercentage || 0,
                 });
-              }
+                        } else {
+                          Alert.alert("Upload Failed", result.error || "Failed to upload photo");
+                        }
+                      } catch (error: any) {
+                        console.error('Failed to upload photo:', error);
+                        Alert.alert("Error", error.message || "Failed to upload photo");
+                      }
+                    },
+                  },
+                  {
+                    text: "Annotate",
+                    onPress: () => {
+                      // Navigate to annotation screen
+                      navigation.navigate("PhotoAnnotation", {
+                        photoUri,
+                        onSave: async (annotatedUri: string) => {
+                          // Upload annotated photo directly
+                          try {
+                            const fileName = `annotated_${Date.now()}.jpg`;
+                            const result = await uploadFileWithVerification({
+                              file: {
+                                uri: annotatedUri,
+                                name: fileName,
+                                type: 'image/jpeg',
+                              },
+                              entityType: 'task-update',
+                              entityId: task.id,
+                              companyId: user.companyId,
+                              userId: user.id,
+                            });
 
-              if (results.failed.length > 0) {
-                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
-              }
-            } catch (error) {
+                            if (result.success && result.file) {
+                              // Navigate to update progress screen with the uploaded photo
+                              navigation.navigate("UpdateProgress", {
+                                taskId: task.id,
+                                subTaskId: subTaskId,
+                                initialCompletionPercentage: task.completionPercentage || 0,
+                              });
+                            } else {
+                              Alert.alert("Upload Failed", result.error || "Failed to upload annotated photo");
+                            }
+                          } catch (error: any) {
+                            console.error('Failed to upload annotated photo:', error);
+                            Alert.alert("Error", error.message || "Failed to upload annotated photo");
+                          }
+                        },
+                      });
+                    },
+                  },
+                ]
+              );
+            } catch (error: any) {
               console.error('❌ [Task Detail] Failed to take photo:', error);
               Alert.alert("Error", "Failed to take photo");
             }
@@ -663,30 +759,108 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
             try {
               console.log('📚 [Task Detail] Selecting photos from library...');
               
-              const results: UploadResults = await pickAndUploadImages(
-                {
+              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              if (status !== 'granted') {
+                Alert.alert('Permission Denied', 'Photo library permission is required.');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
+                allowsMultipleSelection: false,
+                quality: 0.8,
+              });
+
+              if (result.canceled || !result.assets || result.assets.length === 0) {
+                return;
+              }
+
+              const photoUri = result.assets[0].uri;
+              const photoFileName = result.assets[0].fileName || `photo_${Date.now()}.jpg`;
+              
+              console.log('📸 Photo selected, showing annotation prompt...');
+              
+              // Ask if user wants to annotate
+              Alert.alert(
+                "Annotate Photo?",
+                "Would you like to draw or add comments on this photo before uploading?",
+                [
+                  {
+                    text: "Skip",
+                    style: "cancel",
+                    onPress: async () => {
+                      // Upload the selected photo directly without annotation
+                      try {
+                        const result = await uploadFileWithVerification({
+                          file: {
+                            uri: photoUri,
+                            name: photoFileName,
+                            type: 'image/jpeg',
+                          },
                   entityType: 'task-update',
                   entityId: task.id,
                   companyId: user.companyId,
                   userId: user.id,
-                },
-                'library'
-              );
+                        });
 
-              if (results.successful.length > 0) {
-                console.log(`✅ ${results.successful.length} photo(s) uploaded and ready`);
-                // Navigate to update progress screen after photos are added
+                        if (result.success && result.file) {
                 navigation.navigate("UpdateProgress", {
                   taskId: task.id,
                   subTaskId: subTaskId,
                   initialCompletionPercentage: task.completionPercentage || 0,
                 });
-              }
+                        } else {
+                          Alert.alert("Upload Failed", result.error || "Failed to upload photo");
+                        }
+                      } catch (error: any) {
+                        console.error('Failed to upload photo:', error);
+                        Alert.alert("Error", error.message || "Failed to upload photo");
+                      }
+                    },
+                  },
+                  {
+                    text: "Annotate",
+                    onPress: () => {
+                      // Navigate to annotation screen
+                      navigation.navigate("PhotoAnnotation", {
+                        photoUri,
+                        onSave: async (annotatedUri: string) => {
+                          // Upload annotated photo directly
+                          try {
+                            const fileName = `annotated_${Date.now()}.jpg`;
+                            const result = await uploadFileWithVerification({
+                              file: {
+                                uri: annotatedUri,
+                                name: fileName,
+                                type: 'image/jpeg',
+                              },
+                              entityType: 'task-update',
+                              entityId: task.id,
+                              companyId: user.companyId,
+                              userId: user.id,
+                            });
 
-              if (results.failed.length > 0) {
-                Alert.alert("Upload Failed", `${results.failed.length} photo(s) failed to upload. Please try again.`);
-              }
-            } catch (error) {
+                            if (result.success && result.file) {
+                              // Navigate to update progress screen with the uploaded photo
+                              navigation.navigate("UpdateProgress", {
+                                taskId: task.id,
+                                subTaskId: subTaskId,
+                                initialCompletionPercentage: task.completionPercentage || 0,
+                              });
+                            } else {
+                              Alert.alert("Upload Failed", result.error || "Failed to upload annotated photo");
+                            }
+                          } catch (error: any) {
+                            console.error('Failed to upload annotated photo:', error);
+                            Alert.alert("Error", error.message || "Failed to upload annotated photo");
+                          }
+                        },
+                      });
+                    },
+                  },
+                ]
+              );
+            } catch (error: any) {
               console.error('❌ [Task Detail] Failed to pick images:', error);
               Alert.alert("Error", "Failed to pick images");
             }
@@ -721,6 +895,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
         title={task?.title || t.tasks.taskDetails}
         showBackButton={true}
         onBackPress={onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       {/* Sub-task indicator - Shown when viewing a sub-task */}
@@ -1091,105 +1267,6 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
               {task.description}
             </Text>
           </View>
-
-          {/* Edit History Section - Inside task information card */}
-          {editHistory.length > 0 && (
-            <>
-              <View className="border-t border-gray-200 my-4" />
-              <Pressable
-                onPress={() => setShowEditHistory(!showEditHistory)}
-                className="flex-row items-center justify-between mb-2 active:opacity-70"
-              >
-                <View className="flex-row items-center">
-                  <Ionicons name="time-outline" size={20} color="#6b7280" style={{ marginRight: 8 }} />
-                  <Text className="text-lg font-semibold text-gray-900">{t.taskDetail.editHistory}</Text>
-                  {task.hasUnreadChanges && (
-                    <View className="ml-2 w-2 h-2 bg-blue-500 rounded-full" />
-                  )}
-                </View>
-                <View className="flex-row items-center">
-                  <Text className="text-sm text-gray-500 mr-1">{editHistory.length} {editHistory.length === 1 ? 'edit' : 'edits'}</Text>
-                  <Ionicons 
-                    name={showEditHistory ? "chevron-up" : "chevron-down"} 
-                    size={16} 
-                    color="#6b7280" 
-                  />
-                </View>
-              </Pressable>
-
-              {showEditHistory && (
-                <View className="mt-2">
-                  {editHistory.map((edit, index) => {
-                    const editor = getUserById(edit.editedBy);
-                    return (
-                      <View 
-                        key={edit.id} 
-                        className={index < editHistory.length - 1 ? "mb-4 pb-4 border-b border-gray-100" : ""}
-                      >
-                        <View className="flex-row justify-between mb-2">
-                          <View className="flex-row items-center">
-                            <Ionicons name="pencil" size={16} color="#6b7280" style={{ marginRight: 8 }} />
-                            <Text className="font-medium text-gray-900">
-                              {t.taskDetail.editedBy} {editor?.name || 'Unknown'}
-                            </Text>
-                          </View>
-                          <Text className="text-gray-500 text-sm">
-                            {dateFormatter.formatDateTime(edit.editedAt)}
-                          </Text>
-                        </View>
-                        
-                        {edit.editReason && (
-                          <View className="mb-2 p-2 bg-blue-50 rounded-lg">
-                            <Text className="text-sm font-medium text-gray-700 mb-1">{t.taskDetail.editReason}:</Text>
-                            <Text className="text-sm text-gray-600">{edit.editReason}</Text>
-                          </View>
-                        )}
-
-                        <View className="space-y-2">
-                          {Object.entries(edit.changes).map(([field, change]) => {
-                            const fieldLabel = field === 'dueDate' ? t.tasks.dueDate :
-                                              field === 'assignedTo' ? t.taskDetail.assignees :
-                                              field === 'taskReference' ? t.createTask.taskReference :
-                                              field.charAt(0).toUpperCase() + field.slice(1);
-                            
-                            const formatValue = (value: any, fieldName: string) => {
-                              if (fieldName === 'dueDate') {
-                                return value ? dateFormatter.formatDateShort(value) : t.projects.noLocation;
-                              }
-                              if (fieldName === 'assignedTo' && Array.isArray(value)) {
-                                return value.map(id => getUserById(id)?.name || id).join(', ') || t.taskDetail.noAssignees;
-                              }
-                              if (fieldName === 'priority' || fieldName === 'category') {
-                                return String(value).charAt(0).toUpperCase() + String(value).slice(1);
-                              }
-                              return String(value || '');
-                            };
-
-                            return (
-                              <View key={field} className="p-2 bg-gray-50 rounded">
-                                <Text className="text-sm font-medium text-gray-700 mb-1">
-                                  {fieldLabel}
-                                </Text>
-                                <View className="flex-row items-center">
-                                  <Text className="text-sm text-red-600 line-through mr-2">
-                                    {formatValue(change.old, field)}
-                                  </Text>
-                                  <Ionicons name="arrow-forward" size={14} color="#6b7280" />
-                                  <Text className="text-sm text-green-600 ml-2 font-medium">
-                                    {formatValue(change.new, field)}
-                                  </Text>
-                                </View>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </>
-          )}
         </View>
 
         {/* All Files Section - Shows all attachments and photos from activities/updates */}
@@ -1207,6 +1284,8 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 {allTaskFiles.map((file, index) => {
                   const isPDF = file.toLowerCase().endsWith('.pdf') || file.includes('application/pdf');
                   
+                  const isHighlighted = highlightedPhotoUri === file;
+                  
                   return (
                     <Pressable
                       key={index}
@@ -1220,12 +1299,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                           <Text className="text-sm text-red-700 font-semibold mt-1">PDF</Text>
                         </View>
                       ) : (
-                        // Image preview
-                        <CachedImage
-                          uri={file}
-                          className="w-28 h-28 rounded-xl"
-                          resizeMode="cover"
-                        />
+                        // Image preview with highlight border
+                        <View className={cn(
+                          "w-28 h-28 rounded-xl overflow-hidden",
+                          isHighlighted ? "border-4 border-blue-500" : "border-2 border-gray-200"
+                        )}>
+                          <Image
+                            source={{ uri: file }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                          />
+                        </View>
                       )}
                       
                       {/* Preview indicator */}
@@ -1314,7 +1398,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
           {/* Activities List - Expandable (unified from task_activities) - Dynamic height container for up to 10 collapsed activities */}
           {(task.activities?.length || task.updates.length) > 0 ? (
             <View style={{ margin: 0, padding: 0 }}>
-              {(() => {
+                {(() => {
                 // Get all activities
                 const allActivities = task.activities || task.updates.map((update: any) => ({
                   id: update.id,
@@ -1410,15 +1494,15 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                 
                 // Render function for each activity item
                 const renderActivityItem = ({ item: activity }: { item: any }) => {
-                  // Use activities if available, otherwise fall back to updates
-                  const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
-                  const update = activity;
-                  const activityUserId = activity.userId || update.userId;
-                  const activityUser = getUserById(activityUserId);
-                  const isExpanded = expandedUpdateIds.has(activity.id);
-                  
-                  // Get activity type icon and color
-                  const getActivityIcon = (type: string) => {
+                // Use activities if available, otherwise fall back to updates
+                const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
+                const update = activity;
+                const activityUserId = activity.userId || update.userId;
+                const activityUser = getUserById(activityUserId);
+                const isExpanded = expandedUpdateIds.has(activity.id);
+                
+                // Get activity type icon and color
+                const getActivityIcon = (type: string) => {
                   switch (type) {
                     case 'creation': return 'add-circle';
                     case 'assignment': return 'person-add';
@@ -1449,11 +1533,109 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     default: return '#6b7280';
                   }
                 };
+
+                // Format activity type text with dynamic information
+                const getActivityTypeText = (type: string, activityData: any, activity: any) => {
+                  const data = activityData || {};
+                  
+                  switch (type) {
+                    case 'metadata_edit': {
+                      const changes = data.changes || {};
+                      const changedFields = Object.keys(changes);
+                      
+                      if (changedFields.length === 0) {
+                        return 'Task info updated';
+                      }
+                      
+                      // Format field names to be human-readable
+                      const formatFieldName = (field: string): string => {
+                        // Convert camelCase to Title Case
+                        return field
+                          .replace(/([A-Z])/g, ' $1')
+                          .replace(/^./, (str) => str.toUpperCase())
+                          .trim();
+                      };
+                      
+                      const fieldNames = changedFields.map(formatFieldName);
+                      
+                      if (fieldNames.length === 1) {
+                        return `${fieldNames[0]} updated`.trim();
+                      } else if (fieldNames.length <= 3) {
+                        return `${fieldNames.join(', ')} updated`.trim();
+                      } else {
+                        return `${fieldNames.slice(0, 2).join(', ')} +${fieldNames.length - 2} more updated`.trim();
+                      }
+                    }
+                    
+                    case 'progress_update': {
+                      const completion = activity.completionPercentage ?? data.completionPercentage ?? 0;
+                      return `Progress updated. Comp. ${completion}%`.trim();
+                    }
+                    
+                    case 'status_change': {
+                      const toStatus = data.toStatus || activity.status || '';
+                      const formatStatus = (s: string) => {
+                        if (!s) return '';
+                        return s.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()).trim();
+                      };
+                      return `status: ${formatStatus(toStatus)}`.trim();
+                    }
+                    
+                    case 'assignment': {
+                      const assignedTo = data.assignedTo || [];
+                      if (Array.isArray(assignedTo) && assignedTo.length > 0) {
+                        const assigneeNames = assignedTo
+                          .map((userId: string) => getUserById(userId)?.name)
+                          .filter(Boolean)
+                          .join(', ');
+                        return assigneeNames ? `Task assigned to ${assigneeNames}`.trim() : 'Task assigned';
+                      }
+                      return 'Task assigned';
+                    }
+                    
+                    case 'creation': {
+                      // CreationData has assignedBy field
+                      const assignedBy = data.assignedBy || activity.userId;
+                      const assigner = assignedBy ? getUserById(assignedBy) : null;
+                      return `Task created by ${assigner?.name || 'Unknown'}`.trim();
+                    }
+                    
+                    case 'cancellation': {
+                      // CancellationData doesn't have assignedBy, use activity.userId (the person who cancelled)
+                      const cancelledBy = activity.userId;
+                      const assigner = cancelledBy ? getUserById(cancelledBy) : null;
+                      return `Task cancelled by ${assigner?.name || 'Unknown'}`.trim();
+                    }
+                    
+                    case 'review_submission':
+                      return 'Submitted for review';
+                    
+                    case 'review_acceptance':
+                      return 'Works accepted';
+                    
+                    case 'review_rejection':
+                      return 'Works rejected';
+                    
+                    case 'assigner_comment':
+                      return 'Comments';
+                    
+                    default:
+                      return (type?.replace(/_/g, " ") || type).trim();
+                  }
+                };
                 
-                  return (
-                    <View 
-                      className="border-l-4 pl-4" 
-                      style={{ borderLeftColor: getActivityColor(activityType) }}
+                return (
+                    <Pressable 
+                      onPress={() => {
+                        const newExpanded = new Set(expandedUpdateIds);
+                        if (isExpanded) {
+                          newExpanded.delete(activity.id);
+                        } else {
+                          newExpanded.add(activity.id);
+                        }
+                        setExpandedUpdateIds(newExpanded);
+                      }}
+                      className="active:opacity-70"
                       onLayout={(event) => {
                         const { height } = event.nativeEvent.layout;
                         if (height > 0 && height !== measuredHeights.get(activity.id)) {
@@ -1465,60 +1647,110 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         }
                       }}
                     >
-                    <Pressable 
-                      onPress={() => {
-                        const newExpanded = new Set(expandedUpdateIds);
-                        if (isExpanded) {
-                          newExpanded.delete(activity.id);
-                        } else {
-                          newExpanded.add(activity.id);
-                        }
-                        setExpandedUpdateIds(newExpanded);
-                      }}
-                      className="flex-row items-center justify-between active:opacity-70"
-                    >
-                      <View className="flex-1">
-                        <View className="flex-row items-center">
-                          <View className="flex-row items-center" style={{ flex: 1 }}>
+                      <View 
+                        className="border-l-4 pl-2" 
+                        style={{ borderLeftColor: getActivityColor(activityType) }}
+                      >
+                        {/* Header: Collapsed (single line) or Expanded (with full content) */}
+                        {!isExpanded ? (
+                          /* Collapsed: Single line with fixed-width activity field and date only */
+                          <View className="flex-row items-center" style={{ gap: 4 }}>
+                            {/* Icon */}
                             <Ionicons 
                               name={getActivityIcon(activityType) as any} 
                               size={16} 
                               color={getActivityColor(activityType)} 
-                              style={{ marginRight: 6 }}
                             />
-                            <Text className="font-medium text-gray-900">
+                            
+                            {/* User */}
+                            <Text 
+                              className="font-medium text-gray-900 text-base"
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              style={{ width: 40, flexShrink: 0 }}
+                            >
                               {activityUser?.name || "Unknown User"}
                             </Text>
-                          </View>
-                          <View className="absolute left-0 right-0 items-center pointer-events-none" style={{ zIndex: 0 }}>
-                            <Text className="text-xs text-gray-500">
-                              {dateFormatter.formatDateShort(activity.timestamp || update.timestamp)} {dateFormatter.formatTime(activity.timestamp || update.timestamp)}
+                            
+                            {/* Spacer for long usernames - reduced spacing */}
+                            <View style={{ width: 5 }} />
+                            
+                            {/* Activity Type - Fixed width with truncation */}
+                            <Text 
+                              className="font-medium text-base text-gray-500" 
+                              numberOfLines={1} 
+                              ellipsizeMode="tail" 
+                              style={{ width: 180, flexShrink: 0 }}
+                            >
+                              {getActivityTypeText(activityType, activity.data, activity)}
+                            </Text>
+                            
+                            {/* Spacer - will take remaining space */}
+                            <View style={{ flex: 1 }} />
+                            
+                            {/* Date only (no time) */}
+                            <Text className="font-medium text-base text-gray-400">
+                              {(() => {
+                                const timestamp = activity.timestamp || update.timestamp;
+                                const date = new Date(timestamp);
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                const year = String(date.getFullYear()).slice(-2);
+                                return `${month}/${day}/${year}`;
+                              })()}
                             </Text>
                           </View>
-                          <View className="flex-row items-center" style={{ flex: 1, justifyContent: 'flex-end', zIndex: 1 }}>
-                            {/* Show progress % on right side - Only for activities that actually update progress */}
-                            {/* Exclude metadata_edit, creation, assignment, etc. that don't affect completion % */}
-                            {activityType !== 'metadata_edit' && 
-                             activityType !== 'creation' && 
-                             activityType !== 'assignment' &&
-                             (activity.completionPercentage !== undefined || activityType === 'assigner_comment') && (
-                              <Text className="text-base font-bold text-gray-500 mr-2">
-                                {activityType === 'assigner_comment' 
-                                  ? (activity.completionPercentage ?? (activity.data as any)?.completionPercentage ?? 0)
-                                  : (activity.completionPercentage !== undefined && activity.completionPercentage !== null 
-                                      ? activity.completionPercentage 
-                                      : 0)}%
+                        ) : (
+                          /* Expanded: Full activity text, then date-time on second line */
+                          <View>
+                            {/* First line: Icon, User, Activity Type (full width) */}
+                            <View className="flex-row items-center" style={{ gap: 4 }}>
+                              {/* Icon */}
+                              <Ionicons 
+                                name={getActivityIcon(activityType) as any} 
+                                size={16} 
+                                color={getActivityColor(activityType)} 
+                              />
+                              
+                              {/* User */}
+                              <Text 
+                                className="font-medium text-gray-900 text-base"
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={{ width: 40, flexShrink: 0 }}
+                              >
+                                {activityUser?.name || "Unknown User"}
                               </Text>
-                            )}
-                            <Ionicons 
-                              name={isExpanded ? "chevron-up" : "chevron-down"} 
-                              size={20} 
-                              color="#6b7280" 
-                            />
+                              
+                              {/* Spacer for long usernames - reduced spacing */}
+                              <View style={{ width: 5 }} />
+                              
+                              {/* Activity Type - Full content, no truncation */}
+                              <Text 
+                                className="font-medium text-base text-gray-500" 
+                                style={{ flex: 1, flexShrink: 1 }}
+                              >
+                                {getActivityTypeText(activityType, activity.data, activity)}
+                              </Text>
+                            </View>
+                            
+                            {/* Second line: Full date-time aligned right */}
+                            <View className="flex-row justify-end mt-1">
+                              <Text className="font-medium text-base text-gray-400">
+                                {(() => {
+                                  const timestamp = activity.timestamp || update.timestamp;
+                                  const date = new Date(timestamp);
+                                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                                  const day = String(date.getDate()).padStart(2, '0');
+                                  const year = String(date.getFullYear()).slice(-2);
+                                  const hours = String(date.getHours()).padStart(2, '0');
+                                  const minutes = String(date.getMinutes()).padStart(2, '0');
+                                  return `${month}/${day}/${year} ${hours}:${minutes}`;
+                                })()}
+                              </Text>
+                            </View>
                           </View>
-                        </View>
-                      </View>
-                    </Pressable>
+                        )}
 
                     {/* Expanded Content - Standardized Format for All Activity Types */}
                     {isExpanded && (() => {
@@ -1548,23 +1780,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       
                       return (
                         <View className="mt-3">
-                          {/* 1. Activity Type Label - Always shown */}
-                          {/* For metadata_edit, show "Task Information" instead of "Metadata Edit" */}
-                          <Text className="text-base font-medium text-gray-900 capitalize mb-2">
-                            {activityType === 'metadata_edit' 
-                              ? 'Task Information' 
-                              : (activityType?.replace(/_/g, " ") || activityType)}
-                          </Text>
+                          {/* Activity Type is now shown in the header, so we skip it here */}
                           
-                          {/* 2. Action/Description - Always shown if exists */}
+                          {/* Action/Description - Always shown if exists */}
                           {actionText && (
-                            <Text className="text-gray-700 mb-2">{actionText}</Text>
+                            <Text className="font-medium text-base text-gray-700 mb-2">{actionText}</Text>
                           )}
                           
                           {/* 2b. Reason - Shown if available (for declined, rejected, etc.) */}
                           {extractedReason && (
                             <View className="mb-3">
-                              <Text className="text-sm text-gray-700">
+                              <Text className="font-medium text-base text-gray-700">
                                 <Text className="font-medium">Reason:</Text> {extractedReason}
                               </Text>
                             </View>
@@ -1589,9 +1815,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                                           <Ionicons name="document-text" size={24} color="#dc2626" />
                                         </View>
                                       ) : (
-                                        <CachedImage
-                                          uri={photo}
-                                          className="w-16 h-16 rounded-lg"
+                                        <Image
+                                          source={{ uri: photo }}
+                                          style={{ width: 64, height: 64, borderRadius: 8 }}
                                           resizeMode="cover"
                                         />
                                       )}
@@ -1608,8 +1834,9 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                         </View>
                       );
                     })()}
-                    </View>
-                  );
+                      </View>
+                    </Pressable>
+                );
                 };
                 
                 // Determine if scrolling is needed
@@ -1638,6 +1865,7 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                     }}
                   >
                     <ScrollView
+                      ref={activityScrollViewRef}
                       nestedScrollEnabled={true}
                       scrollEnabled={needsScrolling}
                       showsVerticalScrollIndicator={needsScrolling}
@@ -1656,12 +1884,29 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
                       bounces={false}
                       keyboardShouldPersistTaps="handled"
                     >
-                      {sortedActivities.map((activity: any, index: number) => (
-                        <View key={activity.id} style={{ margin: 0, padding: 0 }}>
-                          {renderActivityItem({ item: activity })}
-                          {index < sortedActivities.length - 1 && <View style={{ height: 12, margin: 0, padding: 0 }} />}
-                        </View>
-                      ))}
+                      {sortedActivities.map((activity: any, index: number) => {
+                        // Calculate cumulative offset for this activity based on measured heights
+                        // This will be recalculated whenever measuredHeights changes
+                        let cumulativeOffset = 0;
+                        for (let i = 0; i < index; i++) {
+                          const prevActivity = sortedActivities[i];
+                          const prevHeight = measuredHeights.get(prevActivity.id) || 0;
+                          cumulativeOffset += prevHeight + 12; // 12px gap between activities
+                        }
+                        
+                        // Store position in ref (will be updated on each render when heights change)
+                        activityPositionsRef.current.set(activity.id, cumulativeOffset);
+                        
+                        return (
+                          <View 
+                            key={activity.id} 
+                            style={{ margin: 0, padding: 0 }}
+                          >
+                            {renderActivityItem({ item: activity })}
+                            {index < sortedActivities.length - 1 && <View style={{ height: 12, margin: 0, padding: 0 }} />}
+              </View>
+                        );
+                      })}
                     </ScrollView>
                   </View>
                 );

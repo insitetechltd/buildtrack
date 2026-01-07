@@ -32,7 +32,6 @@ interface DashboardScreenProps {
   onNavigateToTasks: () => void;
   onNavigateToCreateTask: () => void;
   onNavigateToProfile: () => void;
-  onNavigateToReports?: () => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
@@ -41,7 +40,6 @@ export default function DashboardScreen({
   onNavigateToTasks, 
   onNavigateToCreateTask, 
   onNavigateToProfile,
-  onNavigateToReports,
   onNavigateToTaskDetail,
   onNavigateToProjectPicker
 }: DashboardScreenProps) {
@@ -53,7 +51,6 @@ export default function DashboardScreen({
   const { getProjectsByUser, getProjectById, fetchProjects, fetchUserProjectAssignments, isLoading: isLoadingProjects, projects, getUserProjectAssignments } = projectStore;
   const { selectedProjectId, setSelectedProject, setSectionFilter, setStatusFilter, setButtonLabel, getLastSelectedProject } = useProjectFilterStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProjectSwitching, setIsProjectSwitching] = useState(false);
   const [isQuickOverviewExpanded, setIsQuickOverviewExpanded] = useState(false);
@@ -350,7 +347,11 @@ export default function DashboardScreen({
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
-        <StandardHeader title={t.nav.dashboard} />
+        <StandardHeader 
+          title={t.nav.dashboard}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
+        />
         
         <View className="flex-1 items-center justify-center">
           <LoadingIndicator isLoading={true} />
@@ -592,6 +593,8 @@ export default function DashboardScreen({
 
   // Inbox: Reviewing (tasks I CREATED that are submitted_for_review OR declined by assignee)
   // NOTE: Includes both top-level and nested tasks (all tasks I created)
+  // For assigners: Shows declined tasks at any completion % (so they can see what was declined and modify/reassign)
+  // For assignees: Declined tasks with 0% completion don't appear in any button (they rejected it)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
     const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
     return isCreatedByMeForReview && 
@@ -692,14 +695,16 @@ export default function DashboardScreen({
            task.completionPercentage < 100;
   });
 
-  // Outbox: Reviewing (tasks assigned to others that are submitted_for_review)
-  // NOTE: Includes both top-level and nested tasks (all tasks assigned to others)
+  // Outbox: Reviewing (tasks I created that are submitted_for_review - pending my review)
+  // NOTE: This is used by "Pending Approval" button which shows tasks assigned TO me
+  // The count here is for tasks I created, but the filter shows tasks assigned to me (different logic)
   const outboxReviewingTasks = projectFilteredTasks.filter(task => {
-    const assignedTo = task.assignedTo || [];
-    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-    const isCreatedByMe = task.assignedBy === user.id;
-    return !isCreatedByMe &&
-           isAssignedToMe &&
+    const userIdStr = String(user.id);
+    const isCreatedByMe = String(task.assignedBy) === userIdStr;
+    // Count tasks I created that are submitted for review (for "Pending my review" consistency)
+    // But note: "Pending Approval" button filter shows tasks assigned TO me, not tasks I created
+    return isCreatedByMe &&
+           task.completionPercentage === 100 &&
            task.status === "submitted_for_review";
   });
   
@@ -716,6 +721,206 @@ export default function DashboardScreen({
 
   const outboxTotal = outboxAll.length;
 
+  // ===== CATCH-ALL: Tasks not covered by the 9 main buttons =====
+  // This identifies any gaps in the categorization logic
+  const catchAllTasks = projectFilteredTasks.filter(task => {
+    const assignedTo = task.assignedTo || [];
+    const userIdStr = String(user.id);
+    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+    const isCreatedByMe = String(task.assignedBy) === userIdStr;
+    
+    // Only include tasks related to the user
+    if (!isAssignedToMe && !isCreatedByMe) {
+      return false;
+    }
+    
+    const status = getTaskStatus(task);
+    const isSelfAssignedOnly = isCreatedByMe && isAssignedToMe && assignedTo.length === 1;
+    const isInMyTasks = (isAssignedToMe && isCreatedByMe) || (isCreatedByMe && task.status === "rejected");
+    const isInInbox = isAssignedToMe && !isCreatedByMe;
+    const isInOutbox = isCreatedByMe && !isSelfAssignedOnly && task.status !== "rejected";
+    
+    // Exclude cancelled tasks (they shouldn't appear in any category)
+    if (task.status === "cancelled" || status === "cancelled") {
+      return false;
+    }
+    
+    // Exclude declined tasks with 0% completion ONLY if user is the assignee (not the creator)
+    // For assigners: Declined tasks should appear in "Pending my review" so they can modify/reassign
+    // For assignees: Declined tasks with 0% completion don't appear (they rejected it)
+    if (task.status === "declined" && task.completionPercentage === 0 && isInInbox) {
+      return false; // Assignee rejected it, don't show in catch-all
+    }
+    // Note: Declined tasks created by me are covered by "Pending my review" button
+    
+    // Track why task is/isn't excluded
+    const exclusionReasons: string[] = [];
+    
+    // Exclude tasks that match any of the 9 main button criteria:
+    
+    // 1. My Action Required Now (my_work + overdue)
+    if (isInMyTasks || isInInbox) {
+      if (task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected") {
+        exclusionReasons.push("1. My Action Required Now");
+        return false; // Covered by "My Action Required Now"
+      }
+    }
+    
+    // 2. Follow Up Now (outbox + overdue)
+    if (isInOutbox) {
+      if ((status === "in_progress" || status === "accepted") && isOverdue(task)) {
+        exclusionReasons.push("2. Follow Up Now");
+        return false; // Covered by "Follow Up Now"
+      }
+    }
+    
+    // 3. New Requests (inbox + received)
+    if (isInInbox && status === "new" && !task.declinedReason && task.completionPercentage < 100) {
+      exclusionReasons.push("3. New Requests");
+      return false; // Covered by "New Requests"
+    }
+    
+    // 4. Current Tasks (my_work + wip)
+    if (isInMyTasks || isInInbox) {
+      if (task.status === "rejected" && !isOverdue(task)) {
+        exclusionReasons.push("4. Current Tasks (rejected)");
+        return false; // Covered by "Current Tasks" (rejected tasks in WIP)
+      }
+      if (isInMyTasks) {
+        const isAcceptedOrInProgress = status === "accepted" || status === "in_progress" || status === "new";
+        if (isAcceptedOrInProgress && task.completionPercentage < 100 && !isOverdue(task) && status !== "approved") {
+          exclusionReasons.push("4. Current Tasks (my_tasks)");
+          return false; // Covered by "Current Tasks"
+        }
+      }
+      if (isInInbox) {
+        if ((status === "accepted" || status === "in_progress") && !isOverdue(task) && 
+            (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+            status !== "approved") {
+          exclusionReasons.push("4. Current Tasks (inbox)");
+          return false; // Covered by "Current Tasks"
+        }
+      }
+    }
+    
+    // 5. Pending my review (inbox + reviewing)
+    // Include tasks I created that are:
+    // - Submitted for review at 100% completion, OR
+    // - Declined at any completion % (so assigner can see what was declined and modify/reassign)
+    if (isCreatedByMe && 
+        ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
+         (task.status === "declined"))) {
+      exclusionReasons.push("5. Pending my review");
+      return false; // Covered by "Pending my review"
+    }
+    
+    // 6. Pending Acceptance (outbox + assigned)
+    if (isInOutbox && status === "new" && !task.declinedReason) {
+      exclusionReasons.push("6. Pending Acceptance");
+      return false; // Covered by "Pending Acceptance"
+    }
+    
+    // 7. Team Proceeding (outbox + wip)
+    if (isInOutbox) {
+      if (task.status === "rejected") {
+        exclusionReasons.push("7. Team Proceeding (rejected)");
+        return false; // Covered by "Team Proceeding" (rejected tasks in WIP)
+      }
+      if ((status === "accepted" || status === "in_progress") && !isOverdue(task) &&
+          (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+          status !== "approved") {
+        exclusionReasons.push("7. Team Proceeding");
+        return false; // Covered by "Team Proceeding"
+      }
+    }
+    
+    // 8. Pending Approval (outbox + reviewing)
+    if (!isCreatedByMe && isAssignedToMe && task.completionPercentage === 100 && task.status === "submitted_for_review") {
+      exclusionReasons.push("8. Pending Approval");
+      return false; // Covered by "Pending Approval"
+    }
+    
+    // 9. Work Accepted (my_work + done)
+    if (isInOutbox && status === "approved") {
+      exclusionReasons.push("9. Work Accepted (outbox)");
+      return false; // Covered by "Work Accepted"
+    }
+    if (isInMyTasks) {
+      if (isSelfAssignedOnly && task.completionPercentage === 100) {
+        exclusionReasons.push("9. Work Accepted (self-assigned)");
+        return false; // Covered by "Work Accepted" (self-assigned done)
+      }
+      if (status === "approved") {
+        exclusionReasons.push("9. Work Accepted (my_tasks)");
+        return false; // Covered by "Work Accepted"
+      }
+    }
+    if (isInInbox && status === "approved") {
+      exclusionReasons.push("9. Work Accepted (inbox)");
+      return false; // Covered by "Work Accepted"
+    }
+    
+    // If we get here, the task is not covered by any of the 9 main buttons
+    // Log detailed information about why this task is uncovered
+    console.log('🔍 [CATCH-ALL] Uncovered task found:', {
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      currentStatus: task.currentStatus,
+      completionPercentage: task.completionPercentage,
+      assignedBy: task.assignedBy,
+      assignedTo: task.assignedTo,
+      isAssignedToMe,
+      isCreatedByMe,
+      isSelfAssignedOnly,
+      isInMyTasks,
+      isInInbox,
+      isInOutbox,
+      isOverdue: isOverdue(task),
+      declinedReason: task.declinedReason,
+      dueDate: task.dueDate,
+      exclusionReasons: exclusionReasons.length > 0 ? exclusionReasons : 'NONE - This is why it\'s uncovered',
+      // Check each exclusion condition
+      checks: {
+        '1_MyActionRequired': isInMyTasks || isInInbox ? 
+          (task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected") : false,
+        '2_FollowUpNow': isInOutbox ? 
+          ((status === "in_progress" || status === "accepted") && isOverdue(task)) : false,
+        '3_NewRequests': isInInbox && status === "new" && !task.declinedReason && task.completionPercentage < 100,
+        '4_CurrentTasks_rejected': (isInMyTasks || isInInbox) && task.status === "rejected" && !isOverdue(task),
+        '4_CurrentTasks_myTasks': isInMyTasks ? 
+          ((status === "accepted" || status === "in_progress" || status === "new") && 
+           task.completionPercentage < 100 && !isOverdue(task) && status !== "approved") : false,
+        '4_CurrentTasks_inbox': isInInbox ? 
+          ((status === "accepted" || status === "in_progress") && !isOverdue(task) && 
+           (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+           status !== "approved") : false,
+        '5_PendingMyReview': isCreatedByMe && task.completionPercentage === 100 && 
+          (task.status === "submitted_for_review" || task.status === "declined"),
+        '6_PendingAcceptance': isInOutbox && status === "new" && !task.declinedReason,
+        '7_TeamProceeding_rejected': isInOutbox && task.status === "rejected",
+        '7_TeamProceeding': isInOutbox ? 
+          ((status === "accepted" || status === "in_progress") && !isOverdue(task) &&
+           (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
+           status !== "approved") : false,
+        '8_PendingApproval': !isCreatedByMe && isAssignedToMe && task.completionPercentage === 100 && task.status === "submitted_for_review",
+        '9_WorkAccepted_outbox': isInOutbox && status === "approved",
+        '9_WorkAccepted_selfAssigned': isInMyTasks && isSelfAssignedOnly && task.completionPercentage === 100,
+        '9_WorkAccepted_myTasks': isInMyTasks && status === "approved",
+        '9_WorkAccepted_inbox': isInInbox && status === "approved",
+      }
+    });
+    
+    return true;
+  });
+  
+  // Log summary of uncovered tasks
+  if (catchAllTasks.length > 0) {
+    console.log(`🔍 [CATCH-ALL] Found ${catchAllTasks.length} uncovered task(s):`, 
+      catchAllTasks.map(t => ({ id: t.id, title: t.title, status: t.status, completionPercentage: t.completionPercentage }))
+    );
+  }
+
   // Determine what to show based on user's project situation
   const shouldShowDashboard = selectedProjectId !== null;
   const shouldShowNoProjects = userProjectCount === 0;
@@ -730,18 +935,10 @@ export default function DashboardScreen({
       <StandardHeader 
         title={t.nav.dashboard}
         subtitle={selectedProject ? selectedProject.name : undefined}
-        rightElement={
-          <Pressable 
-            onPress={() => setShowProfileMenu(true)}
-            className="flex-row items-center"
-          >
-            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-base">
-                {user.name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          </Pressable>
-        }
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={(allowBack?: boolean) => {
+          onNavigateToProjectPicker?.(allowBack);
+        }}
       />
 
       {/* Main Content */}
@@ -1155,6 +1352,41 @@ export default function DashboardScreen({
                     </Text>
                   </View>
                 </Pressable>
+                
+                {/* Catch-All: Uncovered Tasks - HIDDEN */}
+                {/* <Pressable 
+                  className={cn(
+                    "flex-1 rounded-xl p-4 items-center",
+                    isDarkMode ? "bg-gray-800 border-2 border-gray-600" : "bg-gray-100 border border-gray-400"
+                  )}
+                  onPress={() => {
+                    setSectionFilter("my_work");
+                    setStatusFilter("all");
+                    setButtonLabel("Catch-All - Uncovered Tasks");
+                    onNavigateToTasks();
+                  }}
+                >
+                  <Text className={cn(
+                    "text-4xl mb-1",
+                    isDarkMode ? "font-black text-gray-300" : "font-bold text-gray-700"
+                  )}>
+                    {catchAllTasks.length}
+                  </Text>
+                  <View className="relative items-center justify-center">
+                    <Ionicons 
+                      name="search-outline" 
+                      size={20} 
+                      color={isDarkMode ? "#9ca3af" : "#6b7280"} 
+                      style={{ position: 'absolute', left: -26 }}
+                    />
+                    <Text className={cn(
+                      "text-center text-base font-semibold",
+                      isDarkMode ? "text-gray-300" : "text-gray-700"
+                    )} numberOfLines={2}>
+                      Uncovered Tasks
+                    </Text>
+                  </View>
+                </Pressable> */}
               </View>
             </View>
           </View>
@@ -1568,113 +1800,11 @@ export default function DashboardScreen({
       </ScrollView>
       )}
 
-      {/* Profile Menu Modal */}
-      <Modal
-        visible={showProfileMenu}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowProfileMenu(false)}
-      >
-        <Pressable 
-          className="flex-1 bg-black/50"
-          onPress={() => setShowProfileMenu(false)}
-        >
-          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-          >
-            {/* User Info Header */}
-            <View className="bg-blue-600 px-4 py-3 border-b border-blue-700">
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
-                  <Text className="text-blue-600 font-bold text-lg">
-                    {user.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                    {user.name}
-                  </Text>
-                  <Text className="text-blue-100 text-sm capitalize">
-                    {user.role}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Menu Options */}
-            <View className="py-2">
-              <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  onNavigateToProjectPicker?.(true);
-                }}
-                className="flex-row items-center px-4 py-3 active:bg-gray-100"
-              >
-                <Ionicons name="business-outline" size={22} color="#3b82f6" />
-                <Text className="text-gray-900 text-base font-medium ml-3">
-                  {t.dashboard.changeProject}
-                </Text>
-              </Pressable>
-
-              <View className="h-px bg-gray-200 mx-4" />
-
-              <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  onNavigateToProfile();
-                }}
-                className="flex-row items-center px-4 py-3 active:bg-gray-100"
-              >
-                <Ionicons name="person-outline" size={22} color="#3b82f6" />
-                <Text className="text-gray-900 text-base font-medium ml-3">
-                  {t.dashboard.profileAndSettings}
-                </Text>
-              </Pressable>
-
-              <View className="h-px bg-gray-200 mx-4" />
-
-              <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  Alert.alert(
-                    t.dashboard.logout,
-                    t.dashboard.logoutConfirm,
-                    [
-                      { text: t.common.cancel, style: "cancel" },
-                      { 
-                        text: t.dashboard.logout, 
-                        style: "destructive",
-                        onPress: logout
-                      },
-                    ]
-                  );
-                }}
-                className="flex-row items-center px-4 py-3 active:bg-gray-100"
-              >
-                <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-                <Text className="text-red-600 text-base font-medium ml-3">
-                  {t.dashboard.logout}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
+      {/* Profile Menu */}
 
       {/* Expandable Utility FAB */}
       <ExpandableUtilityFAB 
         onCreateTask={onNavigateToCreateTask}
-        onSearch={() => {
-          setSectionFilter("my_work");
-          onNavigateToTasks();
-        }}
-        onReports={onNavigateToReports}
       />
 
       {/* Project Switching Loading Overlay */}

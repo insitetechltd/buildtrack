@@ -24,7 +24,12 @@ interface RejectTaskScreenParams {
   subTaskId?: string;
 }
 
-export default function RejectTaskScreen() {
+interface RejectTaskScreenProps {
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+}
+
+export default function RejectTaskScreen({ onNavigateToProfile, onNavigateToProjectPicker }: RejectTaskScreenProps = {}) {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const { taskId, subTaskId } = (route.params || {}) as RejectTaskScreenParams;
@@ -157,6 +162,8 @@ export default function RejectTaskScreen() {
           title={t.taskDetail.reject}
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -174,6 +181,8 @@ export default function RejectTaskScreen() {
         title={t.taskDetail.reject}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>

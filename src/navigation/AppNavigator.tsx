@@ -28,6 +28,8 @@ import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
 import PendingUsersScreen from "../screens/PendingUsersScreen";
 import PhotoViewerScreen from "../screens/PhotoViewerScreen";
+import PhotoAnnotationScreen from "../screens/PhotoAnnotationScreen";
+import PhotoSelectionScreen from "../screens/PhotoSelectionScreen";
 import UpdateProgressScreen from "../screens/UpdateProgressScreen";
 import AddCommentScreen from "../screens/AddCommentScreen";
 import RejectTaskScreen from "../screens/RejectTaskScreen";
@@ -134,7 +136,6 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
         }
       })}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
-      onNavigateToReports={() => navigation.getParent()?.navigate("Reports")}
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId })
       }
@@ -151,6 +152,10 @@ function ProjectPickerScreenWrapper({ route, navigation }: { route: any; navigat
     <ProjectPickerScreen
       onNavigateBack={() => navigation.goBack()}
       allowBack={allowBack}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
     />
   );
 }
@@ -174,6 +179,10 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
           editTaskId,
           actionType,
         });
+      }}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
       }}
     />
   );
@@ -206,6 +215,20 @@ function TasksStack() {
       <Stack.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="PhotoAnnotation" 
+        component={PhotoAnnotationScreenWrapper}
+        options={{
+          presentation: "card"
+        }}
+      />
+      <Stack.Screen 
+        name="PhotoSelection" 
+        component={PhotoSelectionScreenWrapper}
         options={{
           presentation: "card"
         }}
@@ -265,6 +288,10 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
         }
       })}
       onNavigateBack={() => navigation.getParent()?.navigate("Dashboard")}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
     />
   );
 }
@@ -288,6 +315,10 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
           editTaskId,
           actionType,
         });
+      }}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
       }}
     />
   );
@@ -317,6 +348,100 @@ function PhotoViewerScreenWrapper({ route, navigation }: { route: any; navigatio
   );
 }
 
+function PhotoAnnotationScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  const { photoUri, photoIndex, returnScreen } = route.params || {};
+  
+  const handleSave = (annotatedPhotoUri: string) => {
+    console.log('💾 [PhotoAnnotation] Saving annotated photo, navigating back to:', returnScreen);
+    
+    // If we came from PhotoSelection, pass the result back via params
+    if (returnScreen === 'PhotoSelection' && photoIndex !== undefined) {
+      navigation.navigate(returnScreen, {
+        annotationResult: annotatedPhotoUri,
+        photoIndex: photoIndex,
+      });
+    } else {
+      // Fallback: just go back
+      navigation.goBack();
+    }
+  };
+  
+  return (
+    <PhotoAnnotationScreen
+      photoUri={photoUri}
+      onSave={handleSave}
+      onCancel={() => navigation.goBack()}
+    />
+  );
+}
+
+function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+  const { taskId, subTaskId, companyId, userId, initialCompletionPercentage, initialPhotos, returnScreen, actionType } = route.params || {};
+  const uploadedUrlsRef = React.useRef<string[] | null>(null);
+  
+  // Listen for when we return from PhotoSelectionScreen with uploaded URLs
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const uploadedUrls = route.params?.uploadedPhotoUrls;
+      if (uploadedUrls && uploadedUrls.length > 0 && returnScreen) {
+        uploadedUrlsRef.current = uploadedUrls;
+        // Clear the params to prevent re-triggering
+        navigation.setParams({ uploadedPhotoUrls: undefined });
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params, returnScreen]);
+
+  const handlePhotosUploaded = (photoUrls: string[]) => {
+    if (returnScreen === 'CreateTask') {
+      // Navigate back to CreateTask and pass the uploaded URLs
+      navigation.navigate("CreateTask", {
+        parentTaskId: route.params?.parentTaskId,
+        parentSubTaskId: route.params?.parentSubTaskId,
+        editTaskId: route.params?.editTaskId,
+        actionType: route.params?.actionType,
+        uploadedPhotoUrls: photoUrls,
+      });
+    } else if (returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') {
+      // For update/comment actions, navigate to UpdateProgress screen
+      navigation.navigate("UpdateProgress", {
+        taskId,
+        subTaskId,
+        initialCompletionPercentage,
+        uploadedPhotoUrls: photoUrls,
+        actionType: actionType,
+      });
+    } else {
+      // Default: navigate to UpdateProgress (for TaskDetailScreen)
+      navigation.navigate("UpdateProgress", {
+        taskId,
+        subTaskId,
+        initialCompletionPercentage,
+      });
+    }
+  };
+  
+  return (
+    <PhotoSelectionScreen
+      taskId={taskId}
+      subTaskId={subTaskId}
+      companyId={companyId}
+      userId={userId}
+      initialCompletionPercentage={initialCompletionPercentage || 0}
+      initialPhotos={initialPhotos}
+      onNavigateBack={() => navigation.goBack()}
+      onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number) => {
+        navigation.navigate("UpdateProgress", {
+          taskId,
+          subTaskId,
+          initialCompletionPercentage,
+        });
+      }}
+      onPhotosUploaded={returnScreen ? handlePhotosUploaded : undefined}
+    />
+  );
+}
+
 function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
   const { parentTaskId, parentSubTaskId, editTaskId, actionType } = route.params || {};
   return (
@@ -326,31 +451,55 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
       actionType={actionType}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
     />
   );
 }
 
 function UpdateProgressScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
   return (
-    <UpdateProgressScreen />
+    <UpdateProgressScreen 
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
+    />
   );
 }
 
 function AddCommentScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
   return (
-    <AddCommentScreen />
+    <AddCommentScreen 
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
+    />
   );
 }
 
 function RejectTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
   return (
-    <RejectTaskScreen />
+    <RejectTaskScreen 
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
+    />
   );
 }
 
 function ReassignTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
   return (
-    <ReassignTaskScreen />
+    <ReassignTaskScreen 
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
+    />
   );
 }
 
@@ -369,8 +518,21 @@ function ProfileMainScreen({ navigation }: { navigation: any }) {
   return (
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToCreateTask={() => navigation.getParent()?.navigate("CreateTask", {
+        screen: "CreateTaskMain",
+        params: {
+          parentTaskId: undefined,
+          parentSubTaskId: undefined,
+          editTaskId: undefined,
+          actionType: undefined,
+        }
+      })}
       onNavigateToDeveloperSettings={() => navigation.navigate("DeveloperSettings")}
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
+      onNavigateToProfile={() => {}} // Already on profile screen
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+      }}
     />
   );
 }

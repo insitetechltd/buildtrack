@@ -64,3 +64,8 @@ ExpoGo.app/
 *.app.tar.gz
 archive/
 google-service-account.json
+
+# Upload keystore (generated for upload key reset)
+upload-keystore.jks
+upload-keystore-credentials.txt
+keystore-upload.properties

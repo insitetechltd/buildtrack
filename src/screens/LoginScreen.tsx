@@ -19,7 +19,7 @@ import Constants from "expo-constants";
 import { useTranslation } from "../utils/useTranslation";
 
 interface LoginScreenProps {
-  onToggleRegister: () => void;
+  onToggleRegister?: () => void; // Optional - registration is hidden
 }
 
 export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
@@ -239,13 +239,14 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 </Text>
               </Pressable>
 
-              {/* Register Link */}
-              <View className="flex-row justify-center mt-6">
+              {/* Registration is temporarily disabled - accounts are created by administrators */}
+              {/* Register Link - Hidden for App Store submission */}
+              {/* <View className="flex-row justify-center mt-6">
                 <Text className="text-gray-600">{t.login.dontHaveAccount} </Text>
                 <Pressable onPress={onToggleRegister}>
                   <Text className="text-blue-600 font-semibold">{t.login.signUp}</Text>
                 </Pressable>
-              </View>
+              </View> */}
             </View>
           </View>
         </ScrollView>

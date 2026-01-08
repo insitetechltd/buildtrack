@@ -557,11 +557,13 @@ export default function DashboardScreen({
     return status === "approved";
   });
   
-  // My Tasks: Overdue (in_progress or accepted, past due)
+  // My Tasks: Overdue (past due, not complete, not rejected)
+  // Match TasksScreen filter: only excludes rejected, doesn't require specific status
   const myOverdueTasks = myTasksAll.filter(task => {
     const status = getTaskStatus(task);
-    return (status === "in_progress" || status === "accepted") &&
-           isOverdue(task);
+    return task.completionPercentage < 100 &&
+           isOverdue(task) &&
+           status !== "rejected";
   });
   
   const myTasksTotal = myTasksAll.length;
@@ -597,8 +599,11 @@ export default function DashboardScreen({
   // For assignees: Declined tasks with 0% completion don't appear in any button (they rejected it)
   const inboxReviewingTasks = projectFilteredTasks.filter(task => {
     const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
+    // Match TasksScreen filter: submitted_for_review requires completionPercentage === 100
+    // Declined tasks can be at any completion percentage
     return isCreatedByMeForReview && 
-           (task.status === "submitted_for_review" || task.status === "declined");
+           ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
+            (task.status === "declined"));
   });
 
   // Inbox: Done (approved status)
@@ -606,11 +611,14 @@ export default function DashboardScreen({
     task.status === "approved"
   );
   
-  // Inbox: Overdue (in_progress or accepted, past due)
-  const inboxOverdueTasks = inboxAll.filter(task =>
-    (task.status === "in_progress" || task.status === "accepted") &&
-    isOverdue(task)
-  );
+  // Inbox: Overdue (past due, not complete, not rejected)
+  // Match TasksScreen filter: only excludes rejected, doesn't require specific status
+  const inboxOverdueTasks = inboxAll.filter(task => {
+    const status = getTaskStatus(task);
+    return task.completionPercentage < 100 &&
+           isOverdue(task) &&
+           status !== "rejected";
+  });
 
   const inboxTotal = inboxAll.length;
 
@@ -695,15 +703,17 @@ export default function DashboardScreen({
            task.completionPercentage < 100;
   });
 
-  // Outbox: Reviewing (tasks I created that are submitted_for_review - pending my review)
-  // NOTE: This is used by "Pending Approval" button which shows tasks assigned TO me
-  // The count here is for tasks I created, but the filter shows tasks assigned to me (different logic)
+  // Outbox: Reviewing (tasks assigned TO me that are submitted_for_review - pending my approval)
+  // NOTE: This matches the TasksScreen filter which shows tasks assigned TO me (not created by me)
   const outboxReviewingTasks = projectFilteredTasks.filter(task => {
+    const assignedTo = task.assignedTo || [];
     const userIdStr = String(user.id);
+    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
     const isCreatedByMe = String(task.assignedBy) === userIdStr;
-    // Count tasks I created that are submitted for review (for "Pending my review" consistency)
-    // But note: "Pending Approval" button filter shows tasks assigned TO me, not tasks I created
-    return isCreatedByMe &&
+    // Count tasks assigned TO me (not created by me) that are submitted for review
+    // This matches the filter logic in TasksScreen
+    return !isCreatedByMe &&
+           isAssignedToMe &&
            task.completionPercentage === 100 &&
            task.status === "submitted_for_review";
   });
@@ -713,11 +723,14 @@ export default function DashboardScreen({
     task.status === "approved"
   );
   
-  // Outbox: Overdue (in_progress or accepted, past due)
-  const outboxOverdueTasks = outboxAll.filter(task =>
-    (task.status === "in_progress" || task.status === "accepted") &&
-    isOverdue(task)
-  );
+  // Outbox: Overdue (past due, not complete, not rejected)
+  // Match TasksScreen filter: only excludes rejected, doesn't require specific status
+  const outboxOverdueTasks = outboxAll.filter(task => {
+    const status = getTaskStatus(task);
+    return task.completionPercentage < 100 &&
+           isOverdue(task) &&
+           status !== "rejected";
+  });
 
   const outboxTotal = outboxAll.length;
 

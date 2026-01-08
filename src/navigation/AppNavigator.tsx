@@ -11,7 +11,8 @@ import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
 import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
 import LoginScreen from "../screens/LoginScreen";
-import RegisterScreen from "../screens/RegisterScreen";
+// Registration temporarily disabled for App Store submission
+// import RegisterScreen from "../screens/RegisterScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TasksScreen from "../screens/TasksScreen";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
@@ -42,19 +43,21 @@ const Stack = createNativeStackNavigator();
 
 // Auth screens component
 function AuthScreens() {
-  const [showRegister, setShowRegister] = useState(false);
+  // Registration temporarily disabled for App Store submission
+  // const [showRegister, setShowRegister] = useState(false);
 
-  if (showRegister) {
-    return (
-      <RegisterScreen 
-        onToggleLogin={() => setShowRegister(false)} 
-      />
-    );
-  }
+  // if (showRegister) {
+  //   return (
+  //     <RegisterScreen 
+  //       onToggleLogin={() => setShowRegister(false)} 
+  //     />
+  //   );
+  // }
 
   return (
     <LoginScreen 
-      onToggleRegister={() => setShowRegister(true)} 
+      // Registration is hidden - accounts are created by administrators
+      // onToggleRegister={() => setShowRegister(true)} 
     />
   );
 }

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, Pressable, Animated, Text, PanResponder, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "../utils/useTranslation";
+import { useNavigation } from "@react-navigation/native";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -16,11 +17,13 @@ interface TaskDetailUtilityFABProps {
 
 export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel, canEdit, canCreateSubTask, canCancel }: TaskDetailUtilityFABProps) {
   const t = useTranslation();
+  const navigation = useNavigation<any>();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim1 = useRef(new Animated.Value(0)).current; // Edit
   const scaleAnim2 = useRef(new Animated.Value(0)).current; // Sub-task
   const scaleAnim3 = useRef(new Animated.Value(0)).current; // Cancel
+  const scaleAnim4 = useRef(new Animated.Value(0)).current; // Dashboard
   
   // Position state for draggable FAB
   // Initialize to bottom-right (original position: bottom-6 right-6 = 24px from edges)
@@ -60,6 +63,12 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
         friction: 7,
         delay: isExpanded ? 0 : 150,
       }),
+      Animated.spring(scaleAnim4, {
+        toValue,
+        useNativeDriver: true,
+        friction: 7,
+        delay: isExpanded ? 0 : 175,
+      }),
     ]).start();
     
     setIsExpanded(!isExpanded);
@@ -78,6 +87,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
     scaleAnim1.stopAnimation();
     scaleAnim2.stopAnimation();
     scaleAnim3.stopAnimation();
+    scaleAnim4.stopAnimation();
     
     // Reset all animations to collapsed state immediately
     Animated.parallel([
@@ -97,6 +107,11 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim3, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim4, {
         toValue: 0,
         duration: 150,
         useNativeDriver: true,
@@ -124,6 +139,14 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
     if (!canCancel || !onCancel) return;
     collapseImmediately();
     setTimeout(() => onCancel(), 200);
+  };
+
+  const handleDashboard = () => {
+    collapseImmediately();
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate("Dashboard");
+    }
   };
 
   const rotate = rotateAnim.interpolate({
@@ -238,7 +261,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
         {...panResponder.panHandlers}
       >
         {/* Cancel Task Button */}
-        {/* Position: -108px - RED/GRAY for Cancel */}
+        {/* Position: -144px - RED/GRAY for Cancel */}
         {onCancel && (
           <Animated.View
             style={{
@@ -246,7 +269,7 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
                 { scale: scaleAnim3 },
                 { translateY: scaleAnim3.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, -108]
+                  outputRange: [0, -144]
                 })}
               ],
               opacity: 1,
@@ -273,6 +296,40 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
             </Pressable>
           </Animated.View>
         )}
+
+        {/* Dashboard Button */}
+        {/* Position: -108px - BLUE for Dashboard */}
+        <Animated.View
+          style={{
+            transform: [
+              { scale: scaleAnim4 },
+              { translateY: scaleAnim4.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, -108]
+              })}
+            ],
+            opacity: 1,
+          }}
+          pointerEvents={isExpanded ? 'auto' : 'none'}
+          className="flex-row items-center"
+        >
+          <View className="px-3 py-2 rounded-lg mr-2 shadow-lg bg-gray-800">
+            <Text className="text-base font-medium text-white">{t.nav.dashboard || "Dashboard"}</Text>
+          </View>
+          <Pressable
+            onPress={handleDashboard}
+            className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-blue-500"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }}
+          >
+            <Ionicons name="home" size={20} color="white" />
+          </Pressable>
+        </Animated.View>
 
         {/* Edit Task Button */}
         {/* Position: -72px - YELLOW for Edit */}

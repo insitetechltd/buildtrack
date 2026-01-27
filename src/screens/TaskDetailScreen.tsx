@@ -288,10 +288,17 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
 
   // Navigation functions for screens
   const openUpdatePanel = () => {
+    // Determine source screen for navigation back
+    const currentRoute = navigation.getState()?.routes?.find((r: any) => r.name === 'TaskDetail' || r.name === 'TaskDetailFromDashboard');
+    const sourceScreen = currentRoute?.name === 'TaskDetailFromDashboard' ? 'dashboard' : 'tasks';
+    
     navigation.navigate("UpdateProgress", {
       taskId: task?.id,
       subTaskId: subTaskId,
       initialCompletionPercentage: task?.completionPercentage || 0,
+      sourceScreen: sourceScreen, // Pass source screen info for navigation back
+      sourceTaskId: task?.id,
+      sourceSubTaskId: subTaskId,
     });
   };
 
@@ -617,14 +624,50 @@ export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, on
     // Use unified photo selection utility
     showPhotoSelectionDialog({
       onPhotosSelected: (photos) => {
-        // Navigate to photo selection screen with the selected photos
-        navigation.navigate("PhotoSelection", {
-          taskId: task.id,
-          subTaskId: subTaskId,
-          companyId: user.companyId,
-          userId: user.id,
-          initialCompletionPercentage: task.completionPercentage || 0,
-          initialPhotos: photos,
+        // Ensure photos are serializable (only include necessary fields)
+        const serializablePhotos = photos.map(photo => ({
+          uri: photo.uri,
+          fileName: photo.fileName,
+          isAnnotated: photo.isAnnotated || false,
+        }));
+
+        // Defer navigation to avoid conflicts with Alert dialog
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              if (!navigation || !navigation.navigate) {
+                console.error('❌ [TaskDetail] Navigation object not available');
+                Alert.alert("Error", "Navigation is not available. Please try again.");
+                return;
+              }
+
+              // Navigate to photo selection screen with the selected photos
+              // Pass source screen info so UpdateProgress can navigate back correctly
+              const parentNav = navigation.getParent();
+              const currentRoute = navigation.getState()?.routes?.find((r: any) => r.name === 'TaskDetail' || r.name === 'TaskDetailFromDashboard');
+              const sourceScreen = currentRoute?.name === 'TaskDetailFromDashboard' ? 'dashboard' : 'tasks';
+              
+              navigation.navigate("PhotoSelection", {
+                taskId: task.id,
+                subTaskId: subTaskId,
+                companyId: user.companyId,
+                userId: user.id,
+                initialCompletionPercentage: task.completionPercentage || 0,
+                initialPhotos: serializablePhotos,
+                returnScreen: 'UpdateProgress', // Pass returnScreen so photos are not uploaded immediately
+                uploadImmediately: false, // Don't upload immediately - store locally until Submit Update
+                sourceScreen: sourceScreen, // Pass source screen info
+                sourceTaskId: task.id,
+                sourceSubTaskId: subTaskId,
+              });
+            } catch (error: any) {
+              console.error('❌ [TaskDetail] Navigation error:', error);
+              Alert.alert(
+                "Navigation Error",
+                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
+              );
+            }
+          }, 100);
         });
       },
       allowClipboard: true,

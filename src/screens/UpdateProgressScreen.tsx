@@ -13,33 +13,49 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import { uploadFileWithVerification } from "../api/fileUploadService";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
 import { useCallback } from "react";
+
+// Photo object type (for new photos not yet uploaded)
+interface SelectedPhoto {
+  uri: string;
+  fileName: string;
+  isAnnotated: boolean;
+  annotatedUri?: string;
+}
 
 interface UpdateProgressScreenParams {
   taskId: string;
   subTaskId?: string;
   initialCompletionPercentage?: number;
-  uploadedPhotoUrls?: string[];
+  uploadedPhotoUrls?: string[]; // Legacy: already uploaded photo URLs
+  selectedPhotos?: SelectedPhoto[]; // New: photo objects to be uploaded on submit
   actionType?: string;
+  sourceScreen?: string; // Track where we came from (e.g., 'TaskDetail')
+  sourceTaskId?: string; // TaskId from source screen
+  sourceSubTaskId?: string; // SubTaskId from source screen
 }
 
 interface UpdateProgressScreenProps {
+  uploadedPhotoUrls?: string[]; // Photo URLs passed from wrapper (legacy - for backward compatibility)
+  selectedPhotos?: SelectedPhoto[]; // Photo objects passed from wrapper (new - not yet uploaded)
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
-export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateToProjectPicker }: UpdateProgressScreenProps = {}) {
+export default function UpdateProgressScreen({ uploadedPhotoUrls: uploadedPhotoUrlsProp, selectedPhotos: selectedPhotosProp, onNavigateToProfile, onNavigateToProjectPicker }: UpdateProgressScreenProps = {}) {
   const navigation = useNavigation<any>();
   const route = useRoute();
-  const { taskId, subTaskId, initialCompletionPercentage } = (route.params || {}) as UpdateProgressScreenParams;
+  const { taskId, subTaskId, initialCompletionPercentage, sourceScreen, sourceTaskId, sourceSubTaskId } = (route.params || {}) as UpdateProgressScreenParams;
   const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
@@ -54,7 +70,8 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
 
   const [updateForm, setUpdateForm] = useState({
     description: "",
-    photos: [] as string[],
+    photos: [] as string[], // Already uploaded photo URLs
+    photoObjects: [] as SelectedPhoto[], // Photo objects to be uploaded on submit
     completionPercentage: initialCompletionPercentage || task?.completionPercentage || 0,
     status: "in_progress" as TaskStatus,
   });
@@ -71,22 +88,108 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
     }
   }, [task?.completionPercentage]);
 
-  // Handle uploaded photo URLs from PhotoSelectionScreen
+  // Handle photos from PhotoSelectionScreen
+  // Check both props (from wrapper) and route params (fallback)
+  // Support both uploaded URLs (legacy) and selected photo objects (new)
+  // Watch for selectedPhotos in route params (handles navigation updates)
+  useEffect(() => {
+    const params = (route.params || {}) as UpdateProgressScreenParams;
+    if (params?.selectedPhotos && Array.isArray(params.selectedPhotos) && params.selectedPhotos.length > 0) {
+      console.log('✅ [UpdateProgress] useEffect: Received selected photos from route params:', params.selectedPhotos.length);
+      setUpdateForm(prev => {
+        const existingUris = new Set(prev.photoObjects.map(p => p.uri));
+        const newPhotos = params.selectedPhotos!.filter((photo: SelectedPhoto) => !existingUris.has(photo.uri));
+        if (newPhotos.length > 0) {
+          console.log('✅ [UpdateProgress] useEffect: Adding', newPhotos.length, 'new photo objects from route params');
+          return {
+            ...prev,
+            photoObjects: [...prev.photoObjects, ...newPhotos],
+          };
+        }
+        return prev;
+      });
+      // Clear the params to prevent re-adding
+      navigation.setParams({ selectedPhotos: undefined });
+    }
+  }, [(route.params as UpdateProgressScreenParams)?.selectedPhotos, navigation]);
+
   useFocusEffect(
     useCallback(() => {
-      // Check for uploaded photo URLs in navigation params
+      console.log('🔄 [UpdateProgress] useFocusEffect - SCREEN FOCUSED');
+      
+      // FIRST: Check selectedPhotos prop (new method - photo objects not yet uploaded)
+      if (selectedPhotosProp && Array.isArray(selectedPhotosProp) && selectedPhotosProp.length > 0) {
+        console.log('✅ [UpdateProgress] Received selected photos (objects) from props:', selectedPhotosProp.length);
+        setUpdateForm(prev => {
+          // Avoid duplicates by checking URIs
+          const existingUris = new Set(prev.photoObjects.map(p => p.uri));
+          const newPhotos = selectedPhotosProp.filter(photo => !existingUris.has(photo.uri));
+          if (newPhotos.length > 0) {
+            console.log('✅ [UpdateProgress] Adding', newPhotos.length, 'new photo objects to form');
+            return {
+              ...prev,
+              photoObjects: [...prev.photoObjects, ...newPhotos],
+            };
+          }
+          return prev;
+        });
+      }
+      
+      // SECOND: Check route params for selectedPhotos (fallback - also handled in useEffect above)
       const params = route.params as UpdateProgressScreenParams;
-      if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
-        // Update form data with uploaded photo URLs
-        setUpdateForm(prev => ({
-          ...prev,
-          photos: [...prev.photos, ...params.uploadedPhotoUrls!],
-        }));
-        console.log('✅ [UpdateProgress] Added uploaded photos to form:', params.uploadedPhotoUrls);
+      if (params?.selectedPhotos && Array.isArray(params.selectedPhotos) && params.selectedPhotos.length > 0) {
+        console.log('✅ [UpdateProgress] useFocusEffect: Received selected photos from route params:', params.selectedPhotos.length);
+        setUpdateForm(prev => {
+          const existingUris = new Set(prev.photoObjects.map(p => p.uri));
+          const newPhotos = params.selectedPhotos!.filter((photo: SelectedPhoto) => !existingUris.has(photo.uri));
+          if (newPhotos.length > 0) {
+            console.log('✅ [UpdateProgress] useFocusEffect: Adding', newPhotos.length, 'new photo objects from route params');
+            return {
+              ...prev,
+              photoObjects: [...prev.photoObjects, ...newPhotos],
+            };
+          }
+          return prev;
+        });
         // Clear the params to prevent re-adding
+        navigation.setParams({ selectedPhotos: undefined });
+      }
+      
+      // THIRD: Check uploadedPhotoUrls prop (legacy - already uploaded)
+      if (uploadedPhotoUrlsProp && Array.isArray(uploadedPhotoUrlsProp) && uploadedPhotoUrlsProp.length > 0) {
+        console.log('✅ [UpdateProgress] Received uploaded photos (URLs) from props:', uploadedPhotoUrlsProp.length);
+        setUpdateForm(prev => {
+          const existingUrls = new Set(prev.photos);
+          const newUrls = uploadedPhotoUrlsProp.filter(url => !existingUrls.has(url));
+          if (newUrls.length > 0) {
+            console.log('✅ [UpdateProgress] Adding', newUrls.length, 'new uploaded photo URLs to form');
+            return {
+              ...prev,
+              photos: [...prev.photos, ...newUrls],
+            };
+          }
+          return prev;
+        });
+      }
+      
+      // FOURTH: Check route params for uploadedPhotoUrls (legacy fallback)
+      if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
+        console.log('✅ [UpdateProgress] Received uploaded photos from route params:', params.uploadedPhotoUrls.length);
+        setUpdateForm(prev => {
+          const existingUrls = new Set(prev.photos);
+          const newUrls = params.uploadedPhotoUrls!.filter((url: string) => !existingUrls.has(url));
+          if (newUrls.length > 0) {
+            console.log('✅ [UpdateProgress] Adding', newUrls.length, 'new uploaded photo URLs from route params');
+            return {
+              ...prev,
+              photos: [...prev.photos, ...newUrls],
+            };
+          }
+          return prev;
+        });
         navigation.setParams({ uploadedPhotoUrls: undefined });
       }
-    }, [route.params, navigation])
+    }, [selectedPhotosProp, uploadedPhotoUrlsProp, route.params, navigation])
   );
 
   const handleAddPhotos = async () => {
@@ -95,15 +198,41 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
     // Use unified photo selection utility
     showPhotoSelectionDialog({
       onPhotosSelected: (photos) => {
-        // Navigate to PhotoSelectionScreen
-        navigation.navigate("PhotoSelection", {
-          taskId: task.id,
-          subTaskId: subTaskId,
-          companyId: user.companyId,
-          userId: user.id,
-          initialCompletionPercentage: task.completionPercentage || 0,
-          initialPhotos: photos,
-          returnScreen: 'UpdateProgress',
+        // Ensure photos are serializable (only include necessary fields)
+        const serializablePhotos = photos.map(photo => ({
+          uri: photo.uri,
+          fileName: photo.fileName,
+          isAnnotated: photo.isAnnotated || false,
+        }));
+
+        // Defer navigation to avoid conflicts with Alert dialog
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              if (!navigation || !navigation.navigate) {
+                console.error('❌ [UpdateProgress] Navigation object not available');
+                Alert.alert("Error", "Navigation is not available. Please try again.");
+                return;
+              }
+
+              // Navigate to PhotoSelectionScreen
+              navigation.navigate("PhotoSelection", {
+                taskId: task.id,
+                subTaskId: subTaskId,
+                companyId: user.companyId,
+                userId: user.id,
+                initialCompletionPercentage: task.completionPercentage || 0,
+                initialPhotos: serializablePhotos,
+                returnScreen: 'UpdateProgress',
+              });
+            } catch (error: any) {
+              console.error('❌ [UpdateProgress] Navigation error:', error);
+              Alert.alert(
+                "Navigation Error",
+                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
+              );
+            }
+          }, 100);
         });
       },
       allowClipboard: true,
@@ -147,6 +276,53 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
     }
   };
 
+  // Upload photo objects to Supabase and return URLs
+  const uploadPhotoObjects = async (photos: SelectedPhoto[], taskId: string): Promise<string[]> => {
+    if (!user || photos.length === 0) return [];
+
+    const uploadedUrls: string[] = [];
+    const entityType = 'task-update';
+
+    console.log(`📤 [UpdateProgress] Uploading ${photos.length} photo object(s) before update save...`);
+
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      try {
+        const uriToUpload = photo.annotatedUri || photo.uri;
+        
+        // Check if file exists
+        const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+        if (!fileInfo.exists) {
+          console.error(`❌ [UpdateProgress] File not found: ${photo.fileName}`);
+          continue;
+        }
+
+        const result = await uploadFileWithVerification({
+          file: {
+            uri: uriToUpload,
+            name: photo.fileName,
+            type: 'image/jpeg',
+          },
+          entityType: entityType,
+          entityId: taskId,
+          companyId: user.companyId,
+          userId: user.id,
+        });
+
+        if (result.success && result.file) {
+          console.log(`✅ [UpdateProgress] Photo ${i + 1} uploaded: ${result.file.public_url}`);
+          uploadedUrls.push(result.file.public_url);
+        } else {
+          console.error(`❌ [UpdateProgress] Photo ${i + 1} upload failed: ${result.error}`);
+        }
+      } catch (error: any) {
+        console.error(`❌ [UpdateProgress] Photo ${i + 1} upload exception:`, error);
+      }
+    }
+
+    return uploadedUrls;
+  };
+
   const handleSubmitUpdate = async () => {
     if (!updateForm.description.trim()) {
       Alert.alert("Error", "Please provide a description for this update");
@@ -158,6 +334,24 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
     setIsSubmitting(true);
 
     try {
+      // Upload photo objects if any (photos stored locally)
+      let uploadedPhotoUrls: string[] = [];
+      if (updateForm.photoObjects.length > 0) {
+        console.log(`📤 [UpdateProgress] Uploading ${updateForm.photoObjects.length} photo(s) before update save...`);
+        uploadedPhotoUrls = await uploadPhotoObjects(updateForm.photoObjects, task.id);
+        
+        if (uploadedPhotoUrls.length < updateForm.photoObjects.length) {
+          const failedCount = updateForm.photoObjects.length - uploadedPhotoUrls.length;
+          Alert.alert(
+            "Upload Warning",
+            `${uploadedPhotoUrls.length} of ${updateForm.photoObjects.length} photo(s) uploaded successfully. ${failedCount} photo(s) failed to upload. The update will be saved with the successfully uploaded photos.`
+          );
+        }
+      }
+
+      // Combine existing URLs with newly uploaded URLs
+      const allPhotoUrls = [...updateForm.photos, ...uploadedPhotoUrls];
+
       const calculatedStatus: TaskStatus = 
         (task.status === "accepted" || task.status === "in_progress" || task.status === "submitted_for_review") ? 
           "in_progress" :
@@ -165,7 +359,7 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
 
       const updatePayload = {
         description: updateForm.description,
-        photos: updateForm.photos,
+        photos: allPhotoUrls, // Use combined URLs
         completionPercentage: updateForm.completionPercentage,
         status: calculatedStatus,
         userId: user!.id,
@@ -185,7 +379,45 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
         Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
       }
 
-      navigation.goBack();
+      // Navigate back to TaskDetailScreen instead of just going back
+      // This prevents the loop where we go back to PhotoSelectionScreen
+      const parentNav = navigation.getParent();
+      if (sourceScreen && sourceTaskId && parentNav) {
+        // Navigate back to the source screen (TaskDetail)
+        if (sourceScreen === 'dashboard') {
+          parentNav.navigate("Dashboard", {
+            screen: "TaskDetailFromDashboard",
+            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
+          });
+        } else if (sourceScreen === 'tasks') {
+          parentNav.navigate("Tasks", {
+            screen: "TaskDetail",
+            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
+          });
+        } else {
+          // Fallback: navigate to TaskDetail in current stack
+          navigation.navigate("TaskDetail", {
+            taskId: sourceTaskId,
+            subTaskId: sourceSubTaskId,
+          });
+        }
+      } else {
+        // Fallback: try to navigate to TaskDetail in current stack
+        try {
+          navigation.navigate("TaskDetail", {
+            taskId: task.id,
+            subTaskId: subTaskId,
+          });
+        } catch (e) {
+          // Last resort: go back multiple times to get past PhotoSelection
+          console.log('⚠️ [UpdateProgress] Could not navigate to TaskDetail, using goBack()');
+          // Go back twice: once from UpdateProgress to PhotoSelection, once from PhotoSelection to TaskDetail
+          navigation.goBack();
+          setTimeout(() => {
+            navigation.goBack();
+          }, 100);
+        }
+      }
     } catch (error) {
       Alert.alert(t.errors.error, t.taskDetail.failedToSubmitUpdate);
     } finally {
@@ -233,11 +465,12 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
             {t.taskDetail.photosAndFiles}
           </Text>
           
-          {updateForm.photos.length > 0 ? (
+          {(updateForm.photos.length > 0 || updateForm.photoObjects.length > 0) ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
               <View className="flex-row">
+                {/* Display already uploaded photo URLs */}
                 {updateForm.photos.map((photo, index) => (
-                  <View key={index} className="mr-3 relative">
+                  <View key={`url-${index}`} className="mr-3 relative">
                     <Image
                       source={{ uri: photo }}
                       className="w-24 h-24 rounded-lg"
@@ -251,6 +484,30 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
                         setUpdateForm(prev => ({
                           ...prev,
                           photos: prev.photos.filter((_, i) => i !== index)
+                        }));
+                      }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                    >
+                      <Ionicons name="close" size={14} color="white" />
+                    </Pressable>
+                  </View>
+                ))}
+                {/* Display photo objects (not yet uploaded) */}
+                {updateForm.photoObjects.map((photo, index) => (
+                  <View key={`obj-${index}`} className="mr-3 relative">
+                    <Image
+                      source={{ uri: photo.annotatedUri || photo.uri }}
+                      className="w-24 h-24 rounded-lg"
+                      resizeMode="cover"
+                    />
+                    <View className="absolute top-1 left-1 w-6 h-6 bg-yellow-500 rounded-full items-center justify-center">
+                      <Ionicons name="time-outline" size={14} color="white" />
+                    </View>
+                    <Pressable
+                      onPress={() => {
+                        setUpdateForm(prev => ({
+                          ...prev,
+                          photoObjects: prev.photoObjects.filter((_, i) => i !== index)
                         }));
                       }}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
@@ -321,10 +578,12 @@ export default function UpdateProgressScreen({ onNavigateToProfile, onNavigateTo
             <View className="flex-row items-center flex-1">
               <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
               <Text className="text-gray-600 font-medium ml-2 text-sm">
-                {updateForm.photos.length === 0 ? t.taskDetail.tapToAddFiles : `${updateForm.photos.length} file(s) added`}
+                {(updateForm.photos.length === 0 && updateForm.photoObjects.length === 0) 
+                  ? t.taskDetail.tapToAddFiles 
+                  : `${updateForm.photos.length + updateForm.photoObjects.length} file(s) added`}
               </Text>
             </View>
-            {updateForm.photos.length > 0 && (
+            {(updateForm.photos.length > 0 || updateForm.photoObjects.length > 0) && (
               <Ionicons name="checkmark-circle" size={20} color="#10b981" />
             )}
           </Pressable>

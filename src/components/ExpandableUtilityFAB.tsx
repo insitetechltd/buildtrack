@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { View, Pressable, Animated, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "../utils/useTranslation";
+import { useNavigation } from "@react-navigation/native";
 
 interface ExpandableUtilityFABProps {
   onCreateTask: () => void;
@@ -10,10 +11,12 @@ interface ExpandableUtilityFABProps {
 
 export default function ExpandableUtilityFAB({ onCreateTask, onReports }: ExpandableUtilityFABProps) {
   const t = useTranslation();
+  const navigation = useNavigation<any>();
   const [isExpanded, setIsExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim1 = useRef(new Animated.Value(0)).current;
-  const scaleAnim3 = useRef(new Animated.Value(0)).current;
+  const scaleAnim1 = useRef(new Animated.Value(0)).current; // Create Task
+  const scaleAnim2 = useRef(new Animated.Value(0)).current; // Dashboard
+  const scaleAnim3 = useRef(new Animated.Value(0)).current; // Reports
 
   const toggleExpand = () => {
     const toValue = isExpanded ? 0 : 1;
@@ -29,6 +32,12 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
         useNativeDriver: true,
         friction: 7,
         delay: isExpanded ? 0 : 100,
+      }),
+      Animated.spring(scaleAnim2, {
+        toValue,
+        useNativeDriver: true,
+        friction: 7,
+        delay: isExpanded ? 0 : 125,
       }),
       Animated.spring(scaleAnim3, {
         toValue,
@@ -50,6 +59,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
     // Stop all running animations
     rotateAnim.stopAnimation();
     scaleAnim1.stopAnimation();
+    scaleAnim2.stopAnimation();
     scaleAnim3.stopAnimation();
     
     // Reset all animations to collapsed state immediately
@@ -60,6 +70,11 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
         useNativeDriver: true,
       }),
       Animated.timing(scaleAnim1, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(scaleAnim2, {
         toValue: 0,
         duration: 150,
         useNativeDriver: true,
@@ -76,7 +91,16 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
 
   const handleCreateTask = () => {
     collapseImmediately();
-    setTimeout(() => onCreateTask(), 200);
+    // Call immediately without delay to ensure navigation happens
+    onCreateTask();
+  };
+
+  const handleDashboard = () => {
+    collapseImmediately();
+    const parentNav = navigation.getParent();
+    if (parentNav) {
+      parentNav.navigate("Dashboard");
+    }
   };
 
   const handleReports = () => {
@@ -121,7 +145,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
       
       <View className="absolute bottom-8 right-6 items-end" style={{ zIndex: 1001 }} pointerEvents="box-none">
         {/* Reports Button - appears when expanded */}
-        {/* Custom position: Center at -108px */}
+        {/* Custom position: Center at -144px */}
         {onReports && (
         <Animated.View
           style={{
@@ -129,7 +153,7 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
               { scale: scaleAnim3 },
               { translateY: scaleAnim3.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0, -108]
+                outputRange: [0, -144]
               })}
             ],
             opacity: scaleAnim3,
@@ -160,6 +184,45 @@ export default function ExpandableUtilityFAB({ onCreateTask, onReports }: Expand
           </Pressable>
         </Animated.View>
       )}
+
+      {/* Dashboard Button - appears when expanded */}
+      {/* Custom position: Center at -72px */}
+      <Animated.View
+        style={{
+          transform: [
+            { scale: scaleAnim2 },
+            { translateY: scaleAnim2.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -72]
+            })}
+          ],
+          opacity: scaleAnim2,
+          zIndex: 1002,
+        }}
+        pointerEvents={isExpanded ? 'auto' : 'none'}
+        className="flex-row items-center"
+      >
+        <View className="bg-gray-800 px-3 py-2 rounded-lg mr-2 shadow-lg">
+          <Text className="text-white text-base font-medium">{t.nav.dashboard || "Dashboard"}</Text>
+        </View>
+        <Pressable
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDashboard();
+          }}
+          className="w-12 h-12 bg-blue-500 rounded-full items-center justify-center shadow-lg"
+          style={{
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.25,
+            shadowRadius: 3.84,
+            elevation: 5,
+            zIndex: 1003,
+          }}
+        >
+          <Ionicons name="home" size={20} color="white" />
+        </Pressable>
+      </Animated.View>
 
       {/* Create Task Button - appears when expanded */}
       {/* Custom position: Center at -36px */}

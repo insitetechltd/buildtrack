@@ -432,12 +432,19 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
   const { taskId, subTaskId, companyId, userId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId } = route.params || {};
   const uploadedUrlsRef = React.useRef<string[] | null>(null);
   
+  // For UpdateProgress and CreateTask, default uploadImmediately to false if not specified
+  // This ensures photos are stored locally until submit
+  const effectiveUploadImmediately = uploadImmediately !== undefined 
+    ? uploadImmediately 
+    : (returnScreen === 'UpdateProgress' || returnScreen === 'CreateTask' ? false : true);
+  
   // Debug logging
   console.log('📸 [PhotoSelectionWrapper] Route params:', {
     returnScreen,
     uploadImmediately,
+    effectiveUploadImmediately,
     uploadImmediatelyType: typeof uploadImmediately,
-    shouldUsePhotosSelected: (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && uploadImmediately === false,
+    shouldUsePhotosSelected: (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false,
   });
   
   // Listen for when we return from PhotoSelectionScreen with uploaded URLs
@@ -599,7 +606,7 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
       initialCompletionPercentage={initialCompletionPercentage || 0}
       initialPhotos={initialPhotos}
       entityType={entityType}
-      uploadImmediately={uploadImmediately !== false} // Default to true for backward compatibility
+      uploadImmediately={effectiveUploadImmediately}
       onNavigateBack={() => navigation.goBack()}
       onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number, uploadedPhotoUrls?: string[]) => {
         navigation.navigate("UpdateProgress", {
@@ -612,13 +619,14 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
           sourceSubTaskId: sourceSubTaskId || subTaskId,
         });
       }}
-      onPhotosUploaded={returnScreen && uploadImmediately !== false ? handlePhotosUploaded : undefined}
+      onPhotosUploaded={returnScreen && effectiveUploadImmediately !== false ? handlePhotosUploaded : undefined}
       onPhotosSelected={(() => {
         // Check if we should use onPhotosSelected (when uploadImmediately is false)
-        const shouldUsePhotosSelected = (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && uploadImmediately === false;
+        const shouldUsePhotosSelected = (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false;
         console.log('📸 [PhotoSelectionWrapper] onPhotosSelected condition check:', {
           returnScreen,
           uploadImmediately,
+          effectiveUploadImmediately,
           uploadImmediatelyType: typeof uploadImmediately,
           shouldUsePhotosSelected,
           willPassCallback: shouldUsePhotosSelected,

@@ -224,6 +224,10 @@ export default function UpdateProgressScreen({ uploadedPhotoUrls: uploadedPhotoU
                 initialCompletionPercentage: task.completionPercentage || 0,
                 initialPhotos: serializablePhotos,
                 returnScreen: 'UpdateProgress',
+                uploadImmediately: false, // Don't upload immediately - store locally until submit
+                sourceScreen: sourceScreen,
+                sourceTaskId: sourceTaskId || task.id,
+                sourceSubTaskId: sourceSubTaskId || subTaskId,
               });
             } catch (error: any) {
               console.error('❌ [UpdateProgress] Navigation error:', error);

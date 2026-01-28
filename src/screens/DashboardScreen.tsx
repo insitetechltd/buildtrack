@@ -540,15 +540,16 @@ export default function DashboardScreen({
     }
   }
 
-  // My Tasks: WIP (in_progress, new, accepted, or rejected for rework, not overdue)
+  // My Tasks: WIP (in_progress, new, accepted, or rejected for rework, INCLUDING overdue)
   // Use status or currentStatus (for backward compatibility)
   // NOTE: Self-assigned tasks with "new" status should be included (they're auto-accepted)
+  // NOTE: Overdue tasks are now included in WIP (redistributed from removed overdue button)
   const getTaskStatus = (task: any) => task.status || task.currentStatus || 'not_started';
   const myWIPTasks = myTasksAll.filter(task => {
     const status = getTaskStatus(task);
     // Include: in_progress, new (self-assigned auto-accepted), accepted, or rejected
-    return (status === "in_progress" || status === "new" || status === "accepted" || status === "rejected") &&
-           !isOverdue(task);
+    // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
+    return (status === "in_progress" || status === "new" || status === "accepted" || status === "rejected");
   });
   
   // My Tasks: Done (approved status)
@@ -587,10 +588,11 @@ export default function DashboardScreen({
     task.status === "new"
   );
   
-  // Inbox: WIP (in_progress or rejected for rework, not overdue)
+  // Inbox: WIP (in_progress or rejected for rework, INCLUDING overdue)
+  // NOTE: Overdue tasks are now included in WIP (redistributed from removed overdue button)
   const inboxWIPTasks = inboxAll.filter(task => {
-    return (task.status === "in_progress" || task.status === "rejected") &&
-           !isOverdue(task);
+    // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
+    return (task.status === "in_progress" || task.status === "rejected");
   });
 
   // Inbox: Reviewing (tasks I CREATED that are submitted_for_review OR declined by assignee)
@@ -674,6 +676,7 @@ export default function DashboardScreen({
   // Outbox: WIP (accepted, in_progress, or rejected for rework, but NOT tasks submitted for review)
   // Includes tasks at 100% that haven't been submitted for review yet
   // NOTE: Declined tasks should NOT appear here - they appear in "Pending my review" only
+  // NOTE: Overdue tasks are now included in WIP (redistributed from removed overdue button)
   const outboxWIPTasks = outboxAll.filter(task => {
     // Exclude tasks submitted for review - they should only appear in "reviewing" filter
     if (task.status === "submitted_for_review") {
@@ -698,8 +701,8 @@ export default function DashboardScreen({
       return true;
     }
     // Include accepted or in_progress tasks that are not complete
+    // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
     return (task.status === "accepted" || task.status === "in_progress") &&
-           !isOverdue(task) &&
            task.completionPercentage < 100;
   });
 
@@ -733,6 +736,67 @@ export default function DashboardScreen({
   });
 
   const outboxTotal = outboxAll.length;
+
+  // ===== OVERDUE COUNTS FOR EACH BUTTON =====
+  // Calculate overdue counts for each button category
+  const getOverdueCountForMyWIPTasks = () => {
+    return myWIPTasks.filter(task => {
+      const status = getTaskStatus(task);
+      return task.completionPercentage < 100 &&
+             isOverdue(task) &&
+             status !== "rejected";
+    }).length;
+  };
+
+  const getOverdueCountForInboxWIPTasks = () => {
+    return inboxWIPTasks.filter(task => {
+      const status = getTaskStatus(task);
+      return task.completionPercentage < 100 &&
+             isOverdue(task) &&
+             status !== "rejected";
+    }).length;
+  };
+
+  const getOverdueCountForOutboxWIPTasks = () => {
+    return outboxWIPTasks.filter(task => {
+      const status = getTaskStatus(task);
+      return task.completionPercentage < 100 &&
+             isOverdue(task) &&
+             status !== "rejected";
+    }).length;
+  };
+
+  const getOverdueCountForNewRequests = () => {
+    return inboxReceivedTasks.filter(task => {
+      return isOverdue(task);
+    }).length;
+  };
+
+  const getOverdueCountForPendingMyReview = () => {
+    return inboxReviewingTasks.filter(task => {
+      return isOverdue(task);
+    }).length;
+  };
+
+  const getOverdueCountForPendingAcceptance = () => {
+    return outboxAssignedTasks.filter(task => {
+      return isOverdue(task);
+    }).length;
+  };
+
+  const getOverdueCountForPendingApproval = () => {
+    return outboxReviewingTasks.filter(task => {
+      return isOverdue(task);
+    }).length;
+  };
+
+  // Overdue counts for each button
+  const currentTasksOverdueCount = getOverdueCountForMyWIPTasks() + getOverdueCountForInboxWIPTasks();
+  const teamProceedingOverdueCount = getOverdueCountForOutboxWIPTasks();
+  const newRequestsOverdueCount = getOverdueCountForNewRequests();
+  const pendingMyReviewOverdueCount = getOverdueCountForPendingMyReview();
+  const pendingAcceptanceOverdueCount = getOverdueCountForPendingAcceptance();
+  const pendingApprovalOverdueCount = getOverdueCountForPendingApproval();
 
   // ===== CATCH-ALL: Tasks not covered by the 9 main buttons =====
   // This identifies any gaps in the categorization logic
@@ -769,23 +833,15 @@ export default function DashboardScreen({
     // Track why task is/isn't excluded
     const exclusionReasons: string[] = [];
     
-    // Exclude tasks that match any of the 9 main button criteria:
+    // Exclude tasks that match any of the main button criteria:
     
-    // 1. My Action Required Now (my_work + overdue)
-    if (isInMyTasks || isInInbox) {
-      if (task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected") {
-        exclusionReasons.push("1. My Action Required Now");
-        return false; // Covered by "My Action Required Now"
-      }
-    }
+    // 1. My Action Required Now (my_work + overdue) - REMOVED BUTTON
+    // Tasks now covered by "Current Tasks" (my_work + wip) which includes overdue
+    // No longer need to exclude here - they're included in WIP filter
     
-    // 2. Follow Up Now (outbox + overdue)
-    if (isInOutbox) {
-      if ((status === "in_progress" || status === "accepted") && isOverdue(task)) {
-        exclusionReasons.push("2. Follow Up Now");
-        return false; // Covered by "Follow Up Now"
-      }
-    }
+    // 2. Follow Up Now (outbox + overdue) - REMOVED BUTTON
+    // Tasks now covered by "Team Proceeding" (outbox + wip) which includes overdue
+    // No longer need to exclude here - they're included in WIP filter
     
     // 3. New Requests (inbox + received)
     if (isInInbox && status === "new" && !task.declinedReason && task.completionPercentage < 100) {
@@ -793,21 +849,24 @@ export default function DashboardScreen({
       return false; // Covered by "New Requests"
     }
     
-    // 4. Current Tasks (my_work + wip)
+    // 4. Current Tasks (my_work + wip) - NOW INCLUDES OVERDUE TASKS
     if (isInMyTasks || isInInbox) {
-      if (task.status === "rejected" && !isOverdue(task)) {
+      if (task.status === "rejected") {
+        // Rejected tasks are included in WIP (no overdue check needed)
         exclusionReasons.push("4. Current Tasks (rejected)");
         return false; // Covered by "Current Tasks" (rejected tasks in WIP)
       }
       if (isInMyTasks) {
         const isAcceptedOrInProgress = status === "accepted" || status === "in_progress" || status === "new";
-        if (isAcceptedOrInProgress && task.completionPercentage < 100 && !isOverdue(task) && status !== "approved") {
+        // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
+        if (isAcceptedOrInProgress && task.completionPercentage < 100 && status !== "approved") {
           exclusionReasons.push("4. Current Tasks (my_tasks)");
           return false; // Covered by "Current Tasks"
         }
       }
       if (isInInbox) {
-        if ((status === "accepted" || status === "in_progress") && !isOverdue(task) && 
+        // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
+        if ((status === "accepted" || status === "in_progress") && 
             (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
             status !== "approved") {
           exclusionReasons.push("4. Current Tasks (inbox)");
@@ -833,13 +892,14 @@ export default function DashboardScreen({
       return false; // Covered by "Pending Acceptance"
     }
     
-    // 7. Team Proceeding (outbox + wip)
+    // 7. Team Proceeding (outbox + wip) - NOW INCLUDES OVERDUE TASKS
     if (isInOutbox) {
       if (task.status === "rejected") {
         exclusionReasons.push("7. Team Proceeding (rejected)");
         return false; // Covered by "Team Proceeding" (rejected tasks in WIP)
       }
-      if ((status === "accepted" || status === "in_progress") && !isOverdue(task) &&
+      // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
+      if ((status === "accepted" || status === "in_progress") &&
           (task.completionPercentage < 100 || (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
           status !== "approved") {
         exclusionReasons.push("7. Team Proceeding");
@@ -1043,85 +1103,6 @@ export default function DashboardScreen({
             "rounded-2xl p-4 mb-4",
             isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
           )}>
-            {/* 1. Overdue Section */}
-            <View className="mb-4">
-              <View className="flex-row items-center mb-3">
-                <View className={cn(
-                  "rounded-full p-1.5 mr-2",
-                  isDarkMode ? "bg-red-900/40" : "bg-red-100"
-                )}>
-                  <Ionicons 
-                    name="alarm-outline" 
-                    size={20} 
-                    color={isDarkMode ? "#fca5a5" : "#dc2626"} 
-                  />
-                </View>
-                <Text className={cn(
-                  "text-lg font-bold",
-                  isDarkMode ? "text-red-400" : "text-red-600"
-                )}>
-                  {t.dashboard.overdue}
-                </Text>
-              </View>
-              <View className={cn("flex-row", isDarkMode ? "gap-3" : "gap-2")}>
-                {/* My Overdues */}
-                <Pressable 
-                  className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
-                    isDarkMode ? "bg-red-900 border-2 border-red-600" : "bg-red-50 border border-red-300"
-                  )}
-                  onPress={() => {
-                    setSectionFilter("my_work");
-                    setStatusFilter("overdue");
-                    setButtonLabel("Overdue - My Action Required Now");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className={cn(
-                    "text-4xl mb-1",
-                    isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
-                  )}>
-                    {myOverdueTasks.length + inboxOverdueTasks.length}
-                  </Text>
-                  <Text className={cn(
-                    "text-center text-base font-semibold",
-                    isDarkMode ? "text-red-200" : "text-red-600"
-                  )} numberOfLines={2}>
-                    {t.dashboard.myActionRequiredNow}
-                  </Text>
-                </Pressable>
-                
-                {/* Chase Now */}
-                <Pressable 
-                  className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
-                    isDarkMode ? "bg-red-900 border-2 border-red-600" : "bg-red-50 border border-red-300"
-                  )}
-                  onPress={() => {
-                    setSectionFilter("outbox");
-                    setStatusFilter("overdue");
-                    setButtonLabel("Overdue - Follow Up Now");
-                    onNavigateToTasks();
-                  }}
-                >
-                  <Text className={cn(
-                    "text-4xl mb-1",
-                    isDarkMode ? "font-black text-red-300" : "font-bold text-red-700"
-                  )}>
-                    {outboxOverdueTasks.length}
-                  </Text>
-                  <Text className={cn(
-                    "text-center text-base font-semibold",
-                    isDarkMode ? "text-red-200" : "text-red-600"
-                  )} numberOfLines={2}>
-                    {t.dashboard.followUpNow}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Divider */}
-            <View className={cn("h-px mb-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
 
             {/* 2. TASKS FOR ME Section */}
             <View className="mb-4">
@@ -1138,7 +1119,7 @@ export default function DashboardScreen({
                 {/* New Incoming Tasks */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-amber-900 border-2 border-amber-600" : "bg-yellow-50 border border-yellow-300"
                   )}
                   onPress={() => {
@@ -1148,6 +1129,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {newRequestsOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("inbox");
+                        setStatusFilter("received-overdue");
+                        setButtonLabel("Tasks for me - New Requests (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        newRequestsOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        newRequestsOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {newRequestsOverdueCount > 999 ? '999+' : newRequestsOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-amber-300" : "font-bold text-yellow-700"
@@ -1165,7 +1169,7 @@ export default function DashboardScreen({
                 {/* My On-going Tasks */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-violet-900 border-2 border-violet-600" : "bg-orange-50 border border-orange-300"
                   )}
                   onPress={() => {
@@ -1175,6 +1179,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {currentTasksOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("my_work");
+                        setStatusFilter("wip-overdue");
+                        setButtonLabel("Tasks for me - Current Tasks (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        currentTasksOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        currentTasksOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {currentTasksOverdueCount > 999 ? '999+' : currentTasksOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-violet-300" : "font-bold text-orange-700"
@@ -1192,7 +1219,7 @@ export default function DashboardScreen({
                 {/* Completed Review Now */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
                   )}
                   onPress={() => {
@@ -1202,6 +1229,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {pendingMyReviewOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("inbox");
+                        setStatusFilter("reviewing-overdue");
+                        setButtonLabel("Tasks for me - Pending my review (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        pendingMyReviewOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        pendingMyReviewOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {pendingMyReviewOverdueCount > 999 ? '999+' : pendingMyReviewOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
@@ -1236,7 +1286,7 @@ export default function DashboardScreen({
                 {/* Waiting to Be Accepted */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-amber-900 border-2 border-amber-600" : "bg-yellow-50 border border-yellow-300"
                   )}
                   onPress={() => {
@@ -1246,6 +1296,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {pendingAcceptanceOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("outbox");
+                        setStatusFilter("assigned-overdue");
+                        setButtonLabel("Tasks from me - Pending Acceptance (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        pendingAcceptanceOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        pendingAcceptanceOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {pendingAcceptanceOverdueCount > 999 ? '999+' : pendingAcceptanceOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-amber-300" : "font-bold text-yellow-700"
@@ -1263,7 +1336,7 @@ export default function DashboardScreen({
                 {/* Others Working on My Tasks */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-violet-900 border-2 border-violet-600" : "bg-orange-50 border border-orange-300"
                   )}
                   onPress={() => {
@@ -1273,6 +1346,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {teamProceedingOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("outbox");
+                        setStatusFilter("wip-overdue");
+                        setButtonLabel("Tasks from me - Team Proceeding (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        teamProceedingOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        teamProceedingOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {teamProceedingOverdueCount > 999 ? '999+' : teamProceedingOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-violet-300" : "font-bold text-orange-700"
@@ -1290,7 +1386,7 @@ export default function DashboardScreen({
                 {/* Sent for Review */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-3 items-center",
+                    "flex-1 rounded-xl p-3 items-center relative",
                     isDarkMode ? "bg-cyan-900 border-2 border-cyan-600" : "bg-blue-50 border border-blue-300"
                   )}
                   onPress={() => {
@@ -1300,6 +1396,29 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator */}
+                  {pendingApprovalOverdueCount > 0 && (
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        setSectionFilter("outbox");
+                        setStatusFilter("reviewing-overdue");
+                        setButtonLabel("Tasks from me - Pending Approval (Overdue)");
+                        onNavigateToTasks();
+                      }}
+                      className={cn(
+                        "absolute -top-1.5 -right-1.5 bg-red-500 rounded-full items-center justify-center border-2 border-white z-10",
+                        pendingApprovalOverdueCount > 99 ? "px-2 py-1 min-w-[36px]" : "w-9 h-9"
+                      )}
+                    >
+                      <Text className={cn(
+                        "text-white font-bold",
+                        pendingApprovalOverdueCount > 99 ? "text-xs" : "text-sm"
+                      )}>
+                        {pendingApprovalOverdueCount > 999 ? '999+' : pendingApprovalOverdueCount}
+                      </Text>
+                    </Pressable>
+                  )}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-cyan-300" : "font-bold text-blue-700"
@@ -1334,7 +1453,7 @@ export default function DashboardScreen({
                 {/* Work Accepted */}
                 <Pressable 
                   className={cn(
-                    "flex-1 rounded-xl p-4 items-center",
+                    "flex-1 rounded-xl p-4 items-center relative",
                     isDarkMode ? "bg-emerald-900 border-2 border-emerald-600" : "bg-green-50 border border-green-300"
                   )}
                   onPress={() => {
@@ -1344,6 +1463,7 @@ export default function DashboardScreen({
                     onNavigateToTasks();
                   }}
                 >
+                  {/* Overdue indicator - Done tasks are completed, so no overdue */}
                   <Text className={cn(
                     "text-4xl mb-1",
                     isDarkMode ? "font-black text-emerald-300" : "font-bold text-green-700"
@@ -1428,7 +1548,7 @@ export default function DashboardScreen({
                   "text-lg font-bold ml-3",
                   isDarkMode ? "text-white" : "text-gray-900"
                 )}>
-                  {t.dashboard.quickOverview}
+                  {t.dashboard.fullTaskList || "Full Task List"}
                 </Text>
               </View>
               <Ionicons 
@@ -1441,367 +1561,94 @@ export default function DashboardScreen({
             {/* Collapsible Content */}
             {isQuickOverviewExpanded && (
               <View className="px-4 pb-4">
-                {/* Section 1: My Tasks */}
-            <View>
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center">
-                  <Ionicons name="checkmark-circle-outline" size={18} color={isDarkMode ? "#34d399" : "#10b981"} />
-                  <Text className={cn(
-                    "text-base font-bold ml-2",
-                    isDarkMode ? "text-emerald-400" : "text-gray-900"
-                  )}>
-                    {t.dashboard.myTasks} ({myTasksTotal})
-                  </Text>
-                </View>
-                <Text className={cn(
-                  "text-sm italic",
-                  isDarkMode ? "text-slate-400" : "text-gray-500"
-                )}>
-                  {t.dashboard.tapStarHint}
-                </Text>
-              </View>
-              
-              <View className="flex-row gap-2">
-                {/* WIP */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-orange-900 border border-orange-600" : "bg-orange-50 border border-orange-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("wip");
-                      setButtonLabel("My Tasks - WIP");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
-                    )}>{myWIPTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
-                  </Pressable>
-                  
-                {/* Done */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-emerald-900 border border-emerald-600" : "bg-green-50 border border-green-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("done");
-                      setButtonLabel("My Tasks - Done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
-                    )}>{myDoneTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>{t.dashboard.done}</Text>
-                  </Pressable>
-                  
-                {/* Overdue */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-red-900 border border-red-600" : "bg-red-50 border border-red-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("my_tasks");
-                      setStatusFilter("overdue");
-                      setButtonLabel("My Tasks - Overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
-                    )}>{myOverdueTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
-                  </Pressable>
-                </View>
-            </View>
+                {/* Task List: All tasks where user is assigner or assignee */}
+                {(() => {
+                  // Filter tasks where user is either assigner or assignee
+                  const allUserTasks = projectFilteredTasks.filter(task => {
+                    const assignedTo = task.assignedTo || [];
+                    const userIdStr = String(user.id);
+                    const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some(id => String(id) === userIdStr);
+                    const isCreatedByMe = String(task.assignedBy) === userIdStr;
+                    
+                    // Include if user is assigner OR assignee
+                    return isAssignedToMe || isCreatedByMe;
+                  });
 
-            {/* Divider */}
-            <View className={cn("h-px my-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
+                  // Sort tasks: overdue first, then by priority, then by due date
+                  const sortedTasks = [...allUserTasks].sort((a, b) => {
+                    // Helper to check if overdue
+                    const isOverdue = (task: any) => {
+                      if (!task.dueDate) return false;
+                      const dueDate = new Date(task.dueDate);
+                      const now = new Date();
+                      return dueDate < now && task.completionPercentage < 100 && task.status !== "rejected";
+                    };
+                    
+                    const aOverdue = isOverdue(a);
+                    const bOverdue = isOverdue(b);
+                    
+                    // Overdue tasks first
+                    if (aOverdue && !bOverdue) return -1;
+                    if (!aOverdue && bOverdue) return 1;
+                    
+                    // Then by priority
+                    const priorityOrder: { [key: string]: number } = {
+                      "high": 1,
+                      "medium": 2,
+                      "low": 3,
+                    };
+                    const aPriority = priorityOrder[a.priority || "low"] || 4;
+                    const bPriority = priorityOrder[b.priority || "low"] || 4;
+                    if (aPriority !== bPriority) return aPriority - bPriority;
+                    
+                    // Then by due date (earliest first)
+                    if (a.dueDate && b.dueDate) {
+                      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+                    }
+                    if (a.dueDate) return -1;
+                    if (b.dueDate) return 1;
+                    
+                    return 0;
+                  });
 
-            {/* Section 2: Inbox */}
-            <View>
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center">
-                  <Ionicons name="mail-outline" size={isDarkMode ? 18 : 20} color={isDarkMode ? "#60a5fa" : "#3b82f6"} />
-                  <Text className={cn(
-                    "text-base font-bold ml-2",
-                    isDarkMode ? "text-blue-400" : "text-gray-900"
-                  )}>
-                    {t.dashboard.inbox} ({inboxTotal})
-                  </Text>
-                </View>
-              </View>
-              
-              <View className="flex-row gap-2">
-                {/* Received */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-amber-900 border border-amber-600" : "bg-yellow-50 border border-yellow-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("received");
-                      setButtonLabel("Inbox - Received");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
-                    )}>{inboxReceivedTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>{t.dashboard.received}</Text>
-                  </Pressable>
-                  
-                {/* WIP */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-orange-900 border border-orange-600" : "bg-orange-50 border border-orange-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("wip");
-                      setButtonLabel("Inbox - WIP");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
-                    )}>{inboxWIPTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
-                  </Pressable>
-                  
-                {/* Reviewing */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-cyan-900 border border-cyan-600" : "bg-blue-50 border border-blue-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("reviewing");
-                      setButtonLabel("Inbox - Reviewing");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-cyan-300" : "font-bold text-blue-700"
-                    )}>{inboxReviewingTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
-                    )} numberOfLines={1}>{t.dashboard.reviewing}</Text>
-                  </Pressable>
-                  
-                {/* Done */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-emerald-900 border border-emerald-600" : "bg-green-50 border border-green-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("done");
-                      setButtonLabel("Inbox - Done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
-                    )}>{inboxDoneTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>{t.dashboard.done}</Text>
-                  </Pressable>
-                  
-                {/* Overdue */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-red-900 border border-red-600" : "bg-red-50 border border-red-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("inbox");
-                      setStatusFilter("overdue");
-                      setButtonLabel("Inbox - Overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
-                    )}>{inboxOverdueTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
-                  </Pressable>
-                </View>
-            </View>
-
-            {/* Divider */}
-            <View className={cn("h-px my-4", isDarkMode ? "bg-slate-700" : "bg-gray-200")} />
-
-            {/* Section 3: Outbox */}
-            <View>
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center">
-                  <Ionicons name="send-outline" size={isDarkMode ? 18 : 20} color={isDarkMode ? "#a78bfa" : "#7c3aed"} />
-                  <Text className={cn(
-                    "text-base font-bold ml-2",
-                    isDarkMode ? "text-purple-400" : "text-gray-900"
-                  )}>
-                    {t.dashboard.outbox} ({outboxTotal})
-                  </Text>
-                </View>
-              </View>
-              
-              <View className="flex-row gap-2">
-                {/* Assigned */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-amber-900 border border-amber-600" : "bg-yellow-50 border border-yellow-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("assigned");
-                      setButtonLabel("Outbox - Assigned");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-amber-300" : "font-bold text-yellow-700"
-                    )}>{outboxAssignedTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-amber-200" : "text-sm text-yellow-600"
-                    )} numberOfLines={1}>{t.dashboard.assigned}</Text>
-                  </Pressable>
-                  
-                {/* WIP */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-orange-900 border border-orange-600" : "bg-orange-50 border border-orange-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("wip");
-                      setButtonLabel("Outbox - WIP");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-orange-300" : "font-bold text-orange-700"
-                    )}>{outboxWIPTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-orange-200" : "text-sm text-orange-600"
-                    )} numberOfLines={1}>{t.dashboard.wip}</Text>
-                  </Pressable>
-                  
-                {/* Reviewing */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-cyan-900 border border-cyan-600" : "bg-blue-50 border border-blue-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("reviewing");
-                      setButtonLabel("Outbox - Reviewing");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-cyan-300" : "font-bold text-blue-700"
-                    )}>{outboxReviewingTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-cyan-200" : "text-sm text-blue-600"
-                    )} numberOfLines={1}>{t.dashboard.reviewing}</Text>
-                  </Pressable>
-                  
-                {/* Done */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-emerald-900 border border-emerald-600" : "bg-green-50 border border-green-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("done");
-                      setButtonLabel("Outbox - Done");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-emerald-300" : "font-bold text-green-700"
-                    )}>{outboxDoneTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-emerald-200" : "text-sm text-green-600"
-                    )} numberOfLines={1}>{t.dashboard.done}</Text>
-                  </Pressable>
-                  
-                {/* Overdue */}
-                  <Pressable 
-                    className={cn(
-                      "flex-1 rounded-lg p-2 items-center",
-                      isDarkMode ? "bg-red-900 border border-red-600" : "bg-red-50 border border-red-300"
-                    )}
-                    onPress={() => {
-                      setSectionFilter("outbox");
-                      setStatusFilter("overdue");
-                      setButtonLabel("Outbox - Overdue");
-                      onNavigateToTasks();
-                    }}
-                  >
-                    <Text className={cn(
-                      "text-3xl mb-1",
-                      isDarkMode ? "font-bold text-red-300" : "font-bold text-red-700"
-                    )}>{outboxOverdueTasks.length}</Text>
-                    <Text className={cn(
-                      "text-center font-medium",
-                      isDarkMode ? "text-sm text-red-200" : "text-sm text-red-600"
-                    )} numberOfLines={1}>{t.dashboard.overdue}</Text>
-                  </Pressable>
-              </View>
-                </View>
+                  return (
+                    <View>
+                      <Text className={cn(
+                        "text-base font-semibold mb-3",
+                        isDarkMode ? "text-white" : "text-gray-900"
+                      )}>
+                        {t.dashboard.allMyTasks || "All My Tasks"} ({sortedTasks.length})
+                      </Text>
+                      
+                      {sortedTasks.length === 0 ? (
+                        <View className="py-8 items-center">
+                          <Ionicons name="checkmark-circle-outline" size={48} color={isDarkMode ? "#64748b" : "#9ca3af"} />
+                          <Text className={cn(
+                            "text-base mt-4",
+                            isDarkMode ? "text-slate-400" : "text-gray-500"
+                          )}>
+                            {t.dashboard.noTasks || "No tasks found"}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View className="gap-2">
+                          {sortedTasks.map((task) => (
+                            <TaskCard
+                              key={task.id}
+                              task={task}
+                              onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
+                                if (onNavigateToTaskDetail) {
+                                  onNavigateToTaskDetail(taskId, subTaskId);
+                                }
+                              }}
+                              className="mb-2"
+                            />
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })()}
               </View>
             )}
           </View>

@@ -672,31 +672,42 @@ export default function TasksScreen({
                  task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.status !== "rejected";
-        } else if (activeStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip" || activeStatusFilter === "wip-overdue") {
           // WIP: Tasks I'm actively working on (assigned TO me)
           // Includes: Self-assigned tasks + Tasks from others + Rejected tasks (needs rework)
-          // Excludes: Tasks at 100% (complete), Overdue tasks, Review accepted tasks
+          // INCLUDES OVERDUE TASKS (redistributed from removed "My Action Required Now" button)
           // Rejected tasks are included and shown at top for rework
           if (task.status === "rejected" && (isInMyTasks || isInInbox)) {
+            // Rejected tasks are not overdue, so exclude them from wip-overdue
+            if (activeStatusFilter === "wip-overdue") {
+              return false;
+            }
             return true; // Include rejected tasks in WIP
           }
+          let matchesWip = false;
           if (isInMyTasks) {
             // Self-assigned WIP: Auto-accepted or explicitly accepted
             const isSelfAssigned = isCreatedByMe && isAssignedToMe;
             const isAcceptedOrInProgress = task.status === "accepted" || task.status === "in_progress" || (isSelfAssigned && (task.status === "accepted" || task.status === "in_progress"));
-            return isAcceptedOrInProgress &&
+            matchesWip = isAcceptedOrInProgress &&
                    task.completionPercentage < 100 &&
-                   !isOverdue(task) &&
+                   // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
                    task.status !== "approved";
           } else if (isInInbox) {
             // Inbox WIP: Must be accepted or in progress, can be at 100% if not yet submitted for review
-            return (task.status === "accepted" || task.status === "in_progress") &&
-                   !isOverdue(task) &&
+            matchesWip = (task.status === "accepted" || task.status === "in_progress") &&
+                   // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
                    (task.completionPercentage < 100 ||
                     (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
                    task.status !== "approved";
           }
-          return false;
+          
+          // If "wip-overdue", also check if overdue
+          if (activeStatusFilter === "wip-overdue") {
+            return matchesWip && isOverdue(task);
+          }
+          
+          return matchesWip;
         } else if (activeStatusFilter === "done") {
           // DONE: All completed and accepted work (My Tasks + Inbox + Outbox)
           // Check outbox FIRST (before myTasks) because outbox is created by me but NOT self-assigned
@@ -773,11 +784,12 @@ export default function TasksScreen({
           return task.status === "rejected";
         } else if (activeStatusFilter === "wip") {
           // WIP: Self-assigned tasks in progress
+          // INCLUDES OVERDUE TASKS (redistributed from removed overdue buttons)
           const isSelfAssigned = isCreatedByMe && isAssignedToMe;
           const isAcceptedOrInProgress = task.status === "accepted" || task.status === "in_progress" || (isSelfAssigned && (task.status === "accepted" || task.status === "in_progress"));
           return isAcceptedOrInProgress &&
                  task.completionPercentage < 100 &&
-                 !isOverdue(task) &&
+                 // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
                  task.status !== "rejected" &&
                  task.status !== "approved";
         } else if (activeStatusFilter === "done") {
@@ -803,8 +815,8 @@ export default function TasksScreen({
         // REVIEWING: Tasks I CREATED that others submitted for MY review
         // This breaks inbox definition - we want tasks I created (not necessarily assigned to me)
         // NOTE: Includes both top-level tasks AND subtasks
-        if (activeStatusFilter === "reviewing") {
-          const isCreatedByMeForReview = String(task.assignedBy) === userIdStr;
+        if (activeStatusFilter === "reviewing" || activeStatusFilter === "reviewing-overdue") {
+          const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
           const isTopLevel = isTopLevelTask(task);
           const isNested = isNestedTask(task);
           // Include tasks I created that are:
@@ -813,6 +825,11 @@ export default function TasksScreen({
           const matchesReviewing = isCreatedByMeForReview &&
                  ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
                   (task.status === "declined"));
+          
+          // If "reviewing-overdue", also check if overdue
+          if (activeStatusFilter === "reviewing-overdue") {
+            return matchesReviewing && isOverdue(task);
+          }
           
           // Debug logging for ALL tasks at 100% that I created
           if (task.completionPercentage === 100 && isCreatedByMeForReview) {
@@ -860,13 +877,18 @@ export default function TasksScreen({
         // Only proceed if task is assigned to me AND not created by me
         if (!isInInbox) return false;
         
-        if (activeStatusFilter === "received") {
+        if (activeStatusFilter === "received" || activeStatusFilter === "received-overdue") {
           // RECEIVED: New tasks from others waiting for acceptance
           // First user to accept/reject decides for all users
           // Show if: no one has accepted yet AND no one has rejected yet AND not completed
           const isPendingAcceptance = task.status === "new" &&  // No one has accepted yet
                                       !task.declinedReason && 
                                       task.completionPercentage < 100; // Exclude completed tasks
+          
+          // If "received-overdue", also check if overdue
+          if (activeStatusFilter === "received-overdue") {
+            return isPendingAcceptance && isOverdue(task);
+          }
           
           // 🔍 DEBUG: Log why task is/isn't showing in received (for Task 5 or any task)
           if (task.title?.toLowerCase().includes("task 5") || 
@@ -886,14 +908,22 @@ export default function TasksScreen({
           }
           
           return isPendingAcceptance;
-        } else if (activeStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip" || activeStatusFilter === "wip-overdue") {
           // WIP: Tasks from others I'm actively working on
           // Must be accepted (by anyone - first user accepts for all), incomplete or at 100% but not yet submitted for review
-          return (task.status === "accepted" || task.status === "in_progress") &&  // Accepted or in progress
-                 !isOverdue(task) &&
+          // INCLUDES OVERDUE TASKS (redistributed from removed "My Action Required Now" button)
+          const matchesWip = (task.status === "accepted" || task.status === "in_progress") &&  // Accepted or in progress
+                 // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
                  (task.completionPercentage < 100 ||
                   (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
                  task.status !== "approved";
+          
+          // If "wip-overdue", also check if overdue
+          if (activeStatusFilter === "wip-overdue") {
+            return matchesWip && isOverdue(task);
+          }
+          
+          return matchesWip;
         } else if (activeStatusFilter === "done") {
           // DONE: Tasks from others that I completed and got accepted
           return task.status === "approved";
@@ -902,6 +932,13 @@ export default function TasksScreen({
           return task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.status !== "rejected";
+        } else if (activeStatusFilter === "reviewing-overdue") {
+          // REVIEWING-OVERDUE: Tasks I CREATED that others submitted for MY review AND are overdue
+          const isCreatedByMeForReview = String(task.assignedBy) === String(user.id);
+          const matchesReviewing = isCreatedByMeForReview &&
+                 ((task.status === "submitted_for_review" && task.completionPercentage === 100) ||
+                  (task.status === "declined"));
+          return matchesReviewing && isOverdue(task);
         }
         return false;
       } else if (effectiveSectionFilter === "outbox") {
@@ -926,25 +963,42 @@ export default function TasksScreen({
         
         if (!isInOutbox) return false;
         
-        if (activeStatusFilter === "assigned") {
+        if (activeStatusFilter === "assigned" || activeStatusFilter === "assigned-overdue") {
           // ASSIGNED: Tasks I delegated to others waiting for their acceptance
           // Pending acceptance = status is "new" AND no declinedReason
           const isPendingAcceptance = task.status === "new" && 
                                       !task.declinedReason;
+          
+          // If "assigned-overdue", also check if overdue
+          if (activeStatusFilter === "assigned-overdue") {
+            return isPendingAcceptance && isOverdue(task);
+          }
+          
           return isPendingAcceptance;
-        } else if (activeStatusFilter === "wip") {
+        } else if (activeStatusFilter === "wip" || activeStatusFilter === "wip-overdue") {
           // WIP: Tasks I assigned to others that they're working on
           // Includes: Accepted tasks they're working on OR rejected tasks (needs rework)
-          // They've accepted it, working on it, not overdue, not complete/submitted
+          // INCLUDES OVERDUE TASKS (redistributed from removed "Follow Up Now" button)
           // OR rejected tasks (show at top for rework)
           if (task.status === "rejected") {
+            // Rejected tasks are not overdue, so exclude them from wip-overdue
+            if (activeStatusFilter === "wip-overdue") {
+              return false;
+            }
             return true; // Include rejected tasks in WIP
           }
-          return (task.status === "accepted" || task.status === "in_progress") &&
-                 !isOverdue(task) &&
+          const matchesWip = (task.status === "accepted" || task.status === "in_progress") &&
+                 // REMOVED: !isOverdue(task) condition - overdue tasks now included in WIP
                  (task.completionPercentage < 100 ||
                   (task.completionPercentage === 100 && task.status !== "submitted_for_review")) &&
                  task.status !== "approved";
+          
+          // If "wip-overdue", also check if overdue
+          if (activeStatusFilter === "wip-overdue") {
+            return matchesWip && isOverdue(task);
+          }
+          
+          return matchesWip;
         } else if (activeStatusFilter === "done") {
           // DONE: Tasks I assigned to others that were completed and I accepted
           return task.status === "approved";
@@ -953,6 +1007,13 @@ export default function TasksScreen({
           return task.completionPercentage < 100 &&
                  isOverdue(task) &&
                  task.status !== "rejected";
+        } else if (activeStatusFilter === "reviewing-overdue") {
+          // REVIEWING-OVERDUE: Tasks I submitted for review (that OTHERS assigned to ME) AND are overdue
+          const matchesReviewing = !isCreatedByMe &&
+                 isAssignedToMe &&
+                 task.completionPercentage === 100 &&
+                 task.status === "submitted_for_review";
+          return matchesReviewing && isOverdue(task);
         }
         return false;
       }

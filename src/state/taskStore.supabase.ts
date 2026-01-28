@@ -11,9 +11,11 @@ interface TaskStore {
   error: string | null;
   // Cache timestamps for tasks (track when each task was last fetched)
   taskFetchTimestamps: Record<string, number>; // taskId -> timestamp
+  // Cache timestamp for all tasks fetch
+  allTasksFetchTimestamp: number | null; // When all tasks were last fetched
   
   // Fetching
-  fetchTasks: () => Promise<void>;
+  fetchTasks: (forceRefresh?: boolean) => Promise<void>;
   fetchTasksByProject: (projectId: string) => Promise<void>;
   fetchTasksByUser: (userId: string) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
@@ -94,13 +96,35 @@ export const useTaskStore = create<TaskStore>()(
       isLoading: false,
       error: null,
       taskFetchTimestamps: {}, // Track when tasks were last fetched
+      allTasksFetchTimestamp: null, // Track when all tasks were last fetched
 
       // FETCH from Supabase
-      fetchTasks: async () => {
+      fetchTasks: async (forceRefresh: boolean = false) => {
         if (!supabase) {
           console.error('Supabase not configured, no data available');
           set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
           return;
+        }
+
+        // CACHE-FIRST STRATEGY: Check if cached tasks exist and are fresh
+        const CACHE_TTL_MS = 30 * 1000; // 30 seconds cache TTL
+        const now = Date.now();
+        const state = get();
+        const cachedTasks = state.tasks;
+        const lastFetchTime = state.allTasksFetchTimestamp;
+        const isCacheFresh = lastFetchTime && (now - lastFetchTime) < CACHE_TTL_MS;
+
+        // Return cached tasks if they exist and are fresh (unless force refresh)
+        if (cachedTasks.length > 0 && isCacheFresh && !forceRefresh) {
+          console.log(`✅ [Cache Hit] Using cached tasks (${cachedTasks.length} tasks, age: ${Math.round((now - lastFetchTime!) / 1000)}s)`);
+          return; // Use cached data, no need to fetch
+        }
+
+        // Cache miss or stale - fetch from database
+        if (cachedTasks.length > 0 && !forceRefresh) {
+          console.log(`🔄 [Cache Stale] Refreshing tasks (age: ${lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 'unknown'}s)`);
+        } else {
+          console.log(`🌐 [Cache Miss] Fetching tasks from database`);
         }
 
         set({ isLoading: true, error: null });
@@ -310,7 +334,8 @@ export const useTaskStore = create<TaskStore>()(
 
           set({ 
             tasks: transformedTasks, 
-            isLoading: false 
+            isLoading: false,
+            allTasksFetchTimestamp: now, // Update fetch timestamp
           });
         } catch (error: any) {
           console.error('Error fetching tasks:', error);
@@ -3048,6 +3073,7 @@ export const useTaskStore = create<TaskStore>()(
         // Only persist tasks and read statuses, not loading/error states
         tasks: state.tasks,
         taskReadStatuses: state.taskReadStatuses,
+        allTasksFetchTimestamp: state.allTasksFetchTimestamp, // Persist fetch timestamp
       }),
     }
   )

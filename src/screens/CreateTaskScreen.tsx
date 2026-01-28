@@ -19,7 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
@@ -41,8 +41,22 @@ import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
+import { uploadFileWithVerification } from "../api/fileUploadService";
+import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 // Temporarily disabled due to expo-av CMake build issues
 // import VoiceTaskInput, { Language } from "../components/VoiceTaskInput";
+
+// Photo object type (for new photos not yet uploaded)
+interface SelectedPhoto {
+  uri: string;
+  fileName: string;
+  isAnnotated: boolean;
+  annotatedUri?: string;
+}
+
+// Attachment can be either a URL (already uploaded) or a photo object (to be uploaded)
+type Attachment = string | SelectedPhoto;
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -50,7 +64,10 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
-  uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen
+  uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen (legacy)
+  selectedPhotos?: SelectedPhoto[]; // Photo objects selected but not yet uploaded
+  clearForm?: boolean; // Flag to clear form when "Create New Task" is pressed
+  clearFormTimestamp?: number; // Timestamp to track when clearForm was set
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
@@ -78,19 +95,34 @@ const InputField = ({
   </View>
 );
 
-export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType, uploadedPhotoUrls, onNavigateToProfile, onNavigateToProjectPicker }: CreateTaskScreenProps) {
+export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentSubTaskId, editTaskId, actionType, uploadedPhotoUrls, selectedPhotos: selectedPhotosProp, clearForm, clearFormTimestamp, onNavigateToProfile, onNavigateToProjectPicker }: CreateTaskScreenProps) {
   // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
   const effectiveActionType = actionType || (editTaskId ? 'edit' : undefined);
   
+  // Track if we've processed clearForm to prevent multiple clears
+  const clearFormProcessedRef = React.useRef<number | undefined>(undefined);
+  
   // Debug: Log the props received
-  console.log('🎯 CreateTaskScreen props:', {
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🎯 [CreateTaskScreen] Props received:');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🎯 [CreateTaskScreen] Props:', {
     editTaskId,
     parentTaskId,
     parentSubTaskId,
     actionType,
     effectiveActionType,
-    hasEditTaskId: !!editTaskId
+    hasEditTaskId: !!editTaskId,
+    hasSelectedPhotosProp: !!selectedPhotosProp,
+    selectedPhotosPropCount: selectedPhotosProp?.length || 0,
+    clearForm,
+    clearFormProcessed: clearFormProcessedRef.current,
   });
+  if (selectedPhotosProp && selectedPhotosProp.length > 0) {
+    console.log('📸 [CreateTaskScreen] ✅ Received selectedPhotosProp:', selectedPhotosProp.length, 'photos');
+  } else {
+    console.log('📸 [CreateTaskScreen] ❌ No selectedPhotosProp received');
+  }
   
   // For non-edit actions, show full-screen implementations
   // These provide the tab switch transition experience
@@ -113,6 +145,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const { pickAndUploadImages, isUploading, isCompressing } = useFileUpload();
   const { showPhotoSelectionDialog } = usePhotoSelection();
   const navigation = useNavigation<any>();
+  const route = useRoute();
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
 
@@ -123,6 +156,24 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
   // ScrollView ref for scrolling to top
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Ref to track if we're returning with photos (to prevent form reset)
+  const returningWithPhotosRef = useRef(false);
+  
+  // Ref to track if we're restoring form data (to prevent reset during restoration)
+  const isRestoringFormDataRef = useRef(false);
+  
+  // Ref to track processed photo URIs to avoid duplicates
+  const processedPhotoUrisRef = useRef<Set<string>>(new Set());
+  
+  // Refs for TextInput fields to enable Tab key navigation
+  const titleInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
+  const taskReferenceInputRef = useRef<TextInput>(null);
+  
+  // Key for storing form data in AsyncStorage
+  const FORM_DATA_STORAGE_KEY = '@createTask_formData';
+  const SELECTED_USERS_STORAGE_KEY = '@createTask_selectedUsers';
 
   // Get task for editing - use useMemo to ensure it updates when tasks array changes
   const editTask = React.useMemo(() => {
@@ -157,6 +208,398 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       });
     }
   }, [editTaskId, fetchTaskById, tasks]);
+
+  // Combined handler: Restore form data and prevent form reset
+  // This MUST run in the correct order to prevent form reset before restoration
+  // 
+  // PHOTO HANDLING FLOW:
+  // 1. Photos come from PhotoSelectionScreen via navigation params
+  // 2. Navigation goes to "CreateTaskMain" which uses CreateTaskMainScreen wrapper
+  // 3. CreateTaskMainScreen extracts selectedPhotos from route.params and stores in state
+  // 4. CreateTaskMainScreen passes selectedPhotos as prop (selectedPhotosProp) to CreateTaskScreen
+  // 5. useEffect([selectedPhotosProp]) handles adding photos to formData (see below)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('🔄 [CreateTask] useFocusEffect - SCREEN FOCUSED');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // FIRST: If clearForm flag is set, clear everything (fresh "Create New Task")
+      // Use timestamp to ensure we process each clearForm request only once
+      const shouldClearForm = clearForm && clearFormTimestamp && clearFormProcessedRef.current !== clearFormTimestamp;
+      if (shouldClearForm) {
+        console.log('🔄 [CreateTask] clearForm flag detected - clearing form and AsyncStorage', {
+          clearFormTimestamp,
+          previousProcessed: clearFormProcessedRef.current,
+        });
+        clearFormProcessedRef.current = clearFormTimestamp; // Mark this timestamp as processed
+        AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY).catch(() => {});
+        AsyncStorage.removeItem(SELECTED_USERS_STORAGE_KEY).catch(() => {});
+        setFormData(getInitialFormData());
+        setSelectedUsers([]);
+        setErrors({});
+        setUserSearchQuery("");
+        setShowUserPicker(false);
+        setShowPriorityPicker(false);
+        setShowCategoryPicker(false);
+        setShowProjectPicker(false);
+        setShowDatePicker(false);
+        setAsyncStoragePhotoCount(0);
+        isRestoringFormDataRef.current = false;
+        returningWithPhotosRef.current = false;
+        processedPhotoUrisRef.current.clear();
+        // Clear the flag after handling
+        navigation.setParams({ clearForm: undefined, _timestamp: undefined });
+        return; // Exit early - don't restore or reset
+      }
+      
+      // Check if we're returning with photos (from props) - check multiple times as props may arrive late
+      let hasPhotos = !!(selectedPhotosProp && Array.isArray(selectedPhotosProp) && selectedPhotosProp.length > 0);
+      if (hasPhotos) {
+        returningWithPhotosRef.current = true;
+        console.log('📸 [CreateTask] Detected photos in props, preventing form reset');
+      }
+      
+      // SECOND: Check for stored form data IMMEDIATELY and set flag to prevent reset
+      const checkAndRestoreFormData = async () => {
+        try {
+          // Set flag immediately to prevent form reset while we check
+          isRestoringFormDataRef.current = true;
+          
+          const storedFormData = await AsyncStorage.getItem(FORM_DATA_STORAGE_KEY);
+          const storedSelectedUsers = await AsyncStorage.getItem(SELECTED_USERS_STORAGE_KEY);
+          
+          // Check for photos in AsyncStorage for debug info
+          if (storedFormData) {
+            try {
+              const parsedFormData = JSON.parse(storedFormData);
+              const photoCount = parsedFormData.attachments?.length || 0;
+              setAsyncStoragePhotoCount(photoCount);
+              console.log('💾 [CreateTask] AsyncStorage has photos:', photoCount);
+            } catch (e) {
+              setAsyncStoragePhotoCount(null);
+              console.log('💾 [CreateTask] Could not parse AsyncStorage for photo count');
+            }
+          } else {
+            setAsyncStoragePhotoCount(0);
+            console.log('💾 [CreateTask] No AsyncStorage data found');
+          }
+          
+          if (storedFormData && storedSelectedUsers) {
+            console.log('💾 [CreateTask] Found stored form data, restoring...');
+            console.log('💾 [CreateTask] Stored data preview:', {
+              hasFormData: !!storedFormData,
+              hasUsers: !!storedSelectedUsers,
+              formDataLength: storedFormData.length,
+            });
+            
+            const parsedFormData = JSON.parse(storedFormData);
+            const parsedSelectedUsers = JSON.parse(storedSelectedUsers);
+            
+            // CRITICAL: Convert dueDate string back to Date object (JSON.parse doesn't restore Date objects)
+            if (parsedFormData.dueDate) {
+              parsedFormData.dueDate = new Date(parsedFormData.dueDate);
+            }
+            
+            console.log('💾 [CreateTask] Restoring form data:', {
+              title: parsedFormData.title,
+              description: parsedFormData.description,
+              attachments: parsedFormData.attachments?.length || 0,
+              selectedUsers: parsedSelectedUsers.length,
+              dueDate: parsedFormData.dueDate instanceof Date ? parsedFormData.dueDate.toISOString() : 'Invalid date',
+            });
+            
+            // Restore form data IMMEDIATELY
+            // IMPORTANT: Merge with existing form data to preserve any user input that might have been entered
+            // This prevents form data from being lost if user entered data after saving to AsyncStorage
+            setFormData(prev => {
+              // Preserve existing form data if it has user input (non-empty fields)
+              const hasExistingData = prev.title || prev.description || prev.projectId || prev.assignedTo?.length > 0;
+              
+              if (hasExistingData) {
+                console.log('💾 [CreateTask] Merging restored data with existing form data');
+                // Merge: use restored data as base, but preserve existing user input if it exists
+                const merged = {
+                  ...parsedFormData,
+                  title: prev.title || parsedFormData.title,
+                  description: prev.description || parsedFormData.description,
+                  taskReference: prev.taskReference || parsedFormData.taskReference,
+                  billingStatus: prev.billingStatus || parsedFormData.billingStatus,
+                  priority: prev.priority || parsedFormData.priority,
+                  category: prev.category || parsedFormData.category,
+                  dueDate: prev.dueDate || parsedFormData.dueDate,
+                  projectId: prev.projectId || parsedFormData.projectId,
+                  assignedTo: prev.assignedTo?.length > 0 ? prev.assignedTo : parsedFormData.assignedTo,
+                };
+                
+                // Merge attachments: keep existing attachments and add restored ones (avoid duplicates)
+                const existingAttachments = prev.attachments || [];
+                const restoredAttachments = parsedFormData.attachments || [];
+                const existingUris = new Set(
+                  existingAttachments.map(att => typeof att === 'string' ? att : att.uri)
+                );
+                const newRestoredAttachments = restoredAttachments.filter((att: any) => {
+                  const uri = typeof att === 'string' ? att : att.uri;
+                  return !existingUris.has(uri);
+                });
+                merged.attachments = [...existingAttachments, ...newRestoredAttachments];
+                
+                console.log('💾 [CreateTask] Merged form data:', {
+                  title: merged.title,
+                  description: merged.description,
+                  attachments: merged.attachments.length,
+                });
+                
+                return merged;
+              } else {
+                // No existing data, just restore from storage
+                // Merge attachments: keep existing attachments and add restored ones (avoid duplicates)
+                const existingAttachments = prev.attachments || [];
+                const restoredAttachments = parsedFormData.attachments || [];
+                const existingUris = new Set(
+                  existingAttachments.map(att => typeof att === 'string' ? att : att.uri)
+                );
+                const newRestoredAttachments = restoredAttachments.filter((att: any) => {
+                  const uri = typeof att === 'string' ? att : att.uri;
+                  return !existingUris.has(uri);
+                });
+                const mergedAttachments = [...existingAttachments, ...newRestoredAttachments];
+                
+                console.log('💾 [CreateTask] Restoring form data (no existing data to merge):', {
+                  existingCount: existingAttachments.length,
+                  restoredCount: restoredAttachments.length,
+                  mergedCount: mergedAttachments.length,
+                });
+                
+                return {
+                  ...parsedFormData,
+                  attachments: mergedAttachments, // Use merged attachments
+                };
+              }
+            });
+            setSelectedUsers(parsedSelectedUsers);
+            
+            // IMPORTANT: Do NOT clear AsyncStorage after restoring
+            // Keep data in AsyncStorage so it persists if user exits form (draft functionality)
+            // Only clear AsyncStorage after successful task creation/update (see performSubmit)
+            setAsyncStoragePhotoCount(0); // Clear the count after restoration
+            console.log('✅ [CreateTask] Form data restored (keeping in AsyncStorage for draft)');
+            
+            // Reset flag after restoration completes
+            setTimeout(() => {
+              isRestoringFormDataRef.current = false;
+            }, 500);
+          } else {
+            // No stored data, clear flag
+            console.log('⏸️ [CreateTask] No stored form data found');
+            isRestoringFormDataRef.current = false;
+          }
+        } catch (error) {
+          console.error('❌ [CreateTask] Failed to restore form data:', error);
+          isRestoringFormDataRef.current = false;
+        }
+      };
+      
+      // Start restoration IMMEDIATELY - set flag first to prevent reset
+      isRestoringFormDataRef.current = true;
+      checkAndRestoreFormData();
+      
+      // THIRD: Check if we should reset the form
+      // NOTE: Form reset only happens if no stored data, no photos, and not editing
+      // This ensures form data persists when user exits (draft functionality)
+      // Only reset if NOT editing, NOT creating subtask, NOT returning with photos, and NOT restoring
+      // Use a longer timeout to ensure async restoration completes first AND props have time to arrive
+      setTimeout(() => {
+        // Re-check for photos in case props arrived late
+        const hasPhotosNow = !!(selectedPhotosProp && Array.isArray(selectedPhotosProp) && selectedPhotosProp.length > 0);
+        if (hasPhotosNow) {
+          hasPhotos = true;
+          returningWithPhotosRef.current = true;
+        }
+        
+        // Re-check flags after async operations have had time to complete
+        const shouldReset = 
+          !editTaskId && 
+          !parentTaskId && 
+          !hasPhotos && 
+          !hasPhotosNow &&
+          !isRestoringFormDataRef.current;
+        
+        if (shouldReset) {
+          // Double-check AsyncStorage one more time before resetting (safety check)
+          AsyncStorage.getItem(FORM_DATA_STORAGE_KEY).then(storedData => {
+            // Final check - only reset if no stored data AND not restoring AND no photos
+            const finalHasPhotos = !!(selectedPhotosProp && Array.isArray(selectedPhotosProp) && selectedPhotosProp.length > 0);
+            if (!storedData && !isRestoringFormDataRef.current && !finalHasPhotos) {
+              console.log('🔄 Resetting CreateTaskScreen form on focus (new task mode)');
+              setFormData(getInitialFormData());
+              setSelectedUsers([]);
+              setErrors({});
+              setUserSearchQuery("");
+              setShowUserPicker(false);
+              setShowPriorityPicker(false);
+              setShowCategoryPicker(false);
+              setShowProjectPicker(false);
+              setShowDatePicker(false);
+            } else {
+              console.log('⏸️ [CreateTask] Skipping form reset - stored data found, restoration in progress, or photos detected');
+            }
+          }).catch(() => {
+            // If check fails, don't reset (safer to preserve data)
+            console.log('⏸️ [CreateTask] Skipping form reset - error checking storage');
+          });
+        } else {
+          if (editTaskId) {
+            console.log('📝 Edit mode - not resetting form on focus');
+          } else if (hasPhotos || hasPhotosNow) {
+            console.log('📸 Returning with photos - not resetting form on focus');
+          } else if (isRestoringFormDataRef.current) {
+            console.log('💾 Restoring form data - not resetting form on focus');
+          }
+          
+          // Reset flag after a short delay
+          setTimeout(() => {
+            returningWithPhotosRef.current = false;
+          }, 100);
+        }
+      }, 500); // Longer delay to ensure async restoration completes AND props have time to arrive
+    }, [selectedPhotosProp, parentTaskId, editTaskId, clearForm, navigation])
+  );
+
+  // Handle uploaded photo URLs from PhotoSelectionScreen (legacy - for UpdateProgressScreen)
+  // Check both props and route params
+  useEffect(() => {
+    // First check props (from wrapper)
+    if (uploadedPhotoUrls && Array.isArray(uploadedPhotoUrls) && uploadedPhotoUrls.length > 0) {
+      console.log('✅ [CreateTask] Received uploaded photos from props:', uploadedPhotoUrls);
+      // Add uploaded photos to form attachments (avoid duplicates)
+      setFormData(prev => {
+        const existingUrls = new Set(
+          prev.attachments.map(att => typeof att === 'string' ? att : att.uri)
+        );
+        const newUrls = uploadedPhotoUrls.filter(url => !existingUrls.has(url));
+        if (newUrls.length > 0) {
+          console.log('✅ [CreateTask] Adding new photos to attachments:', newUrls);
+          return {
+            ...prev,
+            attachments: [...prev.attachments, ...newUrls],
+          };
+        }
+        return prev;
+      });
+    }
+  }, [uploadedPhotoUrls]);
+
+  // REMOVED: Navigation listener for route.params.selectedPhotos
+  // Photos come via selectedPhotosProp (from CreateTaskMainScreen wrapper), not route.params
+
+  // PRIMARY HANDLER: Watch selectedPhotosProp (photos passed as props from CreateTaskMainScreen wrapper)
+  // This is the ONLY handler needed - photos come from the wrapper as props, not route.params
+  useEffect(() => {
+    if (selectedPhotosProp && Array.isArray(selectedPhotosProp) && selectedPhotosProp.length > 0) {
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('📸 [CreateTask] useEffect: Received selectedPhotosProp:', selectedPhotosProp.length, 'photos');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      
+      // Use a delay to ensure this runs after form restoration from AsyncStorage
+      setTimeout(() => {
+        setFormData(prev => {
+          const existingUris = new Set(
+            prev.attachments.map(att => typeof att === 'string' ? att : (att.uri || ''))
+          );
+          
+          const newPhotos = selectedPhotosProp.filter((photo: SelectedPhoto) => {
+            const uri = photo.annotatedUri || photo.uri || '';
+            const isNew = !existingUris.has(uri) && !existingUris.has(photo.uri) && !processedPhotoUrisRef.current.has(uri);
+            if (isNew) {
+              processedPhotoUrisRef.current.add(uri);
+              processedPhotoUrisRef.current.add(photo.uri || '');
+            } else {
+              console.log(`⏭️ [CreateTask] Skipping duplicate photo: ${photo.fileName}`);
+            }
+            return isNew;
+          });
+          
+          if (newPhotos.length > 0) {
+            console.log('✅ [CreateTask] Adding', newPhotos.length, 'photos to attachments');
+            const updated = {
+              ...prev,
+              attachments: [...prev.attachments, ...newPhotos],
+            };
+            console.log('✅ [CreateTask] Updated attachments:', updated.attachments.length);
+            return updated;
+          }
+          return prev;
+        });
+      }, 400); // Delay to ensure AsyncStorage restoration completes first
+    }
+  }, [selectedPhotosProp]);
+
+  // Check AsyncStorage for photos when route params change (for debug display only)
+  useEffect(() => {
+    const checkAsyncStorage = async () => {
+      try {
+        const storedFormData = await AsyncStorage.getItem(FORM_DATA_STORAGE_KEY);
+        if (storedFormData) {
+          const parsedFormData = JSON.parse(storedFormData);
+          const photoCount = parsedFormData.attachments?.length || 0;
+          setAsyncStoragePhotoCount(photoCount);
+          console.log('💾 [CreateTask] AsyncStorage has photos:', photoCount);
+        } else {
+          setAsyncStoragePhotoCount(0);
+        }
+      } catch (e) {
+        console.log('💾 [CreateTask] Could not check AsyncStorage for photos');
+      }
+    };
+    checkAsyncStorage();
+  }, [route.params]);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Also check route params (for navigation-based updates)
+      const params = route.params as any;
+      if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
+        console.log('✅ [CreateTask] Received uploaded photos from route params:', params.uploadedPhotoUrls);
+        // Add uploaded photos to form attachments (avoid duplicates)
+        setFormData(prev => {
+          const existingUrls = new Set(prev.attachments);
+          const newUrls = params.uploadedPhotoUrls.filter((url: string) => !existingUrls.has(url));
+          if (newUrls.length > 0) {
+            console.log('✅ [CreateTask] Adding new photos to attachments from route:', newUrls);
+            return {
+              ...prev,
+              attachments: [...prev.attachments, ...newUrls],
+            };
+          }
+          return prev;
+        });
+        // Clear the params to prevent re-adding
+        navigation.setParams({ uploadedPhotoUrls: undefined });
+      }
+    }, [route.params, navigation])
+  );
+
+  // Monitor attachments changes for debugging
+  useEffect(() => {
+    // Safety check: ensure formData and attachments exist
+    if (!formData || !formData.attachments) {
+      console.log('⏸️ [CreateTask] formData or attachments not yet initialized');
+      return;
+    }
+    
+    console.log('🔍 [CreateTask] Attachments state changed:', {
+      count: formData.attachments.length,
+      attachments: formData.attachments.map((att, idx) => ({
+        index: idx,
+        type: typeof att,
+        uri: typeof att === 'string' ? (att.length > 50 ? att.substring(0, 50) + '...' : att) : (att.uri.length > 50 ? att.uri.substring(0, 50) + '...' : att.uri),
+        fileName: typeof att === 'string' ? 'URL' : att.fileName,
+        isAnnotated: typeof att === 'string' ? false : att.isAnnotated,
+        hasAnnotatedUri: typeof att === 'string' ? false : !!att.annotatedUri,
+      })),
+    });
+  }, [formData?.attachments]);
 
   // Also check when screen comes into focus (in case task was just created)
   useFocusEffect(
@@ -290,9 +733,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         priority: editTask.priority,
         category: editTask.category,
         dueDate: new Date(editTask.dueDate),
-        assignedTo: editTask.assignedTo || [],
-        attachments: editTask.attachments || [],
-        projectId: editTask.projectId,
+      assignedTo: editTask.assignedTo || [],
+      attachments: (editTask.attachments || []).map(url => url as Attachment), // URLs are strings
+      projectId: editTask.projectId,
       };
     }
     
@@ -306,7 +749,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       category: "general" as TaskCategory,
       dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 1 week from now
       assignedTo: [] as string[],
-      attachments: [] as string[],
+      attachments: [] as Attachment[],
       projectId: "",
     };
   };
@@ -339,6 +782,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
   const [editReason, setEditReason] = useState("");
   const [pendingSubmit, setPendingSubmit] = useState(false);
+  const [asyncStoragePhotoCount, setAsyncStoragePhotoCount] = useState<number | null>(null);
   
   // LLM Assistant state
   const {
@@ -427,26 +871,6 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     return filtered;
   }, [allAssignableUsers, userSearchQuery, user?.id, isFavoriteUser]);
 
-  // Reset form every time screen comes into focus (but not for subtasks)
-  useFocusEffect(
-    useCallback(() => {
-      // Only reset if NOT editing a task and NOT creating a subtask
-      if (!editTaskId && !parentTaskId) {
-        console.log('🔄 Resetting CreateTaskScreen form on focus (new task mode)');
-        setFormData(getInitialFormData());
-        setSelectedUsers([]);
-        setErrors({});
-        setUserSearchQuery("");
-        setShowUserPicker(false);
-        setShowPriorityPicker(false);
-        setShowCategoryPicker(false);
-        setShowProjectPicker(false);
-        setShowDatePicker(false);
-      } else if (editTaskId) {
-        console.log('📝 Edit mode - not resetting form on focus');
-      }
-    }, [parentTaskId, editTaskId])
-  );
 
   // Inherit parent task title and description when creating sub-task (only once on mount)
   const [hasInitializedFromParent, setHasInitializedFromParent] = React.useState(false);
@@ -486,8 +910,28 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     }
   }, [formData.projectId, fetchProjectUserAssignments]);
   
+  // Helper function to save form data to AsyncStorage
+  const saveFormDataToStorage = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(formData));
+      await AsyncStorage.setItem(SELECTED_USERS_STORAGE_KEY, JSON.stringify(selectedUsers));
+      console.log('💾 [CreateTask] Form data saved to AsyncStorage:', {
+        title: formData.title,
+        description: formData.description,
+        attachments: formData?.attachments?.length || 0,
+        selectedUsers: selectedUsers.length,
+      });
+    } catch (error: any) {
+      console.error('❌ [CreateTask] Failed to save form data to AsyncStorage:', error);
+    }
+  }, [formData, selectedUsers]);
+
   // Pre-fetch users when "Assign To" button is pressed (before modal opens)
+  // Also save form data before opening picker
   const handleOpenUserPicker = useCallback(async () => {
+    // Save form data before opening picker (in case user navigates away)
+    await saveFormDataToStorage();
+    
     if (formData.projectId) {
       // Check if we already have cached data
       const existingAssignments = getProjectUserAssignments(formData.projectId);
@@ -518,7 +962,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       // No project selected, open immediately
       setShowUserPicker(true);
     }
-  }, [formData.projectId, fetchProjectUserAssignments, getProjectUserAssignments]);
+  }, [formData.projectId, fetchProjectUserAssignments, getProjectUserAssignments, saveFormDataToStorage]);
 
   // Clear selected users when project changes (since eligible users change)
   React.useEffect(() => {
@@ -535,44 +979,114 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
   }, [formData.projectId, allAssignableUsers]);
 
   const handleTitleChange = useCallback((text: string) => {
-    setFormData(prev => ({ ...prev, title: text }));
-  }, []);
+    setFormData(prev => {
+      const updated = { ...prev, title: text };
+      // Auto-save to AsyncStorage when form fields change (debounced)
+      setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(updated));
+          await AsyncStorage.setItem(SELECTED_USERS_STORAGE_KEY, JSON.stringify(selectedUsers));
+        } catch (error) {
+          // Silent fail for auto-save
+        }
+      }, 500);
+      return updated;
+    });
+  }, [selectedUsers]);
 
   const handleDescriptionChange = useCallback((text: string) => {
-    setFormData(prev => ({ ...prev, description: text }));
-  }, []);
+    setFormData(prev => {
+      const updated = { ...prev, description: text };
+      // Auto-save to AsyncStorage when form fields change (debounced)
+      setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(updated));
+          await AsyncStorage.setItem(SELECTED_USERS_STORAGE_KEY, JSON.stringify(selectedUsers));
+        } catch (error) {
+          // Silent fail for auto-save
+        }
+      }, 500);
+      return updated;
+    });
+  }, [selectedUsers]);
 
   const handleTaskReferenceChange = useCallback((text: string) => {
-    setFormData(prev => ({ ...prev, taskReference: text }));
-  }, []);
+    setFormData(prev => {
+      const updated = { ...prev, taskReference: text };
+      // Auto-save to AsyncStorage when form fields change (debounced)
+      setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(updated));
+          await AsyncStorage.setItem(SELECTED_USERS_STORAGE_KEY, JSON.stringify(selectedUsers));
+        } catch (error) {
+          // Silent fail for auto-save
+        }
+      }, 500);
+      return updated;
+    });
+  }, [selectedUsers]);
 
-  const handleBillingStatusChange = useCallback((status: BillingStatus) => {
+  const handleBillingStatusChange = useCallback(async (status: BillingStatus) => {
     setFormData(prev => ({ ...prev, billingStatus: status }));
     setShowBillingStatusPicker(false);
-  }, []);
+    // Save form data after picker closes
+    await saveFormDataToStorage();
+  }, [saveFormDataToStorage]);
 
-  const handlePriorityChange = useCallback((priority: Priority) => {
+  const handlePriorityChange = useCallback(async (priority: Priority) => {
     setFormData(prev => ({ ...prev, priority }));
-  }, []);
+    // Save form data after selection
+    await saveFormDataToStorage();
+  }, [saveFormDataToStorage]);
 
-  const handleCategoryChange = useCallback((category: TaskCategory) => {
+  const handleCategoryChange = useCallback(async (category: TaskCategory) => {
     setFormData(prev => ({ ...prev, category }));
-  }, []);
+    // Save form data after selection
+    await saveFormDataToStorage();
+  }, [saveFormDataToStorage]);
 
-  const handleDateChange = useCallback((date: Date) => {
+  const handleDateChange = useCallback(async (date: Date) => {
     setFormData(prev => ({ ...prev, dueDate: date }));
-  }, []);
+    // Save form data after date selection
+    await saveFormDataToStorage();
+  }, [saveFormDataToStorage]);
 
-  const toggleUserSelection = useCallback((userId: string) => {
-    setSelectedUsers(prev => 
-      prev.includes(userId)
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  }, []);
+  const toggleUserSelection = useCallback(async (userId: string) => {
+    const newSelectedUsers = selectedUsers.includes(userId)
+      ? selectedUsers.filter(id => id !== userId)
+      : [...selectedUsers, userId];
+    setSelectedUsers(newSelectedUsers);
+    // Update formData.assignedTo to match
+    setFormData(prev => {
+      const updated = { ...prev, assignedTo: newSelectedUsers };
+      // Save form data after user selection changes
+      saveFormDataToStorage();
+      return updated;
+    });
+  }, [selectedUsers, saveFormDataToStorage]);
 
   const handleAddPhotos = async () => {
     if (!user) return;
+
+    // CRITICAL: Save form data to AsyncStorage BEFORE navigating away
+    console.log('💾 [CreateTask] Saving form data to AsyncStorage before photo selection');
+    try {
+      await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify(formData));
+      await AsyncStorage.setItem(SELECTED_USERS_STORAGE_KEY, JSON.stringify(selectedUsers));
+      console.log('✅ [CreateTask] Form data saved to AsyncStorage:', {
+        title: formData.title,
+        description: formData.description,
+        attachments: formData?.attachments?.length || 0,
+        selectedUsers: selectedUsers.length,
+      });
+    } catch (error: any) {
+      console.error('❌ [CreateTask] Failed to save form data to AsyncStorage:', error);
+      Alert.alert(
+        "Error",
+        "Failed to save form data. Your data may be lost when selecting photos. Please try again."
+      );
+      return; // Don't navigate if we can't save
+    }
 
     // For new tasks, we need a temporary task ID
     // For editing tasks, use the existing task ID
@@ -581,19 +1095,51 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     // Use unified photo selection utility
     showPhotoSelectionDialog({
       onPhotosSelected: (photos) => {
-        // Navigate to PhotoSelectionScreen
-        navigation.navigate("PhotoSelection", {
-          taskId: taskId,
-          subTaskId: undefined,
-          companyId: user.companyId,
-          userId: user.id,
-          initialCompletionPercentage: 0,
-          initialPhotos: photos,
-          returnScreen: 'CreateTask',
-          parentTaskId: parentTaskId,
-          parentSubTaskId: parentSubTaskId,
-          editTaskId: editTaskId,
-          actionType: actionType,
+        // Ensure photos are serializable (only include necessary fields)
+        const serializablePhotos = photos.map(photo => ({
+          uri: photo.uri,
+          fileName: photo.fileName,
+          isAnnotated: photo.isAnnotated || false,
+          // Don't include annotatedUri in initial params - it will be set later if needed
+        }));
+
+        // Defer navigation to avoid conflicts with Alert dialog
+        // Use requestAnimationFrame to ensure navigation happens after Alert is dismissed
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              if (!navigation || !navigation.navigate) {
+                console.error('❌ [CreateTask] Navigation object not available');
+                Alert.alert("Error", "Navigation is not available. Please try again.");
+                return;
+              }
+
+              // Navigate to PhotoSelectionScreen
+              // Use 'task' entityType when editing, 'task-update' for new tasks
+              const entityType = editTaskId ? 'task' : 'task-update';
+              navigation.navigate("PhotoSelection", {
+                taskId: taskId,
+                subTaskId: undefined,
+                companyId: user.companyId,
+                userId: user.id,
+                initialCompletionPercentage: 0,
+                initialPhotos: serializablePhotos,
+                returnScreen: 'CreateTask',
+                parentTaskId: parentTaskId,
+                parentSubTaskId: parentSubTaskId,
+                editTaskId: editTaskId,
+                actionType: actionType,
+                entityType: entityType, // Pass entityType to PhotoSelectionScreen
+                uploadImmediately: false, // Don't upload immediately - wait for task save
+              });
+            } catch (error: any) {
+              console.error('❌ [CreateTask] Navigation error:', error);
+              Alert.alert(
+                "Navigation Error",
+                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
+              );
+            }
+          }, 100); // Small delay to ensure Alert is fully dismissed
         });
       },
       allowClipboard: true,
@@ -665,12 +1211,61 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       newErrors.assignedTo = t.validation.assigneeRequired;
     }
 
-    if (formData.dueDate <= new Date()) {
+    // Ensure dueDate is a Date object for comparison
+    const dueDateForValidation = formData.dueDate instanceof Date ? formData.dueDate : new Date(formData.dueDate);
+    if (dueDateForValidation <= new Date()) {
       newErrors.dueDate = t.validation.dueDateFuture;
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Upload photo objects to Supabase and return URLs
+  const uploadPhotoObjects = async (photos: SelectedPhoto[], taskId: string): Promise<string[]> => {
+    if (!user || photos.length === 0) return [];
+
+    const uploadedUrls: string[] = [];
+    const entityType = editTaskId ? 'task' : 'task-update';
+
+    console.log(`📤 [CreateTask] Uploading ${photos.length} photo object(s) before task save...`);
+
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
+      try {
+        const uriToUpload = photo.annotatedUri || photo.uri;
+        
+        // Check if file exists
+        const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
+        if (!fileInfo.exists) {
+          console.error(`❌ [CreateTask] File not found: ${photo.fileName}`);
+          continue;
+        }
+
+        const result = await uploadFileWithVerification({
+          file: {
+            uri: uriToUpload,
+            name: photo.fileName,
+            type: 'image/jpeg',
+          },
+          entityType: entityType,
+          entityId: taskId,
+          companyId: user.companyId,
+          userId: user.id,
+        });
+
+        if (result.success && result.file) {
+          console.log(`✅ [CreateTask] Photo ${i + 1} uploaded: ${result.file.public_url}`);
+          uploadedUrls.push(result.file.public_url);
+        } else {
+          console.error(`❌ [CreateTask] Photo ${i + 1} upload failed: ${result.error}`);
+        }
+      } catch (error: any) {
+        console.error(`❌ [CreateTask] Photo ${i + 1} upload exception:`, error);
+      }
+    }
+
+    return uploadedUrls;
   };
 
   const performSubmit = async (providedEditReason?: string) => {
@@ -679,6 +1274,40 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
     try {
       let taskId: string;
       let successMessage: string;
+
+      // Separate attachments into URLs (already uploaded) and photo objects (to be uploaded)
+      const attachmentUrls: string[] = [];
+      const photoObjects: SelectedPhoto[] = [];
+      
+      formData.attachments.forEach(att => {
+        if (typeof att === 'string') {
+          attachmentUrls.push(att);
+        } else {
+          photoObjects.push(att);
+        }
+      });
+
+      // For new tasks, we need to create the task first to get a task ID for photo uploads
+      // For editing, we can use the existing task ID
+      const targetTaskId = editTaskId || `temp-${Date.now()}`;
+
+      // Upload photo objects if any
+      let uploadedPhotoUrls: string[] = [];
+      if (photoObjects.length > 0) {
+        console.log(`📤 [CreateTask] Uploading ${photoObjects.length} photo(s) before task save...`);
+        uploadedPhotoUrls = await uploadPhotoObjects(photoObjects, targetTaskId);
+        
+        if (uploadedPhotoUrls.length < photoObjects.length) {
+          const failedCount = photoObjects.length - uploadedPhotoUrls.length;
+          Alert.alert(
+            "Upload Warning",
+            `${uploadedPhotoUrls.length} of ${photoObjects.length} photo(s) uploaded successfully. ${failedCount} photo(s) failed to upload. The task will be saved with the successfully uploaded photos.`
+          );
+        }
+      }
+
+      // Combine existing URLs with newly uploaded URLs
+      const allAttachmentUrls = [...attachmentUrls, ...uploadedPhotoUrls];
 
       if (editTaskId) {
         // Editing existing task
@@ -707,6 +1336,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         // Normalize user IDs to strings to prevent type mismatches
         const normalizedAssignedTo = selectedUsers.map(id => String(id));
         
+        // Ensure dueDate is a Date object before calling toISOString
+        const dueDateForUpdate = formData.dueDate instanceof Date 
+          ? formData.dueDate 
+          : new Date(formData.dueDate);
+        
         const updatePayload: any = {
           title: formData.title,
           description: formData.description,
@@ -714,9 +1348,9 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
-          dueDate: formData.dueDate.toISOString(),
+          dueDate: dueDateForUpdate.toISOString(),
           assignedTo: normalizedAssignedTo,
-          attachments: formData.attachments,
+          attachments: allAttachmentUrls, // Use combined URLs
           projectId: formData.projectId,
         };
 
@@ -766,6 +1400,11 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           });
         }
         
+        // Ensure dueDate is a Date object before calling toISOString
+        const dueDateForSubTask = formData.dueDate instanceof Date 
+          ? formData.dueDate 
+          : new Date(formData.dueDate);
+        
         const subTaskPayload = {
           title: formData.title,
           description: formData.description,
@@ -773,10 +1412,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
-          dueDate: formData.dueDate.toISOString(),
+          dueDate: dueDateForSubTask.toISOString(),
           assignedTo: normalizedAssignedTo,
           assignedBy: normalizedAssignedBy,
-          attachments: formData.attachments,
+          attachments: allAttachmentUrls, // Use combined URLs
           projectId: formData.projectId,
           updates: [],
         };
@@ -790,10 +1429,22 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           taskId = await createSubTask(parentTaskId, subTaskPayload);
           successMessage = t.createTask.subTaskCreatedSuccess;
         }
+        
+        // If there are photo objects, upload them now that we have the real task ID
+        if (photoObjects.length > 0 && taskId) {
+          console.log(`📤 [CreateTask] Uploading ${photoObjects.length} photo(s) for subtask ${taskId}...`);
+          const subtaskUploadedUrls = await uploadPhotoObjects(photoObjects, taskId);
+          if (subtaskUploadedUrls.length > 0) {
+            // Update the subtask with the uploaded photo URLs
+            await updateTask(taskId, {
+              attachments: [...allAttachmentUrls, ...subtaskUploadedUrls],
+            });
+          }
+        }
       } else {
         // Creating a regular task
-        console.log('📋 [Create Task] About to create task with attachments:', formData.attachments);
-        console.log('📋 [Create Task] Attachments count:', formData.attachments.length);
+        console.log('📋 [Create Task] About to create task with attachments:', allAttachmentUrls);
+        console.log('📋 [Create Task] Attachments count:', allAttachmentUrls.length);
         
         // Normalize user IDs to strings to prevent type mismatches
         const normalizedAssignedTo = selectedUsers.map(id => String(id));
@@ -813,6 +1464,12 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           });
         }
         
+        // Ensure dueDate is a Date object before calling toISOString
+        const dueDateForTask = formData.dueDate instanceof Date 
+          ? formData.dueDate 
+          : new Date(formData.dueDate);
+        
+        // Create task first (with existing URLs if any)
         taskId = await createTask({
           title: formData.title,
           description: formData.description,
@@ -820,12 +1477,25 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           billingStatus: formData.billingStatus,
           priority: formData.priority,
           category: formData.category,
-          dueDate: formData.dueDate.toISOString(),
+          dueDate: dueDateForTask.toISOString(),
           assignedTo: normalizedAssignedTo,
           assignedBy: normalizedAssignedBy,
-          attachments: formData.attachments,
+          attachments: attachmentUrls, // Start with existing URLs only
           projectId: formData.projectId,
         });
+        
+        // If there are photo objects, upload them now that we have the real task ID
+        if (photoObjects.length > 0 && taskId) {
+          console.log(`📤 [CreateTask] Uploading ${photoObjects.length} photo(s) for task ${taskId}...`);
+          const taskUploadedUrls = await uploadPhotoObjects(photoObjects, taskId);
+          if (taskUploadedUrls.length > 0) {
+            // Update the task with the uploaded photo URLs
+            await updateTask(taskId, {
+              attachments: [...attachmentUrls, ...taskUploadedUrls],
+            });
+          }
+        }
+        
         successMessage = t.createTask.taskCreatedSuccess;
       }
 
@@ -833,7 +1503,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       console.log('- Task ID:', taskId);
       console.log('- Assigned to users:', selectedUsers);
       console.log('- Project ID:', formData.projectId);
-      console.log('- Attachments:', formData.attachments);
+      console.log('- Attachments (final URLs):', allAttachmentUrls);
       console.log('- Assigned by:', user.id);
       console.log('- Parent Task ID:', parentTaskId);
       console.log('- Parent Sub-Task ID:', parentSubTaskId);
@@ -841,6 +1511,12 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 
       // Notify all users about the task change
       notifyDataMutation('task');
+
+      // Clear AsyncStorage after successful task creation/update
+      // This ensures form is clean for next task creation
+      await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
+      await AsyncStorage.removeItem(SELECTED_USERS_STORAGE_KEY);
+      console.log('✅ [CreateTask] Form data cleared from AsyncStorage after successful task save');
 
       Alert.alert(
         editTaskId ? t.createTask.taskUpdated : (parentTaskId ? t.createTask.subTaskCreated : t.createTask.taskCreated),
@@ -1288,6 +1964,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Title */}
           <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
+                ref={titleInputRef}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.title ? "border-red-300" : "border-gray-300"
@@ -1298,12 +1975,18 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 maxLength={100}
                 autoCorrect={false}
                 returnKeyType="next"
+                onSubmitEditing={() => {
+                  // Move focus to description field
+                  descriptionInputRef.current?.focus();
+                }}
+                blurOnSubmit={false}
               />
           </InputField>
 
           {/* Description */}
           <InputField label={t.tasks.description} error={errors.description}>
               <TextInput
+                ref={descriptionInputRef}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
@@ -1316,20 +1999,31 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
                 textAlignVertical="top"
                 maxLength={500}
                 autoCorrect={false}
-                returnKeyType="done"
+                returnKeyType="next"
+                onSubmitEditing={() => {
+                  // Move focus to task reference field
+                  taskReferenceInputRef.current?.focus();
+                }}
+                blurOnSubmit={false}
               />
           </InputField>
 
           {/* Task Reference # */}
           <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
+                ref={taskReferenceInputRef}
                 className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
                 placeholder={t.createTask.taskReferencePlaceholder}
                 value={formData.taskReference}
                 onChangeText={handleTaskReferenceChange}
                 maxLength={50}
                 autoCorrect={false}
-                returnKeyType="next"
+                returnKeyType="done"
+                onSubmitEditing={() => {
+                  // Dismiss keyboard when done with task reference
+                  taskReferenceInputRef.current?.blur();
+                }}
+                blurOnSubmit={true}
               />
           </InputField>
 
@@ -1372,7 +2066,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Priority */}
           <InputField label={t.tasks.priority}>
             <Pressable
-              onPress={() => setShowPriorityPicker(true)}
+              onPress={async () => {
+                await saveFormDataToStorage();
+                setShowPriorityPicker(true);
+              }}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
               <Text className="text-lg text-gray-900 flex-1">
@@ -1385,7 +2082,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Category */}
           <InputField label={t.tasks.category}>
             <Pressable
-              onPress={() => setShowCategoryPicker(true)}
+              onPress={async () => {
+                await saveFormDataToStorage();
+                setShowCategoryPicker(true);
+              }}
               className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
             >
               <Text className="text-lg text-gray-900 flex-1">
@@ -1398,7 +2098,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Due Date */}
           <InputField label={t.tasks.dueDate} error={errors.dueDate}>
             <Pressable
-              onPress={() => setShowDatePicker(!showDatePicker)}
+              onPress={async () => {
+                await saveFormDataToStorage();
+                setShowDatePicker(!showDatePicker);
+              }}
               className={cn(
                 "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
                 showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
@@ -1524,31 +2227,99 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <Text className="text-lg font-semibold text-gray-900">
                 {t.createTask.attachments}
               </Text>
+              {/* Debug: Show attachment count */}
+              {formData && formData.attachments && (
+                <Text className="text-xs text-gray-500 ml-2">
+                  ({formData.attachments.length} {formData.attachments.length === 1 ? 'item' : 'items'})
+                </Text>
+              )}
+              {/* Debug: Show AsyncStorage photo count */}
+              {asyncStoragePhotoCount !== null && asyncStoragePhotoCount > 0 && (
+                <Text className="text-xs text-amber-600 ml-2">
+                  (Storage: {asyncStoragePhotoCount})
+                </Text>
+              )}
             </View>
             
-            {formData.attachments.length > 0 ? (
+            {formData && formData.attachments && (() => {
+              console.log('🔍 [CreateTask] Rendering attachments section:', {
+                attachmentsCount: formData.attachments.length,
+                attachments: formData.attachments.map((att, idx) => ({
+                  index: idx,
+                  type: typeof att,
+                  uri: typeof att === 'string' ? att : att.uri,
+                  fileName: typeof att === 'string' ? 'URL' : att.fileName,
+                })),
+              });
+              return null;
+            })()}
+            
+            {formData && formData.attachments && formData.attachments.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
                 <View className="flex-row">
-                  {formData.attachments.map((photo, index) => (
-                    <View key={index} className="mr-3 relative">
-                      <Image
-                        source={{ uri: photo }}
-                        className="w-24 h-24 rounded-lg"
-                        resizeMode="cover"
-                      />
-                      <Pressable
-                        onPress={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            attachments: prev.attachments.filter((_, i) => i !== index)
-                          }));
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                      >
-                        <Ionicons name="close" size={14} color="white" />
-                      </Pressable>
-                    </View>
-                  ))}
+                  {formData.attachments.map((attachment, index) => {
+                    // Handle both URLs (string) and photo objects
+                    const photoUri = typeof attachment === 'string' ? attachment : (attachment.annotatedUri || attachment.uri);
+                    const isNotUploaded = typeof attachment !== 'string';
+                    
+                    // Debug logging
+                    if (isNotUploaded) {
+                      console.log(`📸 [CreateTask] Rendering pending photo ${index}:`, {
+                        uri: attachment.uri,
+                        fileName: attachment.fileName,
+                        isAnnotated: attachment.isAnnotated,
+                        annotatedUri: attachment.annotatedUri,
+                        photoUri,
+                      });
+                    }
+                    
+                    return (
+                      <View key={`attachment-${index}-${typeof attachment === 'string' ? attachment : attachment.uri}`} className="mr-3 relative">
+                        <Image
+                          source={{ 
+                            uri: photoUri,
+                            // Ensure proper caching for local files
+                            cache: Platform.OS === 'ios' ? 'force-cache' : 'default'
+                          }}
+                          className="w-24 h-24 rounded-lg bg-gray-100"
+                          resizeMode="cover"
+                          onError={(error) => {
+                            console.error(`❌ [CreateTask] Failed to load image ${index}:`, {
+                              uri: photoUri,
+                              originalUri: typeof attachment === 'string' ? attachment : attachment.uri,
+                              annotatedUri: typeof attachment === 'string' ? undefined : attachment.annotatedUri,
+                              error: error.nativeEvent?.error || error,
+                              attachmentType: typeof attachment,
+                              fileName: typeof attachment === 'string' ? 'URL' : attachment.fileName,
+                              platform: Platform.OS,
+                            });
+                          }}
+                          onLoad={() => {
+                            console.log(`✅ [CreateTask] Successfully loaded image ${index}:`, {
+                              uri: photoUri.substring(0, 50) + '...',
+                              fileName: typeof attachment === 'string' ? 'URL' : attachment.fileName,
+                            });
+                          }}
+                        />
+                        {isNotUploaded && (
+                          <View className="absolute top-1 left-1 bg-amber-500 rounded px-1.5 py-0.5">
+                            <Text className="text-white text-xs font-semibold">Pending</Text>
+                          </View>
+                        )}
+                        <Pressable
+                          onPress={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              attachments: prev.attachments.filter((_, i) => i !== index)
+                            }));
+                          }}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
+                        >
+                          <Ionicons name="close" size={14} color="white" />
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
               </ScrollView>
             ) : null}
@@ -1560,10 +2331,10 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               <View className="flex-row items-center flex-1">
                 <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
                 <Text className="text-gray-600 font-medium ml-2 text-sm">
-                  {formData.attachments.length === 0 ? t.createTask.tapToAddFiles : t.createTask.filesAdded(formData.attachments.length)}
+                  {formData && formData.attachments && formData.attachments.length === 0 ? t.createTask.tapToAddFiles : (formData && formData.attachments ? t.createTask.filesAdded(formData.attachments.length) : t.createTask.tapToAddFiles)}
                 </Text>
               </View>
-              {formData.attachments.length > 0 && (
+              {formData && formData.attachments && formData.attachments.length > 0 && (
                 <Ionicons name="checkmark-circle" size={20} color="#10b981" />
               )}
             </Pressable>
@@ -2256,6 +3027,8 @@ function TaskActionScreen({
   const { getProjectUserAssignments } = projectStore;
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { pickAndUploadImages } = useFileUpload();
+  const { showPhotoSelectionDialog } = usePhotoSelection();
+  const navigation = useNavigation<any>();
 
   const task = tasks.find(t => t.id === taskId);
   
@@ -2300,16 +3073,42 @@ function TaskActionScreen({
     // Use unified photo selection utility
     showPhotoSelectionDialog({
       onPhotosSelected: (photos) => {
-        // Navigate to PhotoSelectionScreen
-        navigation.navigate("PhotoSelection", {
-          taskId: task.id,
-          subTaskId: undefined,
-          companyId: user.companyId,
-          userId: user.id,
-          initialCompletionPercentage: task.completionPercentage || 0,
-          initialPhotos: photos,
-          returnScreen: actionType === 'update' ? 'UpdateProgress' : actionType === 'comment' ? 'AddComment' : 'CreateTask',
-          actionType: actionType,
+        // Ensure photos are serializable (only include necessary fields)
+        const serializablePhotos = photos.map(photo => ({
+          uri: photo.uri,
+          fileName: photo.fileName,
+          isAnnotated: photo.isAnnotated || false,
+        }));
+
+        // Defer navigation to avoid conflicts with Alert dialog
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            try {
+              if (!navigation || !navigation.navigate) {
+                console.error('❌ [TaskActionScreen] Navigation object not available');
+                Alert.alert("Error", "Navigation is not available. Please try again.");
+                return;
+              }
+
+              // Navigate to PhotoSelectionScreen
+              navigation.navigate("PhotoSelection", {
+                taskId: task.id,
+                subTaskId: undefined,
+                companyId: user.companyId,
+                userId: user.id,
+                initialCompletionPercentage: task.completionPercentage || 0,
+                initialPhotos: serializablePhotos,
+                returnScreen: actionType === 'update' ? 'UpdateProgress' : actionType === 'comment' ? 'AddComment' : 'CreateTask',
+                actionType: actionType,
+              });
+            } catch (error: any) {
+              console.error('❌ [TaskActionScreen] Navigation error:', error);
+              Alert.alert(
+                "Navigation Error",
+                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
+              );
+            }
+          }, 100);
         });
       },
       allowClipboard: true,

@@ -54,7 +54,7 @@ export const en = {
   // Dashboard
   dashboard: {
     welcomeBack: "Welcome Back! 👋",
-    quickOverview: "Quick Overview",
+    quickOverview: "Full Task List",
     myTasks: "My Tasks",
     tasksAssignedToMe: "Task Inbox",
     tasksIAssigned: "Task Outbox",

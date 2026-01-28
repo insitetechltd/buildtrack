@@ -54,7 +54,7 @@ export const zhTW = {
   // Dashboard
   dashboard: {
     welcomeBack: "歡迎回來！👋",
-    quickOverview: "概覽",
+    quickOverview: "完整任務列表",
     myTasks: "我的工作",
     tasksAssignedToMe: "收件箱",
     tasksIAssigned: "寄件箱",

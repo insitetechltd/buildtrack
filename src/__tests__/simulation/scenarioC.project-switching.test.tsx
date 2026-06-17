@@ -1,0 +1,109 @@
+import React from 'react';
+import { render, act } from '@testing-library/react-native';
+import { createSimDriver } from '@/test-utils/simulation/simDriver';
+
+const mockSetSelectedProject = jest.fn(async () => {});
+const mockFetchTasks = jest.fn(async () => {});
+const mockFetchProjects = jest.fn(async () => {});
+const mockFetchUserProjectAssignments = jest.fn(async () => {});
+const mockFetchUsers = jest.fn(async () => {});
+
+jest.mock('@/state/authStore', () => ({
+  useAuthStore: () => ({
+    user: { id: 'user-1' },
+  }),
+}));
+
+jest.mock('@/state/projectStore.supabase', () => ({
+  useProjectStoreWithInit: () => ({
+    getProjectsByUser: () => [
+      { id: 'project-1', name: 'P1', description: 'One', status: 'active' },
+      { id: 'project-2', name: 'P2', description: 'Two', status: 'active' },
+    ],
+    fetchProjects: mockFetchProjects,
+    fetchUserProjectAssignments: mockFetchUserProjectAssignments,
+  }),
+}));
+
+jest.mock('@/state/projectFilterStore', () => ({
+  useProjectFilterStore: () => ({
+    selectedProjectId: 'project-1',
+    setSelectedProject: mockSetSelectedProject,
+  }),
+}));
+
+jest.mock('@/state/taskStore.supabase', () => ({
+  useTaskStore: () => ({
+    fetchTasks: mockFetchTasks,
+  }),
+}));
+
+jest.mock('@/state/userStore.supabase', () => ({
+  useUserStore: () => ({
+    fetchUsers: mockFetchUsers,
+  }),
+}));
+
+jest.mock('@/state/themeStore', () => ({
+  useThemeStore: () => ({
+    isDarkMode: false,
+  }),
+}));
+
+jest.mock('@/utils/useTranslation', () => ({
+  useTranslation: () => ({
+    projects: {
+      selectProject: 'Select project',
+      yourProjects: 'Your projects',
+      noProjectsAvailable: 'No projects',
+      noProjectsMessage: 'No projects',
+    },
+  }),
+}));
+
+jest.mock('@/components/StandardHeader', () => 'StandardHeader');
+
+describe('Scenario C (UI): Project switching & syncing', () => {
+  beforeEach(() => {
+    mockSetSelectedProject.mockClear();
+    mockFetchTasks.mockClear();
+    mockFetchProjects.mockClear();
+    mockFetchUserProjectAssignments.mockClear();
+    mockFetchUsers.mockClear();
+  });
+
+  it('switches projects and triggers data refresh', async () => {
+    const onNavigateBack = jest.fn();
+    const ProjectPickerScreen = require('@/screens/ProjectPickerScreen').default;
+    const screen = render(<ProjectPickerScreen onNavigateBack={onNavigateBack} allowBack />);
+    const driver = createSimDriver(screen);
+
+    await act(async () => {
+      driver.tap('projectPicker-project-project-2');
+      await Promise.resolve();
+    });
+
+    expect(mockSetSelectedProject).toHaveBeenCalledWith('project-2', 'user-1');
+    expect(mockFetchTasks).toHaveBeenCalled();
+    expect(mockFetchProjects).toHaveBeenCalled();
+    expect(mockFetchUserProjectAssignments).toHaveBeenCalledWith('user-1');
+    expect(mockFetchUsers).toHaveBeenCalled();
+    expect(onNavigateBack).toHaveBeenCalled();
+  });
+
+  it('does not refresh when selecting current project', async () => {
+    const onNavigateBack = jest.fn();
+    const ProjectPickerScreen = require('@/screens/ProjectPickerScreen').default;
+    const screen = render(<ProjectPickerScreen onNavigateBack={onNavigateBack} allowBack />);
+    const driver = createSimDriver(screen);
+
+    await act(async () => {
+      driver.tap('projectPicker-project-project-1');
+      await Promise.resolve();
+    });
+
+    expect(mockSetSelectedProject).not.toHaveBeenCalled();
+    expect(mockFetchTasks).not.toHaveBeenCalled();
+    expect(onNavigateBack).toHaveBeenCalled();
+  });
+});

@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simulation Suite Mockups</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --panel: #121a33;
+        --panel2: #0f1630;
+        --text: #e7ecff;
+        --muted: #9aa6d2;
+        --edge: #2a3766;
+        --accent: #4cc3ff;
+        --good: #43f59b;
+        --warn: #ffb020;
+        --bad: #ff5a8b;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 800px at 15% 15%, #18255a, var(--bg));
+        color: var(--text);
+        font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      .wrap {
+        display: grid;
+        grid-template-columns: 360px 1fr;
+        gap: 16px;
+        padding: 16px;
+        box-sizing: border-box;
+        height: 100%;
+      }
+
+      .panel {
+        background: linear-gradient(180deg, var(--panel), var(--panel2));
+        border: 1px solid var(--edge);
+        border-radius: 14px;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .panel h1 {
+        margin: 0;
+        padding: 16px 16px 8px;
+        font-size: 16px;
+        letter-spacing: 0.2px;
+      }
+
+      .panel .sub {
+        padding: 0 16px 14px;
+        color: var(--muted);
+      }
+
+      .panel .section {
+        padding: 12px 16px;
+        border-top: 1px solid var(--edge);
+      }
+
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      button.chip {
+        border: 1px solid var(--edge);
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        border-radius: 999px;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      button.chip[aria-pressed="true"] {
+        border-color: rgba(76, 195, 255, 0.7);
+        box-shadow: 0 0 0 3px rgba(76, 195, 255, 0.12);
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .legend .item {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+      }
+
+      .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        background: var(--accent);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+      }
+
+      .swatch.good {
+        background: var(--good);
+      }
+
+      .swatch.warn {
+        background: var(--warn);
+      }
+
+      .swatch.bad {
+        background: var(--bad);
+      }
+
+      .stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+      }
+
+      svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+
+      .node {
+        fill: rgba(255, 255, 255, 0.05);
+        stroke: rgba(255, 255, 255, 0.12);
+        stroke-width: 1;
+        rx: 14;
+        ry: 14;
+      }
+
+      .nodeTitle {
+        font-weight: 650;
+        fill: var(--text);
+        font-size: 13px;
+      }
+
+      .nodeBody {
+        fill: var(--muted);
+        font-size: 12px;
+      }
+
+      .edge {
+        stroke: rgba(76, 195, 255, 0.35);
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrow);
+      }
+
+      .edge.dim,
+      .nodeGroup.dim {
+        opacity: 0.22;
+      }
+
+      .edge.hot {
+        stroke: rgba(76, 195, 255, 0.95);
+      }
+
+      .nodeGroup.hot .node {
+        stroke: rgba(76, 195, 255, 0.85);
+        fill: rgba(76, 195, 255, 0.08);
+      }
+
+      .nodeGroup.hot.good .node {
+        stroke: rgba(67, 245, 155, 0.9);
+        fill: rgba(67, 245, 155, 0.08);
+      }
+
+      .nodeGroup.hot.warn .node {
+        stroke: rgba(255, 176, 32, 0.9);
+        fill: rgba(255, 176, 32, 0.08);
+      }
+
+      .nodeGroup.hot.bad .node {
+        stroke: rgba(255, 90, 139, 0.9);
+        fill: rgba(255, 90, 139, 0.08);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="panel">
+        <h1>Simulation Suite UI Comparisons</h1>
+        <div class="sub">
+          Click a scenario to highlight the planned UI path and its backend assertions.
+        </div>
+
+        <div class="section">
+          <div class="chips" id="chips">
+            <button class="chip" data-scenario="A" aria-pressed="true">Scenario A</button>
+            <button class="chip" data-scenario="B" aria-pressed="false">Scenario B</button>
+            <button class="chip" data-scenario="C" aria-pressed="false">Scenario C</button>
+            <button class="chip" data-scenario="D" aria-pressed="false">Scenario D</button>
+            <button class="chip" data-scenario="E" aria-pressed="false">Scenario E</button>
+            <button class="chip" data-scenario="F" aria-pressed="false">Scenario F</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="legend">
+            <div class="item"><span class="swatch"></span><span>UI step</span></div>
+            <div class="item"><span class="swatch good"></span><span>Backend verify</span></div>
+            <div class="item"><span class="swatch warn"></span><span>Offline/edge case</span></div>
+            <div class="item"><span class="swatch bad"></span><span>Failure gate</span></div>
+          </div>
+        </div>
+
+        <div class="section" id="details"></div>
+      </div>
+
+      <div class="panel stage">
+        <svg viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg" role="img">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(76, 195, 255, 0.9)" />
+            </marker>
+          </defs>
+
+          <path class="edge eA" d="M 200 150 C 280 150, 320 150, 400 150" />
+          <path class="edge eA" d="M 560 150 C 640 150, 680 150, 760 150" />
+          <path class="edge eA warn" d="M 760 150 C 760 220, 760 220, 760 290" />
+          <path class="edge eB" d="M 200 360 C 300 360, 300 360, 400 360" />
+          <path class="edge eB" d="M 560 360 C 660 360, 660 360, 760 360" />
+          <path class="edge eC" d="M 200 560 C 300 560, 300 560, 400 560" />
+          <path class="edge eC" d="M 560 560 C 660 560, 660 560, 760 560" />
+          <path class="edge eD good" d="M 760 360 C 860 360, 860 360, 980 360" />
+          <path class="edge eE good" d="M 760 560 C 860 560, 860 560, 980 560" />
+
+          <g class="nodeGroup nA ui" data-scenario="A" transform="translate(60,110)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Login Screen</text>
+            <text class="nodeBody" x="16" y="48">Type email/password</text>
+            <text class="nodeBody" x="16" y="66">Tap Sign in</text>
+          </g>
+
+          <g class="nodeGroup nA good" data-scenario="A" transform="translate(360,110)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Supabase Auth</text>
+            <text class="nodeBody" x="16" y="48">signInWithPassword</text>
+            <text class="nodeBody" x="16" y="66">persistSession</text>
+          </g>
+
+          <g class="nodeGroup nA warn" data-scenario="A" transform="translate(720,110)">
+            <rect class="node" width="260" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Offline Toggle</text>
+            <text class="nodeBody" x="16" y="48">Network drop</text>
+            <text class="nodeBody" x="16" y="66">restoreSession from storage</text>
+          </g>
+
+          <g class="nodeGroup nA bad" data-scenario="A" transform="translate(720,290)">
+            <rect class="node" width="260" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Gate</text>
+            <text class="nodeBody" x="16" y="48">Session missing</text>
+            <text class="nodeBody" x="16" y="66">or refresh-token invalid</text>
+          </g>
+
+          <g class="nodeGroup nB ui" data-scenario="B" transform="translate(60,320)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Create Task Screen</text>
+            <text class="nodeBody" x="16" y="48">Title/description</text>
+            <text class="nodeBody" x="16" y="66">Pick priority</text>
+          </g>
+
+          <g class="nodeGroup nB warn" data-scenario="B" transform="translate(360,320)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Form Persistence</text>
+            <text class="nodeBody" x="16" y="48">AsyncStorage autosave</text>
+            <text class="nodeBody" x="16" y="66">before photo picker</text>
+          </g>
+
+          <g class="nodeGroup nB ui" data-scenario="B" transform="translate(720,320)">
+            <rect class="node" width="260" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Attach Photo Trigger</text>
+            <text class="nodeBody" x="16" y="48">Simulated picker</text>
+            <text class="nodeBody" x="16" y="66">upload step is mocked here</text>
+          </g>
+
+          <g class="nodeGroup nD good" data-scenario="D" transform="translate(940,320)">
+            <rect class="node" width="130" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Verify</text>
+            <text class="nodeBody" x="16" y="48">auth.admin</text>
+            <text class="nodeBody" x="16" y="66">public.users</text>
+          </g>
+
+          <g class="nodeGroup nC ui" data-scenario="C" transform="translate(60,520)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Project Picker</text>
+            <text class="nodeBody" x="16" y="48">Select Project B</text>
+            <text class="nodeBody" x="16" y="66">Tap row</text>
+          </g>
+
+          <g class="nodeGroup nC warn" data-scenario="C" transform="translate(360,520)">
+            <rect class="node" width="220" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Reset & Rebuild</text>
+            <text class="nodeBody" x="16" y="48">setSelectedProject</text>
+            <text class="nodeBody" x="16" y="66">refresh tasks/projects/users</text>
+          </g>
+
+          <g class="nodeGroup nC ui" data-scenario="C" transform="translate(720,520)">
+            <rect class="node" width="260" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Cached State</text>
+            <text class="nodeBody" x="16" y="48">Clear old project data</text>
+            <text class="nodeBody" x="16" y="66">Fetch new project scope</text>
+          </g>
+
+          <g class="nodeGroup nE good" data-scenario="E" transform="translate(940,520)">
+            <rect class="node" width="130" height="86"></rect>
+            <text class="nodeTitle" x="16" y="26">Verify</text>
+            <text class="nodeBody" x="16" y="48">tasks row</text>
+            <text class="nodeBody" x="16" y="66">metadata match</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <script>
+      const details = {
+        A: {
+          title: 'Scenario A: Authentication & Session Resiliency',
+          bullets: [
+            'UI: LoginScreen uses stable testIDs for inputs + submit.',
+            'Sandbox: signInWithPassword persists session into test storage.',
+            'Offline: toggled fetch throws; session restored from storage without network.',
+          ],
+        },
+        B: {
+          title: 'Scenario B: Create Task & Form Persistence',
+          bullets: [
+            'UI: CreateTaskScreen supports title/description/priority/attach triggers via testIDs.',
+            'AsyncStorage: autosaves fields and saves immediately before photo selection.',
+            'Attachment triggers are simulated at the UI layer; storage validation is covered in Scenario F.',
+          ],
+        },
+        C: {
+          title: 'Scenario C: Project Switching & Syncing',
+          bullets: [
+            'UI: ProjectPickerScreen uses per-row testIDs by project.id.',
+            'State: selecting a new project triggers setSelectedProject and data refresh.',
+            'Guard: selecting the current project short-circuits to a simple back navigation.',
+          ],
+        },
+        D: {
+          title: 'Scenario D: Auth & User Profile Convergence',
+          bullets: [
+            'Auth: create a user via auth.admin (service role).',
+            'App profile: insert into public.users under an authenticated anon session.',
+            'Verify: IDs/emails match between auth user and public.users.',
+          ],
+        },
+        E: {
+          title: 'Scenario E: Task Ledger Write Verification',
+          bullets: [
+            'Harness: provision user + project + assignment in sandbox.',
+            'Execution: call production taskStore.supabase createTask().',
+            'Verify: tasks row matches simulated metadata (title/description/priority/etc.).',
+          ],
+        },
+        F: {
+          title: 'Scenario F: File Storage & Upload Integrity',
+          bullets: [
+            'Execution: run fileUploadService.uploadFile() with a filename containing spaces/special chars.',
+            'Sanitization: storage_path replaces unsafe characters and remains space-safe.',
+            'Verify: object exists in buildtrack-files storage bucket via service role listing.',
+          ],
+        },
+      };
+
+      function setScenario(scenario) {
+        const nodeGroups = document.querySelectorAll('.nodeGroup');
+        const edges = document.querySelectorAll('.edge');
+        const chipButtons = document.querySelectorAll('button.chip');
+
+        chipButtons.forEach((b) => {
+          b.setAttribute('aria-pressed', b.dataset.scenario === scenario ? 'true' : 'false');
+        });
+
+        nodeGroups.forEach((g) => {
+          const match = g.dataset.scenario === scenario;
+          g.classList.toggle('hot', match);
+          g.classList.toggle('dim', !match);
+        });
+
+        edges.forEach((e) => {
+          const match = e.classList.contains(`e${scenario}`);
+          e.classList.toggle('hot', match);
+          e.classList.toggle('dim', !match);
+        });
+
+        const d = details[scenario];
+        const html =
+          `<div style="font-weight:650; margin-bottom:8px">${d.title}</div>` +
+          `<ul style="margin:0; padding-left:18px; color: var(--muted)">` +
+          d.bullets.map((b) => `<li>${b}</li>`).join('') +
+          `</ul>`;
+        document.getElementById('details').innerHTML = html;
+      }
+
+      document.getElementById('chips').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-scenario]');
+        if (!btn) return;
+        setScenario(btn.dataset.scenario);
+      });
+
+      setScenario('A');
+    </script>
+  </body>
+</html>
+

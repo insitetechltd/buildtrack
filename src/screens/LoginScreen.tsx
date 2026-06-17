@@ -163,6 +163,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                     color={errors.emailOrPhone ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="login-emailOrPhone"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.emailOrPhonePlaceholder}
                     value={emailOrPhone}
@@ -199,6 +200,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                     color={errors.password ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="login-password"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.passwordPlaceholder}
                     value={password}
@@ -210,6 +212,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                     returnKeyType="done"
                   />
                   <Pressable
+                    testID="login-togglePassword"
                     onPress={() => setShowPassword(!showPassword)}
                     className="ml-2"
                   >
@@ -227,6 +230,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
 
               {/* Login Button */}
               <Pressable
+                testID="login-submit"
                 onPress={handleLogin}
                 disabled={isLoading}
                 className={cn(

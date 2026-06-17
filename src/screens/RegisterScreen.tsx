@@ -292,6 +292,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.name ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-name"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.enterFullName}
                     value={formData.name}
@@ -325,6 +326,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.phone ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-phone"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.phoneNumberPlaceholder}
                     value={formData.phone}
@@ -361,6 +363,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.email ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-email"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.enterEmailOptional}
                     value={formData.email}
@@ -397,6 +400,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.password ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-password"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.enterPassword}
                     value={formData.password}
@@ -411,6 +415,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     returnKeyType="next"
                   />
                   <Pressable
+                    testID="register-togglePassword"
                     onPress={() => setShowPassword(!showPassword)}
                     className="ml-2"
                   >
@@ -445,6 +450,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.confirmPassword ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-confirmPassword"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.confirmPasswordPlaceholder}
                     value={formData.confirmPassword}
@@ -459,6 +465,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     returnKeyType="next"
                   />
                   <Pressable
+                    testID="register-toggleConfirmPassword"
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="ml-2"
                   >
@@ -495,6 +502,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                     color={errors.promoCode ? "#ef4444" : formData.promoCode.toLowerCase() === VALID_PROMO_CODE.toLowerCase() && formData.promoCode ? "#10b981" : "#6b7280"}
                   />
                   <TextInput
+                    testID="register-promoCode"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.registration.enterPromoCode}
                     value={formData.promoCode}
@@ -526,6 +534,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                 {/* Company Selection Buttons */}
                 <View className="flex-row gap-2 mb-3">
                   <Pressable
+                    testID="register-company-existing"
                     onPress={() => handleCompanySelection("existing")}
                     className={cn(
                       "flex-1 py-3 px-4 rounded-lg border-2 flex-row items-center justify-center",
@@ -552,6 +561,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   </Pressable>
 
                   <Pressable
+                    testID="register-company-new"
                     onPress={() => handleCompanySelection("new")}
                     className={cn(
                       "flex-1 py-3 px-4 rounded-lg border-2 flex-row items-center justify-center",
@@ -618,6 +628,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                         color={errors.company ? "#ef4444" : "#6b7280"}
                       />
                       <TextInput
+                        testID="register-newCompanyName"
                         className="flex-1 ml-3 text-gray-900"
                         placeholder={t.registration.enterCompanyName}
                         value={formData.newCompanyName}
@@ -644,6 +655,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Register Button */}
               <Pressable
+                testID="register-submit"
                 onPress={handleRegister}
                 disabled={isLoading}
                 className={cn(

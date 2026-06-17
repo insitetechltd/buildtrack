@@ -995,10 +995,9 @@ export default function DashboardScreen({
   }
 
   // Determine what to show based on user's project situation
-  const shouldShowDashboard = selectedProjectId !== null;
   const shouldShowNoProjects = userProjectCount === 0;
-  // Show empty state if user has multiple projects but no selection
-  const shouldShowEmptyState = userProjectCount > 1 && !selectedProjectId;
+  // Show an explicit fallback whenever the user has projects but no active selection.
+  const shouldShowEmptyState = userProjectCount > 0 && !selectedProjectId;
 
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>

@@ -89,7 +89,7 @@ export default function ProjectPickerScreen({
         onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
-      <ScrollView className="flex-1 px-6 py-4">
+      <ScrollView testID="projectPicker-scroll" className="flex-1 px-6 py-4">
         {/* Individual Projects */}
         <Text className={cn(
           "text-sm font-semibold uppercase mb-2 mt-2",
@@ -118,6 +118,7 @@ export default function ProjectPickerScreen({
           userProjects.map((project) => (
             <Pressable
               key={project.id}
+              testID={`projectPicker-project-${project.id}`}
               onPress={() => handleProjectSelect(project.id)}
               disabled={isProjectSwitching}
               className={cn(
@@ -192,4 +193,3 @@ export default function ProjectPickerScreen({
     </SafeAreaView>
   );
 }
-

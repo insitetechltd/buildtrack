@@ -131,6 +131,8 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       actionType={effectiveActionType} 
       taskId={editTaskId} 
       onNavigateBack={onNavigateBack}
+      onNavigateToProfile={onNavigateToProfile}
+      onNavigateToProjectPicker={onNavigateToProjectPicker}
     />;
   }
 
@@ -599,7 +601,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
         hasAnnotatedUri: typeof att === 'string' ? false : !!att.annotatedUri,
       })),
     });
-  }, [formData?.attachments]);
+    }, []);
 
   // Also check when screen comes into focus (in case task was just created)
   useFocusEffect(
@@ -1964,6 +1966,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Title */}
           <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
+                testID="createTask-title"
                 ref={titleInputRef}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
@@ -1986,6 +1989,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Description */}
           <InputField label={t.tasks.description} error={errors.description}>
               <TextInput
+                testID="createTask-description"
                 ref={descriptionInputRef}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
@@ -2066,6 +2070,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
           {/* Priority */}
           <InputField label={t.tasks.priority}>
             <Pressable
+              testID="createTask-priority-open"
               onPress={async () => {
                 await saveFormDataToStorage();
                 setShowPriorityPicker(true);
@@ -2325,6 +2330,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
             ) : null}
             
             <Pressable
+              testID="createTask-add-photos"
               onPress={handleAddPhotos}
               className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
             >
@@ -2354,6 +2360,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
       >
         <SafeAreaView edges={['bottom']}>
           <Pressable
+            testID="createTask-submit"
             onPress={handleSubmit}
             disabled={isSubmitting}
             className={cn(
@@ -2442,6 +2449,7 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
               return (
                 <Pressable
                   key={priority}
+                  testID={`createTask-priority-${priority}`}
                   onPress={() => {
                     handlePriorityChange(priority);
                     setShowPriorityPicker(false);
@@ -3009,11 +3017,15 @@ export default function CreateTaskScreen({ onNavigateBack, parentTaskId, parentS
 function TaskActionScreen({ 
   actionType, 
   taskId, 
-  onNavigateBack 
+  onNavigateBack,
+  onNavigateToProfile,
+  onNavigateToProjectPicker,
 }: { 
   actionType: 'update' | 'photos' | 'comment' | 'reassign';
   taskId: string;
   onNavigateBack: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }) {
   const t = useTranslation();
   const { user } = useAuthStore();

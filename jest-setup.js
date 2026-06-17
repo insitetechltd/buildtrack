@@ -20,6 +20,26 @@ jest.mock('react-native/Libraries/Animated/NativeAnimatedHelper', () => ({}), {
   virtual: true,
 });
 
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
+
+jest.mock('expo-status-bar', () => ({
+  StatusBar: 'StatusBar',
+}));
+
+jest.mock('react-native/Libraries/Modal/Modal', () => {
+  return ({ visible, children }) => (visible ? children : null);
+});
+
+jest.mock('react-native-safe-area-context', () => {
+  return {
+    SafeAreaView: ({ children }) => children,
+    SafeAreaProvider: ({ children }) => children,
+    useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+  };
+});
+
 // Mock Expo modules
 jest.mock('expo-image-picker', () => ({
   requestCameraPermissionsAsync: jest.fn(() =>
@@ -81,7 +101,7 @@ jest.mock('expo-document-picker', () => ({
 
 jest.mock('expo-file-system', () => ({
   readAsStringAsync: jest.fn((uri, options) => {
-    return Promise.resolve('mock-base64-data');
+    return Promise.resolve('aGVsbG8=');
   }),
   getInfoAsync: jest.fn((uri) => {
     return Promise.resolve({
@@ -114,101 +134,112 @@ jest.mock('expo-image-manipulator', () => ({
   },
 }));
 
-// Mock Supabase
-jest.mock('./src/api/supabase', () => ({
-  supabase: {
-    from: jest.fn((table) => ({
-      select: jest.fn(() => ({
-        eq: jest.fn(() => ({
-          single: jest.fn(() =>
-            Promise.resolve({
-              data: { id: '123', name: 'Test' },
-              error: null,
-            })
-          ),
-          order: jest.fn(() =>
-            Promise.resolve({
-              data: [],
-              error: null,
-            })
-          ),
-        })),
-        is: jest.fn(() => ({
-          order: jest.fn(() =>
-            Promise.resolve({
-              data: [],
-              error: null,
-            })
-          ),
-        })),
-      })),
-      insert: jest.fn(() => ({
+if (process.env.USE_REAL_SUPABASE !== '1') {
+  jest.doMock('./src/api/supabase', () => ({
+    supabase: {
+      from: jest.fn((table) => ({
         select: jest.fn(() => ({
-          single: jest.fn(() =>
+          eq: jest.fn(() => ({
+            single: jest.fn(() =>
+              Promise.resolve({
+                data: { id: '123', name: 'Test' },
+                error: null,
+              }),
+            ),
+            order: jest.fn(() =>
+              Promise.resolve({
+                data: [],
+                error: null,
+              }),
+            ),
+          })),
+          is: jest.fn(() => ({
+            order: jest.fn(() =>
+              Promise.resolve({
+                data: [],
+                error: null,
+              }),
+            ),
+          })),
+        })),
+        insert: jest.fn(() => ({
+          select: jest.fn(() => ({
+            single: jest.fn(() =>
+              Promise.resolve({
+                data: { id: '123' },
+                error: null,
+              }),
+            ),
+          })),
+        })),
+        update: jest.fn(() => ({
+          eq: jest.fn(() =>
             Promise.resolve({
               data: { id: '123' },
               error: null,
-            })
+            }),
+          ),
+        })),
+        delete: jest.fn(() => ({
+          eq: jest.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: null,
+            }),
           ),
         })),
       })),
-      update: jest.fn(() => ({
-        eq: jest.fn(() =>
-          Promise.resolve({
-            data: { id: '123' },
-            error: null,
-          })
-        ),
-      })),
-      delete: jest.fn(() => ({
-        eq: jest.fn(() =>
-          Promise.resolve({
-            data: null,
-            error: null,
-          })
-        ),
-      })),
-    })),
-    storage: {
-      from: jest.fn(() => ({
-        upload: jest.fn(() =>
-          Promise.resolve({
-            data: { path: 'mock-path/file.jpg' },
-            error: null,
-          })
-        ),
-        getPublicUrl: jest.fn(() => ({
-          data: { publicUrl: 'https://example.com/mock-url.jpg' },
+      storage: {
+        from: jest.fn(() => ({
+          upload: jest.fn(() =>
+            Promise.resolve({
+              data: { path: 'mock-path/file.jpg' },
+              error: null,
+            }),
+          ),
+          getPublicUrl: jest.fn(() => ({
+            data: { publicUrl: 'https://example.com/mock-url.jpg' },
+          })),
+          remove: jest.fn(() =>
+            Promise.resolve({
+              data: null,
+              error: null,
+            }),
+          ),
         })),
-        remove: jest.fn(() =>
+      },
+      auth: {
+        signIn: jest.fn(() =>
           Promise.resolve({
-            data: null,
+            data: { user: { id: '123' }, session: {} },
             error: null,
-          })
+          }),
         ),
-      })),
+        signOut: jest.fn(() =>
+          Promise.resolve({
+            error: null,
+          }),
+        ),
+        getSession: jest.fn(() =>
+          Promise.resolve({
+            data: { session: { user: { id: '123' } } },
+            error: null,
+          }),
+        ),
+      },
     },
-    auth: {
-      signIn: jest.fn(() =>
-        Promise.resolve({
-          data: { user: { id: '123' }, session: {} },
-          error: null,
-        })
-      ),
-      signOut: jest.fn(() =>
-        Promise.resolve({
-          error: null,
-        })
-      ),
-      getSession: jest.fn(() =>
-        Promise.resolve({
-          data: { session: { user: { id: '123' } } },
-          error: null,
-        })
-      ),
-    },
-  },
-}));
+  }));
+}
+
+if (process.env.USE_REAL_SUPABASE === '1') {
+  if (!process.env.EXPO_PUBLIC_SUPABASE_URL && process.env.SUPABASE_TEST_URL) {
+    process.env.EXPO_PUBLIC_SUPABASE_URL = process.env.SUPABASE_TEST_URL;
+  }
+
+  if (!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY && process.env.SUPABASE_TEST_ANON_KEY) {
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.SUPABASE_TEST_ANON_KEY;
+  }
+}
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -217,10 +248,6 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(() => Promise.resolve()),
   clear: jest.fn(() => Promise.resolve()),
 }));
-
-// Mock React Native components
-jest.mock('react-native/Libraries/Components/Touchable/TouchableOpacity', () => 'TouchableOpacity');
-jest.mock('react-native/Libraries/Components/TextInput/TextInput', () => 'TextInput');
 
 // Global test utilities
 global.console = {
@@ -231,4 +258,3 @@ global.console = {
   error: console.error,
   warn: console.warn,
 };
-

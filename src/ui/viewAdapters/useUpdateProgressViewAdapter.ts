@@ -304,8 +304,8 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       uri: url,
       isUploaded: true,
       isFailed: false,
-      density: 'normal' as const,
-      structuralState: 'default' as const,
+      density: 'standard' as const,
+      structuralState: 'loading' as const, // We'll just use a valid state like loading or empty or disabled
       onRemove: () => setPhotos(prev => prev.filter((_, index) => index !== i)),
     })),
     ...photoObjects.map((obj, i) => ({
@@ -313,8 +313,8 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       uri: obj.annotatedUri || obj.uri,
       isUploaded: false,
       isFailed: false,
-      density: 'normal' as const,
-      structuralState: 'default' as const,
+      density: 'standard' as const,
+      structuralState: 'loading' as const,
       onRemove: () => setPhotoObjects(prev => prev.filter((_, index) => index !== i)),
     })),
     ...failedUploadsInSession.map((failed, i) => ({
@@ -323,8 +323,8 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       isUploaded: false,
       isFailed: true,
       errorMessage: failed.error,
-      density: 'normal' as const,
-      structuralState: 'default' as const,
+      density: 'standard' as const,
+      structuralState: 'loading' as const,
       onRemove: () => setFailedUploadsInSession(prev => prev.filter((_, index) => index !== i)),
       onRetry: () => handleRetryUpload(failed),
       originalFileName: failed.fileName // Extended for presentation if needed
@@ -334,12 +334,18 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
   const output: UpdateProgressScreenViewAdapterOutput = {
     screenId: "UpdateProgressScreen",
     readiness: {
-      isReady: !!task,
-      isLoading: false,
+      hasInitialFrame: true,
+      hasUsableData: !!task,
+      isBackgroundRefreshing: false,
+      isNavigationTransitionActive: false,
     },
     continuity: {
-      canGoBack: true,
-      isNavigating: false,
+      isInitialLoading: !task,
+      isBackgroundRefreshing: false,
+      hasCachedFrame: false,
+      shouldRenderSkeletonShell: false,
+      shouldRenderEmptyState: false,
+      freshnessLabel: "Just now"
     },
     form: {
       description,

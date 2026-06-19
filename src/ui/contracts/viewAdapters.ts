@@ -232,3 +232,29 @@ export interface UpdateProgressScreenViewAdapterOutput {
     failedPhotos: number;
   };
 }
+
+export interface SelectablePhotoModel extends PrimitiveReadyItemBase {
+  id: string;
+  uri: string;
+  annotatedUri?: string;
+  fileName: string;
+  isAnnotated: boolean;
+}
+
+export interface PhotoSelectionScreenViewAdapterOutput {
+  screenId: "PhotoSelectionScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  photos: SelectablePhotoModel[];
+  enlargedPhotoIndex: number | null;
+  isUploading: boolean;
+  isAnnotating: boolean;
+}
+
+export interface PhotoAnnotationScreenViewAdapterOutput {
+  screenId: "PhotoAnnotationScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  isLoading: boolean;
+}
+

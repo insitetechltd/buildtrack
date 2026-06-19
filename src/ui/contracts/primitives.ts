@@ -6,7 +6,7 @@ export type PrimitiveStructuralState =
   | "stale"
   | "disabled";
 
-export type PrimitiveFamily = "input" | "status" | "container" | "button" | "banner" | "activity";
+export type PrimitiveFamily = "input" | "status" | "container" | "button" | "banner" | "activity" | "image";
 
 export interface PrimitiveStateFlags {
   isLoading: boolean;
@@ -173,4 +173,13 @@ export interface ActivityPrimitiveContract extends PrimitiveBaseContract {
   statusToken?: StatusSemanticToken;
   statusLabel?: string;
   photos: string[];
+}
+
+export interface ImagePrimitiveContract extends PrimitiveBaseContract {
+  family: "image";
+  uri: string;
+  status: "pending" | "success" | "error";
+  errorMessage?: string;
+  onRemove?: () => void;
+  onRetry?: () => void;
 }

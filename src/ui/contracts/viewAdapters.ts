@@ -202,3 +202,33 @@ export interface TaskDetailScreenViewAdapterOutput {
   assignees: TaskDetailAssigneeModel[];
   childTasks: TasksScreenRowItem[];
 }
+
+export interface UpdateProgressPhotoModel extends PrimitiveReadyItemBase {
+  id: string;
+  uri: string;
+  isUploaded: boolean;
+  isFailed: boolean;
+  errorMessage?: string;
+  onRemove: () => void;
+  onRetry?: () => void;
+}
+
+export interface UpdateProgressFormModel {
+  description: string;
+  completionPercentage: number;
+  previousPercentage: number;
+  isSubmitting: boolean;
+  isValid: boolean;
+}
+
+export interface UpdateProgressScreenViewAdapterOutput {
+  screenId: "UpdateProgressScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  form: UpdateProgressFormModel;
+  photos: UpdateProgressPhotoModel[];
+  scalarMetrics: {
+    totalPhotos: number;
+    failedPhotos: number;
+  };
+}

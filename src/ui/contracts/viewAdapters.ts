@@ -258,3 +258,41 @@ export interface PhotoAnnotationScreenViewAdapterOutput {
   isLoading: boolean;
 }
 
+export interface CreateTaskFormModel {
+  title: string;
+  description: string;
+  taskReference: string;
+  billingStatus: string;
+  priority: string;
+  category: string;
+  dueDate: Date;
+  assignedTo: string[];
+  projectId: string;
+  attachments: any[]; // Or Attachment type
+}
+
+export interface CreateTaskScreenViewAdapterOutput {
+  readiness: {
+    isSubmitting: boolean;
+    isLoadingUsers: boolean;
+    isUploading: boolean;
+  };
+  formData: CreateTaskFormModel;
+  errors: Record<string, string>;
+  pickers: {
+    showDatePicker: boolean;
+    showUserPicker: boolean;
+    showPriorityPicker: boolean;
+    showCategoryPicker: boolean;
+    showBillingStatusPicker: boolean;
+    showProjectPicker: boolean;
+  };
+  aiAssistant: {
+    textInput: string;
+    showSuggestionPreview: boolean;
+    acceptedFields: Record<string, boolean>;
+    isProcessing: boolean;
+  };
+}
+
+

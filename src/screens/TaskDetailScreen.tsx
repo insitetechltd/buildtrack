@@ -1,2519 +1,301 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
-  TextInput,
-  Alert,
-  Linking,
-  RefreshControl,
-  FlatList,
   Image,
-  Dimensions,
+  Linking,
+  Alert,
 } from "react-native";
-import { ScrollView as GestureScrollView } from "react-native-gesture-handler";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import Modal from "react-native-modal";
-import Slider from "@react-native-community/slider";
-import * as ImagePicker from "expo-image-picker";
-import * as DocumentPicker from "expo-document-picker";
-import * as Clipboard from "expo-clipboard";
-import { useAuthStore } from "../state/authStore";
-import { useTaskStore } from "../state/taskStore.supabase";
-import { useUserStore } from "../state/userStore.supabase";
-import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useCompanyStore } from "../state/companyStore";
-import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { TaskStatus, Priority, Task } from "../types/buildtrack";
-import { cn } from "../utils/cn";
-import StandardHeader from "../components/StandardHeader";
-import ModalHandle from "../components/ModalHandle";
-import TaskDetailUtilityFAB from "../components/TaskDetailUtilityFAB";
-import TaskCard from "../components/TaskCard";
-import { useFileUpload, UploadResults } from "../utils/useFileUpload";
-import { uploadFileWithVerification } from "../api/fileUploadService";
-import { useUploadFailureStore } from "../state/uploadFailureStore";
-import { useTranslation } from "../utils/useTranslation";
-import { useDateFormatter } from "../utils/dateFormatter";
-import { usePhotoSelection } from "../utils/usePhotoSelection";
+import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
+import StandardHeader from "@/components/StandardHeader";
+import ContainerCard from "@/components/primitives/container/ContainerCard";
+import TaskCard from "@/components/TaskCard";
+import { cn } from "@/utils/cn";
+import {
+  mapActionItemToButtonProps,
+  mapBannerModelToBannerProps,
+  mapActivityModelToActivityProps,
+  mapSectionModelToContainerProps,
+} from "@/ui/mappers/taskDetailMappers";
+import type { BannerPrimitiveContract, ActivityPrimitiveContract, ButtonPrimitiveContract } from "@/ui/contracts/primitives";
 
 interface TaskDetailScreenProps {
   taskId: string;
-  subTaskId?: string; // Optional: if provided, show only this subtask
+  subTaskId?: string;
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string, actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign') => void;
-  onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void; // For navigating to sub-task details
+  onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
-export default function TaskDetailScreen({ taskId, subTaskId, onNavigateBack, onNavigateToCreateTask, onNavigateToTaskDetail, onNavigateToProfile, onNavigateToProjectPicker }: TaskDetailScreenProps) {
-  const navigation = useNavigation<any>();
-  const t = useTranslation();
-  const dateFormatter = useDateFormatter();
-  const { user } = useAuthStore();
-  const { showPhotoSelectionDialog } = usePhotoSelection();
-  const tasks = useTaskStore(state => state.tasks);
-  const fetchTasks = useTaskStore(state => state.fetchTasks);
-  const fetchTaskById = useTaskStore(state => state.fetchTaskById);
-  const markTaskAsRead = useTaskStore(state => state.markTaskAsRead);
-  const updateTask = useTaskStore(state => state.updateTask);
-  const updateSubTaskStatus = useTaskStore(state => state.updateSubTaskStatus);
-  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
-  const acceptSubTask = useTaskStore(state => state.acceptSubTask);
-  const declineSubTask = useTaskStore(state => state.declineSubTask);
-  const deleteSubTask = useTaskStore(state => state.deleteSubTask);
-  const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
-  const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
-  const addAssignerComment = useTaskStore(state => state.addAssignerComment);
-  const acceptTask = useTaskStore(state => state.acceptTask);
-  const declineTask = useTaskStore(state => state.declineTask);
-  const submitTaskForReview = useTaskStore(state => state.submitTaskForReview);
-  const acceptTaskCompletion = useTaskStore(state => state.acceptTaskCompletion);
-  const rejectTaskCompletion = useTaskStore(state => state.rejectTaskCompletion);
-  const submitSubTaskForReview = useTaskStore(state => state.submitSubTaskForReview);
-  const acceptSubTaskCompletion = useTaskStore(state => state.acceptSubTaskCompletion);
-  const rejectSubTaskCompletion = useTaskStore(state => state.rejectSubTaskCompletion);
-  const cancelTask = useTaskStore(state => state.cancelTask);
-  const deleteTaskById = useTaskStore(state => state.deleteTaskById);
-  const archiveTask = useTaskStore(state => state.archiveTask);
-  const { getUserById, getAllUsers } = useUserStore();
-  const { getProjectUserAssignments } = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getCompanyBanner } = useCompanyStore();
-  const { pickAndUploadImages, isUploading, uploadProgress, isCompressing, compressionProgress } = useFileUpload();
-  const { getFailuresForTask, dismissFailure, incrementRetryCount } = useUploadFailureStore();
-
-  const [refreshing, setRefreshing] = useState(false);
-  const [showUserPicker, setShowUserPicker] = useState(false);
-  const [showTaskDetailModal, setShowTaskDetailModal] = useState(false);
-  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<Task | null>(null);
-  const [progressLogSortOrder, setProgressLogSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [expandedUpdateIds, setExpandedUpdateIds] = useState<Set<string>>(new Set());
-  const [isAssigneesExpanded, setIsAssigneesExpanded] = useState(false);
-  const [highlightedPhotoUri, setHighlightedPhotoUri] = useState<string | null>(null);
-  const activityScrollViewRef = useRef<ScrollView>(null);
-  const activityPositionsRef = useRef<Map<string, number>>(new Map());
-  // Photo viewer navigation is now handled via navigation to PhotoViewerScreen
-  
-
-  // Get the task - could be a top-level task or a sub-task
-  const foundTask = tasks.find(t => t.id === taskId);
-  
-  // ✅ UPDATED: If subTaskId is provided, find the subtask directly from the unified tasks table
-  // (not from nested subTasks array - that's the old schema)
-  // Otherwise, if the found task has a parentTaskId, it's a sub-task being viewed directly
-  const subTask = subTaskId 
-    ? tasks.find(t => t.id === subTaskId)
-    : (foundTask?.parentTaskId ? foundTask : null);
-  
-  // Use subtask if viewing subtask, otherwise use the found task
-  const task = subTask || foundTask;
-  const isViewingSubTask = !!subTask;
-  
-  // Get the parent task if viewing a sub-task
-  const parentTask = isViewingSubTask && task?.parentTaskId
-    ? tasks.find(t => t.id === task.parentTaskId)
-    : null;
-  
-  // Get children tasks from the unified tasks table - memoized to avoid infinite loops
-  const childTasks = useMemo(() => 
-    task ? tasks.filter(t => t.parentTaskId === task.id) : [],
-    [tasks, task?.id]
-  );
-  
-  const assignedBy = task ? getUserById(task.assignedBy) : null;
-  const assignedUsers = task ? task.assignedTo.map(userId => getUserById(userId)).filter(Boolean) : [];
-
-  // Helper functions for styling
-  const getPriorityColor = (priority: Priority) => {
-    switch (priority) {
-      case "critical": return "text-red-600 bg-red-50 border-red-200";
-      case "high": return "text-orange-600 bg-orange-50 border-orange-200";
-      case "medium": return "text-yellow-600 bg-yellow-50 border-yellow-200";
-      case "low": return "text-green-600 bg-green-50 border-green-200";
-      default: return "text-gray-600 bg-gray-50 border-gray-200";
-    }
+const BannerPrimitive = ({ contract }: { contract: BannerPrimitiveContract }) => {
+  const bgColors = {
+    amber: "bg-amber-50 border-amber-200 text-amber-900",
+    green: "bg-green-50 border-green-200 text-green-900",
+    red: "bg-red-50 border-red-200 text-red-900",
+  };
+  const iconColors = {
+    amber: "#f59e0b",
+    green: "#16a34a",
+    red: "#dc2626",
+  };
+  const iconBg = {
+    amber: "bg-amber-100",
+    green: "bg-green-100",
+    red: "bg-red-100",
   };
 
-  const getStatusColor = (status: TaskStatus) => {
-    switch (status) {
-      case "approved": return "text-green-600 bg-green-50";
-      case "in_progress": return "text-blue-600 bg-blue-50";
-      case "rejected": return "text-red-600 bg-red-50";
-      case "declined": return "text-red-600 bg-red-50";
-      case "new": return "text-gray-600 bg-gray-50";
-      case "accepted": return "text-blue-600 bg-blue-50";
-      case "submitted_for_review": return "text-purple-600 bg-purple-50";
-      case "cancelled": return "text-gray-600 bg-gray-50";
-      default: return "text-gray-600 bg-gray-50";
-    }
-  };
-
-  // Fetch task data when screen opens to ensure we have latest completion percentage
-  useEffect(() => {
-    if (taskId) {
-      fetchTaskById(taskId);
-    }
-    if (subTaskId) {
-      fetchTaskById(subTaskId);
-    }
-  }, [taskId, subTaskId, fetchTaskById]);
-
-  // Refresh task data when screen comes into focus (cache-first - only fetches if stale)
-  // This uses cache-first strategy: returns cached data if fresh (< 30s), otherwise fetches
-  useFocusEffect(
-    useCallback(() => {
-      if (taskId) {
-        // Cache-first: only fetches if data is stale (> 30s old)
-        fetchTaskById(taskId).catch((error) => {
-          console.error('🔄❌ Error refreshing task on focus:', error);
-        });
-      }
-      if (subTaskId) {
-        fetchTaskById(subTaskId).catch((error) => {
-          console.error('🔄❌ Error refreshing subtask on focus:', error);
-        });
-      }
-    }, [taskId, subTaskId, fetchTaskById])
+  return (
+    <View className={`border-b-2 px-6 py-4 ${bgColors[contract.colorScheme].split(" ")[0]} ${bgColors[contract.colorScheme].split(" ")[1]}`}>
+      <View className="flex-row items-center">
+        <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${iconBg[contract.colorScheme]}`}>
+          <Ionicons name={contract.iconName as any} size={24} color={iconColors[contract.colorScheme]} />
+        </View>
+        <View className="flex-1">
+          <Text className={`text-xl font-bold ${bgColors[contract.colorScheme].split(" ")[2]}`}>
+            {contract.title}
+          </Text>
+          {contract.subtitle && (
+            <Text className={`text-base mt-1 ${bgColors[contract.colorScheme].split(" ")[2]} opacity-80`}>
+              {contract.subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
   );
+};
 
-  // Mark task as read when viewing
-  useEffect(() => {
-    if (user && taskId) {
-      markTaskAsRead(user.id, taskId);
-      if (subTaskId) {
-        markTaskAsRead(user.id, subTaskId);
-      }
-    }
-  }, [taskId, subTaskId, user?.id, markTaskAsRead]);
-
-  if (!user || !task) {
-    return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-        
-        {/* Header */}
-        <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-          <Text className="text-2xl font-semibold text-gray-900 flex-1">
-            {task?.title || (isViewingSubTask ? t.tasks.taskDetails : t.tasks.taskDetails)}
+const ActivityPrimitive = ({ contract }: { contract: ActivityPrimitiveContract }) => {
+  return (
+    <View className="border-l-4 border-blue-200 pl-4 mb-4">
+      <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center">
+          <Ionicons 
+            name={contract.activityType === 'status_change' ? 'sync' : contract.activityType === 'progress_update' ? 'trending-up' : 'document-text'} 
+            size={16} 
+            color="#3b82f6" 
+            style={{ marginRight: 6 }}
+          />
+          <Text className="font-medium text-gray-900">
+            {contract.userName}
           </Text>
         </View>
+        <Text className="text-sm text-gray-500">
+          {new Date(contract.timestamp).toLocaleString()}
+        </Text>
+      </View>
+      <Text className="text-gray-700 mb-2">{contract.description}</Text>
+      {contract.reason && (
+        <Text className="text-gray-600 italic mb-2">Reason: {contract.reason}</Text>
+      )}
+      {contract.completionPercentage !== undefined && contract.statusLabel && (
+        <View className="flex-row items-center space-x-4">
+          <Text className="text-base text-gray-500">
+            Progress: {contract.completionPercentage}%
+          </Text>
+          <View className="px-2 py-1 rounded bg-blue-50">
+            <Text className="text-sm capitalize text-blue-700">
+              {contract.statusLabel}
+            </Text>
+          </View>
+        </View>
+      )}
+      {contract.photos && contract.photos.length > 0 && (
+        <View className="flex-row mt-2 space-x-2">
+          {contract.photos.map((photo, i) => (
+            <Image key={i} source={{ uri: photo }} className="w-16 h-16 rounded" />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+};
 
-        <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="alert-circle-outline" size={64} color="#ef4444" />
-          <Text className="text-2xl font-semibold text-gray-900 mt-4 mb-2">
-            {isViewingSubTask ? t.taskDetail.noChildren : t.tasks.noTasks}
-          </Text>
-          <Text className="text-gray-600 text-center mb-6">
-            {isViewingSubTask ? t.taskDetail.noChildren : t.tasks.noTasks}
-          </Text>
-          <Pressable 
-            onPress={onNavigateBack} 
-            className="px-6 py-3 bg-blue-600 rounded-lg"
-          >
-            <Text className="text-white font-semibold">{t.common.back}</Text>
-          </Pressable>
+const ButtonPrimitive = ({ contract, onPress }: { contract: ButtonPrimitiveContract; onPress: () => void }) => {
+  const isDestructive = contract.label.toLowerCase().includes('decline') || contract.label.toLowerCase().includes('reject');
+  const isPrimary = contract.label.toLowerCase().includes('accept') || contract.label.toLowerCase().includes('approve') || contract.label.toLowerCase().includes('update');
+  
+  const bgClass = isDestructive ? "bg-red-600" : isPrimary ? "bg-green-600" : "bg-blue-600";
+  
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={contract.isDisabled}
+      className={cn(
+        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
+        bgClass,
+        contract.isDisabled && "opacity-50"
+      )}
+    >
+      {contract.icon && (
+        <Ionicons name={contract.icon as any} size={18} color="white" />
+      )}
+      <Text className="font-semibold text-base ml-2 text-white">
+        {contract.label}
+      </Text>
+    </Pressable>
+  );
+};
+
+export default function TaskDetailScreen(props: TaskDetailScreenProps) {
+  const { output, actions } = useTaskDetailViewAdapter({
+    taskId: props.taskId,
+    subTaskId: props.subTaskId
+  });
+
+  const handleActionPress = (actionId: string) => {
+    switch (actionId) {
+      case 'accept_task':
+        actions.acceptTask();
+        break;
+      case 'decline_task':
+        Alert.prompt("Decline Task", "Reason for declining:", (reason) => {
+          if (reason) actions.declineTask(reason);
+        });
+        break;
+      case 'submit_review':
+        actions.submitForReview();
+        break;
+      case 'approve_task':
+        actions.approveTask();
+        break;
+      case 'reject_task':
+        // Navigate to reject task or prompt
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(props.taskId, props.subTaskId, props.taskId, 'comment'); // placeholder
+        }
+        break;
+      case 'edit_task':
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'edit');
+        }
+        break;
+      case 'reassign_task':
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'reassign');
+        }
+        break;
+      case 'add_comment':
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'comment');
+        }
+        break;
+      case 'update_progress':
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'update');
+        }
+        break;
+      case 'upload_photos':
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'photos');
+        }
+        break;
+    }
+  };
+
+  if (!output.readiness.hasUsableData) {
+    return (
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+        <StandardHeader 
+          title="Loading..." 
+          showBackButton 
+          onBackPress={props.onNavigateBack} 
+        />
+        <View className="flex-1 items-center justify-center">
+          <Text>Loading task details...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const assignedTo = task.assignedTo || [];
-  const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
-  // Use String() comparison to handle type mismatches (UUID vs string)
-  const isTaskCreator = String(task.assignedBy) === String(user.id);
-
-  // Check if task was reassigned after being declined
-  const wasReassigned = useMemo(() => {
-    if (task.status !== "new" || !isTaskCreator) return false;
-    // Check activities for reassignment
-    const activities = task.activities || [];
-    const hasReassignmentActivity = activities.some((activity: any) => {
-      const description = activity.description || "";
-      return description.toLowerCase().includes("reassigned");
-    });
-    // Check updates for reassignment
-    const updates = task.updates || [];
-    const hasReassignmentUpdate = updates.some((update: any) => {
-      const description = update.description || "";
-      return description.toLowerCase().includes("reassigned");
-    });
-    return hasReassignmentActivity || hasReassignmentUpdate;
-  }, [task.activities, task.updates, task.status, isTaskCreator]);
-
-  // Collect all files from the task (attachments + photos from activities/updates)
-  // Also create a mapping of file URLs to activity IDs for expanding related activities
-  const { allTaskFiles, fileToActivityMap } = useMemo(() => {
-    const files: string[] = [];
-    const fileMap: Record<string, string> = {}; // Maps file URL to activity ID
-    
-    // Add task attachments (these don't have associated activities)
-    if (task.attachments && task.attachments.length > 0) {
-      files.push(...task.attachments);
-    }
-    
-    // Add photos from activities
-    if (task.activities && task.activities.length > 0) {
-      task.activities.forEach((activity: any) => {
-        const photos = (activity.data as any)?.photos || [];
-        if (photos && photos.length > 0) {
-          photos.forEach((photo: string) => {
-            files.push(photo);
-            fileMap[photo] = activity.id;
-          });
-        }
-      });
-    }
-    
-    // Add photos from updates (legacy support)
-    if (task.updates && task.updates.length > 0) {
-      task.updates.forEach((update: any) => {
-        if (update.photos && update.photos.length > 0) {
-          update.photos.forEach((photo: string) => {
-            files.push(photo);
-            fileMap[photo] = update.id;
-          });
-        }
-      });
-    }
-    
-    // Remove duplicates and return
-    const uniqueFiles = Array.from(new Set(files));
-    return { allTaskFiles: uniqueFiles, fileToActivityMap: fileMap };
-  }, [task.attachments, task.activities, task.updates]);
-
-  // Navigation functions for screens
-  const openUpdatePanel = () => {
-    // Determine source screen for navigation back
-    const currentRoute = navigation.getState()?.routes?.find((r: any) => r.name === 'TaskDetail' || r.name === 'TaskDetailFromDashboard');
-    const sourceScreen = currentRoute?.name === 'TaskDetailFromDashboard' ? 'dashboard' : 'tasks';
-    
-    navigation.navigate("UpdateProgress", {
-      taskId: task?.id,
-      subTaskId: subTaskId,
-      initialCompletionPercentage: task?.completionPercentage || 0,
-      sourceScreen: sourceScreen, // Pass source screen info for navigation back
-      sourceTaskId: task?.id,
-      sourceSubTaskId: subTaskId,
-    });
-  };
-
-  const openCommentPanel = () => {
-    navigation.navigate("AddComment", {
-      taskId: task?.id,
-    });
-  };
-
-  const openRejectPanel = () => {
-    navigation.navigate("RejectTask", {
-      taskId: task?.id,
-      subTaskId: subTaskId,
-    });
-  };
-
-
-  
-  // Debug logging for review banner visibility
-  if (task.completionPercentage === 100 && task.status === "submitted_for_review") {
-    console.log('🔍 [DEBUG] Review Banner Check:', {
-      title: task.title,
-      taskId: task.id,
-      isTaskCreator,
-      assignedBy: task.assignedBy,
-      assignedByType: typeof task.assignedBy,
-      userId: user.id,
-      userIdType: typeof user.id,
-      status: task.status,
-      completionPercentage: task.completionPercentage,
-      shouldShowBanner: isTaskCreator && task.completionPercentage === 100
-    });
-  }
-
-  // Users can update progress if:
-  // 1. They are assigned to the task (not the creator) AND the task has been accepted (status is "accepted" or "in_progress")
-  // 2. OR the task is rejected after completion (status is "rejected" and completionPercentage === 100) - allows corrections
-  // Task must be accepted before progress updates are allowed, except for rejected tasks that need rework
-  // Note: Task creators (assigners) cannot update progress - they can only add comments
-  const canUpdateProgress = isAssignedToMe && !isTaskCreator && (
-    task.status === "accepted" || 
-    task.status === "in_progress" || 
-    (task.status === "rejected" && task.completionPercentage === 100)
-  );
-  const canEditTask = isTaskCreator;
-  
-  // DISABLED: Sub-task creation is temporarily disabled for all users
-  const canCreateSubTask = false; // Always disabled - button will be greyed out
-
-  const handleAcceptTask = () => {
-    Alert.alert(
-      t.taskDetail.acceptTask,
-      `${t.taskDetail.acceptTaskConfirm} "${task.title}"?`,
-      [
-        { text: t.common.cancel, style: "cancel" },
-        {
-          text: t.taskDetail.accept,
-          onPress: async () => {
-            try {
-              await acceptTask(task.id, user.id);
-              // Refresh the specific task to get updated accepted/acceptedBy fields
-              await fetchTaskById(task.id, true); // Force refresh after acceptance
-              // Also refetch all tasks to ensure the dashboard shows updated state
-              await fetchTasks();
-              Alert.alert(t.errors.success, t.taskDetail.taskAccepted);
-            } catch (error: any) {
-              console.error('Error accepting task:', error);
-              Alert.alert(t.errors.error, error.message || 'Failed to accept task. Please try again.');
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleDeclineTask = () => {
-    Alert.prompt(
-      t.taskDetail.declineTask,
-      t.taskDetail.declineTaskConfirm,
-      [
-        {
-          text: t.common.cancel,
-          style: "cancel",
-        },
-        {
-          text: t.taskDetail.decline,
-          style: "destructive",
-          onPress: async (reason: string | undefined) => {
-            if (reason && reason.trim()) {
-              try {
-                await declineTask(task.id, user.id, reason.trim());
-                // Refresh the task to get updated status
-                await fetchTaskById(task.id, true); // Force refresh after decline
-                await fetchTasks();
-                Alert.alert(t.taskDetail.taskDeclined, t.taskDetail.taskDeclinedMessage);
-              } catch (error: any) {
-                console.error('Error declining task:', error);
-                Alert.alert(t.errors.error, error.message || 'Failed to decline task. Please try again.');
-              }
-            }
-          },
-        }
-      ],
-      "plain-text"
-    );
-  };
-
-  const handleCancelTask = () => {
-    Alert.alert(
-      t.taskDetail.cancelTask,
-      `${t.taskDetail.cancelTaskConfirm} "${task.title}"?`,
-      [
-        {
-          text: t.common.no,
-          style: "cancel",
-        },
-        {
-          text: t.common.yes,
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await cancelTask(task.id, user.id);
-              Alert.alert(t.taskDetail.taskCancelled, t.taskDetail.taskCancelled, [
-                {
-                  text: t.common.ok,
-                  onPress: () => {
-                    onNavigateBack();
-                  }
-                }
-              ]);
-            } catch (error: any) {
-              Alert.alert(t.errors.error, error.message || t.taskDetail.taskCancelled);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleReassignTask = async (selectedUserIds: string[]) => {
-    if (selectedUserIds.length === 0) {
-      Alert.alert(t.errors.error, t.taskDetail.selectUsers);
-      return;
-    }
-
-    if (!user || !task) return;
-
-    try {
-      // Update task assignment and reset acceptance fields
-      // This ensures the task appears as "new" for the new assignee
-      // and disappears from the original assignee's inbox
-      // Note: updateTask will automatically log an "assignment" activity
-      await updateTask(task.id, {
-        assignedTo: selectedUserIds,
-        status: "new" as TaskStatus,
-        declinedReason: undefined,
-        accepted: false,
-        acceptedBy: null,
-        acceptedAt: null,
-      });
-
-      // Refresh task data
-      await fetchTaskById(task.id);
-
-      Alert.alert(
-        t.taskDetail.taskReassigned,
-        `${t.taskDetail.taskReassigned} ${selectedUserIds.length} ${t.phrases.users}.`,
-        [{ text: t.common.ok }]
-      );
-    } catch (error) {
-      console.error("Error reassigning task:", error);
-      Alert.alert(t.errors.error, t.taskDetail.taskReassigned);
-    }
-  };
-
-
-  const handleApproveTask = () => {
-    Alert.alert(
-      t.taskDetail.acceptCompletionConfirm,
-      t.taskDetail.acceptCompletionConfirm,
-      [
-        { text: t.common.cancel, style: "cancel" },
-        {
-          text: t.taskDetail.accept,
-          onPress: async () => {
-            try {
-              if (isViewingSubTask && subTaskId) {
-                await acceptSubTaskCompletion(taskId, subTaskId, user.id);
-              } else {
-                await acceptTaskCompletion(task.id, user.id);
-              }
-              await fetchTaskById(task.id, true); // Force refresh after completion acceptance
-              Alert.alert(t.errors.success, t.taskDetail.completionAccepted);
-            } catch (error: any) {
-              Alert.alert(t.errors.error, error.message || t.taskDetail.completionAccepted);
-            }
-          }
-        }
-      ]
-    );
-  };
-
-  const handleRejectTask = () => {
-    // Open reject panel instead of Alert.prompt
-    openRejectPanel();
-  };
-
-
-  const handleAttachmentPress = async (uri: string) => {
-    const isPDF = uri.toLowerCase().endsWith('.pdf') || uri.includes('application/pdf');
-    
-    // For PDFs, always open immediately (no highlight needed)
-    if (isPDF) {
-    // Check if this file is associated with an activity/update
-    const relatedActivityId = fileToActivityMap[uri];
-    if (relatedActivityId) {
-      // Expand the related activity in the Activities section
-      const newExpanded = new Set(expandedUpdateIds);
-      if (!newExpanded.has(relatedActivityId)) {
-        newExpanded.add(relatedActivityId);
-        setExpandedUpdateIds(newExpanded);
-      }
-      
-        // Scroll to the activity after a short delay to allow expansion
-        setTimeout(() => {
-          const activityPosition = activityPositionsRef.current.get(relatedActivityId);
-          if (activityPosition !== undefined && activityScrollViewRef.current) {
-            const scrollOffset = Math.max(0, activityPosition - 20);
-            activityScrollViewRef.current.scrollTo({
-              y: scrollOffset,
-              animated: true,
-            });
-          }
-        }, 100);
-      }
-      
-      // Open PDF directly
-      Linking.openURL(uri).catch(() => {
-        Alert.alert("Error", "Unable to open PDF file");
-      });
-      return;
-    }
-    
-    // For images: First press highlights, second press opens viewer
-    if (highlightedPhotoUri === uri) {
-      // Second press on the same photo - navigate to PhotoViewerScreen
-      setHighlightedPhotoUri(null); // Clear highlight
-      
-      // Check if this file is associated with an activity/update
-      const relatedActivityId = fileToActivityMap[uri];
-      if (relatedActivityId) {
-      // Find the activity and get all its photos
-      const allActivities = task.activities || task.updates.map((update: any) => ({
-        id: update.id,
-        activityType: update.status ? 'status_change' : 'progress_update',
-        timestamp: update.timestamp,
-        userId: update.userId,
-        description: update.description,
-        completionPercentage: update.completionPercentage,
-        status: update.status,
-        data: { photos: update.photos || [] },
-      }));
-      
-      const activity = allActivities.find((a: any) => a.id === relatedActivityId);
-      if (activity) {
-        // Get photos from activity.data.photos
-        const photos = (activity.data as any)?.photos || [];
-        const photoIndex = photos.indexOf(uri);
-        
-        if (photoIndex !== -1 && photos.length > 0) {
-          // Navigate to PhotoViewerScreen
-          navigation.navigate("PhotoViewer", {
-            photos: photos,
-            initialIndex: photoIndex,
-            activityInfo: activity,
-          });
-            return;
-          }
-        }
-      }
-      
-        // Fallback: just show the single image
-        navigation.navigate("PhotoViewer", {
-          photos: [uri],
-          initialIndex: 0,
-          activityInfo: null,
-        });
-    } else {
-      // First press - highlight the photo and expand related activity
-      setHighlightedPhotoUri(uri);
-      
-      // Check if this file is associated with an activity/update
-      const relatedActivityId = fileToActivityMap[uri];
-      if (relatedActivityId) {
-        // Expand the related activity in the Activities section
-        const newExpanded = new Set(expandedUpdateIds);
-        if (!newExpanded.has(relatedActivityId)) {
-          newExpanded.add(relatedActivityId);
-          setExpandedUpdateIds(newExpanded);
-        }
-        
-        // Scroll to the activity after a short delay to allow expansion
-        setTimeout(() => {
-          const activityPosition = activityPositionsRef.current.get(relatedActivityId);
-          if (activityPosition !== undefined && activityScrollViewRef.current) {
-            // Scroll to the activity, but try to position it at the top
-            // If the position is too close to the top, scroll to 0
-            const scrollOffset = Math.max(0, activityPosition - 20); // 20px padding from top
-            activityScrollViewRef.current.scrollTo({
-              y: scrollOffset,
-              animated: true,
-            });
-          }
-        }, 100);
-      }
-    }
-  };
-
-
-  const handleAddPhotos = async () => {
-    if (!user || !task) return;
-
-    // Use unified photo selection utility
-    showPhotoSelectionDialog({
-      onPhotosSelected: (photos) => {
-        // Ensure photos are serializable (only include necessary fields)
-        const serializablePhotos = photos.map(photo => ({
-          uri: photo.uri,
-          fileName: photo.fileName,
-          isAnnotated: photo.isAnnotated || false,
-        }));
-
-        // Defer navigation to avoid conflicts with Alert dialog
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            try {
-              if (!navigation || !navigation.navigate) {
-                console.error('❌ [TaskDetail] Navigation object not available');
-                Alert.alert("Error", "Navigation is not available. Please try again.");
-                return;
-              }
-
-              // Navigate to photo selection screen with the selected photos
-              // Pass source screen info so UpdateProgress can navigate back correctly
-              const parentNav = navigation.getParent();
-              const currentRoute = navigation.getState()?.routes?.find((r: any) => r.name === 'TaskDetail' || r.name === 'TaskDetailFromDashboard');
-              const sourceScreen = currentRoute?.name === 'TaskDetailFromDashboard' ? 'dashboard' : 'tasks';
-              
-              navigation.navigate("PhotoSelection", {
-                taskId: task.id,
-                subTaskId: subTaskId,
-                companyId: user.companyId,
-                userId: user.id,
-                initialCompletionPercentage: task.completionPercentage || 0,
-                initialPhotos: serializablePhotos,
-                returnScreen: 'UpdateProgress', // Pass returnScreen so photos are not uploaded immediately
-                uploadImmediately: false, // Don't upload immediately - store locally until Submit Update
-                sourceScreen: sourceScreen, // Pass source screen info
-                sourceTaskId: task.id,
-                sourceSubTaskId: subTaskId,
-              });
-            } catch (error: any) {
-              console.error('❌ [TaskDetail] Navigation error:', error);
-              Alert.alert(
-                "Navigation Error",
-                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
-              );
-            }
-          }, 100);
-        });
-      },
-      allowClipboard: true,
-      allowMultiple: true,
-    });
-  };
-
-  // Old implementation - keeping for reference but not used
-  const handleAddPhotos_OLD = async () => {
-    if (!user || !task) return;
-
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              console.log('📸 [Task Detail] Taking photo from camera...');
-              
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                return;
-              }
-
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsEditing: false,
-                quality: 0.8,
-              });
-
-              if (result.canceled || !result.assets || result.assets.length === 0) {
-                return;
-              }
-
-              const photoUri = result.assets[0].uri;
-              const photoFileName = result.assets[0].fileName || `photo_${Date.now()}.jpg`;
-              
-              console.log('📸 Photo selected, showing annotation prompt...');
-              
-              // Ask if user wants to annotate
-              Alert.alert(
-                "Annotate Photo?",
-                "Would you like to draw or add comments on this photo before uploading?",
-                [
-                  {
-                    text: "Skip",
-                    style: "cancel",
-                    onPress: async () => {
-                      // Upload the selected photo directly without annotation
-                      try {
-                        const result = await uploadFileWithVerification({
-                          file: {
-                            uri: photoUri,
-                            name: photoFileName,
-                            type: 'image/jpeg',
-                          },
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                        });
-
-                        if (result.success && result.file) {
-                navigation.navigate("UpdateProgress", {
-                  taskId: task.id,
-                  subTaskId: subTaskId,
-                  initialCompletionPercentage: task.completionPercentage || 0,
-                });
-                        } else {
-                          Alert.alert("Upload Failed", result.error || "Failed to upload photo");
-                        }
-                      } catch (error: any) {
-                        console.error('Failed to upload photo:', error);
-                        Alert.alert("Error", error.message || "Failed to upload photo");
-                      }
-                    },
-                  },
-                  {
-                    text: "Annotate",
-                    onPress: () => {
-                      // Navigate to annotation screen
-                      navigation.navigate("PhotoAnnotation", {
-                        photoUri,
-                        onSave: async (annotatedUri: string) => {
-                          // Upload annotated photo directly
-                          try {
-                            const fileName = `annotated_${Date.now()}.jpg`;
-                            const result = await uploadFileWithVerification({
-                              file: {
-                                uri: annotatedUri,
-                                name: fileName,
-                                type: 'image/jpeg',
-                              },
-                              entityType: 'task-update',
-                              entityId: task.id,
-                              companyId: user.companyId,
-                              userId: user.id,
-                            });
-
-                            if (result.success && result.file) {
-                              // Navigate to update progress screen with the uploaded photo
-                              navigation.navigate("UpdateProgress", {
-                                taskId: task.id,
-                                subTaskId: subTaskId,
-                                initialCompletionPercentage: task.completionPercentage || 0,
-                              });
-                            } else {
-                              Alert.alert("Upload Failed", result.error || "Failed to upload annotated photo");
-                            }
-                          } catch (error: any) {
-                            console.error('Failed to upload annotated photo:', error);
-                            Alert.alert("Error", error.message || "Failed to upload annotated photo");
-                          }
-                        },
-                      });
-                    },
-                  },
-                ]
-              );
-            } catch (error: any) {
-              console.error('❌ [Task Detail] Failed to take photo:', error);
-              Alert.alert("Error", "Failed to take photo");
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              console.log('📚 [Task Detail] Selecting photos from library...');
-              
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Photo library permission is required.');
-                return;
-              }
-
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsMultipleSelection: false,
-                quality: 0.8,
-              });
-
-              if (result.canceled || !result.assets || result.assets.length === 0) {
-                return;
-              }
-
-              const photoUri = result.assets[0].uri;
-              const photoFileName = result.assets[0].fileName || `photo_${Date.now()}.jpg`;
-              
-              console.log('📸 Photo selected, showing annotation prompt...');
-              
-              // Ask if user wants to annotate
-              Alert.alert(
-                "Annotate Photo?",
-                "Would you like to draw or add comments on this photo before uploading?",
-                [
-                  {
-                    text: "Skip",
-                    style: "cancel",
-                    onPress: async () => {
-                      // Upload the selected photo directly without annotation
-                      try {
-                        const result = await uploadFileWithVerification({
-                          file: {
-                            uri: photoUri,
-                            name: photoFileName,
-                            type: 'image/jpeg',
-                          },
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                        });
-
-                        if (result.success && result.file) {
-                navigation.navigate("UpdateProgress", {
-                  taskId: task.id,
-                  subTaskId: subTaskId,
-                  initialCompletionPercentage: task.completionPercentage || 0,
-                });
-                        } else {
-                          Alert.alert("Upload Failed", result.error || "Failed to upload photo");
-                        }
-                      } catch (error: any) {
-                        console.error('Failed to upload photo:', error);
-                        Alert.alert("Error", error.message || "Failed to upload photo");
-                      }
-                    },
-                  },
-                  {
-                    text: "Annotate",
-                    onPress: () => {
-                      // Navigate to annotation screen
-                      navigation.navigate("PhotoAnnotation", {
-                        photoUri,
-                        onSave: async (annotatedUri: string) => {
-                          // Upload annotated photo directly
-                          try {
-                            const fileName = `annotated_${Date.now()}.jpg`;
-                            const result = await uploadFileWithVerification({
-                              file: {
-                                uri: annotatedUri,
-                                name: fileName,
-                                type: 'image/jpeg',
-                              },
-                              entityType: 'task-update',
-                              entityId: task.id,
-                              companyId: user.companyId,
-                              userId: user.id,
-                            });
-
-                            if (result.success && result.file) {
-                              // Navigate to update progress screen with the uploaded photo
-                              navigation.navigate("UpdateProgress", {
-                                taskId: task.id,
-                                subTaskId: subTaskId,
-                                initialCompletionPercentage: task.completionPercentage || 0,
-                              });
-                            } else {
-                              Alert.alert("Upload Failed", result.error || "Failed to upload annotated photo");
-                            }
-                          } catch (error: any) {
-                            console.error('Failed to upload annotated photo:', error);
-                            Alert.alert("Error", error.message || "Failed to upload annotated photo");
-                          }
-                        },
-                      });
-                    },
-                  },
-                ]
-              );
-            } catch (error: any) {
-              console.error('❌ [Task Detail] Failed to pick images:', error);
-              Alert.alert("Error", "Failed to pick images");
-            }
-          },
-        },
-        {
-          text: "Paste from Clipboard",
-          onPress: async () => {
-            Alert.alert(
-              "Not Available",
-              "Clipboard paste is temporarily disabled. Please use Camera or Library to upload photos."
-            );
-          },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
-  };
-
-
-  const isOverdue = new Date(task.dueDate) < new Date() && task.status !== "approved" && task.completionPercentage < 100;
-
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
-      {/* Standard Header */}
       <StandardHeader 
-        title={task?.title || t.tasks.taskDetails}
+        title={output.header.title || "Task Details"}
         showBackButton={true}
-        onBackPress={onNavigateBack}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
+        onBackPress={props.onNavigateBack}
+        onNavigateToProfile={props.onNavigateToProfile}
+        onNavigateToProjectPicker={props.onNavigateToProjectPicker}
       />
 
-      {/* Sub-task indicator - Shown when viewing a sub-task */}
-      {isViewingSubTask && (
-        <View className={cn(
-          "flex-row items-center mx-4 mt-2 px-4 py-2.5 rounded-lg",
-          "bg-purple-50 border border-purple-200"
-        )}>
-          <Ionicons name="git-branch-outline" size={18} color="#7c3aed" />
-          <Text className="text-base font-semibold text-purple-700 ml-2">
-            Sub-task
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
+        {/* Banners */}
+        {output.banners.map(banner => (
+          <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+        ))}
+
+        {/* Details Sections */}
+        <View className="px-4 mt-4">
+          {output.detailSections.map(section => (
+            <View key={section.id} className="mb-4">
+              <ContainerCard contract={mapSectionModelToContainerProps(section)} />
+            </View>
+          ))}
+        </View>
+
+        {/* Assignees & Assigners */}
+        <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
+          <Text className="font-semibold text-gray-900 mb-2">People</Text>
+          <Text className="text-gray-700">
+            Assigned By: {output.assigners.map(a => a.name).join(', ') || 'Unknown'}
           </Text>
-          {parentTask && (
-            <Text className="text-sm text-purple-600 ml-2 flex-1" numberOfLines={1}>
-              • Parent: {parentTask.title}
-            </Text>
-          )}
-        </View>
-      )}
-
-
-
-      {/* Awaiting Approval Banner - Shown to assignee after submitting for review */}
-      {isAssignedToMe && 
-       task.completionPercentage === 100 && 
-       task.status === "submitted_for_review" && (
-        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="time-outline" size={24} color="#f59e0b" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-amber-900">
-                {t.taskDetail.submittedForReview}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Submit for Review Button - Shown when task is at 100% but not yet submitted (for assignee) */}
-      {/* Mutually exclusive with the "Submitted for Review" banner above */}
-      {/* Should not appear if task is already approved */}
-      {isAssignedToMe && 
-       !isTaskCreator && 
-       task.completionPercentage === 100 && 
-       task.status !== "submitted_for_review" &&
-       task.status !== "approved" && (
-        <View className="px-6 py-3 border-b border-gray-200">
-          <Pressable
-            onPress={async () => {
-              try {
-                if (isViewingSubTask && subTaskId) {
-                  await submitSubTaskForReview(taskId, subTaskId);
-                } else {
-                  await submitTaskForReview(task.id);
-                }
-                await fetchTaskById(task.id, true); // Force refresh after submission
-                Alert.alert(
-                  "Submitted for Review! ✅",
-                  "Your task has been submitted for review by the task creator.",
-                  [{ text: "OK" }]
-                );
-              } catch (error: any) {
-                Alert.alert("Error", error.message || "Failed to submit task for review.");
-              }
-            }}
-            className="bg-blue-600 py-3.5 rounded-lg items-center flex-row justify-center"
-          >
-            <Text className="text-white font-semibold text-lg">Completed - Review Submission</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {/* Please Review Complete Task Banner - Shown when task is submitted for review and user is the creator */}
-      {isTaskCreator && 
-       task.status === "submitted_for_review" && 
-       task.completionPercentage === 100 && (
-        <View className="bg-amber-50 border-b-2 border-amber-200 px-6 py-4">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 bg-amber-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="time-outline" size={24} color="#f59e0b" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-amber-900">
-                Please Review Complete Task
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Task Approved Banner - Shown when task is approved */}
-      {task.status === "approved" && task.reviewedBy && (
-        <View className="bg-green-50 border-b-2 border-green-200 px-6 py-4">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 bg-green-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="checkmark-done-circle" size={24} color="#16a34a" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-green-900">
-                ✓ {t.taskDetail.taskApproved}
-              </Text>
-              <Text className="text-base text-green-700">
-                {t.taskDetail.reviewedAndApproved} {getUserById(task.reviewedBy)?.name || t.projects.unknown}
-                {task.reviewedAt && ` ${dateFormatter.formatDateShort(task.reviewedAt)}`}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Declined Task Banner - Shown when task is declined (before acceptance) and user is the assigner */}
-      {task.status === "declined" && task.assignedBy === user.id && (() => {
-        // Find the user who declined the task from activities
-        const declineActivity = task.activities?.find((activity: any) => 
-          activity.activityType === 'status_change' && 
-          activity.status === 'declined'
-        );
-        const declinedByUserId = declineActivity?.userId;
-        const declinedByUser = declinedByUserId ? getUserById(declinedByUserId) : null;
-        
-        return (
-          <View className="bg-red-50 border-b-2 border-red-200 px-6 py-4">
-            <View className="flex-row items-center">
-              <View className="w-10 h-10 bg-red-100 rounded-full items-center justify-center mr-3">
-                <Ionicons name="close-circle" size={24} color="#dc2626" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-red-900">
-                  {declinedByUser 
-                    ? `Task Declined by ${declinedByUser.name}`
-                    : t.taskDetail.taskDeclined
-                  }
-                </Text>
-                {task.declinedReason && (
-                  <Text className="text-base text-red-600 mt-1 italic">
-                    {t.taskDetail.reason} {task.declinedReason}
-                  </Text>
-                )}
-              </View>
-            </View>
-          </View>
-        );
-      })()}
-
-      {/* Rejected Task Banner - Shown when task is rejected after completion (100%) and user is the assigner */}
-      {task.status === "rejected" && task.completionPercentage === 100 && task.assignedBy === user.id && (
-        <View className="bg-red-50 border-b-2 border-red-200 px-6 py-4">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 bg-red-100 rounded-full items-center justify-center mr-3">
-              <Ionicons name="close-circle" size={24} color="#dc2626" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xl font-bold text-red-900">
-                {t.taskDetail.taskRejected}
-              </Text>
-              <Text className="text-base text-red-700">
-                {t.taskDetail.completionRejected || "Task completion was rejected. The assignee needs to make corrections."}
-              </Text>
-              {task.declinedReason && (
-                <Text className="text-base text-red-600 mt-1 italic">
-                  {t.taskDetail.reason} {task.declinedReason}
-                </Text>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-
-      <ScrollView 
-        className="flex-1"
-        showsVerticalScrollIndicator={true}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Assignment Information Card - Side by Side Layout */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
-          
-          {/* Assigned By and Assigned To - Side by Side */}
-          <View className="flex-row gap-2">
-            {/* Assigned By Card */}
-            <Pressable 
-              className="flex-1 bg-gray-50 rounded-lg p-3"
-              onPress={() => {
-                if (assignedBy?.phone && assignedBy.id !== user.id) {
-                  Linking.openURL(`tel:${assignedBy.phone}`);
-                }
-              }}
-              disabled={!assignedBy?.phone || assignedBy.id === user.id}
-            >
-              <Text className="text-sm font-medium text-gray-500 mb-2">{t.taskDetail.assignedBy}</Text>
-              <View className="flex-row items-center mb-2">
-                <View className="w-8 h-8 bg-blue-100 rounded-full items-center justify-center mr-2">
-                  <Ionicons name="person" size={16} color="#3b82f6" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                    {assignedBy?.id === user.id ? `${assignedBy?.name || "Unknown"} (me)` : (assignedBy?.name || "Unknown")}
-                  </Text>
-                  {assignedBy?.phone && (
-                    <Text className="text-sm text-gray-500">
-                      {assignedBy.phone}
-                    </Text>
-                  )}
-                </View>
-              </View>
-            </Pressable>
-
-            {/* Assigned To Card */}
-            <View className="flex-1 bg-gray-50 rounded-lg p-3">
-              <Pressable
-                onPress={() => {
-                  if (assignedUsers.length > 1) {
-                    setIsAssigneesExpanded(!isAssigneesExpanded);
-                  }
-                }}
-                disabled={assignedUsers.length <= 1}
-                className="flex-row items-center justify-between mb-2"
-              >
-                <Text className="text-sm font-medium text-gray-500">
-                  {t.taskDetail.assignedTo} {assignedUsers.length > 1 && `(${assignedUsers.length})`}
-                </Text>
-                {assignedUsers.length > 1 && (
-                  <Ionicons 
-                    name={isAssigneesExpanded ? "chevron-up" : "chevron-down"} 
-                    size={18} 
-                    color="#6b7280" 
-                  />
-                )}
-              </Pressable>
-              {assignedUsers.length > 0 ? (
-                <>
-                  {/* Always show first assignee */}
-                  {assignedUsers[0] && (() => {
-                    const assignedUser = assignedUsers[0];
-                    const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
-                    const latestUpdate = userUpdates[userUpdates.length - 1];
-                    const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
-                    
-                    return (
-                      <Pressable 
-                        onPress={() => {
-                          if (assignedUser.phone && assignedUser.id !== user.id) {
-                            Linking.openURL(`tel:${assignedUser.phone}`);
-                          }
-                        }}
-                        disabled={!assignedUser.phone || assignedUser.id === user.id}
-                      >
-                        <View className="flex-row items-center mb-2">
-                          <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
-                            <Ionicons name="person" size={16} color="#10b981" />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                              {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
-                            </Text>
-                            {assignedUser.phone && (
-                              <Text className="text-sm text-gray-500">
-                                {assignedUser.phone}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                      </Pressable>
-                    );
-                  })()}
-                  
-                  {/* Show remaining assignees if expanded */}
-                  {isAssigneesExpanded && assignedUsers.length > 1 && (
-                    <View className="mt-2">
-                      {assignedUsers.slice(1).map((assignedUser) => {
-                        if (!assignedUser) return null;
-                        
-                        const userUpdates = task.updates?.filter(update => update.userId === assignedUser.id) || [];
-                        const latestUpdate = userUpdates[userUpdates.length - 1];
-                        const userProgress = latestUpdate?.completionPercentage || task.completionPercentage || 0;
-                        
-                        return (
-                          <Pressable 
-                            key={assignedUser.id} 
-                            className="mt-3 pt-3 border-t border-gray-200"
-                            onPress={() => {
-                              if (assignedUser.phone && assignedUser.id !== user.id) {
-                                Linking.openURL(`tel:${assignedUser.phone}`);
-                              }
-                            }}
-                            disabled={!assignedUser.phone || assignedUser.id === user.id}
-                          >
-                            <View className="flex-row items-center mb-2">
-                              <View className="w-8 h-8 bg-green-100 rounded-full items-center justify-center mr-2">
-                                <Ionicons name="person" size={16} color="#10b981" />
-                              </View>
-                              <View className="flex-1">
-                                <Text className="text-base font-semibold text-gray-900" numberOfLines={1}>
-                                  {assignedUser.id === user.id ? `${assignedUser.name} (me)` : assignedUser.name}
-                                </Text>
-                                {assignedUser.phone && (
-                                  <Text className="text-sm text-gray-500">
-                                    {assignedUser.phone}
-                                  </Text>
-                                )}
-                              </View>
-                            </View>
-                          </Pressable>
-                        );
-                      })}
-                    </View>
-                  )}
-                </>
-              ) : (
-                <Text className="text-sm text-gray-500">{t.taskDetail.noAssignees}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Due Date, Status, Priority - Single Row Below */}
-          <View className="flex-row items-center flex-wrap gap-2 mt-4">
-            <View className="flex-row items-center">
-              <Ionicons name="calendar-outline" size={16} color="#6b7280" />
-              <Text className="text-base font-medium text-gray-600 ml-1">{t.taskDetail.due} </Text>
-              <Text className="text-base font-semibold text-gray-900">
-                {dateFormatter.formatDateShort(task.dueDate)}
-              </Text>
-            </View>
-            <View className={cn(
-              "px-2 py-1 rounded-full",
-              task.status === "approved" ? "bg-green-50" :
-              task.status === "in_progress" ? "bg-blue-50" :
-              task.status === "rejected" ? "bg-red-50" :
-              task.status === "declined" ? "bg-red-50" :
-              task.status === "submitted_for_review" ? "bg-purple-50" :
-              "bg-gray-50"
-            )}>
-              <Text className={cn(
-                "text-sm font-medium capitalize",
-                task.status === "approved" ? "text-green-700" :
-                task.status === "in_progress" ? "text-blue-700" :
-                task.status === "rejected" ? "text-red-700" :
-                task.status === "declined" ? "text-red-700" :
-                task.status === "submitted_for_review" ? "text-purple-700" :
-                "text-gray-700"
-              )}>
-                {task.status?.replace(/_/g, " ") || "new"}
-              </Text>
-            </View>
-            <View className={cn(
-              "px-2 py-1 rounded-full",
-              task.priority === "critical" ? "bg-red-50" :
-              task.priority === "high" ? "bg-orange-50" :
-              task.priority === "medium" ? "bg-yellow-50" :
-              "bg-green-50"
-            )}>
-              <Text className={cn(
-                "text-sm font-medium capitalize",
-                task.priority === "critical" ? "text-red-700" :
-                task.priority === "high" ? "text-orange-700" :
-                task.priority === "medium" ? "text-yellow-700" :
-                "text-green-700"
-              )}>
-                {task.priority}
-              </Text>
-            </View>
-          </View>
-
-          {/* Description */}
-          <View className="mt-3">
-            <Text className="text-base text-gray-700">
-              {task.description}
-            </Text>
-          </View>
+          <Text className="text-gray-700 mt-1">
+            Assigned To: {output.assignees.map(a => a.name).join(', ') || 'Unassigned'}
+          </Text>
         </View>
 
-        {/* All Files Section - Shows all attachments and photos from activities/updates */}
-        {allTaskFiles.length > 0 && (
-          <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="folder-outline" size={20} color="#6b7280" />
-              <Text className="text-lg font-semibold text-gray-900 ml-2">
-                All Files ({allTaskFiles.length})
-              </Text>
-            </View>
-            
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-3">
-                {allTaskFiles.map((file, index) => {
-                  const isPDF = file.toLowerCase().endsWith('.pdf') || file.includes('application/pdf');
-                  
-                  const isHighlighted = highlightedPhotoUri === file;
-                  
-                  return (
-                    <Pressable
-                      key={index}
-                      onPress={() => handleAttachmentPress(file)}
-                      className="relative"
-                    >
-                      {isPDF ? (
-                        // PDF preview - show PDF icon
-                        <View className="w-28 h-28 rounded-xl bg-red-50 border-2 border-red-200 items-center justify-center">
-                          <Ionicons name="document-text" size={48} color="#dc2626" />
-                          <Text className="text-sm text-red-700 font-semibold mt-1">PDF</Text>
-                        </View>
-                      ) : (
-                        // Image preview with highlight border
-                        <View className={cn(
-                          "w-28 h-28 rounded-xl overflow-hidden",
-                          isHighlighted ? "border-4 border-blue-500" : "border-2 border-gray-200"
-                        )}>
-                          <Image
-                            source={{ uri: file }}
-                            style={{ width: '100%', height: '100%' }}
-                            resizeMode="cover"
-                          />
-                        </View>
-                      )}
-                      
-                      {/* Preview indicator */}
-                      <View className="absolute top-1 right-1 bg-black/60 rounded-full p-1">
-                        <Ionicons name="expand" size={12} color="white" />
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </ScrollView>
+        {/* Activities */}
+        {output.activities.length > 0 && (
+          <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">Activities</Text>
+            {output.activities.map(activity => (
+              <ActivityPrimitive key={activity.id} contract={mapActivityModelToActivityProps(activity)} />
+            ))}
           </View>
         )}
 
-        {/* Progress & Updates Combined Section */}
-        <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
-          {/* Header with Activities title, sort toggle, expand/collapse all, and completion percentage */}
-          <View className="flex-row items-center justify-between mb-2" style={{ flexShrink: 1 }}>
-            <View className="flex-row items-center flex-1" style={{ minWidth: 0 }}>
-              <Text className="text-lg font-semibold text-gray-900" numberOfLines={1}>Activities</Text>
-              <Pressable
-                onPress={() => setProgressLogSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                className="ml-2 flex-row items-center px-1.5 py-1 bg-gray-100 rounded-lg"
-                style={{ flexShrink: 0 }}
-              >
-                <Ionicons 
-                  name={progressLogSortOrder === 'asc' ? "arrow-up" : "arrow-down"} 
-                  size={16} 
-                  color="#374151" 
-                />
-                <Text className="text-base text-gray-700 ml-1 font-medium" numberOfLines={1}>
-                  {progressLogSortOrder === 'asc' ? 'Oldest' : 'Newest'}
-                </Text>
-              </Pressable>
-              {(() => {
-                // Get all activity IDs to check if all are expanded (include all activities, including creation)
-                const allActivities = task.activities || task.updates.map((update: any) => ({
-                  id: update.id,
-                }));
-                const allActivityIds = new Set(allActivities.map((a: any) => a.id));
-                const allExpanded = allActivityIds.size > 0 && 
-                  Array.from(allActivityIds).every(id => expandedUpdateIds.has(id));
-                
-                return (
-                  <Pressable
-                    onPress={() => {
-                      if (allExpanded) {
-                        // Collapse all
-                        setExpandedUpdateIds(new Set());
-                      } else {
-                        // Expand all
-                        setExpandedUpdateIds(new Set(allActivityIds));
-                      }
-                    }}
-                    className="ml-1.5 flex-row items-center px-1.5 py-1 bg-blue-100 rounded-lg"
-                    style={{ flexShrink: 0 }}
-                  >
-                    <Ionicons 
-                      name={allExpanded ? "chevron-up" : "chevron-down"} 
-                      size={16} 
-                      color="#2563eb" 
-                    />
-                    <Text className="text-base text-blue-700 ml-1 font-medium" numberOfLines={1}>
-                      {allExpanded ? 'Collapse' : 'Expand'}
-                    </Text>
-                  </Pressable>
-                );
-              })()}
-            </View>
-            <Text 
-              className={cn(
-                "text-lg font-bold ml-2",
-                task.completionPercentage === 100 ? "text-green-600" : "text-gray-900"
-              )}
-              numberOfLines={1}
-              style={{ flexShrink: 0 }}
-            >
-              {task.completionPercentage}%
-            </Text>
+        {/* Child Tasks */}
+        {output.childTasks.length > 0 && (
+          <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
+            <Text className="text-lg font-semibold text-gray-900 mb-4">Sub-Tasks ({output.childTasks.length})</Text>
+            {output.childTasks.map(childTask => (
+              <TaskCard 
+                key={childTask.id}
+                task={childTask as any}
+                onNavigateToTaskDetail={props.onNavigateToTaskDetail || (() => {})}
+              />
+            ))}
           </View>
-
-
-          {/* Divider */}
-          {(task.activities?.length || task.updates.length) > 0 && <View className="border-t border-gray-200 mt-2 mb-3" />}
-          
-          {/* Activities List - Expandable (unified from task_activities) - Dynamic height container for up to 10 collapsed activities */}
-          {(task.activities?.length || task.updates.length) > 0 ? (
-            <View style={{ margin: 0, padding: 0 }}>
-                {(() => {
-                // Get all activities
-                const allActivities = task.activities || task.updates.map((update: any) => ({
-                  id: update.id,
-                  activityType: update.status ? 'status_change' : 'progress_update',
-                  timestamp: update.timestamp,
-                  userId: update.userId,
-                  description: update.description,
-                  completionPercentage: update.completionPercentage,
-                  status: update.status,
-                  data: { photos: update.photos || [] },
-                }));
-                
-                // Sort by timestamp (include all activities, including creation)
-                const sortedActivities = [...allActivities].sort((a: any, b: any) => {
-                  const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-                  const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
-                  return progressLogSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-                });
-                
-                const activityCount = sortedActivities.length;
-                const maxDisplayCount = 10;
-                
-                // Use onLayout to measure actual heights instead of estimating
-                // Store measured heights in state so container updates when heights change
-                const [measuredHeights, setMeasuredHeights] = React.useState<Map<string, number>>(new Map());
-                
-                // Calculate dynamic height: Use measured heights when available, fallback to estimates
-                const collapsedHeight = 42; // More accurate collapsed height (measured)
-                const gap = 12; // Gap between activities
-                
-                // Calculate height for each activity based on expanded state
-                const calculateActivityHeight = (activity: any, index: number) => {
-                  // Use measured height if available
-                  const measuredHeight = measuredHeights.get(activity.id);
-                  if (measuredHeight !== undefined) {
-                    return measuredHeight;
-                  }
-                  
-                  // Fallback to estimation
-                  const isExpanded = expandedUpdateIds.has(activity.id);
-                  if (!isExpanded) {
-                    return collapsedHeight;
-                  }
-                  
-                  // Estimate expanded height (conservative estimates)
-                  const activityData = activity.data as any;
-                  const hasPhotos = ((activityData?.photos || activity.photos || []).length > 0);
-                  const hasReason = !!(activityData?.reason || activity.description?.includes('Reason:'));
-                  
-                  let actionText = activity.description || '';
-                  if (activityData?.reason) {
-                    const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${activityData.reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
-                    actionText = actionText.replace(reasonPattern, '').trim();
-                  } else if (activity.description?.includes('Reason:')) {
-                    actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
-                  }
-                  const hasDescription = !!actionText;
-                  
-                  let expandedHeight = collapsedHeight; // Start with collapsed height
-                  expandedHeight += 12; // mt-3
-                  expandedHeight += 28; // Label (text-base font-medium + mb-2)
-                  
-                  if (hasDescription) {
-                    const estimatedLines = Math.max(1, Math.ceil(actionText.length / 50));
-                    expandedHeight += (estimatedLines * 20) + 8; // Text + mb-2
-                  }
-                  
-                  if (hasReason) {
-                    expandedHeight += 30; // Reason section
-                  }
-                  
-                  if (hasPhotos) {
-                    expandedHeight += 80; // Photos section
-                  }
-                  
-                  return expandedHeight;
-                };
-                
-                // Calculate total height for displayed activities (up to 10)
-                const displayCount = Math.min(activityCount, maxDisplayCount);
-                let totalHeight = 0;
-                
-                if (displayCount > 0) {
-                  for (let i = 0; i < displayCount; i++) {
-                    totalHeight += calculateActivityHeight(sortedActivities[i], i);
-                    if (i < displayCount - 1) {
-                      totalHeight += gap;
-                    }
-                  }
-                }
-                
-                const dynamicHeight = totalHeight;
-                
-                // Render function for each activity item
-                const renderActivityItem = ({ item: activity }: { item: any }) => {
-                // Use activities if available, otherwise fall back to updates
-                const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
-                const update = activity;
-                const activityUserId = activity.userId || update.userId;
-                const activityUser = getUserById(activityUserId);
-                const isExpanded = expandedUpdateIds.has(activity.id);
-                
-                // Get activity type icon and color
-                const getActivityIcon = (type: string) => {
-                  switch (type) {
-                    case 'creation': return 'add-circle';
-                    case 'assignment': return 'person-add';
-                    case 'status_change': return 'sync';
-                    case 'progress_update': return 'trending-up';
-                    case 'metadata_edit': return 'create';
-                    case 'review_submission': return 'send';
-                    case 'review_acceptance': return 'checkmark-circle';
-                    case 'review_rejection': return 'close-circle';
-                    case 'cancellation': return 'ban';
-                    case 'assigner_comment': return 'chatbubble';
-                    default: return 'document-text';
-                  }
-                };
-
-                const getActivityColor = (type: string) => {
-                  switch (type) {
-                    case 'creation': return '#10b981'; // green
-                    case 'assignment': return '#3b82f6'; // blue
-                    case 'status_change': return '#8b5cf6'; // purple
-                    case 'progress_update': return '#f59e0b'; // amber
-                    case 'metadata_edit': return '#6366f1'; // indigo
-                    case 'review_submission': return '#06b6d4'; // cyan
-                    case 'review_acceptance': return '#10b981'; // green
-                    case 'review_rejection': return '#ef4444'; // red
-                    case 'cancellation': return '#6b7280'; // gray
-                    case 'assigner_comment': return '#3b82f6'; // blue
-                    default: return '#6b7280';
-                  }
-                };
-
-                // Format activity type text with dynamic information
-                const getActivityTypeText = (type: string, activityData: any, activity: any) => {
-                  const data = activityData || {};
-                  
-                  switch (type) {
-                    case 'metadata_edit': {
-                      const changes = data.changes || {};
-                      const changedFields = Object.keys(changes);
-                      
-                      if (changedFields.length === 0) {
-                        return 'Task info updated';
-                      }
-                      
-                      // Format field names to be human-readable
-                      const formatFieldName = (field: string): string => {
-                        // Convert camelCase to Title Case
-                        return field
-                          .replace(/([A-Z])/g, ' $1')
-                          .replace(/^./, (str) => str.toUpperCase())
-                          .trim();
-                      };
-                      
-                      const fieldNames = changedFields.map(formatFieldName);
-                      
-                      if (fieldNames.length === 1) {
-                        return `${fieldNames[0]} updated`.trim();
-                      } else if (fieldNames.length <= 3) {
-                        return `${fieldNames.join(', ')} updated`.trim();
-                      } else {
-                        return `${fieldNames.slice(0, 2).join(', ')} +${fieldNames.length - 2} more updated`.trim();
-                      }
-                    }
-                    
-                    case 'progress_update': {
-                      const completion = activity.completionPercentage ?? data.completionPercentage ?? 0;
-                      return `Progress updated. Comp. ${completion}%`.trim();
-                    }
-                    
-                    case 'status_change': {
-                      const toStatus = data.toStatus || activity.status || '';
-                      const formatStatus = (s: string) => {
-                        if (!s) return '';
-                        return s.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()).trim();
-                      };
-                      return `status: ${formatStatus(toStatus)}`.trim();
-                    }
-                    
-                    case 'assignment': {
-                      const assignedTo = data.assignedTo || [];
-                      if (Array.isArray(assignedTo) && assignedTo.length > 0) {
-                        const assigneeNames = assignedTo
-                          .map((userId: string) => getUserById(userId)?.name)
-                          .filter(Boolean)
-                          .join(', ');
-                        return assigneeNames ? `Task assigned to ${assigneeNames}`.trim() : 'Task assigned';
-                      }
-                      return 'Task assigned';
-                    }
-                    
-                    case 'creation': {
-                      // CreationData has assignedBy field
-                      const assignedBy = data.assignedBy || activity.userId;
-                      const assigner = assignedBy ? getUserById(assignedBy) : null;
-                      return `Task created by ${assigner?.name || 'Unknown'}`.trim();
-                    }
-                    
-                    case 'cancellation': {
-                      // CancellationData doesn't have assignedBy, use activity.userId (the person who cancelled)
-                      const cancelledBy = activity.userId;
-                      const assigner = cancelledBy ? getUserById(cancelledBy) : null;
-                      return `Task cancelled by ${assigner?.name || 'Unknown'}`.trim();
-                    }
-                    
-                    case 'review_submission':
-                      return 'Submitted for review';
-                    
-                    case 'review_acceptance':
-                      return 'Works accepted';
-                    
-                    case 'review_rejection':
-                      return 'Works rejected';
-                    
-                    case 'assigner_comment':
-                      return 'Comments';
-                    
-                    default:
-                      return (type?.replace(/_/g, " ") || type).trim();
-                  }
-                };
-                
-                return (
-                    <Pressable 
-                      onPress={() => {
-                        const newExpanded = new Set(expandedUpdateIds);
-                        if (isExpanded) {
-                          newExpanded.delete(activity.id);
-                        } else {
-                          newExpanded.add(activity.id);
-                        }
-                        setExpandedUpdateIds(newExpanded);
-                      }}
-                      className="active:opacity-70"
-                      onLayout={(event) => {
-                        const { height } = event.nativeEvent.layout;
-                        if (height > 0 && height !== measuredHeights.get(activity.id)) {
-                          setMeasuredHeights(prev => {
-                            const newMap = new Map(prev);
-                            newMap.set(activity.id, height);
-                            return newMap;
-                          });
-                        }
-                      }}
-                    >
-                      <View 
-                        className="border-l-4 pl-2" 
-                        style={{ borderLeftColor: getActivityColor(activityType) }}
-                      >
-                        {/* Header: Collapsed (single line) or Expanded (with full content) */}
-                        {!isExpanded ? (
-                          /* Collapsed: Single line with fixed-width activity field and date only */
-                          <View className="flex-row items-center" style={{ gap: 4 }}>
-                            {/* Icon */}
-                            <Ionicons 
-                              name={getActivityIcon(activityType) as any} 
-                              size={16} 
-                              color={getActivityColor(activityType)} 
-                            />
-                            
-                            {/* User */}
-                            <Text 
-                              className="font-medium text-gray-900 text-base"
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                              style={{ width: 40, flexShrink: 0 }}
-                            >
-                              {activityUser?.name || "Unknown User"}
-                            </Text>
-                            
-                            {/* Spacer for long usernames - reduced spacing */}
-                            <View style={{ width: 5 }} />
-                            
-                            {/* Activity Type - Fixed width with truncation */}
-                            <Text 
-                              className="font-medium text-base text-gray-500" 
-                              numberOfLines={1} 
-                              ellipsizeMode="tail" 
-                              style={{ width: 180, flexShrink: 0 }}
-                            >
-                              {getActivityTypeText(activityType, activity.data, activity)}
-                            </Text>
-                            
-                            {/* Spacer - will take remaining space */}
-                            <View style={{ flex: 1 }} />
-                            
-                            {/* Date only (no time) */}
-                            <Text className="font-medium text-base text-gray-400">
-                              {(() => {
-                                const timestamp = activity.timestamp || update.timestamp;
-                                const date = new Date(timestamp);
-                                const month = String(date.getMonth() + 1).padStart(2, '0');
-                                const day = String(date.getDate()).padStart(2, '0');
-                                const year = String(date.getFullYear()).slice(-2);
-                                return `${month}/${day}/${year}`;
-                              })()}
-                            </Text>
-                          </View>
-                        ) : (
-                          /* Expanded: Full activity text, then date-time on second line */
-                          <View>
-                            {/* First line: Icon, User, Activity Type (full width) */}
-                            <View className="flex-row items-center" style={{ gap: 4 }}>
-                              {/* Icon */}
-                              <Ionicons 
-                                name={getActivityIcon(activityType) as any} 
-                                size={16} 
-                                color={getActivityColor(activityType)} 
-                              />
-                              
-                              {/* User */}
-                              <Text 
-                                className="font-medium text-gray-900 text-base"
-                                numberOfLines={1}
-                                ellipsizeMode="tail"
-                                style={{ width: 40, flexShrink: 0 }}
-                              >
-                                {activityUser?.name || "Unknown User"}
-                              </Text>
-                              
-                              {/* Spacer for long usernames - reduced spacing */}
-                              <View style={{ width: 5 }} />
-                              
-                              {/* Activity Type - Full content, no truncation */}
-                              <Text 
-                                className="font-medium text-base text-gray-500" 
-                                style={{ flex: 1, flexShrink: 1 }}
-                              >
-                                {getActivityTypeText(activityType, activity.data, activity)}
-                              </Text>
-                            </View>
-                            
-                            {/* Second line: Full date-time aligned right */}
-                            <View className="flex-row justify-end mt-1">
-                              <Text className="font-medium text-base text-gray-400">
-                                {(() => {
-                                  const timestamp = activity.timestamp || update.timestamp;
-                                  const date = new Date(timestamp);
-                                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                                  const day = String(date.getDate()).padStart(2, '0');
-                                  const year = String(date.getFullYear()).slice(-2);
-                                  const hours = String(date.getHours()).padStart(2, '0');
-                                  const minutes = String(date.getMinutes()).padStart(2, '0');
-                                  return `${month}/${day}/${year} ${hours}:${minutes}`;
-                                })()}
-                              </Text>
-                            </View>
-                          </View>
-                        )}
-
-                    {/* Expanded Content - Standardized Format for All Activity Types */}
-                    {isExpanded && (() => {
-                      // Extract reason from activity.data if available (for status_change, review_rejection, etc.)
-                      const activityData = activity.data as any;
-                      const reason = activityData?.reason;
-                      
-                      // Parse description to separate action from reason (for backward compatibility)
-                      // If description contains "Reason:", split it
-                      let actionText = activity.description || '';
-                      let extractedReason: string | undefined = undefined;
-                      
-                      if (reason) {
-                        // Use reason from activity.data if available (preferred)
-                        extractedReason = reason;
-                        // Try to remove reason from description if it's embedded
-                        const reasonPattern = new RegExp(`\\.?\\s*Reason:\\s*${reason.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i');
-                        actionText = actionText.replace(reasonPattern, '').trim();
-                      } else if (activity.description?.includes('Reason:')) {
-                        // Fallback: extract from description for backward compatibility
-                        const reasonMatch = activity.description.match(/Reason:\s*(.+)$/i);
-                        if (reasonMatch) {
-                          extractedReason = reasonMatch[1].trim();
-                          actionText = activity.description.replace(/\s*Reason:.*$/i, '').trim();
-                        }
-                      }
-                      
-                      return (
-                        <View className="mt-3">
-                          {/* Activity Type is now shown in the header, so we skip it here */}
-                          
-                          {/* Action/Description - Always shown if exists */}
-                          {actionText && (
-                            <Text className="font-medium text-base text-gray-700 mb-2">{actionText}</Text>
-                          )}
-                          
-                          {/* 2b. Reason - Shown if available (for declined, rejected, etc.) */}
-                          {extractedReason && (
-                            <View className="mb-3">
-                              <Text className="font-medium text-base text-gray-700">
-                                <Text className="font-medium">Reason:</Text> {extractedReason}
-                              </Text>
-                            </View>
-                          )}
-                          
-                          {/* 3. Photos - Always shown if exists (for all activity types) */}
-                          {((activity.data as any)?.photos || update.photos || []).length > 0 && (
-                          <View>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                              <View className="flex-row gap-2">
-                                {((activity.data as any)?.photos || update.photos || []).map((photo: string, photoIndex: number) => {
-                                  const isPDF = photo.toLowerCase().endsWith('.pdf') || photo.includes('application/pdf');
-                                  
-                                  return (
-                                    <Pressable
-                                      key={photoIndex}
-                                      onPress={() => handleAttachmentPress(photo)}
-                                      className="relative"
-                                    >
-                                      {isPDF ? (
-                                        <View className="w-16 h-16 rounded-lg bg-red-50 border border-red-200 items-center justify-center">
-                                          <Ionicons name="document-text" size={24} color="#dc2626" />
-                                        </View>
-                                      ) : (
-                                        <Image
-                                          source={{ uri: photo }}
-                                          style={{ width: 64, height: 64, borderRadius: 8 }}
-                                          resizeMode="cover"
-                                        />
-                                      )}
-                                      <View className="absolute top-0.5 right-0.5 bg-black/60 rounded-full p-0.5">
-                                        <Ionicons name="expand" size={8} color="white" />
-                                      </View>
-                                    </Pressable>
-                                  );
-                                })}
-                              </View>
-                            </ScrollView>
-                          </View>
-                          )}
-                        </View>
-                      );
-                    })()}
-                      </View>
-                    </Pressable>
-                );
-                };
-                
-                // Determine if scrolling is needed
-                // Scrolling is needed if:
-                // 1. There are more than 10 activities (need to scroll to see beyond first 10)
-                // 2. OR the calculated height exceeds the max display height (activities expanded beyond viewport)
-                const maxCollapsedHeight = maxDisplayCount * collapsedHeight + (maxDisplayCount - 1) * gap;
-                const needsScrolling = activityCount > maxDisplayCount || dynamicHeight > maxCollapsedHeight;
-                
-                // When there are 10 or fewer activities, completely remove height constraint
-                // This eliminates any phantom space from miscalculations
-                // When there are more than 10, use fixed height to show exactly 10 with scrolling
-                const shouldUseFixedHeight = activityCount > maxDisplayCount;
-                
-                return (
-                  <View 
-                    style={{ 
-                      // For 10 or fewer: use maxHeight to eliminate empty space (allows shrinking to content)
-                      // For more than 10: use fixed height to show exactly 10 with scrolling
-                      ...(shouldUseFixedHeight 
-                        ? { height: dynamicHeight, overflow: 'hidden' } 
-                        : {
-                            maxHeight: dynamicHeight > 0 ? dynamicHeight : undefined,
-                            overflow: 'hidden',
-                          })
-                    }}
-                  >
-                    <ScrollView
-                      ref={activityScrollViewRef}
-                      nestedScrollEnabled={true}
-                      scrollEnabled={needsScrolling}
-                      showsVerticalScrollIndicator={needsScrolling}
-                      contentContainerStyle={{ 
-                        paddingBottom: 0,
-                        paddingTop: 0,
-                        paddingLeft: 0,
-                        paddingRight: 0,
-                        flexGrow: 0,
-                        flexShrink: 0,
-                      }}
-                      style={{
-                        margin: 0,
-                        padding: 0,
-                      }}
-                      bounces={false}
-                      keyboardShouldPersistTaps="handled"
-                    >
-                      {sortedActivities.map((activity: any, index: number) => {
-                        // Calculate cumulative offset for this activity based on measured heights
-                        // This will be recalculated whenever measuredHeights changes
-                        let cumulativeOffset = 0;
-                        for (let i = 0; i < index; i++) {
-                          const prevActivity = sortedActivities[i];
-                          const prevHeight = measuredHeights.get(prevActivity.id) || 0;
-                          cumulativeOffset += prevHeight + 12; // 12px gap between activities
-                        }
-                        
-                        // Store position in ref (will be updated on each render when heights change)
-                        activityPositionsRef.current.set(activity.id, cumulativeOffset);
-                        
-                        return (
-                          <View 
-                            key={activity.id} 
-                            style={{ margin: 0, padding: 0 }}
-                          >
-                            {renderActivityItem({ item: activity })}
-                            {index < sortedActivities.length - 1 && <View style={{ height: 12, margin: 0, padding: 0 }} />}
-              </View>
-                        );
-                      })}
-                    </ScrollView>
-                  </View>
-                );
-              })()}
-            </View>
-          ) : (
-            <View className="py-6 items-center">
-              <Ionicons name="chatbubble-outline" size={40} color="#d1d5db" />
-              <Text className="text-gray-500 mt-2 text-base">{t.taskDetail.noUpdates}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Subtasks Section - Only show for parent tasks (not when viewing a subtask) */}
-        {!isViewingSubTask && childTasks.length > 0 && (
-            <View className="bg-white mx-4 mt-3 rounded-xl border border-gray-200 p-4 mb-4">
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-row items-center">
-                  <Ionicons name="git-branch-outline" size={20} color="#7c3aed" />
-                  <Text className="text-xl font-semibold text-gray-900 ml-2">
-                    Sub-Tasks ({childTasks.length})
-                  </Text>
-                </View>
-              </View>
-
-              {/* Subtasks List using TaskCard */}
-              <View>
-                {childTasks.map((subtask, index) => (
-                  <View key={subtask.id} className={index > 0 ? "mt-2" : ""}>
-                    <TaskCard 
-                      task={subtask}
-                      onNavigateToTaskDetail={(taskId, subTaskId) => {
-                        // Navigate to subtask detail screen
-                        if (onNavigateToTaskDetail) {
-                          onNavigateToTaskDetail(taskId, subTaskId);
-                        } else if (onNavigateToCreateTask) {
-                          // Fallback: if no navigation handler, use create task (for editing)
-                          onNavigateToCreateTask(taskId, subTaskId);
-                        }
-                      }}
-                    />
-                  </View>
-                ))}
-              </View>
-            </View>
         )}
-
       </ScrollView>
 
-      {/* Fixed Bottom Action Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
-        }}
-      >
-        <SafeAreaView edges={['bottom']}>
-          <View className="flex-row gap-3">
-            {/* Edit Task Details Button - Only show if user can edit AND task is not submitted for review */}
-            {canEditTask && !(isTaskCreator && task.status === "submitted_for_review" && task.completionPercentage === 100) && (
-              <Pressable
-                onPress={() => {
-                  if (onNavigateToCreateTask) {
-                    if (isViewingSubTask && subTaskId) {
-                      onNavigateToCreateTask(taskId, subTaskId, task.id, 'edit');
-                    } else {
-                      onNavigateToCreateTask(undefined, undefined, task.id, 'edit');
-                    }
-                  }
-                }}
-                className={cn(
-                  "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  "bg-gray-600"
-                )}
-              >
-                <Ionicons 
-                  name="create-outline" 
-                  size={18} 
-                  color="white" 
+      {/* Action Buttons */}
+      {output.actionItems.length > 0 && (
+        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
+          style={{ shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 8 }}
+        >
+          <SafeAreaView edges={['bottom']}>
+            <View className="flex-row gap-3 flex-wrap">
+              {output.actionItems.map(action => (
+                <ButtonPrimitive 
+                  key={action.id} 
+                  contract={mapActionItemToButtonProps(action)} 
+                  onPress={() => handleActionPress(action.actionId)}
                 />
-                <Text className="font-semibold text-base ml-2 text-white">
-                  {t.taskDetail.editTaskDetails}
-                </Text>
-              </Pressable>
-            )}
-
-            {/* Accept/Decline Buttons - Show if task is new and user is assigned */}
-            {/* Note: Declined tasks don't show accept/decline buttons - creator needs to reassign */}
-            {isAssignedToMe && 
-             task.status === "new" ? (
-              <>
-                <Pressable
-                  onPress={() => {
-                    if (isViewingSubTask && subTaskId) {
-                      acceptSubTask(taskId, subTaskId, user.id);
-                      Alert.alert(t.errors.success, t.taskDetail.subTaskAccepted);
-                    } else {
-                      handleAcceptTask();
-                    }
-                  }}
-                  className={cn(
-                    "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                    "bg-green-600"
-                  )}
-                >
-                  <Ionicons 
-                    name="checkmark-circle-outline" 
-                    size={18} 
-                    color="white" 
-                  />
-                  <Text className="font-semibold text-base ml-2 text-white">
-                    {t.taskDetail.accept}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    if (isViewingSubTask && subTaskId) {
-                      Alert.prompt(
-                        t.taskDetail.declineSubTask,
-                        t.taskDetail.declineSubTaskReason,
-                        (reason) => {
-                          if (reason && reason.trim()) {
-                            declineSubTask(taskId, subTaskId, user.id, reason.trim());
-                            Alert.alert(t.taskDetail.subTaskDeclined, t.taskDetail.subTaskDeclinedMessage);
-                          }
-                        },
-                        "plain-text"
-                      );
-                    } else {
-                      handleDeclineTask();
-                    }
-                  }}
-                  className={cn(
-                    "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                    "bg-red-600"
-                  )}
-                >
-                  <Ionicons 
-                    name="close-circle-outline" 
-                    size={18} 
-                    color="white" 
-                  />
-                  <Text className="font-semibold text-base ml-2 text-white">
-                    {t.taskDetail.decline}
-                  </Text>
-                </Pressable>
-              </>
-            ) : (
-              /* Approval/Reject Buttons - Show if task is submitted for review and user is the assigner */
-              isTaskCreator && task.status === "submitted_for_review" && task.completionPercentage === 100 ? (
-                <>
-                  <Pressable
-                    onPress={handleApproveTask}
-                    className={cn(
-                      "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                      "bg-green-600"
-                    )}
-                  >
-                    <Ionicons 
-                      name="checkmark-circle-outline" 
-                      size={18} 
-                      color="white" 
-                    />
-                    <Text className="font-semibold text-base ml-2 text-white">
-                      Approve
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    onPress={handleRejectTask}
-                    className={cn(
-                      "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                      "bg-red-600"
-                    )}
-                  >
-                    <Ionicons 
-                      name="close-circle-outline" 
-                      size={18} 
-                      color="white" 
-                    />
-                    <Text className="font-semibold text-base ml-2 text-white">
-                      Reject
-                    </Text>
-                  </Pressable>
-                </>
-              ) : (
-                <>
-                  {/* Reassign Button - Show if task is declined and user is the creator */}
-                  {isTaskCreator && task.status === "declined" && (
-                    <Pressable
-                      onPress={() => {
-                        navigation.navigate("ReassignTask", {
-                          taskId: task.id,
-                          onReassign: handleReassignTask,
-                        });
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                        "bg-blue-600"
-                      )}
-                    >
-                      <Ionicons 
-                        name="people-outline" 
-                        size={18} 
-                        color="white" 
-                      />
-                      <Text className="font-semibold text-base ml-2 text-white">
-                        Reassign
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Add Comment Button - Show if task was reassigned (status is new after being declined) and user is the creator */}
-                  {isTaskCreator && wasReassigned && (
-                    <Pressable
-                      onPress={() => {
-                        openCommentPanel();
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                        "bg-indigo-600"
-                      )}
-                    >
-                      <Ionicons 
-                        name="chatbubble-outline" 
-                        size={18} 
-                        color="white" 
-                      />
-                      <Text className="font-semibold text-base ml-2 text-white">
-                        Add Comment
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Update Progress Button - Show if user can update progress */}
-                  {canUpdateProgress && (
-                    <Pressable
-                      onPress={() => {
-                        openUpdatePanel();
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                        "bg-green-600"
-                      )}
-                    >
-                      <Ionicons 
-                        name="trending-up-outline" 
-                        size={18} 
-                        color="white" 
-                      />
-                      <Text className="font-semibold text-base ml-2 text-white">
-                        {t.taskDetail.updateTask}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Upload Photos Button - Show if user can update progress */}
-                  {canUpdateProgress && (
-                    <Pressable
-                      onPress={() => {
-                        handleAddPhotos();
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                        "bg-blue-600"
-                      )}
-                    >
-                      <Ionicons 
-                        name="camera-outline" 
-                        size={18} 
-                        color="white" 
-                      />
-                      <Text className="font-semibold text-base ml-2 text-white">
-                        {t.taskDetail.photosUpdates}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  {/* Add Comment Button - Show if user is the assigner (task creator) and task is not declined and not reassigned */}
-                  {isTaskCreator && task.status !== "declined" && !wasReassigned && (
-                    <Pressable
-                      onPress={() => {
-                        openCommentPanel();
-                      }}
-                      className={cn(
-                        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-                        "bg-indigo-600"
-                      )}
-                    >
-                      <Ionicons 
-                        name="chatbubble-outline" 
-                        size={18} 
-                        color="white" 
-                      />
-                      <Text className="font-semibold text-base ml-2 text-white">
-                        Add Comment
-                      </Text>
-                    </Pressable>
-                  )}
-                </>
-              )
-            )}
-          </View>
-        </SafeAreaView>
-      </View>
-
-
-      {/* Task Detail Slider Modal */}
-      <Modal
-        isVisible={showTaskDetailModal}
-        onBackdropPress={() => {
-          setShowTaskDetailModal(false);
-          setSelectedTaskForDetail(null);
-        }}
-        animationIn="slideInUp"
-        animationOut="slideOutDown"
-        style={{ margin: 0 }}
-        backdropOpacity={0.5}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-          <ModalHandle />
-          
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => {
-                setShowTaskDetailModal(false);
-                setSelectedTaskForDetail(null);
-              }}
-              className="mr-4"
-            >
-              <Text className="text-blue-600 font-medium">Close</Text>
-            </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              {selectedTaskForDetail?.title || "Task Details"}
-            </Text>
-          </View>
-
-          {selectedTaskForDetail && (
-            <ScrollView className="flex-1 px-6 py-4">
-              {/* Task Info Card */}
-              <View className="bg-white rounded-xl p-6 mb-4">
-                {/* Title */}
-                <Text className="text-3xl font-bold text-gray-900 mb-4">
-                  {selectedTaskForDetail.title}
-                </Text>
-
-                {/* Status and Priority */}
-                <View className="flex-row items-center mb-4">
-                  <View className={cn("px-3 py-1.5 rounded-full mr-3", getStatusColor(selectedTaskForDetail.status))}>
-                    <Text className="text-base font-medium capitalize">
-                      {selectedTaskForDetail.status?.replace(/_/g, " ") || "new"}
-                    </Text>
-                  </View>
-                  <View className={cn("px-3 py-1.5 rounded-full border", getPriorityColor(selectedTaskForDetail.priority))}>
-                    <Text className="text-base font-medium capitalize">
-                      {selectedTaskForDetail.priority} Priority
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Description */}
-                <Text className="text-gray-700 text-lg leading-6 mb-6">
-                  {selectedTaskForDetail.description}
-                </Text>
-
-                {/* Task Details Grid */}
-                <View className="space-y-4">
-                  <View className="flex-row items-center">
-                    <Ionicons name="calendar-outline" size={20} color="#6b7280" />
-                    <View className="ml-3 flex-1">
-                      <Text className="text-base text-gray-500">{t.tasks.dueDate}</Text>
-                      <Text className={cn("font-medium", new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.status !== "approved" && selectedTaskForDetail.completionPercentage < 100 ? "text-red-600" : "text-gray-900")}>
-                        {dateFormatter.formatDateShort(selectedTaskForDetail.dueDate)} 
-                        {new Date(selectedTaskForDetail.dueDate) < new Date() && selectedTaskForDetail.status !== "approved" && selectedTaskForDetail.completionPercentage < 100 && ` (${t.dashboard.overdue})`}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="flex-row items-center">
-                    <Ionicons name="pricetag-outline" size={20} color="#6b7280" />
-                    <View className="ml-3 flex-1">
-                      <Text className="text-base text-gray-500">Category</Text>
-                      <Text className="font-medium text-gray-900 capitalize">
-                        {selectedTaskForDetail.category}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="flex-row items-center">
-                    <Ionicons name="person-outline" size={20} color="#6b7280" />
-                    <View className="ml-3 flex-1">
-                      <Text className="text-base text-gray-500">Assigned By</Text>
-                      <Text className="font-medium text-gray-900">
-                        {getUserById(selectedTaskForDetail.assignedBy)?.name || "Unknown"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="flex-row items-center">
-                    <Ionicons name="people-outline" size={20} color="#6b7280" />
-                    <View className="ml-3 flex-1">
-                      <Text className="text-base text-gray-500">Assigned To</Text>
-                      <Text className="font-medium text-gray-900">
-                        {selectedTaskForDetail.assignedTo.map(userId => getUserById(userId)?.name).filter(Boolean).join(", ")}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              </View>
-
-              {/* Progress Card */}
-              <View className="bg-white rounded-xl p-6 mb-4">
-                <Text className="text-xl font-semibold text-gray-900 mb-4">Progress</Text>
-                <View className="flex-row items-center justify-between mb-2">
-                  <Text className="text-gray-600">Completion</Text>
-                  <Text className={cn(
-                    "font-semibold text-3xl",
-                    selectedTaskForDetail.completionPercentage === 100 ? "text-green-600" :
-                    selectedTaskForDetail.completionPercentage >= 75 ? "text-blue-600" :
-                    selectedTaskForDetail.completionPercentage >= 50 ? "text-yellow-600" :
-                    selectedTaskForDetail.completionPercentage >= 25 ? "text-orange-600" :
-                    "text-gray-600"
-                  )}>
-                    {selectedTaskForDetail.completionPercentage}%
-                  </Text>
-                </View>
-                <View className="w-full bg-gray-200 rounded-full h-4">
-                  <View 
-                    className={cn(
-                      "h-4 rounded-full",
-                      selectedTaskForDetail.completionPercentage === 100 ? "bg-green-500" :
-                      selectedTaskForDetail.completionPercentage >= 75 ? "bg-blue-500" :
-                      selectedTaskForDetail.completionPercentage >= 50 ? "bg-yellow-500" :
-                      selectedTaskForDetail.completionPercentage >= 25 ? "bg-orange-500" :
-                      "bg-gray-400"
-                    )} 
-                    style={{ width: `${selectedTaskForDetail.completionPercentage}%` }}
-                  />
-                </View>
-                {selectedTaskForDetail.completionPercentage === 100 && (
-                  <View className="flex-row items-center mt-2">
-                    <Ionicons name="checkmark-circle" size={16} color="#10b981" />
-                    <Text className="text-green-600 text-base font-medium ml-1">
-                      Task Completed!
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Task Updates */}
-              <View className="bg-white rounded-xl p-6 mb-6">
-                <View className="flex-row items-center justify-between mb-4">
-                  <View className="flex-row items-center flex-1">
-                    <Text className="text-xl font-semibold text-gray-900">{t.taskDetail.updates}</Text>
-                    <Pressable
-                      onPress={() => setProgressLogSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                      className="ml-3 flex-row items-center px-2 py-1.5 bg-gray-100 rounded-lg"
-                    >
-                      <Ionicons 
-                        name={progressLogSortOrder === 'asc' ? "arrow-up" : "arrow-down"} 
-                        size={18} 
-                        color="#374151" 
-                      />
-                      <Text className="text-sm text-gray-700 ml-1.5 font-medium">
-                        {progressLogSortOrder === 'asc' ? 'Oldest First' : 'Newest First'}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-base text-gray-500">{selectedTaskForDetail.activities?.length || selectedTaskForDetail.updates.length} activities</Text>
-                </View>
-                
-                {(selectedTaskForDetail.activities?.length || selectedTaskForDetail.updates.length) > 0 ? (
-                  <View className="space-y-4">
-                    {(() => {
-                      // Get all activities
-                      const allActivities = selectedTaskForDetail.activities || selectedTaskForDetail.updates.map((update: any) => ({
-                        id: update.id,
-                        activityType: update.status ? 'status_change' : 'progress_update',
-                        timestamp: update.timestamp,
-                        userId: update.userId,
-                        description: update.description,
-                        completionPercentage: update.completionPercentage,
-                        status: update.status,
-                        data: { photos: update.photos || [] },
-                      }));
-                      
-                      // Sort by timestamp
-                      const sortedActivities = [...allActivities].sort((a: any, b: any) => {
-                        const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-                        const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
-                        return progressLogSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-                      });
-                      
-                      return sortedActivities.map((activity: any) => {
-                        const activityType = activity.activityType || (activity.status ? 'status_change' : 'progress_update');
-                        const activityUser = getUserById(activity.userId);
-                        return (
-                          <View key={activity.id} className="border-l-4 border-blue-200 pl-4">
-                          <View className="flex-row items-center justify-between mb-2">
-                            <View className="flex-row items-center">
-                              <Ionicons 
-                                name={activityType === 'status_change' ? 'sync' : activityType === 'progress_update' ? 'trending-up' : 'document-text'} 
-                                size={16} 
-                                color="#3b82f6" 
-                                style={{ marginRight: 6 }}
-                              />
-                              <Text className="font-medium text-gray-900">
-                                {activityUser?.name || "Unknown User"}
-                              </Text>
-                            </View>
-                            <Text className="text-sm text-gray-500">
-                              {new Date(activity.timestamp).toLocaleString()}
-                            </Text>
-                          </View>
-                          <Text className="text-gray-700 mb-2">{activity.description}</Text>
-                          {activity.completionPercentage !== undefined && activity.status && (
-                            <View className="flex-row items-center space-x-4">
-                              <Text className="text-base text-gray-500">
-                                Progress: {activity.completionPercentage}%
-                              </Text>
-                              <View className={cn("px-2 py-1 rounded", getStatusColor(activity.status))}>
-                                <Text className="text-sm capitalize">
-                                  {activity.status.replace("_", " ")}
-                                </Text>
-                              </View>
-                            </View>
-                          )}
-                          </View>
-                        );
-                      });
-                    })()}
-                  </View>
-                ) : (
-                  <View className="py-8 items-center">
-                    <Ionicons name="chatbubble-outline" size={48} color="#d1d5db" />
-                    <Text className="text-gray-500 mt-2">{t.taskDetail.noUpdates}</Text>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
-
-
-      {/* Task Detail Utility FAB */}
-      <TaskDetailUtilityFAB
-        onEdit={() => {
-          if (onNavigateToCreateTask && task && canEditTask) {
-            // Navigate to edit screen by passing the task ID as editTaskId
-            onNavigateToCreateTask(undefined, undefined, task.id);
-          }
-        }}
-        onCancel={isTaskCreator && !task.cancelledAt && !isViewingSubTask ? handleCancelTask : undefined}
-        canCancel={isTaskCreator && !task.cancelledAt && !isViewingSubTask}
-        onCreateSubTask={onNavigateToCreateTask ? () => {
-          // Temporarily disabled - do nothing
-          return;
-        } : undefined}
-        canEdit={canEditTask}
-        canCreateSubTask={false} // Always disabled for all users - button will be greyed out
-      />
+              ))}
+            </View>
+          </SafeAreaView>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

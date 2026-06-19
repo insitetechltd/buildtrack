@@ -6,7 +6,7 @@ export type PrimitiveStructuralState =
   | "stale"
   | "disabled";
 
-export type PrimitiveFamily = "input" | "status" | "container";
+export type PrimitiveFamily = "input" | "status" | "container" | "button" | "banner" | "activity";
 
 export interface PrimitiveStateFlags {
   isLoading: boolean;
@@ -143,4 +143,34 @@ export interface ContainerPrimitiveContract extends PrimitiveBaseContract {
   body: ContainerBodyStateContract;
   indentationLevel?: number;
   onPress?: () => void;
+}
+
+export interface ButtonPrimitiveContract extends PrimitiveBaseContract {
+  family: "button";
+  label: string;
+  icon?: string;
+  onPress?: () => void;
+}
+
+export interface BannerPrimitiveContract extends PrimitiveBaseContract {
+  family: "banner";
+  type: 'submitted_for_review' | 'review_required' | 'approved' | 'declined' | 'rejected';
+  title: string;
+  subtitle?: string;
+  iconName: string;
+  colorScheme: 'amber' | 'green' | 'red';
+}
+
+export interface ActivityPrimitiveContract extends PrimitiveBaseContract {
+  family: "activity";
+  userId: string;
+  userName: string;
+  activityType: string;
+  timestamp: string;
+  description: string;
+  reason?: string;
+  completionPercentage?: number;
+  statusToken?: StatusSemanticToken;
+  statusLabel?: string;
+  photos: string[];
 }

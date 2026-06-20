@@ -32,9 +32,10 @@ interface UserManagementScreenProps {
 export default function UserManagementScreen({ onNavigateBack }: UserManagementScreenProps) {
   const t = useTranslation();
   const { user: currentUser, logout } = useAuthStore();
-  const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentUser.companyId);
+  const currentCompanyId = currentUser?.companyId ?? "";
+  const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentCompanyId);
   const userStore = useUserStoreWithInit();
-  const { getUsersByCompany, getAdminCountByCompany, fetchUsers, approveUser, rejectUser } = userStore;
+  const { getUsersByCompany, getAdminCountByCompany, fetchUsers, approveUser, rejectUser, getAllUsers } = userStore;
   const { getCompanyById, getCompanyBanner } = useCompanyStore();
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -61,7 +62,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     }
   };
 
-  if (!isAdmin(currentUser)) {
+  if (!currentUser || !isAdmin(currentUser)) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -75,31 +76,31 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     );
   }
 
+  const adminUser = currentUser;
+
   // Only show users from the same company
-  const companyUsers = currentUser.companyId 
-    ? getUsersByCompany(currentUser.companyId)
+  const companyUsers = adminUser.companyId
+    ? getUsersByCompany(adminUser.companyId)
     : [];
-  const projects = currentUser.companyId ? getProjectsByCompany(currentUser.companyId) : [];
-  const currentCompany = currentUser.companyId ? getCompanyById(currentUser.companyId) : null;
+  const projects = adminUser.companyId ? getProjectsByCompany(adminUser.companyId) : [];
+  const currentCompany = adminUser.companyId ? getCompanyById(adminUser.companyId) : null;
+  const allUsers = getAllUsers();
   
   // Debug logging
   console.log('=== USER MANAGEMENT DEBUG ===');
-  console.log('Current User:', currentUser.name, currentUser.email);
-  console.log('Current User Company ID:', currentUser.companyId);
-  console.log('Current User Company_id:', currentUser.company_id);
-  console.log('All Users in Store:', useUserStoreWithInit().getAllUsers().length);
+  console.log('Current User:', adminUser.name, adminUser.email);
+  console.log('Current User Company ID:', adminUser.companyId);
+  console.log('All Users in Store:', allUsers.length);
   console.log('Company Users Found:', companyUsers.length);
-  console.log('All Users Details:', useUserStoreWithInit().getAllUsers().map(u => ({ 
+  console.log('All Users Details:', allUsers.map(u => ({
     id: u.id, 
     name: u.name, 
-    companyId: u.companyId, 
-    company_id: u.company_id 
+    companyId: u.companyId,
   })));
-  console.log('Filtered Users Details:', companyUsers.map(u => ({ 
+  console.log('Filtered Users Details:', companyUsers.map(u => ({
     id: u.id, 
     name: u.name, 
-    companyId: u.companyId, 
-    company_id: u.company_id 
+    companyId: u.companyId,
   })));
   console.log('============================');
   
@@ -153,7 +154,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     // Assign user to project with a PROJECT ROLE (category)
     // Note: selectedCategory is the PROJECT ROLE (what they do on this project),
     //       NOT their job title (admin/manager/worker)
-    assignUserToProject(selectedUser.id, selectedProject.id, selectedCategory, currentUser.id);
+    assignUserToProject(selectedUser.id, selectedProject.id, selectedCategory, adminUser.id);
     
     // Notify all users about the assignment
     notifyDataMutation('assignment');
@@ -198,7 +199,7 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
     if (!pendingUserData) return;
     
     try {
-      await approveUser(pendingUserData.id, currentUser.id);
+      await approveUser(pendingUserData.id, adminUser.id);
       
       // Notify all users about the approval
       notifyDataMutation('user');
@@ -397,15 +398,15 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           >
             <View className="mr-2">
               <Text className="text-base font-semibold text-right text-gray-900">
-                {currentUser.name}
+                {adminUser.name}
               </Text>
               <Text className="text-sm text-gray-600 text-right capitalize">
-                {currentUser.role}
+                {adminUser.role}
               </Text>
             </View>
             <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
               <Text className="text-white font-bold text-lg">
-                {currentUser.name.charAt(0).toUpperCase()}
+                {adminUser.name.charAt(0).toUpperCase()}
               </Text>
             </View>
           </Pressable>
@@ -873,15 +874,15 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               <View className="flex-row items-center">
                 <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
                   <Text className="text-blue-600 font-bold text-lg">
-                    {currentUser.name.charAt(0).toUpperCase()}
+                    {adminUser.name.charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <View className="flex-1">
                   <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                    {currentUser.name}
+                    {adminUser.name}
                   </Text>
                   <Text className="text-blue-100 text-sm capitalize">
-                    {currentUser.role}
+                    {adminUser.role}
                   </Text>
                 </View>
               </View>

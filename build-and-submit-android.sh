@@ -249,6 +249,21 @@ else
   echo ""
 fi
 
+# Step 2.5: Validate build configuration
+echo -e "${BLUE}🔍 Step 2.5/5: Validating build configuration...${NC}"
+if [ -f "scripts/validate-build-config.sh" ]; then
+  if ! ./scripts/validate-build-config.sh; then
+    echo -e "${RED}❌ Build configuration validation failed!${NC}"
+    echo -e "${YELLOW}Please fix the configuration errors before building.${NC}"
+    echo -e "${YELLOW}Run './scripts/validate-build-config.sh' for details.${NC}"
+    exit 1
+  fi
+  echo ""
+else
+  echo -e "${YELLOW}⚠️  Validation script not found, skipping validation${NC}"
+  echo ""
+fi
+
 # Step 3: Build release AAB
 echo -e "${BLUE}🔨 Step 3/5: Building release AAB...${NC}"
 echo -e "${BLUE}   This may take several minutes...${NC}"
@@ -306,9 +321,16 @@ echo -e "${BLUE}🚀 Step 4/5: Submitting to Google Play Store...${NC}"
 echo -e "${BLUE}   Track: $SUBMIT_TRACK${NC}"
 echo ""
 
+# Determine submit profile based on track
+if [ "$SUBMIT_TRACK" == "production" ]; then
+  SUBMIT_PROFILE="production"
+else
+  SUBMIT_PROFILE="internal"
+fi
+
 # Check if we should use service account or interactive
-# Note: Track is configured in eas.json submit profile, not as a command flag
-EAS_CMD="npx eas submit --platform android --path \"$AAB_PATH\" --profile $PROFILE"
+# Note: Track is configured in eas.json submit profile
+EAS_CMD="npx eas submit --platform android --path \"$AAB_PATH\" --profile $SUBMIT_PROFILE"
 
 if [ -f "$SERVICE_ACCOUNT_PATH" ]; then
   echo -e "${GREEN}✅ Using service account for automated submission${NC}"
@@ -330,6 +352,16 @@ if [ $SUBMIT_EXIT_CODE -ne 0 ]; then
   echo -e "${YELLOW}You can submit manually later with:${NC}"
   echo -e "${YELLOW}  eas submit --platform android --path \"$AAB_PATH\" --track $SUBMIT_TRACK${NC}"
   exit 1
+fi
+
+# Step 6: Save successful build configuration
+echo ""
+echo -e "${BLUE}💾 Step 5/5: Saving successful build configuration...${NC}"
+if [ -f "scripts/save-successful-build-config.sh" ]; then
+  ./scripts/save-successful-build-config.sh
+  echo -e "${GREEN}✅ Configuration saved for future builds${NC}"
+else
+  echo -e "${YELLOW}⚠️  Save script not found, skipping configuration save${NC}"
 fi
 
 echo ""

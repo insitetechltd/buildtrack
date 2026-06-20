@@ -73,3 +73,4 @@ You have these keystore files (all have same SHA-1: `19:84:71:F5:89:60:32:CD:3E:
 - ✅ **Have current keystore** - can use after reset
 - ✅ **Can upload keystore to EAS** - after reset, using `npx eas credentials --platform android`
 
+

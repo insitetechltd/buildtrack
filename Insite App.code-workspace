@@ -2,6 +2,9 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../../../Users/tristan/Downloads/@insitetech__buildtrack-keystore-backup"
 		}
 	],
 	"settings": {

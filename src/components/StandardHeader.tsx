@@ -25,6 +25,7 @@ interface StandardHeaderProps {
   subtitle?: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
+  onBack?: () => void;
   rightElement?: React.ReactNode;
   onProfilePress?: () => void;
   onNavigateToProfile?: () => void;
@@ -37,6 +38,7 @@ export default function StandardHeader({
   subtitle,
   showBackButton = false,
   onBackPress,
+  onBack,
   rightElement,
   onProfilePress,
   onNavigateToProfile,
@@ -163,7 +165,7 @@ export default function StandardHeader({
         {/* Back Button */}
         {showBackButton && (
           <Pressable 
-            onPress={onBackPress}
+            onPress={onBackPress || onBack}
             className="w-10 h-10 items-center justify-center mr-3"
           >
             <Ionicons name="arrow-back" size={24} color={isDarkMode ? "#cbd5e1" : "#374151"} />

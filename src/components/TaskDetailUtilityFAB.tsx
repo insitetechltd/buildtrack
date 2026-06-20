@@ -174,8 +174,8 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
           toggleExpand();
         }
         pan.setOffset({
-          x: pan.x._value,
-          y: pan.y._value,
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value,
         });
       },
       onPanResponderMove: (evt, gestureState) => {

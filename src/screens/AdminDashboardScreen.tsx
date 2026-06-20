@@ -39,9 +39,10 @@ export default function AdminDashboardScreen({
   onNavigateToDevAdmin
 }: AdminDashboardScreenProps) {
   const { user, logout } = useAuthStore();
-  const { getProjectsByCompany, userAssignments, fetchProjects } = useProjectStoreWithCompanyInit(user.companyId);
+  const currentCompanyId = user?.companyId ?? "";
+  const { getProjectsByCompany, userAssignments, fetchProjects } = useProjectStoreWithCompanyInit(currentCompanyId);
   const userStore = useUserStoreWithInit();
-  const { getUsersByCompany, fetchUsers } = userStore;
+  const { getUsersByCompany, fetchUsers, getAllUsers } = userStore;
   const tasks = useTaskStore(state => state.tasks);
   const fetchTasks = useTaskStore(state => state.fetchTasks);
   const { getCompanyById, getCompanyBanner, updateCompanyBanner } = useCompanyStore();
@@ -86,26 +87,26 @@ export default function AdminDashboardScreen({
     );
   }
 
-  const allProjects = getProjectsByCompany(user.companyId);
+  const adminUser = user as NonNullable<typeof user>;
+
+  const allProjects = getProjectsByCompany(adminUser.companyId);
   // Get only users from the admin's company
-  const allUsers = useUserStoreWithInit().getAllUsers();
-  const companyUsers = getUsersByCompany(user.companyId);
+  const allUsers = getAllUsers();
+  const companyUsers = getUsersByCompany(adminUser.companyId);
   
   // Debug: Check company filtering
   console.log('=== COMPANY FILTERING DEBUG ===');
-  console.log('Current user:', user.name, user.email);
-  console.log('Current user company ID:', user.companyId);
-  console.log('Current user company_id:', user.company_id);
+  console.log('Current user:', adminUser.name, adminUser.email);
+  console.log('Current user company ID:', adminUser.companyId);
   console.log('Total users in store:', allUsers.length);
   console.log('Company users after filtering:', companyUsers.length);
-  console.log('Sample user company IDs:', allUsers.slice(0, 5).map(u => ({ 
-    name: u.name, 
-    companyId: u.companyId, 
-    company_id: u.company_id,
-    matches: u.companyId === user.companyId || u.company_id === user.companyId
+  console.log('Sample user company IDs:', allUsers.slice(0, 5).map(u => ({
+    name: u.name,
+    companyId: u.companyId,
+    matches: u.companyId === adminUser.companyId
   })));
   console.log('===============================');
-  const currentCompany = getCompanyById(user.companyId);
+  const currentCompany = getCompanyById(adminUser.companyId);
   
   // Get company user IDs for filtering
   const companyUserIds = new Set(companyUsers.map(u => u.id));
@@ -126,7 +127,7 @@ export default function AdminDashboardScreen({
   
   // Debug logging
   console.log('Admin Dashboard Debug:');
-  console.log('- Current user company ID:', user.companyId);
+  console.log('- Current user company ID:', adminUser.companyId);
   console.log('- All projects:', allProjects.length);
   console.log('- Company projects:', companyProjects.length);
   console.log('- All tasks:', tasks.length);
@@ -135,9 +136,9 @@ export default function AdminDashboardScreen({
   console.log('- Company user IDs:', Array.from(companyUserIds));
   console.log('- Project creators:', allProjects.map(p => p.createdBy));
   console.log('- All users count:', userStore.getAllUsers().length);
-  console.log('- Company users details:', companyUsers.map(u => ({ id: u.id, name: u.name, companyId: u.companyId, company_id: u.company_id })));
-  console.log('- Current user company ID:', user.companyId);
-  console.log('- Sample user company IDs:', userStore.getAllUsers().slice(0, 3).map(u => ({ name: u.name, companyId: u.companyId, company_id: u.company_id })));
+  console.log('- Company users details:', companyUsers.map(u => ({ id: u.id, name: u.name, companyId: u.companyId })));
+  console.log('- Current user company ID:', adminUser.companyId);
+  console.log('- Sample user company IDs:', getAllUsers().slice(0, 3).map(u => ({ name: u.name, companyId: u.companyId })));
   
   // Filter user assignments for company users
   const companyAssignments = userAssignments.filter(a => companyUserIds.has(a.userId));
@@ -150,7 +151,7 @@ export default function AdminDashboardScreen({
     totalUsers: companyUsers.length, // Should be 4 for BuildTrack, 2 for Elite Electric
     assignedUsers: new Set(companyAssignments.filter(a => a.isActive).map(a => a.userId)).size,
     totalTasks: companyTasks.length, // Should be 0 since no projects from this company
-    completedTasks: companyTasks.filter(t => t.currentStatus === "completed").length,
+    completedTasks: companyTasks.filter(t => (t.currentStatus ?? t.status) === "completed").length,
   };
 
   const projectsByStatus = {
@@ -241,7 +242,7 @@ export default function AdminDashboardScreen({
 
   // Banner customization handlers
   const openBannerModal = () => {
-    const currentBanner = getCompanyBanner(user.companyId);
+    const currentBanner = getCompanyBanner(adminUser.companyId);
     if (currentBanner) {
       setBannerForm({
         text: currentBanner.text,
@@ -255,7 +256,7 @@ export default function AdminDashboardScreen({
   };
 
   const saveBanner = () => {
-    updateCompanyBanner(user.companyId, bannerForm);
+    updateCompanyBanner(adminUser.companyId, bannerForm);
     setShowBannerModal(false);
     Alert.alert("Success", "Company banner updated successfully!");
   };
@@ -390,7 +391,7 @@ export default function AdminDashboardScreen({
           >
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
               <Text className="text-white font-bold text-base">
-                {user.name.charAt(0).toUpperCase()}
+                  {adminUser.name.charAt(0).toUpperCase()}
               </Text>
             </View>
           </Pressable>
@@ -464,7 +465,7 @@ export default function AdminDashboardScreen({
                 <Text className="text-sm text-gray-600">Managers</Text>
               </View>
               <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-green-600">{usersByRole.worker}</Text>
+                <Text className="text-2xl font-bold text-green-600">{usersByRole.member}</Text>
                 <Text className="text-sm text-gray-600">Workers</Text>
               </View>
             </View>
@@ -783,15 +784,15 @@ export default function AdminDashboardScreen({
               <View className="flex-row items-center">
                 <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
                   <Text className="text-purple-600 font-bold text-lg">
-                    {user.name.charAt(0).toUpperCase()}
+                    {adminUser.name.charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <View className="flex-1">
                   <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                    {user.name}
+                {adminUser.name}
                   </Text>
                   <Text className="text-purple-100 text-sm capitalize">
-                    {user.role}
+                {adminUser.role}
                   </Text>
                 </View>
               </View>

@@ -34,12 +34,14 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
     );
   }
 
+  const adminUser = user as NonNullable<typeof user>;
+
   const handleSubmit = async (formData: any) => {
     setIsSubmitting(true);
 
     try {
       console.log('🔨 Creating project...');
-      const newProject = await createProject({
+      const createdProjectId = await createProject({
         name: formData.name,
         description: formData.description,
         status: formData.status,
@@ -51,16 +53,16 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
           email: formData.clientInfo.email || undefined,
           phone: formData.clientInfo.phone || undefined,
         },
-        createdBy: user.id,
-        companyId: user.companyId,
+        createdBy: adminUser.id,
+        companyId: adminUser.companyId,
       });
 
-      console.log('✅ Project created:', newProject?.id);
+      console.log('✅ Project created:', createdProjectId);
       console.log('📋 Project details:', {
-        id: newProject?.id,
+        id: createdProjectId,
         name: formData.name,
-        companyId: user.companyId,
-        createdBy: user.id
+        companyId: adminUser.companyId,
+        createdBy: adminUser.id
       });
 
       // Wait a moment for database to fully process
@@ -83,7 +85,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         });
         
         // Check if the new project is in the store
-        projectExists = projectStore.projects.some(p => p.id === newProject?.id);
+        projectExists = projectStore.projects.some(p => p.id === createdProjectId);
         
         if (projectExists) {
           console.log('✅ New project confirmed in store');
@@ -100,7 +102,7 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
         Alert.alert(
           t.projects.projectCreated, 
           t.projects.projectCreatedMessage,
-          [{ text: t.common.ok, onPress: () => onNavigateBack(newProject?.id) }]
+          [{ text: t.common.ok, onPress: () => onNavigateBack(createdProjectId) }]
         );
         return;
       }
@@ -108,9 +110,9 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
       // Notify all users about the new project
       notifyDataMutation('project');
 
-      console.log('✅ Navigating back to projects screen with project ID:', newProject?.id);
+      console.log('✅ Navigating back to projects screen with project ID:', createdProjectId);
       // Navigate back with the new project ID so ProjectsScreen can verify it's loaded
-      onNavigateBack(newProject?.id);
+      onNavigateBack(createdProjectId);
     } catch (error) {
       console.error("❌ Error creating project:", error);
       Alert.alert(t.errors.error, t.projects.failedToCreateProject);

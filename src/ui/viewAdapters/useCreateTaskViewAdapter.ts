@@ -69,7 +69,7 @@ export function useCreateTaskViewAdapter({
   
   const [textInput, setTextInput] = useState('');
   const [showSuggestionPreview, setShowSuggestionPreview] = useState(false);
-  const [acceptedFields, setAcceptedFields] = useState<Record<string, boolean>>({});
+  const [acceptedFields, setAcceptedFields] = useState<Set<string>>(new Set());
 
   // 1. AsyncStorage Persistence Logic
   const persistDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

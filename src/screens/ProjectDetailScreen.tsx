@@ -367,12 +367,12 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
               projectAssignments.map((assignment, index) => {
                 const member = getUserById(assignment.userId);
                 const isLeadPM = assignment.userId === leadPMId;
-                
-                // Debug logging
-                console.log(`Member ${member.name}: isLeadPM=${isLeadPM}, user.role=${user.role}, canDelete=${user.role === "admin" && !isLeadPM}`);
-                
+
                 // This should never happen now due to filtering, but keeping for safety
                 if (!member) return null;
+
+                // Debug logging
+                console.log(`Member ${member.name}: isLeadPM=${isLeadPM}, user.role=${user.role}, canDelete=${user.role === "admin" && !isLeadPM}`);
                 
                 return (
                   <View 
@@ -845,4 +845,3 @@ function AddMemberModal({
     </Modal>
   );
 }
-

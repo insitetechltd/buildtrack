@@ -55,6 +55,7 @@ export default function ProjectsScreen({
   const { getCompanyById, getCompanyBanner } = useCompanyStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -164,6 +165,18 @@ export default function ProjectsScreen({
       return matchesSearch && matchesStatus;
     });
   }, [allProjects, searchQuery, statusFilter]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        fetchProjects(),
+        user ? fetchUserProjectAssignments(user.id) : Promise.resolve(),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchProjects, fetchUserProjectAssignments, user]);
 
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {

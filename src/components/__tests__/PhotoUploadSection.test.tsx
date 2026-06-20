@@ -5,6 +5,9 @@ import * as ImagePicker from 'expo-image-picker';
 
 // Mock ImagePicker
 jest.mock('expo-image-picker');
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
 
 describe('PhotoUploadSection Component Tests', () => {
   const mockOnPhotosChange = jest.fn();
@@ -105,4 +108,3 @@ describe('PhotoUploadSection Component Tests', () => {
     expect(mockPhotos.length).toBe(1);
   });
 });
-

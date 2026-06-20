@@ -1,0 +1,60 @@
+name: CI Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-nightly-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nightly-full-confidence:
+    name: Nightly Full Confidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: true
+      # These placeholders keep the workflow deterministic even though the current
+      # Jest suites rely on mocks. Replace with repo Variables or Secrets if future
+      # CI jobs need live environment configuration.
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+      EXPO_NO_DOTENV: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Nightly full-confidence suite
+        run: npm run test:all
+
+      - name: Notify on nightly failure via Slack webhook
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          payload=$(cat <<'JSON'
+          {
+            "text": ":rotating_light: Nightly full-confidence workflow failed for Insite App. Review the GitHub Actions run and investigate broken mocks or regressions."
+          }
+          JSON
+          )
+          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+
+      - name: Emit GitHub failure alert placeholder
+        if: failure() && secrets.SLACK_WEBHOOK_URL == ''
+        run: |
+          echo "::error::Nightly full-confidence workflow failed. Configure SLACK_WEBHOOK_URL to send external alerts."

@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   Modal,
   View,
-  Image,
   Pressable,
   Text,
   ScrollView,
@@ -10,6 +9,7 @@ import {
   StatusBar as RNStatusBar,
   Platform,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -140,13 +140,15 @@ export default function FullScreenImageViewer({
                 backgroundColor: '#ffffff',
               }}
             >
-              <Image
+              <ExpoImage
                 source={{ uri: imageUri }}
+                cachePolicy="memory-disk"
+                contentFit="contain"
+                transition={120}
                 style={{
                   width: '100%',
                   height: '100%',
                 }}
-                resizeMode="contain"
               />
             </View>
           ))}
@@ -202,10 +204,12 @@ export default function FullScreenImageViewer({
                     index === currentIndex ? "border-white" : "border-transparent"
                   }`}
                 >
-                  <Image
+                  <ExpoImage
                     source={{ uri: imageUri }}
+                    cachePolicy="memory-disk"
+                    contentFit="cover"
+                    transition={120}
                     style={{ width: 60, height: 60 }}
-                    resizeMode="cover"
                   />
                 </Pressable>
               ))}
@@ -218,4 +222,3 @@ export default function FullScreenImageViewer({
     </Modal>
   );
 }
-

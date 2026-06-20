@@ -75,7 +75,7 @@ describe('useUpdateProgressViewAdapter', () => {
     const { result } = renderHook(() => useUpdateProgressViewAdapter({}));
     
     expect(result.current.output.screenId).toBe('UpdateProgressScreen');
-    expect(result.current.output.readiness.isReady).toBe(true);
+    expect(result.current.output.readiness.hasUsableData).toBe(true);
     expect(result.current.output.form.completionPercentage).toBe(20);
     expect(result.current.output.form.description).toBe('');
     expect(result.current.output.photos).toEqual([]);

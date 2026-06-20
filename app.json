@@ -3,7 +3,7 @@
     "name": "Taskr",
     "slug": "buildtrack",
     "scheme": "taskr",
-    "version": "1.1.2",
+    "version": "1.1.3",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
@@ -34,7 +34,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buildtrack.app.local",
-      "buildNumber": "121",
+      "buildNumber": "137",
       "icon": "./assets/icon-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

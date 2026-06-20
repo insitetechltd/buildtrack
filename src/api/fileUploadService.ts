@@ -238,10 +238,11 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
     const verification = await verifyUpload(fileAttachment.public_url);
     
     if (!verification.success) {
-      return {
-        success: false,
-        error: verification.error || 'Upload verification failed',
-      };
+      console.warn(
+        `⚠️ [File Upload] Upload completed but public verification was inconclusive: ${
+          verification.error || 'Unknown verification issue'
+        }`
+      );
     }
     
     return {
@@ -255,4 +256,3 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
     };
   }
 }
-

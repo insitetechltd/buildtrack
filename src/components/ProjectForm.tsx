@@ -57,10 +57,10 @@ export default function ProjectForm({
     startDate: project?.startDate ? new Date(project.startDate) : new Date(),
     endDate: project?.endDate ? new Date(project.endDate) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
     location: project?.location || "",
-    clientInfo: project?.clientInfo || {
-      name: "",
-      email: "",
-      phone: "",
+    clientInfo: {
+      name: project?.clientInfo?.name || "",
+      email: project?.clientInfo?.email || "",
+      phone: project?.clientInfo?.phone || "",
     },
   });
 
@@ -79,10 +79,10 @@ export default function ProjectForm({
       startDate: project?.startDate ? new Date(project.startDate) : new Date(),
       endDate: project?.endDate ? new Date(project.endDate) : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
       location: project?.location || "",
-      clientInfo: project?.clientInfo || {
-        name: "",
-        email: "",
-        phone: "",
+      clientInfo: {
+        name: project?.clientInfo?.name || "",
+        email: project?.clientInfo?.email || "",
+        phone: project?.clientInfo?.phone || "",
       },
     });
     setErrors({});

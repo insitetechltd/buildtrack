@@ -1,6 +1,27 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "exclude": [
+    "node_modules",
+    "archived-tests",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/state/taskStore.ts",
+    "src/state/userStore.ts",
+    "src/state/companyStore.example-supabase.ts",
+    "src/screens/ProjectDetailScreen_EditModalOnly.tsx",
+    "src/**/* 2.ts",
+    "src/**/* 2.tsx",
+    "src/**/* 3.ts",
+    "src/**/* 3.tsx"
+  ]
 }

@@ -28,6 +28,10 @@ jest.mock('expo-status-bar', () => ({
   StatusBar: 'StatusBar',
 }));
 
+jest.mock('expo-image', () => ({
+  Image: 'ExpoImage',
+}));
+
 jest.mock('react-native/Libraries/Modal/Modal', () => {
   return ({ visible, children }) => (visible ? children : null);
 });
@@ -120,6 +124,28 @@ jest.mock('expo-file-system', () => ({
   cacheDirectory: 'file:///mock/cache/',
 }));
 
+jest.mock('expo-file-system/legacy', () => ({
+  readAsStringAsync: jest.fn((uri, options) => Promise.resolve('aGVsbG8=')),
+  writeAsStringAsync: jest.fn(() => Promise.resolve()),
+  getInfoAsync: jest.fn((uri) =>
+    Promise.resolve({
+      exists: true,
+      size: 1024000,
+      isDirectory: false,
+      uri: uri,
+    })
+  ),
+  makeDirectoryAsync: jest.fn(() => Promise.resolve()),
+  copyAsync: jest.fn(() => Promise.resolve()),
+  deleteAsync: jest.fn(() => Promise.resolve()),
+  EncodingType: {
+    Base64: 'base64',
+    UTF8: 'utf8',
+  },
+  documentDirectory: 'file:///mock/document/',
+  cacheDirectory: 'file:///mock/cache/',
+}));
+
 jest.mock('expo-image-manipulator', () => ({
   manipulateAsync: jest.fn((uri, actions, options) =>
     Promise.resolve({
@@ -135,7 +161,115 @@ jest.mock('expo-image-manipulator', () => ({
 }));
 
 if (process.env.USE_REAL_SUPABASE !== '1') {
+  const requestCacheRegistry = new Map();
+  const inFlightRequestRegistry = new Map();
+  const buildResourceKey = (...segments) =>
+    segments
+      .filter((segment) => segment !== null && segment !== undefined && segment !== false)
+      .map((segment) => String(segment).trim())
+      .filter((segment) => segment.length > 0)
+      .join(':');
+  const createQueryMeta = (key, overrides = {}) => ({
+    key,
+    hasHydratedData: false,
+    hasFetchedOnce: false,
+    isInitialLoading: false,
+    isBackgroundRefreshing: false,
+    isManualRefreshing: false,
+    lastFetchedAt: null,
+    lastSuccessfulFetchAt: null,
+    staleAt: null,
+    expiresAt: null,
+    error: null,
+    emptyStateResolved: false,
+    ...overrides,
+  });
+  const getRequestCacheEnvelope = (key) => requestCacheRegistry.get(key) || null;
+  const isRequestCacheFresh = (key, now = Date.now()) => {
+    const envelope = requestCacheRegistry.get(key);
+    return Boolean(envelope && envelope.data !== undefined && envelope.staleAt !== null && envelope.staleAt > now);
+  };
+  const isRequestCacheExpired = (key, now = Date.now()) => {
+    const envelope = requestCacheRegistry.get(key);
+    return Boolean(envelope && envelope.expiresAt !== null && envelope.expiresAt <= now);
+  };
+  const invalidateResourceKeys = (keys) => {
+    const now = Date.now();
+    keys.forEach((key) => {
+      const current = requestCacheRegistry.get(key);
+      if (current) {
+        requestCacheRegistry.set(key, {
+          ...current,
+          staleAt: now - 1,
+          expiresAt: now - 1,
+          inFlight: false,
+        });
+      }
+    });
+  };
+  const clearRequestCoordinator = () => {
+    requestCacheRegistry.clear();
+    inFlightRequestRegistry.clear();
+  };
+  const runSingleFlightRequest = async (key, fetcher, options) => {
+    const now = options?.now || Date.now();
+    const cached = requestCacheRegistry.get(key);
+
+    if (!options?.forceRefresh && cached?.data !== undefined && cached?.staleAt !== null && cached.staleAt > now) {
+      return {
+        data: cached.data,
+        source: 'cache',
+        envelope: cached,
+      };
+    }
+
+    if (inFlightRequestRegistry.has(key)) {
+      const result = await inFlightRequestRegistry.get(key);
+      return {
+        ...result,
+        source: 'inflight',
+      };
+    }
+
+    const promise = (async () => {
+      const data = await fetcher();
+      const envelope = {
+        key,
+        data,
+        lastFetchedAt: now,
+        lastSuccessfulFetchAt: now,
+        staleAt: now + (options?.staleMs || 0),
+        expiresAt: now + (options?.ttlMs || 0),
+        error: null,
+        inFlight: false,
+        source: 'network',
+        version: (requestCacheRegistry.get(key)?.version || 0) + 1,
+      };
+      requestCacheRegistry.set(key, envelope);
+      return {
+        data,
+        source: 'network',
+        envelope,
+      };
+    })();
+
+    inFlightRequestRegistry.set(key, promise);
+    try {
+      return await promise;
+    } finally {
+      inFlightRequestRegistry.delete(key);
+    }
+  };
+
   jest.doMock('./src/api/supabase', () => ({
+    buildResourceKey,
+    createQueryMeta,
+    getRequestCacheEnvelope,
+    isRequestCacheFresh,
+    isRequestCacheExpired,
+    invalidateResourceKeys,
+    clearRequestCoordinator,
+    runSingleFlightRequest,
     supabase: {
       from: jest.fn((table) => ({
         select: jest.fn(() => ({

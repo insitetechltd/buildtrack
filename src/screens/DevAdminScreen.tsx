@@ -38,7 +38,7 @@ export default function DevAdminScreen({ navigation }: any) {
   if (!user || user.email !== AUTHORIZED_DEV_ADMIN_EMAIL) {
     return (
       <View style={{ flex: 1, backgroundColor: '#f9fafb', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-        <Ionicons name="shield-off" size={64} color="#ef4444" />
+        <Ionicons name={"shield-outline" as any} size={64} color="#ef4444" />
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#1f2937', marginTop: 16, textAlign: 'center' }}>
           Access Denied
         </Text>
@@ -477,4 +477,3 @@ export default function DevAdminScreen({ navigation }: any) {
     </View>
   );
 }
-

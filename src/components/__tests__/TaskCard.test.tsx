@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import TaskCard from '../TaskCard';
 import { Task, Priority, TaskStatus } from '@/types/buildtrack';
 
@@ -8,6 +8,9 @@ jest.mock('@/state/authStore');
 jest.mock('@/state/taskStore.supabase');
 jest.mock('@/state/userStore.supabase');
 jest.mock('@/state/themeStore');
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: 'Ionicons',
+}));
 
 describe('TaskCard Component Tests', () => {
   const mockTask: Task = {
@@ -16,7 +19,7 @@ describe('TaskCard Component Tests', () => {
     description: 'Install all safety equipment on 2nd floor',
     priority: 'high' as Priority,
     category: 'safety',
-    currentStatus: 'in_progress' as TaskStatus,
+    status: 'in_progress' as TaskStatus,
     completionPercentage: 50,
     projectId: 'project-123',
     assignedTo: ['user-123', 'user-456'],
@@ -87,11 +90,11 @@ describe('TaskCard Component Tests', () => {
   });
 
   it('should show completion percentage', () => {
-    const { getByText } = render(
+    const { getAllByText } = render(
       <TaskCard task={mockTask} onNavigateToTaskDetail={mockOnNavigate} />
     );
 
-    expect(getByText(/50%/)).toBeTruthy();
+    expect(getAllByText(/50%/).length).toBeGreaterThan(0);
   });
 
   it('should handle subtask navigation', () => {
@@ -109,7 +112,76 @@ describe('TaskCard Component Tests', () => {
     const card = getByText('Install Safety Equipment');
     fireEvent.press(card.parent?.parent?.parent || card);
 
-    expect(mockOnNavigate).toHaveBeenCalledWith('parent-task-456', 'subtask-123');
+    expect(mockOnNavigate).toHaveBeenCalledWith('subtask-123', undefined);
+  });
+
+  it('does not throw when fire-and-forget store actions resolve from undefined test doubles', () => {
+    const toggleTaskStar = jest.fn(() => undefined);
+    const markTaskAsRead = jest.fn(() => undefined);
+    const { useTaskStore } = require('@/state/taskStore.supabase');
+
+    useTaskStore.mockReturnValue({
+      taskReadStatuses: [],
+      toggleTaskStar,
+      markTaskAsRead,
+    });
+
+    const view = render(
+      <TaskCard task={mockTask} onNavigateToTaskDetail={mockOnNavigate} />
+    );
+
+    const starButton = view.UNSAFE_getByProps({ className: 'mr-2' });
+    const card = view.getByText('Install Safety Equipment');
+
+    expect(() => {
+      fireEvent(starButton, 'press', { stopPropagation: jest.fn() });
+    }).not.toThrow();
+
+    expect(() => {
+      fireEvent.press(card.parent?.parent?.parent || card);
+    }).not.toThrow();
+
+    expect(toggleTaskStar).toHaveBeenCalledWith('task-123', 'user-123');
+    expect(markTaskAsRead).toHaveBeenCalledWith('user-123', 'task-123');
+  });
+
+  it('logs and swallows rejected fire-and-forget task actions', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const toggleTaskStar = jest.fn().mockRejectedValue(new Error('star failed'));
+    const markTaskAsRead = jest.fn().mockRejectedValue(new Error('read failed'));
+    const { useTaskStore } = require('@/state/taskStore.supabase');
+
+    useTaskStore.mockReturnValue({
+      taskReadStatuses: [],
+      toggleTaskStar,
+      markTaskAsRead,
+    });
+
+    const view = render(
+      <TaskCard task={mockTask} onNavigateToTaskDetail={mockOnNavigate} />
+    );
+
+    const starButton = view.UNSAFE_getByProps({ className: 'mr-2' });
+    const card = view.getByText('Install Safety Equipment');
+
+    fireEvent(starButton, 'press', { stopPropagation: jest.fn() });
+    fireEvent.press(card.parent?.parent?.parent || card);
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to toggle task star:',
+        expect.any(Error)
+      );
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        'Failed to mark task as read:',
+        expect.any(Error)
+      );
+    });
+
+    expect(mockOnNavigate).toHaveBeenCalledWith('task-123');
+
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 });
-

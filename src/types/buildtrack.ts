@@ -70,7 +70,15 @@ export type TaskStatus =
   | "submitted_for_review"   // Completed and submitted for review (100% complete)
   | "approved"               // Review approved by assigner
   | "rejected"               // Review rejected by assigner (needs rework)
-  | "cancelled";             // Task cancelled by creator
+  | "cancelled"              // Task cancelled by creator
+  // Legacy statuses kept for backward compatibility during the migration sweep
+  | "not_started"
+  | "completed"
+  | "received"
+  | "reviewing"
+  | "wip"
+  | "done"
+  | "assigned";
 
 export type BillingStatus = "billable" | "non_billable" | "billed";
 
@@ -216,6 +224,7 @@ export interface Project {
   companyId?: string; // Company that owns this project
   createdAt: string;
   updatedAt: string;
+  archived?: boolean; // Legacy compatibility
 }
 
 /**
@@ -226,6 +235,7 @@ export interface Project {
  * @deprecated Use UserProjectRole instead
  */
 export interface UserProjectAssignment {
+  id?: string;
   userId: string;
   projectId: string;
   
@@ -337,6 +347,7 @@ export interface User {
   defaultRoleId?: string;
   
   companyId: string; // Required - must belong to a company
+  company_id?: string; // Legacy compatibility
   
   /** 
    * POSITION - Human-readable job position
@@ -366,6 +377,7 @@ export interface User {
    * - approvedAt: Timestamp when user was approved
    */
   isPending?: boolean;
+  is_pending?: boolean; // Legacy compatibility
   approvedBy?: string | null;
   approvedAt?: string | null;
   
@@ -562,11 +574,13 @@ export interface Task {
   
   // UNIFIED STATUS (replaces currentStatus, accepted, readyForReview, reviewAccepted)
   status: TaskStatus;
+  currentStatus?: TaskStatus; // Legacy compatibility
   completionPercentage: number; // 0-100
   
   // STATUS METADATA (for logging and history)
   statusHistory?: TaskStatusChange[]; // Array of all status changes (loaded separately) - @deprecated use activities
   declinedReason?: string; // Reason when status = "declined" (renamed from declineReason)
+  declineReason?: string; // Legacy compatibility
   rejectedReason?: string; // Reason when status = "rejected"
   
   // UNIFIED ACTIVITY LOG (replaces updates, statusHistory, and editHistory)
@@ -574,12 +588,15 @@ export interface Task {
   
   // AUDIT TRAIL FIELDS (kept for historical tracking)
   acceptedBy?: string; // User ID who accepted (when status changes to "accepted")
-  acceptedAt?: string; // When status changed to "accepted"
-  reviewedBy?: string; // User ID who reviewed (when status changes to "approved"/"rejected")
-  reviewedAt?: string; // When status changed to "approved"/"rejected"
+  accepted?: boolean; // Legacy compatibility
+  acceptedAt?: string | null; // When status changed to "accepted"
+  reviewedBy?: string | null; // User ID who reviewed (when status changes to "approved"/"rejected")
+  reviewedAt?: string | null; // When status changed to "approved"/"rejected"
   
   // Client-side only: Children loaded dynamically
   children?: Task[]; // For tree rendering - populated by app logic
+  subTasks?: Task[]; // Legacy compatibility
+  assigneesLocked?: boolean; // Legacy compatibility
   
   delegationHistory?: Array<{
     fromUserId: string;

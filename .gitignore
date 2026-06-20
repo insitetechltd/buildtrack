@@ -69,3 +69,6 @@ google-service-account.json
 upload-keystore.jks
 upload-keystore-credentials.txt
 keystore-upload.properties
+
+# Build configuration (auto-generated after successful builds)
+.build-config-success.json

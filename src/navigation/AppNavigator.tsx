@@ -13,8 +13,7 @@ import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
 import LoginScreen from "../screens/LoginScreen";
 // Registration temporarily disabled for App Store submission
 // import RegisterScreen from "../screens/RegisterScreen";
-import DashboardScreen from "../screens/DashboardScreen";
-import TasksScreen from "../screens/TasksScreen";
+import { DashboardRoute, TasksRoute } from "./uiModeRoutes";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
@@ -148,7 +147,7 @@ function DashboardStack() {
 
 function DashboardMainScreen({ navigation }: { navigation: any }) {
   return (
-    <DashboardScreen
+    <DashboardRoute
       onNavigateToTasks={() => navigation.getParent()?.navigate("Tasks")}
       onNavigateToCreateTask={() => {
         const parentNav = navigation.getParent();
@@ -169,6 +168,12 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
         }
       }}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToDeveloperSettings={() => {
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.navigate("Profile", { screen: "DeveloperSettings" });
+        }
+      }}
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId })
       }
@@ -315,7 +320,7 @@ function TasksStack() {
 
 function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
   return (
-    <TasksScreen
+    <TasksRoute
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
@@ -339,6 +344,12 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
       }}
       onNavigateBack={() => navigation.getParent()?.navigate("Dashboard")}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToDeveloperSettings={() => {
+        const parentNav = navigation.getParent();
+        if (parentNav) {
+          parentNav.navigate("Profile", { screen: "DeveloperSettings" });
+        }
+      }}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigation.getParent()?.navigate("ProjectPicker", { allowBack });
       }}

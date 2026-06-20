@@ -15,9 +15,9 @@ import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useProjectStoreWithInit, useProjectStore } from "../state/projectStore.supabase";
-import { useProjectFilterStore } from "../state/projectFilterStore";
+import { SectionFilter, StatusFilter, useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
-import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/buildtrack";
+import { Task, Priority, TaskStatus, Project, ProjectStatus, SubTask } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
@@ -50,8 +50,8 @@ export default function ProjectsTasksScreen({
   const { selectedProjectId, sectionFilter, statusFilter, clearSectionFilter, clearStatusFilter } = useProjectFilterStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [localSectionFilter, setLocalSectionFilter] = useState<"my_tasks" | "inbox" | "outbox" | "all">("all");
-  const [localStatusFilter, setLocalStatusFilter] = useState<TaskStatus | "pending" | "overdue" | "all">("all");
+  const [localSectionFilter, setLocalSectionFilter] = useState<SectionFilter>("all");
+  const [localStatusFilter, setLocalStatusFilter] = useState<StatusFilter>("all");
   const [refreshing, setRefreshing] = useState(false);
 
   // Apply filters from store on mount
@@ -322,7 +322,9 @@ export default function ProjectsTasksScreen({
 
     const handleStarPress = (e: any) => {
       e.stopPropagation(); // Prevent opening task detail
-      taskStore.toggleTaskStar(task.id, user.id);
+      void Promise.resolve(taskStore.toggleTaskStar(task.id, user.id)).catch((error) => {
+        console.error('Failed to toggle task star:', error);
+      });
     };
 
     return (
@@ -330,11 +332,17 @@ export default function ProjectsTasksScreen({
         onPress={() => {
           // Mark task as read when opened
           if (user && isNew) {
-            taskStore.markTaskAsRead(user.id, task.id);
+            void Promise.resolve(taskStore.markTaskAsRead(user.id, task.id)).catch((error) => {
+              console.warn('Failed to mark task as read:', error);
+            });
           }
           
           if (isSubTask) {
-            onNavigateToTaskDetail(task.parentTaskId, task.id);
+            if (task.parentTaskId) {
+              onNavigateToTaskDetail(task.parentTaskId, task.id);
+            } else {
+              onNavigateToTaskDetail(task.id);
+            }
           } else {
             onNavigateToTaskDetail(task.id);
           }
@@ -413,7 +421,11 @@ export default function ProjectsTasksScreen({
                     onPress={(e) => {
                       e.stopPropagation(); // Prevent card navigation
                       if (isSubTask) {
-                        onNavigateToTaskDetail(task.parentTaskId, task.id);
+                        if (task.parentTaskId) {
+                          onNavigateToTaskDetail(task.parentTaskId, task.id);
+                        } else {
+                          onNavigateToTaskDetail(task.id);
+                        }
                       } else {
                         onNavigateToTaskDetail(task.id);
                       }
@@ -447,7 +459,7 @@ export default function ProjectsTasksScreen({
                 </Text>
               </View>
               <Text className="text-sm text-gray-500">
-                {task.currentStatus.replace("_", " ")} {task.completionPercentage}%
+                {(task.currentStatus ?? task.status).replace("_", " ")} {task.completionPercentage}%
               </Text>
             </View>
           </View>
@@ -490,7 +502,7 @@ export default function ProjectsTasksScreen({
     status, 
     label 
   }: { 
-    status: TaskStatus | "pending" | "overdue" | "all"; 
+    status: StatusFilter; 
     label: string 
   }) => (
     <Pressable

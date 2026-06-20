@@ -290,7 +290,7 @@ export interface CreateTaskScreenViewAdapterOutput {
   aiAssistant: {
     textInput: string;
     showSuggestionPreview: boolean;
-    acceptedFields: Record<string, boolean>;
+    acceptedFields: Set<string>;
     isProcessing: boolean;
   };
 }

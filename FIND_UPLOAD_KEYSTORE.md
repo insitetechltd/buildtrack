@@ -132,3 +132,4 @@ find ~/Library/CloudStorage -name "*.keystore" -o -name "*.jks" 2>/dev/null
 - ❌ **Keystore file not found**: Need `.jks` or `.keystore` file matching SHA-1 `5B:2A:6A:49:...`
 - ✅ **Verification script ready**: `verify-upload-keystore.sh`
 
+

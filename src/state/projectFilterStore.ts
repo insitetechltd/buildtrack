@@ -3,11 +3,18 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 
-type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
-type StatusFilter =
+export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
+export type StatusFilter =
+  | "new"
+  | "accepted"
   | "not_started"
   | "in_progress"
   | "completed"
+  | "submitted_for_review"
+  | "approved"
+  | "rejected"
+  | "declined"
+  | "cancelled"
   | "rejected"
   | "pending"
   | "overdue"
@@ -16,6 +23,10 @@ type StatusFilter =
   | "received"
   | "reviewing"
   | "assigned"
+  | "received-overdue"
+  | "reviewing-overdue"
+  | "wip-overdue"
+  | "assigned-overdue"
   | "all";
 type SortDirection = "asc" | "desc";
 type SortUpdater = SortDirection | null | ((prev: SortDirection | null) => SortDirection | null);
@@ -34,7 +45,9 @@ interface ProjectFilterState {
   
   setSelectedProject: (projectId: string | null, userId?: string) => Promise<void>;
   setSectionFilter: (section: SectionFilter) => void;
+  clearSectionFilter: () => void;
   setStatusFilter: (status: StatusFilter) => void;
+  clearStatusFilter: () => void;
   setButtonLabel: (label: string | null) => void;
   setShowSelfAssignedOnly: (value: boolean) => void;
   setSortByPriority: (updater: SortUpdater) => void;
@@ -115,9 +128,17 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       setSectionFilter: (section: SectionFilter) => {
         set({ sectionFilter: section });
       },
+
+      clearSectionFilter: () => {
+        set({ sectionFilter: "all" });
+      },
       
       setStatusFilter: (status: StatusFilter) => {
         set({ statusFilter: status });
+      },
+
+      clearStatusFilter: () => {
+        set({ statusFilter: "all" });
       },
       
       setButtonLabel: (label: string | null) => {

@@ -1,0 +1,53 @@
+name: CI Pull Requests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+  push:
+    branches:
+      - 'feature/**'
+      - 'bugfix/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-pull-requests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-unit-and-regression:
+    name: Fast Unit And Regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+      # Current tests are mock-heavy and do not require live backend access.
+      # If future tests begin reading Expo public variables, set repo Variables or
+      # Secrets to override these placeholders without changing workflow files.
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+      EXPO_NO_DOTENV: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Fast unit checks
+        run: |
+          npm run test:auth
+          npm run test:projects
+
+      - name: Gated regression bundle
+        run: npm run test:regression

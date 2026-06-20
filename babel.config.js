@@ -1,18 +1,18 @@
 module.exports = function (api) {
   api.cache(true);
+  const isTest = process.env.BABEL_ENV === 'test' || process.env.NODE_ENV === 'test';
   
   return {
     presets: [
       [
         'babel-preset-expo',
         {
-          jsxImportSource: 'nativewind',
-          // Explicitly disable worklets - our patch should prevent it from being added
+          ...(isTest ? {} : { jsxImportSource: 'nativewind' }),
           worklets: false,
           reanimated: true,
         },
       ],
-      'nativewind/babel',
+      ...(isTest ? [] : ['nativewind/babel']),
     ],
     plugins: [
       // Explicitly add reanimated plugin to ensure it's available

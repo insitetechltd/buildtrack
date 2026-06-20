@@ -4,12 +4,16 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Image,
   Alert,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
+import {
+  pinDraftMedia,
+  writeClipboardImageToDraft,
+} from "../utils/draftMediaCache";
 
 interface PhotoUploadSectionProps {
   /** Array of photo URIs */
@@ -76,7 +80,14 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
               });
 
               if (!result.canceled && result.assets && result.assets.length > 0) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+                const newPhotos = await Promise.all(
+                  result.assets.map((asset, index) =>
+                    pinDraftMedia(
+                      asset.uri,
+                      asset.fileName || `photo_${Date.now()}_${index}.jpg`
+                    )
+                  )
+                );
                 const updatedPhotos = [...photos, ...newPhotos];
                 
                 // Respect max photos limit
@@ -114,7 +125,14 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
               });
 
               if (!result.canceled && result.assets && result.assets.length > 0) {
-                const newPhotos = result.assets.map(asset => asset.uri);
+                const newPhotos = await Promise.all(
+                  result.assets.map((asset, index) =>
+                    pinDraftMedia(
+                      asset.uri,
+                      asset.fileName || `photo_${Date.now()}_${index}.jpg`
+                    )
+                  )
+                );
                 const updatedPhotos = [...photos, ...newPhotos];
                 
                 // Respect max photos limit
@@ -148,7 +166,10 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
               const imageUri = await Clipboard.getImageAsync({ format: 'png' });
               
               if (imageUri && imageUri.data) {
-                const uri = `data:image/png;base64,${imageUri.data}`;
+                const uri = await writeClipboardImageToDraft(
+                  imageUri.data,
+                  `clipboard_${Date.now()}.png`
+                );
                 const updatedPhotos = [...photos, uri];
                 
                 // Respect max photos limit
@@ -208,15 +229,17 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
           <View className="flex-row">
             {photos.map((photo, index) => (
               <View key={index} className="mr-3" style={{ position: 'relative' }}>
-                <Image
+                <ExpoImage
                   source={{ uri: photo }}
+                  cachePolicy="memory-disk"
+                  contentFit="cover"
+                  transition={120}
                   style={{ 
                     width: 96, 
                     height: 96, 
                     borderRadius: 8,
                     backgroundColor: '#f3f4f6'
                   }}
-                  resizeMode="cover"
                 />
                 <Pressable
                   onPress={() => handleRemovePhoto(index)}
@@ -252,4 +275,3 @@ export const PhotoUploadSection: React.FC<PhotoUploadSectionProps> = ({
     </View>
   );
 };
-

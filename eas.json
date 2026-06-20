@@ -91,6 +91,13 @@
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "production",
+        "releaseStatus": "draft"
+      }
+    },
+    "internal": {
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
         "track": "internal",
         "releaseStatus": "draft"
       }

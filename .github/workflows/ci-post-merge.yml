@@ -1,0 +1,67 @@
+name: CI Post Merge
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-post-merge-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  post-merge-guardrail:
+    name: Post Merge Guardrail
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CI: true
+      # Current tests are mock-heavy and do not require live backend access.
+      # If future post-merge checks begin reading Expo public variables, set repo
+      # Variables or Secrets to override these placeholders without editing CI.
+      EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'ci-placeholder-anon-key' }}
+      EXPO_NO_DOTENV: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Fast unit checks
+        run: |
+          npm run test:auth
+          npm run test:projects
+
+      - name: Post-merge regression bundle
+        run: npm run test:regression
+
+      - name: Notify on post-merge failure via Slack webhook
+        if: failure() && secrets.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          payload=$(cat <<'JSON'
+          {
+            "text": ":rotating_light: Post-merge guardrail failed for Insite App on main/develop. Review the GitHub Actions run before treating the branch as deployment-ready."
+          }
+          JSON
+          )
+          curl -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
+
+      - name: Emit GitHub failure alert placeholder
+        if: failure() && secrets.SLACK_WEBHOOK_URL == ''
+        run: |
+          echo "::error::Post-merge guardrail failed on main/develop. Configure SLACK_WEBHOOK_URL to send external alerts."

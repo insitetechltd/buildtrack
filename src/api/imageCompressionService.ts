@@ -216,7 +216,8 @@ export async function compressImage(
     };
   } catch (error) {
     console.error('Error compressing image:', error);
-    throw new Error(`Image compression failed: ${error.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Image compression failed: ${message}`);
   }
 }
 
@@ -295,4 +296,3 @@ export function formatFileSize(bytes: number): string {
   
   return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
 }
-

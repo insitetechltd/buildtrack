@@ -9,9 +9,9 @@ import { translations, TranslationKeys } from "../locales";
  * <Text>{t.dashboard.welcomeBack}</Text>
  * <Text>{t.common.save}</Text>
  */
-export function useTranslation(): TranslationKeys {
+export function useTranslation(): any {
   const language = useLanguageStore((state) => state.language);
-  return translations[language];
+  return translations[language] as any;
 }
 
 /**

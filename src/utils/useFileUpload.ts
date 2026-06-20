@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Alert } from 'react-native';
-import { uploadFileWithVerification, FileUploadOptions, FileAttachment, UploadResult } from '../api/fileUploadService';
+import { uploadFile, uploadFileWithVerification, FileUploadOptions, FileAttachment, UploadResult } from '../api/fileUploadService';
 import { compressImage, compressImages, formatFileSize } from '../api/imageCompressionService';
 import { useUploadFailureStore } from '../state/uploadFailureStore';
 
@@ -17,6 +17,30 @@ export function useFileUpload() {
   const [isCompressing, setIsCompressing] = useState(false);
   const [compressionProgress, setCompressionProgress] = useState(0);
   const { addFailure } = useUploadFailureStore();
+
+  const trackUploadFailure = (
+    options: Omit<FileUploadOptions, 'file'>,
+    fileName: string,
+    fileUri: string,
+    fileType: string,
+    error: string
+  ) => {
+    if (options.entityType === 'user') {
+      return;
+    }
+
+    addFailure({
+      taskId: options.entityId,
+      fileName,
+      fileUri,
+      fileType,
+      error,
+      entityType: options.entityType,
+      entityId: options.entityId,
+      companyId: options.companyId,
+      userId: options.userId,
+    });
+  };
 
   /**
    * Pick and upload images from camera or gallery
@@ -34,7 +58,7 @@ export function useFileUpload() {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-          return [];
+          return { successful: [], failed: [] };
         }
 
         result = await ImagePicker.launchCameraAsync({
@@ -46,7 +70,7 @@ export function useFileUpload() {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert('Permission Denied', 'Photo library permission is required.');
-          return [];
+          return { successful: [], failed: [] };
         }
 
         result = await ImagePicker.launchImageLibraryAsync({
@@ -156,17 +180,13 @@ export function useFileUpload() {
             });
 
             // Store failure in persistent store
-            addFailure({
-              taskId: options.entityId,
-              fileName: compressed.fileName,
-              fileUri: compressed.uri,
-              fileType: 'image/jpeg',
-              error: errorMsg,
-              entityType: options.entityType,
-              entityId: options.entityId,
-              companyId: options.companyId,
-              userId: options.userId,
-            });
+            trackUploadFailure(
+              options,
+              compressed.fileName,
+              compressed.uri,
+              'image/jpeg',
+              errorMsg
+            );
           }
         } catch (error: any) {
           const errorMsg = error.message || 'Unknown error';
@@ -183,17 +203,13 @@ export function useFileUpload() {
           });
 
           // Store failure in persistent store
-          addFailure({
-            taskId: options.entityId,
-            fileName: compressed.fileName,
-            fileUri: compressed.uri,
-            fileType: 'image/jpeg',
-            error: errorMsg,
-            entityType: options.entityType,
-            entityId: options.entityId,
-            companyId: options.companyId,
-            userId: options.userId,
-          });
+          trackUploadFailure(
+            options,
+            compressed.fileName,
+            compressed.uri,
+            'image/jpeg',
+            errorMsg
+          );
         }
       }
 
@@ -407,4 +423,3 @@ export function useFileUpload() {
     isBusy: isUploading || isCompressing,
   };
 }
-

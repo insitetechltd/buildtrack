@@ -1,122 +1,108 @@
-import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
-import DashboardScreen from '../DashboardScreen';
+import React from "react";
+import { fireEvent, render } from "@testing-library/react-native";
+import DashboardScreen from "../DashboardScreen";
+import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
-jest.mock('@/state/authStore');
-jest.mock('@/state/taskStore.supabase');
-jest.mock('@/state/projectStore.supabase');
-jest.mock('@/state/projectFilterStore');
-jest.mock('@/state/companyStore');
-jest.mock('@/state/themeStore');
-jest.mock('@/state/userStore.supabase');
-jest.mock('@/utils/useTranslation');
-jest.mock('@/components/LoadingIndicator', () => ({
-  LoadingIndicator: 'LoadingIndicator',
-}));
-jest.mock('@/components/StandardHeader', () => 'StandardHeader');
-jest.mock('@/components/ExpandableUtilityFAB', () => 'ExpandableUtilityFAB');
-jest.mock('@/components/TaskCard', () => 'TaskCard');
-jest.mock('@expo/vector-icons', () => ({
-  Ionicons: 'Ionicons',
-}));
-jest.mock('expo-status-bar', () => ({
-  StatusBar: 'StatusBar',
-}));
-jest.mock('@react-navigation/native', () => ({
-  useFocusEffect: jest.fn(),
-}));
+jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
 
-describe('DashboardScreen', () => {
+describe("DashboardScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-
-    const { useAuthStore } = require('@/state/authStore');
-    const { useTaskStore } = require('@/state/taskStore.supabase');
-    const { useProjectStoreWithInit } = require('@/state/projectStore.supabase');
-    const { useProjectFilterStore } = require('@/state/projectFilterStore');
-    const { useCompanyStore } = require('@/state/companyStore');
-    const { useThemeStore } = require('@/state/themeStore');
-    const { useUserStore } = require('@/state/userStore.supabase');
-    const { useTranslation } = require('@/utils/useTranslation');
-
-    useAuthStore.mockReturnValue({
-      user: { id: 'user-1', name: 'Test User' },
-      logout: jest.fn(),
-    });
-
-    useTaskStore.mockReturnValue({
-      tasks: [],
-      fetchTasks: jest.fn(),
-      getStarredTasks: jest.fn(() => []),
-      toggleTaskStar: jest.fn(),
-      isLoading: false,
-    });
-
-    useProjectStoreWithInit.mockReturnValue({
-      getProjectsByUser: jest.fn(() => [
-        { id: 'project-1', name: 'Project One', status: 'active' },
-      ]),
-      getProjectById: jest.fn(() => null),
-      fetchProjects: jest.fn(),
-      fetchUserProjectAssignments: jest.fn(),
-      isLoading: false,
-      projects: [{ id: 'project-1', name: 'Project One', status: 'active' }],
-      getUserProjectAssignments: jest.fn(() => []),
-    });
-
-    useProjectFilterStore.mockReturnValue({
-      selectedProjectId: null,
-      setSelectedProject: jest.fn(),
-      setSectionFilter: jest.fn(),
-      setStatusFilter: jest.fn(),
-      setButtonLabel: jest.fn(),
-      getLastSelectedProject: jest.fn(async () => null),
-    });
-
-    useCompanyStore.mockReturnValue({});
-
-    useThemeStore.mockReturnValue({
-      isDarkMode: false,
-      toggleDarkMode: jest.fn(),
-    });
-
-    useUserStore.mockReturnValue({
-      fetchUsers: jest.fn(),
-      isLoading: false,
-    });
-
-    useTranslation.mockReturnValue({
-      nav: { dashboard: 'Dashboard' },
-      dashboard: {
-        loadingProjects: 'Loading projects...',
-        loadingTasks: 'Loading tasks...',
-        loadingUsers: 'Loading users...',
-        loadingData: 'Loading data...',
-        noProjectsYet: 'No Projects Yet',
-        noProjectsMessage: 'You have no projects',
-        selectAProject: 'Select a Project',
-        selectProjectMessage: 'Please select a project to view your dashboard',
-      },
-    });
   });
 
-  it('shows a non-blank fallback when projects exist but no project is selected', async () => {
+  it("renders global actions (header shortcuts + create task FAB) and invokes navigation callbacks", () => {
+    const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
+
+    const adapterOutput: DashboardScreenViewAdapterOutput = {
+      screenId: "DashboardScreen",
+      readiness: {
+        hasInitialFrame: true,
+        hasUsableData: true,
+        isBackgroundRefreshing: false,
+        isNavigationTransitionActive: false,
+      },
+      continuity: {
+        isInitialLoading: false,
+        isBackgroundRefreshing: false,
+        hasCachedFrame: true,
+        shouldRenderSkeletonShell: false,
+        shouldRenderEmptyState: false,
+        freshnessLabel: "Ready",
+      },
+      projectSummaryItems: [
+        {
+          id: "item-1",
+          projectId: "project-1",
+          title: "North Tower",
+          subtitle: "Package A",
+          statusToken: "project_active",
+          statusLabel: "Active",
+          openTaskCount: 2,
+          overdueTaskCount: 0,
+          density: "standard",
+          structuralState: "stale",
+        },
+      ],
+      highlightedTaskItems: [],
+      quickActionItems: [],
+      scalarMetrics: {
+        openTaskCount: 6,
+        overdueTaskCount: 2,
+        projectCount: 1,
+        hasSelectedProject: true,
+        actionRequiredCount: 3,
+        inProgressSentCount: 4,
+        awaitingApprovalCount: 1,
+        actionRequiredOverdueCount: 2,
+        inProgressSentOverdueCount: 1,
+        awaitingApprovalOverdueCount: 0,
+      },
+    };
+
+    useDashboardViewAdapter.mockReturnValue({
+      output: adapterOutput,
+      visibility: {
+        showCreateTaskFab: true,
+        showProfileShortcut: true,
+        showProjectPickerShortcut: true,
+        showDeveloperSettingsShortcut: true,
+      },
+    });
+
+    const onNavigateToCreateTask = jest.fn();
+    const onNavigateToProfile = jest.fn();
+    const onNavigateToProjectPicker = jest.fn();
+    const onNavigateToDeveloperSettings = jest.fn();
+
     const screen = render(
       <DashboardScreen
         onNavigateToTasks={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-        onNavigateToProfile={jest.fn()}
+        onNavigateToCreateTask={onNavigateToCreateTask}
+        onNavigateToProfile={onNavigateToProfile}
         onNavigateToTaskDetail={jest.fn()}
-        onNavigateToProjectPicker={jest.fn()}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+        onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       />,
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Select a Project')).toBeTruthy();
-      expect(
-        screen.getByText('Please select a project to view your dashboard'),
-      ).toBeTruthy();
-    });
+    expect(screen.getByTestId("container-card:project-1")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__metric_action_required")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__metric_in_progress")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__metric_awaiting_approval")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__metric_action_required_overdue")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__metric_in_progress_overdue")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__metric_awaiting_approval_overdue")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__fab_create_task"));
+    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__header_profile"));
+    expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__header_project_picker"));
+    expect(onNavigateToProjectPicker).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__header_developer_settings"));
+    expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
   });
 });
-

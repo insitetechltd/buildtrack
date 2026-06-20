@@ -215,21 +215,17 @@ export const useUserStore = create<UserStore>()(
 
       getUsersByCompany: (companyId) => {
         const users = get().users;
-        const filteredUsers = users.filter(user => 
-          (user.companyId === companyId) || 
-          (user.company_id === companyId)
-        );
+        const filteredUsers = users.filter(user => user.companyId === companyId);
         
         // Debug logging
         console.log('=== getUsersByCompany Debug ===');
         console.log('- Company ID to filter by:', companyId);
         console.log('- Total users in store:', users.length);
         console.log('- Filtered users count:', filteredUsers.length);
-        console.log('- All users data:', users.map(u => ({ 
-          name: u.name, 
-          companyId: u.companyId, 
-          company_id: u.company_id,
-          matches: (u.companyId === companyId) || (u.company_id === companyId)
+        console.log('- All users data:', users.map(u => ({
+          name: u.name,
+          companyId: u.companyId,
+          matches: u.companyId === companyId
         })));
         console.log('===============================');
         
@@ -238,7 +234,7 @@ export const useUserStore = create<UserStore>()(
 
       getPendingUsersByCompany: (companyId) => {
         const users = get().getUsersByCompany(companyId);
-        return users.filter(user => user.isPending === true || user.is_pending === true);
+        return users.filter(user => user.isPending === true);
       },
 
       searchUsers: (query) => {
@@ -548,4 +544,3 @@ export const useUserStoreWithInit = () => {
   
   return store;
 };
-

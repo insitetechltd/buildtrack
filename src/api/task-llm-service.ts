@@ -25,7 +25,7 @@ function parseRelativeDate(text: string): string | undefined {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
   // Cantonese patterns
-  const cantonesePatterns: Record<string, number> = {
+  const cantonesePatterns: Record<string, number | (() => number)> = {
     "明天": 1,
     "後天": 2,
     "下週": 7,
@@ -403,7 +403,6 @@ function extractTaskFieldsFallback(text: string): TaskSuggestion {
 
   return suggestion;
 }
-
 
 
 

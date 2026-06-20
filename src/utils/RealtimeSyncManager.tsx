@@ -76,7 +76,16 @@ export function RealtimeSyncManager() {
             // Remove task from local store
             const oldTaskId = (payload.old as any)?.id;
             if (oldTaskId) {
-              await taskStore.deleteTask(oldTaskId);
+              useTaskStore.setState((state) => {
+                const { [oldTaskId]: _removed, ...remainingTimestamps } = state.taskFetchTimestamps;
+
+                return {
+                  tasks: state.tasks.filter(task => task.id !== oldTaskId),
+                  taskReadStatuses: state.taskReadStatuses.filter(status => status.taskId !== oldTaskId),
+                  taskFetchTimestamps: remainingTimestamps,
+                  allTasksFetchTimestamp: null,
+                };
+              });
             }
           }
         }
@@ -227,4 +236,3 @@ export function RealtimeSyncManager() {
 
   return null; // This is a logic-only component
 }
-

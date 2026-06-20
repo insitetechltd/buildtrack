@@ -1,23 +1,228 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "../api/supabase";
+import {
+  buildResourceKey,
+  createQueryMeta,
+  getRequestCacheEnvelope,
+  invalidateResourceKeys,
+  isRequestCacheExpired,
+  isRequestCacheFresh,
+  runSingleFlightRequest,
+  supabase,
+  type QueryMeta,
+} from "../api/supabase";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
+
+export type { QueryMeta } from "../api/supabase";
+
+export interface TaskPreview {
+  id: string;
+  projectId: string;
+  parentTaskId?: string;
+  rootTaskId?: string;
+  title: string;
+  status: TaskStatus;
+  priority: Priority;
+  completionPercentage: number;
+  dueDate?: string;
+  assignedTo: string[];
+  assignedBy: string;
+  leadingAttachmentUri?: string;
+  previewHash: string;
+  entityVersion: number;
+}
+
+export interface TaskDerivedState {
+  tasksById: Record<string, Task>;
+  taskPreviewById: Record<string, TaskPreview>;
+  taskIdsByProject: Record<string, string[]>;
+  topLevelTaskIdsByProject: Record<string, string[]>;
+  childTaskIdsByParent: Record<string, string[]>;
+  taskIdsByUser: Record<string, string[]>;
+  taskIdsAssignedByUser: Record<string, string[]>;
+  queryTaskIds: Record<string, string[]>;
+}
+
+const TASK_FRESH_MS = 15_000;
+const TASK_TTL_MS = 60_000;
+
+function pushUnique(target: Record<string, string[]>, key: string, value: string) {
+  if (!key) {
+    return;
+  }
+
+  if (!target[key]) {
+    target[key] = [];
+  }
+
+  if (!target[key].includes(value)) {
+    target[key].push(value);
+  }
+}
+
+function createTaskPreview(task: Task): TaskPreview {
+  const leadingAttachment = Array.isArray(task.attachments) && task.attachments.length > 0
+    ? task.attachments[0]
+    : undefined;
+
+  const leadingAttachmentUri =
+    typeof leadingAttachment === "string"
+      ? leadingAttachment
+      : leadingAttachment && typeof leadingAttachment === "object"
+        ? ((leadingAttachment as any).annotatedUri || (leadingAttachment as any).uri)
+        : undefined;
+
+  const updatedAt = (task as any).updatedAt || task.createdAt || "";
+
+  return {
+    id: task.id,
+    projectId: task.projectId,
+    parentTaskId: task.parentTaskId || undefined,
+    rootTaskId: task.rootTaskId || undefined,
+    title: task.title,
+    status: task.status,
+    priority: task.priority,
+    completionPercentage: task.completionPercentage,
+    dueDate: task.dueDate,
+    assignedTo: task.assignedTo || [],
+    assignedBy: task.assignedBy,
+    leadingAttachmentUri,
+    previewHash: [
+      task.id,
+      task.title,
+      task.status,
+      task.priority,
+      task.completionPercentage,
+      task.dueDate || "",
+      leadingAttachmentUri || "",
+      updatedAt,
+    ].join("|"),
+    entityVersion: updatedAt ? new Date(updatedAt).getTime() : 0,
+  };
+}
+
+function deriveTaskIdsForQuery(
+  resourceKey: string,
+  allTaskIds: string[],
+  tasksById: Record<string, Task>,
+  taskIdsByProject: Record<string, string[]>,
+  taskIdsByUser: Record<string, string[]>,
+  taskIdsAssignedByUser: Record<string, string[]>
+): string[] {
+  const parts = resourceKey.split(":");
+
+  if (resourceKey === buildResourceKey("tasks", "all")) {
+    return allTaskIds;
+  }
+
+  if (parts[0] === "tasks" && parts[1] === "project" && parts[2]) {
+    return taskIdsByProject[parts[2]] || [];
+  }
+
+  if (parts[0] === "tasks" && parts[1] === "user" && parts[2]) {
+    return taskIdsByUser[parts[2]] || [];
+  }
+
+  if (parts[0] === "tasks" && parts[1] === "assignedBy" && parts[2]) {
+    return taskIdsAssignedByUser[parts[2]] || [];
+  }
+
+  if ((parts[0] === "task" || (parts[0] === "tasks" && parts[1] === "id")) && parts[parts.length - 1]) {
+    const taskId = parts[parts.length - 1];
+    return tasksById[taskId] ? [taskId] : [];
+  }
+
+  return [];
+}
+
+export function buildTaskDerivedState(
+  tasks: Task[],
+  _taskReadStatuses: TaskReadStatus[],
+  taskQueryMeta: Record<string, QueryMeta> = {}
+): TaskDerivedState {
+  const tasksById: Record<string, Task> = {};
+  const taskPreviewById: Record<string, TaskPreview> = {};
+  const taskIdsByProject: Record<string, string[]> = {};
+  const topLevelTaskIdsByProject: Record<string, string[]> = {};
+  const childTaskIdsByParent: Record<string, string[]> = {};
+  const taskIdsByUser: Record<string, string[]> = {};
+  const taskIdsAssignedByUser: Record<string, string[]> = {};
+  const queryTaskIds: Record<string, string[]> = {};
+  const allTaskIds: string[] = [];
+
+  tasks.forEach((task) => {
+    tasksById[task.id] = task;
+    taskPreviewById[task.id] = createTaskPreview(task);
+    allTaskIds.push(task.id);
+    pushUnique(taskIdsByProject, task.projectId, task.id);
+    pushUnique(taskIdsAssignedByUser, task.assignedBy, task.id);
+
+    if (task.parentTaskId) {
+      pushUnique(childTaskIdsByParent, task.parentTaskId, task.id);
+    } else {
+      pushUnique(topLevelTaskIdsByProject, task.projectId, task.id);
+    }
+
+    (task.assignedTo || []).forEach((userId) => {
+      pushUnique(taskIdsByUser, String(userId), task.id);
+    });
+  });
+
+  Object.keys(taskQueryMeta).forEach((resourceKey) => {
+    queryTaskIds[resourceKey] = deriveTaskIdsForQuery(
+      resourceKey,
+      allTaskIds,
+      tasksById,
+      taskIdsByProject,
+      taskIdsByUser,
+      taskIdsAssignedByUser
+    );
+  });
+
+  return {
+    tasksById,
+    taskPreviewById,
+    taskIdsByProject,
+    topLevelTaskIdsByProject,
+    childTaskIdsByParent,
+    taskIdsByUser,
+    taskIdsAssignedByUser,
+    queryTaskIds,
+  };
+}
 
 interface TaskStore {
   tasks: Task[];
   taskReadStatuses: TaskReadStatus[];
+  tasksById: Record<string, Task>;
+  taskPreviewById: Record<string, TaskPreview>;
+  taskIdsByProject: Record<string, string[]>;
+  topLevelTaskIdsByProject: Record<string, string[]>;
+  childTaskIdsByParent: Record<string, string[]>;
+  taskIdsByUser: Record<string, string[]>;
+  taskIdsAssignedByUser: Record<string, string[]>;
+  queryTaskIds: Record<string, string[]>;
+  taskQueryMeta: Record<string, QueryMeta>;
   isLoading: boolean;
   error: string | null;
   // Cache timestamps for tasks (track when each task was last fetched)
   taskFetchTimestamps: Record<string, number>; // taskId -> timestamp
   // Cache timestamp for all tasks fetch
   allTasksFetchTimestamp: number | null; // When all tasks were last fetched
+  setTaskQueryMeta: (resourceKey: string, updates: Partial<QueryMeta>) => void;
+  beginTaskQuery: (resourceKey: string, hasCachedData: boolean, manualRefresh?: boolean) => void;
+  completeTaskQuerySuccess: (resourceKey: string, payloadIds: string[]) => void;
+  completeTaskQueryError: (resourceKey: string, errorMessage: string, hasCachedData: boolean) => void;
+  shouldServeCachedTasks: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
+  shouldRefreshTasksInBackground: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
+  replaceTasks: (tasks: Task[]) => void;
+  mergeTask: (task: Task) => void;
   
   // Fetching
   fetchTasks: (forceRefresh?: boolean) => Promise<void>;
-  fetchTasksByProject: (projectId: string) => Promise<void>;
-  fetchTasksByUser: (userId: string) => Promise<void>;
+  fetchTasksByProject: (projectId: string, forceRefresh?: boolean) => Promise<void>;
+  fetchTasksByUser: (userId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
   
   // Task management
@@ -93,10 +298,118 @@ export const useTaskStore = create<TaskStore>()(
     (set, get) => ({
       tasks: [],
       taskReadStatuses: [],
+      tasksById: {},
+      taskPreviewById: {},
+      taskIdsByProject: {},
+      topLevelTaskIdsByProject: {},
+      childTaskIdsByParent: {},
+      taskIdsByUser: {},
+      taskIdsAssignedByUser: {},
+      queryTaskIds: {},
+      taskQueryMeta: {},
       isLoading: false,
       error: null,
       taskFetchTimestamps: {}, // Track when tasks were last fetched
       allTasksFetchTimestamp: null, // Track when all tasks were last fetched
+      setTaskQueryMeta: (resourceKey, updates) => {
+        set((state) => ({
+          taskQueryMeta: {
+            ...state.taskQueryMeta,
+            [resourceKey]: createQueryMeta(resourceKey, {
+              ...(state.taskQueryMeta[resourceKey] || {}),
+              ...updates,
+            }),
+          },
+        }));
+      },
+      beginTaskQuery: (resourceKey, hasCachedData, manualRefresh = false) => {
+        get().setTaskQueryMeta(resourceKey, {
+          hasHydratedData: hasCachedData,
+          hasFetchedOnce: hasCachedData || Boolean(get().taskQueryMeta[resourceKey]?.hasFetchedOnce),
+          isInitialLoading: !hasCachedData,
+          isBackgroundRefreshing: hasCachedData,
+          isManualRefreshing: manualRefresh,
+          error: null,
+        });
+        set({ isLoading: !hasCachedData, error: null });
+      },
+      completeTaskQuerySuccess: (resourceKey, payloadIds) => {
+        const envelope = getRequestCacheEnvelope(resourceKey);
+        get().setTaskQueryMeta(resourceKey, {
+          hasHydratedData: payloadIds.length > 0,
+          hasFetchedOnce: true,
+          isInitialLoading: false,
+          isBackgroundRefreshing: false,
+          isManualRefreshing: false,
+          lastFetchedAt: envelope?.lastFetchedAt ?? Date.now(),
+          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? Date.now(),
+          staleAt: envelope?.staleAt ?? (Date.now() + TASK_FRESH_MS),
+          expiresAt: envelope?.expiresAt ?? (Date.now() + TASK_TTL_MS),
+          error: null,
+          emptyStateResolved: true,
+        });
+        set({ isLoading: false, error: null });
+      },
+      completeTaskQueryError: (resourceKey, errorMessage, hasCachedData) => {
+        const envelope = getRequestCacheEnvelope(resourceKey);
+        get().setTaskQueryMeta(resourceKey, {
+          hasHydratedData: hasCachedData,
+          hasFetchedOnce: Boolean(get().taskQueryMeta[resourceKey]?.hasFetchedOnce || hasCachedData),
+          isInitialLoading: false,
+          isBackgroundRefreshing: false,
+          isManualRefreshing: false,
+          lastFetchedAt: envelope?.lastFetchedAt ?? get().taskQueryMeta[resourceKey]?.lastFetchedAt ?? null,
+          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? get().taskQueryMeta[resourceKey]?.lastSuccessfulFetchAt ?? null,
+          staleAt: envelope?.staleAt ?? get().taskQueryMeta[resourceKey]?.staleAt ?? null,
+          expiresAt: envelope?.expiresAt ?? get().taskQueryMeta[resourceKey]?.expiresAt ?? null,
+          error: errorMessage,
+          emptyStateResolved: hasCachedData || Boolean(get().taskQueryMeta[resourceKey]?.emptyStateResolved),
+        });
+        set({ isLoading: false, error: errorMessage });
+      },
+      shouldServeCachedTasks: (resourceKey, fallbackIds, forceRefresh = false) => {
+        if (forceRefresh || fallbackIds.length === 0) {
+          return false;
+        }
+
+        return isRequestCacheFresh(resourceKey);
+      },
+      shouldRefreshTasksInBackground: (resourceKey, fallbackIds, forceRefresh = false) => {
+        if (forceRefresh || fallbackIds.length === 0) {
+          return false;
+        }
+
+        return !isRequestCacheFresh(resourceKey) && !isRequestCacheExpired(resourceKey);
+      },
+      replaceTasks: (tasks) => {
+        set({
+          tasks,
+          allTasksFetchTimestamp: Date.now(),
+          taskFetchTimestamps: tasks.reduce<Record<string, number>>((accumulator, task) => {
+            accumulator[task.id] = Date.now();
+            return accumulator;
+          }, {}),
+        });
+      },
+      mergeTask: (task) => {
+        set((state) => {
+          const existingIndex = state.tasks.findIndex((candidate) => candidate.id === task.id);
+          const nextTasks =
+            existingIndex >= 0
+              ? state.tasks.map((candidate) =>
+                  candidate.id === task.id ? task : candidate
+                )
+              : [task, ...state.tasks];
+
+          return {
+            tasks: nextTasks,
+            taskFetchTimestamps: {
+              ...state.taskFetchTimestamps,
+              [task.id]: Date.now(),
+            },
+          };
+        });
+      },
 
       // FETCH from Supabase
       fetchTasks: async (forceRefresh: boolean = false) => {
@@ -106,562 +419,455 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
-        // CACHE-FIRST STRATEGY: Check if cached tasks exist and are fresh
-        const CACHE_TTL_MS = 30 * 1000; // 30 seconds cache TTL
-        const now = Date.now();
-        const state = get();
-        const cachedTasks = state.tasks;
-        const lastFetchTime = state.allTasksFetchTimestamp;
-        const isCacheFresh = lastFetchTime && (now - lastFetchTime) < CACHE_TTL_MS;
+        const resourceKey = buildResourceKey("tasks", "all");
+        const supabaseClient = supabase;
+        const cachedIds = get().queryTaskIds[resourceKey] || get().tasks.map((task) => task.id);
+        const hasCachedData = cachedIds.length > 0;
 
-        // Return cached tasks if they exist and are fresh (unless force refresh)
-        if (cachedTasks.length > 0 && isCacheFresh && !forceRefresh) {
-          console.log(`✅ [Cache Hit] Using cached tasks (${cachedTasks.length} tasks, age: ${Math.round((now - lastFetchTime!) / 1000)}s)`);
-          return; // Use cached data, no need to fetch
+        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+          get().completeTaskQuerySuccess(resourceKey, cachedIds);
+          return;
         }
 
-        // Cache miss or stale - fetch from database
-        if (cachedTasks.length > 0 && !forceRefresh) {
-          console.log(`🔄 [Cache Stale] Refreshing tasks (age: ${lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 'unknown'}s)`);
-        } else {
-          console.log(`🌐 [Cache Miss] Fetching tasks from database`);
+        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+          get().beginTaskQuery(resourceKey, true);
+          void get().fetchTasks(true);
+          return;
         }
 
-        set({ isLoading: true, error: null });
+        get().beginTaskQuery(resourceKey, hasCachedData);
         try {
-          // Fetch all tasks (unified table includes top-level + nested)
-          // Filter out cancelled, archived, and deleted tasks
-          const { data: allTasksData, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .is('cancelled_at', null) // Only fetch non-cancelled tasks
-            .is('archived_at', null) // Only fetch non-archived tasks
-            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
-            .order('created_at', { ascending: false });
+          const result = await runSingleFlightRequest(
+            resourceKey,
+            async () => {
+              const { data: allTasksData, error: tasksError } = await supabaseClient
+                .from('tasks')
+                .select('*')
+                .is('cancelled_at', null)
+                .is('archived_at', null)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
 
-          if (tasksError) throw tasksError;
+              if (tasksError) throw tasksError;
 
-          // Fetch all task activities (unified table)
-          const { data: taskActivitiesData, error: taskActivitiesError } = await supabase
-            .from('task_activities')
-            .select('*')
-            .order('timestamp', { ascending: true });
+              const { data: taskActivitiesData, error: taskActivitiesError } = await supabaseClient
+                .from('task_activities')
+                .select('*')
+                .order('timestamp', { ascending: true });
 
-          if (taskActivitiesError) throw taskActivitiesError;
+              if (taskActivitiesError) throw taskActivitiesError;
 
-          // Group task activities by task_id and transform to TaskActivity format
-          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-          (taskActivitiesData || []).forEach((activity: any) => {
-            const taskId = activity.task_id;
-            if (!activitiesByTaskId[taskId]) {
-              activitiesByTaskId[taskId] = [];
-            }
-            activitiesByTaskId[taskId].push({
-              id: activity.id,
-              taskId: activity.task_id,
-              userId: activity.user_id,
-              activityType: activity.activity_type as ActivityType,
-              timestamp: activity.timestamp,
-              data: activity.data, // JSONB data field
-              description: activity.description || '',
-              completionPercentage: activity.completion_percentage,
-              status: activity.status as TaskStatus | undefined,
-              notificationsSent: activity.notifications_sent || false,
-              notifiedAt: activity.notified_at,
-              createdAt: activity.created_at,
-            });
-          });
-
-          // Transform all tasks from unified table
-          const transformedTasks = (allTasksData || []).map(task => {
-            // Normalize assigned_to array: ensure all IDs are strings
-            const normalizedAssignedTo = Array.isArray(task.assigned_to) 
-              ? task.assigned_to.map((id: any) => String(id))
-              : [];
-            
-            // Normalize assigned_by: ensure it's a string
-            const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
-            
-            return {
-            id: task.id,
-            projectId: task.project_id,
-            parentTaskId: task.parent_task_id, // ✅ NEW: for nested tasks
-            nestingLevel: task.nesting_level,   // ✅ NEW: depth level
-            rootTaskId: task.root_task_id,      // ✅ NEW: root reference
-            title: task.title,
-            description: task.description,
-            taskReference: task.task_reference || undefined,
-            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
-            priority: task.priority,
-            category: task.category,
-            dueDate: task.due_date,
-            status: (task.current_status || 'new') as TaskStatus,
-            completionPercentage: task.completion_percentage,
-            assignedTo: normalizedAssignedTo,
-            assignedBy: normalizedAssignedBy,
-            location: task.location,
-            attachments: task.attachments || [],
-            starredByUsers: task.starred_by_users || [],
-            // Legacy fields for backward compatibility (derived from status)
-            acceptedBy: task.accepted_by || undefined,
-            acceptedAt: task.accepted_at || undefined,
-            declinedReason: task.decline_reason || undefined,
-            reviewedBy: task.reviewed_by || undefined,
-            reviewedAt: task.reviewed_at || undefined,
-            cancelledAt: task.cancelled_at || null,
-            cancelledBy: task.cancelled_by || undefined,
-            deletedAt: task.deleted_at || undefined,
-            deletedBy: task.deleted_by || undefined,
-            archivedAt: task.archived_at || undefined,
-            archivedBy: task.archived_by || undefined,
-            createdAt: task.created_at,
-            updatedAt: task.updated_at,
-            activities: activitiesByTaskId[task.id] || [],
-            // Backward compatibility: also populate updates from activities for now
-            updates: (activitiesByTaskId[task.id] || [])
-              .filter((activity: TaskActivity) => 
-                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-              )
-              .map((activity: TaskActivity) => ({
-                id: activity.id,
-                description: activity.description,
-                photos: (activity.data as any)?.photos || [],
-                completionPercentage: activity.completionPercentage || 0,
-                status: activity.status || 'not_started' as TaskStatus,
-                timestamp: activity.timestamp,
-                userId: activity.userId,
-              })),
-            // Note: children are built client-side when needed via buildTaskTree()
-            };
-          });
-
-          console.log('✅✅✅ Fetched tasks from Supabase:', transformedTasks.length);
-          console.log('✅✅✅ Task details:', transformedTasks.map(t => ({ 
-            id: t.id, 
-            title: t.title, 
-            projectId: t.projectId,
-            parentTaskId: t.parentTaskId,
-            assignedTo: t.assignedTo, 
-            assignedBy: t.assignedBy,
-            status: t.status
-          })));
-          
-          // 🔍 SPECIAL CHECK: Look for the test task
-          const testTask = transformedTasks.find(t => t.title?.toLowerCase().includes("testing sub task"));
-          if (testTask) {
-            console.log('✅✅✅ TEST TASK FOUND IN FETCHED DATA:', {
-              title: testTask.title,
-              id: testTask.id,
-              projectId: testTask.projectId,
-              parentTaskId: testTask.parentTaskId,
-              assignedTo: testTask.assignedTo,
-              assignedToType: typeof testTask.assignedTo,
-              assignedToIsArray: Array.isArray(testTask.assignedTo),
-              assignedToLength: Array.isArray(testTask.assignedTo) ? testTask.assignedTo.length : 'N/A',
-              assignedToContents: Array.isArray(testTask.assignedTo) ? JSON.stringify(testTask.assignedTo) : testTask.assignedTo,
-              assignedToValues: Array.isArray(testTask.assignedTo) ? testTask.assignedTo.map((id, idx) => ({ idx, id, type: typeof id, string: String(id) })) : [],
-              assignedBy: testTask.assignedBy,
-              status: testTask.status
-            });
-            
-            // Check if Peter's ID is in the array
-            const peterId = '66666666-6666-6666-6666-666666666666';
-            if (Array.isArray(testTask.assignedTo)) {
-              const hasPeterExact = testTask.assignedTo.includes(peterId);
-              const hasPeterString = testTask.assignedTo.some(id => String(id) === peterId);
-              const hasPeterMatch = testTask.assignedTo.some(id => id === peterId || String(id) === peterId);
-              console.log('✅✅✅ Peter ID check in fetched data:', {
-                peterId,
-                hasPeterExact,
-                hasPeterString,
-                hasPeterMatch,
-                allIds: testTask.assignedTo.map(id => ({ value: id, type: typeof id, string: String(id) }))
-              });
-            }
-          } else {
-            console.log('❌❌❌ TEST TASK NOT IN FETCHED DATA');
-          }
-
-          // Fix existing self-assigned tasks that are at 100% but not yet auto-accepted
-          // This handles tasks that were completed before the auto-accept logic was added
-          const tasksToFix: Array<{ id: string; assignedBy: string }> = [];
-          
-          transformedTasks.forEach(task => {
-            if (task.completionPercentage === 100 && 
-                task.status !== "approved" && 
-                task.status !== "submitted_for_review") {
-              const assignedBy = task.assignedBy;
-              const assignedTo = task.assignedTo || [];
-              
-              // Check if truly self-assigned: creator is the only assignee
-              const isSelfAssigned = assignedBy && 
-                                    assignedTo.length === 1 && 
-                                    String(assignedTo[0]) === String(assignedBy);
-              
-              if (isSelfAssigned) {
-                tasksToFix.push({ id: task.id, assignedBy });
-              }
-            }
-          });
-          
-          // Auto-accept tasks that need fixing
-          if (tasksToFix.length > 0 && supabase) {
-            console.log(`🔧 Fixing ${tasksToFix.length} self-assigned tasks that should be auto-accepted...`);
-            for (const taskToFix of tasksToFix) {
-              try {
-                await supabase
-                  .from('tasks')
-                  .update({
-                    review_accepted: true,
-                    reviewed_by: taskToFix.assignedBy,
-                    reviewed_at: new Date().toISOString(),
-                  })
-                  .eq('id', taskToFix.id);
-                
-                // Update local state
-                const fixedTask = transformedTasks.find(t => t.id === taskToFix.id);
-                if (fixedTask) {
-                  fixedTask.status = "approved" as TaskStatus;
-                  fixedTask.reviewedBy = taskToFix.assignedBy;
-                  fixedTask.reviewedAt = new Date().toISOString();
+              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              (taskActivitiesData || []).forEach((activity: any) => {
+                const taskId = activity.task_id;
+                if (!activitiesByTaskId[taskId]) {
+                  activitiesByTaskId[taskId] = [];
                 }
-                console.log(`✅ Fixed self-assigned task: ${taskToFix.id}`);
-              } catch (error) {
-                console.error(`❌ Error fixing task ${taskToFix.id}:`, error);
-              }
-            }
-          }
+                activitiesByTaskId[taskId].push({
+                  id: activity.id,
+                  taskId: activity.task_id,
+                  userId: activity.user_id,
+                  activityType: activity.activity_type as ActivityType,
+                  timestamp: activity.timestamp,
+                  data: activity.data,
+                  description: activity.description || '',
+                  completionPercentage: activity.completion_percentage,
+                  status: activity.status as TaskStatus | undefined,
+                  notificationsSent: activity.notifications_sent || false,
+                  notifiedAt: activity.notified_at,
+                  createdAt: activity.created_at,
+                });
+              });
 
-          set({ 
-            tasks: transformedTasks, 
-            isLoading: false,
-            allTasksFetchTimestamp: now, // Update fetch timestamp
-          });
+              const transformedTasks = (allTasksData || []).map(task => {
+                const normalizedAssignedTo = Array.isArray(task.assigned_to)
+                  ? task.assigned_to.map((id: any) => String(id))
+                  : [];
+                const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
+
+                return {
+                  id: task.id,
+                  projectId: task.project_id,
+                  parentTaskId: task.parent_task_id,
+                  nestingLevel: task.nesting_level,
+                  rootTaskId: task.root_task_id,
+                  title: task.title,
+                  description: task.description,
+                  taskReference: task.task_reference || undefined,
+                  billingStatus: (task.billing_status || "non_billable") as BillingStatus,
+                  priority: task.priority,
+                  category: task.category,
+                  dueDate: task.due_date,
+                  status: (task.current_status || 'new') as TaskStatus,
+                  completionPercentage: task.completion_percentage,
+                  assignedTo: normalizedAssignedTo,
+                  assignedBy: normalizedAssignedBy,
+                  location: task.location,
+                  attachments: task.attachments || [],
+                  starredByUsers: task.starred_by_users || [],
+                  acceptedBy: task.accepted_by || undefined,
+                  acceptedAt: task.accepted_at || undefined,
+                  declinedReason: task.decline_reason || undefined,
+                  reviewedBy: task.reviewed_by || undefined,
+                  reviewedAt: task.reviewed_at || undefined,
+                  cancelledAt: task.cancelled_at || null,
+                  cancelledBy: task.cancelled_by || undefined,
+                  deletedAt: task.deleted_at || undefined,
+                  deletedBy: task.deleted_by || undefined,
+                  archivedAt: task.archived_at || undefined,
+                  archivedBy: task.archived_by || undefined,
+                  createdAt: task.created_at,
+                  updatedAt: task.updated_at,
+                  activities: activitiesByTaskId[task.id] || [],
+                  updates: (activitiesByTaskId[task.id] || [])
+                    .filter((activity: TaskActivity) =>
+                      activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                    )
+                    .map((activity: TaskActivity) => ({
+                      id: activity.id,
+                      description: activity.description,
+                      photos: (activity.data as any)?.photos || [],
+                      completionPercentage: activity.completionPercentage || 0,
+                      status: activity.status || 'not_started' as TaskStatus,
+                      timestamp: activity.timestamp,
+                      userId: activity.userId,
+                    })),
+                };
+              });
+
+              const tasksToFix: Array<{ id: string; assignedBy: string }> = [];
+              transformedTasks.forEach(task => {
+                if (
+                  task.completionPercentage === 100 &&
+                  task.status !== "approved" &&
+                  task.status !== "submitted_for_review"
+                ) {
+                  const assignedTo = task.assignedTo || [];
+                  const isSelfAssigned =
+                    task.assignedBy &&
+                    assignedTo.length === 1 &&
+                    String(assignedTo[0]) === String(task.assignedBy);
+
+                  if (isSelfAssigned) {
+                    tasksToFix.push({ id: task.id, assignedBy: task.assignedBy });
+                  }
+                }
+              });
+
+              if (tasksToFix.length > 0 && supabaseClient) {
+                for (const taskToFix of tasksToFix) {
+                  try {
+                    await supabaseClient
+                      .from('tasks')
+                      .update({
+                        review_accepted: true,
+                        reviewed_by: taskToFix.assignedBy,
+                        reviewed_at: new Date().toISOString(),
+                      })
+                      .eq('id', taskToFix.id);
+
+                    const fixedTask = transformedTasks.find(t => t.id === taskToFix.id);
+                    if (fixedTask) {
+                      fixedTask.status = "approved" as TaskStatus;
+                      fixedTask.reviewedBy = taskToFix.assignedBy;
+                      fixedTask.reviewedAt = new Date().toISOString();
+                    }
+                  } catch (error) {
+                    console.error(`❌ Error fixing task ${taskToFix.id}:`, error);
+                  }
+                }
+              }
+
+              get().replaceTasks(transformedTasks);
+              return transformedTasks;
+            },
+            {
+              staleMs: TASK_FRESH_MS,
+              ttlMs: TASK_TTL_MS,
+              forceRefresh,
+            }
+          );
+
+          get().completeTaskQuerySuccess(resourceKey, result.data.map((task) => task.id));
         } catch (error: any) {
           console.error('Error fetching tasks:', error);
-          set({ 
-            error: error.message, 
-            isLoading: false 
-          });
+          get().completeTaskQueryError(resourceKey, error.message, hasCachedData);
         }
       },
 
-      fetchTasksByProject: async (projectId: string) => {
+      fetchTasksByProject: async (projectId: string, forceRefresh: boolean = false) => {
         if (!supabase) {
           console.error('Supabase not configured, no data available');
           set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
           return;
         }
 
-        set({ isLoading: true, error: null });
+        const resourceKey = buildResourceKey("tasks", "project", projectId);
+        const supabaseClient = supabase;
+        const cachedIds = get().queryTaskIds[resourceKey] || get().taskIdsByProject[projectId] || [];
+        const hasCachedData = cachedIds.length > 0;
+
+        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+          get().completeTaskQuerySuccess(resourceKey, cachedIds);
+          return;
+        }
+
+        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+          get().beginTaskQuery(resourceKey, true);
+          void get().fetchTasksByProject(projectId, true);
+          return;
+        }
+
+        get().beginTaskQuery(resourceKey, hasCachedData);
         try {
-          // Fetch all tasks for this project (unified table includes nested tasks)
-          const { data: allTasksData, error: tasksError } = await supabase
-            .from('tasks')
-            .select('*')
-            .eq('project_id', projectId)
-            .is('cancelled_at', null) // Only fetch non-cancelled tasks
-            .is('archived_at', null) // Only fetch non-archived tasks
-            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
-            .order('created_at', { ascending: false });
-
-          if (tasksError) throw tasksError;
-
-          // Fetch task activities for tasks in this project (unified table)
-          const taskIds = (allTasksData || []).map(t => t.id);
-          const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
-            ? await supabase
-                .from('task_activities')
+          const result = await runSingleFlightRequest(
+            resourceKey,
+            async () => {
+              const { data: allTasksData, error: tasksError } = await supabaseClient
+                .from('tasks')
                 .select('*')
-                .in('task_id', taskIds)
-                .order('timestamp', { ascending: true })
-            : { data: [], error: null };
+                .eq('project_id', projectId)
+                .is('cancelled_at', null)
+                .is('archived_at', null)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
 
-          if (taskActivitiesError) throw taskActivitiesError;
+              if (tasksError) throw tasksError;
 
-          // Group task activities by task_id and transform to TaskActivity format
-          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-          (taskActivitiesData || []).forEach((activity: any) => {
-            const taskId = activity.task_id;
-            if (!activitiesByTaskId[taskId]) {
-              activitiesByTaskId[taskId] = [];
+              const taskIds = (allTasksData || []).map(t => t.id);
+              const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
+                ? await supabaseClient
+                    .from('task_activities')
+                    .select('*')
+                    .in('task_id', taskIds)
+                    .order('timestamp', { ascending: true })
+                : { data: [], error: null };
+
+              if (taskActivitiesError) throw taskActivitiesError;
+
+              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              (taskActivitiesData || []).forEach((activity: any) => {
+                const taskId = activity.task_id;
+                if (!activitiesByTaskId[taskId]) {
+                  activitiesByTaskId[taskId] = [];
+                }
+                activitiesByTaskId[taskId].push({
+                  id: activity.id,
+                  taskId: activity.task_id,
+                  userId: activity.user_id,
+                  activityType: activity.activity_type as ActivityType,
+                  timestamp: activity.timestamp,
+                  data: activity.data,
+                  description: activity.description || '',
+                  completionPercentage: activity.completion_percentage,
+                  status: activity.status as TaskStatus | undefined,
+                  notificationsSent: activity.notifications_sent || false,
+                  notifiedAt: activity.notified_at,
+                  createdAt: activity.created_at,
+                });
+              });
+
+              const transformedTasks = (allTasksData || []).map(task => ({
+                id: task.id,
+                projectId: task.project_id,
+                parentTaskId: task.parent_task_id,
+                nestingLevel: task.nesting_level,
+                rootTaskId: task.root_task_id,
+                title: task.title,
+                description: task.description,
+                taskReference: task.task_reference || undefined,
+                billingStatus: (task.billing_status || "non_billable") as BillingStatus,
+                priority: task.priority,
+                category: task.category,
+                dueDate: task.due_date,
+                status: (task.current_status || 'new') as TaskStatus,
+                completionPercentage: task.completion_percentage,
+                assignedTo: task.assigned_to || [],
+                assignedBy: task.assigned_by,
+                location: task.location,
+                attachments: task.attachments || [],
+                starredByUsers: task.starred_by_users || [],
+                acceptedBy: task.accepted_by || undefined,
+                acceptedAt: task.accepted_at || undefined,
+                declinedReason: task.decline_reason || undefined,
+                reviewedBy: task.reviewed_by || undefined,
+                reviewedAt: task.reviewed_at || undefined,
+                createdAt: task.created_at,
+                updatedAt: task.updated_at,
+                cancelledAt: task.cancelled_at || undefined,
+                cancelledBy: task.cancelled_by || undefined,
+                deletedAt: task.deleted_at || undefined,
+                deletedBy: task.deleted_by || undefined,
+                archivedAt: task.archived_at || undefined,
+                archivedBy: task.archived_by || undefined,
+                activities: activitiesByTaskId[task.id] || [],
+                updates: (activitiesByTaskId[task.id] || [])
+                  .filter((activity: TaskActivity) =>
+                    activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                  )
+                  .map((activity: TaskActivity) => ({
+                    id: activity.id,
+                    description: activity.description,
+                    photos: (activity.data as any)?.photos || [],
+                    completionPercentage: activity.completionPercentage || 0,
+                    status: activity.status || 'not_started' as TaskStatus,
+                    timestamp: activity.timestamp,
+                    userId: activity.userId,
+                  })),
+              }));
+
+              get().replaceTasks(transformedTasks);
+              return transformedTasks;
+            },
+            {
+              staleMs: TASK_FRESH_MS,
+              ttlMs: TASK_TTL_MS,
+              forceRefresh,
             }
-            activitiesByTaskId[taskId].push({
-              id: activity.id,
-              taskId: activity.task_id,
-              userId: activity.user_id,
-              activityType: activity.activity_type as ActivityType,
-              timestamp: activity.timestamp,
-              data: activity.data,
-              description: activity.description || '',
-              completionPercentage: activity.completion_percentage,
-              status: activity.status as TaskStatus | undefined,
-              notificationsSent: activity.notifications_sent || false,
-              notifiedAt: activity.notified_at,
-              createdAt: activity.created_at,
-            });
-          });
+          );
 
-          // Transform all tasks from unified table
-          const transformedTasks = (allTasksData || []).map(task => ({
-            id: task.id,
-            projectId: task.project_id,
-            parentTaskId: task.parent_task_id, // ✅ NEW
-            nestingLevel: task.nesting_level,   // ✅ NEW
-            rootTaskId: task.root_task_id,      // ✅ NEW
-            title: task.title,
-            description: task.description,
-            taskReference: task.task_reference || undefined,
-            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
-            priority: task.priority,
-            category: task.category,
-            dueDate: task.due_date,
-            status: (task.current_status || 'new') as TaskStatus,
-            completionPercentage: task.completion_percentage,
-            assignedTo: task.assigned_to || [],
-            assignedBy: task.assigned_by,
-            location: task.location,
-            attachments: task.attachments || [],
-            starredByUsers: task.starred_by_users || [],
-            // Legacy fields for backward compatibility (derived from status)
-            acceptedBy: task.accepted_by || undefined,
-            acceptedAt: task.accepted_at || undefined,
-            declinedReason: task.decline_reason || undefined,
-            reviewedBy: task.reviewed_by || undefined,
-            reviewedAt: task.reviewed_at || undefined,
-            createdAt: task.created_at,
-            updatedAt: task.updated_at,
-            cancelledAt: task.cancelled_at || undefined,
-            cancelledBy: task.cancelled_by || undefined,
-            deletedAt: task.deleted_at || undefined,
-            deletedBy: task.deleted_by || undefined,
-            archivedAt: task.archived_at || undefined,
-            archivedBy: task.archived_by || undefined,
-            activities: activitiesByTaskId[task.id] || [],
-            // Backward compatibility: also populate updates from activities
-            updates: (activitiesByTaskId[task.id] || [])
-              .filter((activity: TaskActivity) => 
-                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-              )
-              .map((activity: TaskActivity) => ({
-                id: activity.id,
-                description: activity.description,
-                photos: (activity.data as any)?.photos || [],
-                completionPercentage: activity.completionPercentage || 0,
-                status: activity.status || 'not_started' as TaskStatus,
-                timestamp: activity.timestamp,
-                userId: activity.userId,
-              })),
-            // Note: children are built client-side when needed
-          }));
-
-          set({ 
-            tasks: transformedTasks, 
-            isLoading: false 
-          });
+          get().completeTaskQuerySuccess(resourceKey, result.data.map((task) => task.id));
         } catch (error: any) {
           console.error('Error fetching tasks by project:', error);
-          set({ 
-            error: error.message, 
-            isLoading: false 
-          });
+          get().completeTaskQueryError(resourceKey, error.message, hasCachedData);
         }
       },
 
-      fetchTasksByUser: async (userId: string) => {
+      fetchTasksByUser: async (userId: string, forceRefresh: boolean = false) => {
         if (!supabase) {
           console.error('Supabase not configured, no data available');
           set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
           return;
         }
 
-        set({ isLoading: true, error: null });
+        const resourceKey = buildResourceKey("tasks", "user", userId);
+        const supabaseClient = supabase;
+        const cachedIds = get().queryTaskIds[resourceKey] || get().taskIdsByUser[userId] || [];
+        const hasCachedData = cachedIds.length > 0;
+
+        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+          get().completeTaskQuerySuccess(resourceKey, cachedIds);
+          return;
+        }
+
+        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+          get().beginTaskQuery(resourceKey, true);
+          void get().fetchTasksByUser(userId, true);
+          return;
+        }
+
+        get().beginTaskQuery(resourceKey, hasCachedData);
         try {
-          const { data, error } = await supabase
-            .from('tasks')
-            .select('*')
-            .contains('assigned_to', [userId])
-            .is('cancelled_at', null) // Only fetch non-cancelled tasks
-            .is('archived_at', null) // Only fetch non-archived tasks
-            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-
-          // Fetch task updates for these tasks
-          const taskIds = (data || []).map(t => t.id);
-          // Fetch task activities for tasks in this project (unified table)
-          const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
-            ? await supabase
-                .from('task_activities')
+          const result = await runSingleFlightRequest(
+            resourceKey,
+            async () => {
+              const { data, error } = await supabaseClient
+                .from('tasks')
                 .select('*')
-                .in('task_id', taskIds)
-                .order('timestamp', { ascending: true })
-            : { data: [], error: null };
+                .contains('assigned_to', [userId])
+                .is('cancelled_at', null)
+                .is('archived_at', null)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
 
-          if (taskActivitiesError) throw taskActivitiesError;
+              if (error) throw error;
 
-          // Group task activities by task_id and transform to TaskActivity format
-          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-          (taskActivitiesData || []).forEach((activity: any) => {
-            const taskId = activity.task_id;
-            if (!activitiesByTaskId[taskId]) {
-              activitiesByTaskId[taskId] = [];
+              const taskIds = (data || []).map(t => t.id);
+              const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
+                ? await supabaseClient
+                    .from('task_activities')
+                    .select('*')
+                    .in('task_id', taskIds)
+                    .order('timestamp', { ascending: true })
+                : { data: [], error: null };
+
+              if (taskActivitiesError) throw taskActivitiesError;
+
+              const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+              (taskActivitiesData || []).forEach((activity: any) => {
+                const taskId = activity.task_id;
+                if (!activitiesByTaskId[taskId]) {
+                  activitiesByTaskId[taskId] = [];
+                }
+                activitiesByTaskId[taskId].push({
+                  id: activity.id,
+                  taskId: activity.task_id,
+                  userId: activity.user_id,
+                  activityType: activity.activity_type as ActivityType,
+                  timestamp: activity.timestamp,
+                  data: activity.data,
+                  description: activity.description || '',
+                  completionPercentage: activity.completion_percentage,
+                  status: activity.status as TaskStatus | undefined,
+                  notificationsSent: activity.notifications_sent || false,
+                  notifiedAt: activity.notified_at,
+                  createdAt: activity.created_at,
+                });
+              });
+
+              const transformedTasks = (data || []).map(task => ({
+                id: task.id,
+                projectId: task.project_id,
+                parentTaskId: task.parent_task_id,
+                nestingLevel: task.nesting_level || 0,
+                rootTaskId: task.root_task_id,
+                title: task.title,
+                description: task.description,
+                taskReference: task.task_reference || undefined,
+                billingStatus: (task.billing_status || "non_billable") as BillingStatus,
+                priority: task.priority,
+                category: task.category,
+                dueDate: task.due_date,
+                status: (task.current_status || 'new') as TaskStatus,
+                completionPercentage: task.completion_percentage,
+                assignedTo: task.assigned_to || [],
+                assignedBy: task.assigned_by,
+                location: task.location,
+                attachments: task.attachments || [],
+                starredByUsers: task.starred_by_users || [],
+                acceptedBy: task.accepted_by || undefined,
+                acceptedAt: task.accepted_at || undefined,
+                declinedReason: task.decline_reason || undefined,
+                reviewedBy: task.reviewed_by || undefined,
+                reviewedAt: task.reviewed_at || undefined,
+                createdAt: task.created_at,
+                updatedAt: task.updated_at,
+                cancelledAt: task.cancelled_at || undefined,
+                cancelledBy: task.cancelled_by || undefined,
+                deletedAt: task.deleted_at || undefined,
+                deletedBy: task.deleted_by || undefined,
+                archivedAt: task.archived_at || undefined,
+                archivedBy: task.archived_by || undefined,
+                activities: activitiesByTaskId[task.id] || [],
+                updates: (activitiesByTaskId[task.id] || [])
+                  .filter((activity: TaskActivity) =>
+                    activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                  )
+                  .map((activity: TaskActivity) => ({
+                    id: activity.id,
+                    description: activity.description,
+                    photos: (activity.data as any)?.photos || [],
+                    completionPercentage: activity.completionPercentage || 0,
+                    status: activity.status || 'new' as TaskStatus,
+                    timestamp: activity.timestamp,
+                    userId: activity.userId,
+                  })),
+              }));
+
+              get().replaceTasks(transformedTasks);
+              return transformedTasks;
+            },
+            {
+              staleMs: TASK_FRESH_MS,
+              ttlMs: TASK_TTL_MS,
+              forceRefresh,
             }
-            activitiesByTaskId[taskId].push({
-              id: activity.id,
-              taskId: activity.task_id,
-              userId: activity.user_id,
-              activityType: activity.activity_type as ActivityType,
-              timestamp: activity.timestamp,
-              data: activity.data,
-              description: activity.description || '',
-              completionPercentage: activity.completion_percentage,
-              status: activity.status as TaskStatus | undefined,
-              notificationsSent: activity.notifications_sent || false,
-              notifiedAt: activity.notified_at,
-              createdAt: activity.created_at,
-            });
-          });
+          );
 
-          // Fetch nested tasks (subtasks) for these tasks
-          const { data: nestedTasksData } = await supabase
-            .from('tasks')
-            .select('*')
-            .in('parent_task_id', taskIds)
-            .is('cancelled_at', null) // Only fetch non-cancelled tasks
-            .is('archived_at', null) // Only fetch non-archived tasks
-            .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
-            .order('created_at', { ascending: true });
-
-          // Group nested tasks by parent
-          const nestedTasksByParent: { [key: string]: any[] } = {};
-          (nestedTasksData || []).forEach((nestedTask: any) => {
-            const parentId = nestedTask.parent_task_id;
-            if (!nestedTasksByParent[parentId]) {
-              nestedTasksByParent[parentId] = [];
-            }
-            nestedTasksByParent[parentId].push(nestedTask);
-          });
-
-          // Transform Supabase data to match local interface
-          const transformedTasks = (data || []).map(task => ({
-            id: task.id,
-            projectId: task.project_id,
-            parentTaskId: task.parent_task_id,
-            nestingLevel: task.nesting_level || 0,
-            rootTaskId: task.root_task_id,
-            title: task.title,
-            description: task.description,
-            taskReference: task.task_reference || undefined,
-            billingStatus: (task.billing_status || "non_billable") as BillingStatus,
-            priority: task.priority,
-            category: task.category,
-            dueDate: task.due_date,
-            status: (task.current_status || 'new') as TaskStatus,
-            completionPercentage: task.completion_percentage,
-            assignedTo: task.assigned_to,
-            assignedBy: task.assigned_by,
-            location: task.location,
-            attachments: task.attachments || [],
-            starredByUsers: task.starred_by_users || [],
-            // Legacy fields for backward compatibility (derived from status)
-            acceptedBy: task.accepted_by || undefined,
-            acceptedAt: task.accepted_at || undefined,
-            declinedReason: task.decline_reason || undefined,
-            reviewedBy: task.reviewed_by || undefined,
-            reviewedAt: task.reviewed_at || undefined,
-            createdAt: task.created_at,
-            updatedAt: task.updated_at,
-            cancelledAt: task.cancelled_at || undefined,
-            cancelledBy: task.cancelled_by || undefined,
-            deletedAt: task.deleted_at || undefined,
-            deletedBy: task.deleted_by || undefined,
-            archivedAt: task.archived_at || undefined,
-            archivedBy: task.archived_by || undefined,
-            activities: activitiesByTaskId[task.id] || [],
-            // Backward compatibility: also populate updates from activities
-            updates: (activitiesByTaskId[task.id] || [])
-              .filter((activity: TaskActivity) => 
-                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-              )
-              .map((activity: TaskActivity) => ({
-                id: activity.id,
-                description: activity.description,
-                photos: (activity.data as any)?.photos || [],
-                completionPercentage: activity.completionPercentage || 0,
-                status: activity.status || 'new' as TaskStatus,
-                timestamp: activity.timestamp,
-                userId: activity.userId,
-              })),
-            children: (nestedTasksByParent[task.id] || []).map((st: any) => {
-              // Normalize assigned_to array: ensure all IDs are strings
-              const normalizedAssignedTo = Array.isArray(st.assigned_to) 
-                ? st.assigned_to.map((id: any) => String(id))
-                : [];
-              
-              // Normalize assigned_by: ensure it's a string
-              const normalizedAssignedBy = st.assigned_by ? String(st.assigned_by) : '';
-              
-              return {
-              id: st.id,
-              parentTaskId: st.parent_task_id,
-              parentSubTaskId: st.parent_sub_task_id,
-              projectId: st.project_id,
-              title: st.title,
-              description: st.description,
-              taskReference: st.task_reference || undefined,
-              priority: st.priority,
-              category: st.category,
-              dueDate: st.due_date,
-              status: (st.current_status || 'new') as TaskStatus,
-              completionPercentage: st.completion_percentage,
-              assignedTo: normalizedAssignedTo,
-              assignedBy: normalizedAssignedBy,
-              attachments: st.attachments || [],
-              // Legacy fields for backward compatibility (derived from status)
-              acceptedBy: st.accepted_by || undefined,
-              acceptedAt: st.accepted_at || undefined,
-              declinedReason: st.decline_reason || undefined,
-              reviewedBy: st.reviewed_by || undefined,
-              reviewedAt: st.reviewed_at || undefined,
-              createdAt: st.created_at,
-              updatedAt: st.updated_at,
-              cancelledAt: st.cancelled_at || undefined,
-              cancelledBy: st.cancelled_by || undefined,
-              deletedAt: st.deleted_at || undefined,
-              deletedBy: st.deleted_by || undefined,
-              archivedAt: st.archived_at || undefined,
-              archivedBy: st.archived_by || undefined,
-              activities: activitiesByTaskId[st.id] || [],
-            // Backward compatibility: also populate updates from activities
-            updates: (activitiesByTaskId[st.id] || [])
-              .filter((activity: TaskActivity) => 
-                activity.activityType === 'progress_update' || activity.activityType === 'status_change'
-              )
-              .map((activity: TaskActivity) => ({
-                id: activity.id,
-                description: activity.description,
-                photos: (activity.data as any)?.photos || [],
-                completionPercentage: activity.completionPercentage || 0,
-                status: activity.status || 'new' as TaskStatus,
-                timestamp: activity.timestamp,
-                userId: activity.userId,
-              })),
-              };
-            }),
-          }));
-
-          set({ 
-            tasks: transformedTasks, 
-            isLoading: false 
-          });
+          get().completeTaskQuerySuccess(resourceKey, result.data.map((task) => task.id));
         } catch (error: any) {
           console.error('Error fetching tasks by user:', error);
-          set({ 
-            error: error.message, 
-            isLoading: false 
-          });
+          get().completeTaskQueryError(resourceKey, error.message, hasCachedData);
         }
       },
 
@@ -670,29 +876,22 @@ export const useTaskStore = create<TaskStore>()(
           return get().tasks.find(task => task.id === id) || null;
         }
 
-        // CACHE-FIRST STRATEGY: Check if task exists in store and is fresh
-        const CACHE_TTL_MS = 30 * 1000; // 30 seconds cache TTL
-        const now = Date.now();
-        const cachedTask = get().tasks.find(task => task.id === id);
-        const lastFetchTime = get().taskFetchTimestamps[id];
-        const isCacheFresh = lastFetchTime && (now - lastFetchTime) < CACHE_TTL_MS;
+        const resourceKey = buildResourceKey("task", id);
+        const supabaseClient = supabase;
+        const cachedTask = get().tasksById[id] || get().tasks.find(task => task.id === id);
 
-        // Return cached task if it exists and is fresh (unless force refresh)
-        if (cachedTask && isCacheFresh && !forceRefresh) {
-          console.log(`✅ [Cache Hit] Using cached task ${id} (age: ${Math.round((now - lastFetchTime!) / 1000)}s)`);
+        if (!forceRefresh && cachedTask && isRequestCacheFresh(resourceKey)) {
+          get().completeTaskQuerySuccess(resourceKey, [id]);
           return cachedTask;
         }
 
-        // Cache miss or stale - fetch from database
-        if (cachedTask && !forceRefresh) {
-          console.log(`🔄 [Cache Stale] Refreshing task ${id} (age: ${lastFetchTime ? Math.round((now - lastFetchTime) / 1000) : 'unknown'}s)`);
-        } else {
-          console.log(`🌐 [Cache Miss] Fetching task ${id} from database`);
-        }
-
         try {
+          get().beginTaskQuery(resourceKey, Boolean(cachedTask));
+          const result = await runSingleFlightRequest(
+            resourceKey,
+            async () => {
           // Fetch task data (exclude cancelled, archived, and deleted tasks)
-          const { data: taskData, error: taskError } = await supabase
+          const { data: taskData, error: taskError } = await supabaseClient
             .from('tasks')
             .select('*')
             .eq('id', id)
@@ -704,7 +903,7 @@ export const useTaskStore = create<TaskStore>()(
           if (taskError) throw taskError;
 
           // Fetch task activities (unified table)
-          const { data: activitiesData, error: activitiesError } = await supabase
+          const { data: activitiesData, error: activitiesError } = await supabaseClient
             .from('task_activities')
             .select('*')
             .eq('task_id', id)
@@ -746,10 +945,18 @@ export const useTaskStore = create<TaskStore>()(
               timestamp: activity.timestamp,
             }));
 
+          const normalizedAssignedTo = Array.isArray(taskData.assigned_to)
+            ? taskData.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+            : [];
+          const normalizedAssignedBy = taskData.assigned_by ? String(taskData.assigned_by) : '';
+
           // Transform Supabase data to match local interface
           const transformedTask = {
             id: taskData.id,
             projectId: taskData.project_id,
+            parentTaskId: taskData.parent_task_id,
+            nestingLevel: taskData.nesting_level,
+            rootTaskId: taskData.root_task_id,
             title: taskData.title,
             description: taskData.description,
             taskReference: taskData.task_reference || undefined,
@@ -759,8 +966,8 @@ export const useTaskStore = create<TaskStore>()(
             dueDate: taskData.due_date,
             status: (taskData.current_status || 'new') as TaskStatus,
             completionPercentage: taskData.completion_percentage,
-            assignedTo: taskData.assigned_to,
-            assignedBy: taskData.assigned_by,
+            assignedTo: normalizedAssignedTo,
+            assignedBy: normalizedAssignedBy,
             location: taskData.location,
             attachments: taskData.attachments || [],
             // Legacy fields for backward compatibility (derived from status)
@@ -773,6 +980,10 @@ export const useTaskStore = create<TaskStore>()(
             starredByUsers: taskData.starred_by_users || [],
             cancelledAt: taskData.cancelled_at || null,
             cancelledBy: taskData.cancelled_by || undefined,
+            deletedAt: taskData.deleted_at || undefined,
+            deletedBy: taskData.deleted_by || undefined,
+            archivedAt: taskData.archived_at || undefined,
+            archivedBy: taskData.archived_by || undefined,
             createdAt: taskData.created_at,
             updatedAt: taskData.updated_at,
             activities: transformedActivities,
@@ -783,29 +994,22 @@ export const useTaskStore = create<TaskStore>()(
             lastEditedAt: taskData.last_edited_at || undefined,
           };
 
-          // Update the task in the store (add if doesn't exist)
-          set(state => {
-            const existingTaskIndex = state.tasks.findIndex(task => task.id === id);
-            const updatedTasks = existingTaskIndex >= 0
-              ? state.tasks.map(task => task.id === id ? transformedTask : task)
-              : [...state.tasks, transformedTask];
-            
-            // Update fetch timestamp
-            const updatedTimestamps = {
-              ...state.taskFetchTimestamps,
-              [id]: Date.now(),
-            };
-            
-            return {
-              tasks: updatedTasks,
-              taskFetchTimestamps: updatedTimestamps,
-            };
-          });
+              get().mergeTask(transformedTask);
+              return transformedTask;
+            },
+            {
+              staleMs: TASK_FRESH_MS,
+              ttlMs: TASK_TTL_MS,
+              forceRefresh,
+            }
+          );
 
+          get().completeTaskQuerySuccess(resourceKey, [id]);
           console.log(`✅ [Fetch Complete] Task ${id} fetched and cached`);
-          return transformedTask;
+          return result.data;
         } catch (error: any) {
           console.error('Error fetching task:', error);
+          get().completeTaskQueryError(resourceKey, error.message, Boolean(cachedTask));
           return null;
         }
       },
@@ -1032,10 +1236,15 @@ export const useTaskStore = create<TaskStore>()(
           };
 
           // Update local state with complete task data including activities
-          set(state => ({
-            tasks: [...state.tasks, transformedTask],
-            isLoading: false,
-          }));
+          get().mergeTask(transformedTask);
+          set({ isLoading: false });
+          invalidateResourceKeys([
+            buildResourceKey("tasks", "all"),
+            buildResourceKey("tasks", "project", transformedTask.projectId),
+            ...((transformedTask.assignedTo || []).map((userId: string) => buildResourceKey("tasks", "user", String(userId)))),
+            buildResourceKey("tasks", "assignedBy", transformedTask.assignedBy),
+            buildResourceKey("task", transformedTask.id),
+          ]);
 
           return data.id;
         } catch (error: any) {
@@ -1185,6 +1394,13 @@ export const useTaskStore = create<TaskStore>()(
 
           // Success - backend confirmed the update
           console.log(`✅ [Optimistic Update] Backend confirmed update for task ${id}`);
+          invalidateResourceKeys([
+            buildResourceKey("tasks", "all"),
+            currentTask?.projectId ? buildResourceKey("tasks", "project", currentTask.projectId) : "",
+            ...((updates.assignedTo || currentTask?.assignedTo || []).map((userId) => buildResourceKey("tasks", "user", String(userId)))),
+            currentTask?.assignedBy ? buildResourceKey("tasks", "assignedBy", currentTask.assignedBy) : "",
+            buildResourceKey("task", id),
+          ]);
           
           // Mark as not loading immediately to restore UI responsiveness
           set({ isLoading: false });
@@ -1408,9 +1624,16 @@ export const useTaskStore = create<TaskStore>()(
             ),
             isLoading: false,
           }));
+          invalidateResourceKeys([
+            buildResourceKey("tasks", "all"),
+            buildResourceKey("task", taskId),
+            task.projectId ? buildResourceKey("tasks", "project", task.projectId) : "",
+            ...(task.assignedTo || []).map((assigneeId) => buildResourceKey("tasks", "user", String(assigneeId))),
+            task.assignedBy ? buildResourceKey("tasks", "assignedBy", task.assignedBy) : "",
+          ]);
 
           // Refresh tasks to get updated data
-          await get().fetchTasks();
+          await get().fetchTasks(true);
         } catch (error: any) {
           console.error('Error deleting task:', error);
           set({ 
@@ -2090,6 +2313,14 @@ export const useTaskStore = create<TaskStore>()(
 
           // Success - backend confirmed
           console.log(`✅ [Optimistic Update] Backend confirmed task update for ${taskId}`);
+          const updatedTaskContext = get().tasksById[taskId] || get().tasks.find((task) => task.id === taskId);
+          invalidateResourceKeys([
+            buildResourceKey("tasks", "all"),
+            buildResourceKey("task", taskId),
+            updatedTaskContext?.projectId ? buildResourceKey("tasks", "project", updatedTaskContext.projectId) : "",
+            ...((updatedTaskContext?.assignedTo || []).map((userId) => buildResourceKey("tasks", "user", String(userId)))),
+            updatedTaskContext?.assignedBy ? buildResourceKey("tasks", "assignedBy", updatedTaskContext.assignedBy) : "",
+          ]);
           
           // Refresh to get latest data from backend (including completion percentage)
           await get().fetchTaskById(taskId);
@@ -3070,12 +3301,101 @@ export const useTaskStore = create<TaskStore>()(
       name: "buildtrack-tasks",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Only persist tasks and read statuses, not loading/error states
         tasks: state.tasks,
         taskReadStatuses: state.taskReadStatuses,
-        allTasksFetchTimestamp: state.allTasksFetchTimestamp, // Persist fetch timestamp
+        allTasksFetchTimestamp: state.allTasksFetchTimestamp,
+        taskQueryMeta: Object.fromEntries(
+          Object.entries(state.taskQueryMeta).map(([key, meta]) => [
+            key,
+            {
+              ...meta,
+              isInitialLoading: false,
+              isBackgroundRefreshing: false,
+              isManualRefreshing: false,
+              error: null,
+            },
+          ])
+        ),
       }),
     }
   )
 );
 
+function syncTaskDerivedState() {
+  useTaskStore.subscribe((state, previousState) => {
+    if (
+      state.tasks === previousState.tasks &&
+      state.taskReadStatuses === previousState.taskReadStatuses &&
+      state.taskQueryMeta === previousState.taskQueryMeta
+    ) {
+      return;
+    }
+
+    const derivedState = buildTaskDerivedState(
+      state.tasks,
+      state.taskReadStatuses,
+      state.taskQueryMeta
+    );
+
+    useTaskStore.setState(derivedState);
+  });
+
+  const initialState = useTaskStore.getState();
+  useTaskStore.setState(
+    buildTaskDerivedState(
+      initialState.tasks,
+      initialState.taskReadStatuses,
+      initialState.taskQueryMeta
+    )
+  );
+}
+
+syncTaskDerivedState();
+
+export const selectTaskIdsByProject = (projectId: string) => (state: TaskStore) =>
+  state.taskIdsByProject[projectId] || [];
+
+export const selectTopLevelTaskIdsByProject = (projectId: string) => (state: TaskStore) =>
+  state.topLevelTaskIdsByProject[projectId] || [];
+
+export const selectChildTaskIds = (parentTaskId: string) => (state: TaskStore) =>
+  state.childTaskIdsByParent[parentTaskId] || [];
+
+export const selectTaskPreview = (taskId: string) => (state: TaskStore) =>
+  state.taskPreviewById[taskId] || null;
+
+export const selectTaskEntity = (taskId: string) => (state: TaskStore) =>
+  state.tasksById[taskId] || null;
+
+export const selectTaskIdsByUser = (userId: string) => (state: TaskStore) =>
+  state.taskIdsByUser[userId] || [];
+
+export const selectTaskIdsAssignedByUser = (userId: string) => (state: TaskStore) =>
+  state.taskIdsAssignedByUser[userId] || [];
+
+export const selectTaskQueryMeta = (resourceKey: string) => (state: TaskStore) =>
+  state.taskQueryMeta[resourceKey] || createQueryMeta(resourceKey);
+
+export const useTaskIdsByProject = (projectId: string) =>
+  useTaskStore(selectTaskIdsByProject(projectId));
+
+export const useTopLevelTaskIdsByProject = (projectId: string) =>
+  useTaskStore(selectTopLevelTaskIdsByProject(projectId));
+
+export const useChildTaskIds = (parentTaskId: string) =>
+  useTaskStore(selectChildTaskIds(parentTaskId));
+
+export const useTaskPreview = (taskId: string) =>
+  useTaskStore(selectTaskPreview(taskId));
+
+export const useTaskEntity = (taskId: string) =>
+  useTaskStore(selectTaskEntity(taskId));
+
+export const useTaskIdsByUser = (userId: string) =>
+  useTaskStore(selectTaskIdsByUser(userId));
+
+export const useTaskIdsAssignedByUser = (userId: string) =>
+  useTaskStore(selectTaskIdsAssignedByUser(userId));
+
+export const useTaskQueryMeta = (resourceKey: string) =>
+  useTaskStore(selectTaskQueryMeta(resourceKey));

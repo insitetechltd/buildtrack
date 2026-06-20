@@ -129,17 +129,20 @@ export default function RejectTaskScreen({ onNavigateToProfile, onNavigateToProj
 
     try {
       if (isViewingSubTask && subTaskId) {
-        await rejectSubTaskCompletion(taskId, subTaskId, {
-          reason: rejectForm.reason,
-          photos: rejectForm.photos,
-          userId: user.id,
-        });
+        await rejectSubTaskCompletion(
+          taskId,
+          subTaskId,
+          user.id,
+          rejectForm.reason,
+          rejectForm.photos
+        );
       } else {
-        await rejectTaskCompletion(task.id, {
-          reason: rejectForm.reason,
-          photos: rejectForm.photos,
-          userId: user.id,
-        });
+        await rejectTaskCompletion(
+          task.id,
+          user.id,
+          rejectForm.reason,
+          rejectForm.photos
+        );
       }
 
       await fetchTaskById(task.id);

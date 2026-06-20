@@ -18,8 +18,19 @@ import { useCompanyStore } from "../state/companyStore";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useThemeStore } from "../state/themeStore";
 import { useLanguageStore } from "../state/languageStore";
+import { useDevToggleStore } from "../state/devToggleStore";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import { supabase } from "../api/supabase";
+import { runStorageUploadDiagnostic } from "../api/storageUploadDiagnostic";
+import {
+  initializeSprint7RuntimeSandbox,
+  isSprint7RuntimeSandboxLoaded,
+  loadScenarioAPreset,
+  loadScenarioBPreset,
+  loadScenarioCPreset,
+  switchSprint7RuntimeSandboxActor,
+} from "../test-utils/sprint7RuntimeSandbox";
 
 interface DeveloperSettingsScreenProps {
   onNavigateBack: () => void;
@@ -28,7 +39,10 @@ interface DeveloperSettingsScreenProps {
 export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSettingsScreenProps) {
   const { user, logout } = useAuthStore();
   const { isDarkMode } = useThemeStore();
+  const { uiModernizationMode, toggleUiMode } = useDevToggleStore();
   const [isClearing, setIsClearing] = useState(false);
+  const [isTestingUpload, setIsTestingUpload] = useState(false);
+  const [isInitializingSprint7Sandbox, setIsInitializingSprint7Sandbox] = useState(false);
   
   // Get all stores
   const taskStore = useTaskStore();
@@ -44,6 +58,7 @@ export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSet
   const projectCount = projectStore.projects.length;
   const userCount = userStore.users.length;
   const companyCount = companyStore.companies.length;
+  const sprint7SandboxLoaded = isSprint7RuntimeSandboxLoaded();
 
   // Clear all local AsyncStorage data
   const handleClearAllLocalData = async () => {
@@ -222,6 +237,115 @@ export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSet
     }
   };
 
+  // Test Supabase file upload
+  const handleTestUpload = async () => {
+    if (!user) {
+      Alert.alert("Error", "You must be logged in to test uploads.");
+      return;
+    }
+
+    setIsTestingUpload(true);
+
+    try {
+      const results = await runStorageUploadDiagnostic(supabase as any);
+      Alert.alert("Upload Test Results", results.join("\n"));
+    } catch (error: any) {
+      console.error("❌ [Developer] Upload test error:", error);
+      Alert.alert("Upload Test Results", `\n❌ Test error: ${error.message}`);
+    } finally {
+      setIsTestingUpload(false);
+    }
+  };
+
+  const runSprint7SandboxAction = async (
+    mode: "initialize" | "switch",
+    actor: "tristan" | "herman"
+  ) => {
+    setIsInitializingSprint7Sandbox(true);
+    try {
+      if (mode === "initialize") {
+        await initializeSprint7RuntimeSandbox({ activeActor: actor });
+      } else {
+        await switchSprint7RuntimeSandboxActor(actor);
+      }
+
+      const actorLabel = actor === "tristan" ? "Tristan" : "Herman";
+      const actionLabel = mode === "initialize" ? "initialized" : "switched";
+      Alert.alert(
+        "Sprint 7 Sandbox Ready",
+        `Sprint 7 staging sandbox ${actionLabel} for ${actorLabel}.`,
+      );
+    } catch (error: any) {
+      console.error("❌ [Developer] Sprint 7 sandbox error:", error);
+      Alert.alert("Sprint 7 Sandbox Error", error.message || "Failed to load the Sprint 7 sandbox.");
+    } finally {
+      setIsInitializingSprint7Sandbox(false);
+    }
+  };
+
+  const handleInitializeSprint7Sandbox = () => {
+    Alert.alert(
+      "Initialize Sprint 7 Staging Sandbox",
+      sprint7SandboxLoaded
+        ? "Choose whether to reset the canonical Sprint 7 dataset or switch the active sandbox user."
+        : "Load the canonical Tristan/Herman dataset and choose which user to open first.",
+      [
+        {
+          text: "Reset as Tristan",
+          onPress: () => runSprint7SandboxAction("initialize", "tristan"),
+        },
+        {
+          text: "Reset as Herman",
+          onPress: () => runSprint7SandboxAction("initialize", "herman"),
+        },
+        {
+          text: "Switch to Tristan",
+          onPress: () => runSprint7SandboxAction("switch", "tristan"),
+        },
+        {
+          text: "Switch to Herman",
+          onPress: () => runSprint7SandboxAction("switch", "herman"),
+        },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  };
+
+  const handleLoadScenarioPreset = async (preset: "A" | "B" | "C") => {
+    if (!sprint7SandboxLoaded) {
+      Alert.alert(
+        "Initialize Sprint 7 First",
+        "Load the Sprint 7 staging sandbox before applying a scenario preset."
+      );
+      return;
+    }
+
+    setIsInitializingSprint7Sandbox(true);
+    try {
+      if (preset === "A") {
+        await loadScenarioAPreset();
+      } else if (preset === "B") {
+        await loadScenarioBPreset();
+      } else {
+        await loadScenarioCPreset();
+      }
+
+      const presetLabel =
+        preset === "A"
+          ? "Preset A: Rejection Loop"
+          : preset === "B"
+            ? "Preset B: Overdue Crunch"
+            : "Preset C: Isolation Wall";
+
+      Alert.alert("Sprint 7 Preset Loaded", `${presetLabel} is ready for validation.`);
+    } catch (error: any) {
+      console.error("❌ [Developer] Sprint 7 preset error:", error);
+      Alert.alert("Sprint 7 Preset Error", error.message || "Failed to load the Sprint 7 preset.");
+    } finally {
+      setIsInitializingSprint7Sandbox(false);
+    }
+  };
+
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}>
       <StatusBar style={isDarkMode ? "light" : "dark"} />
@@ -274,6 +398,50 @@ export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSet
               <DataRow label="Users" count={userCount} isDarkMode={isDarkMode} />
               <DataRow label="Companies" count={companyCount} isDarkMode={isDarkMode} />
             </View>
+          </View>
+
+          <View className={cn(
+            "rounded-xl p-4 mb-6",
+            isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200"
+          )}>
+            <Text className={cn(
+              "text-lg font-bold mb-4",
+              isDarkMode ? "text-white" : "text-gray-900"
+            )}>
+              🧭 UI Mode
+            </Text>
+
+            <Pressable
+              onLongPress={() => {
+                toggleUiMode();
+                Alert.alert(
+                  "UI Mode Updated",
+                  `Now running: ${uiModernizationMode === "modern" ? "Legacy" : "Modern"}`,
+                  [{ text: "OK" }],
+                );
+              }}
+              className={cn(
+                "rounded-lg p-4 border flex-row items-center",
+                isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-200",
+              )}
+            >
+              <Ionicons name="swap-horizontal" size={24} color={isDarkMode ? "#93c5fd" : "#3b82f6"} />
+              <View className="flex-1 ml-3">
+                <Text className={cn(
+                  "text-base font-semibold",
+                  isDarkMode ? "text-white" : "text-gray-900"
+                )}>
+                  UI Mode: {uiModernizationMode === "modern" ? "Modern" : "Legacy"}
+                </Text>
+                <Text className={cn(
+                  "text-sm mt-1",
+                  isDarkMode ? "text-slate-300" : "text-gray-600"
+                )}>
+                  Long-press to toggle between legacy and modern screens
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={isDarkMode ? "#93c5fd" : "#3b82f6"} />
+            </Pressable>
           </View>
 
           {/* Sync Actions */}
@@ -357,6 +525,66 @@ export default function DeveloperSettingsScreen({ onNavigateBack }: DeveloperSet
               onPress={handleViewStorageKeys}
               isDarkMode={isDarkMode}
               color="purple"
+            />
+            
+            <ActionButton
+              icon="flask-outline"
+              label="Initialize Sprint 7 Staging Sandbox"
+              description="Load or switch the canonical Tristan/Herman QA dataset"
+              onPress={handleInitializeSprint7Sandbox}
+              isDarkMode={isDarkMode}
+              color="blue"
+              disabled={isInitializingSprint7Sandbox}
+            />
+
+            <View className="mb-3">
+              <Text className={cn(
+                "text-xs font-semibold uppercase tracking-wide mb-2",
+                isDarkMode ? "text-slate-400" : "text-gray-500"
+              )}>
+                Sprint 7 Quick Presets
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                <ScenarioPresetButton
+                  label="Preset A: Rejection Loop"
+                  onPress={() => handleLoadScenarioPreset("A")}
+                  isDarkMode={isDarkMode}
+                  disabled={!sprint7SandboxLoaded || isInitializingSprint7Sandbox}
+                  testID="developer-settings__preset_a"
+                />
+                <ScenarioPresetButton
+                  label="Preset B: Overdue Crunch"
+                  onPress={() => handleLoadScenarioPreset("B")}
+                  isDarkMode={isDarkMode}
+                  disabled={!sprint7SandboxLoaded || isInitializingSprint7Sandbox}
+                  testID="developer-settings__preset_b"
+                />
+                <ScenarioPresetButton
+                  label="Preset C: Isolation Wall"
+                  onPress={() => handleLoadScenarioPreset("C")}
+                  isDarkMode={isDarkMode}
+                  disabled={!sprint7SandboxLoaded || isInitializingSprint7Sandbox}
+                  testID="developer-settings__preset_c"
+                />
+              </View>
+              {!sprint7SandboxLoaded ? (
+                <Text className={cn(
+                  "text-xs mt-2",
+                  isDarkMode ? "text-slate-500" : "text-gray-500"
+                )}>
+                  Initialize the Sprint 7 sandbox first to enable these presets.
+                </Text>
+              ) : null}
+            </View>
+
+            <ActionButton
+              icon="cloud-upload-outline"
+              label="Test File Upload"
+              description="Test Supabase storage upload functionality"
+              onPress={handleTestUpload}
+              isDarkMode={isDarkMode}
+              color="green"
+              disabled={isTestingUpload}
             />
           </View>
 
@@ -445,8 +673,16 @@ interface ActionButtonProps {
   description: string;
   onPress: () => void;
   isDarkMode: boolean;
-  color: "blue" | "orange" | "purple" | "red";
+  color: "blue" | "orange" | "purple" | "red" | "green";
   disabled?: boolean;
+}
+
+interface ScenarioPresetButtonProps {
+  label: string;
+  onPress: () => void;
+  isDarkMode: boolean;
+  disabled?: boolean;
+  testID?: string;
 }
 
 function ActionButton({ 
@@ -487,6 +723,13 @@ function ActionButton({
       text: isDarkMode ? "text-red-400" : "text-red-700",
       desc: isDarkMode ? "text-red-300" : "text-red-600",
     },
+    green: {
+      bg: isDarkMode ? "bg-green-900/40" : "bg-green-50",
+      border: isDarkMode ? "border-green-700" : "border-green-200",
+      icon: isDarkMode ? "#4ade80" : "#22c55e",
+      text: isDarkMode ? "text-green-400" : "text-green-700",
+      desc: isDarkMode ? "text-green-300" : "text-green-600",
+    },
   };
 
   const colors = colorMap[color];
@@ -516,6 +759,30 @@ function ActionButton({
   );
 }
 
-
-
-
+function ScenarioPresetButton({
+  label,
+  onPress,
+  isDarkMode,
+  disabled = false,
+  testID,
+}: ScenarioPresetButtonProps) {
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled}
+      className={cn(
+        "px-3 py-2 rounded-full border",
+        isDarkMode ? "bg-slate-900 border-slate-700" : "bg-slate-50 border-slate-300",
+        disabled && "opacity-50"
+      )}
+    >
+      <Text className={cn(
+        "text-xs font-medium",
+        isDarkMode ? "text-slate-200" : "text-slate-700"
+      )}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}

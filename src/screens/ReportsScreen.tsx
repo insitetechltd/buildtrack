@@ -19,7 +19,7 @@ import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
-import { Task } from "../types/buildtrack";
+import { SubTask, Task } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 
@@ -127,12 +127,12 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
   // Calculate statistics
   const stats = {
     total: filteredTasks.length,
-    completed: filteredTasks.filter(t => t.currentStatus === "completed").length,
-    inProgress: filteredTasks.filter(t => t.currentStatus === "in_progress").length,
-    notStarted: filteredTasks.filter(t => t.currentStatus === "not_started").length,
-    rejected: filteredTasks.filter(t => t.currentStatus === "rejected").length,
+    completed: filteredTasks.filter(t => (t.currentStatus ?? t.status) === "completed").length,
+    inProgress: filteredTasks.filter(t => (t.currentStatus ?? t.status) === "in_progress").length,
+    notStarted: filteredTasks.filter(t => (t.currentStatus ?? t.status) === "not_started").length,
+    rejected: filteredTasks.filter(t => (t.currentStatus ?? t.status) === "rejected").length,
     overdue: filteredTasks.filter(t => 
-      new Date(t.dueDate) < new Date() && t.currentStatus !== "completed"
+      new Date(t.dueDate) < new Date() && (t.currentStatus ?? t.status) !== "completed"
     ).length,
     byPriority: {
       critical: filteredTasks.filter(t => t.priority === "critical").length,
@@ -191,6 +191,9 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
   );
 
   const TaskRow = ({ task }: { task: Task }) => (
+    (() => {
+      const taskStatus = task.currentStatus ?? task.status;
+      return (
     <View className="bg-white border border-gray-200 rounded-lg p-3 mb-2">
       <View className="flex-row items-center justify-between mb-1">
         <Text className="font-medium text-gray-900 flex-1" numberOfLines={1}>
@@ -198,12 +201,12 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         </Text>
         <Text className={cn(
           "text-sm px-2 py-1 rounded capitalize",
-          task.currentStatus === "completed" ? "bg-green-100 text-green-700" :
-          task.currentStatus === "in_progress" ? "bg-blue-100 text-blue-700" :
-          task.currentStatus === "rejected" ? "bg-red-100 text-red-700" :
+          taskStatus === "completed" ? "bg-green-100 text-green-700" :
+          taskStatus === "in_progress" ? "bg-blue-100 text-blue-700" :
+          taskStatus === "rejected" ? "bg-red-100 text-red-700" :
           "bg-gray-100 text-gray-700"
         )}>
-          {task.currentStatus.replace("_", " ")}
+          {taskStatus.replace("_", " ")}
         </Text>
       </View>
       <View className="flex-row items-center justify-between">
@@ -215,6 +218,8 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         </Text>
       </View>
     </View>
+      );
+    })()
   );
 
   return (

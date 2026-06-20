@@ -52,9 +52,10 @@ let lastRefreshTime = Date.now();
 // Function to force a re-render of all components using these stores
 export const triggerRefresh = async () => {
   const now = Date.now();
+  const previousRefreshTime = lastRefreshTime;
   
   // Prevent too frequent refreshes (minimum 500ms between refreshes)
-  if (now - lastRefreshTime < 500) {
+  if (now - previousRefreshTime < 500) {
     return;
   }
   
@@ -64,7 +65,7 @@ export const triggerRefresh = async () => {
   const currentHash = generateDataHash();
   const hasDataChanged = currentHash !== lastDataHash;
   
-  if (hasDataChanged || now - lastRefreshTime > 30000) {
+  if (hasDataChanged || now - previousRefreshTime > 30000) {
     lastDataHash = currentHash;
     
     // Actually fetch fresh data from Supabase instead of just re-rendering

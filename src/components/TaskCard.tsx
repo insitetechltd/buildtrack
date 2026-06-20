@@ -89,7 +89,9 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   const handleStarPress = (e: any) => {
     e.stopPropagation(); // Prevent opening task detail
     if (user) {
-      taskStore.toggleTaskStar(task.id, user.id);
+      void Promise.resolve(taskStore.toggleTaskStar(task.id, user.id)).catch((error) => {
+        console.error('Failed to toggle task star:', error);
+      });
     }
   };
 
@@ -266,7 +268,9 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
         onPress={() => {
           // Mark task as read when opened
           if (user && isNew) {
-            taskStore.markTaskAsRead(user.id, task.id);
+            void Promise.resolve(taskStore.markTaskAsRead(user.id, task.id)).catch((error) => {
+              console.warn('Failed to mark task as read:', error);
+            });
           }
           
           // Navigate directly to the task's detail page (works for both top-level and sub-tasks)
@@ -613,4 +617,3 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   // Return without swipeable if no actions available or on desktop
   return cardContent;
 }
-

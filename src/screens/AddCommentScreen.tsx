@@ -1,146 +1,31 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   TextInput,
-  Alert,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { useAuthStore } from "../state/authStore";
-import { useTaskStore } from "../state/taskStore.supabase";
+import { useNavigation } from "@react-navigation/native";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
-import { useFileUpload, UploadResults } from "../utils/useFileUpload";
+import {
+  useAddCommentViewAdapter,
+  type AddCommentScreenProps,
+} from "../ui/viewAdapters/useAddCommentViewAdapter";
 
-interface AddCommentScreenParams {
-  taskId: string;
-}
-
-interface AddCommentScreenProps {
-  onNavigateToProfile?: () => void;
-  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
-}
-
-export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProjectPicker }: AddCommentScreenProps = {}) {
+export default function AddCommentScreen({
+  onNavigateToProfile,
+  onNavigateToProjectPicker,
+}: AddCommentScreenProps = {}) {
   const navigation = useNavigation<any>();
-  const route = useRoute();
-  const { taskId } = (route.params || {}) as AddCommentScreenParams;
-  const { user } = useAuthStore();
-  const tasks = useTaskStore(state => state.tasks);
-  const fetchTaskById = useTaskStore(state => state.fetchTaskById);
-  const addAssignerComment = useTaskStore(state => state.addAssignerComment);
-  const { pickAndUploadImages } = useFileUpload();
+  const { output, actions } = useAddCommentViewAdapter();
 
-  const task = tasks.find(t => t.id === taskId);
-
-  const [commentForm, setCommentForm] = useState({
-    description: "",
-    photos: [] as string[],
-  });
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
-  const handleAddPhotos = async () => {
-    if (!user || !task) return;
-
-    Alert.alert(
-      "Add Photos",
-      "Choose how you want to add photos",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'camera'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setCommentForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to take photo");
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              const results: UploadResults = await pickAndUploadImages(
-                {
-                  entityType: 'task-update',
-                  entityId: task.id,
-                  companyId: user.companyId,
-                  userId: user.id,
-                },
-                'library'
-              );
-
-              if (results.successful.length > 0) {
-                const newPhotoUrls = results.successful.map(file => file.public_url);
-                setCommentForm(prev => ({
-                  ...prev,
-                  photos: [...prev.photos, ...newPhotoUrls],
-                }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to pick images");
-            }
-          },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
-  };
-
-  const handleSubmitComment = async () => {
-    if (!commentForm.description.trim()) {
-      Alert.alert("Error", "Please provide a comment");
-      return;
-    }
-
-    if (!user || !task) return;
-
-    setIsSubmittingComment(true);
-
-    try {
-      await addAssignerComment(task.id, {
-        description: commentForm.description,
-        photos: commentForm.photos,
-        userId: user.id,
-      });
-
-      await fetchTaskById(task.id);
-
-      Alert.alert("Success", "Comment added successfully");
-      navigation.goBack();
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to add comment");
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  if (!task) {
+  if (!output.readiness.hasUsableData) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
@@ -180,23 +65,18 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
             Photos (Optional)
           </Text>
           
-          {commentForm.photos.length > 0 ? (
+          {output.photoAttachments.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
               <View className="flex-row">
-                {commentForm.photos.map((photo, index) => (
-                  <View key={index} className="mr-3 relative">
+                {output.photoAttachments.map((photo) => (
+                  <View key={photo.id} className="mr-3 relative">
                     <Image
-                      source={{ uri: photo }}
+                      source={{ uri: photo.uri }}
                       className="w-24 h-24 rounded-lg"
                       resizeMode="cover"
                     />
                     <Pressable
-                      onPress={() => {
-                        setCommentForm(prev => ({
-                          ...prev,
-                          photos: prev.photos.filter((_, i) => i !== index)
-                        }));
-                      }}
+                      onPress={photo.onRemove}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
                     >
                       <Ionicons name="close" size={14} color="white" />
@@ -208,7 +88,9 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
           ) : null}
 
           <Pressable
-            onPress={handleAddPhotos}
+            onPress={() => {
+              void actions.handleAddPhotos();
+            }}
             className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
           >
             <Ionicons name="camera-outline" size={24} color="#6b7280" />
@@ -226,8 +108,8 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
           <TextInput
             className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
             placeholder="Add your comment here..."
-            value={commentForm.description}
-            onChangeText={(text) => setCommentForm(prev => ({ ...prev, description: text }))}
+            value={output.commentForm.description}
+            onChangeText={actions.setCommentDescription}
             multiline
             textAlignVertical="top"
           />
@@ -246,11 +128,13 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
       >
         <SafeAreaView edges={['bottom']}>
           <Pressable
-            onPress={handleSubmitComment}
-            disabled={isSubmittingComment || !commentForm.description.trim()}
+            onPress={() => {
+              void actions.handleSubmitComment();
+            }}
+            disabled={output.commentForm.isSubmitting || !output.commentForm.isValid}
             className={cn(
               "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-              (isSubmittingComment || !commentForm.description.trim()) ? "bg-gray-300" : "bg-indigo-600"
+              (output.commentForm.isSubmitting || !output.commentForm.isValid) ? "bg-gray-300" : "bg-indigo-600"
             )}
           >
             <Ionicons 
@@ -259,7 +143,7 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
               color="white" 
             />
             <Text className="text-white font-semibold text-base ml-2">
-              {isSubmittingComment ? "Submitting..." : "Add Comment"}
+              {output.commentForm.isSubmitting ? "Submitting..." : "Add Comment"}
             </Text>
           </Pressable>
         </SafeAreaView>
@@ -267,4 +151,3 @@ export default function AddCommentScreen({ onNavigateToProfile, onNavigateToProj
     </SafeAreaView>
   );
 }
-

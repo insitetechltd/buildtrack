@@ -43,3 +43,12 @@ This document records the Wave 1 technical priority scoring for the current high
 - `TaskDetailScreen` ranks third because it is tightly coupled to navigation transitions and detail-shell stability, making it essential to proving the hybrid migrated-to-legacy navigation bridge.
 - `CreateTaskScreen` is intentionally deferred to Wave 2 because its high regression blast radius and dense interaction model would slow the primitive foundation phase.
 - `ProjectsScreen` remains valuable but ranks lower because its reuse and traffic scores are lower than the Wave 1 foundation trio.
+
+## Group B Header Follow-Up
+
+- Current migrated screens fall into two temporary header groups:
+  - fully custom modern headers such as `DashboardScreen` and `TasksScreen`
+  - bridge-header migrated screens such as `TaskDetailScreen`, `UpdateProgressScreen`, and `CreateTaskScreen`
+- The second group is transitional only. Their business logic and screen shells are already modernized, but they still rely on `StandardHeader` as a lower-risk migration bridge.
+- A future migration milestone must complete the full header convergence for Group B by replacing `StandardHeader` usage with the shared custom modern header composition pattern.
+- The temporary `Modern UI` marker must remain easy to remove during that follow-up and must not become the permanent indicator of migration status.

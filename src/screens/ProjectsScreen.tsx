@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  Image,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -17,11 +16,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import { useAuthStore } from "../state/authStore";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
-import { useCompanyStore } from "../state/companyStore";
 import { Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
@@ -29,6 +26,11 @@ import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without cre
 import ModalHandle from "../components/ModalHandle";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
+import { useProjectsViewAdapter } from "../ui/viewAdapters/useProjectsViewAdapter";
+import type {
+  ProjectsScreenFilterOption,
+  ProjectsScreenProjectItem,
+} from "../ui/contracts/viewAdapters";
 
 interface ProjectsScreenProps {
   onNavigateToProjectDetail: (projectId: string) => void;
@@ -46,137 +48,7 @@ export default function ProjectsScreen({
   newProjectId
 }: ProjectsScreenProps) {
   const t = useTranslation();
-  const dateFormatter = useDateFormatter();
-  const { user } = useAuthStore();
-  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getProjectsByCompany, getProjectsByUser, getProjectStats, updateProject, getProjectUserAssignments, assignUserToProject, getLeadPMForProject, fetchProjects, fetchUserProjectAssignments } = projectStore;
-  const userStore = useUserStoreWithInit();
-  const { getUserById, getUsersByCompany, fetchUsers } = userStore;
-  const { getCompanyById, getCompanyBanner } = useCompanyStore();
-
-  const [searchQuery, setSearchQuery] = useState("");
-  const [refreshing, setRefreshing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch fresh data from database whenever screen is mounted or comes into focus
-  useEffect(() => {
-    const loadData = async () => {
-      if (!user) return;
-      
-      if (newProjectId) {
-        console.log('🔄 ProjectsScreen: Loading fresh data and verifying new project:', newProjectId);
-      } else {
-        console.log('🔄 ProjectsScreen: Loading fresh data from database...');
-      }
-      setIsLoading(true);
-      
-      try {
-        // Retry logic to ensure data is fully loaded
-        let retries = 0;
-        const maxRetries = 10; // Increased for new project verification
-        let dataLoaded = false;
-        
-        while (retries < maxRetries && !dataLoaded) {
-          // Fetch all data in parallel
-          await Promise.all([
-            fetchProjects(),
-            fetchUsers(),
-            fetchUserProjectAssignments(user.id)
-          ]);
-          
-          // Verify data was actually loaded
-          const currentProjects = projectStore.projects;
-          console.log(`📊 ProjectsScreen: Loaded ${currentProjects.length} projects from database`);
-          
-          // If we're looking for a specific new project, verify it exists
-          if (newProjectId) {
-            const newProjectExists = currentProjects.some(p => p.id === newProjectId);
-            
-            if (newProjectExists) {
-              console.log(`✅ ProjectsScreen: New project "${newProjectId}" confirmed in database!`);
-              dataLoaded = true;
-              
-              // Log all projects
-              currentProjects.forEach(p => {
-                const isNew = p.id === newProjectId ? ' ⭐ NEW' : '';
-                console.log(`  - Project: "${p.name}" (ID: ${p.id}, Company: ${p.companyId})${isNew}`);
-              });
-            } else {
-              retries++;
-              console.log(`⏳ ProjectsScreen: New project not found yet, retrying (${retries}/${maxRetries})...`);
-              await new Promise(resolve => setTimeout(resolve, 800));
-            }
-          } else {
-            // No specific project to verify, just ensure we have data
-            if (currentProjects.length > 0 || retries >= maxRetries - 1) {
-              dataLoaded = true;
-              console.log('✅ ProjectsScreen: Fresh data loaded from database');
-              
-              // Log all project IDs and names for debugging
-              currentProjects.forEach(p => {
-                console.log(`  - Project: "${p.name}" (ID: ${p.id}, Company: ${p.companyId})`);
-              });
-            } else {
-              retries++;
-              console.log(`⏳ ProjectsScreen: No projects found, retrying (${retries}/${maxRetries})...`);
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          }
-        }
-        
-        if (!dataLoaded && newProjectId) {
-          console.warn(`⚠️ ProjectsScreen: Could not verify new project ${newProjectId} after ${maxRetries} attempts`);
-        }
-      } catch (error) {
-        console.error('❌ ProjectsScreen: Error loading data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [user?.id, newProjectId, fetchProjects, fetchUsers, fetchUserProjectAssignments]);
-
-  if (!user) return null;
-
-  const currentCompany = user.role === "admin" ? getCompanyById(user.companyId) : null;
-  const banner = getCompanyBanner(user.companyId);
-
-  // Get projects based on user role - COMPANY FILTERED
-  const allProjects = React.useMemo(() => {
-    if (user.role === "admin") {
-      // For admins: Only show projects owned by their company
-      return getProjectsByCompany(user.companyId);
-    } else {
-      // For non-admins: Show only projects they're assigned to
-      return getProjectsByUser(user.id);
-    }
-  }, [user.role, user.companyId, user.id, getProjectsByCompany, getProjectsByUser]);
-  
-  // Filter projects based on search and status
-  const filteredProjects = React.useMemo(() => {
-    return allProjects.filter(project => {
-      const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           project.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || project.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [allProjects, searchQuery, statusFilter]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      await Promise.all([
-        fetchProjects(),
-        user ? fetchUserProjectAssignments(user.id) : Promise.resolve(),
-      ]);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [fetchProjects, fetchUserProjectAssignments, user]);
+  const { output, actions } = useProjectsViewAdapter({ newProjectId });
 
   const getStatusColor = (status: ProjectStatus) => {
     switch (status) {
@@ -189,39 +61,36 @@ export default function ProjectsScreen({
     }
   };
 
-  const ProjectCard = ({ project }: { project: Project }) => {
-    const projectStats = getProjectStats(project.id);
-    const createdBy = getUserById(project.createdBy);
-    const leadPMId = getLeadPMForProject(project.id);
-    const leadPM = leadPMId ? getUserById(leadPMId) : null;
-    
+  const ProjectCard = ({ project }: { project: ProjectsScreenProjectItem }) => {
     return (
       <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
-        {/* Header */}
         <View className="flex-row items-start justify-between mb-3">
           <Pressable 
             className="flex-1"
-            onPress={() => onNavigateToProjectDetail(project.id)}
+            onPress={() => onNavigateToProjectDetail(project.projectId)}
           >
             <Text className="font-bold text-xl text-gray-900 mb-1" numberOfLines={2}>
-              {project.name}
+              {project.title}
             </Text>
             <Text className="text-base text-gray-600" numberOfLines={2}>
               {project.description}
             </Text>
           </Pressable>
           <View className="flex-row items-center ml-3">
-            <View className={cn("px-3 py-1 rounded-full mr-2", getStatusColor(project.status))}>
+            <View
+              className={cn(
+                "px-3 py-1 rounded-full mr-2",
+                getStatusColor(project.statusValue),
+              )}
+            >
               <Text className="text-sm font-medium capitalize">
-                {project.status.replace("_", " ")}
+                {project.statusLabel}
               </Text>
             </View>
-            {user.role === "admin" && (
+            {project.canEdit && (
               <Pressable
-                onPress={() => {
-                  setEditingProject(project);
-                  setShowEditModal(true);
-                }}
+                testID={`projects-edit-${project.projectId}`}
+                onPress={() => actions.openEditProject(project.projectId)}
                 className="w-8 h-8 items-center justify-center bg-blue-50 rounded-lg"
               >
                 <Ionicons name="pencil" size={16} color="#3b82f6" />
@@ -230,63 +99,59 @@ export default function ProjectsScreen({
           </View>
         </View>
 
-        {/* Lead PM Badge */}
-        {leadPM && (
+        {project.leadPmName && (
           <View className="bg-purple-50 border border-purple-200 rounded-lg px-2 py-1 mb-3 flex-row items-center">
             <Ionicons name="star" size={12} color="#7c3aed" />
             <Text className="text-sm text-purple-700 font-medium ml-1">
-              {t.projects.leadPM}: {leadPM.name}
+              {t.projects.leadPM}: {project.leadPmName}
             </Text>
           </View>
         )}
 
-        {/* Project Info */}
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center flex-1 mr-2">
             <Ionicons name="location-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1 flex-1" numberOfLines={1} ellipsizeMode="tail">
-              {project.location || t.projects.noLocation}
+              {project.locationLabel}
             </Text>
           </View>
           
           <View className="flex-row items-center">
             <Ionicons name="people-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1">
-              {projectStats.totalUsers} {projectStats.totalUsers !== 1 ? t.projects.members : t.projects.member}
+              {project.memberCountLabel}
             </Text>
           </View>
         </View>
 
-        {/* Client and Timeline */}
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center">
             <Ionicons name="business-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1">
-              {project.clientInfo.name}
+              {project.clientName}
             </Text>
           </View>
           
           <View className="flex-row items-center">
             <Ionicons name="calendar-outline" size={14} color="#6b7280" />
             <Text className="text-sm text-gray-500 ml-1">
-              {dateFormatter.formatDateShort(project.startDate)}
+              {project.startDateLabel}
             </Text>
           </View>
         </View>
 
-        {/* Budget */}
-        {project.budget && (
+        {project.budgetLabel && (
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="cash-outline" size={14} color="#6b7280" />
               <Text className="text-sm text-gray-500 ml-1">
-                {t.projects.budget}: ${project.budget.toLocaleString()}
+                {project.budgetLabel}
               </Text>
             </View>
             
             <View className="flex-row items-center">
               <Text className="text-sm text-gray-500">
-                {t.projects.createdBy} {createdBy?.name || t.projects.unknown}
+                {t.projects.createdBy} {project.createdByLabel}
               </Text>
             </View>
           </View>
@@ -296,17 +161,15 @@ export default function ProjectsScreen({
   };
 
   const StatusFilterButton = ({ 
-    status, 
-    label 
+    option,
   }: { 
-    status: ProjectStatus | "all"; 
-    label: string 
+    option: ProjectsScreenFilterOption;
   }) => (
     <Pressable
-      onPress={() => setStatusFilter(status)}
+      onPress={() => actions.selectStatusFilter(option.value)}
       className={cn(
         "px-3 py-1.5 rounded-full border mr-2 mb-2",
-        statusFilter === status
+        option.isSelected
           ? "bg-blue-600 border-blue-600"
           : "bg-white border-gray-300"
       )}
@@ -314,28 +177,31 @@ export default function ProjectsScreen({
       <Text
         className={cn(
           "text-base font-medium",
-          statusFilter === status
+          option.isSelected
             ? "text-white"
             : "text-gray-600"
         )}
       >
-        {label}
+        {option.label}
       </Text>
     </Pressable>
   );
+
+  if (!output.readiness.hasUsableData && !output.continuity.isInitialLoading) {
+    return null;
+  }
 
   return (
     <>
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
-      {/* Standard Header */}
       <StandardHeader 
         title={t.projects.projects}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
         rightElement={
-          user.role === "admin" ? (
+          output.isAdmin ? (
             <View className="flex-row space-x-2">
               {onNavigateToUserManagement && (
                 <Pressable
@@ -360,70 +226,57 @@ export default function ProjectsScreen({
         className="flex-1" 
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={output.isRefreshing} onRefresh={() => void actions.handleRefresh()} />
         }
       >
-        {/* Search Bar */}
         <View className="px-6 pt-4">
           <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2 mb-4">
             <Ionicons name="search-outline" size={20} color="#6b7280" />
             <TextInput
               className="flex-1 ml-2 text-gray-900"
               placeholder={t.projects.searchProjects}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={output.searchQuery}
+              onChangeText={actions.setSearchQuery}
             />
           </View>
 
-          {/* Project Count */}
           <Text className="text-base text-gray-600 mb-4">
-            {filteredProjects.length} {filteredProjects.length !== 1 ? t.projects.projectsPlural : t.projects.project}
-            {user.role !== "admin" && ` ${t.projects.assignedToYou}`}
+            {output.projectCountLabel}
           </Text>
         </View>
 
-        {/* Status Filters */}
         <View className="bg-white border-b border-gray-200 px-6 py-3">
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row">
-              <StatusFilterButton status="all" label={t.projects.all} />
-              <StatusFilterButton status="active" label={t.projects.active} />
-              <StatusFilterButton status="planning" label={t.projects.planning} />
-              <StatusFilterButton status="on_hold" label={t.projects.onHold} />
-              <StatusFilterButton status="completed" label={t.projects.completed} />
-              <StatusFilterButton status="cancelled" label={t.projects.cancelled} />
+              {output.filterOptions.map((option) => (
+                <StatusFilterButton key={option.id} option={option} />
+              ))}
             </View>
           </ScrollView>
         </View>
 
-        {/* Project List */}
         <View className="px-6 py-4">
-        {isLoading ? (
+        {output.continuity.isInitialLoading ? (
           <View className="flex-1 items-center justify-center py-16">
             <ActivityIndicator size="large" color="#2563eb" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
               {t.projects.loadingProjects}
             </Text>
           </View>
-        ) : filteredProjects.length > 0 ? (
-          filteredProjects.map((project) => (
+        ) : output.projectItems.length > 0 ? (
+          output.projectItems.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))
         ) : (
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="folder-open-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-xl font-medium mt-4">
-              {searchQuery ? t.projects.noProjectsFound : t.projects.noProjects}
+              {output.emptyState.title}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
-              {searchQuery 
-                ? t.projects.tryAdjustingSearch
-                : user.role === "admin"
-                  ? t.projects.createFirstProject
-                  : t.projects.noProjectsMessage
-              }
+              {output.emptyState.message}
             </Text>
-            {user.role === "admin" && !searchQuery && (
+            {output.emptyState.showCreateAction && (
               <Pressable
                 onPress={onNavigateToCreateProject}
                 className="mt-6 px-6 py-3 bg-blue-600 rounded-lg"
@@ -436,23 +289,13 @@ export default function ProjectsScreen({
         </View>
       </ScrollView>
 
-      {/* Edit Project Modal */}
       <EditProjectModal
-        visible={showEditModal}
-        project={editingProject}
-        onClose={() => {
-          setShowEditModal(false);
-          setEditingProject(null);
-        }}
-        onSave={(updatedProject) => {
-          updateProject(updatedProject.id, updatedProject);
-          setShowEditModal(false);
-          setEditingProject(null);
-          Alert.alert(t.errors.success, t.projects.projectUpdated);
-        }}
+        visible={output.isEditModalVisible}
+        project={output.editingProject}
+        onClose={actions.closeEditProject}
+        onSave={actions.saveEditedProject}
       />
 
-    {/* Logout FAB */}
     <LogoutFAB />
     </SafeAreaView>
     </>
@@ -474,7 +317,7 @@ function EditProjectModal({
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const { getUsersByCompany } = useUserStoreWithInit();
-  const { getLeadPMForProject, assignUserToProject, getProjectUserAssignments, removeUserFromProject } = useProjectStoreWithCompanyInit(user?.companyId || "");
+  const { getLeadPMForProject, assignUserToProject, removeUserFromProject } = useProjectStoreWithCompanyInit(user?.companyId || "");
 
   const [formData, setFormData] = useState({
     name: "",

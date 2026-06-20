@@ -7,6 +7,8 @@ import type {
   PrimitiveStructuralState,
   StatusSemanticToken,
 } from "./primitives";
+import type { Language } from "@/state/languageStore";
+import type { Project, ProjectStatus } from "@/types/buildtrack";
 import type { ResponsibilityToken } from "@/utils/accountabilityEngine";
 
 export interface PrimitiveReadyItemBase {
@@ -258,6 +260,198 @@ export interface PhotoAnnotationScreenViewAdapterOutput {
   isLoading: boolean;
 }
 
+export interface ProjectPickerListItem extends PrimitiveReadyItemBase {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  statusLabel: string;
+  isSelected: boolean;
+}
+
+export interface ProjectPickerScreenViewAdapterOutput {
+  screenId: "ProjectPickerScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  projectItems: ProjectPickerListItem[];
+  selectedProjectId: string | null;
+  isProjectSwitching: boolean;
+  allowBack: boolean;
+}
+
+export interface ProjectsScreenProjectItem extends PrimitiveReadyItemBase {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string;
+  statusValue: ProjectStatus;
+  statusLabel: string;
+  locationLabel: string;
+  memberCountLabel: string;
+  clientName: string;
+  startDateLabel: string;
+  createdByLabel: string;
+  leadPmName?: string;
+  budgetLabel?: string;
+  canEdit: boolean;
+}
+
+export interface ProjectsScreenFilterOption {
+  id: string;
+  value: ProjectStatus | "all";
+  label: string;
+  isSelected: boolean;
+}
+
+export interface ProjectsScreenEmptyStateModel {
+  title: string;
+  message: string;
+  showCreateAction: boolean;
+}
+
+export interface ProjectsScreenViewAdapterOutput {
+  screenId: "ProjectsScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  searchQuery: string;
+  statusFilter: ProjectStatus | "all";
+  projectCountLabel: string;
+  isRefreshing: boolean;
+  isAdmin: boolean;
+  projectItems: ProjectsScreenProjectItem[];
+  filterOptions: ProjectsScreenFilterOption[];
+  emptyState: ProjectsScreenEmptyStateModel;
+  editingProject: Project | null;
+  isEditModalVisible: boolean;
+}
+
+export interface AddCommentPhotoAttachment extends PrimitiveReadyItemBase {
+  id: string;
+  uri: string;
+  onRemove: () => void;
+}
+
+export interface AddCommentFormModel {
+  description: string;
+  isSubmitting: boolean;
+  isValid: boolean;
+}
+
+export interface AddCommentScreenViewAdapterOutput {
+  screenId: "AddCommentScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  commentForm: AddCommentFormModel;
+  photoAttachments: AddCommentPhotoAttachment[];
+}
+
+export interface RejectTaskPhotoAttachment extends PrimitiveReadyItemBase {
+  id: string;
+  uri: string;
+  onRemove: () => void;
+}
+
+export interface RejectTaskFormModel {
+  reason: string;
+  isSubmitting: boolean;
+  isValid: boolean;
+  isViewingSubTask: boolean;
+}
+
+export interface RejectTaskScreenViewAdapterOutput {
+  screenId: "RejectTaskScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  rejectForm: RejectTaskFormModel;
+  photoAttachments: RejectTaskPhotoAttachment[];
+}
+
+export interface ReassignTaskAssigneeItem extends PrimitiveReadyItemBase {
+  id: string;
+  userId: string;
+  name: string;
+  roleLabel: string;
+  email?: string;
+  isSelected: boolean;
+  isFavorite: boolean;
+}
+
+export interface ReassignTaskScreenViewAdapterOutput {
+  screenId: "ReassignTaskScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  searchQuery: string;
+  selectedUserIds: string[];
+  assigneeItems: ReassignTaskAssigneeItem[];
+}
+
+export interface ProfileScreenMenuItem extends PrimitiveReadyItemBase {
+  id: string;
+  actionId: string;
+  title: string;
+  icon: string;
+  showChevron: boolean;
+  colorTone: "default" | "danger";
+  rightText?: string;
+  badge?: number;
+}
+
+export interface ProfileScreenSectionModel {
+  id: string;
+  title: string;
+  items: ProfileScreenMenuItem[];
+}
+
+export interface ProfileCardModel {
+  initial: string;
+  name: string;
+  roleLabel: string;
+  email: string;
+  phone?: string;
+}
+
+export interface ProfileLanguageOptionModel {
+  id: string;
+  language: Language;
+  title: string;
+  subtitle: string;
+  isSelected: boolean;
+}
+
+export interface ProfileLanguagePickerModel {
+  visible: boolean;
+  selectedLanguage: Language;
+  options: ProfileLanguageOptionModel[];
+}
+
+export interface ProfilePasswordChangeModel {
+  visible: boolean;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  isSubmitting: boolean;
+  isValid: boolean;
+}
+
+export interface ProfileSystemStatusItem {
+  id: string;
+  label: string;
+  value: string;
+  indicatorColor: string;
+  valueTone: "default" | "positive" | "negative" | "warning";
+}
+
+export interface ProfileScreenViewAdapterOutput {
+  screenId: "ProfileScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  profileCard: ProfileCardModel;
+  sections: ProfileScreenSectionModel[];
+  languagePicker: ProfileLanguagePickerModel;
+  passwordChange: ProfilePasswordChangeModel;
+  systemStatusItems: ProfileSystemStatusItem[];
+}
+
 export interface CreateTaskFormModel {
   title: string;
   description: string;
@@ -294,5 +488,3 @@ export interface CreateTaskScreenViewAdapterOutput {
     isProcessing: boolean;
   };
 }
-
-

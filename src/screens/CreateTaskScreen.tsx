@@ -38,6 +38,7 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import StandardHeader from "../components/StandardHeader";
+import ModernUiMarker from "../components/migration/ModernUiMarker";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
@@ -300,6 +301,7 @@ export default function CreateTaskScreen({
           title={t.tasks.createTask}
           showBackButton={true}
           onBackPress={onNavigateBack}
+          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center px-6">
           <Text>{t.createTask.adminCannotCreateTasks}</Text>
@@ -331,6 +333,7 @@ export default function CreateTaskScreen({
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
+        rightElement={<ModernUiMarker />}
       />
 
       {/* Parent Task Info Banner */}
@@ -1962,6 +1965,7 @@ function TaskActionScreen({
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
+            rightElement={<ModernUiMarker />}
           />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#3b82f6" />
@@ -1982,6 +1986,7 @@ function TaskActionScreen({
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
+            rightElement={<ModernUiMarker />}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
             {/* Photos Section */}
@@ -2113,6 +2118,7 @@ function TaskActionScreen({
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
+            rightElement={<ModernUiMarker />}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
             {/* Photos Section */}
@@ -2228,6 +2234,7 @@ function TaskActionScreen({
           onBackPress={onNavigateBack}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
+          rightElement={<ModernUiMarker />}
         />
         <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
           <View className="mb-6">

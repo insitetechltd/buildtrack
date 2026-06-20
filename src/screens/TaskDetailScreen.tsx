@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import StandardHeader from "@/components/StandardHeader";
+import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
 import TaskCard from "@/components/TaskCard";
 import { cn } from "@/utils/cn";
@@ -206,7 +207,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         <StandardHeader 
           title="Loading..." 
           showBackButton 
-          onBackPress={props.onNavigateBack} 
+          onBackPress={props.onNavigateBack}
+          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center">
           <Text>Loading task details...</Text>
@@ -225,6 +227,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         onBackPress={props.onNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
+        rightElement={<ModernUiMarker />}
       />
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>

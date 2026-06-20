@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
+import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import { mapDashboardProjectToContainerCardProps } from "@/ui/mappers/dashboardMappers";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
@@ -165,11 +166,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           <View className="mb-3 flex-row items-center justify-between">
             <Text className="text-xl font-semibold text-slate-900">Dashboard</Text>
             <View className="flex-row items-center">
+              <ModernUiMarker />
               {visibility.showProjectPickerShortcut && props.onNavigateToProjectPicker ? (
                 <Pressable
                   testID="dashboard-screen__header_project_picker"
                   onPress={() => props.onNavigateToProjectPicker?.(true)}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-white"
+                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
                 >
                   <Ionicons name="business-outline" size={20} color="#0f172a" />
                 </Pressable>

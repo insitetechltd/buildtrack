@@ -3,6 +3,7 @@ import { FlatList, Pressable, Text, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
+import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps, mapTaskRowToContainerCardProps } from "@/ui/mappers/tasksMappers";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
@@ -57,11 +58,12 @@ export default function TasksScreen(props: TasksScreenProps) {
               <Text className="ml-2 text-xl font-semibold text-slate-900">Tasks</Text>
             </View>
             <View className="flex-row items-center">
+              <ModernUiMarker />
               {visibility.showResetFiltersShortcut ? (
                 <Pressable
                   testID="tasks-screen__header_reset_filters"
                   onPress={actions.resetFilters}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-white"
+                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
                 >
                   <Ionicons name="refresh-outline" size={20} color="#0f172a" />
                 </Pressable>

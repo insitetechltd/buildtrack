@@ -110,6 +110,7 @@ export default function StandardHeader({
               </Text>
             )}
           </View>
+          {rightElement ? <View className="ml-3">{rightElement}</View> : null}
         </View>
       </View>
     );
@@ -190,8 +191,8 @@ export default function StandardHeader({
           )}
         </View>
         
-        {/* User Icon - Always shown, or custom right element if provided */}
-        {rightElement || (
+        <View className="ml-3 flex-row items-center">
+          {rightElement ? <View>{rightElement}</View> : null}
           <Pressable 
             onPress={() => {
               if (onProfilePress) {
@@ -200,7 +201,7 @@ export default function StandardHeader({
                 setShowProfileMenu(true);
               }
             }}
-            className="flex-row items-center"
+            className={cn("flex-row items-center", rightElement ? "ml-2" : "")}
           >
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
               <Text className="text-white font-bold text-base">
@@ -208,7 +209,7 @@ export default function StandardHeader({
               </Text>
             </View>
           </Pressable>
-        )}
+        </View>
       </View>
 
       {/* Profile Menu - Only render when user is available */}

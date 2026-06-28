@@ -1,142 +1,78 @@
-import React, { useState } from "react";
-import { View, Text, Alert } from "react-native";
+import React from "react";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useAuthStore } from "../state/authStore";
-import { isAdmin } from "../types/buildtrack";
-import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useCompanyStore } from "../state/companyStore";
+
 import StandardHeader from "../components/StandardHeader";
 import ProjectForm from "../components/ProjectForm";
-import { notifyDataMutation } from "../utils/DataRefreshManager";
-import { useTranslation } from "../utils/useTranslation";
+import {
+  useCreateProjectViewAdapter,
+  type CreateProjectViewAdapterProps,
+} from "../ui/viewAdapters/useCreateProjectViewAdapter";
 
-interface CreateProjectScreenProps {
-  onNavigateBack: (projectId?: string) => void;
-}
+type CreateProjectScreenProps = CreateProjectViewAdapterProps;
 
 export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScreenProps) {
-  const t = useTranslation();
-  const { user } = useAuthStore();
-  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { createProject, fetchProjects } = projectStore;
-  const { getCompanyBanner } = useCompanyStore();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { output, actions } = useCreateProjectViewAdapter({ onNavigateBack });
 
-  if (!isAdmin(user)) {
+  if (!output.readiness.hasUsableData) {
+    return null;
+  }
+
+  if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">{t.userManagement.accessDenied}</Text>
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-gray-500 text-center">
+            {output.access.deniedMessage || "Access denied."}
+          </Text>
+          <Pressable onPress={actions.cancel} className="mt-4 px-4 py-2 bg-blue-600 rounded-lg">
+            <Text className="text-white font-medium">Go Back</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const adminUser = user as NonNullable<typeof user>;
-
-  const handleSubmit = async (formData: any) => {
-    setIsSubmitting(true);
-
-    try {
-      console.log('🔨 Creating project...');
-      const createdProjectId = await createProject({
-        name: formData.name,
-        description: formData.description,
-        status: formData.status,
-        startDate: formData.startDate.toISOString(),
-        endDate: formData.endDate.toISOString(),
-        location: formData.location,
-        clientInfo: {
-          name: formData.clientInfo.name,
-          email: formData.clientInfo.email || undefined,
-          phone: formData.clientInfo.phone || undefined,
-        },
-        createdBy: adminUser.id,
-        companyId: adminUser.companyId,
-      });
-
-      console.log('✅ Project created:', createdProjectId);
-      console.log('📋 Project details:', {
-        id: createdProjectId,
-        name: formData.name,
-        companyId: adminUser.companyId,
-        createdBy: adminUser.id
-      });
-
-      // Wait a moment for database to fully process
-      console.log('⏳ Waiting for database to process...');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Increased to 1 second
-
-      // Fetch fresh project data with retry logic - keep trying until successful
-      console.log('🔄 Fetching fresh project list...');
-      let retries = 0;
-      const maxRetries = 10; // Increased max retries
-      let projectExists = false;
-      
-      while (retries < maxRetries && !projectExists) {
-        await fetchProjects();
-        
-        // Log current projects in store
-        console.log(`📊 Current projects in store: ${projectStore.projects.length}`);
-        projectStore.projects.forEach(p => {
-          console.log(`  - "${p.name}" (ID: ${p.id}, Company: ${p.companyId})`);
-        });
-        
-        // Check if the new project is in the store
-        projectExists = projectStore.projects.some(p => p.id === createdProjectId);
-        
-        if (projectExists) {
-          console.log('✅ New project confirmed in store');
-          break;
-        }
-        
-        retries++;
-        console.log(`⏳ Project not found yet, retrying (${retries}/${maxRetries})...`);
-        await new Promise(resolve => setTimeout(resolve, 800)); // Increased delay
-      }
-
-      if (!projectExists) {
-        console.warn('⚠️ Project created but not yet visible in list. It may appear after a refresh.');
-        Alert.alert(
-          t.projects.projectCreated, 
-          t.projects.projectCreatedMessage,
-          [{ text: t.common.ok, onPress: () => onNavigateBack(createdProjectId) }]
-        );
-        return;
-      }
-
-      // Notify all users about the new project
-      notifyDataMutation('project');
-
-      console.log('✅ Navigating back to projects screen with project ID:', createdProjectId);
-      // Navigate back with the new project ID so ProjectsScreen can verify it's loaded
-      onNavigateBack(createdProjectId);
-    } catch (error) {
-      console.error("❌ Error creating project:", error);
-      Alert.alert(t.errors.error, t.projects.failedToCreateProject);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      
+
       <StandardHeader
-        title={t.projects.createNewProject}
+        title={output.headerTitle}
         showBackButton={true}
-        onBackPress={onNavigateBack}
+        onBackPress={actions.cancel}
       />
+
+      {output.companyBanner ? (
+        <View className="mx-4 mt-4 rounded-xl overflow-hidden border border-gray-200 bg-white">
+          <View
+            className="px-4 py-3"
+            style={{ backgroundColor: output.companyBanner.backgroundColor }}
+          >
+            <Text
+              className="text-sm font-medium"
+              style={{ color: output.companyBanner.textColor }}
+            >
+              {output.companyBanner.text || "Company banner active"}
+            </Text>
+          </View>
+        </View>
+      ) : output.headerSubtitle ? (
+        <View className="mx-4 mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+          <Text className="text-sm text-gray-600">{output.headerSubtitle}</Text>
+        </View>
+      ) : null}
 
       <ProjectForm
         mode="create"
-        onSubmit={handleSubmit}
-        onCancel={onNavigateBack}
-        submitButtonText={t.projects.create}
-        isSubmitting={isSubmitting}
+        onSubmit={(formData) =>
+          output.canSubmit ? actions.submitProject(formData) : Promise.resolve()
+        }
+        onCancel={actions.cancel}
+        submitButtonText={output.submitButtonText}
+        isSubmitting={output.isSubmitting}
       />
     </SafeAreaView>
   );

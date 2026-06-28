@@ -1,448 +1,297 @@
-import React, { useState } from "react";
+import React from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  TextInput,
   Modal,
-  Image,
+  Pressable,
   RefreshControl,
-  Alert,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "../state/authStore";
-import { isAdmin, getUserSystemPermission, getProjectRole, ProjectRole } from "../types/buildtrack";
-import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useUserStoreWithInit } from "../state/userStore.supabase";
-import { useCompanyStore } from "../state/companyStore";
-import { User, Project, UserCategory } from "../types/buildtrack";
-import { cn } from "../utils/cn";
-import StandardHeader from "../components/StandardHeader";
-import ModalHandle from "../components/ModalHandle";
-import { notifyDataMutation } from "../utils/DataRefreshManager";
-import { useTranslation } from "../utils/useTranslation";
 
-interface UserManagementScreenProps {
-  onNavigateBack: () => void;
+import ModalHandle from "../components/ModalHandle";
+import StandardHeader from "../components/StandardHeader";
+import type {
+  UserManagementProjectRoleOption,
+  UserManagementUserCard,
+} from "../ui/contracts/viewAdapters";
+import {
+  useUserManagementViewAdapter,
+  type UserManagementViewAdapterProps,
+} from "../ui/viewAdapters/useUserManagementViewAdapter";
+import { cn } from "../utils/cn";
+
+type UserManagementScreenProps = UserManagementViewAdapterProps;
+
+function getProjectRoleClasses(role: UserManagementProjectRoleOption["role"]) {
+  const colors = {
+    lead_project_manager: {
+      container: "bg-purple-50 border-purple-200",
+      text: "text-purple-600",
+    },
+    contractor: {
+      container: "bg-blue-50 border-blue-200",
+      text: "text-blue-600",
+    },
+    subcontractor: {
+      container: "bg-green-50 border-green-200",
+      text: "text-green-600",
+    },
+    inspector: {
+      container: "bg-red-50 border-red-200",
+      text: "text-red-600",
+    },
+    architect: {
+      container: "bg-indigo-50 border-indigo-200",
+      text: "text-indigo-600",
+    },
+    engineer: {
+      container: "bg-orange-50 border-orange-200",
+      text: "text-orange-600",
+    },
+    worker: {
+      container: "bg-gray-50 border-gray-200",
+      text: "text-gray-600",
+    },
+    foreman: {
+      container: "bg-yellow-50 border-yellow-200",
+      text: "text-yellow-600",
+    },
+  } as const;
+
+  return colors[role] || colors.worker;
 }
 
-export default function UserManagementScreen({ onNavigateBack }: UserManagementScreenProps) {
-  const t = useTranslation();
-  const { user: currentUser, logout } = useAuthStore();
-  const currentCompanyId = currentUser?.companyId ?? "";
-  const { getProjectsByCompany, assignUserToProject, removeUserFromProject, getUserProjectAssignments } = useProjectStoreWithCompanyInit(currentCompanyId);
-  const userStore = useUserStoreWithInit();
-  const { getUsersByCompany, getAdminCountByCompany, fetchUsers, approveUser, rejectUser, getAllUsers } = userStore;
-  const { getCompanyById, getCompanyBanner } = useCompanyStore();
+function UserCard({
+  card,
+  onAssign,
+  onApprove,
+  onReject,
+  onRemoveAssignment,
+}: {
+  card: UserManagementUserCard;
+  onAssign: (userId: string) => void;
+  onApprove: (userId: string) => void;
+  onReject: (userId: string) => void;
+  onRemoveAssignment: (userId: string, projectId: string) => void;
+}) {
+  return (
+    <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
+      <View className="flex-row items-center justify-between mb-3">
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <View className="flex-row items-center gap-1">
+              <Text className="font-semibold text-gray-900 text-lg">{card.name}</Text>
+              {card.isAdmin ? <Ionicons name="star" size={16} color="#7c3aed" /> : null}
+            </View>
+            {card.isAdmin ? (
+              <View className="bg-purple-100 px-2 py-1 rounded">
+                <Text className="text-purple-700 text-sm font-bold">ADMIN</Text>
+              </View>
+            ) : null}
+            {card.isPending ? (
+              <View className="bg-orange-100 px-2 py-1 rounded flex-row items-center">
+                <Ionicons name="time-outline" size={12} color="#ea580c" />
+                <Text className="text-orange-700 text-sm font-bold ml-1">Pending</Text>
+              </View>
+            ) : null}
+            {card.isProtected ? (
+              <View className="bg-amber-100 px-2 py-1 rounded flex-row items-center">
+                <Ionicons name="shield-checkmark" size={12} color="#d97706" />
+                <Text className="text-amber-700 text-sm font-bold ml-1">Protected</Text>
+              </View>
+            ) : null}
+          </View>
+          {card.email ? <Text className="text-base text-gray-600">{card.email}</Text> : null}
+          <View className="flex-row items-center mt-1">
+            <Ionicons name="person-outline" size={14} color="#6b7280" />
+            <Text className="text-sm text-gray-500 ml-1">
+              {card.systemRoleLabel} • {card.positionLabel}
+            </Text>
+          </View>
+        </View>
 
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<ProjectRole>("worker");
-  const [activeModal, setActiveModal] = useState<'assign' | 'project' | 'category' | 'success' | 'removeConfirm' | 'invite' | 'approveConfirm' | 'rejectConfirm' | null>(null);
-  const [successMessage, setSuccessMessage] = useState("");
-  const [removeData, setRemoveData] = useState<{userId: string, projectId: string, userName: string, projectName: string} | null>(null);
-  const [pendingUserData, setPendingUserData] = useState<User | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+        {card.isPending ? (
+          <View className="flex-row gap-2">
+            <Pressable
+              testID={card.primaryAction.testId}
+              onPress={() => onApprove(card.userId)}
+              className="px-3 py-2 bg-green-600 rounded-lg"
+            >
+              <Text className="text-white text-sm font-medium">{card.primaryAction.label}</Text>
+            </Pressable>
+            {card.secondaryAction ? (
+              <Pressable
+                testID={card.secondaryAction.testId}
+                onPress={() => onReject(card.userId)}
+                className="px-3 py-2 bg-red-600 rounded-lg"
+              >
+                <Text className="text-white text-sm font-medium">{card.secondaryAction.label}</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : (
+          <Pressable
+            testID={card.primaryAction.testId}
+            onPress={() => onAssign(card.userId)}
+            className="px-3 py-2 bg-blue-600 rounded-lg"
+          >
+            <Text className="text-white text-sm font-medium">{card.primaryAction.label}</Text>
+          </Pressable>
+        )}
+      </View>
 
-  // Handle pull-to-refresh
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await fetchUsers();
-      console.log('✅ User list refreshed successfully');
-    } catch (error) {
-      console.error('❌ Error refreshing users:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+      {!card.isPending ? (
+        <>
+          {card.assignmentRows.length > 0 ? (
+            <View>
+              <Text className="text-base font-medium text-gray-700 mb-2">
+                Project Assignments ({card.assignmentRows.length})
+              </Text>
+              <View className="space-y-2">
+                {card.assignmentRows.map((assignment) => {
+                  const classes = getProjectRoleClasses(assignment.projectRole);
 
-  if (!currentUser || !isAdmin(currentUser)) {
+                  return (
+                    <View
+                      key={assignment.id}
+                      className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2"
+                    >
+                      <View className="flex-1">
+                        <Text className="text-base font-medium text-gray-900">
+                          {assignment.projectName}
+                        </Text>
+                        <View
+                          className={cn(
+                            "inline-flex px-2 py-1 rounded border mt-1",
+                            classes.container,
+                          )}
+                        >
+                          <Text className={cn("text-sm font-medium", classes.text)}>
+                            {assignment.projectRoleLabel}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {assignment.canRemove ? (
+                        <Pressable
+                          testID={assignment.removeTestId}
+                          onPress={() => onRemoveAssignment(card.userId, assignment.projectId)}
+                          className="ml-2 p-1"
+                        >
+                          <Ionicons name="close-circle" size={20} color="#ef4444" />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          ) : (
+            <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <Text className="text-yellow-800 text-base">Not assigned to any projects</Text>
+            </View>
+          )}
+        </>
+      ) : null}
+
+      {card.pendingMessage ? (
+        <View className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <View className="flex-row items-center">
+            <Ionicons name="time-outline" size={16} color="#ea580c" />
+            <Text className="text-orange-800 text-base ml-2">{card.pendingMessage}</Text>
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+export default function UserManagementScreen(props: UserManagementScreenProps) {
+  const { onNavigateBack } = props;
+  const { output, actions } = useUserManagementViewAdapter(props);
+  const selectedRoleClasses = getProjectRoleClasses(output.selectedProjectRole);
+  const ModalComponent = Modal || View;
+  const RefreshControlComponent = RefreshControl;
+
+  if (!output.readiness.hasUsableData) {
+    return null;
+  }
+
+  if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">{t.userManagement.accessDenied}</Text>
-          <Pressable onPress={onNavigateBack} className="mt-4 px-4 py-2 bg-blue-600 rounded-lg">
-            <Text className="text-white">{t.userManagement.goBack}</Text>
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-gray-500 text-center">
+            {output.access.deniedMessage || "Access denied."}
+          </Text>
+          <Pressable
+            onPress={onNavigateBack}
+            className="mt-4 px-4 py-2 bg-blue-600 rounded-lg"
+          >
+            <Text className="text-white">Go Back</Text>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
-  const adminUser = currentUser;
-
-  // Only show users from the same company
-  const companyUsers = adminUser.companyId
-    ? getUsersByCompany(adminUser.companyId)
-    : [];
-  const projects = adminUser.companyId ? getProjectsByCompany(adminUser.companyId) : [];
-  const currentCompany = adminUser.companyId ? getCompanyById(adminUser.companyId) : null;
-  const allUsers = getAllUsers();
-  
-  // Debug logging
-  console.log('=== USER MANAGEMENT DEBUG ===');
-  console.log('Current User:', adminUser.name, adminUser.email);
-  console.log('Current User Company ID:', adminUser.companyId);
-  console.log('All Users in Store:', allUsers.length);
-  console.log('Company Users Found:', companyUsers.length);
-  console.log('All Users Details:', allUsers.map(u => ({
-    id: u.id, 
-    name: u.name, 
-    companyId: u.companyId,
-  })));
-  console.log('Filtered Users Details:', companyUsers.map(u => ({
-    id: u.id, 
-    name: u.name, 
-    companyId: u.companyId,
-  })));
-  console.log('============================');
-  
-  const filteredUsers = companyUsers.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
-  /**
-   * Get color styling for PROJECT ROLE (category) badges
-   * 
-   * Note: "category" refers to PROJECT ROLE, not job title
-   * Example: A user with job title "manager" can have category "contractor" on a project
-   */
-  const getCategoryColor = (category: ProjectRole) => {
-    const colors = {
-      lead_project_manager: "bg-purple-50 text-purple-600 border-purple-200",
-      contractor: "bg-blue-50 text-blue-600 border-blue-200", 
-      subcontractor: "bg-green-50 text-green-600 border-green-200",
-      inspector: "bg-red-50 text-red-600 border-red-200",
-      architect: "bg-indigo-50 text-indigo-600 border-indigo-200",
-      engineer: "bg-orange-50 text-orange-600 border-orange-200",
-      worker: "bg-gray-50 text-gray-600 border-gray-200",
-      foreman: "bg-yellow-50 text-yellow-600 border-yellow-200",
-    };
-    return colors[category] || colors.worker;
-  };
-
-  /**
-   * Get display label for PROJECT ROLE (category)
-   * 
-   * Note: This is for project-specific roles, not system-wide job titles
-   */
-  const getCategoryLabel = (category: ProjectRole) => {
-    const labels = {
-      lead_project_manager: "Lead Project Manager",
-      contractor: "Contractor",
-      subcontractor: "Subcontractor", 
-      inspector: "Inspector",
-      architect: "Architect",
-      engineer: "Engineer",
-      worker: "Worker",
-      foreman: "Foreman",
-    };
-    return labels[category] || category;
-  };
-
-  const handleAssignUser = () => {
-    if (!selectedUser || !selectedProject) return;
-
-    // Assign user to project with a PROJECT ROLE (category)
-    // Note: selectedCategory is the PROJECT ROLE (what they do on this project),
-    //       NOT their job title (admin/manager/worker)
-    assignUserToProject(selectedUser.id, selectedProject.id, selectedCategory, adminUser.id);
-    
-    // Notify all users about the assignment
-    notifyDataMutation('assignment');
-    
-    setSuccessMessage(`${selectedUser.name} has been assigned to ${selectedProject.name} as ${getCategoryLabel(selectedCategory)}.`);
-    setActiveModal('success');
-    
-    setSelectedUser(null);
-    setSelectedProject(null);
-    setSelectedCategory("worker");
-  };
-
-  const handleRemoveUser = (userId: string, projectId: string, userName: string, projectName: string) => {
-    setRemoveData({ userId, projectId, userName, projectName });
-    setActiveModal('removeConfirm');
-  };
-
-  const confirmRemoveUser = () => {
-    if (!removeData) return;
-    
-    removeUserFromProject(removeData.userId, removeData.projectId);
-    
-    // Notify all users about the removal
-    notifyDataMutation('assignment');
-    
-    setSuccessMessage(`${removeData.userName} has been removed from ${removeData.projectName}.`);
-    setActiveModal('success');
-    setRemoveData(null);
-  };
-
-  const handleApproveUser = (user: User) => {
-    setPendingUserData(user);
-    setActiveModal('approveConfirm');
-  };
-
-  const handleRejectUser = (user: User) => {
-    setPendingUserData(user);
-    setActiveModal('rejectConfirm');
-  };
-
-  const confirmApproveUser = async () => {
-    if (!pendingUserData) return;
-    
-    try {
-      await approveUser(pendingUserData.id, adminUser.id);
-      
-      // Notify all users about the approval
-      notifyDataMutation('user');
-      
-      setSuccessMessage(`${pendingUserData.name} has been approved and can now log in.`);
-      setActiveModal('success');
-      setPendingUserData(null);
-    } catch (error) {
-      console.error('Error approving user:', error);
-      alert('Failed to approve user. Please try again.');
-      setActiveModal(null);
-      setPendingUserData(null);
-    }
-  };
-
-  const confirmRejectUser = async () => {
-    if (!pendingUserData) return;
-    
-    try {
-      await rejectUser(pendingUserData.id);
-      
-      // Notify all users about the rejection
-      notifyDataMutation('user');
-      
-      setSuccessMessage(`${pendingUserData.name} has been rejected and removed from the system.`);
-      setActiveModal('success');
-      setPendingUserData(null);
-    } catch (error) {
-      console.error('Error rejecting user:', error);
-      alert('Failed to reject user. Please try again.');
-      setActiveModal(null);
-      setPendingUserData(null);
-    }
-  };
-
-  const UserCard = ({ user }: { user: User }) => {
-    const userAssignments = getUserProjectAssignments(user.id);
-    const isLastAdmin = isAdmin(user) && getAdminCountByCompany(user.companyId) === 1;
-    const isPending = user.isPending || false;
-    
-    // Debug logging for user assignments
-    console.log(`=== USER ASSIGNMENTS DEBUG for ${user.name} ===`);
-    console.log('- User ID:', user.id);
-    console.log('- User Assignments:', userAssignments);
-    console.log('- Available Projects:', projects.map(p => ({ id: p.id, name: p.name })));
-    console.log('- Is Pending:', isPending);
-    console.log('==========================================');
-    
-    return (
-      <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
-        {/* User Info */}
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-1">
-            <View className="flex-row items-center gap-2">
-              <View className="flex-row items-center gap-1">
-                <Text className="font-semibold text-gray-900 text-lg">
-                  {user.name}
-                </Text>
-                {isAdmin(user) && (
-                  <Ionicons name="star" size={16} color="#7c3aed" />
-                )}
-              </View>
-              {user.role === "admin" && (
-                <View className="bg-purple-100 px-2 py-1 rounded">
-                  <Text className="text-purple-700 text-sm font-bold">ADMIN</Text>
-                </View>
-              )}
-              {isPending && (
-                <View className="bg-orange-100 px-2 py-1 rounded flex-row items-center">
-                  <Ionicons name="time-outline" size={12} color="#ea580c" />
-                  <Text className="text-orange-700 text-sm font-bold ml-1">Pending</Text>
-                </View>
-              )}
-              {isLastAdmin && (
-                <View className="bg-amber-100 px-2 py-1 rounded flex-row items-center">
-                  <Ionicons name="shield-checkmark" size={12} color="#d97706" />
-                  <Text className="text-amber-700 text-sm font-bold ml-1">Protected</Text>
-                </View>
-              )}
-            </View>
-            <Text className="text-base text-gray-600">
-              {user.email}
-            </Text>
-            <View className="flex-row items-center mt-1">
-              <Ionicons name="person-outline" size={14} color="#6b7280" />
-              <Text className="text-sm text-gray-500 ml-1 capitalize">
-                {getUserSystemPermission(user)} • {user.position}
-              </Text>
-            </View>
-          </View>
-          
-          {/* Show Approve/Reject buttons for pending users, Assign button for approved users */}
-          {isPending ? (
-            <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => handleApproveUser(user)}
-                className="px-3 py-2 bg-green-600 rounded-lg"
-              >
-                <Text className="text-white text-sm font-medium">Approve</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => handleRejectUser(user)}
-                className="px-3 py-2 bg-red-600 rounded-lg"
-              >
-                <Text className="text-white text-sm font-medium">Reject</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable
-              onPress={() => {
-                setSelectedUser(user);
-                setActiveModal('assign');
-              }}
-              className="px-3 py-2 bg-blue-600 rounded-lg"
-            >
-              <Text className="text-white text-sm font-medium">Assign</Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Project Assignments - Only show for approved users */}
-        {!isPending && (
-          <>
-            {userAssignments.length > 0 ? (
-              <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
-                  Project Assignments ({userAssignments.length})
-                </Text>
-                <View className="space-y-2">
-                  {userAssignments.map((assignment) => {
-                    const project = projects.find(p => p.id === assignment.projectId);
-                    if (!project) return null;
-                    
-                    return (
-                      <View key={assignment.projectId} className="flex-row items-center justify-between bg-gray-50 rounded-lg p-2">
-                        <View className="flex-1">
-                          <Text className="text-base font-medium text-gray-900">
-                            {project.name}
-                          </Text>
-                          <View className={cn("inline-flex px-2 py-1 rounded border mt-1", getCategoryColor(getProjectRole(assignment)))}>
-                            <Text className="text-sm font-medium">
-                              {getCategoryLabel(getProjectRole(assignment))}
-                            </Text>
-                          </View>
-                        </View>
-                        
-                        <Pressable
-                          onPress={() => handleRemoveUser(user.id, project.id, user.name, project.name)}
-                          className="ml-2 p-1"
-                        >
-                          <Ionicons name="close-circle" size={20} color="#ef4444" />
-                        </Pressable>
-                      </View>
-                    );
-                  })}
-                </View>
-              </View>
-            ) : (
-              <View className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <Text className="text-yellow-800 text-base">
-                  Not assigned to any projects
-                </Text>
-              </View>
-            )}
-          </>
-        )}
-        
-        {/* Pending user message */}
-        {isPending && (
-          <View className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-            <View className="flex-row items-center">
-              <Ionicons name="time-outline" size={16} color="#ea580c" />
-              <Text className="text-orange-800 text-base ml-2">
-                Awaiting approval - cannot be assigned to projects yet
-              </Text>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
-
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      
-      {/* Standard Header */}
-      <StandardHeader 
+
+      <StandardHeader
         title="User Management"
         showBackButton={true}
         onBackPress={onNavigateBack}
         rightElement={
-          <Pressable 
-            onPress={() => setShowProfileMenu(true)}
-            className="flex-row items-center"
-          >
+          <Pressable onPress={actions.toggleProfileMenu} className="flex-row items-center">
             <View className="mr-2">
               <Text className="text-base font-semibold text-right text-gray-900">
-                {adminUser.name}
+                {output.profileMenu.displayName}
               </Text>
               <Text className="text-sm text-gray-600 text-right capitalize">
-                {adminUser.role}
+                {output.profileMenu.roleLabel}
               </Text>
             </View>
             <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-lg">
-                {adminUser.name.charAt(0).toUpperCase()}
-              </Text>
+              <Text className="text-white font-bold text-lg">{output.profileMenu.avatarInitial}</Text>
             </View>
           </Pressable>
         }
       />
 
       <View className="bg-white border-b border-gray-200 px-6 py-4">
-        {/* Company Info Banner */}
-        {currentCompany && (
+        {output.companyScope.companyName ? (
           <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <View className="flex-row items-center">
               <Ionicons name="business" size={16} color="#3b82f6" />
               <Text className="text-blue-900 font-medium ml-2 flex-1">
-                {currentCompany.name}
+                {output.companyScope.companyName}
               </Text>
             </View>
-            <Text className="text-blue-700 text-sm mt-1">
-              Showing users from your company only
-            </Text>
+            {output.companyScope.subtitle ? (
+              <Text className="text-blue-700 text-sm mt-1">{output.companyScope.subtitle}</Text>
+            ) : null}
           </View>
-        )}
+        ) : null}
 
-
-        {/* Search Bar and Invite Button */}
         <View className="flex-row items-center mb-4 gap-2">
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
             <Ionicons name="search-outline" size={20} color="#6b7280" />
             <TextInput
               className="flex-1 ml-2 text-gray-900"
               placeholder="Search users..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={output.searchQuery}
+              onChangeText={actions.setSearchQuery}
             />
           </View>
           <Pressable
-            onPress={() => setActiveModal('invite')}
+            onPress={actions.openInviteModal}
             className="bg-green-600 rounded-lg px-4 py-2 flex-row items-center"
           >
             <Ionicons name="mail" size={18} color="white" />
@@ -450,112 +299,106 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           </Pressable>
         </View>
 
-        <Text className="text-base text-gray-600">
-          {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} in your company
-        </Text>
+        <Text className="text-base text-gray-600">{output.userCountLabel}</Text>
       </View>
 
-      {/* User List */}
-      <ScrollView 
-        className="flex-1 px-6 py-4" 
+      <ScrollView
+        className="flex-1 px-6 py-4"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          RefreshControlComponent ? (
+            <RefreshControlComponent
+              refreshing={output.refreshState.isRefreshing}
+              onRefresh={() => void actions.handleRefresh()}
+            />
+          ) : undefined
         }
       >
-        {filteredUsers.length === 0 ? (
+        {output.userCards.length === 0 ? (
           <View className="flex-1 items-center justify-center py-12">
             <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
               <Ionicons name="people-outline" size={40} color="#9ca3af" />
             </View>
             <Text className="text-xl font-semibold text-gray-900 mb-2">
-              No Users Found
+              {output.emptyState.title}
             </Text>
             <Text className="text-base text-gray-600 text-center px-8 mb-6">
-              {searchQuery 
-                ? "No users match your search criteria"
-                : "No users in your company yet. Invite team members to get started."
-              }
+              {output.emptyState.message}
             </Text>
-            {!searchQuery && (
+            {output.emptyState.showInviteAction ? (
               <Pressable
-                onPress={() => setActiveModal('invite')}
+                onPress={actions.openInviteModal}
                 className="bg-blue-600 rounded-lg px-6 py-3"
               >
                 <Text className="text-white font-medium">Invite Users</Text>
               </Pressable>
-            )}
+            ) : null}
           </View>
         ) : (
-          filteredUsers.map((user) => (
-            <UserCard key={user.id} user={user} />
+          output.userCards.map((card) => (
+            <UserCard
+              key={card.id}
+              card={card}
+              onAssign={actions.requestAssignUser}
+              onApprove={actions.requestApproveUser}
+              onReject={actions.requestRejectUser}
+              onRemoveAssignment={actions.requestRemoveAssignment}
+            />
           ))
         )}
       </ScrollView>
 
-      {/* Assignment Modal */}
-      <Modal
-        visible={activeModal === 'assign'}
+      <ModalComponent
+        visible={output.activeModal === "assign"}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
           <ModalHandle />
-          
+
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setActiveModal(null)}
-              className="mr-4"
-            >
+            <Pressable onPress={actions.closeAssignmentFlow} className="mr-4">
               <Text className="text-blue-600 font-medium">Cancel</Text>
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
               Assign User to Project
             </Text>
             <Pressable
-              onPress={handleAssignUser}
-              disabled={!selectedUser || !selectedProject}
+              onPress={() => void actions.saveAssignment()}
+              disabled={!output.selectedUserSummary || !output.selectedProjectId}
               className={cn(
                 "px-4 py-2 rounded-lg",
-                (!selectedUser || !selectedProject) ? "bg-gray-300" : "bg-blue-600"
+                !output.selectedUserSummary || !output.selectedProjectId
+                  ? "bg-gray-300"
+                  : "bg-blue-600",
               )}
             >
               <Text className="text-white font-medium">Assign</Text>
             </Pressable>
           </View>
 
-          <ScrollView 
-            className="flex-1 px-6 py-4"
-            keyboardShouldPersistTaps="handled"
-          >
-            {selectedUser && (
+          <ScrollView className="flex-1 px-6 py-4" keyboardShouldPersistTaps="handled">
+            {output.selectedUserSummary ? (
               <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-                <Text className="text-xl font-semibold text-gray-900 mb-2">
-                  Selected User
-                </Text>
+                <Text className="text-xl font-semibold text-gray-900 mb-2">Selected User</Text>
                 <Text className="text-lg font-medium text-gray-900">
-                  {selectedUser.name}
+                  {output.selectedUserSummary.name}
                 </Text>
                 <Text className="text-base text-gray-600">
-                  {selectedUser.email} • {selectedUser.role}
+                  {output.selectedUserSummary.email || "No email"} • {output.selectedUserSummary.roleLabel}
                 </Text>
               </View>
-            )}
+            ) : null}
 
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-semibold text-gray-900 mb-4">
-                Select Project
-              </Text>
+              <Text className="text-xl font-semibold text-gray-900 mb-4">Select Project</Text>
               <Pressable
-                onPress={() => {
-                  console.log("Project picker button pressed");
-                  setActiveModal('project');
-                }}
+                onPress={actions.openProjectPicker}
                 className="border border-gray-300 rounded-lg bg-gray-50 p-4"
               >
                 <View className="flex-row items-center justify-between">
-                  <Text className={selectedProject ? "text-gray-900" : "text-gray-500"}>
-                    {selectedProject ? selectedProject.name : "Select a project..."}
+                  <Text className={output.selectedProjectName ? "text-gray-900" : "text-gray-500"}>
+                    {output.selectedProjectName || "Select a project..."}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#6b7280" />
                 </View>
@@ -563,108 +406,95 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
 
             <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-              <Text className="text-xl font-semibold text-gray-900 mb-4">
-                Select Category
-              </Text>
+              <Text className="text-xl font-semibold text-gray-900 mb-4">Select Category</Text>
               <Pressable
-                onPress={() => {
-                  console.log("Category picker button pressed");
-                  setActiveModal('category');
-                }}
+                onPress={actions.openProjectRolePicker}
                 className="border border-gray-300 rounded-lg bg-gray-50 p-4"
               >
                 <View className="flex-row items-center justify-between">
                   <Text className="text-gray-900">
-                    {getCategoryLabel(selectedCategory)}
+                    {output.projectRoleOptions.find(
+                      (option) => option.role === output.selectedProjectRole,
+                    )?.label || "Worker"}
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#6b7280" />
                 </View>
               </Pressable>
 
-              <View className={cn("mt-3 p-3 rounded-lg border", getCategoryColor(selectedCategory))}>
-                <Text className="text-base font-medium">
-                  Preview: {getCategoryLabel(selectedCategory)}
+              <View
+                className={cn(
+                  "mt-3 p-3 rounded-lg border",
+                  selectedRoleClasses.container,
+                )}
+              >
+                <Text className={cn("text-base font-medium", selectedRoleClasses.text)}>
+                  Preview:{" "}
+                  {output.projectRoleOptions.find(
+                    (option) => option.role === output.selectedProjectRole,
+                  )?.label || "Worker"}
                 </Text>
               </View>
             </View>
           </ScrollView>
         </SafeAreaView>
-      </Modal>
+      </ModalComponent>
 
-      {/* Project Picker Modal */}
-      <Modal
-        visible={activeModal === 'project'}
+      <ModalComponent
+        visible={output.activeModal === "project"}
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
           <ModalHandle />
-          
+
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setActiveModal('assign')}
-              className="mr-4"
-            >
+            <Pressable onPress={actions.returnToAssignmentModal} className="mr-4">
               <Text className="text-blue-600 font-medium">Done</Text>
             </Pressable>
-            <Text className="text-xl font-semibold text-gray-900 flex-1">
-              Select Project
-            </Text>
+            <Text className="text-xl font-semibold text-gray-900 flex-1">Select Project</Text>
           </View>
 
           <ScrollView className="flex-1">
-            {projects.length === 0 ? (
+            {output.availableProjects.length === 0 ? (
               <View className="p-6">
                 <Text className="text-center text-gray-500">No projects available</Text>
               </View>
             ) : (
-              projects.map((project) => (
+              output.availableProjects.map((project) => (
                 <Pressable
                   key={project.id}
-                  onPress={() => {
-                    setSelectedProject(project);
-                    setActiveModal('assign');
-                  }}
+                  onPress={() => actions.selectProject(project.projectId)}
                   className={cn(
                     "flex-row items-center justify-between px-6 py-4 border-b border-gray-200",
-                    selectedProject?.id === project.id ? "bg-blue-50" : "bg-white"
+                    project.isSelected ? "bg-blue-50" : "bg-white",
                   )}
                 >
-                  <Text className={cn(
-                    "text-lg",
-                    selectedProject?.id === project.id ? "text-blue-600 font-semibold" : "text-gray-900"
-                  )}>
-                    {project.name}
+                  <Text
+                    className={cn(
+                      "text-lg",
+                      project.isSelected ? "text-blue-600 font-semibold" : "text-gray-900",
+                    )}
+                  >
+                    {project.projectName}
                   </Text>
-                  {selectedProject?.id === project.id && (
-                    <Ionicons name="checkmark" size={24} color="#3b82f6" />
-                  )}
+                  {project.isSelected ? <Ionicons name="checkmark" size={24} color="#3b82f6" /> : null}
                 </Pressable>
               ))
             )}
           </ScrollView>
         </SafeAreaView>
-      </Modal>
+      </ModalComponent>
 
-      {/* Category Picker Modal */}
-      {/* 
-        IMPORTANT: "Category" here means PROJECT ROLE
-        This is what the user will DO on this specific project,
-        not their system-wide job title (admin/manager/worker)
-      */}
-      <Modal
-        visible={activeModal === 'category'}
+      <ModalComponent
+        visible={output.activeModal === "category"}
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
           <ModalHandle />
-          
+
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setActiveModal('assign')}
-              className="mr-4"
-            >
+            <Pressable onPress={actions.returnToAssignmentModal} className="mr-4">
               <Text className="text-blue-600 font-medium">Done</Text>
             </Pressable>
             <Text className="text-xl font-semibold text-gray-900 flex-1">
@@ -673,49 +503,49 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
           </View>
 
           <ScrollView className="flex-1">
-            {/* All available PROJECT ROLES (what they do on the project) */}
-            {(["lead_project_manager", "contractor", "subcontractor", "inspector", "architect", "engineer", "worker", "foreman"] as UserCategory[]).map((category) => (
-              <Pressable
-                key={category}
-                onPress={() => {
-                  setSelectedCategory(category);
-                  setActiveModal('assign');
-                }}
-                className={cn(
-                  "px-6 py-4 border-b border-gray-200",
-                  selectedCategory === category ? "bg-blue-50" : "bg-white"
-                )}
-              >
-                <View className="flex-row items-center justify-between">
-                  <View>
-                    <Text className={cn(
-                      "text-lg",
-                      selectedCategory === category ? "text-blue-600 font-semibold" : "text-gray-900"
-                    )}>
-                      {getCategoryLabel(category)}
-                    </Text>
-                    <View className={cn("inline-flex px-2 py-1 rounded border mt-2", getCategoryColor(category))}>
-                      <Text className="text-sm font-medium">
-                        {getCategoryLabel(category)}
-                      </Text>
-                    </View>
-                  </View>
-                  {selectedCategory === category && (
-                    <Ionicons name="checkmark" size={24} color="#3b82f6" />
+            {output.projectRoleOptions.map((option) => {
+              const classes = getProjectRoleClasses(option.role);
+
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => actions.selectProjectRole(option.role)}
+                  className={cn(
+                    "px-6 py-4 border-b border-gray-200",
+                    option.isSelected ? "bg-blue-50" : "bg-white",
                   )}
-                </View>
-              </Pressable>
-            ))}
+                >
+                  <View className="flex-row items-center justify-between">
+                    <View>
+                      <Text
+                        className={cn(
+                          "text-lg",
+                          option.isSelected ? "text-blue-600 font-semibold" : "text-gray-900",
+                        )}
+                      >
+                        {option.label}
+                      </Text>
+                      <View
+                        className={cn(
+                          "inline-flex px-2 py-1 rounded border mt-2",
+                          classes.container,
+                        )}
+                      >
+                        <Text className={cn("text-sm font-medium", classes.text)}>
+                          {option.label}
+                        </Text>
+                      </View>
+                    </View>
+                    {option.isSelected ? <Ionicons name="checkmark" size={24} color="#3b82f6" /> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </SafeAreaView>
-      </Modal>
+      </ModalComponent>
 
-      {/* Success Modal */}
-      <Modal
-        visible={activeModal === 'success'}
-        transparent
-        animationType="fade"
-      >
+      <ModalComponent visible={output.activeModal === "success"} transparent animationType="fade">
         <View className="flex-1 bg-black/50 items-center justify-center p-6">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <View className="items-center mb-4">
@@ -723,24 +553,19 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
                 <Ionicons name="checkmark-circle" size={40} color="#10b981" />
               </View>
               <Text className="text-2xl font-bold text-gray-900 mb-2">Success!</Text>
-              <Text className="text-center text-gray-600">{successMessage}</Text>
+              <Text className="text-center text-gray-600">{output.successMessage}</Text>
             </View>
             <Pressable
-              onPress={() => setActiveModal(null)}
+              onPress={actions.closeActiveModal}
               className="bg-blue-600 rounded-lg py-3 items-center"
             >
               <Text className="text-white font-semibold">OK</Text>
             </Pressable>
           </View>
         </View>
-      </Modal>
+      </ModalComponent>
 
-      {/* Remove Confirmation Modal */}
-      <Modal
-        visible={activeModal === 'removeConfirm'}
-        transparent
-        animationType="fade"
-      >
+      <ModalComponent visible={output.activeModal === "removeConfirm"} transparent animationType="fade">
         <View className="flex-1 bg-black/50 items-center justify-center p-6">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <View className="items-center mb-4">
@@ -749,21 +574,18 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               </View>
               <Text className="text-2xl font-bold text-gray-900 mb-2">Remove Assignment</Text>
               <Text className="text-center text-gray-600">
-                Remove {removeData?.userName} from {removeData?.projectName}?
+                Remove {output.pendingRemoval?.userName} from {output.pendingRemoval?.projectName}?
               </Text>
             </View>
             <View className="flex-row gap-3">
               <Pressable
-                onPress={() => {
-                  setActiveModal(null);
-                  setRemoveData(null);
-                }}
+                onPress={actions.closeActiveModal}
                 className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
               >
                 <Text className="text-gray-900 font-semibold">Cancel</Text>
               </Pressable>
               <Pressable
-                onPress={confirmRemoveUser}
+                onPress={() => void actions.confirmRemoveAssignment()}
                 className="flex-1 bg-red-600 rounded-lg py-3 items-center"
               >
                 <Text className="text-white font-semibold">Remove</Text>
@@ -771,14 +593,9 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
           </View>
         </View>
-      </Modal>
+      </ModalComponent>
 
-      {/* Approve Confirmation Modal */}
-      <Modal
-        visible={activeModal === 'approveConfirm'}
-        transparent
-        animationType="fade"
-      >
+      <ModalComponent visible={output.activeModal === "approveConfirm"} transparent animationType="fade">
         <View className="flex-1 bg-black/50 items-center justify-center p-6">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <View className="items-center mb-4">
@@ -787,21 +604,19 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               </View>
               <Text className="text-2xl font-bold text-gray-900 mb-2">Approve User</Text>
               <Text className="text-center text-gray-600">
-                Approve {pendingUserData?.name} to join your company? They will be able to log in and access the app.
+                Approve {output.pendingApprovalUser?.name} to join your company? They will be able
+                to log in and access the app.
               </Text>
             </View>
             <View className="flex-row gap-3">
               <Pressable
-                onPress={() => {
-                  setActiveModal(null);
-                  setPendingUserData(null);
-                }}
+                onPress={actions.closeActiveModal}
                 className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
               >
                 <Text className="text-gray-900 font-semibold">Cancel</Text>
               </Pressable>
               <Pressable
-                onPress={confirmApproveUser}
+                onPress={() => void actions.confirmApproveUser()}
                 className="flex-1 bg-green-600 rounded-lg py-3 items-center"
               >
                 <Text className="text-white font-semibold">Approve</Text>
@@ -809,14 +624,9 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
           </View>
         </View>
-      </Modal>
+      </ModalComponent>
 
-      {/* Reject Confirmation Modal */}
-      <Modal
-        visible={activeModal === 'rejectConfirm'}
-        transparent
-        animationType="fade"
-      >
+      <ModalComponent visible={output.activeModal === "rejectConfirm"} transparent animationType="fade">
         <View className="flex-1 bg-black/50 items-center justify-center p-6">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
             <View className="items-center mb-4">
@@ -825,21 +635,19 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               </View>
               <Text className="text-2xl font-bold text-gray-900 mb-2">Reject User</Text>
               <Text className="text-center text-gray-600">
-                Reject {pendingUserData?.name}? This will permanently delete their account from the system.
+                Reject {output.pendingApprovalUser?.name}? This will permanently delete their account
+                from the system.
               </Text>
             </View>
             <View className="flex-row gap-3">
               <Pressable
-                onPress={() => {
-                  setActiveModal(null);
-                  setPendingUserData(null);
-                }}
+                onPress={actions.closeActiveModal}
                 className="flex-1 bg-gray-200 rounded-lg py-3 items-center"
               >
                 <Text className="text-gray-900 font-semibold">Cancel</Text>
               </Pressable>
               <Pressable
-                onPress={confirmRejectUser}
+                onPress={() => void actions.confirmRejectUser()}
                 className="flex-1 bg-red-600 rounded-lg py-3 items-center"
               >
                 <Text className="text-white font-semibold">Reject</Text>
@@ -847,20 +655,44 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
             </View>
           </View>
         </View>
-      </Modal>
+      </ModalComponent>
 
-      {/* Profile Menu Modal */}
-      <Modal
-        visible={showProfileMenu}
+      <ModalComponent
+        visible={output.activeModal === "invite"}
+        transparent
+        animationType="fade"
+        onRequestClose={actions.closeActiveModal}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-6">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <View className="items-center mb-4">
+              <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mb-3">
+                <Ionicons name="mail-open-outline" size={34} color="#2563eb" />
+              </View>
+              <Text className="text-2xl font-bold text-gray-900 mb-2">Invite Users</Text>
+              <Text className="text-center text-gray-600">
+                Invite flow remains available for the next modernization step.
+              </Text>
+            </View>
+            <Pressable
+              onPress={actions.closeActiveModal}
+              className="bg-blue-600 rounded-lg py-3 items-center"
+            >
+              <Text className="text-white font-semibold">Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </ModalComponent>
+
+      <ModalComponent
+        visible={output.profileMenu.isVisible}
         animationType="fade"
         transparent={true}
-        onRequestClose={() => setShowProfileMenu(false)}
+        onRequestClose={actions.toggleProfileMenu}
       >
-        <Pressable 
-          className="flex-1 bg-black/50"
-          onPress={() => setShowProfileMenu(false)}
-        >
-          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+        <Pressable className="flex-1 bg-black/50" onPress={actions.toggleProfileMenu}>
+          <View
+            className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
             style={{
               shadowColor: "#000",
               shadowOffset: { width: 0, height: 4 },
@@ -869,69 +701,49 @@ export default function UserManagementScreen({ onNavigateBack }: UserManagementS
               elevation: 8,
             }}
           >
-            {/* User Info Header */}
             <View className="bg-blue-600 px-4 py-3 border-b border-blue-700">
               <View className="flex-row items-center">
                 <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
                   <Text className="text-blue-600 font-bold text-lg">
-                    {adminUser.name.charAt(0).toUpperCase()}
+                    {output.profileMenu.avatarInitial}
                   </Text>
                 </View>
                 <View className="flex-1">
                   <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                    {adminUser.name}
+                    {output.profileMenu.displayName}
                   </Text>
                   <Text className="text-blue-100 text-sm capitalize">
-                    {adminUser.role}
+                    {output.profileMenu.roleLabel}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Menu Options */}
             <View className="py-2">
               <Pressable
                 onPress={() => {
-                  setShowProfileMenu(false);
+                  actions.toggleProfileMenu();
                   onNavigateBack();
                 }}
                 className="flex-row items-center px-4 py-3 active:bg-gray-100"
               >
                 <Ionicons name="arrow-back-outline" size={22} color="#3b82f6" />
-                <Text className="text-gray-900 text-base font-medium ml-3">
-                  Back to Dashboard
-                </Text>
+                <Text className="text-gray-900 text-base font-medium ml-3">Back to Dashboard</Text>
               </Pressable>
 
               <View className="h-px bg-gray-200 mx-4" />
 
               <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  Alert.alert(
-                    "Logout",
-                    "Are you sure you want to logout?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { 
-                        text: "Logout", 
-                        style: "destructive",
-                        onPress: logout
-                      },
-                    ]
-                  );
-                }}
+                onPress={actions.confirmLogout}
                 className="flex-row items-center px-4 py-3 active:bg-gray-100"
               >
                 <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-                <Text className="text-red-600 text-base font-medium ml-3">
-                  Logout
-                </Text>
+                <Text className="text-red-600 text-base font-medium ml-3">Logout</Text>
               </Pressable>
             </View>
           </View>
         </Pressable>
-      </Modal>
+      </ModalComponent>
     </SafeAreaView>
   );
 }

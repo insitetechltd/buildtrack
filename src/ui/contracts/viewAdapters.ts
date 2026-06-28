@@ -8,7 +8,7 @@ import type {
   StatusSemanticToken,
 } from "./primitives";
 import type { Language } from "@/state/languageStore";
-import type { Project, ProjectStatus } from "@/types/buildtrack";
+import type { Project, ProjectRole, ProjectStatus } from "@/types/buildtrack";
 import type { ResponsibilityToken } from "@/utils/accountabilityEngine";
 
 export interface PrimitiveReadyItemBase {
@@ -279,6 +279,149 @@ export interface ProjectPickerScreenViewAdapterOutput {
   allowBack: boolean;
 }
 
+export interface LoginScreenValidationErrors {
+  emailOrPhone?: string;
+  password?: string;
+}
+
+export interface LoginScreenViewAdapterOutput {
+  screenId: "LoginScreen";
+  emailOrPhone: string;
+  password: string;
+  isPasswordVisible: boolean;
+  buildIdentifierLabel: string;
+  validationErrors: LoginScreenValidationErrors;
+  isLoading: boolean;
+}
+
+export type ReportsScreenReportType = "my_tasks" | "assigned_tasks";
+
+export interface ReportsScreenReportTypeOption {
+  id: string;
+  value: ReportsScreenReportType;
+  label: string;
+  isSelected: boolean;
+  isVisible: boolean;
+}
+
+export interface ReportsScreenDateRangeModel {
+  from: Date;
+  to: Date;
+  fromLabel: string;
+  toLabel: string;
+  isShowingFromPicker: boolean;
+  isShowingToPicker: boolean;
+}
+
+export interface ReportsStatisticCard extends PrimitiveReadyItemBase {
+  label: string;
+  value: number | string;
+  icon: string;
+  color: string;
+  textColor: string;
+}
+
+export interface ReportsVisibleTaskRow extends PrimitiveReadyItemBase {
+  taskId: string;
+  title: string;
+  statusLabel: string;
+  dueDateLabel: string;
+  completionLabel: string;
+  statusTone: "neutral" | "info" | "success" | "danger";
+}
+
+export interface ReportsScreenViewAdapterOutput {
+  screenId: "ReportsScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  currentReportType: ReportsScreenReportType;
+  reportTypeOptions: ReportsScreenReportTypeOption[];
+  dateRange: ReportsScreenDateRangeModel;
+  statisticsCards: ReportsStatisticCard[];
+  visibleTaskRows: ReportsVisibleTaskRow[];
+  totalVisibleTaskCount: number;
+  hiddenTaskCount: number;
+}
+
+export type AdminDashboardQuickActionId =
+  | "projects"
+  | "user_management"
+  | "company_banner"
+  | "dev_admin";
+
+export interface AdminDashboardAccessModel {
+  isAllowed: boolean;
+  deniedMessage: string | null;
+}
+
+export interface AdminDashboardCompanyScopeModel {
+  companyName?: string;
+  subtitle?: string;
+}
+
+export interface AdminDashboardStatCard extends PrimitiveReadyItemBase {
+  statId: string;
+  label: string;
+  value: number | string;
+  subtitle?: string;
+  icon: string;
+  color: string;
+  iconColor: string;
+  textColor: string;
+}
+
+export interface AdminDashboardQuickActionItem extends PrimitiveReadyItemBase {
+  actionId: AdminDashboardQuickActionId;
+  label: string;
+  description: string;
+  icon: string;
+  color: string;
+  iconColor: string;
+  borderColor: string;
+  isVisible: boolean;
+}
+
+export interface AdminDashboardBannerColorPreset {
+  id: string;
+  label: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
+export interface AdminDashboardBannerSettingsModel {
+  isModalVisible: boolean;
+  text: string;
+  backgroundColor: string;
+  textColor: string;
+  isVisible: boolean;
+  imageUri: string;
+  colorPresets: AdminDashboardBannerColorPreset[];
+}
+
+export interface AdminDashboardRefreshState {
+  isRefreshing: boolean;
+}
+
+export interface AdminDashboardProfileMenuModel {
+  isVisible: boolean;
+  displayName: string;
+  roleLabel: string;
+  avatarInitial: string;
+}
+
+export interface AdminDashboardScreenViewAdapterOutput {
+  screenId: "AdminDashboardScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  access: AdminDashboardAccessModel;
+  companyScope: AdminDashboardCompanyScopeModel;
+  topLevelStats: AdminDashboardStatCard[];
+  quickActions: AdminDashboardQuickActionItem[];
+  bannerSettings: AdminDashboardBannerSettingsModel;
+  refreshState: AdminDashboardRefreshState;
+  profileMenu: AdminDashboardProfileMenuModel;
+}
+
 export interface ProjectsScreenProjectItem extends PrimitiveReadyItemBase {
   id: string;
   projectId: string;
@@ -323,6 +466,438 @@ export interface ProjectsScreenViewAdapterOutput {
   emptyState: ProjectsScreenEmptyStateModel;
   editingProject: Project | null;
   isEditModalVisible: boolean;
+}
+
+export interface ProjectDetailHeaderModel {
+  projectId: string;
+  title: string;
+  description: string;
+  statusValue: ProjectStatus;
+  statusLabel: string;
+}
+
+export interface ProjectDetailLeadPmModel {
+  userId: string;
+  name: string;
+  email?: string;
+}
+
+export interface ProjectDetailStatCard extends PrimitiveReadyItemBase {
+  statId: string;
+  label: string;
+  value: number;
+  iconName: string;
+}
+
+export interface ProjectDetailInfoRow {
+  id: string;
+  label: string;
+  value: string;
+  secondaryValue?: string;
+}
+
+export interface ProjectDetailMemberRow extends PrimitiveReadyItemBase {
+  userId: string;
+  name: string;
+  projectRoleLabel: string;
+  email?: string;
+  isLeadPm: boolean;
+  canRemove: boolean;
+}
+
+export interface ProjectDetailEmptyStateModel {
+  title: string;
+  message: string;
+  primaryActionLabel: string;
+}
+
+export interface ProjectDetailScreenViewAdapterOutput {
+  screenId: "ProjectDetailScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  project: Project | null;
+  header: ProjectDetailHeaderModel | null;
+  leadPm: ProjectDetailLeadPmModel | null;
+  statCards: ProjectDetailStatCard[];
+  informationRows: ProjectDetailInfoRow[];
+  memberRows: ProjectDetailMemberRow[];
+  isRefreshing: boolean;
+  canEdit: boolean;
+  canManageMembers: boolean;
+  editingProject: Project | null;
+  isEditModalVisible: boolean;
+  isAddMemberModalVisible: boolean;
+  existingMemberIds: string[];
+  emptyState: ProjectDetailEmptyStateModel | null;
+}
+
+export type UserManagementActiveModal =
+  | "assign"
+  | "project"
+  | "category"
+  | "success"
+  | "removeConfirm"
+  | "invite"
+  | "approveConfirm"
+  | "rejectConfirm"
+  | null;
+
+export interface UserManagementAccessModel {
+  isAllowed: boolean;
+  deniedMessage: string | null;
+}
+
+export interface UserManagementCompanyScopeModel {
+  companyName?: string;
+  subtitle?: string;
+}
+
+export interface UserManagementRefreshState {
+  isRefreshing: boolean;
+}
+
+export interface UserManagementProfileMenuModel {
+  isVisible: boolean;
+  displayName: string;
+  roleLabel: string;
+  avatarInitial: string;
+}
+
+export interface UserManagementCardAction {
+  id: string;
+  label: string;
+  testId: string;
+  isDisabled?: boolean;
+}
+
+export interface UserManagementAssignmentRow extends PrimitiveReadyItemBase {
+  id: string;
+  projectId: string;
+  projectName: string;
+  projectRole: ProjectRole;
+  projectRoleLabel: string;
+  removeTestId: string;
+  canRemove: boolean;
+}
+
+export interface UserManagementUserCard extends PrimitiveReadyItemBase {
+  id: string;
+  userId: string;
+  name: string;
+  email?: string;
+  systemRoleLabel: string;
+  positionLabel: string;
+  isAdmin: boolean;
+  isProtected: boolean;
+  isPending: boolean;
+  pendingMessage: string | null;
+  assignmentCountLabel: string | null;
+  assignmentRows: UserManagementAssignmentRow[];
+  primaryAction: UserManagementCardAction;
+  secondaryAction: UserManagementCardAction | null;
+}
+
+export interface UserManagementSelectedUserSummary {
+  userId: string;
+  name: string;
+  email?: string;
+  roleLabel: string;
+}
+
+export interface UserManagementProjectOption extends PrimitiveReadyItemBase {
+  id: string;
+  projectId: string;
+  projectName: string;
+  isSelected: boolean;
+}
+
+export interface UserManagementProjectRoleOption extends PrimitiveReadyItemBase {
+  id: string;
+  role: ProjectRole;
+  label: string;
+  isSelected: boolean;
+}
+
+export interface UserManagementPendingRemovalModel {
+  userId: string;
+  projectId: string;
+  userName: string;
+  projectName: string;
+}
+
+export interface UserManagementEmptyStateModel {
+  title: string;
+  message: string;
+  showInviteAction: boolean;
+}
+
+export interface UserManagementScreenViewAdapterOutput {
+  screenId: "UserManagementScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  access: UserManagementAccessModel;
+  companyScope: UserManagementCompanyScopeModel;
+  searchQuery: string;
+  userCountLabel: string;
+  userCards: UserManagementUserCard[];
+  activeModal: UserManagementActiveModal;
+  successMessage: string;
+  pendingApprovalUser: UserManagementSelectedUserSummary | null;
+  pendingRemoval: UserManagementPendingRemovalModel | null;
+  refreshState: UserManagementRefreshState;
+  profileMenu: UserManagementProfileMenuModel;
+  selectedUserSummary: UserManagementSelectedUserSummary | null;
+  selectedProjectId: string | null;
+  selectedProjectName: string | null;
+  selectedProjectRole: ProjectRole;
+  availableProjects: UserManagementProjectOption[];
+  projectRoleOptions: UserManagementProjectRoleOption[];
+  emptyState: UserManagementEmptyStateModel;
+}
+
+export interface PendingUsersScreenCard extends PrimitiveReadyItemBase {
+  id: string;
+  userId: string;
+  name: string;
+  positionLabel: string;
+  email?: string;
+  phone: string;
+  statusLabel: string;
+  approveActionLabel: string;
+  rejectActionLabel: string;
+}
+
+export interface PendingUsersRefreshState {
+  isRefreshing: boolean;
+}
+
+export interface PendingUsersEmptyStateModel {
+  title: string;
+  message: string;
+}
+
+export interface PendingUsersScreenViewAdapterOutput {
+  screenId: "PendingUsersScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  title: string;
+  subtitle: string;
+  pendingUserCards: PendingUsersScreenCard[];
+  refreshState: PendingUsersRefreshState;
+  emptyState: PendingUsersEmptyStateModel;
+}
+
+export interface PhotoViewerActivityMetadata {
+  title: string;
+  actorLabel: string;
+  timestampLabel: string;
+  description?: string;
+  reasonLabel?: string;
+  progressLabel?: string;
+  statusLabel?: string;
+}
+
+export interface PhotoViewerActivityVisuals {
+  iconName: string;
+  accentColor: string;
+  statusBadgeBackgroundColor: string;
+}
+
+export interface PhotoViewerScreenViewAdapterOutput {
+  screenId: "PhotoViewerScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  currentIndex: number;
+  photoCountLabel: string | null;
+  activityMetadata: PhotoViewerActivityMetadata | null;
+  activityVisuals: PhotoViewerActivityVisuals | null;
+}
+
+export type DeveloperSettingsActionColor =
+  | "blue"
+  | "orange"
+  | "purple"
+  | "red"
+  | "green";
+
+export type DeveloperSettingsActionId =
+  | "force-sync-all"
+  | "clear-task-cache"
+  | "clear-project-cache"
+  | "clear-user-cache"
+  | "view-storage-keys"
+  | "initialize-sprint7-sandbox"
+  | "test-file-upload"
+  | "clear-all-local-data";
+
+export type DeveloperSettingsScenarioPreset = "A" | "B" | "C";
+
+export interface DeveloperSettingsAccessModel {
+  isAuthenticated: boolean;
+}
+
+export interface DeveloperSettingsStatisticItem {
+  id: string;
+  label: string;
+  count: number;
+}
+
+export interface DeveloperSettingsUiModeModel {
+  currentMode: "modern" | "legacy";
+  currentModeLabel: string;
+  description: string;
+}
+
+export interface DeveloperSettingsLoadingState {
+  isClearing: boolean;
+  isTestingUpload: boolean;
+  isInitializingSprint7Sandbox: boolean;
+}
+
+export interface DeveloperSettingsActionItem extends PrimitiveReadyItemBase {
+  actionId: DeveloperSettingsActionId;
+  label: string;
+  description: string;
+  icon: string;
+  color: DeveloperSettingsActionColor;
+  isDisabled: boolean;
+}
+
+export interface DeveloperSettingsActionGroup {
+  id: string;
+  title: string;
+  actions: DeveloperSettingsActionItem[];
+  supplementaryLabel?: string;
+}
+
+export interface DeveloperSettingsScenarioPresetAction extends PrimitiveReadyItemBase {
+  preset: DeveloperSettingsScenarioPreset;
+  label: string;
+  isDisabled: boolean;
+  testID: string;
+}
+
+export interface DeveloperSettingsScreenViewAdapterOutput {
+  screenId: "DeveloperSettingsScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  access: DeveloperSettingsAccessModel;
+  title: string;
+  warningTitle: string;
+  warningMessage: string;
+  statistics: DeveloperSettingsStatisticItem[];
+  uiMode: DeveloperSettingsUiModeModel;
+  loadingState: DeveloperSettingsLoadingState;
+  actionGroups: DeveloperSettingsActionGroup[];
+  scenarioPresets: DeveloperSettingsScenarioPresetAction[];
+  scenarioPresetHint: string | null;
+  infoMessage: string;
+}
+
+export type DevAdminToolActionId =
+  | "generate-mock"
+  | "cleanup-mock"
+  | "reset-db"
+  | "seed-db"
+  | "run-tests"
+  | "check-health";
+
+export type DevAdminEnvironmentTone = "production" | "testing" | "custom";
+
+export interface DevAdminAccessModel {
+  isAllowed: boolean;
+  deniedMessage: string | null;
+  displayName: string | null;
+  email: string | null;
+  roleLabel: string | null;
+}
+
+export interface DevAdminActiveEnvironmentModel {
+  name: string;
+  badgeLabel: string;
+  url: string;
+  tone: DevAdminEnvironmentTone;
+}
+
+export interface DevAdminEnvironmentItem extends PrimitiveReadyItemBase {
+  envName: string;
+  label: string;
+  url: string;
+  isActive: boolean;
+  isRemovable: boolean;
+  tone: DevAdminEnvironmentTone;
+}
+
+export interface DevAdminEnvironmentSectionModel {
+  title: string;
+  addActionLabel: string;
+  environments: DevAdminEnvironmentItem[];
+}
+
+export interface DevAdminAddEnvironmentFormModel {
+  isVisible: boolean;
+  name: string;
+  url: string;
+  anonKey: string;
+  canSubmit: boolean;
+}
+
+export interface DevAdminToolActionItem extends PrimitiveReadyItemBase {
+  actionId: DevAdminToolActionId;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+export interface DevAdminToolSectionModel {
+  title: string;
+  actions: DevAdminToolActionItem[];
+}
+
+export interface DevAdminLoadingStateModel {
+  isBusy: boolean;
+  loadingMessage: string;
+}
+
+export interface DevAdminScreenViewAdapterOutput {
+  screenId: "DevAdminScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  access: DevAdminAccessModel;
+  title: string;
+  userInfoLabel: string;
+  activeEnvironment: DevAdminActiveEnvironmentModel | null;
+  environmentSection: DevAdminEnvironmentSectionModel;
+  addEnvironmentForm: DevAdminAddEnvironmentFormModel;
+  toolSection: DevAdminToolSectionModel;
+  productionWarning: string | null;
+  loadingState: DevAdminLoadingStateModel;
+}
+
+export interface CreateProjectAccessModel {
+  isAllowed: boolean;
+  deniedMessage: string | null;
+}
+
+export interface CreateProjectBannerModel {
+  text: string;
+  backgroundColor: string;
+  textColor: string;
+  imageUri?: string;
+}
+
+export interface CreateProjectScreenViewAdapterOutput {
+  screenId: "CreateProjectScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  access: CreateProjectAccessModel;
+  isSubmitting: boolean;
+  headerTitle: string;
+  headerSubtitle: string | null;
+  submitButtonText: string;
+  canSubmit: boolean;
+  companyBanner: CreateProjectBannerModel | null;
 }
 
 export interface AddCommentPhotoAttachment extends PrimitiveReadyItemBase {

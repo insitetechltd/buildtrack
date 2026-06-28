@@ -1958,7 +1958,7 @@ function TaskActionScreen({
         assignedTo: selectedUserIds,
         accepted: false,
         status: "new" as TaskStatus,
-        declineReason: undefined,
+        declinedReason: undefined,
       });
 
       Alert.alert(

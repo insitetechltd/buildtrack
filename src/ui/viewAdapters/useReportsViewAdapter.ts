@@ -86,6 +86,10 @@ function getStatusTone(status: string): "neutral" | "info" | "success" | "danger
   return "neutral";
 }
 
+function isCompletedTaskStatus(status: string): boolean {
+  return status === "completed" || status === "approved" || status === "done";
+}
+
 export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
   const user = useAuthStore((state) => state.user);
   const tasks = useTaskStore((state) => state.tasks);
@@ -168,15 +172,10 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
   );
 
   const stats = useMemo(() => {
-    const completed = filteredTasks.filter(
-      (task) => (task.currentStatus ?? task.status) === "completed",
-    ).length;
-    const inProgress = filteredTasks.filter(
-      (task) => (task.currentStatus ?? task.status) === "in_progress",
-    ).length;
+    const completed = filteredTasks.filter((task) => isCompletedTaskStatus(task.status)).length;
+    const inProgress = filteredTasks.filter((task) => task.status === "in_progress").length;
     const overdue = filteredTasks.filter((task) => {
-      const taskStatus = task.currentStatus ?? task.status;
-      return new Date(task.dueDate) < new Date() && taskStatus !== "completed";
+      return new Date(task.dueDate) < new Date() && !isCompletedTaskStatus(task.status);
     }).length;
     const critical = filteredTasks.filter((task) => task.priority === "critical").length;
     const averageCompletion =
@@ -279,16 +278,14 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
   const visibleTaskRows = useMemo(
     () =>
       filteredTasks.slice(0, 5).map((task) => {
-        const status = task.currentStatus ?? task.status;
-
         return {
           id: `reports-row:${task.id}`,
           taskId: task.id,
           title: task.title,
-          statusLabel: formatStatusLabel(status),
+          statusLabel: formatStatusLabel(task.status),
           dueDateLabel: `${t.taskDetail.due}: ${dateFormatter.formatDateShort(task.dueDate)}`,
           completionLabel: `${task.completionPercentage}% complete`,
-          statusTone: getStatusTone(status),
+          statusTone: getStatusTone(task.status),
           density: "standard" as const,
           structuralState: "stale" as const,
         };

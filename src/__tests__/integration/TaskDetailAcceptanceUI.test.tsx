@@ -200,6 +200,32 @@ describe("TaskDetailScreen Acceptance UI Regression", () => {
     expect(queryByText("Reject")).toBeNull();
   });
 
+  it("shows Accept/Decline buttons when user is assignee and task is legacy 'not_started'", () => {
+    const userId = "user-123";
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({
+      user: { id: userId, name: "Test User", companyId: "comp-1" },
+    });
+
+    setupTaskStoreMock({
+      id: "task-legacy-new",
+      title: "Legacy New Task",
+      status: "not_started",
+      assignedTo: [userId],
+      assignedBy: "other-user",
+      completionPercentage: 0,
+      activities: [],
+      updates: [],
+      dueDate: new Date().toISOString(),
+    });
+
+    const { getByText } = render(
+      <TaskDetailScreen taskId="task-legacy-new" onNavigateBack={mockOnNavigateBack} />
+    );
+
+    expect(getByText("Accept")).toBeTruthy();
+    expect(getByText("Decline")).toBeTruthy();
+  });
+
   it("handles string vs number type mismatch for user IDs gracefully (Regression Fix)", () => {
     const userId = "12345"; // String ID in Auth
     (useAuthStore as unknown as jest.Mock).mockReturnValue({ user: { id: userId, name: "Test User", companyId: "comp-1" } });
@@ -280,6 +306,62 @@ describe("TaskDetailScreen Acceptance UI Regression", () => {
     // Expect Accept/Decline to NOT be visible
     expect(queryByText("Accept")).toBeNull();
     expect(queryByText("Decline")).toBeNull();
+  });
+
+  it("shows the approved banner and hides review submission for legacy completed tasks", () => {
+    const userId = "creator-123";
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({
+      user: { id: userId, name: "Test Creator", companyId: "comp-1" },
+    });
+
+    setupTaskStoreMock({
+      id: "task-completed",
+      title: "Completed Legacy Task",
+      status: "completed",
+      assignedTo: ["other-user"],
+      assignedBy: userId,
+      completionPercentage: 100,
+      reviewedBy: "reviewer-1",
+      reviewedAt: new Date().toISOString(),
+      activities: [],
+      updates: [],
+      dueDate: new Date().toISOString(),
+    });
+
+    const { getByText, queryByText } = render(
+      <TaskDetailScreen taskId="task-completed" onNavigateBack={mockOnNavigateBack} />
+    );
+
+    expect(getByText("✓ Task Approved")).toBeTruthy();
+    expect(queryByText("Completed - Review Submission")).toBeNull();
+  });
+
+  it("shows the approved banner and hides review submission for legacy done tasks", () => {
+    const userId = "creator-123";
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({
+      user: { id: userId, name: "Test Creator", companyId: "comp-1" },
+    });
+
+    setupTaskStoreMock({
+      id: "task-done",
+      title: "Done Legacy Task",
+      status: "done",
+      assignedTo: ["other-user"],
+      assignedBy: userId,
+      completionPercentage: 100,
+      reviewedBy: "reviewer-1",
+      reviewedAt: new Date().toISOString(),
+      activities: [],
+      updates: [],
+      dueDate: new Date().toISOString(),
+    });
+
+    const { getByText, queryByText } = render(
+      <TaskDetailScreen taskId="task-done" onNavigateBack={mockOnNavigateBack} />
+    );
+
+    expect(getByText("✓ Task Approved")).toBeTruthy();
+    expect(queryByText("Completed - Review Submission")).toBeNull();
   });
 
   it("renders activity timeline items from task activities", () => {

@@ -51,6 +51,16 @@ describe("accountabilityEngine", () => {
     );
 
     expectResponsibilityToken(
+      "returns ACTION_REQUIRED for executor tasks that are legacy not_started",
+      buildTask({
+        assignedBy: OTHER_USER_ID,
+        assignedTo: [CURRENT_USER_ID],
+        status: "not_started",
+      }),
+      "ACTION_REQUIRED",
+    );
+
+    expectResponsibilityToken(
       "returns ACTION_REQUIRED for executor tasks that were rejected back for rework",
       buildTask({
         assignedBy: OTHER_USER_ID,
@@ -89,6 +99,16 @@ describe("accountabilityEngine", () => {
         assignedBy: CURRENT_USER_ID,
         assignedTo: [OTHER_USER_ID],
         status: "new",
+      }),
+      "IN_PROGRESS_SENT",
+    );
+
+    expectResponsibilityToken(
+      "returns IN_PROGRESS_SENT for originator tasks that are legacy not_started",
+      buildTask({
+        assignedBy: CURRENT_USER_ID,
+        assignedTo: [OTHER_USER_ID],
+        status: "not_started",
       }),
       "IN_PROGRESS_SENT",
     );
@@ -183,6 +203,15 @@ describe("accountabilityEngine", () => {
       "returns VOID_ARCHIVED for completed legacy tasks",
       buildTask({
         status: "completed",
+        completionPercentage: 100,
+      }),
+      "VOID_ARCHIVED",
+    );
+
+    expectResponsibilityToken(
+      "returns VOID_ARCHIVED for done legacy tasks",
+      buildTask({
+        status: "done",
         completionPercentage: 100,
       }),
       "VOID_ARCHIVED",

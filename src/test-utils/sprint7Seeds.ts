@@ -354,10 +354,8 @@ export function applySprint7RejectionLoopScenario(
     ...seed,
     tasks: replaceTask(seed.tasks, SPRINT7_SCENARIO_TASK_IDS.rejectionLoop, {
       status: 'declined',
-      currentStatus: 'declined',
       completionPercentage: 100,
       declinedReason: `Declined by Tristan at ${scenarioNow.toISOString()} for incomplete supporting evidence.`,
-      declineReason: `Declined by Tristan at ${scenarioNow.toISOString()} for incomplete supporting evidence.`,
       reviewedBy: seed.actors.tristan.id,
       reviewedAt: scenarioNow.toISOString(),
       accepted: false,
@@ -374,7 +372,6 @@ export function applySprint7OverdueCrunchScenario(
     ...seed,
     tasks: replaceTask(seed.tasks, SPRINT7_SCENARIO_TASK_IDS.overdueReview, {
       status: 'submitted_for_review',
-      currentStatus: 'submitted_for_review',
       completionPercentage: 100,
       dueDate: shiftDays(scenarioNow, -2),
       reviewedBy: null,

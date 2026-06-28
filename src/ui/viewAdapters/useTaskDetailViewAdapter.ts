@@ -22,6 +22,14 @@ export interface UseTaskDetailViewAdapterProps {
   subTaskId?: string;
 }
 
+function isPreAcceptanceTaskStatus(status: TaskStatus): boolean {
+  return status === 'new' || status === 'not_started';
+}
+
+function isApprovedTaskStatus(status: TaskStatus): boolean {
+  return status === 'approved' || status === 'completed' || status === 'done';
+}
+
 export function useTaskDetailViewAdapter({
   taskId,
   subTaskId,
@@ -107,10 +115,13 @@ export function useTaskDetailViewAdapter({
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
       case 'new': return 'task_new';
+      case 'not_started': return 'task_new';
       case 'accepted': return 'task_accepted';
       case 'in_progress': return 'task_in_progress';
       case 'submitted_for_review': return 'task_submitted_for_review';
       case 'approved': return 'task_approved';
+      case 'completed': return 'task_approved';
+      case 'done': return 'task_approved';
       case 'rejected': return 'task_rejected';
       case 'cancelled': return 'task_cancelled';
       case 'declined': return 'task_rejected';
@@ -146,7 +157,7 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (task.status === 'approved' && task.reviewedBy) {
+  if (isApprovedTaskStatus(task.status) && task.reviewedBy) {
     const reviewer = getUserById(task.reviewedBy)?.name || t.projects.unknown;
     const reviewDate = task.reviewedAt ? ` ${dateFormatter.formatDateShort(task.reviewedAt)}` : '';
     banners.push({
@@ -235,7 +246,10 @@ export function useTaskDetailViewAdapter({
     priorityLabel: ct.priority,
     assigneeSummary: ct.assignedTo.map((id) => getUserById(id)?.name).filter(Boolean).join(', ') || 'Unassigned',
     projectName: ct.projectId || 'Unknown Project',
-    isOverdue: new Date(ct.dueDate) < new Date() && ct.status !== 'approved' && ct.completionPercentage < 100,
+    isOverdue:
+      new Date(ct.dueDate) < new Date() &&
+      !isApprovedTaskStatus(ct.status) &&
+      ct.completionPercentage < 100,
   }));
 
   const detailSections: TaskDetailSectionModel[] = [
@@ -270,7 +284,7 @@ export function useTaskDetailViewAdapter({
     actionItems.push({ id: 'action-edit', actionId: 'edit_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.editTaskDetails, icon: 'create-outline', isDisabled: false });
   }
 
-  if (isAssignedToMe && task.status === 'new') {
+  if (isAssignedToMe && isPreAcceptanceTaskStatus(task.status)) {
     actionItems.push({ id: 'action-accept', actionId: 'accept_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.accept, icon: 'checkmark-circle-outline', isDisabled: false });
     actionItems.push({ id: 'action-decline', actionId: 'decline_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.decline, icon: 'close-circle-outline', isDisabled: false });
   } else if (isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100) {
@@ -292,7 +306,13 @@ export function useTaskDetailViewAdapter({
     }
   }
 
-  if (isAssignedToMe && !isTaskCreator && task.completionPercentage === 100 && task.status !== 'submitted_for_review' && task.status !== 'approved') {
+  if (
+    isAssignedToMe &&
+    !isTaskCreator &&
+    task.completionPercentage === 100 &&
+    task.status !== 'submitted_for_review' &&
+    !isApprovedTaskStatus(task.status)
+  ) {
     actionItems.push({ id: 'action-submit-review', actionId: 'submit_review', density: 'standard', structuralState: 'stale', label: 'Completed - Review Submission', icon: 'send', isDisabled: false });
   }
 

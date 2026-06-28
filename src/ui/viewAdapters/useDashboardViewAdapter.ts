@@ -31,6 +31,20 @@ function mapProjectStatusToToken(status: Project["status"]): StatusSemanticToken
   }
 }
 
+function isPreAcceptanceTaskStatus(status: string): boolean {
+  return status === "new" || status === "not_started";
+}
+
+function isTerminalTaskStatus(status: string): boolean {
+  return (
+    status === "approved" ||
+    status === "completed" ||
+    status === "done" ||
+    status === "cancelled" ||
+    status === "rejected"
+  );
+}
+
 export interface DashboardViewAdapterHookResult {
   output: DashboardScreenViewAdapterOutput;
   visibility: {
@@ -133,8 +147,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       const isAssignedToMe = (task.assignedTo ?? []).includes(currentUserId);
       const isAssignedByMe = task.assignedBy === currentUserId;
 
-      if (isAssignedToMe && task.status !== "approved" && task.status !== "cancelled" && task.status !== "rejected") {
-        if (task.status === "new") {
+      if (isAssignedToMe && !isTerminalTaskStatus(task.status)) {
+        if (isPreAcceptanceTaskStatus(task.status)) {
           inboxNewCount++;
           if (overdue) inboxNewOverdueCount++;
         } else if (task.status === "in_progress" || task.status === "accepted") {
@@ -146,8 +160,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         }
       }
 
-      if (isAssignedByMe && !isAssignedToMe && task.status !== "approved" && task.status !== "cancelled" && task.status !== "rejected") {
-        if (task.status === "new") {
+      if (isAssignedByMe && !isAssignedToMe && !isTerminalTaskStatus(task.status)) {
+        if (isPreAcceptanceTaskStatus(task.status)) {
           outboxNewCount++;
           if (overdue) outboxNewOverdueCount++;
         } else if (task.status === "in_progress" || task.status === "accepted") {

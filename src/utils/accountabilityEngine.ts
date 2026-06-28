@@ -9,6 +9,10 @@ export type ResponsibilityToken =
   | "OTHER_OPEN"
   | "VOID_ARCHIVED";
 
+function isPreAcceptanceStatus(status: Task["status"]): boolean {
+  return status === "new" || status === "not_started";
+}
+
 function isAssignedToUser(task: Task, currentUserId: string): boolean {
   return (task.assignedTo ?? []).some((assignedUserId) => assignedUserId === currentUserId);
 }
@@ -33,7 +37,12 @@ function getActorRelationship(task: Task, currentUserId: string): ActorRelations
 }
 
 function getWorkflowPhase(task: Task): WorkflowPhase | null {
-  if (task.status === "approved" || task.status === "completed" || task.status === "cancelled") {
+  if (
+    task.status === "approved" ||
+    task.status === "completed" ||
+    task.status === "done" ||
+    task.status === "cancelled"
+  ) {
     return "TERMINAL";
   }
 
@@ -41,7 +50,7 @@ function getWorkflowPhase(task: Task): WorkflowPhase | null {
     return "REVIEW";
   }
 
-  if (task.status === "new") {
+  if (isPreAcceptanceStatus(task.status)) {
     return "DRAFT_OR_NEW";
   }
 
@@ -101,7 +110,12 @@ export function getResponsibilityToken(task: Task, currentUserId: string): Respo
 }
 
 export function isTaskOverdue(task: Task): boolean {
-  if (task.status === "approved" || task.status === "completed" || task.status === "cancelled") {
+  if (
+    task.status === "approved" ||
+    task.status === "completed" ||
+    task.status === "done" ||
+    task.status === "cancelled"
+  ) {
     return false;
   }
 

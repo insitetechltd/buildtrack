@@ -126,6 +126,10 @@ function getRoleLabel(role: string | undefined): string {
     .join(" ");
 }
 
+function isCompletedTaskStatus(status: string): boolean {
+  return status === "completed" || status === "approved" || status === "done";
+}
+
 export function useAdminDashboardViewAdapter(
   props: AdminDashboardViewAdapterProps,
 ): AdminDashboardViewAdapterHookResult {
@@ -427,9 +431,7 @@ export function useAdminDashboardViewAdapter(
 
   const output = useMemo<AdminDashboardScreenViewAdapterOutput>(() => {
     const isAllowed = isAdmin(user);
-    const completedTasks = companyTasks.filter(
-      (task) => (task.currentStatus ?? task.status) === "completed",
-    ).length;
+    const completedTasks = companyTasks.filter((task) => isCompletedTaskStatus(task.status)).length;
     const activeProjects = companyProjects.filter((project) => project.status === "active").length;
     const assignedUsers = new Set(
       companyAssignments.filter((assignment) => assignment.isActive).map((assignment) => assignment.userId),

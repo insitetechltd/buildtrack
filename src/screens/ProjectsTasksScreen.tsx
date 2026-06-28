@@ -251,18 +251,18 @@ export default function ProjectsTasksScreen({
       
       // Apply new categorization logic
       if (localStatusFilter === "not_started") {
-        return matchesSearch && task.currentStatus === "not_started" && !task.accepted;
+        return matchesSearch && (task.status === "new" || task.status === "not_started") && !task.accepted;
       } else if (localStatusFilter === "pending") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.currentStatus !== "rejected";
+        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.status !== "rejected";
       } else if (localStatusFilter === "completed") {
         return matchesSearch && task.accepted && task.completionPercentage === 100;
       } else if (localStatusFilter === "overdue") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.currentStatus !== "rejected";
+        return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected";
       } else if (localStatusFilter === "rejected") {
-        return matchesSearch && task.currentStatus === "rejected";
+        return matchesSearch && task.status === "rejected";
       } else {
         // Fallback to original status matching
-        return matchesSearch && task.currentStatus === localStatusFilter;
+        return matchesSearch && task.status === localStatusFilter;
       }
     });
 
@@ -459,7 +459,7 @@ export default function ProjectsTasksScreen({
                 </Text>
               </View>
               <Text className="text-sm text-gray-500">
-                {(task.currentStatus ?? task.status).replace("_", " ")} {task.completionPercentage}%
+                {task.status.replace("_", " ")} {task.completionPercentage}%
               </Text>
             </View>
           </View>

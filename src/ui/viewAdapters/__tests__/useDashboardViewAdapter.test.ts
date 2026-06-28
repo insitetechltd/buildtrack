@@ -337,4 +337,115 @@ describe("useDashboardViewAdapter", () => {
       awaitingApprovalOverdueCount: 0,
     });
   });
+
+  it("treats legacy not_started tasks as new work in dashboard bucket metrics", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "executor-not-started",
+          projectId: "project-1",
+          title: "Legacy executor task",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "not_started",
+          completionPercentage: 0,
+        },
+        {
+          id: "originator-not-started",
+          projectId: "project-1",
+          title: "Legacy originator task",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "not_started",
+          completionPercentage: 0,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.scalarMetrics).toMatchObject({
+      actionRequiredCount: 1,
+      inProgressSentCount: 1,
+      inboxNewCount: 1,
+      outboxNewCount: 1,
+      inboxWipCount: 0,
+      outboxWipCount: 0,
+    });
+  });
+
+  it("excludes legacy done tasks from dashboard open-task and bucket metrics", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "done-task",
+          projectId: "project-1",
+          title: "Legacy done task",
+          description: "",
+          priority: "medium",
+          dueDate: "2000-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "done",
+          completionPercentage: 100,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.projectSummaryItems[0]).toMatchObject({
+      projectId: "project-1",
+      openTaskCount: 0,
+      overdueTaskCount: 0,
+    });
+    expect(result.current.output.scalarMetrics).toMatchObject({
+      openTaskCount: 0,
+      overdueTaskCount: 0,
+      actionRequiredCount: 0,
+      inProgressSentCount: 0,
+      inboxNewCount: 0,
+      outboxNewCount: 0,
+    });
+  });
 });

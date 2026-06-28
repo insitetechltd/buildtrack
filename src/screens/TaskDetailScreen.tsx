@@ -15,7 +15,6 @@ import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAda
 import StandardHeader from "@/components/StandardHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
-import TaskCard from "@/components/TaskCard";
 import { cn } from "@/utils/cn";
 import {
   mapActionItemToButtonProps,
@@ -23,6 +22,7 @@ import {
   mapActivityModelToActivityProps,
   mapSectionModelToContainerProps,
 } from "@/ui/mappers/taskDetailMappers";
+import { mapTaskRowToContainerCardProps } from "@/ui/mappers/tasksMappers";
 import type { BannerPrimitiveContract, ActivityPrimitiveContract, ButtonPrimitiveContract } from "@/ui/contracts/primitives";
 
 interface TaskDetailScreenProps {
@@ -271,10 +271,14 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
             <Text className="text-lg font-semibold text-gray-900 mb-4">Sub-Tasks ({output.childTasks.length})</Text>
             {output.childTasks.map(childTask => (
-              <TaskCard 
+              <ContainerCard
                 key={childTask.id}
-                task={childTask as any}
-                onNavigateToTaskDetail={props.onNavigateToTaskDetail || (() => {})}
+                contract={mapTaskRowToContainerCardProps({
+                  ...childTask,
+                  onPress: props.onNavigateToTaskDetail
+                    ? () => props.onNavigateToTaskDetail?.(childTask.taskId)
+                    : undefined,
+                })}
               />
             ))}
           </View>

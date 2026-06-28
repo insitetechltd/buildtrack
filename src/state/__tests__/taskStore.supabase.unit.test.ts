@@ -706,4 +706,52 @@ describe('taskStore.supabase unit tests', () => {
     expect(useTaskStore.persist.getOptions().name).toBe('insite-tasks-supabase-v1');
     expect(useUserStore.persist.getOptions().name).toBe('insite-users-supabase-v1');
   });
+
+  it('hydrates legacy updates into activities during persisted store merge', () => {
+    const merge = useTaskStore.persist.getOptions().merge;
+    expect(merge).toBeDefined();
+
+    const persistedTask = createTaskState({
+      id: 'task-persisted-1',
+      activities: undefined,
+      updates: [
+        {
+          id: 'legacy-update-1',
+          userId: workerId,
+          timestamp: baseTimestamp,
+          description: 'Legacy persisted progress update',
+          completionPercentage: 40,
+          status: 'in_progress',
+          photos: ['https://example.com/persisted-photo.jpg'],
+        },
+      ],
+    });
+
+    const mergedState = merge?.(
+      {
+        tasks: [persistedTask],
+        taskReadStatuses: [],
+        allTasksFetchTimestamp: null,
+        taskQueryMeta: {},
+      } as any,
+      useTaskStore.getState() as any
+    ) as ReturnType<typeof useTaskStore.getState>;
+
+    expect(mergedState.tasks[0]).toMatchObject({
+      id: 'task-persisted-1',
+      updates: [
+        expect.objectContaining({
+          id: 'legacy-update-1',
+          description: 'Legacy persisted progress update',
+        }),
+      ],
+      activities: [
+        expect.objectContaining({
+          id: 'legacy-update-1',
+          activityType: 'progress_update',
+          description: 'Legacy persisted progress update',
+        }),
+      ],
+    });
+  });
 });

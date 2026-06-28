@@ -123,13 +123,45 @@ export async function resetDatabase(): Promise<void> {
     throw new Error('Supabase client not available');
   }
 
+  const deleteTableIfPresent = async (table: string) => {
+    const { error } = await client
+      .from(table)
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (!error) {
+      return;
+    }
+
+    const message = String(error.message || error.details || '');
+    if (message.includes('does not exist')) {
+      return;
+    }
+
+    throw error;
+  };
+
+  const deleteRequiredTable = async (table: string) => {
+    const { error } = await client
+      .from(table)
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
+
+    if (error) {
+      throw error;
+    }
+  };
+
   try {
     // Delete in order to respect foreign keys
-    await client.from('task_updates').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await client.from('subtasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await client.from('tasks').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await client.from('user_project_assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-    await client.from('projects').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    await deleteTableIfPresent('task_updates');
+    await deleteTableIfPresent('task_status_history');
+    await deleteTableIfPresent('task_edit_history');
+    await deleteRequiredTable('task_activities');
+    await deleteRequiredTable('subtasks');
+    await deleteRequiredTable('tasks');
+    await deleteRequiredTable('user_project_assignments');
+    await deleteRequiredTable('projects');
     
     console.log('✅ Database reset complete');
   } catch (error: any) {
@@ -376,4 +408,3 @@ export async function exportDatabaseData(): Promise<{
     throw error;
   }
 }
-

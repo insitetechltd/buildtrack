@@ -50,7 +50,7 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
   // Check if task is 100% complete
   const isCompleted = task.completionPercentage === 100;
 
-  // Get all photos from task updates and attachments
+  // Get all photos from task activities and attachments
   const getAllTaskPhotos = () => {
     const photos: string[] = [];
     
@@ -59,12 +59,15 @@ export default function TaskCard({ task, onNavigateToTaskDetail, className }: Ta
       photos.push(...task.attachments);
     }
     
-    // Add photos from task updates (most recent first)
-    if (task.updates && task.updates.length > 0) {
-      for (let i = task.updates.length - 1; i >= 0; i--) {
-        const update = task.updates[i];
-        if (update.photos && update.photos.length > 0) {
-          photos.push(...update.photos);
+    // Add photos from task activities (most recent first)
+    if (task.activities && task.activities.length > 0) {
+      for (let i = task.activities.length - 1; i >= 0; i--) {
+        const activity = task.activities[i];
+        const activityPhotos = Array.isArray((activity.data as { photos?: string[] } | undefined)?.photos)
+          ? ((activity.data as { photos?: string[] }).photos ?? [])
+          : [];
+        if (activityPhotos.length > 0) {
+          photos.push(...activityPhotos);
         }
       }
     }

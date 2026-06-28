@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'react-native';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import TaskCard from '../TaskCard';
 import { Task, Priority, TaskStatus } from '@/types/buildtrack';
@@ -183,5 +184,68 @@ describe('TaskCard Component Tests', () => {
 
     consoleErrorSpy.mockRestore();
     consoleWarnSpy.mockRestore();
+  });
+
+  it('renders activity photos when activities are the only runtime source', () => {
+    const taskWithActivityPhotos: Task = {
+      ...mockTask,
+      activities: [
+        {
+          id: 'activity-photo-1',
+          taskId: 'task-123',
+          userId: 'user-123',
+          activityType: 'progress_update',
+          timestamp: new Date().toISOString(),
+          data: { photos: ['https://example.com/activity-photo.jpg'] },
+          description: 'Uploaded a new site photo',
+          completionPercentage: 50,
+          status: 'in_progress',
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      updates: [],
+    };
+
+    const view = render(
+      <TaskCard task={taskWithActivityPhotos} onNavigateToTaskDetail={mockOnNavigate} />
+    );
+
+    const renderedImages = view.UNSAFE_getAllByType(Image);
+
+    expect(
+      renderedImages.some(
+        (image) => image.props.source?.uri === 'https://example.com/activity-photo.jpg'
+      )
+    ).toBe(true);
+  });
+
+  it('does not render legacy updates-only photos when activities are absent', () => {
+    const taskWithLegacyOnlyPhotos: Task = {
+      ...mockTask,
+      activities: [],
+      updates: [
+        {
+          id: 'legacy-update-1',
+          userId: 'user-123',
+          timestamp: new Date().toISOString(),
+          description: 'Legacy photo row',
+          completionPercentage: 50,
+          status: 'in_progress',
+          photos: ['https://example.com/legacy-photo.jpg'],
+        },
+      ],
+    };
+
+    const view = render(
+      <TaskCard task={taskWithLegacyOnlyPhotos} onNavigateToTaskDetail={mockOnNavigate} />
+    );
+
+    const renderedImages = view.UNSAFE_queryAllByType(Image);
+
+    expect(
+      renderedImages.some(
+        (image) => image.props.source?.uri === 'https://example.com/legacy-photo.jpg'
+      )
+    ).toBe(false);
   });
 });

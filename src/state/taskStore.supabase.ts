@@ -47,6 +47,53 @@ export interface TaskDerivedState {
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
 
+function createActivityFromLegacyUpdate(taskId: string, update: TaskUpdate): TaskActivity {
+  return {
+    id: update.id,
+    taskId,
+    userId: update.userId,
+    activityType: "progress_update",
+    timestamp: update.timestamp,
+    data: {
+      description: update.description,
+      photos: update.photos || [],
+      completionPercentage: update.completionPercentage,
+      status: update.status,
+    },
+    description: update.description,
+    completionPercentage: update.completionPercentage,
+    status: update.status,
+    createdAt: update.timestamp,
+  };
+}
+
+function normalizeTaskActivityCompatibility(task: Task): Task {
+  const updates = Array.isArray(task.updates) ? task.updates : [];
+  const activities = Array.isArray(task.activities) ? task.activities : [];
+
+  if (activities.length > 0) {
+    return {
+      ...task,
+      updates,
+      activities,
+    };
+  }
+
+  return {
+    ...task,
+    updates,
+    activities: updates.map((update) => createActivityFromLegacyUpdate(task.id, update)),
+  };
+}
+
+function normalizePersistedTasks(tasks: Task[] | undefined): Task[] {
+  if (!Array.isArray(tasks)) {
+    return [];
+  }
+
+  return tasks.map(normalizeTaskActivityCompatibility);
+}
+
 function pushUnique(target: Record<string, string[]>, key: string, value: string) {
   if (!key) {
     return;
@@ -2329,11 +2376,32 @@ export const useTaskStore = create<TaskStore>()(
             id: `update-${Date.now()}`,
             timestamp: new Date().toISOString(),
           };
+          const newActivity: TaskActivity = {
+            id: newUpdate.id,
+            taskId,
+            userId: update.userId,
+            activityType: 'progress_update',
+            timestamp: newUpdate.timestamp,
+            data: {
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completionPercentage,
+              status: update.status,
+            },
+            description: update.description,
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+            createdAt: newUpdate.timestamp,
+          };
 
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === taskId
-                ? { ...task, updates: [...task.updates, newUpdate] }
+                ? {
+                    ...task,
+                    updates: [...task.updates, newUpdate],
+                    activities: [...(task.activities || []), newActivity],
+                  }
                 : task
             )
           }));
@@ -2350,6 +2418,23 @@ export const useTaskStore = create<TaskStore>()(
             id: `temp-${Date.now()}`,
             timestamp: new Date().toISOString(),
           };
+          const newActivity: TaskActivity = {
+            id: newUpdate.id,
+            taskId,
+            userId: update.userId,
+            activityType: 'progress_update',
+            timestamp: newUpdate.timestamp,
+            data: {
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completionPercentage,
+              status: update.status,
+            },
+            description: update.description,
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+            createdAt: newUpdate.timestamp,
+          };
 
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
@@ -2360,6 +2445,7 @@ export const useTaskStore = create<TaskStore>()(
                 ? { 
                     ...task, 
                     updates: [...task.updates, newUpdate],
+                    activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
                     updatedAt: new Date().toISOString(),
@@ -2436,6 +2522,23 @@ export const useTaskStore = create<TaskStore>()(
             id: `update-${Date.now()}`,
             timestamp: new Date().toISOString(),
           };
+          const newActivity: TaskActivity = {
+            id: newUpdate.id,
+            taskId: subTaskId,
+            userId: update.userId,
+            activityType: 'progress_update',
+            timestamp: newUpdate.timestamp,
+            data: {
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completionPercentage,
+              status: update.status,
+            },
+            description: update.description,
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+            createdAt: newUpdate.timestamp,
+          };
 
           set(state => ({
             tasks: state.tasks.map(task =>
@@ -2443,6 +2546,7 @@ export const useTaskStore = create<TaskStore>()(
                 ? { 
                     ...task, 
                     updates: [...(task.updates || []), newUpdate],
+                    activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
                     updatedAt: new Date().toISOString(),
@@ -2463,6 +2567,23 @@ export const useTaskStore = create<TaskStore>()(
             id: `temp-${Date.now()}`,
             timestamp: new Date().toISOString(),
           };
+          const newActivity: TaskActivity = {
+            id: newUpdate.id,
+            taskId: subTaskId,
+            userId: update.userId,
+            activityType: 'progress_update',
+            timestamp: newUpdate.timestamp,
+            data: {
+              description: update.description,
+              photos: update.photos || [],
+              completionPercentage: update.completionPercentage,
+              status: update.status,
+            },
+            description: update.description,
+            completionPercentage: update.completionPercentage,
+            status: update.status,
+            createdAt: newUpdate.timestamp,
+          };
 
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
@@ -2473,6 +2594,7 @@ export const useTaskStore = create<TaskStore>()(
                 ? { 
                     ...task, 
                     updates: [...(task.updates || []), newUpdate],
+                    activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
                     updatedAt: new Date().toISOString(),
@@ -3395,6 +3517,21 @@ export const useTaskStore = create<TaskStore>()(
     {
       name: "insite-tasks-supabase-v1",
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState as Partial<TaskStore> | undefined) || {};
+
+        return {
+          ...currentState,
+          ...persisted,
+          tasks: normalizePersistedTasks(persisted.tasks as Task[] | undefined),
+          taskReadStatuses: Array.isArray(persisted.taskReadStatuses)
+            ? persisted.taskReadStatuses
+            : currentState.taskReadStatuses,
+          allTasksFetchTimestamp:
+            persisted.allTasksFetchTimestamp ?? currentState.allTasksFetchTimestamp,
+          taskQueryMeta: persisted.taskQueryMeta || currentState.taskQueryMeta,
+        };
+      },
       partialize: (state) => ({
         tasks: state.tasks,
         taskReadStatuses: state.taskReadStatuses,

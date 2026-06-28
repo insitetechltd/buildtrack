@@ -154,10 +154,10 @@ describe("TaskDetailScreen Acceptance UI Regression", () => {
     jest.clearAllMocks();
   });
 
-  const setupTaskStoreMock = (taskData: any) => {
+  const setupTaskStoreMock = (taskData: any, additionalTasks: any[] = []) => {
     (useTaskStore as unknown as jest.Mock).mockImplementation((selector) => {
       const state = {
-        tasks: [taskData],
+        tasks: [taskData, ...additionalTasks],
         fetchTaskById: jest.fn().mockResolvedValue(undefined),
         fetchTasks: jest.fn().mockResolvedValue(undefined),
         markTaskAsRead: jest.fn().mockResolvedValue(undefined),
@@ -280,5 +280,122 @@ describe("TaskDetailScreen Acceptance UI Regression", () => {
     // Expect Accept/Decline to NOT be visible
     expect(queryByText("Accept")).toBeNull();
     expect(queryByText("Decline")).toBeNull();
+  });
+
+  it("renders activity timeline items from task activities", () => {
+    const userId = "user-123";
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({ user: { id: userId, name: "Test User", companyId: "comp-1" } });
+
+    setupTaskStoreMock({
+      id: "task-5",
+      title: "Test Task 5",
+      status: "in_progress",
+      assignedTo: [userId],
+      assignedBy: "manager-1",
+      completionPercentage: 50,
+      dueDate: new Date().toISOString(),
+      activities: [
+        {
+          id: "activity-1",
+          userId: "manager-1",
+          activityType: "progress_update",
+          timestamp: new Date().toISOString(),
+          description: "Activity-sourced progress update",
+          completionPercentage: 50,
+          status: "in_progress",
+          data: {},
+        },
+      ],
+      updates: [],
+    });
+
+    const { getByText } = render(
+      <TaskDetailScreen taskId="task-5" onNavigateBack={mockOnNavigateBack} />
+    );
+
+    expect(getByText("Activities")).toBeTruthy();
+    expect(getByText("Activity-sourced progress update")).toBeTruthy();
+  });
+
+  it("does not render legacy updates-only rows when activities are absent", () => {
+    const userId = "user-123";
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({ user: { id: userId, name: "Test User", companyId: "comp-1" } });
+
+    setupTaskStoreMock({
+      id: "task-6",
+      title: "Test Task 6",
+      status: "in_progress",
+      assignedTo: [userId],
+      assignedBy: "manager-1",
+      completionPercentage: 50,
+      dueDate: new Date().toISOString(),
+      activities: [],
+      updates: [
+        {
+          id: "legacy-update-1",
+          userId: "manager-1",
+          timestamp: new Date().toISOString(),
+          description: "Legacy updates fallback should stay hidden",
+          completionPercentage: 50,
+          status: "in_progress",
+          photos: [],
+        },
+      ],
+    });
+
+    const { queryByText } = render(
+      <TaskDetailScreen taskId="task-6" onNavigateBack={mockOnNavigateBack} />
+    );
+
+    expect(queryByText("Activities")).toBeNull();
+    expect(queryByText("Legacy updates fallback should stay hidden")).toBeNull();
+  });
+
+  it("renders child tasks with task row cards and navigates without crashing", () => {
+    const userId = "user-123";
+    const onNavigateToTaskDetail = jest.fn();
+    (useAuthStore as unknown as jest.Mock).mockReturnValue({ user: { id: userId, name: "Test User", companyId: "comp-1" } });
+
+    setupTaskStoreMock(
+      {
+        id: "task-parent",
+        title: "Parent Task",
+        status: "in_progress",
+        assignedTo: [userId],
+        assignedBy: "manager-1",
+        completionPercentage: 50,
+        dueDate: new Date().toISOString(),
+        activities: [],
+        updates: [],
+      },
+      [
+        {
+          id: "task-child-1",
+          title: "Child Task",
+          status: "accepted",
+          assignedTo: [userId],
+          assignedBy: "manager-1",
+          completionPercentage: 25,
+          dueDate: new Date(Date.now() + 60_000).toISOString(),
+          projectId: "project-123",
+          parentTaskId: "task-parent",
+          priority: "medium",
+          activities: [],
+          updates: [],
+        },
+      ]
+    );
+
+    const view = render(
+      <TaskDetailScreen
+        taskId="task-parent"
+        onNavigateBack={mockOnNavigateBack}
+        onNavigateToTaskDetail={onNavigateToTaskDetail}
+      />
+    );
+
+    expect(view.getByText("Sub-Tasks (1)")).toBeTruthy();
+    fireEvent.press(view.getByTestId("container-card:task-child-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-child-1");
   });
 });

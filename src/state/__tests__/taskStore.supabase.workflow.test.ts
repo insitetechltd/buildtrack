@@ -265,6 +265,16 @@ describe('taskStore.supabase workflow tests', () => {
         status: 'in_progress',
       })
     );
+    expect(result.current.tasks.find((task) => task.id === 'task-123')?.activities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          activityType: 'progress_update',
+          description: 'Installed ducting and updated brackets',
+          completionPercentage: 50,
+          status: 'in_progress',
+        }),
+      ])
+    );
     expect(updateEq).toHaveBeenCalledWith('id', 'task-123');
     expect(refreshTaskMock).toHaveBeenCalledWith('task-123');
   });
@@ -323,6 +333,16 @@ describe('taskStore.supabase workflow tests', () => {
         completion_percentage: 100,
         status: 'submitted_for_review',
       })
+    );
+    expect(result.current.tasks.find((task) => task.id === 'subtask-123')?.activities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          activityType: 'progress_update',
+          description: 'Finished subtask install sequence',
+          completionPercentage: 100,
+          status: 'submitted_for_review',
+        }),
+      ])
     );
     expect(updateEq).toHaveBeenCalledWith('id', 'subtask-123');
     expect(refreshTaskMock).toHaveBeenCalledWith('subtask-123');

@@ -191,7 +191,7 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  const activities: TaskDetailActivityModel[] = (task.activities || task.updates || []).map((a: any) => ({
+  const activities: TaskDetailActivityModel[] = (task.activities || []).map((a: any) => ({
     id: a.id,
     density: 'standard',
     structuralState: 'stale',
@@ -204,7 +204,7 @@ export function useTaskDetailViewAdapter({
     completionPercentage: a.completionPercentage,
     statusToken: a.status ? getStatusToken(a.status) : undefined,
     statusLabel: a.status ? getStatusLabel(a.status) : undefined,
-    photos: a.data?.photos || a.photos || [],
+    photos: a.data?.photos || [],
   }));
 
   const assigners: TaskDetailAssigneeModel[] = [];

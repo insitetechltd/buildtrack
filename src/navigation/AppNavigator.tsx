@@ -805,6 +805,10 @@ function DeveloperSettingsScreenWrapper({ navigation }: { navigation: any }) {
   );
 }
 
+function DevAdminScreenWrapper({ navigation }: { navigation: any }) {
+  return <DevAdminScreen onNavigateBack={() => navigation.goBack()} />;
+}
+
 // Reports Stack
 function ReportsStack() {
   return (
@@ -1006,7 +1010,7 @@ function AdminDashboardStack() {
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreenWrapper} />
       <Stack.Screen name="CreateProject" component={CreateProjectMainScreen} />
       <Stack.Screen name="UserManagement" component={UserManagementMainScreen} />
-      <Stack.Screen name="DevAdmin" component={DevAdminScreen} />
+      <Stack.Screen name="DevAdmin" component={DevAdminScreenWrapper} />
     </Stack.Navigator>
   );
 }

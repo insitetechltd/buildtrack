@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '../state/authStore';
 import { useTaskStore } from '../state/taskStore.supabase';
-import { useProjectStore } from '../state/projectStore';
+import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
 import { supabase } from '../api/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -70,22 +70,23 @@ export function RealtimeSyncManager() {
             // Fetch the updated task to get full data with relations
             const newTaskId = (payload.new as any)?.id;
             if (newTaskId) {
-              await taskStore.fetchTaskById(newTaskId);
+              const deletedAt = (payload.new as any)?.deleted_at;
+
+              if (deletedAt) {
+                taskStore.evictTaskFromCache(newTaskId);
+                return;
+              }
+
+              const refreshedTask = await taskStore.fetchTaskById(newTaskId);
+              if (!refreshedTask) {
+                taskStore.evictTaskFromCache(newTaskId);
+              }
             }
           } else if (payload.eventType === 'DELETE') {
             // Remove task from local store
             const oldTaskId = (payload.old as any)?.id;
             if (oldTaskId) {
-              useTaskStore.setState((state) => {
-                const { [oldTaskId]: _removed, ...remainingTimestamps } = state.taskFetchTimestamps;
-
-                return {
-                  tasks: state.tasks.filter(task => task.id !== oldTaskId),
-                  taskReadStatuses: state.taskReadStatuses.filter(status => status.taskId !== oldTaskId),
-                  taskFetchTimestamps: remainingTimestamps,
-                  allTasksFetchTimestamp: null,
-                };
-              });
+              taskStore.evictTaskFromCache(oldTaskId);
             }
           }
         }
@@ -157,10 +158,15 @@ export function RealtimeSyncManager() {
             // Refresh projects list
             await projectStore.fetchProjects();
           } else if (payload.eventType === 'DELETE') {
-            // Remove project from local store
+            // Reconcile local state only; the database row is already gone.
             const oldProjectId = (payload.old as any)?.id;
             if (oldProjectId) {
-              await projectStore.deleteProject(oldProjectId);
+              useProjectStore.setState((state) => ({
+                projects: state.projects.filter((project) => project.id !== oldProjectId),
+                userAssignments: state.userAssignments.filter(
+                  (assignment) => assignment.projectId !== oldProjectId,
+                ),
+              }));
             }
           }
         }

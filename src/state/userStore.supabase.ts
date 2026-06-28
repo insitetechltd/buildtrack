@@ -521,7 +521,7 @@ export const useUserStore = create<UserStore>()(
       },
     }),
     {
-      name: "buildtrack-users",
+      name: "insite-users-supabase-v1",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         // Only persist users, not loading/error states

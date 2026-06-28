@@ -1,5 +1,6 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useTaskStore } from '../taskStore.supabase';
+import { useUserStore } from '../userStore.supabase';
 import { supabase } from '@/api/supabase';
 import { Task, TaskCategory, TaskStatus } from '@/types/buildtrack';
 
@@ -331,5 +332,260 @@ describe('taskStore.supabase unit tests', () => {
       assignedBy: '9001',
     });
     expect(result.current.taskFetchTimestamps['subtask-123']).toEqual(expect.any(Number));
+  });
+
+  it('upserts scoped project fetch results without dropping unrelated cached tasks', async () => {
+    const existingTask = createTaskState({
+      id: 'task-existing',
+      projectId: 'project-keep',
+      title: 'Keep existing task',
+      assignedTo: ['existing-worker'],
+      assignedBy: 'existing-manager',
+    });
+
+    const projectTaskRow = createTaskRow({
+      id: 'task-project-1',
+      project_id: 'project-123',
+      assigned_to: [42, workerId],
+      assigned_by: 9001,
+    });
+
+    const activityRow = createTaskActivityRow({
+      task_id: 'task-project-1',
+    });
+
+    useTaskStore.setState({
+      tasks: [existingTask],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [projectTaskRow], error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByProject('project-123', true);
+    });
+
+    expect(result.current.tasks.map((task) => task.id)).toEqual(
+      expect.arrayContaining(['task-existing', 'task-project-1'])
+    );
+    expect(result.current.tasks).toHaveLength(2);
+
+    const fetchedTask = result.current.tasks.find((task) => task.id === 'task-project-1');
+    expect(fetchedTask).toMatchObject({
+      assignedTo: ['42', workerId],
+      assignedBy: '9001',
+    });
+  });
+
+  it('removes stale tasks that no longer belong to the fetched project scope while preserving unrelated tasks', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const staleProjectTask = createTaskState({
+      id: 'task-stale-project',
+      projectId: 'project-123',
+      title: 'Remove stale project task',
+    });
+    const unrelatedTask = createTaskState({
+      id: 'task-other-project',
+      projectId: 'project-keep',
+      title: 'Keep unrelated task',
+    });
+    const freshProjectTaskRow = createTaskRow({
+      id: 'task-fresh-project',
+      project_id: 'project-123',
+    });
+    const activityRow = createTaskActivityRow({
+      task_id: 'task-fresh-project',
+    });
+
+    useTaskStore.setState({
+      tasks: [staleProjectTask, unrelatedTask],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [freshProjectTaskRow], error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByProject('project-123', true);
+    });
+
+    expect(result.current.tasks.map((task) => task.id)).toEqual(
+      expect.arrayContaining(['task-fresh-project', 'task-other-project'])
+    );
+    expect(result.current.tasks.map((task) => task.id)).not.toContain('task-stale-project');
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('refreshes stale scoped tasks that moved to another project instead of evicting them globally', async () => {
+    const movedTask = createTaskState({
+      id: 'task-moved',
+      projectId: 'project-123',
+      title: 'Move me to another project',
+    });
+    const unrelatedTask = createTaskState({
+      id: 'task-unrelated',
+      projectId: 'project-keep',
+      title: 'Keep unrelated task',
+    });
+    const freshProjectTaskRow = createTaskRow({
+      id: 'task-fresh-project-2',
+      project_id: 'project-123',
+    });
+    const movedTaskRow = createTaskRow({
+      id: 'task-moved',
+      project_id: 'project-999',
+      assigned_to: [workerId],
+      assigned_by: managerId,
+    });
+    const activityRow = createTaskActivityRow({
+      task_id: 'task-fresh-project-2',
+    });
+
+    useTaskStore.setState({
+      tasks: [movedTask, unrelatedTask],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        const taskByIdQuery = {
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: movedTaskRow, error: null }),
+        };
+        const taskQuery = {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(function (field: string, value: string) {
+            if (field === 'project_id' && value === 'project-123') {
+              return taskQuery;
+            }
+
+            if (field === 'id' && value === 'task-moved') {
+              return taskByIdQuery;
+            }
+
+            return taskQuery;
+          }),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [freshProjectTaskRow], error: null }),
+        };
+
+        return taskQuery;
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          order: jest
+            .fn()
+            .mockResolvedValueOnce({ data: [activityRow], error: null })
+            .mockResolvedValueOnce({ data: [], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByProject('project-123', true);
+    });
+
+    expect(result.current.tasks.map((task) => task.id)).toEqual(
+      expect.arrayContaining(['task-fresh-project-2', 'task-moved', 'task-unrelated'])
+    );
+    expect(result.current.tasks.find((task) => task.id === 'task-moved')).toMatchObject({
+      projectId: 'project-999',
+    });
+  });
+
+  it('normalizes assignee identifiers when fetching scoped user task subsets', async () => {
+    const userTaskRow = createTaskRow({
+      id: 'task-user-1',
+      assigned_to: [7, workerId],
+      assigned_by: 88,
+    });
+
+    const activityRow = createTaskActivityRow({
+      task_id: 'task-user-1',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          contains: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [userTaskRow], error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByUser(workerId, true);
+    });
+
+    expect(result.current.tasks[0]).toMatchObject({
+      id: 'task-user-1',
+      assignedTo: ['7', workerId],
+      assignedBy: '88',
+    });
+  });
+
+  it('uses the Sprint 7 Supabase persistence namespaces for task and user stores', () => {
+    expect(useTaskStore.persist.getOptions().name).toBe('insite-tasks-supabase-v1');
+    expect(useUserStore.persist.getOptions().name).toBe('insite-users-supabase-v1');
   });
 });

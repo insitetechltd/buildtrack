@@ -217,7 +217,9 @@ interface TaskStore {
   shouldServeCachedTasks: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
   shouldRefreshTasksInBackground: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
   replaceTasks: (tasks: Task[]) => void;
+  upsertTasks: (tasks: Task[]) => void;
   mergeTask: (task: Task) => void;
+  evictTaskFromCache: (taskId: string) => void;
   
   // Fetching
   fetchTasks: (forceRefresh?: boolean) => Promise<void>;
@@ -391,6 +393,30 @@ export const useTaskStore = create<TaskStore>()(
           }, {}),
         });
       },
+      upsertTasks: (tasks) => {
+        if (tasks.length === 0) {
+          return;
+        }
+
+        set((state) => {
+          const nextTasksById = new Map(state.tasks.map((task) => [task.id, task]));
+
+          for (const task of tasks) {
+            nextTasksById.set(task.id, task);
+          }
+
+          const now = Date.now();
+          const nextTaskFetchTimestamps = { ...state.taskFetchTimestamps };
+          for (const task of tasks) {
+            nextTaskFetchTimestamps[task.id] = now;
+          }
+
+          return {
+            tasks: Array.from(nextTasksById.values()),
+            taskFetchTimestamps: nextTaskFetchTimestamps,
+          };
+        });
+      },
       mergeTask: (task) => {
         set((state) => {
           const existingIndex = state.tasks.findIndex((candidate) => candidate.id === task.id);
@@ -407,6 +433,38 @@ export const useTaskStore = create<TaskStore>()(
               ...state.taskFetchTimestamps,
               [task.id]: Date.now(),
             },
+          };
+        });
+      },
+      evictTaskFromCache: (taskId) => {
+        set((state) => {
+          const cachedTask = state.tasks.find((task) => task.id === taskId);
+          const { [taskId]: _removedTimestamp, ...remainingTimestamps } = state.taskFetchTimestamps;
+
+          if (cachedTask) {
+            invalidateResourceKeys([
+              buildResourceKey("tasks", "all"),
+              buildResourceKey("task", taskId),
+              cachedTask.projectId ? buildResourceKey("tasks", "project", cachedTask.projectId) : "",
+              ...(cachedTask.assignedTo || []).map((assigneeId) =>
+                buildResourceKey("tasks", "user", String(assigneeId))
+              ),
+              cachedTask.assignedBy
+                ? buildResourceKey("tasks", "assignedBy", String(cachedTask.assignedBy))
+                : "",
+            ]);
+          } else {
+            invalidateResourceKeys([
+              buildResourceKey("tasks", "all"),
+              buildResourceKey("task", taskId),
+            ]);
+          }
+
+          return {
+            tasks: state.tasks.filter((task) => task.id !== taskId),
+            taskReadStatuses: state.taskReadStatuses.filter((status) => status.taskId !== taskId),
+            taskFetchTimestamps: remainingTimestamps,
+            allTasksFetchTimestamp: null,
           };
         });
       },
@@ -667,6 +725,7 @@ export const useTaskStore = create<TaskStore>()(
                 });
               });
 
+              const scopedTaskIds = new Set(get().taskIdsByProject[projectId] || []);
               const transformedTasks = (allTasksData || []).map(task => ({
                 id: task.id,
                 projectId: task.project_id,
@@ -682,8 +741,10 @@ export const useTaskStore = create<TaskStore>()(
                 dueDate: task.due_date,
                 status: (task.current_status || 'new') as TaskStatus,
                 completionPercentage: task.completion_percentage,
-                assignedTo: task.assigned_to || [],
-                assignedBy: task.assigned_by,
+                assignedTo: Array.isArray(task.assigned_to)
+                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+                  : [],
+                assignedBy: task.assigned_by ? String(task.assigned_by) : '',
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -716,7 +777,20 @@ export const useTaskStore = create<TaskStore>()(
                   })),
               }));
 
-              get().replaceTasks(transformedTasks);
+              const incomingTaskIds = new Set(transformedTasks.map((task) => task.id));
+              const staleScopedTaskIds = Array.from(scopedTaskIds).filter(
+                (taskId) => !incomingTaskIds.has(taskId)
+              );
+
+              get().upsertTasks(transformedTasks);
+              await Promise.all(
+                staleScopedTaskIds.map(async (taskId) => {
+                  const refreshedTask = await get().fetchTaskById(taskId, true);
+                  if (!refreshedTask) {
+                    get().evictTaskFromCache(taskId);
+                  }
+                })
+              );
               return transformedTasks;
             },
             {
@@ -805,6 +879,7 @@ export const useTaskStore = create<TaskStore>()(
                 });
               });
 
+              const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
               const transformedTasks = (data || []).map(task => ({
                 id: task.id,
                 projectId: task.project_id,
@@ -820,8 +895,10 @@ export const useTaskStore = create<TaskStore>()(
                 dueDate: task.due_date,
                 status: (task.current_status || 'new') as TaskStatus,
                 completionPercentage: task.completion_percentage,
-                assignedTo: task.assigned_to || [],
-                assignedBy: task.assigned_by,
+                assignedTo: Array.isArray(task.assigned_to)
+                  ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+                  : [],
+                assignedBy: task.assigned_by ? String(task.assigned_by) : '',
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -854,7 +931,20 @@ export const useTaskStore = create<TaskStore>()(
                   })),
               }));
 
-              get().replaceTasks(transformedTasks);
+              const incomingTaskIds = new Set(transformedTasks.map((task) => task.id));
+              const staleScopedTaskIds = Array.from(scopedTaskIds).filter(
+                (taskId) => !incomingTaskIds.has(taskId)
+              );
+
+              get().upsertTasks(transformedTasks);
+              await Promise.all(
+                staleScopedTaskIds.map(async (taskId) => {
+                  const refreshedTask = await get().fetchTaskById(taskId, true);
+                  if (!refreshedTask) {
+                    get().evictTaskFromCache(taskId);
+                  }
+                })
+              );
               return transformedTasks;
             },
             {
@@ -3298,7 +3388,7 @@ export const useTaskStore = create<TaskStore>()(
       },
     }),
     {
-      name: "buildtrack-tasks",
+      name: "insite-tasks-supabase-v1",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         tasks: state.tasks,

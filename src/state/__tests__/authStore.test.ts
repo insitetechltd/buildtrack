@@ -8,6 +8,19 @@ jest.mock('@/api/supabase');
 describe('Authentication Workflow Tests', () => {
   const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
+  const defaultAuthUser = {
+    id: 'mock-user-id',
+    email: 'test@insite.com',
+  };
+
+  const defaultUsersTableRow = {
+    id: 'mock-user-id',
+    email: 'test@insite.com',
+    name: 'Test User',
+    role: 'worker',
+    company_id: 'company-123',
+  };
+
   beforeEach(() => {
     // Reset store before each test
     useAuthStore.setState({
@@ -19,6 +32,56 @@ describe('Authentication Workflow Tests', () => {
 
     // Clear all mocks
     jest.clearAllMocks();
+
+    mockSupabase.auth = {
+      getSession: jest.fn().mockResolvedValue({
+        data: { session: null },
+        error: null,
+      }),
+      getUser: jest.fn().mockResolvedValue({
+        data: { user: defaultAuthUser },
+        error: null,
+      }),
+      signUp: jest.fn().mockResolvedValue({
+        data: { user: { id: 'new-user-id', email: 'test@insite.com' }, session: null },
+        error: null,
+      }),
+      signInWithPassword: jest.fn().mockResolvedValue({
+        data: {
+          user: defaultAuthUser,
+          session: { access_token: 'mock-token' },
+        },
+        error: null,
+      }),
+      refreshSession: jest.fn().mockResolvedValue({
+        data: { session: { access_token: 'refreshed-token' } },
+        error: null,
+      }),
+      signOut: jest.fn().mockResolvedValue({ error: null }),
+      updateUser: jest.fn().mockResolvedValue({ data: { user: defaultAuthUser }, error: null }),
+    } as any;
+
+    const mockFrom = mockSupabase.from as unknown as jest.Mock;
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: defaultUsersTableRow,
+              error: null,
+            }),
+          })),
+        };
+      }
+
+      return {
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn(() => ({
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+      };
+    });
   });
 
   describe('User Registration', () => {
@@ -61,11 +124,17 @@ describe('Authentication Workflow Tests', () => {
       });
 
       const { result } = renderHook(() => useAuthStore());
+      let thrownError: unknown;
 
       await act(async () => {
-        await result.current.signUp('existing@buildtrack.com', 'Password123!', 'Duplicate User');
+        try {
+          await result.current.signUp('existing@buildtrack.com', 'Password123!', 'Duplicate User');
+        } catch (error) {
+          thrownError = error;
+        }
       });
 
+      expect(thrownError).toBeDefined();
       expect(result.current.error).toContain('User already registered');
     });
 
@@ -88,11 +157,17 @@ describe('Authentication Workflow Tests', () => {
       });
 
       const { result } = renderHook(() => useAuthStore());
+      let thrownError: unknown;
 
       await act(async () => {
-        await result.current.signUp('user@buildtrack.com', '123', 'Test User');
+        try {
+          await result.current.signUp('user@buildtrack.com', '123', 'Test User');
+        } catch (error) {
+          thrownError = error;
+        }
       });
 
+      expect(thrownError).toBeDefined();
       expect(result.current.error).toContain('Password');
     });
   });
@@ -131,7 +206,12 @@ describe('Authentication Workflow Tests', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.user).toEqual(mockUser);
+        expect(result.current.user).toMatchObject({
+          id: 'mock-user-id',
+          email: 'test@insite.com',
+          role: 'worker',
+          systemPermission: 'member',
+        });
         expect(result.current.session).toEqual(mockSession);
         expect(result.current.error).toBeNull();
       });
@@ -144,11 +224,17 @@ describe('Authentication Workflow Tests', () => {
       });
 
       const { result } = renderHook(() => useAuthStore());
+      let thrownError: unknown;
 
       await act(async () => {
-        await result.current.signIn('user@buildtrack.com', 'WrongPassword');
+        try {
+          await result.current.signIn('user@buildtrack.com', 'WrongPassword');
+        } catch (error) {
+          thrownError = error;
+        }
       });
 
+      expect(thrownError).toBeDefined();
       expect(result.current.user).toBeNull();
       expect(result.current.error).toContain('Invalid login credentials');
     });
@@ -160,11 +246,17 @@ describe('Authentication Workflow Tests', () => {
       });
 
       const { result } = renderHook(() => useAuthStore());
+      let thrownError: unknown;
 
       await act(async () => {
-        await result.current.signIn('nonexistent@buildtrack.com', 'Password123!');
+        try {
+          await result.current.signIn('nonexistent@buildtrack.com', 'Password123!');
+        } catch (error) {
+          thrownError = error;
+        }
       });
 
+      expect(thrownError).toBeDefined();
       expect(result.current.user).toBeNull();
       expect(result.current.error).toBeDefined();
     });
@@ -197,7 +289,12 @@ describe('Authentication Workflow Tests', () => {
         await result.current.restoreSession();
       });
 
-      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.user).toMatchObject({
+        id: 'mock-user-id',
+        email: 'test@insite.com',
+        role: 'worker',
+        systemPermission: 'member',
+      });
       expect(result.current.session).toEqual(mockSession);
     });
   });
@@ -227,7 +324,7 @@ describe('Authentication Workflow Tests', () => {
     it('should auto-logout on token expiration', async () => {
       const expiredSession = {
         access_token: 'expired-token',
-        expires_at: Date.now() - 1000, // Expired 1 second ago
+        expires_at: Math.floor(Date.now() / 1000) - 1, // Expired 1 second ago
       };
 
       (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
@@ -342,4 +439,3 @@ describe('Authentication Workflow Tests', () => {
     });
   });
 });
-

@@ -26,9 +26,22 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Local secret quarantine
+.env
+.env.*
+!.env.example
+credentials.json
+credentials.json.*
+
 # macOS
 .DS_Store
 *.pem
+*.swp
+
+# Machine-local artifacts
+.tmp/
+.xcode-derived-data/
+.cursor/debug.log
 
 # typescript
 *.tsbuildinfo

@@ -8,6 +8,7 @@ import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useThemeStore } from "@/state/themeStore";
 import { useUserStore } from "@/state/userStore.supabase";
+import { isAdmin } from "@/types/buildtrack";
 import type {
   ProfileScreenMenuItem,
   ProfileScreenSectionModel,
@@ -72,6 +73,7 @@ export function useProfileViewAdapter(
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<SupabaseStatus>("checking");
   const [environmentInfo] = useState(() => detectEnvironment());
+  const canApproveUsers = isAdmin(user);
 
   useEffect(() => {
     let isMounted = true;
@@ -100,7 +102,7 @@ export function useProfileViewAdapter(
   }, []);
 
   const pendingUsers =
-    user?.role === "admin" ? userStore.getPendingUsersByCompany(user.companyId) : [];
+    canApproveUsers && user ? userStore.getPendingUsersByCompany(user.companyId) : [];
   const pendingCount = pendingUsers.length;
 
   const resetPasswordState = useCallback(() => {
@@ -287,7 +289,7 @@ export function useProfileViewAdapter(
   const sections = useMemo<ProfileScreenSectionModel[]>(() => {
     const settingsItems: ProfileScreenMenuItem[] = [];
 
-    if (user?.role === "admin") {
+    if (canApproveUsers) {
       settingsItems.push({
         id: "profile-menu:pending-approvals",
         actionId: "pending-approvals",
@@ -435,6 +437,7 @@ export function useProfileViewAdapter(
     isDarkMode,
     language,
     pendingCount,
+    canApproveUsers,
     t.profile.darkMode,
     t.profile.editProfile,
     t.profile.english,
@@ -447,7 +450,6 @@ export function useProfileViewAdapter(
     t.profile.settings,
     t.profile.theme,
     t.profile.traditionalChinese,
-    user?.role,
   ]);
 
   const environmentStyles = getEnvironmentStyles(environmentInfo);
@@ -474,7 +476,7 @@ export function useProfileViewAdapter(
       profileCard: {
         initial: user?.name?.charAt(0)?.toUpperCase() || "?",
         name: user?.name || "",
-        roleLabel: toRoleLabel(user?.role),
+        roleLabel: toRoleLabel(user?.systemPermission || user?.role),
         email: user?.email || "",
         phone: user?.phone && user.phone !== user.email ? user.phone : undefined,
       },

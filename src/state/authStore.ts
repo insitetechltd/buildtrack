@@ -2,8 +2,41 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
-import { AuthState, User, UserRole } from "../types/buildtrack";
+import {
+  AuthState,
+  getUserSystemPermission,
+  User,
+  UserRole,
+} from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
+
+export function normalizeAuthUser<T extends Record<string, any>>(user: T) {
+  const normalizedRole: UserRole = (user.role || "worker") as UserRole;
+  const normalizedUser = {
+    ...user,
+    role: normalizedRole,
+  };
+
+  return {
+    ...normalizedUser,
+    systemPermission: getUserSystemPermission(normalizedUser as unknown as User),
+  };
+}
+
+function getPersistenceRole(
+  systemPermission?: User["systemPermission"],
+  fallbackRole: UserRole = "worker",
+): UserRole {
+  if (!systemPermission) {
+    return fallbackRole;
+  }
+
+  if (systemPermission === "member") {
+    return "worker";
+  }
+
+  return systemPermission as UserRole;
+}
 
 interface AuthStore extends AuthState {
   isInitialized: boolean;
@@ -109,12 +142,24 @@ export const useAuthStore = create<AuthStore>()(
                   return false;
                 }
 
+                if (userData.is_pending) {
+                  console.log('User login blocked: pending approval');
+                  await supabase.auth.signOut();
+                  set({
+                    user: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                    isInitialized: true,
+                  });
+                  throw new Error('PENDING_APPROVAL');
+                }
+
                 // Transform Supabase data to match local interface
-                const transformedUser = {
+                const transformedUser = normalizeAuthUser({
                   ...userData,
                   companyId: userData.company_id || userData.companyId, // Handle both field names
                   lastSelectedProjectId: userData.last_selected_project_id || null,
-                };
+                });
                 
                 console.log('✅ Login successful:', transformedUser.name);
                 console.log('Setting state: isAuthenticated=true, isLoading=false, isInitialized=true');
@@ -129,14 +174,15 @@ export const useAuthStore = create<AuthStore>()(
                 // Trigger data refresh after successful login
                 setTimeout(() => {
                   try {
-                    const projectStore = require('./projectStore').useProjectStore.getState();
-                    const taskStore = require('./taskStore').useTaskStore.getState();
-                    const userStore = require('./userStore').useUserStore.getState();
+                    const projectStore = require('./projectStore.supabase').useProjectStore.getState();
+                    const taskStore = require('./taskStore.supabase').useTaskStore.getState();
+                    const userStore = require('./userStore.supabase').useUserStore.getState();
                     
-                    // Initialize user-specific data
+                    // Warm the authoritative stores immediately after login.
                     Promise.all([
-                      projectStore._initializeUserData?.(userData.id),
-                      taskStore._initializeUserData?.(userData.id),
+                      projectStore.fetchProjects?.(true),
+                      projectStore.fetchUserProjectAssignments?.(userData.id, true),
+                      taskStore.fetchTasks?.(true),
                       userStore.fetchUsers?.()
                     ]).catch(error => {
                       console.error('Error initializing user data after login:', error);
@@ -149,6 +195,10 @@ export const useAuthStore = create<AuthStore>()(
                 return true;
               }
             } catch (supabaseError) {
+              if (supabaseError instanceof Error && supabaseError.message === 'PENDING_APPROVAL') {
+                set({ isLoading: false });
+                throw supabaseError;
+              }
               console.error('Supabase Auth failed:', supabaseError);
               set({ isLoading: false });
               return false;
@@ -166,6 +216,10 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: false });
           return false;
         } catch (error) {
+          if (error instanceof Error && error.message === 'PENDING_APPROVAL') {
+            set({ isLoading: false });
+            throw error;
+          }
           console.error('Login error:', error);
           set({ isLoading: false });
           return false;
@@ -221,7 +275,7 @@ export const useAuthStore = create<AuthStore>()(
             const newUser = userStore.getUserById(userId);
             if (newUser) {
               set({ 
-                user: newUser, 
+                user: normalizeAuthUser(newUser), 
                 isAuthenticated: true, 
                 isLoading: false 
               });
@@ -294,10 +348,10 @@ export const useAuthStore = create<AuthStore>()(
             }
 
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            const transformedUser = normalizeAuthUser({
               ...userData,
               companyId: userData.company_id || userData.companyId, // Handle both field names
-            };
+            });
             
             set({ 
               user: transformedUser, 
@@ -335,6 +389,16 @@ export const useAuthStore = create<AuthStore>()(
             return;
           }
 
+          const persistedRole =
+            updates.role ??
+            (updates.systemPermission
+              ? getPersistenceRole(updates.systemPermission, currentUser.role)
+              : undefined);
+          const persistedUpdates = {
+            ...updates,
+            role: persistedRole,
+          };
+
           // Update in Supabase
           const { error } = await supabase
             .from('users')
@@ -344,7 +408,7 @@ export const useAuthStore = create<AuthStore>()(
               phone: updates.phone,
               company_id: updates.companyId,
               position: updates.position,
-              role: updates.role,
+              role: persistedRole,
             })
             .eq('id', currentUser.id);
 
@@ -355,12 +419,12 @@ export const useAuthStore = create<AuthStore>()(
           }
 
           // Update local state
-          const updatedUser = { ...currentUser, ...updates };
+          const updatedUser = normalizeAuthUser({ ...currentUser, ...persistedUpdates });
           set({ user: updatedUser, isLoading: false });
 
           // Update user store cache
           const userStore = useUserStore.getState();
-          await userStore.updateUser(currentUser.id, updates);
+          await userStore.updateUser(currentUser.id, persistedUpdates);
         } catch (error: any) {
           console.error('Error updating user:', error);
           set({ isLoading: false });
@@ -451,10 +515,10 @@ export const useAuthStore = create<AuthStore>()(
 
           if (userData) {
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            const transformedUser = normalizeAuthUser({
               ...userData,
               companyId: userData.company_id || userData.companyId, // Handle both field names
-            };
+            });
             set({ user: transformedUser });
           }
         } catch (error) {
@@ -488,11 +552,11 @@ export const useAuthStore = create<AuthStore>()(
 
           if (data.user && data.session) {
             set({ 
-              user: { 
+              user: normalizeAuthUser({ 
                 id: data.user.id, 
                 email: data.user.email,
-                name: fullName || data.user.email?.split('@')[0] || 'User'
-              } as any,
+                name: fullName || data.user.email?.split('@')[0] || 'User',
+              }) as any,
               session: data.session,
               isAuthenticated: true,
               isLoading: false,
@@ -531,14 +595,14 @@ export const useAuthStore = create<AuthStore>()(
               .eq('id', data.user.id)
               .single();
 
-            const transformedUser = userData ? {
+            const transformedUser = userData ? normalizeAuthUser({
               ...userData,
               companyId: userData.company_id || userData.companyId,
-            } : {
+            }) : normalizeAuthUser({
               id: data.user.id,
               email: data.user.email,
-              name: data.user.email?.split('@')[0] || 'User'
-            };
+              name: data.user.email?.split('@')[0] || 'User',
+            });
 
             set({ 
               user: transformedUser as any,
@@ -617,14 +681,14 @@ export const useAuthStore = create<AuthStore>()(
                 .eq('id', user.id)
                 .single();
 
-              const transformedUser = userData ? {
+              const transformedUser = userData ? normalizeAuthUser({
                 ...userData,
                 companyId: userData.company_id || userData.companyId,
-              } : {
+              }) : normalizeAuthUser({
                 id: user.id,
                 email: user.email,
-                name: user.email?.split('@')[0] || 'User'
-              };
+                name: user.email?.split('@')[0] || 'User',
+              });
 
               set({ 
                 user: transformedUser as any,
@@ -736,11 +800,11 @@ export const useAuthStore = create<AuthStore>()(
             }
 
             // Transform Supabase data to match local interface
-            const transformedUser = {
+            const transformedUser = normalizeAuthUser({
               ...userData,
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
-            };
+            });
 
             set({ 
               user: transformedUser, 

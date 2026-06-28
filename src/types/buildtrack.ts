@@ -150,7 +150,18 @@ export type ProjectRole = "lead_project_manager" | "contractor" | "subcontractor
  * 
  * See REFACTORING_ROLES_CATEGORIES.md for migration plan.
  */
-export type RoleName = "admin" | "manager" | "worker" | "lead_project_manager" | "contractor" | "subcontractor" | "inspector" | "architect" | "engineer" | "foreman";
+export type RoleName =
+  | "admin"
+  | "manager"
+  | "member"
+  | "worker"
+  | "lead_project_manager"
+  | "contractor"
+  | "subcontractor"
+  | "inspector"
+  | "architect"
+  | "engineer"
+  | "foreman";
 
 export interface Role {
   id: string;

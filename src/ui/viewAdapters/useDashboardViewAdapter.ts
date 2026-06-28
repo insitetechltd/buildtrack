@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
-import type { Project } from "@/types/buildtrack";
+import { isAdmin, type Project } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import type {
   DashboardProjectSummaryItem,
@@ -259,7 +259,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   return {
     output,
     visibility: {
-      showCreateTaskFab: Boolean(user && user.role !== "admin"),
+      showCreateTaskFab: Boolean(user && !isAdmin(user)),
       showProfileShortcut: Boolean(user),
       showProjectPickerShortcut: Boolean(user),
       showDeveloperSettingsShortcut: __DEV__,

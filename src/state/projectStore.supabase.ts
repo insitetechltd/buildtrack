@@ -13,7 +13,15 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
-import { Project, UserProjectAssignment, ProjectStatus, UserCategory, ProjectRole } from "../types/buildtrack";
+import {
+  getProjectRole,
+  isLeadProjectManager,
+  Project,
+  UserProjectAssignment,
+  ProjectStatus,
+  UserCategory,
+  ProjectRole,
+} from "../types/buildtrack";
 
 export type { QueryMeta } from "../api/supabase";
 
@@ -1347,7 +1355,10 @@ export const useProjectStore = create<ProjectStore>()(
       // Lead Project Manager utilities
       getUserLeadProjects: (userId) => {
         const leadAssignments = get().userAssignments.filter(
-          a => a.userId === userId && a.category === 'lead_project_manager' && a.isActive
+          (assignment) =>
+            assignment.userId === userId &&
+            assignment.isActive &&
+            isLeadProjectManager(assignment)
         );
         const projectIds = leadAssignments.map(a => a.projectId);
         return get().projects.filter(project => projectIds.includes(project.id));
@@ -1355,14 +1366,20 @@ export const useProjectStore = create<ProjectStore>()(
 
       isUserLeadPMForProject: (userId, projectId) => {
         return get().userAssignments.some(
-          a => a.userId === userId && a.projectId === projectId && 
-               a.category === 'lead_project_manager' && a.isActive
+          (assignment) =>
+            assignment.userId === userId &&
+            assignment.projectId === projectId &&
+            assignment.isActive &&
+            isLeadProjectManager(assignment)
         );
       },
 
       getLeadPMForProject: (projectId) => {
         const leadAssignment = get().userAssignments.find(
-          a => a.projectId === projectId && a.category === 'lead_project_manager' && a.isActive
+          (assignment) =>
+            assignment.projectId === projectId &&
+            assignment.isActive &&
+            isLeadProjectManager(assignment)
         );
         return leadAssignment?.userId;
       },
@@ -1373,7 +1390,7 @@ export const useProjectStore = create<ProjectStore>()(
         const project = get().getProjectById(projectId);
 
         const usersByCategory = assignments.reduce((acc, assignment) => {
-          const role = assignment.projectRole || assignment.category;
+          const role = getProjectRole(assignment);
           acc[role] = (acc[role] || 0) + 1;
           return acc;
         }, {} as Record<ProjectRole, number>);

@@ -602,7 +602,7 @@ export const useProjectStore = create<ProjectStore>()(
       },
     }),
     {
-      name: "buildtrack-projects",
+      name: "buildtrack-projects-legacy",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         // Only persist projects and assignments, not loading/error states

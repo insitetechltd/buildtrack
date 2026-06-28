@@ -4,6 +4,20 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 import { Role, RoleName } from "../types/buildtrack";
 
+export function mapRoleRow(role: any): Role {
+  return {
+    id: role.id,
+    name: role.name as RoleName,
+    displayName: role.display_name ?? role.displayName,
+    description: role.description,
+    level: role.level,
+    permissions: role.permissions,
+    isSystemRole: role.is_system_role ?? role.isSystemRole ?? false,
+    createdAt: role.created_at ?? role.createdAt,
+    updatedAt: role.updated_at ?? role.updatedAt,
+  };
+}
+
 interface RoleStore {
   roles: Role[];
   isLoading: boolean;
@@ -51,9 +65,9 @@ export const useRoleStore = create<RoleStore>()(
 
           if (error) throw error;
 
-          set({ 
-            roles: data || [], 
-            isLoading: false 
+          set({
+            roles: (data || []).map(mapRoleRow),
+            isLoading: false
           });
         } catch (error: any) {
           console.error('Error fetching roles:', error);
@@ -77,7 +91,7 @@ export const useRoleStore = create<RoleStore>()(
             .single();
 
           if (error) throw error;
-          return data;
+          return data ? mapRoleRow(data) : null;
         } catch (error: any) {
           console.error('Error fetching role:', error);
           return null;
@@ -135,7 +149,7 @@ export const useRoleStore = create<RoleStore>()(
 
           // Update local state
           set(state => ({
-            roles: [...state.roles, data],
+            roles: [...state.roles, mapRoleRow(data)],
             isLoading: false,
           }));
 
@@ -233,5 +247,4 @@ export const useRoleStore = create<RoleStore>()(
     }
   )
 );
-
 

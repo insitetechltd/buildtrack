@@ -4,7 +4,7 @@ import { Alert } from "react-native";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithCompanyInit } from "@/state/projectStore.supabase";
 import { useUserStoreWithInit } from "@/state/userStore.supabase";
-import type { Project, ProjectStatus } from "@/types/buildtrack";
+import { isAdmin, type Project, type ProjectStatus } from "@/types/buildtrack";
 import type { ProjectsScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 import { useDateFormatter } from "@/utils/dateFormatter";
 import { useTranslation } from "@/utils/useTranslation";
@@ -58,6 +58,7 @@ export function useProjectsViewAdapter(
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const canAdministerProjects = isAdmin(user);
 
   const statusLabels = useMemo<Record<ProjectStatus, string>>(
     () => ({
@@ -106,10 +107,9 @@ export function useProjectsViewAdapter(
             fetchUserProjectAssignments(user.id),
           ]);
 
-          const currentProjects =
-            user.role === "admin"
-              ? getProjectsByCompany(user.companyId)
-              : getProjectsByUser(user.id);
+          const currentProjects = canAdministerProjects
+            ? getProjectsByCompany(user.companyId)
+            : getProjectsByUser(user.id);
           console.log(
             `ProjectsScreen: Loaded ${currentProjects.length} projects from database`,
           );
@@ -157,6 +157,7 @@ export function useProjectsViewAdapter(
 
     void loadData();
   }, [
+    canAdministerProjects,
     fetchProjects,
     fetchUserProjectAssignments,
     fetchUsers,
@@ -171,12 +172,12 @@ export function useProjectsViewAdapter(
       return [];
     }
 
-    if (user.role === "admin") {
+    if (canAdministerProjects) {
       return getProjectsByCompany(user.companyId);
     }
 
     return getProjectsByUser(user.id);
-  }, [getProjectsByCompany, getProjectsByUser, user]);
+  }, [canAdministerProjects, getProjectsByCompany, getProjectsByUser, user]);
 
   const filteredProjects = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -238,7 +239,6 @@ export function useProjectsViewAdapter(
   );
 
   const output = useMemo<ProjectsScreenViewAdapterOutput>(() => {
-    const isAdmin = user?.role === "admin";
     const isInitialLoading = isLoading && allProjects.length === 0;
     const isBackgroundRefreshing = isRefreshing && allProjects.length > 0;
     const density = "standard" as const;
@@ -249,7 +249,7 @@ export function useProjectsViewAdapter(
       filteredProjects.length === 1
         ? t.projects.project
         : t.projects.projectsPlural,
-      !isAdmin ? t.projects.assignedToYou : null,
+      !canAdministerProjects ? t.projects.assignedToYou : null,
     ]
       .filter(Boolean)
       .join(" ");
@@ -278,7 +278,7 @@ export function useProjectsViewAdapter(
       statusFilter,
       projectCountLabel,
       isRefreshing,
-      isAdmin,
+      isAdmin: canAdministerProjects,
       projectItems: filteredProjects.map((project) => {
         const projectStats = getProjectStats(project.id);
         const createdBy = getUserById(project.createdBy);
@@ -305,7 +305,7 @@ export function useProjectsViewAdapter(
           budgetLabel: project.budget
             ? `${t.projects.budget}: $${project.budget.toLocaleString()}`
             : undefined,
-          canEdit: isAdmin,
+          canEdit: canAdministerProjects,
           density,
           structuralState,
         };
@@ -352,16 +352,17 @@ export function useProjectsViewAdapter(
         title: searchQuery ? t.projects.noProjectsFound : t.projects.noProjects,
         message: searchQuery
           ? t.projects.tryAdjustingSearch
-          : isAdmin
+          : canAdministerProjects
             ? t.projects.createFirstProject
             : t.projects.noProjectsMessage,
-        showCreateAction: isAdmin && searchQuery.length === 0,
+        showCreateAction: canAdministerProjects && searchQuery.length === 0,
       },
       editingProject,
       isEditModalVisible,
     };
   }, [
     allProjects.length,
+    canAdministerProjects,
     dateFormatter,
     editingProject,
     filteredProjects,

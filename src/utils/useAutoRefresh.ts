@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useTaskStore } from '../state/taskStore.supabase';
-import { useProjectStore } from '../state/projectStore';
+import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
 
 /**

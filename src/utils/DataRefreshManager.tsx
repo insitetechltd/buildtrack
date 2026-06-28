@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useTaskStore } from '../state/taskStore.supabase';
-import { useProjectStore } from '../state/projectStore';
+import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
 import { useAuthStore } from '../state/authStore';
 
@@ -83,9 +83,9 @@ export const triggerRefresh = async () => {
         
         // Fetch all data in parallel for maximum speed
         await Promise.all([
-          projectStore.fetchProjects(),
-          projectStore.fetchUserProjectAssignments(user.id),
-          taskStore.fetchTasks(), // Fetch ALL tasks, not just user's tasks
+          projectStore.fetchProjects(true),
+          projectStore.fetchUserProjectAssignments(user.id, true),
+          taskStore.fetchTasks(true), // Fetch ALL tasks, not just user's tasks
           userStore.fetchUsers()
         ]);
         

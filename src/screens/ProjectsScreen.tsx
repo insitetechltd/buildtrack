@@ -19,7 +19,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useAuthStore } from "../state/authStore";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
 import { useUserStoreWithInit } from "../state/userStore.supabase";
-import { Project, ProjectStatus } from "../types/buildtrack";
+import { getUserSystemPermission, Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import LogoutFAB from "../components/LogoutFAB"; // Keep for screens without create task
@@ -361,7 +361,7 @@ function EditProjectModal({
 
   // Memoize eligible lead PMs - must be called before any conditional returns
   const eligibleLeadPMs = React.useMemo(() => 
-    companyUsers.filter(u => u.role === "manager"), // Only managers can be Lead PM, not admins
+    companyUsers.filter((candidate) => getUserSystemPermission(candidate) === "manager"),
     [companyUsers]
   );
 

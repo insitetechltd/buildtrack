@@ -3,7 +3,7 @@ import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
-import type { Priority, Task, TaskStatus } from "@/types/buildtrack";
+import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import type {
   TasksScreenRowItem,
@@ -285,7 +285,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     setSearchQuery,
     searchInput,
     visibility: {
-      showCreateTaskFab: Boolean(user && user.role !== "admin"),
+      showCreateTaskFab: Boolean(user && !isAdmin(user)),
       showProfileShortcut: Boolean(user),
       showProjectPickerShortcut: Boolean(user),
       showDeveloperSettingsShortcut: __DEV__,

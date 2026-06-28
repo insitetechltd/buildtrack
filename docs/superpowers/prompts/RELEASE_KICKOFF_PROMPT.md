@@ -69,5 +69,5 @@ Assess whether the current Android production build is ready for Play Store subm
 
 ## Related Files
 
-- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/SOLO_KICKOFF_PROMPT.md)
+- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/prompts/SOLO_KICKOFF_PROMPT.md)
 - [solo-orchestrator.md](file:///Volumes/KooDrive/Insite%20App/.trae/agents/solo-orchestrator.md)

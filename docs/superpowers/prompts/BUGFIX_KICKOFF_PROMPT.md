@@ -73,5 +73,5 @@ Fix the issue where some accepted tasks do not appear in the task list until the
 
 ## Related Files
 
-- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/SOLO_KICKOFF_PROMPT.md)
+- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/prompts/SOLO_KICKOFF_PROMPT.md)
 - [solo-orchestrator.md](file:///Volumes/KooDrive/Insite%20App/.trae/agents/solo-orchestrator.md)

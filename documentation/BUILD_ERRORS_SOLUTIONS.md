@@ -400,8 +400,8 @@ npx expo run:ios --configuration Release
 
 ## Related Documentation
 
-- [BUILD_SCRIPTS.md](./BUILD_SCRIPTS.md) - Build script reference
-- [BUILD_CONFIGURATION.md](./BUILD_CONFIGURATION.md) - Configuration details
-- [DEPENDENCY_STATUS.md](./DEPENDENCY_STATUS.md) - Dependency issues
+- [NON_INTERACTIVE_LOCAL_BUILDS.md](./NON_INTERACTIVE_LOCAL_BUILDS.md) - Preferred build workflow
+- [history/superseded/BUILD_SCRIPTS.md](./history/superseded/BUILD_SCRIPTS.md) - Historical build script reference
+- [history/superseded/BUILD_CONFIGURATION.md](./history/superseded/BUILD_CONFIGURATION.md) - Historical configuration details
+- [history/releases/DEPENDENCY_STATUS.md](./history/releases/DEPENDENCY_STATUS.md) - Point-in-time dependency status
 - [VERSION_NUMBERS_EXPLAINED.md](./VERSION_NUMBERS_EXPLAINED.md) - Version management
-

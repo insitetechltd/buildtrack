@@ -72,5 +72,5 @@ Add task priority support so users can set low, medium, or high priority when cr
 
 ## Related Files
 
-- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/SOLO_KICKOFF_PROMPT.md)
+- [SOLO_KICKOFF_PROMPT.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/prompts/SOLO_KICKOFF_PROMPT.md)
 - [solo-orchestrator.md](file:///Volumes/KooDrive/Insite%20App/.trae/agents/solo-orchestrator.md)

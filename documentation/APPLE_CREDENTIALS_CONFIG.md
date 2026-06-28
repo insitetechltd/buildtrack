@@ -1,203 +1,79 @@
-# Apple Credentials Configuration for Non-Interactive Builds
+# Apple Credentials Configuration
 
-## Overview
+## Purpose
 
-This guide explains how Apple credentials are configured to eliminate prompts during local builds.
+This guide explains how to configure Apple credentials for non-interactive local and CI builds without storing account-specific values in tracked Markdown files.
 
-## Problem Solved
+## Secure Configuration
 
-Previously, local builds would prompt for:
-1. ❌ "Do you want to log in to your Apple account?" → **yes**
-2. ❌ "Apple ID:" → **tristan.koo@insiteworks.com**
+Store Apple credentials only in local environment files or your CI secret manager.
 
-Now these are configured automatically!
-
-## Configuration Files
-
-### 1. `.env` File
-
-Apple credentials are stored in `.env` (which is gitignored for security):
+Example local `.env` values:
 
 ```bash
-# Apple Credentials for Non-Interactive Builds
-EXPO_APPLE_ID=tristan.koo@insiteworks.com
-EXPO_APPLE_TEAM_ID=DSNR656S6Y
-
-# Expo Authentication Token
-EXPO_TOKEN=your_expo_token_here
+EXPO_APPLE_ID=your-apple-id@example.com
+EXPO_APPLE_TEAM_ID=YOURTEAMID
+EXPO_TOKEN=your_expo_token
 ```
 
-### 2. `eas.json` Configuration
+Do not commit real Apple IDs, team identifiers, app-specific passwords, or Expo tokens into Markdown, source files, or tracked config.
 
-The `production-local` profile includes Apple credentials as environment variables:
+## Recommended Flow
 
-```json
-{
-  "build": {
-    "production-local": {
-      "extends": "production",
-      "distribution": "internal",
-      "ios": {
-        "credentialsSource": "remote",
-        "cocoapods": "1.16.1",
-        "autoIncrement": true
-      },
-      "env": {
-        "EXPO_APPLE_ID": "tristan.koo@insiteworks.com",
-        "EXPO_APPLE_TEAM_ID": "DSNR656S6Y"
-      }
-    }
-  }
-}
-```
+1. Add the required values to a gitignored environment file.
+2. Make sure the relevant build profile reads those values from the environment rather than hardcoding them.
+3. Verify Expo authentication before starting a non-interactive build.
+4. Run the build command from the preferred local build runbook in [NON_INTERACTIVE_LOCAL_BUILDS.md](./NON_INTERACTIVE_LOCAL_BUILDS.md).
 
-### 3. `build-local.sh` Script
+## EAS Profile Guidance
 
-The build script automatically:
-1. ✅ Loads credentials from `.env`
-2. ✅ Exports them as environment variables
-3. ✅ Verifies they're set before building
-4. ✅ Runs build in `--non-interactive` mode
+- Prefer environment-variable driven configuration over checked-in secrets.
+- Keep `credentialsSource` aligned with your current EAS setup.
+- If local builds require Apple credentials, load them at runtime from the environment.
 
-## How It Works
+## Security Rules
 
-### Build Flow
-
-```
-1. Run: ./build-local.sh
-   └─ Loads .env file
-
-2. Export Environment Variables
-   ├─ EXPO_APPLE_ID
-   ├─ EXPO_APPLE_TEAM_ID
-   └─ EXPO_TOKEN
-
-3. Check EAS Authentication
-   └─ npx eas whoami
-
-4. Verify Apple Credentials
-   ├─ Apple ID: tristan.koo@insiteworks.com
-   └─ Team ID: DSNR656S6Y
-
-5. Start Build (Non-Interactive)
-   └─ npx eas build --local --non-interactive
-
-6. Build Completes Without Prompts! ✅
-```
-
-## Apple Team ID Reference
-
-Your Apple Team ID: **DSNR656S6Y**
-
-This corresponds to your Apple Developer account and is used to:
-- Sign the app with the correct certificate
-- Generate provisioning profiles
-- Submit to App Store Connect
-
-## Usage
-
-### Standard Build (No Prompts)
-
-```bash
-./build-local.sh
-```
-
-Output:
-```
-🔨 BuildTrack Local Build Helper (Non-Interactive)
-
-Profile: production-local
-Platform: ios
-
-Loading credentials from .env...
-Checking EAS authentication...
-✅ Logged in as: tristankoo
-✅ Apple ID: tristan.koo@insiteworks.com
-✅ Apple Team ID: DSNR656S6Y
-
-Starting local build...
-[Build proceeds without any prompts]
-```
-
-### Override Apple ID (Temporary)
-
-```bash
-EXPO_APPLE_ID=other@email.com ./build-local.sh
-```
-
-### Different Profile
-
-```bash
-./build-local.sh preview ios
-```
-
-## Security Best Practices
-
-### 1. Never Commit Credentials
-
-```bash
-# ✅ .gitignore already includes:
-.env
-*.env
-
-# ❌ Never commit:
-# - Apple ID
-# - Team ID
-# - Expo Token
-# - Any passwords
-```
-
-### 2. Use App-Specific Passwords
-
-For enhanced security, use an Apple App-Specific Password:
-
-1. Go to: https://appleid.apple.com
-2. Sign in with your Apple ID
-3. Navigate to: Security → App-Specific Passwords
-4. Generate a new password for "EAS Build"
-5. Use this password when prompted (if ever needed)
-
-### 3. Environment Variable Precedence
-
-Priority (highest to lowest):
-1. Command-line environment variables
-2. `.env` file
-3. `eas.json` env section
-
-Example:
-```bash
-# This overrides .env
-EXPO_APPLE_TEAM_ID=DIFFERENT123 ./build-local.sh
-```
+- Never commit real credential values.
+- Never paste account-specific values into troubleshooting docs.
+- Use app-specific passwords or provider-approved secret flows when required.
+- Rotate credentials if you suspect they were exposed in local notes or shell history.
 
 ## Troubleshooting
 
-### Error: "Apple ID not set"
+### Missing Apple credentials
 
-**Symptoms:**
-```
-⚠️  Warning: Apple credentials not found in .env
-Build may prompt for Apple account information
+Symptoms:
+
+```text
+Build prompts for Apple login details or fails before credential resolution.
 ```
 
-**Solution:**
+Checks:
+
 ```bash
-# Check .env file
-cat .env | grep EXPO_APPLE
-
-# If missing, add them:
-echo "EXPO_APPLE_ID=tristan.koo@insiteworks.com" >> .env
-echo "EXPO_APPLE_TEAM_ID=DSNR656S6Y" >> .env
+printenv EXPO_APPLE_ID
+printenv EXPO_APPLE_TEAM_ID
+printenv EXPO_TOKEN
 ```
 
-### Error: "Invalid Team ID"
+### Invalid team or account mapping
 
-**Symptoms:**
-```
-Error: Team with ID 'XXXX' not found
+Symptoms:
+
+```text
+Build fails because the Apple team or account does not match the expected signing setup.
 ```
 
-**Solution:**
+Actions:
+
+- Confirm the Apple account has access to the correct team.
+- Confirm the team identifier matches your Apple Developer account.
+- Re-run the non-interactive build only after environment values are corrected.
+
+## Related Docs
+
+- [NON_INTERACTIVE_LOCAL_BUILDS.md](./NON_INTERACTIVE_LOCAL_BUILDS.md)
+- [BUILD_ERRORS_SOLUTIONS.md](./BUILD_ERRORS_SOLUTIONS.md)
 ```bash
 # Verify your Team ID
 # 1. Visit: https://developer.apple.com/account
@@ -327,7 +203,6 @@ Your current setup:
 
 **Last Updated**: November 12, 2025
 **Status**: ✅ Configured for Non-Interactive Builds
-
 
 
 

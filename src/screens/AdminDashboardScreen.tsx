@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -7,841 +7,447 @@ import {
   Modal,
   TextInput,
   Image,
-  Alert,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import * as Clipboard from "expo-clipboard";
-import { useAuthStore } from "../state/authStore";
-import { isAdmin, getUserSystemPermission } from "../types/buildtrack";
-import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useUserStoreWithInit } from "../state/userStore.supabase";
-import { useTaskStore } from "../state/taskStore.supabase";
-import { useCompanyStore } from "../state/companyStore";
-import { cn } from "../utils/cn";
-import StandardHeader from "../components/StandardHeader";
-import ModalHandle from "../components/ModalHandle";
 
-interface AdminDashboardScreenProps {
-  onNavigateToProjects: () => void;
-  onNavigateToUserManagement: () => void;
-  onNavigateToProfile: () => void;
-  onNavigateToDevAdmin?: () => void;
+import ModalHandle from "../components/ModalHandle";
+import StandardHeader from "../components/StandardHeader";
+import { cn } from "../utils/cn";
+import type {
+  AdminDashboardBannerSettingsModel,
+  AdminDashboardQuickActionItem,
+  AdminDashboardStatCard,
+} from "../ui/contracts/viewAdapters";
+import {
+  useAdminDashboardViewAdapter,
+  type AdminDashboardViewAdapterProps,
+} from "../ui/viewAdapters/useAdminDashboardViewAdapter";
+
+type AdminDashboardScreenProps = AdminDashboardViewAdapterProps;
+
+function StatCard({ card }: { card: AdminDashboardStatCard }) {
+  return (
+    <View className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}>
+      <View className="flex-row items-center justify-between mb-2">
+        <Ionicons name={card.icon as any} size={22} color={card.iconColor} />
+        <Text className={cn("text-3xl font-bold", card.textColor)}>{card.value}</Text>
+      </View>
+      <Text className="text-base font-semibold text-gray-900">{card.label}</Text>
+      {card.subtitle ? <Text className="text-sm text-gray-600 mt-1">{card.subtitle}</Text> : null}
+    </View>
+  );
 }
 
-export default function AdminDashboardScreen({ 
-  onNavigateToProjects,
-  onNavigateToUserManagement,
-  onNavigateToProfile,
-  onNavigateToDevAdmin
-}: AdminDashboardScreenProps) {
-  const { user, logout } = useAuthStore();
-  const currentCompanyId = user?.companyId ?? "";
-  const { getProjectsByCompany, userAssignments, fetchProjects } = useProjectStoreWithCompanyInit(currentCompanyId);
-  const userStore = useUserStoreWithInit();
-  const { getUsersByCompany, fetchUsers, getAllUsers } = userStore;
-  const tasks = useTaskStore(state => state.tasks);
-  const fetchTasks = useTaskStore(state => state.fetchTasks);
-  const { getCompanyById, getCompanyBanner, updateCompanyBanner } = useCompanyStore();
+function QuickActionCard({
+  action,
+  onPress,
+}: {
+  action: AdminDashboardQuickActionItem;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      testID={`admin-quick-action-${action.actionId}`}
+      onPress={onPress}
+      className={cn("rounded-xl border p-4 mb-3", action.color, action.borderColor)}
+    >
+      <View className="flex-row items-start">
+        <View className="w-12 h-12 rounded-lg bg-white/70 items-center justify-center mr-4">
+          <Ionicons name={action.icon as any} size={24} color={action.iconColor} />
+        </View>
+        <View className="flex-1">
+          <Text
+            testID={`admin-quick-action-trigger-${action.actionId}`}
+            onPress={onPress}
+            className="text-lg font-semibold text-gray-900 mb-1"
+          >
+            {action.label}
+          </Text>
+          <Text className="text-base text-gray-600">{action.description}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+      </View>
+    </Pressable>
+  );
+}
 
-  // Banner customization state
-  const [showBannerModal, setShowBannerModal] = useState(false);
-  const [bannerForm, setBannerForm] = useState({
-    text: "",
-    backgroundColor: "#3b82f6",
-    textColor: "#ffffff",
-    isVisible: true,
-    imageUri: "",
-  });
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
+function BannerSettingsModal({
+  bannerSettings,
+  onClose,
+  onChangeText,
+  onSelectColorPreset,
+  onToggleVisibility,
+  onPickImage,
+  onRemoveImage,
+  onSave,
+}: {
+  bannerSettings: AdminDashboardBannerSettingsModel;
+  onClose: () => void;
+  onChangeText: (value: string) => void;
+  onSelectColorPreset: (presetId: string) => void;
+  onToggleVisibility: () => void;
+  onPickImage: () => void;
+  onRemoveImage: () => void;
+  onSave: () => void;
+}) {
+  if (!bannerSettings.isModalVisible || !Modal) {
+    return null;
+  }
 
-  // Handle pull-to-refresh
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        fetchUsers(),
-        fetchProjects(),
-        fetchTasks()
-      ]);
-      console.log('✅ Dashboard data refreshed successfully');
-    } catch (error) {
-      console.error('❌ Error refreshing dashboard:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
-  if (!isAdmin(user)) {
-    return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+  return (
+    <Modal
+      visible={bannerSettings.isModalVisible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
-        <View className="flex-1 items-center justify-center">
-          <Text className="text-gray-500">Access denied. Admin role required.</Text>
+
+        <ModalHandle />
+
+        <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+          <Pressable onPress={onClose} className="mr-4 w-10 h-10 items-center justify-center">
+            <Ionicons name="close" size={24} color="#374151" />
+          </Pressable>
+          <Text className="text-2xl font-semibold text-gray-900 flex-1">
+            Company Banner Settings
+          </Text>
+        </View>
+
+        <ScrollView className="flex-1 px-6 py-4">
+          <View className="mb-6">
+            <Text className="text-base font-semibold text-gray-700 mb-2">Preview</Text>
+            {bannerSettings.isVisible ? (
+              <View className="rounded-lg overflow-hidden">
+                {bannerSettings.imageUri ? (
+                  <Image
+                    source={{ uri: bannerSettings.imageUri }}
+                    className="w-full h-24"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View
+                    className="px-4 py-3"
+                    style={{ backgroundColor: bannerSettings.backgroundColor }}
+                  >
+                    <Text
+                      className="text-base font-medium text-center"
+                      style={{ color: bannerSettings.textColor }}
+                    >
+                      {bannerSettings.text || "Your banner text will appear here"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View className="bg-gray-100 px-4 py-3 rounded-lg border border-gray-300">
+                <Text className="text-base text-gray-500 text-center">Banner is hidden</Text>
+              </View>
+            )}
+          </View>
+
+          <View className="mb-6">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-gray-700">Banner Image (Optional)</Text>
+                <Text className="text-sm text-gray-500 mt-1">Recommended size: 1200x225px</Text>
+              </View>
+              {bannerSettings.imageUri ? (
+                <Pressable
+                  onPress={onRemoveImage}
+                  className="w-8 h-8 bg-red-500 rounded-full items-center justify-center ml-2"
+                >
+                  <Ionicons name="trash-outline" size={16} color="white" />
+                </Pressable>
+              ) : null}
+            </View>
+
+            <Pressable
+              onPress={onPickImage}
+              className="bg-white rounded-lg border border-dashed border-gray-300 overflow-hidden"
+            >
+              {bannerSettings.imageUri ? (
+                <Image
+                  source={{ uri: bannerSettings.imageUri }}
+                  style={{
+                    width: "100%",
+                    height: 128,
+                    backgroundColor: "#f3f4f6",
+                  }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="p-4 items-center">
+                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
+                  <Text className="text-gray-400 text-base mt-1">Tap to add banner image</Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
+          {!bannerSettings.imageUri ? (
+            <>
+              <View className="mb-4">
+                <Text className="text-base font-semibold text-gray-700 mb-2">Banner Text</Text>
+                <TextInput
+                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
+                  placeholder="Enter banner message..."
+                  value={bannerSettings.text}
+                  onChangeText={onChangeText}
+                  multiline
+                />
+              </View>
+
+              <View className="mb-4">
+                <Text className="text-base font-semibold text-gray-700 mb-2">Color Preset</Text>
+                <View className="flex-row flex-wrap -mx-1">
+                  {bannerSettings.colorPresets.map((preset) => (
+                    <Pressable
+                      key={preset.id}
+                      onPress={() => onSelectColorPreset(preset.id)}
+                      className="w-1/3 px-1 mb-2"
+                    >
+                      <View
+                        className="rounded-lg py-3 items-center justify-center border-2"
+                        style={{
+                          backgroundColor: preset.backgroundColor,
+                          borderColor:
+                            bannerSettings.backgroundColor === preset.backgroundColor
+                              ? "#374151"
+                              : "transparent",
+                        }}
+                      >
+                        <Text style={{ color: preset.textColor }} className="text-sm font-medium">
+                          {preset.label}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          <View className="mb-4">
+            <View className="bg-white rounded-lg border border-gray-300 px-4 py-3">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-1 mr-4">
+                  <Text className="text-base font-semibold text-gray-900 mb-1">
+                    Banner Visibility
+                  </Text>
+                  <Text className="text-sm text-gray-600">
+                    {bannerSettings.isVisible
+                      ? "Banner will be shown to all users"
+                      : "Banner is hidden from all users"}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={onToggleVisibility}
+                  className={cn(
+                    "w-12 h-7 rounded-full flex-row items-center px-0.5",
+                    bannerSettings.isVisible ? "bg-green-500" : "bg-gray-300",
+                  )}
+                >
+                  <View
+                    className={cn(
+                      "w-6 h-6 rounded-full bg-white",
+                      bannerSettings.isVisible ? "ml-auto" : undefined,
+                    )}
+                  />
+                </Pressable>
+              </View>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={onSave}
+            className="bg-blue-600 rounded-lg py-4 items-center justify-center mt-2"
+          >
+            <Text className="text-white font-semibold text-lg">Save Banner Settings</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onClose}
+            className="bg-gray-200 rounded-lg py-4 items-center justify-center mt-3 mb-6"
+          >
+            <Text className="text-gray-700 font-semibold text-lg">Cancel</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
+  const { output, actions } = useAdminDashboardViewAdapter(props);
+  const RefreshControlComponent = RefreshControl;
+  const ModalComponent = Modal;
+
+  if (!output.readiness.hasUsableData) {
+    return null;
+  }
+
+  if (!output.access.isAllowed) {
+    return (
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+        <StatusBar style="dark" />
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-gray-500 text-center">
+            {output.access.deniedMessage || "Access denied."}
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const adminUser = user as NonNullable<typeof user>;
-
-  const allProjects = getProjectsByCompany(adminUser.companyId);
-  // Get only users from the admin's company
-  const allUsers = getAllUsers();
-  const companyUsers = getUsersByCompany(adminUser.companyId);
-  
-  // Debug: Check company filtering
-  console.log('=== COMPANY FILTERING DEBUG ===');
-  console.log('Current user:', adminUser.name, adminUser.email);
-  console.log('Current user company ID:', adminUser.companyId);
-  console.log('Total users in store:', allUsers.length);
-  console.log('Company users after filtering:', companyUsers.length);
-  console.log('Sample user company IDs:', allUsers.slice(0, 5).map(u => ({
-    name: u.name,
-    companyId: u.companyId,
-    matches: u.companyId === adminUser.companyId
-  })));
-  console.log('===============================');
-  const currentCompany = getCompanyById(adminUser.companyId);
-  
-  // Get company user IDs for filtering
-  const companyUserIds = new Set(companyUsers.map(u => u.id));
-  
-  // Filter projects where company users are involved (either created by them OR assigned to them)
-  const assignedProjectIds = new Set(
-    userAssignments
-      .filter(a => companyUserIds.has(a.userId) && a.isActive)
-      .map(a => a.projectId)
-  );
-  const companyProjects = allProjects.filter(project => 
-    companyUserIds.has(project.createdBy) || assignedProjectIds.has(project.id)
-  );
-  
-  // Filter tasks that belong to company projects
-  const companyProjectIds = new Set(companyProjects.map(p => p.id));
-  const companyTasks = tasks.filter(task => companyProjectIds.has(task.projectId));
-  
-  // Debug logging
-  console.log('Admin Dashboard Debug:');
-  console.log('- Current user company ID:', adminUser.companyId);
-  console.log('- All projects:', allProjects.length);
-  console.log('- Company projects:', companyProjects.length);
-  console.log('- All tasks:', tasks.length);
-  console.log('- Company tasks:', companyTasks.length);
-  console.log('- Company users:', companyUsers.length);
-  console.log('- Company user IDs:', Array.from(companyUserIds));
-  console.log('- Project creators:', allProjects.map(p => p.createdBy));
-  console.log('- All users count:', userStore.getAllUsers().length);
-  console.log('- Company users details:', companyUsers.map(u => ({ id: u.id, name: u.name, companyId: u.companyId })));
-  console.log('- Current user company ID:', adminUser.companyId);
-  console.log('- Sample user company IDs:', getAllUsers().slice(0, 3).map(u => ({ name: u.name, companyId: u.companyId })));
-  
-  // Filter user assignments for company users
-  const companyAssignments = userAssignments.filter(a => companyUserIds.has(a.userId));
-  
-  
-  // Calculate statistics
-  const stats = {
-    totalProjects: companyProjects.length, // Should be 0 since projects are created by different company users
-    activeProjects: companyProjects.filter(p => p.status === "active").length,
-    totalUsers: companyUsers.length, // Should be 4 for BuildTrack, 2 for Elite Electric
-    assignedUsers: new Set(companyAssignments.filter(a => a.isActive).map(a => a.userId)).size,
-    totalTasks: companyTasks.length, // Should be 0 since no projects from this company
-    completedTasks: companyTasks.filter(t => (t.currentStatus ?? t.status) === "completed").length,
-  };
-
-  const projectsByStatus = {
-    planning: companyProjects.filter(p => p.status === "planning").length,
-    active: companyProjects.filter(p => p.status === "active").length,
-    on_hold: companyProjects.filter(p => p.status === "on_hold").length,
-    completed: companyProjects.filter(p => p.status === "completed").length,
-    cancelled: companyProjects.filter(p => p.status === "cancelled").length,
-  };
-
-  const usersByRole = {
-    admin: companyUsers.filter(u => getUserSystemPermission(u) === "admin").length,
-    manager: companyUsers.filter(u => getUserSystemPermission(u) === "manager").length,
-    member: companyUsers.filter(u => getUserSystemPermission(u) === "member").length,
-  };
-
-  const StatCard = ({ 
-    title, 
-    count, 
-    subtitle,
-    icon, 
-    color = "bg-blue-50", 
-    iconColor = "#3b82f6",
-    textColor = "text-blue-600",
-    onPress 
-  }: {
-    title: string;
-    count: number | string;
-    subtitle?: string;
-    icon: string;
-    color?: string;
-    iconColor?: string;
-    textColor?: string;
-    onPress?: () => void;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      className={cn("flex-1 p-4 rounded-xl mr-3 mb-3", color)}
-    >
-      <View className="flex-row items-center justify-between mb-2">
-        <Ionicons name={icon as any} size={24} color={iconColor} />
-        <Text className={cn("text-3xl font-bold", textColor)}>{count}</Text>
-      </View>
-      <Text className="text-base text-gray-700 font-medium">{title}</Text>
-      {subtitle && (
-        <Text className="text-sm text-gray-600 mt-1">{subtitle}</Text>
-      )}
-    </Pressable>
-  );
-
-  const QuickActionCard = ({
-    title,
-    description,
-    icon,
-    color = "bg-white",
-    iconColor = "#6b7280",
-    borderColor = "border-gray-200",
-    onPress
-  }: {
-    title: string;
-    description: string;
-    icon: string;
-    color?: string;
-    iconColor?: string;
-    borderColor?: string;
-    onPress: () => void;
-  }) => (
-    <Pressable
-      onPress={onPress}
-      className={cn("rounded-xl border p-4 mb-3", color, borderColor)}
-    >
-      <View className="flex-row items-start">
-        <View className="w-12 h-12 rounded-lg bg-gray-100 items-center justify-center mr-4">
-          <Ionicons name={icon as any} size={24} color={iconColor} />
-        </View>
-        <View className="flex-1">
-          <Text className="text-lg font-semibold text-gray-900 mb-1">
-            {title}
-          </Text>
-          <Text className="text-base text-gray-600">
-            {description}
-          </Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color="#d1d5db" />
-      </View>
-    </Pressable>
-  );
-
-  // Banner customization handlers
-  const openBannerModal = () => {
-    const currentBanner = getCompanyBanner(adminUser.companyId);
-    if (currentBanner) {
-      setBannerForm({
-        text: currentBanner.text,
-        backgroundColor: currentBanner.backgroundColor,
-        textColor: currentBanner.textColor,
-        isVisible: currentBanner.isVisible,
-        imageUri: currentBanner.imageUri || "",
-      });
-    }
-    setShowBannerModal(true);
-  };
-
-  const saveBanner = () => {
-    updateCompanyBanner(adminUser.companyId, bannerForm);
-    setShowBannerModal(false);
-    Alert.alert("Success", "Company banner updated successfully!");
-  };
-
-  const pickBannerImage = async () => {
-    Alert.alert(
-      "Select Banner Image",
-      "Choose how you want to add a banner image",
-      [
-        {
-          text: "Take Photo",
-          onPress: async () => {
-            try {
-              // Request camera permissions
-              const { status } = await ImagePicker.requestCameraPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-                return;
-              }
-
-              const result = await ImagePicker.launchCameraAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsEditing: true,
-                aspect: [16, 3], // Wide banner aspect ratio
-                quality: 0.9,
-              });
-
-              if (!result.canceled && result.assets && result.assets[0]) {
-                setBannerForm(prev => ({ ...prev, imageUri: result.assets[0].uri }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to take photo. Please try again.");
-            }
-          },
-        },
-        {
-          text: "Choose from Library",
-          onPress: async () => {
-            try {
-              // Request media library permissions
-              const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-              if (status !== 'granted') {
-                Alert.alert('Permission Denied', 'Photo library permission is required to select photos.');
-                return;
-              }
-
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images as any,
-                allowsEditing: true,
-                aspect: [16, 3], // Wide banner aspect ratio
-                quality: 0.9,
-              });
-
-              if (!result.canceled && result.assets && result.assets[0]) {
-                setBannerForm(prev => ({ ...prev, imageUri: result.assets[0].uri }));
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to pick image. Please try again.");
-            }
-          },
-        },
-        {
-          text: "Paste from Clipboard",
-          onPress: async () => {
-            try {
-              const hasImage = await Clipboard.hasImageAsync();
-              
-              if (!hasImage) {
-                Alert.alert("No Image", "No image found in clipboard. Copy an image first.");
-                return;
-              }
-
-              const imageUri = await Clipboard.getImageAsync({ format: 'png' });
-              
-              if (imageUri && imageUri.data) {
-                // Convert base64 to URI format
-                const uri = `data:image/png;base64,${imageUri.data}`;
-                setBannerForm(prev => ({ ...prev, imageUri: uri }));
-                Alert.alert("Success", "Image pasted from clipboard!");
-              } else {
-                Alert.alert("Error", "Could not paste image from clipboard");
-              }
-            } catch (error) {
-              console.error("Clipboard paste error:", error);
-              Alert.alert("Error", "Failed to paste from clipboard");
-            }
-          },
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-      ]
-    );
-  };
-
-  const removeBannerImage = () => {
-    Alert.alert(
-      "Remove Banner Image",
-      "Are you sure you want to remove the banner image? The text banner will be used instead.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: () => setBannerForm(prev => ({ ...prev, imageUri: "" })),
-        },
-      ]
-    );
-  };
-
-  const colorPresets = [
-    { name: "Blue", bg: "#3b82f6", text: "#ffffff" },
-    { name: "Green", bg: "#10b981", text: "#ffffff" },
-    { name: "Red", bg: "#ef4444", text: "#ffffff" },
-    { name: "Purple", bg: "#7c3aed", text: "#ffffff" },
-    { name: "Yellow", bg: "#f59e0b", text: "#000000" },
-    { name: "Gray", bg: "#6b7280", text: "#ffffff" },
-  ];
-
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
-      
-      {/* Standard Header */}
-      <StandardHeader 
+
+      <StandardHeader
         title="Admin Dashboard"
         rightElement={
-          <Pressable 
-            onPress={() => setShowProfileMenu(true)}
+          <Pressable
+            testID="admin-profile-trigger"
+            onPress={actions.toggleProfileMenu}
             className="flex-row items-center"
           >
             <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
               <Text className="text-white font-bold text-base">
-                  {adminUser.name.charAt(0).toUpperCase()}
+                {output.profileMenu.avatarInitial}
               </Text>
             </View>
           </Pressable>
         }
       />
 
-      <ScrollView 
-        className="flex-1" 
+      <ScrollView
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          RefreshControlComponent ? (
+            <RefreshControlComponent
+              refreshing={output.refreshState.isRefreshing}
+              onRefresh={() => void actions.handleRefresh()}
+            />
+          ) : undefined
         }
       >
-
-        {/* Company Info Banner */}
-        {currentCompany && (
+        {output.companyScope.companyName ? (
           <View className="px-6">
             <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
               <View className="flex-row items-center">
                 <Ionicons name="business" size={16} color="#3b82f6" />
                 <Text className="text-blue-900 font-medium ml-2 flex-1">
-                  {currentCompany.name}
+                  {output.companyScope.companyName}
                 </Text>
               </View>
-              <Text className="text-blue-700 text-sm mt-1">
-                Showing data for your company only
-              </Text>
+              {output.companyScope.subtitle ? (
+                <Text className="text-blue-700 text-sm mt-1">{output.companyScope.subtitle}</Text>
+              ) : null}
             </View>
           </View>
-        )}
+        ) : null}
 
-        {/* Company Overview */}
         <View className="px-6 pb-4 pt-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            Company Overview
-          </Text>
-          
-          {/* Project Status */}
-          <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">
-              Project Status
-            </Text>
-            <View className="flex-row">
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-blue-600">{stats.totalProjects}</Text>
-                <Text className="text-sm text-gray-600">Total Projects</Text>
-              </View>
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-green-600">{projectsByStatus.active}</Text>
-                <Text className="text-sm text-gray-600">In Progress</Text>
-              </View>
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-gray-600">{projectsByStatus.completed}</Text>
-                <Text className="text-sm text-gray-600">Completed</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* User Role Distribution */}
-          <View className="bg-white rounded-xl border border-gray-200 p-4">
-            <Text className="text-lg font-semibold text-gray-900 mb-3">
-              User Roles
-            </Text>
-            <View className="flex-row">
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-purple-600">{usersByRole.admin}</Text>
-                <Text className="text-sm text-gray-600">Admins</Text>
-              </View>
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-blue-600">{usersByRole.manager}</Text>
-                <Text className="text-sm text-gray-600">Managers</Text>
-              </View>
-              <View className="flex-1 items-center">
-                <Text className="text-2xl font-bold text-green-600">{usersByRole.member}</Text>
-                <Text className="text-sm text-gray-600">Workers</Text>
-              </View>
-            </View>
+          <Text className="text-xl font-semibold text-gray-900 mb-3">Company Overview</Text>
+          <View className="flex-row flex-wrap justify-between">
+            {output.topLevelStats.map((card) => (
+              <StatCard key={card.id} card={card} />
+            ))}
           </View>
         </View>
 
-        {/* Administrative Actions */}
         <View className="px-6 pb-4">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            Administrative Actions
-          </Text>
-          
-          <QuickActionCard
-            title="Manage Projects"
-            description="Create, edit, and oversee all construction projects"
-            icon="folder-open-outline"
-            color="bg-blue-50"
-            iconColor="#3b82f6"
-            borderColor="border-blue-300"
-            onPress={onNavigateToProjects}
-          />
-
-          <QuickActionCard
-            title="User Management"
-            description="Assign users to projects and manage team categories"
-            icon="people-outline"
-            color="bg-purple-50"
-            iconColor="#7c3aed"
-            borderColor="border-purple-300"
-            onPress={onNavigateToUserManagement}
-          />
-
-          <QuickActionCard
-            title="Company Banner"
-            description="Customize the banner displayed across all company screens"
-            icon="megaphone-outline"
-            color="bg-amber-50"
-            iconColor="#f59e0b"
-            borderColor="border-amber-300"
-            onPress={openBannerModal}
-          />
-
-          {onNavigateToDevAdmin && (
-            <QuickActionCard
-              title="Dev Admin Tools"
-              description="Database management, testing scripts, and environment control"
-              icon="code-slash-outline"
-              color="bg-red-50"
-              iconColor="#ef4444"
-              borderColor="border-red-300"
-              onPress={onNavigateToDevAdmin}
-            />
-          )}
+          <Text className="text-xl font-semibold text-gray-900 mb-3">Administrative Actions</Text>
+          {output.quickActions
+            .filter((action) => action.isVisible)
+            .map((action) => (
+              <QuickActionCard
+                key={action.id}
+                action={action}
+                onPress={() => actions.pressQuickAction(action.actionId)}
+              />
+            ))}
         </View>
       </ScrollView>
 
-      {/* Banner Customization Modal */}
-      <Modal
-        visible={showBannerModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowBannerModal(false)}
-      >
-        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-          <StatusBar style="dark" />
-          
-          <ModalHandle />
-          
-          {/* Modal Header */}
-          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-            <Pressable 
-              onPress={() => setShowBannerModal(false)}
-              className="mr-4 w-10 h-10 items-center justify-center"
-            >
-              <Ionicons name="close" size={24} color="#374151" />
-            </Pressable>
-            <Text className="text-2xl font-semibold text-gray-900 flex-1">
-              Company Banner Settings
-            </Text>
-          </View>
+      <BannerSettingsModal
+        bannerSettings={output.bannerSettings}
+        onClose={actions.closeBannerSettings}
+        onChangeText={actions.setBannerText}
+        onSelectColorPreset={actions.selectBannerColorPreset}
+        onToggleVisibility={actions.toggleBannerVisibility}
+        onPickImage={() => void actions.pickBannerImage()}
+        onRemoveImage={actions.removeBannerImage}
+        onSave={() => void actions.saveBannerSettings()}
+      />
 
-          <ScrollView className="flex-1 px-6 py-4">
-            {/* Banner Preview */}
-            <View className="mb-6">
-              <Text className="text-base font-semibold text-gray-700 mb-2">Preview</Text>
-              {bannerForm.isVisible && (
-                <View className="rounded-lg overflow-hidden">
-                  {bannerForm.imageUri ? (
-                    // Image Banner Preview
-                    <Image
-                      source={{ uri: bannerForm.imageUri }}
-                      className="w-full h-24"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    // Text Banner Preview
-                    <View 
-                      className="px-4 py-3"
-                      style={{ backgroundColor: bannerForm.backgroundColor }}
-                    >
-                      <Text 
-                        className="text-base font-medium text-center"
-                        style={{ color: bannerForm.textColor }}
-                      >
-                        {bannerForm.text || "Your banner text will appear here"}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
-              {!bannerForm.isVisible && (
-                <View className="bg-gray-100 px-4 py-3 rounded-lg border border-gray-300">
-                  <Text className="text-base text-gray-500 text-center">
-                    Banner is hidden
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Banner Image Upload */}
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3">
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-gray-700">
-                    Banner Image (Optional)
-                  </Text>
-                  <Text className="text-sm text-gray-500 mt-1">
-                    Recommended size: 1200x225px
-                  </Text>
-                </View>
-                {bannerForm.imageUri && (
-                  <Pressable
-                    onPress={removeBannerImage}
-                    className="w-8 h-8 bg-red-500 rounded-full items-center justify-center ml-2"
-                  >
-                    <Ionicons name="trash-outline" size={16} color="white" />
-                  </Pressable>
-                )}
-              </View>
-              
-              {bannerForm.imageUri ? (
-                <Pressable onPress={pickBannerImage}>
-                  <Image
-                    source={{ uri: bannerForm.imageUri }}
-                    style={{ 
-                      width: '100%', 
-                      height: 128, 
-                      borderRadius: 8,
-                      backgroundColor: '#f3f4f6'
-                    }}
-                    resizeMode="cover"
-                  />
-                  <View style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                    borderRadius: 8,
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    <View style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      paddingHorizontal: 12,
-                      paddingVertical: 8,
-                      borderRadius: 8
-                    }}>
-                      <Text className="text-gray-900 font-medium text-base">Tap to change</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={pickBannerImage}
-                  className="bg-white rounded-lg border border-dashed border-gray-300 p-4 items-center"
-                >
-                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
-                  <Text className="text-gray-400 text-base mt-1">Tap to add banner image</Text>
-                </Pressable>
-              )}
-            </View>
-
-            {/* Separator */}
-            {!bannerForm.imageUri && (
-              <View className="flex-row items-center mb-6">
-                <View className="flex-1 h-px bg-gray-300" />
-                <Text className="text-sm text-gray-500 mx-3">OR USE TEXT BANNER</Text>
-                <View className="flex-1 h-px bg-gray-300" />
-              </View>
-            )}
-
-            {/* Banner Text Input - Only show if no image */}
-            {!bannerForm.imageUri && (
-              <>
-                <View className="mb-4">
-                  <Text className="text-base font-semibold text-gray-700 mb-2">Banner Text</Text>
-                  <TextInput
-                    className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
-                    placeholder="Enter banner message..."
-                    value={bannerForm.text}
-                    onChangeText={(text) => setBannerForm({ ...bannerForm, text })}
-                    multiline
-                  />
-                </View>
-
-                {/* Color Presets */}
-                <View className="mb-4">
-                  <Text className="text-base font-semibold text-gray-700 mb-2">Color Preset</Text>
-                  <View className="flex-row flex-wrap -mx-1">
-                    {colorPresets.map((preset) => (
-                      <Pressable
-                        key={preset.name}
-                        onPress={() => setBannerForm({ 
-                          ...bannerForm, 
-                          backgroundColor: preset.bg,
-                          textColor: preset.text
-                        })}
-                        className="w-1/3 px-1 mb-2"
-                      >
-                        <View 
-                          className="rounded-lg py-3 items-center justify-center border-2"
-                          style={{ 
-                            backgroundColor: preset.bg,
-                            borderColor: bannerForm.backgroundColor === preset.bg ? "#374151" : "transparent"
-                          }}
-                        >
-                          <Text style={{ color: preset.text }} className="text-sm font-medium">
-                            {preset.name}
-                          </Text>
-                        </View>
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              </>
-            )}
-
-            {/* Visibility Toggle */}
-            <View className="mb-4">
-              <View className="bg-white rounded-lg border border-gray-300 px-4 py-3">
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-1 mr-4">
-                    <Text className="text-base font-semibold text-gray-900 mb-1">
-                      Banner Visibility
-                    </Text>
-                    <Text className="text-sm text-gray-600">
-                      {bannerForm.isVisible ? "Banner will be shown to all users" : "Banner is hidden from all users"}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => setBannerForm({ ...bannerForm, isVisible: !bannerForm.isVisible })}
-                    className={cn(
-                      "w-12 h-7 rounded-full flex-row items-center px-0.5",
-                      bannerForm.isVisible ? "bg-green-500" : "bg-gray-300"
-                    )}
-                  >
-                    <View 
-                      className={cn(
-                        "w-6 h-6 rounded-full bg-white",
-                        bannerForm.isVisible && "ml-auto"
-                      )}
-                    />
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-
-            {/* Save Button */}
-            <Pressable
-              onPress={saveBanner}
-              className="bg-blue-600 rounded-lg py-4 items-center justify-center mt-2"
-            >
-              <Text className="text-white font-semibold text-lg">
-                Save Banner Settings
-              </Text>
-            </Pressable>
-
-            {/* Cancel Button */}
-            <Pressable
-              onPress={() => setShowBannerModal(false)}
-              className="bg-gray-200 rounded-lg py-4 items-center justify-center mt-3 mb-6"
-            >
-              <Text className="text-gray-700 font-semibold text-lg">
-                Cancel
-              </Text>
-            </Pressable>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Logout FAB */}
-      {/* Profile Menu Modal */}
-      <Modal
-        visible={showProfileMenu}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowProfileMenu(false)}
-      >
-        <Pressable 
-          className="flex-1 bg-black/50"
-          onPress={() => setShowProfileMenu(false)}
+      {ModalComponent ? (
+        <ModalComponent
+          visible={output.profileMenu.isVisible}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={actions.toggleProfileMenu}
         >
-          <View className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
-            style={{
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-          >
-            {/* User Info Header */}
-            <View className="bg-purple-600 px-4 py-3 border-b border-purple-700">
-              <View className="flex-row items-center">
-                <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
-                  <Text className="text-purple-600 font-bold text-lg">
-                    {adminUser.name.charAt(0).toUpperCase()}
-                  </Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                {adminUser.name}
-                  </Text>
-                  <Text className="text-purple-100 text-sm capitalize">
-                {adminUser.role}
-                  </Text>
+          <Pressable className="flex-1 bg-black/50" onPress={actions.toggleProfileMenu}>
+            <View
+              className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
+              style={{
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+              }}
+            >
+              <View className="bg-purple-600 px-4 py-3 border-b border-purple-700">
+                <View className="flex-row items-center">
+                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
+                    <Text className="text-purple-600 font-bold text-lg">
+                      {output.profileMenu.avatarInitial}
+                    </Text>
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-white font-semibold text-base" numberOfLines={1}>
+                      {output.profileMenu.displayName}
+                    </Text>
+                    <Text className="text-purple-100 text-sm capitalize">
+                      {output.profileMenu.roleLabel}
+                    </Text>
+                  </View>
                 </View>
               </View>
+
+              <View className="py-2">
+                <Pressable
+                  onPress={actions.navigateToProfile}
+                  className="flex-row items-center px-4 py-3 active:bg-gray-100"
+                >
+                  <Ionicons name="person-outline" size={22} color="#9333ea" />
+                  <Text className="text-gray-900 text-base font-medium ml-3">
+                    Profile & Settings
+                  </Text>
+                </Pressable>
+
+                <View className="h-px bg-gray-200 mx-4" />
+
+                <Pressable
+                  onPress={actions.confirmLogout}
+                  className="flex-row items-center px-4 py-3 active:bg-gray-100"
+                >
+                  <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+                  <Text className="text-red-600 text-base font-medium ml-3">Logout</Text>
+                </Pressable>
+              </View>
             </View>
-
-            {/* Menu Options */}
-            <View className="py-2">
-              <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  onNavigateToProfile();
-                }}
-                className="flex-row items-center px-4 py-3 active:bg-gray-100"
-              >
-                <Ionicons name="person-outline" size={22} color="#9333ea" />
-                <Text className="text-gray-900 text-base font-medium ml-3">
-                  Profile & Settings
-                </Text>
-              </Pressable>
-
-              <View className="h-px bg-gray-200 mx-4" />
-
-              <Pressable
-                onPress={() => {
-                  setShowProfileMenu(false);
-                  Alert.alert(
-                    "Logout",
-                    "Are you sure you want to logout?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      { 
-                        text: "Logout", 
-                        style: "destructive",
-                        onPress: logout
-                      },
-                    ]
-                  );
-                }}
-                className="flex-row items-center px-4 py-3 active:bg-gray-100"
-              >
-                <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-                <Text className="text-red-600 text-base font-medium ml-3">
-                  Logout
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
+          </Pressable>
+        </ModalComponent>
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -1,10 +1,9 @@
-import React, { useState, useCallback } from "react";
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,99 +12,22 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "../state/authStore";
 import { cn } from "../utils/cn";
-import Constants from "expo-constants";
 import { useTranslation } from "../utils/useTranslation";
+import { useLoginViewAdapter } from "../ui/viewAdapters/useLoginViewAdapter";
 
 interface LoginScreenProps {
   onToggleRegister?: () => void; // Optional - registration is hidden
 }
 
-export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
+function isPhoneNumber(value: string) {
+  const phoneRegex = /^[\d\s\-\(\)\+]+$/;
+  return phoneRegex.test(value.trim());
+}
+
+export default function LoginScreen(_props: LoginScreenProps) {
   const t = useTranslation();
-  const [emailOrPhone, setEmailOrPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState<{ emailOrPhone?: string; password?: string }>({});
-
-  const { login, isLoading } = useAuthStore();
-
-  const isPhoneNumber = (value: string) => {
-    // Check if it's a phone number (digits, spaces, dashes, parentheses, plus)
-    const phoneRegex = /^[\d\s\-\(\)\+]+$/;
-    return phoneRegex.test(value.trim());
-  };
-
-  const isEmail = (value: string) => {
-    const emailRegex = /\S+@\S+\.\S+/;
-    return emailRegex.test(value);
-  };
-
-  const validateForm = () => {
-    const newErrors: { emailOrPhone?: string; password?: string } = {};
-
-    if (!emailOrPhone) {
-      newErrors.emailOrPhone = t.login.emailOrPhoneRequired;
-    } else if (!isEmail(emailOrPhone) && !isPhoneNumber(emailOrPhone)) {
-      newErrors.emailOrPhone = t.login.invalidEmailOrPhone;
-    }
-
-    if (!password) {
-      newErrors.password = t.validation.passwordRequired;
-    } else if (password.length < 6) {
-      newErrors.password = t.validation.passwordTooShort;
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleEmailOrPhoneChange = useCallback((text: string) => {
-    setEmailOrPhone(text);
-  }, []);
-
-  const handlePasswordChange = useCallback((text: string) => {
-    setPassword(text);
-  }, []);
-
-  const handleLogin = async () => {
-    // Clear any existing errors before validation
-    setErrors({});
-    
-    if (!validateForm()) return;
-
-    try {
-      const success = await login(emailOrPhone, password);
-      
-      if (!success) {
-        Alert.alert(
-          t.login.loginFailed,
-          t.login.invalidCredentials,
-          [{ text: t.common.ok }]
-        );
-      }
-    } catch (error: any) {
-      if (error.message === 'PENDING_APPROVAL') {
-        Alert.alert(
-          t.login.approvalPending,
-          t.login.approvalPendingMessage,
-          [{ text: t.common.ok }]
-        );
-      } else {
-        Alert.alert(
-          t.login.loginFailed,
-          t.login.invalidCredentials,
-          [{ text: t.common.ok }]
-        );
-      }
-    }
-  };
-
-
-  const appVersion = Constants.expoConfig?.version || "1.0.0";
-  const buildNumber = Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "0";
-  const buildIdentifier = `v${appVersion} (${buildNumber})`;
+  const { output, actions } = useLoginViewAdapter();
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -114,7 +36,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
       {/* Build Identifier */}
       <View className="absolute top-12 right-4 z-10">
         <Text className="text-sm text-gray-400 font-mono">
-          {buildIdentifier}
+          {output.buildIdentifierLabel}
         </Text>
       </View>
 
@@ -152,22 +74,22 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 <View
                   className={cn(
                     "flex-row items-center border rounded-lg px-3 py-3",
-                    errors.emailOrPhone
+                    output.validationErrors.emailOrPhone
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300 bg-gray-50"
                   )}
                 >
                   <Ionicons
-                    name={isPhoneNumber(emailOrPhone) ? "call-outline" : "mail-outline"}
+                    name={isPhoneNumber(output.emailOrPhone) ? "call-outline" : "mail-outline"}
                     size={20}
-                    color={errors.emailOrPhone ? "#ef4444" : "#6b7280"}
+                    color={output.validationErrors.emailOrPhone ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
                     testID="login-emailOrPhone"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.emailOrPhonePlaceholder}
-                    value={emailOrPhone}
-                    onChangeText={handleEmailOrPhoneChange}
+                    value={output.emailOrPhone}
+                    onChangeText={actions.setEmailOrPhone}
                     keyboardType="default"
                     autoCapitalize="none"
                     autoComplete="off"
@@ -176,8 +98,10 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                     returnKeyType="next"
                   />
                 </View>
-                {errors.emailOrPhone && (
-                  <Text className="text-red-500 text-sm mt-1">{errors.emailOrPhone}</Text>
+                {output.validationErrors.emailOrPhone && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {output.validationErrors.emailOrPhone}
+                  </Text>
                 )}
               </View>
 
@@ -189,7 +113,7 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                 <View
                   className={cn(
                     "flex-row items-center border rounded-lg px-3 py-3",
-                    errors.password
+                    output.validationErrors.password
                       ? "border-red-300 bg-red-50"
                       : "border-gray-300 bg-gray-50"
                   )}
@@ -197,15 +121,15 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   <Ionicons
                     name="lock-closed-outline"
                     size={20}
-                    color={errors.password ? "#ef4444" : "#6b7280"}
+                    color={output.validationErrors.password ? "#ef4444" : "#6b7280"}
                   />
                   <TextInput
                     testID="login-password"
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.passwordPlaceholder}
-                    value={password}
-                    onChangeText={handlePasswordChange}
-                    secureTextEntry={!showPassword}
+                    value={output.password}
+                    onChangeText={actions.setPassword}
+                    secureTextEntry={!output.isPasswordVisible}
                     autoComplete="password"
                     autoCorrect={false}
                     spellCheck={false}
@@ -213,33 +137,37 @@ export default function LoginScreen({ onToggleRegister }: LoginScreenProps) {
                   />
                   <Pressable
                     testID="login-togglePassword"
-                    onPress={() => setShowPassword(!showPassword)}
+                    onPress={actions.togglePasswordVisibility}
                     className="ml-2"
                   >
                     <Ionicons
-                      name={showPassword ? "eye-outline" : "eye-off-outline"}
+                      name={output.isPasswordVisible ? "eye-outline" : "eye-off-outline"}
                       size={20}
                       color="#6b7280"
                     />
                   </Pressable>
                 </View>
-                {errors.password && (
-                  <Text className="text-red-500 text-sm mt-1">{errors.password}</Text>
+                {output.validationErrors.password && (
+                  <Text className="text-red-500 text-sm mt-1">
+                    {output.validationErrors.password}
+                  </Text>
                 )}
               </View>
 
               {/* Login Button */}
               <Pressable
                 testID="login-submit"
-                onPress={handleLogin}
-                disabled={isLoading}
+                onPress={() => {
+                  void actions.submitLogin();
+                }}
+                disabled={output.isLoading}
                 className={cn(
                   "bg-blue-600 py-4 rounded-lg items-center mt-6",
-                  isLoading && "opacity-50"
+                  output.isLoading && "opacity-50"
                 )}
               >
                 <Text className="text-white font-semibold text-xl">
-                  {isLoading ? t.login.signingIn : t.login.signIn}
+                  {output.isLoading ? t.login.signingIn : t.login.signIn}
                 </Text>
               </Pressable>
 

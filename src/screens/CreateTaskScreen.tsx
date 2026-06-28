@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -46,6 +46,7 @@ import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
+import { getAssignableProjectUsers } from "./createTaskAssignees";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 // Temporarily disabled due to expo-av CMake build issues
@@ -130,9 +131,11 @@ export default function CreateTaskScreen({
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { tasks } = useTaskStore();
-  const { getUsersByRole } = useUserStoreWithInit();
+  useUserStoreWithInit();
+  const { getAllUsers } = useUserStore();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getProjectsByUser } = projectStore;
+  const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
+  const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
@@ -153,6 +156,7 @@ export default function CreateTaskScreen({
   const parentSubTask = parentSubTaskId ? tasks.find(t => t.id === parentSubTaskId && t.parentTaskId === parentTaskId) : null;
   const editTask = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
   const userProjects = getProjectsByUser(user?.id || "");
+  const activeProjectId = formData.projectId || selectedProjectId || "";
   
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
@@ -161,12 +165,15 @@ export default function CreateTaskScreen({
 
   const clearLLMError = () => setLLMError(null);
 
-  const allAssignableUsers = [
-    ...getUsersByRole('admin'),
-    ...getUsersByRole('manager'),
-    ...getUsersByRole('worker'),
-    ...getUsersByRole('member')
-  ];
+  const allAssignableUsers = useMemo(
+    () =>
+      getAssignableProjectUsers({
+        projectId: activeProjectId,
+        assignments: getProjectUserAssignments(activeProjectId),
+        users: getAllUsers(),
+      }),
+    [activeProjectId, getAllUsers, getProjectUserAssignments],
+  );
   const filteredAssignableUsers = allAssignableUsers.filter((u) => {
     if (!userSearchQuery) return true;
     const q = userSearchQuery.toLowerCase();
@@ -291,6 +298,18 @@ export default function CreateTaskScreen({
       updateField('attachments', editTask.attachments || []);
     }
   }, [editTask]);
+
+  useEffect(() => {
+    if (!editTaskId && !formData.projectId && selectedProjectId) {
+      updateField('projectId', selectedProjectId);
+    }
+  }, [editTaskId, formData.projectId, selectedProjectId, updateField]);
+
+  useEffect(() => {
+    if (activeProjectId) {
+      void fetchProjectUserAssignments(activeProjectId);
+    }
+  }, [activeProjectId, fetchProjectUserAssignments]);
 
   if (!user) return null;
   if (isAdmin(user)) {
@@ -788,10 +807,10 @@ export default function CreateTaskScreen({
             >
               <Text className={cn(
                 "flex-1 text-lg",
-                formData.projectId ? "text-gray-900" : "text-gray-500"
+                activeProjectId ? "text-gray-900" : "text-gray-500"
               )}>
-                {formData.projectId 
-                  ? userProjects.find(p => p.id === formData.projectId)?.name 
+                {activeProjectId 
+                  ? userProjects.find(p => p.id === activeProjectId)?.name 
                   : t.createTask.selectProject
                 }
               </Text>

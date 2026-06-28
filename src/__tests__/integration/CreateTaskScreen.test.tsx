@@ -53,13 +53,23 @@ jest.mock('../../state/taskStore.supabase', () => ({
 jest.mock('../../state/userStore.supabase', () => ({
   useUserStoreWithInit: () => ({
     getUsersByRole: () => []
-  })
+  }),
+  useUserStore: () => ({
+    getAllUsers: () => []
+  }),
 }));
 
 jest.mock('../../state/projectStore.supabase', () => ({
   useProjectStoreWithCompanyInit: () => ({
-    getProjectsByUser: () => []
+    getProjectsByUser: () => [],
+    getProjectUserAssignments: () => [],
+    fetchProjectUserAssignments: jest.fn().mockResolvedValue(undefined),
   })
+}));
+
+jest.mock('../../state/projectFilterStore', () => ({
+  useProjectFilterStore: (selector: (state: { selectedProjectId: string | null }) => unknown) =>
+    selector({ selectedProjectId: null }),
 }));
 
 jest.mock('../../utils/useTranslation', () => ({

@@ -3,7 +3,7 @@ import { useAuthStore } from '../state/authStore';
 import { useTaskStore } from '../state/taskStore.supabase';
 import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
-import { supabase } from '../api/supabase';
+import { buildResourceKey, invalidateResourceKeys, supabase } from '../api/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 /**
@@ -24,6 +24,33 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 export function RealtimeSyncManager() {
   const { user } = useAuthStore();
   const channelsRef = useRef<RealtimeChannel[]>([]);
+
+  const getTaskResourceKeys = (
+    taskId: string,
+    nextTask?: {
+      project_id?: string | null;
+      assigned_to?: Array<string | number> | null;
+      assigned_by?: string | number | null;
+    } | null,
+  ) => {
+    const taskStore = useTaskStore.getState();
+    const cachedTask = taskStore.tasks.find((task) => task.id === taskId);
+    const projectId = nextTask?.project_id ?? cachedTask?.projectId ?? null;
+    const assignedTo = Array.isArray(nextTask?.assigned_to)
+      ? nextTask.assigned_to.map((assigneeId) => String(assigneeId))
+      : cachedTask?.assignedTo || [];
+    const assignedBy = nextTask?.assigned_by !== undefined && nextTask?.assigned_by !== null
+      ? String(nextTask.assigned_by)
+      : cachedTask?.assignedBy ?? null;
+
+    return [
+      buildResourceKey('tasks', 'all'),
+      buildResourceKey('task', taskId),
+      projectId ? buildResourceKey('tasks', 'project', projectId) : '',
+      ...assignedTo.map((assigneeId) => buildResourceKey('tasks', 'user', assigneeId)),
+      assignedBy ? buildResourceKey('tasks', 'assignedBy', assignedBy) : '',
+    ].filter(Boolean);
+  };
 
   useEffect(() => {
     // Only run if user is logged in and Supabase is configured
@@ -77,6 +104,9 @@ export function RealtimeSyncManager() {
                 return;
               }
 
+              invalidateResourceKeys(
+                getTaskResourceKeys(newTaskId, payload.new as any)
+              );
               const refreshedTask = await taskStore.fetchTaskById(newTaskId);
               if (!refreshedTask) {
                 taskStore.evictTaskFromCache(newTaskId);
@@ -120,6 +150,9 @@ export function RealtimeSyncManager() {
           
           // Refresh the task to get updated completion percentage and activities
           if (payload.new && 'task_id' in payload.new && payload.new.task_id) {
+            invalidateResourceKeys(
+              getTaskResourceKeys(payload.new.task_id as string)
+            );
             await taskStore.fetchTaskById(payload.new.task_id as string);
           }
         }

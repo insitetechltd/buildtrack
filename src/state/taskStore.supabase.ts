@@ -343,10 +343,10 @@ export const useTaskStore = create<TaskStore>()(
           isInitialLoading: false,
           isBackgroundRefreshing: false,
           isManualRefreshing: false,
-          lastFetchedAt: envelope?.lastFetchedAt ?? Date.now(),
-          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? Date.now(),
-          staleAt: envelope?.staleAt ?? (Date.now() + TASK_FRESH_MS),
-          expiresAt: envelope?.expiresAt ?? (Date.now() + TASK_TTL_MS),
+          lastFetchedAt: envelope?.lastFetchedAt ?? null,
+          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? null,
+          staleAt: envelope?.staleAt ?? null,
+          expiresAt: envelope?.expiresAt ?? null,
           error: null,
           emptyStateResolved: true,
         });
@@ -360,10 +360,10 @@ export const useTaskStore = create<TaskStore>()(
           isInitialLoading: false,
           isBackgroundRefreshing: false,
           isManualRefreshing: false,
-          lastFetchedAt: envelope?.lastFetchedAt ?? get().taskQueryMeta[resourceKey]?.lastFetchedAt ?? null,
-          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? get().taskQueryMeta[resourceKey]?.lastSuccessfulFetchAt ?? null,
-          staleAt: envelope?.staleAt ?? get().taskQueryMeta[resourceKey]?.staleAt ?? null,
-          expiresAt: envelope?.expiresAt ?? get().taskQueryMeta[resourceKey]?.expiresAt ?? null,
+          lastFetchedAt: envelope?.lastFetchedAt ?? null,
+          lastSuccessfulFetchAt: envelope?.lastSuccessfulFetchAt ?? null,
+          staleAt: envelope?.staleAt ?? null,
+          expiresAt: envelope?.expiresAt ?? null,
           error: errorMessage,
           emptyStateResolved: hasCachedData || Boolean(get().taskQueryMeta[resourceKey]?.emptyStateResolved),
         });
@@ -378,6 +378,11 @@ export const useTaskStore = create<TaskStore>()(
       },
       shouldRefreshTasksInBackground: (resourceKey, fallbackIds, forceRefresh = false) => {
         if (forceRefresh || fallbackIds.length === 0) {
+          return false;
+        }
+
+        const envelope = getRequestCacheEnvelope(resourceKey);
+        if (!envelope) {
           return false;
         }
 

@@ -5,9 +5,10 @@ describe('sync manager regression tests', () => {
     jest.clearAllMocks();
   });
 
-  it('fires the fallback background sync when the 30-second interval elapses', async () => {
+  it('fires the fallback background sync when the 30-second interval elapses without busting tracked task caches', async () => {
     let now = 1000;
 
+    const invalidateResourceKeys = jest.fn();
     const fetchTasks = jest.fn().mockResolvedValue(undefined);
     const fetchProjects = jest.fn().mockResolvedValue(undefined);
     const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
@@ -15,6 +16,11 @@ describe('sync manager regression tests', () => {
 
     const taskStoreState = {
       tasks: [{ id: 'task-1' }],
+      taskQueryMeta: {
+        'tasks:all': { key: 'tasks:all' },
+        'task:task-1': { key: 'task:task-1' },
+        'tasks:project:project-1': { key: 'tasks:project:project-1' },
+      },
       fetchTasks,
     };
     const projectStoreState = {
@@ -60,11 +66,16 @@ describe('sync manager regression tests', () => {
       return { useAuthStore };
     });
 
+    jest.doMock('../../api/supabase', () => ({
+      invalidateResourceKeys,
+    }));
+
     const { triggerRefresh } = require('../../utils/DataRefreshManager');
 
     now = 2000;
     await triggerRefresh();
 
+    expect(invalidateResourceKeys).not.toHaveBeenCalled();
     expect(fetchProjects).toHaveBeenCalledTimes(1);
     expect(fetchUserProjectAssignments).toHaveBeenCalledWith('user-1', true);
     expect(fetchTasks).toHaveBeenCalledWith(true);
@@ -77,6 +88,161 @@ describe('sync manager regression tests', () => {
     expect(fetchUserProjectAssignments).toHaveBeenNthCalledWith(2, 'user-1', true);
     expect(fetchTasks).toHaveBeenNthCalledWith(2, true);
     expect(fetchUsers).toHaveBeenCalledTimes(2);
+  });
+
+  it('invalidates related task resource keys before refetching a realtime-updated task', async () => {
+    let tasksChangeHandler:
+      | ((payload: {
+          eventType: string;
+          old?: { id?: string } | null;
+          new?: {
+            id?: string;
+            project_id?: string | null;
+            assigned_to?: Array<string | number> | null;
+            assigned_by?: string | number | null;
+            deleted_at?: string | null;
+          } | null;
+        }) => Promise<void>)
+      | undefined;
+
+    const invalidateResourceKeys = jest.fn();
+    const fetchTaskById = jest.fn().mockResolvedValue({ id: 'task-rt-1' });
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+    const refreshUser = jest.fn().mockResolvedValue(undefined);
+
+    const taskStoreState = {
+      tasks: [
+        {
+          id: 'task-rt-1',
+          projectId: 'project-1',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+        },
+      ],
+      fetchTaskById,
+      evictTaskFromCache: jest.fn(),
+    };
+
+    const authStoreState = {
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        companyId: 'company-1',
+      },
+      refreshUser,
+    };
+
+    const createChannel = () => {
+      const channel = {
+        on: jest.fn(
+          (
+            _event: string,
+            filter: { table?: string },
+            callback: (payload: {
+              eventType: string;
+              old?: { id?: string } | null;
+              new?: {
+                id?: string;
+                project_id?: string | null;
+                assigned_to?: Array<string | number> | null;
+                assigned_by?: string | number | null;
+                deleted_at?: string | null;
+              } | null;
+            }) => Promise<void>
+          ) => {
+            if (filter.table === 'tasks') {
+              tasksChangeHandler = callback;
+            }
+
+            return channel;
+          }
+        ),
+        subscribe: jest.fn((statusCallback?: (status: string) => void) => {
+          statusCallback?.('SUBSCRIBED');
+          return channel;
+        }),
+      };
+
+      return channel;
+    };
+
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const projectStoreState = {
+        fetchProjects,
+        userAssignments: [],
+      };
+
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+
+    jest.doMock('../../state/userStore.supabase', () => {
+      const userStoreState = {
+        fetchUsers,
+      };
+
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      return { useUserStore };
+    });
+
+    jest.doMock('../../api/supabase', () => ({
+      buildResourceKey: (...segments: Array<string | number | null | undefined | false>) =>
+        segments
+          .filter((segment): segment is string | number => segment !== null && segment !== undefined && segment !== false)
+          .map((segment) => String(segment).trim())
+          .filter((segment) => segment.length > 0)
+          .join(':'),
+      invalidateResourceKeys,
+      supabase: {
+        channel: jest.fn(() => createChannel()),
+        removeChannel: jest.fn(),
+      },
+    }));
+
+    jest.doMock('react', () => ({
+      __esModule: true,
+      useEffect: (effect: () => void) => effect(),
+      useRef: (value: unknown) => ({ current: value }),
+    }));
+
+    const { RealtimeSyncManager } = require('../../utils/RealtimeSyncManager');
+
+    expect(RealtimeSyncManager()).toBeNull();
+    expect(tasksChangeHandler).toBeDefined();
+
+    await tasksChangeHandler?.({
+      eventType: 'UPDATE',
+      old: { id: 'task-rt-1' },
+      new: {
+        id: 'task-rt-1',
+      },
+    });
+
+    expect(invalidateResourceKeys).toHaveBeenCalledWith([
+      'tasks:all',
+      'task:task-rt-1',
+      'tasks:project:project-1',
+      'tasks:user:worker-1',
+      'tasks:assignedBy:manager-1',
+    ]);
+    expect(fetchTaskById).toHaveBeenCalledWith('task-rt-1');
   });
 
   it('removes deleted tasks from local state without invoking the legacy delete path', async () => {

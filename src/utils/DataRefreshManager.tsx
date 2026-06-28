@@ -80,7 +80,7 @@ export const triggerRefresh = async () => {
       if (user) {
         const startTime = Date.now();
         console.log('[DataSync] Starting parallel data fetch...');
-        
+
         // Fetch all data in parallel for maximum speed
         await Promise.all([
           projectStore.fetchProjects(true),

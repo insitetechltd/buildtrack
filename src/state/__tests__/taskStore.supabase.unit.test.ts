@@ -1,7 +1,13 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useTaskStore } from '../taskStore.supabase';
 import { useUserStore } from '../userStore.supabase';
-import { supabase } from '@/api/supabase';
+import {
+  buildResourceKey,
+  clearRequestCoordinator,
+  createQueryMeta,
+  getRequestCacheEnvelope,
+  supabase,
+} from '@/api/supabase';
 import { Task, TaskCategory, TaskStatus } from '@/types/buildtrack';
 
 jest.mock('@/api/supabase');
@@ -102,6 +108,7 @@ const resetTaskStore = () => {
 describe('taskStore.supabase unit tests', () => {
   beforeEach(() => {
     resetTaskStore();
+    clearRequestCoordinator();
     jest.clearAllMocks();
   });
 
@@ -258,6 +265,117 @@ describe('taskStore.supabase unit tests', () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  it('treats stale scoped task caches as background-refresh eligible only when the live coordinator envelope exists', async () => {
+    let now = 1_000;
+    const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
+    const projectTaskRow = createTaskRow({
+      id: 'task-project-live-envelope',
+      project_id: 'project-123',
+    });
+    const activityRow = createTaskActivityRow({
+      task_id: 'task-project-live-envelope',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [projectTaskRow], error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByProject('project-123', true);
+    });
+
+    const resourceKey = buildResourceKey('tasks', 'project', 'project-123');
+
+    expect(getRequestCacheEnvelope(resourceKey)).toMatchObject({
+      key: resourceKey,
+      data: expect.any(Array),
+      lastFetchedAt: 1_000,
+      staleAt: 16_000,
+      expiresAt: 61_000,
+    });
+
+    now = 16_001;
+
+    expect(
+      useTaskStore.getState().shouldRefreshTasksInBackground(resourceKey, ['task-project-live-envelope'])
+    ).toBe(true);
+
+    dateNowSpy.mockRestore();
+  });
+
+  it('does not treat cached task ids as background-refresh eligible when no live request envelope exists', () => {
+    const resourceKey = buildResourceKey('tasks', 'all');
+
+    useTaskStore.setState({
+      tasks: [createTaskState()],
+      taskQueryMeta: {
+        [resourceKey]: createQueryMeta(resourceKey, {
+          hasHydratedData: true,
+          hasFetchedOnce: true,
+          lastFetchedAt: 1_000,
+          lastSuccessfulFetchAt: 1_000,
+          staleAt: 61_000,
+          expiresAt: 121_000,
+          emptyStateResolved: true,
+        }),
+      },
+    });
+
+    clearRequestCoordinator();
+
+    expect(
+      useTaskStore.getState().shouldRefreshTasksInBackground(resourceKey, ['task-123'])
+    ).toBe(false);
+  });
+
+  it('does not synthesize freshness timestamps from persisted taskQueryMeta when no live envelope exists', () => {
+    const resourceKey = buildResourceKey('tasks', 'all');
+
+    useTaskStore.setState({
+      taskQueryMeta: {
+        [resourceKey]: createQueryMeta(resourceKey, {
+          hasHydratedData: true,
+          hasFetchedOnce: true,
+          lastFetchedAt: 1_000,
+          lastSuccessfulFetchAt: 1_500,
+          staleAt: 61_000,
+          expiresAt: 121_000,
+          emptyStateResolved: true,
+        }),
+      },
+    });
+
+    clearRequestCoordinator();
+    useTaskStore.getState().completeTaskQuerySuccess(resourceKey, ['task-123']);
+
+    const meta = useTaskStore.getState().taskQueryMeta[resourceKey];
+
+    expect(getRequestCacheEnvelope(resourceKey)).toBeNull();
+    expect(meta.lastFetchedAt).toBeNull();
+    expect(meta.lastSuccessfulFetchAt).toBeNull();
+    expect(meta.staleAt).toBeNull();
+    expect(meta.expiresAt).toBeNull();
   });
 
   it('normalizes fetchTaskById responses to preserve hierarchy fields and assignment metadata', async () => {

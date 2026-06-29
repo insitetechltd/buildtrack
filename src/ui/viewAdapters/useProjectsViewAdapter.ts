@@ -21,7 +21,8 @@ export interface ProjectsViewAdapterHookResult {
     handleRefresh: () => Promise<void>;
     openEditProject: (projectId: string) => void;
     closeEditProject: () => void;
-    saveEditedProject: (project: Project) => void;
+    saveEditedProject: (project: Project) => Promise<void>;
+    completeEditedProjectSave: () => void;
   };
 }
 
@@ -30,6 +31,24 @@ function getStatusLabel(
   labels: Record<ProjectStatus, string>,
 ): string {
   return labels[status] || status.replace(/_/g, " ");
+}
+
+function getProjectStatusTone(
+  status: ProjectStatus,
+): "success" | "info" | "warning" | "neutral" | "danger" {
+  switch (status) {
+    case "active":
+      return "success";
+    case "planning":
+      return "info";
+    case "on_hold":
+      return "warning";
+    case "cancelled":
+      return "danger";
+    case "completed":
+    default:
+      return "neutral";
+  }
 }
 
 export function useProjectsViewAdapter(
@@ -43,14 +62,17 @@ export function useProjectsViewAdapter(
   const userStore = useUserStoreWithInit();
   const {
     fetchProjects,
+    fetchProjectUserAssignments,
     fetchUserProjectAssignments,
     getProjectsByCompany,
     getProjectsByUser,
     getProjectStats,
     getLeadPMForProject,
+    projects,
+    userAssignments,
     updateProject,
   } = projectStore;
-  const { fetchUsers, getUserById } = userStore;
+  const { fetchUsers, getUserById, users } = userStore;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -59,6 +81,23 @@ export function useProjectsViewAdapter(
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const canAdministerProjects = isAdmin(user);
+
+  const hydrateVisibleProjectAssignments = useCallback(
+    async (visibleProjects: Project[], forceRefresh = false) => {
+      if (visibleProjects.length === 0) {
+        return;
+      }
+
+      await Promise.all(
+        visibleProjects.map((project) =>
+          forceRefresh
+            ? fetchProjectUserAssignments(project.id, true)
+            : fetchProjectUserAssignments(project.id),
+        ),
+      );
+    },
+    [fetchProjectUserAssignments],
+  );
 
   const statusLabels = useMemo<Record<ProjectStatus, string>>(
     () => ({
@@ -99,17 +138,26 @@ export function useProjectsViewAdapter(
         let retries = 0;
         const maxRetries = 10;
         let dataLoaded = false;
+        const shouldForceFreshProjectFetch = Boolean(newProjectId);
 
         while (retries < maxRetries && !dataLoaded) {
           await Promise.all([
-            fetchProjects(),
+            fetchProjects(shouldForceFreshProjectFetch),
             fetchUsers(),
-            fetchUserProjectAssignments(user.id),
+            shouldForceFreshProjectFetch
+              ? fetchUserProjectAssignments(user.id, true)
+              : fetchUserProjectAssignments(user.id),
           ]);
 
           const currentProjects = canAdministerProjects
             ? getProjectsByCompany(user.companyId)
             : getProjectsByUser(user.id);
+
+          await hydrateVisibleProjectAssignments(
+            currentProjects,
+            shouldForceFreshProjectFetch,
+          );
+
           console.log(
             `ProjectsScreen: Loaded ${currentProjects.length} projects from database`,
           );
@@ -131,15 +179,9 @@ export function useProjectsViewAdapter(
               );
               await new Promise((resolve) => setTimeout(resolve, 800));
             }
-          } else if (currentProjects.length > 0 || retries >= maxRetries - 1) {
+          } else {
             dataLoaded = true;
             console.log("ProjectsScreen: Fresh data loaded from database");
-          } else {
-            retries += 1;
-            console.log(
-              `ProjectsScreen: No projects found, retrying (${retries}/${maxRetries})`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
 
@@ -159,10 +201,12 @@ export function useProjectsViewAdapter(
   }, [
     canAdministerProjects,
     fetchProjects,
+    fetchProjectUserAssignments,
     fetchUserProjectAssignments,
     fetchUsers,
     getProjectsByCompany,
     getProjectsByUser,
+    hydrateVisibleProjectAssignments,
     newProjectId,
     user,
   ]);
@@ -177,7 +221,14 @@ export function useProjectsViewAdapter(
     }
 
     return getProjectsByUser(user.id);
-  }, [canAdministerProjects, getProjectsByCompany, getProjectsByUser, user]);
+  }, [
+    canAdministerProjects,
+    getProjectsByCompany,
+    getProjectsByUser,
+    projects,
+    user,
+    userAssignments,
+  ]);
 
   const filteredProjects = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
@@ -193,6 +244,7 @@ export function useProjectsViewAdapter(
       return matchesSearch && matchesStatus;
     });
   }, [allProjects, searchQuery, statusFilter]);
+  const hasActiveSearchQuery = searchQuery.trim().length > 0;
 
   const handleRefresh = useCallback(async () => {
     if (!user) {
@@ -203,13 +255,29 @@ export function useProjectsViewAdapter(
 
     try {
       await Promise.all([
-        fetchProjects(),
-        fetchUserProjectAssignments(user.id),
+        fetchProjects(true),
+        fetchUsers(),
+        fetchUserProjectAssignments(user.id, true),
       ]);
+
+      const refreshedProjects = canAdministerProjects
+        ? getProjectsByCompany(user.companyId)
+        : getProjectsByUser(user.id);
+
+      await hydrateVisibleProjectAssignments(refreshedProjects, true);
     } finally {
       setIsRefreshing(false);
     }
-  }, [fetchProjects, fetchUserProjectAssignments, user]);
+  }, [
+    canAdministerProjects,
+    fetchProjects,
+    fetchUserProjectAssignments,
+    fetchUsers,
+    getProjectsByCompany,
+    getProjectsByUser,
+    hydrateVisibleProjectAssignments,
+    user,
+  ]);
 
   const openEditProject = useCallback(
     (projectId: string) => {
@@ -226,17 +294,22 @@ export function useProjectsViewAdapter(
   }, []);
 
   const saveEditedProject = useCallback(
-    (project: Project) => {
-      void updateProject(project.id, project).catch((error) => {
+    async (project: Project) => {
+      try {
+        await updateProject(project.id, project);
+      } catch (error) {
         console.error("ProjectsScreen: Failed to update project:", error);
-      });
-
-      setIsEditModalVisible(false);
-      setEditingProject(null);
-      Alert.alert(t.errors.success, t.projects.projectUpdated);
+        throw error;
+      }
     },
-    [t.errors.success, t.projects.projectUpdated, updateProject],
+    [updateProject],
   );
+
+  const completeEditedProjectSave = useCallback(() => {
+    setIsEditModalVisible(false);
+    setEditingProject(null);
+    Alert.alert(t.errors.success, t.projects.projectUpdated);
+  }, [t.errors.success, t.projects.projectUpdated]);
 
   const output = useMemo<ProjectsScreenViewAdapterOutput>(() => {
     const isInitialLoading = isLoading && allProjects.length === 0;
@@ -274,6 +347,10 @@ export function useProjectsViewAdapter(
             ? "Loading"
             : "Ready",
       },
+      headerActions: {
+        showCreateAction: canAdministerProjects,
+        showUserManagementAction: canAdministerProjects,
+      },
       searchQuery,
       statusFilter,
       projectCountLabel,
@@ -292,6 +369,7 @@ export function useProjectsViewAdapter(
           description: project.description,
           statusValue: project.status,
           statusLabel: getStatusLabel(project.status, statusLabels),
+          statusTone: getProjectStatusTone(project.status),
           locationLabel: project.location || t.projects.noLocation,
           memberCountLabel: `${projectStats.totalUsers} ${
             projectStats.totalUsers === 1
@@ -349,13 +427,13 @@ export function useProjectsViewAdapter(
         },
       ],
       emptyState: {
-        title: searchQuery ? t.projects.noProjectsFound : t.projects.noProjects,
-        message: searchQuery
+        title: hasActiveSearchQuery ? t.projects.noProjectsFound : t.projects.noProjects,
+        message: hasActiveSearchQuery
           ? t.projects.tryAdjustingSearch
           : canAdministerProjects
             ? t.projects.createFirstProject
             : t.projects.noProjectsMessage,
-        showCreateAction: canAdministerProjects && searchQuery.length === 0,
+        showCreateAction: canAdministerProjects && !hasActiveSearchQuery,
       },
       editingProject,
       isEditModalVisible,
@@ -369,6 +447,7 @@ export function useProjectsViewAdapter(
     isEditModalVisible,
     isLoading,
     isRefreshing,
+    hasActiveSearchQuery,
     getLeadPMForProject,
     getProjectStats,
     getUserById,
@@ -395,6 +474,7 @@ export function useProjectsViewAdapter(
     t.projects.tryAdjustingSearch,
     t.projects.unknown,
     user,
+    users,
   ]);
 
   return {
@@ -406,6 +486,7 @@ export function useProjectsViewAdapter(
       openEditProject,
       closeEditProject,
       saveEditedProject,
+      completeEditedProjectSave,
     },
   };
 }

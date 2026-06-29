@@ -430,6 +430,7 @@ export interface ProjectsScreenProjectItem extends PrimitiveReadyItemBase {
   description: string;
   statusValue: ProjectStatus;
   statusLabel: string;
+  statusTone: "success" | "info" | "warning" | "neutral" | "danger";
   locationLabel: string;
   memberCountLabel: string;
   clientName: string;
@@ -453,10 +454,16 @@ export interface ProjectsScreenEmptyStateModel {
   showCreateAction: boolean;
 }
 
+export interface ProjectsScreenHeaderActionsModel {
+  showCreateAction: boolean;
+  showUserManagementAction: boolean;
+}
+
 export interface ProjectsScreenViewAdapterOutput {
   screenId: "ProjectsScreen";
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
+  headerActions: ProjectsScreenHeaderActionsModel;
   searchQuery: string;
   statusFilter: ProjectStatus | "all";
   projectCountLabel: string;

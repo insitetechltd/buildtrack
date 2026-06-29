@@ -156,4 +156,307 @@ describe("ProjectsTasksScreen", () => {
     expect(screen.queryByText("Legacy rejected task")).toBeNull();
     expect(screen.getByText("rejected 0%")).toBeTruthy();
   });
+
+  it("filters pending tasks using status instead of legacy accepted", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    const { useCompanyStore } = require("@/state/companyStore");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useUserStoreWithInit } = require("@/state/userStore.supabase");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+      },
+    });
+
+    useCompanyStore.mockReturnValue({
+      getCompanyBanner: jest.fn(),
+    });
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: null,
+      sectionFilter: null,
+      statusFilter: null,
+      clearSectionFilter: jest.fn(),
+      clearStatusFilter: jest.fn(),
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      getProjectById: jest.fn(),
+      getProjectsByUser: jest.fn().mockReturnValue([
+        {
+          id: "project-1",
+          name: "North Tower",
+        },
+      ]),
+      fetchProjects: jest.fn().mockResolvedValue(undefined),
+    });
+
+    useUserStoreWithInit.mockReturnValue({
+      getUserById: jest.fn(),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-status-pending",
+          projectId: "project-1",
+          title: "Status pending task",
+          description: "Should remain in pending filter",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          priority: "high",
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          completionPercentage: 25,
+          accepted: false,
+          status: "in_progress",
+          currentStatus: "not_started",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+        {
+          id: "task-legacy-accepted",
+          projectId: "project-1",
+          title: "Legacy accepted task",
+          description: "Should not be matched by pending filter",
+          dueDate: "2099-01-02T00:00:00.000Z",
+          priority: "medium",
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          completionPercentage: 0,
+          accepted: true,
+          status: "new",
+          currentStatus: "in_progress",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+      ],
+      taskReadStatuses: [],
+      fetchTasks: jest.fn().mockResolvedValue(undefined),
+      toggleTaskStar: jest.fn().mockResolvedValue(undefined),
+      markTaskAsRead: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const screen = render(
+      <ProjectsTasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Pending"));
+
+    expect(screen.getByText("Status pending task")).toBeTruthy();
+    expect(screen.queryByText("Legacy accepted task")).toBeNull();
+    expect(screen.getByText("in progress 25%")).toBeTruthy();
+  });
+
+  it("suppresses inbox parent rows when flat child tasks exist via parentTaskId instead of legacy subTasks arrays", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    const { useCompanyStore } = require("@/state/companyStore");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useUserStoreWithInit } = require("@/state/userStore.supabase");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+      },
+    });
+
+    useCompanyStore.mockReturnValue({
+      getCompanyBanner: jest.fn(),
+    });
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: null,
+      sectionFilter: null,
+      statusFilter: null,
+      clearSectionFilter: jest.fn(),
+      clearStatusFilter: jest.fn(),
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      getProjectById: jest.fn(),
+      getProjectsByUser: jest.fn().mockReturnValue([
+        {
+          id: "project-1",
+          name: "North Tower",
+        },
+      ]),
+      fetchProjects: jest.fn().mockResolvedValue(undefined),
+    });
+
+    useUserStoreWithInit.mockReturnValue({
+      getUserById: jest.fn(),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          projectId: "project-1",
+          title: "Parent task",
+          description: "Parent task should stay hidden in inbox when a flat child exists",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          priority: "high",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          completionPercentage: 10,
+          status: "in_progress",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+        {
+          id: "task-child",
+          parentTaskId: "task-parent",
+          projectId: "project-1",
+          title: "Child inbox task",
+          description: "Flat child task should appear in inbox",
+          dueDate: "2099-01-02T00:00:00.000Z",
+          priority: "medium",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          completionPercentage: 30,
+          status: "in_progress",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+      ],
+      taskReadStatuses: [],
+      fetchTasks: jest.fn().mockResolvedValue(undefined),
+      toggleTaskStar: jest.fn().mockResolvedValue(undefined),
+      markTaskAsRead: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const screen = render(
+      <ProjectsTasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Inbox"));
+
+    expect(screen.getByText("Child inbox task")).toBeTruthy();
+    expect(screen.queryByText("Parent task")).toBeNull();
+  });
+
+  it("keeps submitted-for-review tasks out of completed and excludes cancelled tasks from pending", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    const { useCompanyStore } = require("@/state/companyStore");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useUserStoreWithInit } = require("@/state/userStore.supabase");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+      },
+    });
+
+    useCompanyStore.mockReturnValue({
+      getCompanyBanner: jest.fn(),
+    });
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: null,
+      sectionFilter: null,
+      statusFilter: null,
+      clearSectionFilter: jest.fn(),
+      clearStatusFilter: jest.fn(),
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      getProjectById: jest.fn(),
+      getProjectsByUser: jest.fn().mockReturnValue([
+        {
+          id: "project-1",
+          name: "North Tower",
+        },
+      ]),
+      fetchProjects: jest.fn().mockResolvedValue(undefined),
+    });
+
+    useUserStoreWithInit.mockReturnValue({
+      getUserById: jest.fn(),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-review",
+          projectId: "project-1",
+          title: "Awaiting review",
+          description: "Should not show as completed",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          priority: "high",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          completionPercentage: 100,
+          status: "submitted_for_review",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+        {
+          id: "task-approved",
+          projectId: "project-1",
+          title: "Approved task",
+          description: "Should show as completed",
+          dueDate: "2099-01-02T00:00:00.000Z",
+          priority: "medium",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          completionPercentage: 100,
+          status: "approved",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+        {
+          id: "task-cancelled",
+          projectId: "project-1",
+          title: "Cancelled task",
+          description: "Should stay out of pending",
+          dueDate: "2099-01-03T00:00:00.000Z",
+          priority: "low",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          completionPercentage: 20,
+          status: "cancelled",
+          attachments: [],
+          delegationHistory: [],
+          starredByUsers: [],
+        },
+      ],
+      taskReadStatuses: [],
+      fetchTasks: jest.fn().mockResolvedValue(undefined),
+      toggleTaskStar: jest.fn().mockResolvedValue(undefined),
+      markTaskAsRead: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const screen = render(
+      <ProjectsTasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Inbox"));
+    fireEvent.press(screen.getByText("Completed"));
+    expect(screen.getByText("Approved task")).toBeTruthy();
+    expect(screen.queryByText("Awaiting review")).toBeNull();
+
+    fireEvent.press(screen.getByText("Pending"));
+    expect(screen.queryByText("Cancelled task")).toBeNull();
+  });
 });

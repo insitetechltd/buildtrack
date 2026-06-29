@@ -26,41 +26,20 @@ export interface ReportsViewAdapterHookResult {
   };
 }
 
-function collectSubTasksAssignedBy(subTasks: Task[] | undefined, userId: string): Task[] {
-  if (!subTasks?.length) {
-    return [];
-  }
-
+function collectDescendantTasks(
+  tasksByParentId: Map<string, Task[]>,
+  parentTaskId: string,
+  predicate: (task: Task) => boolean,
+): Task[] {
+  const directChildren = tasksByParentId.get(parentTaskId) || [];
   const collected: Task[] = [];
 
-  for (const subTask of subTasks) {
-    if (subTask.assignedBy === userId) {
-      collected.push(subTask);
+  for (const child of directChildren) {
+    if (predicate(child)) {
+      collected.push(child);
     }
 
-    if (subTask.subTasks?.length) {
-      collected.push(...collectSubTasksAssignedBy(subTask.subTasks, userId));
-    }
-  }
-
-  return collected;
-}
-
-function collectSubTasksAssignedTo(subTasks: Task[] | undefined, userId: string): Task[] {
-  if (!subTasks?.length) {
-    return [];
-  }
-
-  const collected: Task[] = [];
-
-  for (const subTask of subTasks) {
-    if (Array.isArray(subTask.assignedTo) && subTask.assignedTo.includes(userId)) {
-      collected.push(subTask);
-    }
-
-    if (subTask.subTasks?.length) {
-      collected.push(...collectSubTasksAssignedTo(subTask.subTasks, userId));
-    }
+    collected.push(...collectDescendantTasks(tasksByParentId, child.id, predicate));
   }
 
   return collected;
@@ -112,25 +91,58 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
     [selectedProjectId, tasks],
   );
 
+  const tasksByParentId = useMemo(() => {
+    const map = new Map<string, Task[]>();
+
+    for (const task of projectFilteredTasks) {
+      if (!task.parentTaskId) {
+        continue;
+      }
+
+      const siblings = map.get(task.parentTaskId) || [];
+      siblings.push(task);
+      map.set(task.parentTaskId, siblings);
+    }
+
+    return map;
+  }, [projectFilteredTasks]);
+
   const myTasks = useMemo(() => {
     if (!user) {
       return [];
     }
 
     const directParentTasks = projectFilteredTasks.filter((task) => {
+      if (task.parentTaskId) {
+        return false;
+      }
+
       const isDirectlyAssigned =
         Array.isArray(task.assignedTo) && task.assignedTo.includes(user.id);
-      const hasAssignedSubTasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
+      const hasAssignedSubTasks =
+        collectDescendantTasks(
+          tasksByParentId,
+          task.id,
+          (childTask) =>
+            Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+        ).length > 0;
 
       return isDirectlyAssigned && !hasAssignedSubTasks;
     });
 
     const nestedAssignedTasks = projectFilteredTasks.flatMap((task) =>
-      collectSubTasksAssignedTo(task.subTasks, user.id),
+      task.parentTaskId
+        ? []
+        : collectDescendantTasks(
+            tasksByParentId,
+            task.id,
+            (childTask) =>
+              Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+          ),
     );
 
     return [...directParentTasks, ...nestedAssignedTasks];
-  }, [projectFilteredTasks, user]);
+  }, [projectFilteredTasks, tasksByParentId, user]);
 
   const assignedTasks = useMemo(() => {
     if (!user) {
@@ -138,18 +150,33 @@ export function useReportsViewAdapter(): ReportsViewAdapterHookResult {
     }
 
     const directParentTasks = projectFilteredTasks.filter((task) => {
+      if (task.parentTaskId) {
+        return false;
+      }
+
       const isDirectlyAssignedByMe = task.assignedBy === user.id;
-      const hasAssignedSubTasks = collectSubTasksAssignedBy(task.subTasks, user.id).length > 0;
+      const hasAssignedSubTasks =
+        collectDescendantTasks(
+          tasksByParentId,
+          task.id,
+          (childTask) => childTask.assignedBy === user.id,
+        ).length > 0;
 
       return isDirectlyAssignedByMe && !hasAssignedSubTasks;
     });
 
     const nestedAssignedTasks = projectFilteredTasks.flatMap((task) =>
-      collectSubTasksAssignedBy(task.subTasks, user.id),
+      task.parentTaskId
+        ? []
+        : collectDescendantTasks(
+            tasksByParentId,
+            task.id,
+            (childTask) => childTask.assignedBy === user.id,
+          ),
     );
 
     return [...directParentTasks, ...nestedAssignedTasks];
-  }, [projectFilteredTasks, user]);
+  }, [projectFilteredTasks, tasksByParentId, user]);
 
   useEffect(() => {
     if (reportType === "assigned_tasks" && assignedTasks.length === 0) {

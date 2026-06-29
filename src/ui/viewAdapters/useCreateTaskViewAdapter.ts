@@ -165,7 +165,6 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
-          updates: [],
         });
       } else {
         await createTask({

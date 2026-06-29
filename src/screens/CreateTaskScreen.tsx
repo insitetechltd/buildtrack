@@ -63,6 +63,16 @@ interface SelectedPhoto {
 // Attachment can be either a URL (already uploaded) or a photo object (to be uploaded)
 type Attachment = string | SelectedPhoto;
 
+function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
+  return Boolean(
+    status &&
+      status !== "new" &&
+      status !== "not_started" &&
+      status !== "rejected" &&
+      status !== "declined"
+  );
+}
+
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
   parentTaskId?: string;
@@ -908,12 +918,7 @@ export default function CreateTaskScreen({
           {/* Assign To */}
           <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
             {(() => {
-              // Check if task is accepted - if so, disable assignee editing
-              const isTaskAccepted = editTask && (
-                editTask.status === "accepted" || 
-                editTask.status === "in_progress" ||
-                editTask.accepted === true
-              );
+              const isTaskAccepted = areAssigneesLockedForStatus(editTask?.status);
               const isDisabled = isLoadingUsers || isTaskAccepted;
               
               return (
@@ -964,12 +969,15 @@ export default function CreateTaskScreen({
                 {selectedUsers.map((userId) => {
                   const user = allAssignableUsers.find(u => u.id === userId);
                   if (!user) return null;
+                  const areAssigneesLocked = areAssigneesLockedForStatus(editTask?.status);
                   return (
                     <View key={userId} className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
                       <Text className="text-blue-900 text-sm font-medium mr-1">{user.name}</Text>
-                      <Pressable onPress={() => toggleUserSelection(userId)}>
-                        <Ionicons name="close-circle" size={16} color="#1e40af" />
-                      </Pressable>
+                      {!areAssigneesLocked ? (
+                        <Pressable onPress={() => toggleUserSelection(userId)}>
+                          <Ionicons name="close-circle" size={16} color="#1e40af" />
+                        </Pressable>
+                      ) : null}
                     </View>
                   );
                 })}
@@ -1956,7 +1964,6 @@ function TaskActionScreen({
     try {
       await updateTask(task.id, {
         assignedTo: selectedUserIds,
-        accepted: false,
         status: "new" as TaskStatus,
         declinedReason: undefined,
       });

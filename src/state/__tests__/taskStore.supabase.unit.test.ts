@@ -267,6 +267,68 @@ describe('taskStore.supabase unit tests', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('clears the legacy accepted flag when a task is reset to new status', async () => {
+    const updateMock = jest.fn().mockReturnThis();
+    const eqMock = jest.fn().mockResolvedValue({ error: null });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          update: updateMock,
+          eq: eqMock,
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { name: 'Jane Manager' },
+            error: null,
+          }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          insert: jest.fn().mockResolvedValue({ error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    resetTaskStore();
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'submitted_for_review',
+          accepted: true,
+          acceptedAt: baseTimestamp,
+          assignedTo: [workerId],
+        }),
+      ],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.updateTask('task-123', {
+        assignedTo: ['worker-999'],
+        status: 'new',
+      });
+    });
+
+    expect(updateMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current_status: 'new',
+        accepted: false,
+        accepted_at: null,
+      }),
+    );
+  });
+
   it('treats stale scoped task caches as background-refresh eligible only when the live coordinator envelope exists', async () => {
     let now = 1_000;
     const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);

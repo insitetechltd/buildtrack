@@ -33,6 +33,8 @@ import { render } from '@testing-library/react-native';
 import CreateTaskScreen from '../../screens/CreateTaskScreen';
 import { NavigationContainer } from '@react-navigation/native';
 
+const mockUseTaskStore = jest.fn();
+
 // Mock dependencies
 jest.mock('../../state/authStore', () => ({
   useAuthStore: () => ({
@@ -41,13 +43,7 @@ jest.mock('../../state/authStore', () => ({
 }));
 
 jest.mock('../../state/taskStore.supabase', () => ({
-  useTaskStore: () => ({
-    tasks: [],
-    createTask: jest.fn(),
-    createSubTask: jest.fn(),
-    updateTask: jest.fn(),
-    fetchTaskById: jest.fn()
-  })
+  useTaskStore: () => mockUseTaskStore()
 }));
 
 jest.mock('../../state/userStore.supabase', () => ({
@@ -81,7 +77,8 @@ jest.mock('../../utils/useTranslation', () => ({
       usersAvailable: () => 'Users Available',
       usersSelected: () => 'Users Selected',
        selectUsersToAssign: 'Select Users',
-       doneSelected: () => 'Done'
+       doneSelected: () => 'Done',
+       assigneesLocked: 'Assignees cannot be changed (task accepted)'
      },
       taskDetail: {
         editReasonTitle: 'Edit Reason',
@@ -149,6 +146,18 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 describe('CreateTaskScreen Integration', () => {
+  beforeEach(() => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [],
+      createTask: jest.fn(),
+      createSubTask: jest.fn(),
+      updateTask: jest.fn(),
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+  });
+
   it('renders correctly with adapter bindings', () => {
     console.log('CreateTaskScreen is:', CreateTaskScreen);
     console.log('NavigationContainer is:', NavigationContainer);
@@ -161,5 +170,83 @@ describe('CreateTaskScreen Integration', () => {
     // The screen should mount and show the title input
     expect(getByTestId('createTask-title')).toBeTruthy();
     expect(getByTestId('createTask-description')).toBeTruthy();
+  });
+
+  it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Submitted task',
+          description: 'Ready for review',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'submitted_for_review',
+          completionPercentage: 100,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: jest.fn(),
+      createSubTask: jest.fn(),
+      updateTask: jest.fn(),
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Assignees cannot be changed (task accepted)')).toBeTruthy();
+  });
+
+  it('does not render assignee removal controls when assignees are locked', () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Submitted task',
+          description: 'Ready for review',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'submitted_for_review',
+          completionPercentage: 100,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: jest.fn(),
+      createSubTask: jest.fn(),
+      updateTask: jest.fn(),
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const { getAllByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" />
+      </NavigationContainer>
+    );
+
+    expect(
+      getAllByTestId('Ionicons').filter((icon) => icon.props.name === 'close-circle')
+    ).toHaveLength(0);
   });
 });

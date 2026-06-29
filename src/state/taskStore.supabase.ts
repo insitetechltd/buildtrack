@@ -308,8 +308,21 @@ interface TaskStore {
   addAssignerComment: (taskId: string, comment: { description: string; photos?: string[]; userId: string }) => Promise<void>;
   
   // Subtask management
-  createSubTask: (taskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage">) => Promise<string>;
-  createNestedSubTask: (taskId: string, parentSubTaskId: string, subTask: Omit<SubTask, "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage">) => Promise<string>;
+  createSubTask: (
+    taskId: string,
+    subTask: Omit<
+      SubTask,
+      "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage" | "updates"
+    >,
+  ) => Promise<string>;
+  createNestedSubTask: (
+    taskId: string,
+    parentSubTaskId: string,
+    subTask: Omit<
+      SubTask,
+      "id" | "createdAt" | "parentTaskId" | "status" | "completionPercentage" | "updates"
+    >,
+  ) => Promise<string>;
   updateSubTask: (taskId: string, subTaskId: string, updates: Partial<SubTask>) => Promise<void>;
   deleteSubTask: (taskId: string, subTaskId: string) => Promise<void>;
   updateSubTaskStatus: (taskId: string, subTaskId: string, status: TaskStatus, completionPercentage: number) => Promise<void>;
@@ -1472,6 +1485,12 @@ export const useTaskStore = create<TaskStore>()(
               console.log('⚠️ Task is self-assigned but status is submitted_for_review - skipping auto-accept');
             }
           }
+
+          if (updates.status === "new" || updates.status === "not_started") {
+            updates.accepted = false;
+            updates.acceptedAt = null;
+            updates.acceptedBy = undefined;
+          }
           
           // OPTIMISTIC UPDATE: Update local state IMMEDIATELY before backend call
           console.log(`⚡ [Optimistic Update] Updating task ${id} locally before backend sync`);
@@ -1505,6 +1524,11 @@ export const useTaskStore = create<TaskStore>()(
             updateData.accepted = true;
           } else if ('accepted' in cleanUpdates && cleanUpdates.accepted === false) {
             updateData.accepted = false;
+          }
+          if (cleanUpdates.status === "new" || cleanUpdates.status === "not_started") {
+            updateData.accepted = false;
+            updateData.accepted_at = null;
+            updateData.accepted_by = null;
           }
           if (cleanUpdates.acceptedBy !== undefined) updateData.accepted_by = cleanUpdates.acceptedBy || null;
           if (cleanUpdates.acceptedAt !== undefined) updateData.accepted_at = cleanUpdates.acceptedAt || null;
@@ -2708,14 +2732,19 @@ export const useTaskStore = create<TaskStore>()(
       createSubTask: async (taskId, subTaskData) => {
         if (!supabase) {
           // Fallback to local creation
+          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
           const newSubTask: SubTask = {
             ...subTaskData,
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            status: "new" as TaskStatus,
+            status: initialStatus as TaskStatus,
             completionPercentage: 0,
             updates: [], // New subtask has no updates yet
+            accepted: isCreatorAssigned,
+            acceptedBy: isCreatorAssigned ? subTaskData.assignedBy : undefined,
+            acceptedAt: isCreatorAssigned ? new Date().toISOString() : null,
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };
@@ -2749,6 +2778,7 @@ export const useTaskStore = create<TaskStore>()(
 
           // Check if creator is assigned to the subtask
           const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
 
           const { data, error } = await supabase
             .from('tasks')  // ✅ Changed to unified tasks table
@@ -2764,7 +2794,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
-              current_status: "new",
+              current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
@@ -2801,6 +2831,9 @@ export const useTaskStore = create<TaskStore>()(
               assignedBy: data.assigned_by,
               location: data.location,
               attachments: data.attachments || [],
+              accepted: Boolean(data.accepted),
+              acceptedBy: data.accepted_by || undefined,
+              acceptedAt: data.accepted_at || undefined,
               createdAt: data.created_at,
               updates: [],
             }]
@@ -2816,14 +2849,19 @@ export const useTaskStore = create<TaskStore>()(
       createNestedSubTask: async (taskId, parentSubTaskId, subTaskData) => {
         // Similar to createSubTask but with parent_sub_task_id
         if (!supabase) {
+          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
           const newSubTask: SubTask = {
             ...subTaskData,
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            status: "new" as TaskStatus,
+            status: initialStatus as TaskStatus,
             completionPercentage: 0,
             updates: [], // New nested subtask has no updates yet
+            accepted: isCreatorAssigned,
+            acceptedBy: isCreatorAssigned ? subTaskData.assignedBy : undefined,
+            acceptedAt: isCreatorAssigned ? new Date().toISOString() : null,
             delegationHistory: [],
             originalAssignedBy: subTaskData.assignedBy,
           };
@@ -2847,6 +2885,7 @@ export const useTaskStore = create<TaskStore>()(
           
           // Check if creator is assigned to the nested subtask
           const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
+          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
           
           const { data, error } = await supabase
             .from('tasks')  // ✅ Changed to unified tasks table
@@ -2862,13 +2901,13 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
-              current_status: "new",
+              current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
               assigned_by: subTaskData.assignedBy,
               attachments: subTaskData.attachments,
               // Auto-accept if creator is assigned to the nested subtask
-              accepted: isCreatorAssigned ? true : null,
+              accepted: isCreatorAssigned ? true : false,
               accepted_by: isCreatorAssigned ? subTaskData.assignedBy : null,
               accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
             })
@@ -2897,6 +2936,9 @@ export const useTaskStore = create<TaskStore>()(
               assignedBy: data.assigned_by,
               location: data.location,
               attachments: data.attachments || [],
+              accepted: Boolean(data.accepted),
+              acceptedBy: data.accepted_by || undefined,
+              acceptedAt: data.accepted_at || undefined,
               createdAt: data.created_at,
               updates: [],
             }]

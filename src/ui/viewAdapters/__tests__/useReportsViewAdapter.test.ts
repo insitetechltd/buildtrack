@@ -131,4 +131,99 @@ describe("useReportsViewAdapter", () => {
       "in progress",
     ]);
   });
+
+  it("collects nested report tasks from flat parentTaskId relationships instead of legacy subTasks arrays", () => {
+    const now = new Date().toISOString();
+    const futureDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { useAuthStore } = require("@/state/authStore");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useDateFormatter } = require("@/utils/dateFormatter");
+    const { useTranslation } = require("@/utils/useTranslation");
+
+    useAuthStore.mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        user: {
+          id: "user-1",
+        },
+      }),
+    );
+
+    useProjectFilterStore.mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        selectedProjectId: null,
+      }),
+    );
+
+    useTaskStore.mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        tasks: [
+          {
+            id: "task-parent",
+            projectId: "project-1",
+            title: "Parent task",
+            assignedTo: ["manager-1"],
+            assignedBy: "director-1",
+            createdAt: now,
+            dueDate: futureDate,
+            priority: "medium",
+            status: "in_progress",
+            completionPercentage: 40,
+          },
+          {
+            id: "task-child",
+            projectId: "project-1",
+            parentTaskId: "task-parent",
+            title: "Child assigned to me",
+            assignedTo: ["user-1"],
+            assignedBy: "manager-1",
+            createdAt: now,
+            dueDate: futureDate,
+            priority: "high",
+            status: "in_progress",
+            completionPercentage: 20,
+          },
+        ],
+      }),
+    );
+
+    useDateFormatter.mockReturnValue({
+      formatDateShort: (value: string | Date) =>
+        value instanceof Date ? value.toISOString().slice(0, 10) : value.slice(0, 10),
+    });
+
+    useTranslation.mockReturnValue({
+      reports: {
+        totalTasks: "Total Tasks",
+        completed: "Completed",
+        inProgress: "In Progress",
+        overdue: "Overdue",
+        avgCompletion: "Avg Completion",
+        criticalPriority: "Critical Priority",
+        myTasks: "My Tasks",
+        assignedTasks: "Assigned Tasks",
+        reportGenerated: "Report Generated",
+        reportContains: "Report contains",
+        tasksFrom: "tasks from",
+        toDate: "to",
+        exportAsPDF: "Export as PDF",
+        viewSummary: "View Summary",
+        reportSummary: "Report Summary",
+      },
+      taskDetail: {
+        due: "Due",
+      },
+      common: {
+        ok: "OK",
+      },
+    });
+
+    const { result } = renderHook(() => useReportsViewAdapter());
+
+    expect(result.current.output.visibleTaskRows.map((row) => row.title)).toEqual([
+      "Child assigned to me",
+    ]);
+    expect(result.current.output.statisticsCards.find((card) => card.id === "reports-stat:total")?.value).toBe(1);
+  });
 });

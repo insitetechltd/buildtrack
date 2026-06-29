@@ -17,7 +17,7 @@ import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useProjectStoreWithInit, useProjectStore } from "../state/projectStore.supabase";
 import { SectionFilter, StatusFilter, useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
-import { Task, Priority, TaskStatus, Project, ProjectStatus, SubTask } from "../types/buildtrack";
+import { Task, Priority, TaskStatus, Project, ProjectStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import CompanyBanner from "../components/CompanyBanner";
@@ -30,8 +30,7 @@ interface ProjectsTasksScreenProps {
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
 
-// Type for task list items (can be Task or SubTask)
-type TaskListItem = Task | (SubTask & { isSubTask: true });
+type TaskListItem = Task | (Task & { isSubTask: true });
 
 export default function ProjectsTasksScreen({ 
   onNavigateToTaskDetail, 
@@ -94,36 +93,38 @@ export default function ProjectsTasksScreen({
   // No project-level filtering - show all user projects
   const filteredProjects = userProjects;
 
-  // Helper function to recursively collect all subtasks assigned by a user
-  const collectSubTasksAssignedBy = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      if (subTask.assignedBy === userId) {
-        result.push(subTask);
+  const buildTasksByParentId = (projectTasks: Task[]) => {
+    const tasksByParentId = new Map<string, Task[]>();
+
+    for (const task of projectTasks) {
+      if (!task.parentTaskId) {
+        continue;
       }
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedBy(subTask.subTasks, userId));
-      }
+
+      const siblings = tasksByParentId.get(task.parentTaskId) || [];
+      siblings.push(task);
+      tasksByParentId.set(task.parentTaskId, siblings);
     }
-    return result;
+
+    return tasksByParentId;
   };
 
-  // Helper function to recursively collect all subtasks assigned to a user
-  const collectSubTasksAssignedTo = (subTasks: SubTask[] | undefined, userId: string): SubTask[] => {
-    if (!subTasks) return [];
-    
-    const result: SubTask[] = [];
-    for (const subTask of subTasks) {
-      const assignedTo = subTask.assignedTo || [];
-      if (Array.isArray(assignedTo) && assignedTo.includes(userId)) {
-        result.push(subTask);
+  const collectDescendantTasks = (
+    tasksByParentId: Map<string, Task[]>,
+    parentTaskId: string,
+    predicate: (task: Task) => boolean,
+  ): Task[] => {
+    const directChildren = tasksByParentId.get(parentTaskId) || [];
+    const result: Task[] = [];
+
+    for (const childTask of directChildren) {
+      if (predicate(childTask)) {
+        result.push(childTask);
       }
-      if (subTask.subTasks) {
-        result.push(...collectSubTasksAssignedTo(subTask.subTasks, userId));
-      }
+
+      result.push(...collectDescendantTasks(tasksByParentId, childTask.id, predicate));
     }
+
     return result;
   };
 
@@ -143,20 +144,33 @@ export default function ProjectsTasksScreen({
     // Collect tasks from all user's projects
     const allProjectTasks = userProjects.flatMap(project => {
       const projectTasks = tasks.filter(task => task.projectId === project.id);
+      const topLevelTasks = projectTasks.filter(task => !task.parentTaskId);
+      const tasksByParentId = buildTasksByParentId(projectTasks);
 
       // Get MY_TASKS (Tasks I assigned to MYSELF - self-assigned only)
-      const myTasksParent = projectTasks.filter(task => {
+      const myTasksParent = topLevelTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
+        const hasAssignedSubtasks =
+          collectDescendantTasks(
+            tasksByParentId,
+            task.id,
+            (childTask) =>
+              Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+          ).length > 0;
         // Include if assigned to me AND created by me (self-assigned)
         return isDirectlyAssigned && isCreatedByMe && !hasAssignedSubtasks;
       });
       
-      const myTasksSubTasks = projectTasks.flatMap(task => {
+      const myTasksSubTasks = topLevelTasks.flatMap(task => {
         // Only include subtasks I created and assigned to myself
-        return collectSubTasksAssignedTo(task.subTasks, user.id)
+        return collectDescendantTasks(
+          tasksByParentId,
+          task.id,
+          (childTask) =>
+            Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+        )
           .filter(subTask => subTask.assignedBy === user.id)
           .map(subTask => ({ ...subTask, isSubTask: true as const }));
       });
@@ -164,18 +178,29 @@ export default function ProjectsTasksScreen({
       const myTasksAll = [...myTasksParent, ...myTasksSubTasks];
       
       // Get INBOX tasks (tasks assigned to me by OTHERS only, not self-assigned)
-      const inboxParentTasks = projectTasks.filter(task => {
+      const inboxParentTasks = topLevelTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isDirectlyAssigned = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isCreatedByMe = task.assignedBy === user.id;
-        const hasAssignedSubtasks = collectSubTasksAssignedTo(task.subTasks, user.id).length > 0;
+        const hasAssignedSubtasks =
+          collectDescendantTasks(
+            tasksByParentId,
+            task.id,
+            (childTask) =>
+              Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+          ).length > 0;
         // Include if assigned to me but NOT created by me
         return isDirectlyAssigned && !isCreatedByMe && !hasAssignedSubtasks;
       });
       
-      const inboxSubTasks = projectTasks.flatMap(task => {
+      const inboxSubTasks = topLevelTasks.flatMap(task => {
         // Only include subtasks assigned to me but NOT created by me
-        return collectSubTasksAssignedTo(task.subTasks, user.id)
+        return collectDescendantTasks(
+          tasksByParentId,
+          task.id,
+          (childTask) =>
+            Array.isArray(childTask.assignedTo) && childTask.assignedTo.includes(user.id),
+        )
           .filter(subTask => subTask.assignedBy !== user.id)
           .map(subTask => ({ ...subTask, isSubTask: true as const }));
       });
@@ -183,17 +208,26 @@ export default function ProjectsTasksScreen({
       const inboxTasks = [...inboxParentTasks, ...inboxSubTasks];
       
       // Get outbox tasks (tasks assigned by me to OTHERS, not to myself)
-      const assignedParentTasks = projectTasks.filter(task => {
+      const assignedParentTasks = topLevelTasks.filter(task => {
         const assignedTo = task.assignedTo || [];
         const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.includes(user.id);
         const isDirectlyAssignedByMe = task.assignedBy === user.id;
-        const hasSubtasksAssignedByMe = collectSubTasksAssignedBy(task.subTasks, user.id).length > 0;
+        const hasSubtasksAssignedByMe =
+          collectDescendantTasks(
+            tasksByParentId,
+            task.id,
+            (childTask) => childTask.assignedBy === user.id,
+          ).length > 0;
         // Include if created by me, not assigned to me, and has no subtasks assigned by me
         return isDirectlyAssignedByMe && !isAssignedToMe && !hasSubtasksAssignedByMe;
       });
       
-      const assignedSubTasks = projectTasks.flatMap(task => 
-        collectSubTasksAssignedBy(task.subTasks, user.id)
+      const assignedSubTasks = topLevelTasks.flatMap(task => 
+        collectDescendantTasks(
+          tasksByParentId,
+          task.id,
+          (childTask) => childTask.assignedBy === user.id,
+        )
           .filter(subTask => {
             const assignedTo = subTask.assignedTo || [];
             // Only include subtasks NOT assigned to me
@@ -249,17 +283,24 @@ export default function ProjectsTasksScreen({
         return dueDate < now;
       };
       
+      const isPreAcceptanceTask = task.status === "new" || task.status === "not_started";
+      const isRejectedTask = task.status === "rejected" || task.status === "declined";
+      const isCompletedTask =
+        task.status === "approved" || task.status === "completed" || task.status === "done";
+      const isCancelledTask = task.status === "cancelled";
+      const isActiveTask = !isPreAcceptanceTask && !isRejectedTask && !isCompletedTask && !isCancelledTask;
+
       // Apply new categorization logic
       if (localStatusFilter === "not_started") {
-        return matchesSearch && (task.status === "new" || task.status === "not_started") && !task.accepted;
+        return matchesSearch && isPreAcceptanceTask;
       } else if (localStatusFilter === "pending") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && !isOverdue(task) && task.status !== "rejected";
+        return matchesSearch && isActiveTask && !isOverdue(task);
       } else if (localStatusFilter === "completed") {
-        return matchesSearch && task.accepted && task.completionPercentage === 100;
+        return matchesSearch && isCompletedTask;
       } else if (localStatusFilter === "overdue") {
-        return matchesSearch && task.accepted && task.completionPercentage < 100 && isOverdue(task) && task.status !== "rejected";
+        return matchesSearch && isActiveTask && isOverdue(task);
       } else if (localStatusFilter === "rejected") {
-        return matchesSearch && task.status === "rejected";
+        return matchesSearch && isRejectedTask;
       } else {
         // Fallback to original status matching
         return matchesSearch && task.status === localStatusFilter;

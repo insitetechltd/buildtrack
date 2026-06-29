@@ -411,4 +411,150 @@ describe('taskStore.supabase workflow tests', () => {
     expect(subTaskId).toBe('subtask-123');
     expect(result.current.tasks.some(task => task.id === 'subtask-123')).toBe(true);
   });
+
+  it('auto-accepts self-assigned subtasks with an in-progress status', async () => {
+    const taskInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: 'subtask-self',
+            parent_task_id: 'task-123',
+            nesting_level: 1,
+            root_task_id: 'task-123',
+            project_id: 'project-123',
+            title: 'Self assigned subtask',
+            description: 'Follow up directly',
+            task_reference: null,
+            priority: 'medium',
+            category: 'electrical',
+            due_date: '2026-07-02T00:00:00.000Z',
+            current_status: 'in_progress',
+            completion_percentage: 0,
+            assigned_to: [managerId],
+            assigned_by: managerId,
+            location: null,
+            attachments: [],
+            accepted: true,
+            accepted_at: baseTimestamp,
+            created_at: baseTimestamp,
+          },
+          error: null,
+        }),
+      }),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          insert: taskInsert,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    useTaskStore.setState({
+      tasks: [createTaskState()],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.createSubTask('task-123', {
+        title: 'Self assigned subtask',
+        description: 'Follow up directly',
+        priority: 'medium',
+        category: 'electrical',
+        projectId: 'project-123',
+        assignedTo: [managerId],
+        assignedBy: managerId,
+        dueDate: '2026-07-02T00:00:00.000Z',
+        attachments: [],
+      });
+    });
+
+    expect(taskInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current_status: 'in_progress',
+        accepted: true,
+      }),
+    );
+  });
+
+  it('writes accepted false for non-self-assigned nested subtasks', async () => {
+    const taskInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: 'subtask-nested',
+            parent_task_id: 'subtask-parent',
+            nesting_level: 2,
+            root_task_id: 'task-123',
+            project_id: 'project-123',
+            title: 'Nested delegated subtask',
+            description: 'Delegated to another worker',
+            task_reference: null,
+            priority: 'medium',
+            category: 'electrical',
+            due_date: '2026-07-02T00:00:00.000Z',
+            current_status: 'new',
+            completion_percentage: 0,
+            assigned_to: [workerId],
+            assigned_by: managerId,
+            location: null,
+            attachments: [],
+            accepted: false,
+            accepted_at: null,
+            created_at: baseTimestamp,
+          },
+          error: null,
+        }),
+      }),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          insert: taskInsert,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    useTaskStore.setState({
+      tasks: [
+        createTaskState(),
+        createTaskState({
+          id: 'subtask-parent',
+          parentTaskId: 'task-123',
+          nestingLevel: 1,
+          rootTaskId: 'task-123',
+        }),
+      ],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.createNestedSubTask('task-123', 'subtask-parent', {
+        title: 'Nested delegated subtask',
+        description: 'Delegated to another worker',
+        priority: 'medium',
+        category: 'electrical',
+        projectId: 'project-123',
+        assignedTo: [workerId],
+        assignedBy: managerId,
+        dueDate: '2026-07-02T00:00:00.000Z',
+        attachments: [],
+      });
+    });
+
+    expect(taskInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current_status: 'new',
+        accepted: false,
+      }),
+    );
+  });
 });

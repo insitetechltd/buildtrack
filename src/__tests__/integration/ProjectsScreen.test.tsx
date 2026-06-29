@@ -1,7 +1,14 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { Alert, ScrollView } from "react-native";
 
 import ProjectsScreen from "@/screens/ProjectsScreen";
+import type { Project } from "@/types/buildtrack";
+import type {
+  ProjectsScreenFilterOption,
+  ProjectsScreenProjectItem,
+  ProjectsScreenViewAdapterOutput,
+} from "@/ui/contracts/viewAdapters";
 
 jest.mock(
   "../../ui/viewAdapters/useProjectsViewAdapter",
@@ -14,12 +21,19 @@ jest.mock("@/components/StandardHeader", () => ({
   __esModule: true,
   default: function MockStandardHeader({
     title,
+    rightElement,
   }: {
     title: string;
+    rightElement?: React.ReactNode;
   }) {
-    const { Text } = require("react-native");
+    const { Text, View } = require("react-native");
 
-    return <Text>{title}</Text>;
+    return (
+      <View>
+        <Text>{title}</Text>
+        {rightElement}
+      </View>
+    );
   },
 }));
 
@@ -37,6 +51,110 @@ jest.mock("@/components/ModalHandle", () => ({
   },
 }));
 
+const mockGetProjectsByCompany = jest.fn(() => [
+  {
+    id: "project-1",
+    name: "Tower A",
+    description: "Core package",
+    status: "active",
+    location: "Central Site",
+    createdBy: "user-2",
+    clientInfo: { name: "Acme" },
+    companyId: "company-1",
+    startDate: "2026-01-01T00:00:00.000Z",
+    endDate: "2026-12-31T00:00:00.000Z",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  },
+]);
+const mockGetProjectStats = jest.fn(() => ({
+  totalUsers: 4,
+  usersByCategory: {
+    project_manager: 1,
+    team_member: 3,
+    lead_project_manager: 0,
+    admin: 0,
+  },
+  isActive: true,
+}));
+const mockUpdateProject = jest.fn().mockResolvedValue(undefined);
+const mockGetProjectUserAssignments = jest.fn();
+const mockAssignUserToProject = jest.fn().mockResolvedValue(undefined);
+const mockRemoveUserFromProject = jest.fn().mockResolvedValue(undefined);
+const mockGetLeadPMForProject = jest.fn(() => "user-3");
+const mockFetchProjects = jest.fn().mockResolvedValue(undefined);
+const mockFetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
+const mockProjectStore = {
+  projects: [
+    {
+      id: "project-1",
+      name: "Tower A",
+      description: "Core package",
+      status: "active",
+      location: "Central Site",
+      createdBy: "user-2",
+      clientInfo: { name: "Acme" },
+      companyId: "company-1",
+      startDate: "2026-01-01T00:00:00.000Z",
+      endDate: "2026-12-31T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    },
+  ],
+  getProjectsByCompany: mockGetProjectsByCompany,
+  getProjectsByUser: jest.fn(),
+  getProjectStats: mockGetProjectStats,
+  updateProject: mockUpdateProject,
+  getProjectUserAssignments: mockGetProjectUserAssignments,
+  assignUserToProject: mockAssignUserToProject,
+  removeUserFromProject: mockRemoveUserFromProject,
+  getLeadPMForProject: mockGetLeadPMForProject,
+  fetchProjects: mockFetchProjects,
+  fetchUserProjectAssignments: mockFetchUserProjectAssignments,
+};
+
+const mockGetUserById = jest.fn((userId: string) =>
+  userId === "user-2"
+    ? { id: "user-2", name: "Casey Rivera" }
+    : { id: "user-3", name: "Jordan Lee", role: "manager" },
+);
+const mockGetUsersByCompany = jest.fn(() => [
+  { id: "user-3", name: "Jordan Lee", role: "manager" },
+]);
+const mockFetchUsers = jest.fn().mockResolvedValue(undefined);
+const mockUserStore = {
+  getUserById: mockGetUserById,
+  getUsersByCompany: mockGetUsersByCompany,
+  fetchUsers: mockFetchUsers,
+};
+
+jest.mock("react-native/Libraries/Modal/Modal", () => {
+  return {
+    __esModule: true,
+    default: function MockModal({
+      children,
+      visible,
+      onRequestClose,
+    }: {
+      children?: React.ReactNode;
+      visible?: boolean;
+      onRequestClose?: () => void;
+    }) {
+      const { View } = require("react-native");
+
+      if (!visible) {
+        return null;
+      }
+
+      return (
+        <View testID="projects-edit-modal" onRequestClose={onRequestClose}>
+          {children}
+        </View>
+      );
+    },
+  };
+});
+
 jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({
     user: {
@@ -48,69 +166,11 @@ jest.mock("@/state/authStore", () => ({
 }));
 
 jest.mock("@/state/projectStore.supabase", () => ({
-  useProjectStoreWithCompanyInit: () => ({
-    projects: [
-      {
-        id: "project-1",
-        name: "Tower A",
-        description: "Core package",
-        status: "active",
-        location: "Central Site",
-        createdBy: "user-2",
-        clientInfo: { name: "Acme" },
-        companyId: "company-1",
-        startDate: "2026-01-01T00:00:00.000Z",
-        endDate: "2026-12-31T00:00:00.000Z",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
-    ],
-    getProjectsByCompany: () => [
-      {
-        id: "project-1",
-        name: "Tower A",
-        description: "Core package",
-        status: "active",
-        location: "Central Site",
-        createdBy: "user-2",
-        clientInfo: { name: "Acme" },
-        companyId: "company-1",
-        startDate: "2026-01-01T00:00:00.000Z",
-        endDate: "2026-12-31T00:00:00.000Z",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        updatedAt: "2026-01-01T00:00:00.000Z",
-      },
-    ],
-    getProjectsByUser: jest.fn(),
-    getProjectStats: () => ({
-      totalUsers: 4,
-      usersByCategory: {
-        project_manager: 1,
-        team_member: 3,
-        lead_project_manager: 0,
-        admin: 0,
-      },
-      isActive: true,
-    }),
-    updateProject: jest.fn().mockResolvedValue(undefined),
-    getProjectUserAssignments: jest.fn(),
-    assignUserToProject: jest.fn().mockResolvedValue(undefined),
-    removeUserFromProject: jest.fn().mockResolvedValue(undefined),
-    getLeadPMForProject: () => "user-3",
-    fetchProjects: jest.fn().mockResolvedValue(undefined),
-    fetchUserProjectAssignments: jest.fn().mockResolvedValue(undefined),
-  }),
+  useProjectStoreWithCompanyInit: () => mockProjectStore,
 }));
 
 jest.mock("@/state/userStore.supabase", () => ({
-  useUserStoreWithInit: () => ({
-    getUserById: (userId: string) =>
-      userId === "user-2"
-        ? { id: "user-2", name: "Casey Rivera" }
-        : { id: "user-3", name: "Jordan Lee", role: "manager" },
-    getUsersByCompany: () => [{ id: "user-3", name: "Jordan Lee", role: "manager" }],
-    fetchUsers: jest.fn().mockResolvedValue(undefined),
-  }),
+  useUserStoreWithInit: () => mockUserStore,
 }));
 
 jest.mock("@/state/companyStore", () => ({
@@ -204,78 +264,153 @@ jest.mock("@react-native-picker/picker", () => ({
 
 describe("ProjectsScreen", () => {
   const mockSetSearchQuery = jest.fn();
+  const mockSelectStatusFilter = jest.fn();
+  const mockHandleRefresh = jest.fn();
+  const mockOpenEditProject = jest.fn();
+  const mockCloseEditProject = jest.fn();
+  const mockSaveEditedProject = jest.fn();
+  let alertSpy: jest.SpyInstance;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  type AdapterActions = {
+    setSearchQuery: (value: string) => void;
+    selectStatusFilter: (value: "all" | "active" | "planning" | "on_hold" | "completed" | "cancelled") => void;
+    handleRefresh: () => Promise<void> | void;
+    openEditProject: (projectId: string) => void;
+    closeEditProject: () => void;
+    saveEditedProject: (project: unknown) => void;
+  };
 
+  function buildProjectItem(
+    overrides: Partial<ProjectsScreenProjectItem> = {},
+  ): ProjectsScreenProjectItem {
+    return {
+      id: "projects:project-1",
+      projectId: "project-1",
+      title: "Tower A",
+      description: "Core package",
+      statusValue: "active",
+      statusLabel: "Active",
+      locationLabel: "Central Site",
+      memberCountLabel: "4 members",
+      clientName: "Acme",
+      startDateLabel: "2026-01-01",
+      createdByLabel: "Casey Rivera",
+      leadPmName: "Jordan Lee",
+      canEdit: true,
+      density: "standard",
+      structuralState: "stale",
+      ...overrides,
+    };
+  }
+
+  function buildFilterOption(
+    overrides: Partial<ProjectsScreenFilterOption> = {},
+  ): ProjectsScreenFilterOption {
+    return {
+      id: "projects-filter:all",
+      value: "all",
+      label: "All",
+      isSelected: true,
+      ...overrides,
+    };
+  }
+
+  function buildProjectRecord(overrides: Partial<Project> = {}): Project {
+    return {
+      id: "project-1",
+      companyId: "company-1",
+      name: "Tower A",
+      description: "Core package",
+      status: "active",
+      location: "Central Site",
+      createdBy: "user-2",
+      clientInfo: { name: "Acme" },
+      startDate: "2026-01-01T00:00:00.000Z",
+      endDate: "2026-12-31T00:00:00.000Z",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      ...overrides,
+    };
+  }
+
+  function buildAdapterOutput(
+    overrides: Partial<ProjectsScreenViewAdapterOutput> = {},
+  ): ProjectsScreenViewAdapterOutput {
+    return {
+      screenId: "ProjectsScreen",
+      readiness: {
+        hasInitialFrame: true,
+        hasUsableData: true,
+        isBackgroundRefreshing: false,
+        isNavigationTransitionActive: false,
+        ...overrides.readiness,
+      },
+      continuity: {
+        isInitialLoading: false,
+        isBackgroundRefreshing: false,
+        hasCachedFrame: true,
+        shouldRenderSkeletonShell: false,
+        shouldRenderEmptyState: false,
+        freshnessLabel: "Ready",
+        ...overrides.continuity,
+      },
+      searchQuery: "",
+      statusFilter: "all",
+      projectCountLabel: "1 project",
+      isRefreshing: false,
+      isAdmin: true,
+      projectItems: [buildProjectItem()],
+      filterOptions: [buildFilterOption()],
+      emptyState: {
+        title: "No projects yet",
+        message: "You haven't been assigned to any projects yet",
+        showCreateAction: true,
+        ...overrides.emptyState,
+      },
+      editingProject: null,
+      isEditModalVisible: false,
+      ...overrides,
+    };
+  }
+
+  function buildAdapterActions(
+    overrides: Partial<AdapterActions> = {},
+  ): AdapterActions {
+    return {
+      setSearchQuery: mockSetSearchQuery,
+      selectStatusFilter: mockSelectStatusFilter,
+      handleRefresh: mockHandleRefresh,
+      openEditProject: mockOpenEditProject,
+      closeEditProject: mockCloseEditProject,
+      saveEditedProject: mockSaveEditedProject,
+      ...overrides,
+    };
+  }
+
+  function mockUseProjectsViewAdapterReturn({
+    output,
+    actions,
+  }: {
+    output?: Partial<ProjectsScreenViewAdapterOutput>;
+    actions?: Partial<AdapterActions>;
+  } = {}) {
     const { useProjectsViewAdapter } = require("../../ui/viewAdapters/useProjectsViewAdapter");
 
     useProjectsViewAdapter.mockReturnValue({
-      output: {
-        screenId: "ProjectsScreen",
-        readiness: {
-          hasInitialFrame: true,
-          hasUsableData: true,
-          isBackgroundRefreshing: false,
-          isNavigationTransitionActive: false,
-        },
-        continuity: {
-          isInitialLoading: false,
-          isBackgroundRefreshing: false,
-          hasCachedFrame: true,
-          shouldRenderSkeletonShell: false,
-          shouldRenderEmptyState: false,
-          freshnessLabel: "Ready",
-        },
-        searchQuery: "",
-        statusFilter: "all",
-        projectCountLabel: "1 project",
-        isRefreshing: false,
-        isAdmin: true,
-        projectItems: [
-          {
-            id: "projects:project-1",
-            projectId: "project-1",
-            title: "Tower A",
-            description: "Core package",
-            statusValue: "active",
-            statusLabel: "active",
-            locationLabel: "Central Site",
-            memberCountLabel: "4 members",
-            clientName: "Acme",
-            startDateLabel: "2026-01-01",
-            createdByLabel: "Casey Rivera",
-            leadPmName: "Jordan Lee",
-            canEdit: true,
-            density: "standard",
-            structuralState: "stale",
-          },
-        ],
-        filterOptions: [
-          {
-            id: "projects-filter:all",
-            value: "all",
-            label: "All",
-            isSelected: true,
-          },
-        ],
-        emptyState: {
-          title: "No projects yet",
-          message: "You haven't been assigned to any projects yet",
-          showCreateAction: true,
-        },
-        editingProject: null,
-        isEditModalVisible: false,
-      },
-      actions: {
-        setSearchQuery: mockSetSearchQuery,
-        selectStatusFilter: jest.fn(),
-        handleRefresh: jest.fn(),
-        openEditProject: jest.fn(),
-        closeEditProject: jest.fn(),
-        saveEditedProject: jest.fn(),
-      },
+      output: buildAdapterOutput(output),
+      actions: buildAdapterActions(actions),
     });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+
+    mockUseProjectsViewAdapterReturn();
+  });
+
+  afterEach(() => {
+    alertSpy.mockRestore();
   });
 
   it("renders projects content and delegates search updates through the projects adapter", () => {
@@ -293,5 +428,396 @@ describe("ProjectsScreen", () => {
     fireEvent.changeText(screen.getByPlaceholderText("Search projects..."), "Tower");
 
     expect(mockSetSearchQuery).toHaveBeenCalledWith("Tower");
+  });
+
+  it("shows admin actions when the adapter exposes admin mode", () => {
+    const onNavigateToCreateProject = jest.fn();
+    const onNavigateToUserManagement = jest.fn();
+
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isAdmin: true,
+        projectItems: [buildProjectItem()],
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={onNavigateToCreateProject}
+        onNavigateToUserManagement={onNavigateToUserManagement}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("projects-create-action"));
+    fireEvent.press(screen.getByTestId("projects-user-management-action"));
+
+    expect(onNavigateToCreateProject).toHaveBeenCalledTimes(1);
+    expect(onNavigateToUserManagement).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides admin actions for non-admin output", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isAdmin: false,
+        projectItems: [buildProjectItem()],
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("projects-create-action")).toBeNull();
+    expect(screen.queryByTestId("projects-user-management-action")).toBeNull();
+  });
+
+  it("delegates status filter selection through the adapter", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        filterOptions: [
+          buildFilterOption({ value: "all", label: "All", isSelected: true }),
+          buildFilterOption({
+            id: "projects-filter:planning",
+            value: "planning",
+            label: "Planning",
+            isSelected: false,
+          }),
+        ],
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Planning"));
+
+    expect(mockSelectStatusFilter).toHaveBeenCalledWith("planning");
+  });
+
+  it("renders the loading state when the adapter is initially loading", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        continuity: {
+          isInitialLoading: true,
+          isBackgroundRefreshing: false,
+          hasCachedFrame: false,
+          shouldRenderSkeletonShell: false,
+          shouldRenderEmptyState: false,
+          freshnessLabel: "Loading",
+        },
+        projectItems: [],
+        projectCountLabel: "0 projects",
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Loading projects...")).toBeTruthy();
+  });
+
+  it("returns null when the adapter has no usable readiness data outside the loading path", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        readiness: {
+          hasUsableData: false,
+        },
+        continuity: {
+          isInitialLoading: false,
+        },
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.toJSON()).toBeNull();
+    expect(screen.queryByText("Projects")).toBeNull();
+  });
+
+  it("renders the empty state create action only when allowed", () => {
+    const onNavigateToCreateProject = jest.fn();
+
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        projectItems: [],
+        projectCountLabel: "0 projects",
+        emptyState: {
+          title: "No projects yet",
+          message: "Create your first project to get started",
+          showCreateAction: true,
+        },
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={onNavigateToCreateProject}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Create Project"));
+
+    expect(onNavigateToCreateProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the empty state create action when the adapter disallows it", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        projectItems: [],
+        projectCountLabel: "0 projects",
+        emptyState: {
+          title: "No projects found",
+          message: "Try adjusting your search or filters",
+          showCreateAction: false,
+        },
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByText("Create Project")).toBeNull();
+  });
+
+  it("delegates refresh through the adapter", () => {
+    mockUseProjectsViewAdapterReturn();
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    const projectListScrollView = screen
+      .UNSAFE_getAllByType(ScrollView)
+      .find((node) => Boolean(node.props.refreshControl));
+
+    expect(projectListScrollView).toBeTruthy();
+
+    projectListScrollView?.props.refreshControl.props.onRefresh();
+
+    expect(mockHandleRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("delegates project edit entry through the adapter", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        projectItems: [buildProjectItem({ canEdit: true })],
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("projects-edit-project-1"));
+
+    expect(mockOpenEditProject).toHaveBeenCalledWith("project-1");
+  });
+
+  it("delegates project-card navigation through the project detail callback", () => {
+    const onNavigateToProjectDetail = jest.fn();
+
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        projectItems: [buildProjectItem({ title: "Tower A" })],
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={onNavigateToProjectDetail}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Tower A"));
+
+    expect(onNavigateToProjectDetail).toHaveBeenCalledWith("project-1");
+  });
+
+  it("renders the edit modal when the adapter exposes an active editing project", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("projects-edit-modal")).toBeTruthy();
+    expect(screen.getByText("Edit Project")).toBeTruthy();
+    expect(screen.getByText("Project Information")).toBeTruthy();
+  });
+
+  it("delegates modal close requests through the projects adapter", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent(screen.getByTestId("projects-edit-modal"), "onRequestClose");
+
+    expect(mockCloseEditProject).toHaveBeenCalledTimes(1);
+  });
+
+  it("delegates modal save through the projects adapter with the edited project payload", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(mockSaveEditedProject).toHaveBeenCalledTimes(1);
+    expect(mockSaveEditedProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "project-1",
+        name: "Tower A",
+        description: "Core package",
+        status: "active",
+        location: "Central Site",
+      }),
+    );
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
+  });
+
+  it("prevents modal save when the project name is blank", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.changeText(screen.getByDisplayValue("Tower A"), "   ");
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(Alert.alert).toHaveBeenCalledWith("Error", "Project name is required");
+    expect(mockSaveEditedProject).not.toHaveBeenCalled();
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
+  });
+
+  it("prevents modal save when the end date is not after the start date", () => {
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("2026-12-31"));
+    fireEvent(screen.UNSAFE_getByType("DateTimePicker"), "onChange", undefined, new Date("2025-12-31T00:00:00.000Z"));
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(Alert.alert).toHaveBeenCalledWith("Error", "End date must be after start date");
+    expect(mockSaveEditedProject).not.toHaveBeenCalled();
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
+  });
+
+  it("updates lead-PM assignments before saving when the selection changes", async () => {
+    mockGetUsersByCompany.mockReturnValue([
+      { id: "user-3", name: "Jordan Lee", role: "manager" },
+      { id: "user-4", name: "Taylor Morgan", role: "manager" },
+    ]);
+    mockGetLeadPMForProject.mockReturnValue("user-3");
+
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Jordan Lee (manager)")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText("Jordan Lee (manager)"));
+    fireEvent.press(screen.getByText("Taylor Morgan (manager)"));
+    fireEvent.press(screen.getByText("Save"));
+
+    expect(mockRemoveUserFromProject).toHaveBeenCalledWith("user-3", "project-1");
+    expect(mockAssignUserToProject).toHaveBeenCalledWith(
+      "user-4",
+      "project-1",
+      "lead_project_manager",
+      "user-1",
+    );
+    expect(mockSaveEditedProject).toHaveBeenCalledTimes(1);
   });
 });

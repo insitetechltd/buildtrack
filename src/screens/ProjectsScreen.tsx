@@ -205,6 +205,7 @@ export default function ProjectsScreen({
             <View className="flex-row space-x-2">
               {onNavigateToUserManagement && (
                 <Pressable
+                  testID="projects-user-management-action"
                   onPress={onNavigateToUserManagement}
                   className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center"
                 >
@@ -212,6 +213,7 @@ export default function ProjectsScreen({
                 </Pressable>
               )}
               <Pressable
+                testID="projects-create-action"
                 onPress={onNavigateToCreateProject}
                 className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
               >

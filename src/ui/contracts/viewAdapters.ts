@@ -10,6 +10,7 @@ import type {
 import type { Language } from "@/state/languageStore";
 import type { Project, ProjectRole, ProjectStatus } from "@/types/buildtrack";
 import type { ResponsibilityToken } from "@/utils/accountabilityEngine";
+import type { TaskSuggestion } from "@/api/task-llm-service";
 
 export interface PrimitiveReadyItemBase {
   id: string;
@@ -1040,12 +1041,33 @@ export interface CreateTaskFormModel {
   attachments: any[]; // Or Attachment type
 }
 
+export interface CreateTaskContextModel {
+  headerTitle: string;
+  activeProjectId: string;
+  activeProjectName?: string;
+  assigneesLocked: boolean;
+  requiresEditReason: boolean;
+  parentBanner: {
+    label: string;
+    title: string;
+  } | null;
+}
+
+export interface CreateTaskAssignableUserModel {
+  id: string;
+  name: string;
+  email?: string;
+  position?: string;
+  role?: string;
+}
+
 export interface CreateTaskScreenViewAdapterOutput {
   readiness: {
     isSubmitting: boolean;
     isLoadingUsers: boolean;
     isUploading: boolean;
   };
+  context: CreateTaskContextModel;
   formData: CreateTaskFormModel;
   errors: Record<string, string>;
   pickers: {
@@ -1056,10 +1078,25 @@ export interface CreateTaskScreenViewAdapterOutput {
     showBillingStatusPicker: boolean;
     showProjectPicker: boolean;
   };
+  assigneePicker: {
+    availableUsers: CreateTaskAssignableUserModel[];
+    userSearchQuery: string;
+    filteredUsers: CreateTaskAssignableUserModel[];
+    selectedUserIds: string[];
+  };
+  projects: {
+    availableProjects: Project[];
+  };
+  modals: {
+    showEditReasonModal: boolean;
+    editReason: string;
+  };
   aiAssistant: {
     textInput: string;
     showSuggestionPreview: boolean;
     acceptedFields: Set<string>;
     isProcessing: boolean;
+    lastSuggestion: TaskSuggestion | null;
+    error: string | null;
   };
 }

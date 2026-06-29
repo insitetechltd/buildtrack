@@ -5,11 +5,14 @@ import { useTaskStore } from '../../state/taskStore.supabase';
 import { useAuthStore } from '../../state/authStore';
 import { useProjectStoreWithCompanyInit } from '../../state/projectStore.supabase';
 import { useUserStoreWithInit } from '../../state/userStore.supabase';
+import { useProjectFilterStore } from '../../state/projectFilterStore';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
 import type { CreateTaskScreenViewAdapterOutput, CreateTaskFormModel } from '../contracts/viewAdapters';
-import { Priority, TaskCategory, BillingStatus } from '../../types/buildtrack';
+import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
+import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
+import { useTranslation } from '../../utils/useTranslation';
 
 export interface UseCreateTaskViewAdapterProps {
   editTaskId?: string;
@@ -21,6 +24,20 @@ export interface UseCreateTaskViewAdapterProps {
 const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const SELECTED_USERS_STORAGE_KEY = '@createTask_selectedUsers';
 
+function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
+  return Boolean(
+    status &&
+      status !== 'new' &&
+      status !== 'not_started' &&
+      status !== 'rejected' &&
+      status !== 'declined'
+  );
+}
+
+function requiresEditReasonForStatus(status?: TaskStatus): boolean {
+  return status === 'accepted' || status === 'in_progress' || status === 'submitted_for_review';
+}
+
 export function useCreateTaskViewAdapter({
   editTaskId,
   parentTaskId,
@@ -28,10 +45,12 @@ export function useCreateTaskViewAdapter({
   clearForm
 }: UseCreateTaskViewAdapterProps) {
   const { user } = useAuthStore();
+  const t = useTranslation();
   const { tasks, fetchTaskById, createTask, createSubTask, updateTask } = useTaskStore();
-  const { getUsersByRole } = useUserStoreWithInit();
+  const { getAllUsers } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
+  const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   
   const [formData, setFormData] = useState<CreateTaskFormModel>({
     title: '',
@@ -63,13 +82,18 @@ export function useCreateTaskViewAdapter({
   const {
     suggestTaskFromText,
     isLoading: isProcessing,
+    error: llmError,
     lastSuggestion,
     clearSuggestion,
+    clearError,
   } = useTaskLLMAssistant();
   
   const [textInput, setTextInput] = useState('');
   const [showSuggestionPreview, setShowSuggestionPreview] = useState(false);
   const [acceptedFields, setAcceptedFields] = useState<Set<string>>(new Set());
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showEditReasonModal, setShowEditReasonModal] = useState(false);
+  const [editReason, setEditReason] = useState('');
 
   // 1. AsyncStorage Persistence Logic
   const persistDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -135,8 +159,193 @@ export function useCreateTaskViewAdapter({
     setPickers(prev => ({ ...prev, [picker]: show }));
   }, []);
 
-  const submit = async () => {
-    if (!validateForm()) return;
+  const editTask = useMemo(
+    () => (editTaskId ? tasks.find((task) => task.id === editTaskId) : null),
+    [editTaskId, tasks]
+  );
+  const parentTask = useMemo(
+    () => (parentTaskId ? tasks.find((task) => task.id === parentTaskId) : null),
+    [parentTaskId, tasks]
+  );
+  const parentSubTask = useMemo(
+    () =>
+      parentSubTaskId
+        ? tasks.find(
+            (task) => task.id === parentSubTaskId && task.parentTaskId === parentTaskId,
+          )
+        : null,
+    [parentSubTaskId, parentTaskId, tasks]
+  );
+  const userProjects = useMemo(() => getProjectsByUser(user?.id || ''), [getProjectsByUser, user?.id]);
+  const activeProjectId = formData.projectId || selectedProjectId || '';
+  const activeProject = useMemo(
+    () => userProjects.find((project) => project.id === activeProjectId),
+    [activeProjectId, userProjects]
+  );
+  const allAssignableUsers = useMemo(
+    () =>
+      getAssignableProjectUsers({
+        projectId: activeProjectId,
+        assignments: getProjectUserAssignments(activeProjectId),
+        users: getAllUsers(),
+      }),
+    [activeProjectId, getAllUsers, getProjectUserAssignments]
+  );
+  const filteredAssignableUsers = useMemo(() => {
+    if (!userSearchQuery) {
+      return allAssignableUsers;
+    }
+
+    const query = userSearchQuery.toLowerCase();
+    return allAssignableUsers.filter((assignableUser) => {
+      return (
+        (assignableUser.name?.toLowerCase() || '').includes(query) ||
+        (assignableUser.email?.toLowerCase() || '').includes(query)
+      );
+    });
+  }, [allAssignableUsers, userSearchQuery]);
+  const assigneesLocked = areAssigneesLockedForStatus(editTask?.status as TaskStatus | undefined);
+  const requiresEditReason = requiresEditReasonForStatus(editTask?.status as TaskStatus | undefined);
+
+  const context = useMemo(() => {
+    const headerTitle = editTaskId
+      ? t.createTask.editTask
+      : parentTaskId
+        ? parentSubTaskId && parentSubTask
+          ? t.createTask.nestedSubTask
+          : t.createTask.createSubTask
+        : t.createTask.createNewTask;
+
+    const parentBanner =
+      parentTask && (parentSubTask || parentTask)
+        ? {
+            label: parentSubTask ? t.createTask.nestedUnder : t.createTask.subTaskOf,
+            title: parentSubTask?.title || parentTask.title,
+          }
+        : null;
+
+    return {
+      headerTitle,
+      activeProjectId,
+      activeProjectName: activeProject?.name,
+      assigneesLocked,
+      requiresEditReason,
+      parentBanner,
+    };
+  }, [
+    activeProject?.name,
+    activeProjectId,
+    assigneesLocked,
+    editTaskId,
+    parentSubTask,
+    parentSubTaskId,
+    parentTask,
+    parentTaskId,
+    requiresEditReason,
+    t.createTask.createNewTask,
+    t.createTask.createSubTask,
+    t.createTask.editTask,
+    t.createTask.nestedSubTask,
+    t.createTask.nestedUnder,
+    t.createTask.subTaskOf,
+  ]);
+
+  const toggleUserSelection = useCallback((userId: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      assignedTo: previous.assignedTo.includes(userId)
+        ? previous.assignedTo.filter((id) => id !== userId)
+        : [...previous.assignedTo, userId],
+    }));
+  }, []);
+
+  const removeAttachment = useCallback((index: number) => {
+    setFormData((previous) => ({
+      ...previous,
+      attachments: previous.attachments.filter((_, attachmentIndex) => attachmentIndex !== index),
+    }));
+  }, []);
+
+  const updateSuggestionField = useCallback(
+    (field: keyof CreateTaskFormModel, value: CreateTaskFormModel[keyof CreateTaskFormModel]) => {
+      updateField(field, value);
+      setAcceptedFields((previous) => {
+        const next = new Set(previous);
+        next.add(field);
+        return next;
+      });
+    },
+    [updateField]
+  );
+
+  const toggleSuggestionField = useCallback(
+    (field: keyof CreateTaskFormModel, value: CreateTaskFormModel[keyof CreateTaskFormModel]) => {
+      setAcceptedFields((previous) => {
+        const next = new Set(previous);
+        if (next.has(field)) {
+          next.delete(field);
+        } else {
+          next.add(field);
+          updateField(field, value);
+        }
+        return next;
+      });
+    },
+    [updateField]
+  );
+
+  const dismissSuggestionPreview = useCallback(() => {
+    setShowSuggestionPreview(false);
+    clearSuggestion();
+    setAcceptedFields(new Set());
+  }, [clearSuggestion]);
+
+  const generateSuggestionFromText = useCallback(async () => {
+    if (!textInput.trim()) {
+      return null;
+    }
+
+    const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
+    if (suggestion) {
+      setShowSuggestionPreview(true);
+      setAcceptedFields(new Set());
+      setTextInput('');
+    }
+
+    return suggestion;
+  }, [editTask, suggestTaskFromText, textInput]);
+
+  useEffect(() => {
+    if (editTask) {
+      setFormData({
+        title: editTask.title,
+        description: editTask.description || '',
+        taskReference: editTask.taskReference || '',
+        billingStatus: editTask.billingStatus || 'non_billable',
+        priority: editTask.priority || 'medium',
+        category: editTask.category || 'general',
+        dueDate: new Date(editTask.dueDate),
+        assignedTo: editTask.assignedTo || [],
+        attachments: editTask.attachments || [],
+        projectId: editTask.projectId || '',
+      });
+    }
+  }, [editTask]);
+
+  useEffect(() => {
+    if (!editTaskId && !formData.projectId && selectedProjectId) {
+      updateField('projectId', selectedProjectId);
+    }
+  }, [editTaskId, formData.projectId, selectedProjectId, updateField]);
+
+  useEffect(() => {
+    if (activeProjectId) {
+      void fetchProjectUserAssignments(activeProjectId);
+    }
+  }, [activeProjectId, fetchProjectUserAssignments]);
+
+  const submit = async (options?: { editReason?: string }) => {
+    if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
       // Basic submit logic extracted from screen
@@ -144,6 +353,7 @@ export function useCreateTaskViewAdapter({
         await updateTask(editTaskId, {
           title: formData.title,
           description: formData.description,
+          taskReference: formData.taskReference || undefined,
           projectId: formData.projectId,
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
@@ -151,7 +361,8 @@ export function useCreateTaskViewAdapter({
           dueDate: formData.dueDate.toISOString(),
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
-        });
+          _editReason: options?.editReason,
+        } as Partial<any>);
       } else if (parentTaskId) {
         await createSubTask(parentTaskId, {
           title: formData.title,
@@ -182,8 +393,10 @@ export function useCreateTaskViewAdapter({
         });
       }
       await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
+      return true;
     } catch (e) {
       console.error(e);
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -195,14 +408,30 @@ export function useCreateTaskViewAdapter({
       isLoadingUsers,
       isUploading,
     },
+    context,
     formData,
     errors,
     pickers,
+    assigneePicker: {
+      availableUsers: allAssignableUsers,
+      userSearchQuery,
+      filteredUsers: filteredAssignableUsers,
+      selectedUserIds: formData.assignedTo,
+    },
+    projects: {
+      availableProjects: userProjects,
+    },
+    modals: {
+      showEditReasonModal,
+      editReason,
+    },
     aiAssistant: {
       textInput,
       showSuggestionPreview,
       acceptedFields,
       isProcessing,
+      lastSuggestion,
+      error: llmError,
     }
   };
 
@@ -212,9 +441,19 @@ export function useCreateTaskViewAdapter({
       updateField,
       togglePicker,
       submit,
+      setUserSearchQuery,
+      toggleUserSelection,
+      removeAttachment,
       setTextInput,
       setShowSuggestionPreview,
       setAcceptedFields,
+      setShowEditReasonModal,
+      setEditReason,
+      clearError,
+      updateSuggestionField,
+      toggleSuggestionField,
+      dismissSuggestionPreview,
+      generateSuggestionFromText,
       suggestTaskFromText,
       clearSuggestion
     }

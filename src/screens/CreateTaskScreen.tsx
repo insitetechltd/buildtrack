@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -26,14 +26,11 @@ import { useAuthStore } from "../state/authStore";
 import { useCreateTaskViewAdapter } from "../ui/viewAdapters/useCreateTaskViewAdapter";
 import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
-import { useUserStoreWithInit } from "../state/userStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
-import { TaskStatus } from "../types/buildtrack";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
-import { useProjectFilterStore } from "../state/projectFilterStore";
 import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
-import { Priority, TaskCategory, BillingStatus } from "../types/buildtrack";
+import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
@@ -46,9 +43,10 @@ import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
-import { getAssignableProjectUsers } from "./createTaskAssignees";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
+import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
 // Temporarily disabled due to expo-av CMake build issues
 // import VoiceTaskInput, { Language } from "../components/VoiceTaskInput";
 
@@ -62,16 +60,6 @@ interface SelectedPhoto {
 
 // Attachment can be either a URL (already uploaded) or a photo object (to be uploaded)
 type Attachment = string | SelectedPhoto;
-
-function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
-  return Boolean(
-    status &&
-      status !== "new" &&
-      status !== "not_started" &&
-      status !== "rejected" &&
-      status !== "declined"
-  );
-}
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
@@ -140,12 +128,9 @@ export default function CreateTaskScreen({
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
-  const { tasks } = useTaskStore();
-  useUserStoreWithInit();
   const { getAllUsers } = useUserStore();
-  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
-  const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
+  const navigation = useNavigation<any>();
+  const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
@@ -159,48 +144,23 @@ export default function CreateTaskScreen({
     clearForm
   });
 
-  const { formData, errors, pickers, readiness, aiAssistant } = output;
-  const { updateField, togglePicker, submit, setTextInput, setShowSuggestionPreview, setAcceptedFields, suggestTaskFromText, clearSuggestion } = actions;
-
-  const parentTask = parentTaskId ? tasks.find(t => t.id === parentTaskId) : null;
-  const parentSubTask = parentSubTaskId ? tasks.find(t => t.id === parentSubTaskId && t.parentTaskId === parentTaskId) : null;
-  const editTask = editTaskId ? tasks.find(t => t.id === editTaskId) : null;
-  const userProjects = getProjectsByUser(user?.id || "");
-  const activeProjectId = formData.projectId || selectedProjectId || "";
-  
-  const [userSearchQuery, setUserSearchQuery] = useState("");
-  const [showEditReasonModal, setShowEditReasonModal] = useState(false);
-  const [editReason, setEditReason] = useState("");
-  const [llmError, setLLMError] = useState<string | null>(null);
-
-  const clearLLMError = () => setLLMError(null);
-
-  const allAssignableUsers = useMemo(
-    () =>
-      getAssignableProjectUsers({
-        projectId: activeProjectId,
-        assignments: getProjectUserAssignments(activeProjectId),
-        users: getAllUsers(),
-      }),
-    [activeProjectId, getAllUsers, getProjectUserAssignments],
-  );
-  const filteredAssignableUsers = allAssignableUsers.filter((u) => {
-    if (!userSearchQuery) return true;
-    const q = userSearchQuery.toLowerCase();
-    return (
-      (u.name?.toLowerCase() || "").includes(q) ||
-      (u.email?.toLowerCase() || "").includes(q)
-    );
-  });
-
-  const setFormData = (val: any) => {
-    if (typeof val === 'function') {
-      const next = val(formData as any);
-      Object.keys(next).forEach(k => updateField(k as any, next[k]));
-    } else {
-      Object.keys(val).forEach(k => updateField(k as any, val[k]));
-    }
-  };
+  const { formData, errors, pickers, readiness, aiAssistant, context, assigneePicker, projects, modals } = output;
+  const {
+    updateField,
+    togglePicker,
+    submit,
+    setTextInput,
+    setUserSearchQuery,
+    toggleUserSelection,
+    removeAttachment,
+    setShowSuggestionPreview,
+    setShowEditReasonModal,
+    setEditReason,
+    clearError,
+    toggleSuggestionField,
+    dismissSuggestionPreview,
+    suggestTaskFromText,
+  } = actions;
 
   const handleTitleChange = (val: string) => updateField('title', val);
   const handleDescriptionChange = (val: string) => updateField('description', val);
@@ -229,35 +189,55 @@ export default function CreateTaskScreen({
   const showUserPicker = pickers.showUserPicker;
   const setShowUserPicker = (val: boolean) => togglePicker('showUserPicker', val);
 
-  const selectedUsers = formData.assignedTo;
-  const setSelectedUsers = (val: string[]) => updateField('assignedTo', val);
+  const selectedUsers = assigneePicker.selectedUserIds;
   
   const handleOpenUserPicker = () => setShowUserPicker(true);
-  
-  const toggleUserSelection = (userId: string) => {
-    setSelectedUsers(
-      selectedUsers.includes(userId)
-        ? selectedUsers.filter((id) => id !== userId)
-        : [...selectedUsers, userId]
-    );
-  };
-
-  const handleUserSelect = toggleUserSelection;
 
   const textInput = aiAssistant.textInput;
   const showSuggestionPreview = aiAssistant.showSuggestionPreview;
   const acceptedFields = aiAssistant.acceptedFields;
   const isLLMLoading = aiAssistant.isProcessing;
-  // Use lastSuggestion if available, else stub
-  const lastSuggestion = (aiAssistant as any).lastSuggestion || {};
+  const lastSuggestion = aiAssistant.lastSuggestion;
+  const llmError = aiAssistant.error;
 
   const isUploading = readiness.isUploading;
   const isLoadingUsers = readiness.isLoadingUsers;
-  const setIsLoadingUsers = (val: boolean) => {}; // Stub since adapter handles it
   const isSubmitting = readiness.isSubmitting;
 
   const handleOpenPhotoSelection = () => {};
-  const handleAddPhotos = () => {};
+  const handleAddPhotos = async () => {
+    if (!user) return;
+
+    await showPhotoSelectionDialog({
+      onPhotosSelected: (photos) => {
+        const serializablePhotos = photos.map((photo) => ({
+          uri: photo.uri,
+          fileName: photo.fileName,
+          isAnnotated: photo.isAnnotated || false,
+        }));
+
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            navigation.navigate("PhotoSelection", {
+              taskId: editTaskId,
+              subTaskId: parentSubTaskId,
+              companyId: user.companyId,
+              userId: user.id,
+              initialCompletionPercentage: 0,
+              initialPhotos: serializablePhotos,
+              returnScreen: "CreateTask",
+              actionType: actionType,
+              parentTaskId,
+              parentSubTaskId,
+              editTaskId,
+            });
+          }, 100);
+        });
+      },
+      allowClipboard: true,
+      allowMultiple: true,
+    });
+  };
   
   const removePhoto = (index: number) => {
     const newAttachments = [...formData.attachments];
@@ -271,15 +251,29 @@ export default function CreateTaskScreen({
   const handleClearForm = () => {};
   const saveFormDataToStorage = async () => {};
 
-  const performSubmit = async () => {
-    await submit();
-    onNavigateBack();
+  const performSubmit = async (options?: { editReason?: string }) => {
+    const wasSuccessful = await submit(options);
+    if (wasSuccessful) {
+      onNavigateBack();
+    }
+
+    return wasSuccessful;
   };
 
-  const handleSubmit = performSubmit;
-  const handleEditReasonSubmit = async () => {
-    setShowEditReasonModal(false);
+  const handleSubmit = async () => {
+    if (context.requiresEditReason) {
+      setShowEditReasonModal(true);
+      return;
+    }
+
     await performSubmit();
+  };
+  const handleEditReasonSubmit = async () => {
+    const wasSuccessful = await performSubmit({ editReason: modals.editReason });
+    if (wasSuccessful) {
+      setShowEditReasonModal(false);
+      setEditReason("");
+    }
   };
 
   useEffect(() => {
@@ -293,33 +287,6 @@ export default function CreateTaskScreen({
       updateField('attachments', [...formData.attachments, ...uploadedPhotoUrls]);
     }
   }, [uploadedPhotoUrls]);
-
-  useEffect(() => {
-    if (editTask) {
-      updateField('title', editTask.title);
-      updateField('description', editTask.description || "");
-      updateField('taskReference', editTask.taskReference || "");
-      updateField('billingStatus', editTask.billingStatus || "non_billable");
-      updateField('priority', editTask.priority || "medium");
-      updateField('category', editTask.category || "general");
-      updateField('dueDate', new Date(editTask.dueDate));
-      updateField('projectId', editTask.projectId || "");
-      updateField('assignedTo', editTask.assignedTo || []);
-      updateField('attachments', editTask.attachments || []);
-    }
-  }, [editTask]);
-
-  useEffect(() => {
-    if (!editTaskId && !formData.projectId && selectedProjectId) {
-      updateField('projectId', selectedProjectId);
-    }
-  }, [editTaskId, formData.projectId, selectedProjectId, updateField]);
-
-  useEffect(() => {
-    if (activeProjectId) {
-      void fetchProjectUserAssignments(activeProjectId);
-    }
-  }, [activeProjectId, fetchProjectUserAssignments]);
 
   if (!user) return null;
   if (isAdmin(user)) {
@@ -345,19 +312,7 @@ export default function CreateTaskScreen({
       
       {/* Standard Header */}
       <StandardHeader 
-        title={(() => {
-          const title = editTaskId
-            ? t.createTask.editTask
-            : parentTaskId 
-              ? parentSubTaskId && parentSubTask
-                ? t.createTask.nestedSubTask
-                : parentTask
-                  ? t.createTask.createSubTask
-                  : t.createTask.createSubTask
-              : t.createTask.createNewTask;
-          console.log('📋 Header title determined:', { editTaskId, title, hasEditTaskId: !!editTaskId });
-          return title;
-        })()}
+        title={context.headerTitle}
         showBackButton={true}
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
@@ -366,15 +321,15 @@ export default function CreateTaskScreen({
       />
 
       {/* Parent Task Info Banner */}
-      {parentTask && (
+      {context.parentBanner && (
         <View className="bg-blue-50 border-b border-blue-100 px-6 py-3">
           <View className="flex-row items-center">
             <Ionicons name="link-outline" size={18} color="#3b82f6" />
             <Text className="text-base text-gray-600 ml-2">
-              {parentSubTask ? t.createTask.nestedUnder : t.createTask.subTaskOf}
+              {context.parentBanner.label}
             </Text>
             <Text className="text-base font-semibold text-gray-900 flex-1" numberOfLines={1}>
-              {parentSubTask?.title || parentTask.title}
+              {context.parentBanner.title}
             </Text>
           </View>
         </View>
@@ -432,10 +387,8 @@ export default function CreateTaskScreen({
                       return;
                     }
                     try {
-                      const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
+                      const suggestion = await actions.generateSuggestionFromText();
                       if (suggestion) {
-                        setShowSuggestionPreview(true);
-                        setAcceptedFields(new Set());
                         setTextInput("");
                       }
                     } catch (error) {
@@ -463,7 +416,7 @@ export default function CreateTaskScreen({
             <View className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <View className="flex-row items-center justify-between">
                 <Text className="text-red-700 text-sm flex-1">{llmError}</Text>
-                <Pressable onPress={clearLLMError}>
+                <Pressable onPress={clearError}>
                   <Ionicons name="close" size={20} color="#991b1b" />
                 </Pressable>
               </View>
@@ -472,256 +425,12 @@ export default function CreateTaskScreen({
 
           {/* Suggestion Preview */}
           {lastSuggestion && showSuggestionPreview && (
-            <View className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-base font-semibold text-gray-900">
-                  {t.createTask.aiSuggestions}
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    setShowSuggestionPreview(false);
-                    clearSuggestion();
-                    setAcceptedFields(new Set());
-                  }}
-                >
-                  <Ionicons name="close" size={20} color="#1e40af" />
-                </Pressable>
-              </View>
-
-              {lastSuggestion.title && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.tasks.title}</Text>
-                    <View className="flex-row gap-2">
-                      <Pressable
-                        onPress={() => {
-                          if (acceptedFields.has("title")) {
-                            setAcceptedFields((prev) => {
-                              const next = new Set(prev);
-                              next.delete("title");
-                              return next;
-                            });
-                          } else {
-                            setAcceptedFields((prev) => new Set(prev).add("title"));
-                            setFormData((prev: any) => ({ ...prev, title: lastSuggestion.title! }));
-                          }
-                        }}
-                        className={cn(
-                          "px-2 py-1 rounded",
-                          acceptedFields.has("title") ? "bg-green-200" : "bg-gray-200"
-                        )}
-                      >
-                        <Text className="text-xs">
-                          {acceptedFields.has("title") ? t.createTask.acceptField : t.createTask.rejectField}
-                        </Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.title}</Text>
-                </View>
-              )}
-
-              {lastSuggestion.description && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.tasks.description}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("description")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("description");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("description"));
-                          setFormData((prev: any) => ({ ...prev, description: lastSuggestion.description! }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("description") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("description") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.description}</Text>
-                </View>
-              )}
-
-              {lastSuggestion.category && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.tasks.category}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("category")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("category");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("category"));
-                          setFormData((prev: any) => ({ ...prev, category: lastSuggestion.category! }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("category") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("category") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.category}</Text>
-                </View>
-              )}
-
-              {lastSuggestion.priority && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.tasks.priority}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("priority")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("priority");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("priority"));
-                          setFormData((prev: any) => ({ ...prev, priority: lastSuggestion.priority! }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("priority") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("priority") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.priority}</Text>
-                </View>
-              )}
-
-              {lastSuggestion.dueDate && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.tasks.dueDate}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("dueDate")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("dueDate");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("dueDate"));
-                          setFormData((prev: any) => ({ ...prev, dueDate: new Date(lastSuggestion.dueDate!) }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("dueDate") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("dueDate") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">
-                    {dateFormatter.formatDate(new Date(lastSuggestion.dueDate))}
-                  </Text>
-                </View>
-              )}
-
-              {lastSuggestion.billingStatus && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.createTask.billingStatus}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("billingStatus")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("billingStatus");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("billingStatus"));
-                          setFormData((prev: any) => ({ ...prev, billingStatus: lastSuggestion.billingStatus! }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("billingStatus") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("billingStatus") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.billingStatus}</Text>
-                </View>
-              )}
-
-              {lastSuggestion.taskReference && (
-                <View className="mb-3">
-                  <View className="flex-row items-center justify-between mb-1">
-                    <Text className="text-sm font-medium text-gray-700">{t.createTask.taskReference}</Text>
-                    <Pressable
-                      onPress={() => {
-                        if (acceptedFields.has("taskReference")) {
-                          setAcceptedFields((prev) => {
-                            const next = new Set(prev);
-                            next.delete("taskReference");
-                            return next;
-                          });
-                        } else {
-                          setAcceptedFields((prev) => new Set(prev).add("taskReference"));
-                          setFormData((prev: any) => ({ ...prev, taskReference: lastSuggestion.taskReference! }));
-                        }
-                      }}
-                      className={cn(
-                        "px-2 py-1 rounded",
-                        acceptedFields.has("taskReference") ? "bg-green-200" : "bg-gray-200"
-                      )}
-                    >
-                      <Text className="text-xs">
-                        {acceptedFields.has("taskReference") ? t.createTask.acceptField : t.createTask.rejectField}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  <Text className="text-sm text-gray-600">{lastSuggestion.taskReference}</Text>
-                </View>
-              )}
-
-              <Pressable
-                onPress={() => {
-                  setShowSuggestionPreview(false);
-                  clearSuggestion();
-                  setAcceptedFields(new Set());
-                }}
-                className="mt-2 px-4 py-2 bg-blue-500 rounded-lg"
-              >
-                <Text className="text-white text-center font-semibold">
-                  {t.createTask.clearSuggestions}
-                </Text>
-              </Pressable>
-            </View>
+            <CreateTaskSuggestionPreview
+              suggestion={lastSuggestion}
+              acceptedFields={acceptedFields}
+              onToggleField={toggleSuggestionField}
+              onDismiss={dismissSuggestionPreview}
+            />
           )}
 
           {/* Title */}
@@ -817,10 +526,10 @@ export default function CreateTaskScreen({
             >
               <Text className={cn(
                 "flex-1 text-lg",
-                activeProjectId ? "text-gray-900" : "text-gray-500"
+                context.activeProjectId ? "text-gray-900" : "text-gray-500"
               )}>
-                {activeProjectId 
-                  ? userProjects.find(p => p.id === activeProjectId)?.name 
+                {context.activeProjectId 
+                  ? projects.availableProjects.find(p => p.id === context.activeProjectId)?.name 
                   : t.createTask.selectProject
                 }
               </Text>
@@ -918,8 +627,7 @@ export default function CreateTaskScreen({
           {/* Assign To */}
           <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
             {(() => {
-              const isTaskAccepted = areAssigneesLockedForStatus(editTask?.status);
-              const isDisabled = isLoadingUsers || isTaskAccepted;
+              const isDisabled = isLoadingUsers || context.assigneesLocked;
               
               return (
                 <Pressable
@@ -927,18 +635,18 @@ export default function CreateTaskScreen({
                   disabled={isDisabled}
                   className={cn(
                     "border rounded-lg px-3 py-3 flex-row items-center justify-between",
-                    isTaskAccepted ? "bg-gray-100" : "bg-white",
+                    context.assigneesLocked ? "bg-gray-100" : "bg-white",
                     errors.assignedTo ? "border-red-300" : "border-gray-300",
                     isDisabled && "opacity-50"
                   )}
                 >
                   <Text className={cn(
                     "text-lg",
-                    isTaskAccepted ? "text-gray-500" : "text-gray-900"
+                    context.assigneesLocked ? "text-gray-500" : "text-gray-900"
                   )}>
                     {isLoadingUsers 
                       ? t.createTask.loadingUsers
-                      : isTaskAccepted
+                      : context.assigneesLocked
                         ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
                       : selectedUsers.length > 0 
                         ? t.createTask.usersSelected(selectedUsers.length)
@@ -947,7 +655,7 @@ export default function CreateTaskScreen({
                   </Text>
                   {isLoadingUsers ? (
                     <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
-                  ) : isTaskAccepted ? (
+                  ) : context.assigneesLocked ? (
                     <Ionicons name="lock-closed" size={20} color="#9ca3af" />
                   ) : (
                     <Ionicons 
@@ -967,13 +675,12 @@ export default function CreateTaskScreen({
               <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
               <View className="flex-row flex-wrap">
                 {selectedUsers.map((userId) => {
-                  const user = allAssignableUsers.find(u => u.id === userId);
+                  const user = assigneePicker.availableUsers.find(u => u.id === userId);
                   if (!user) return null;
-                  const areAssigneesLocked = areAssigneesLockedForStatus(editTask?.status);
                   return (
                     <View key={userId} className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
                       <Text className="text-blue-900 text-sm font-medium mr-1">{user.name}</Text>
-                      {!areAssigneesLocked ? (
+                      {!context.assigneesLocked ? (
                         <Pressable onPress={() => toggleUserSelection(userId)}>
                           <Ionicons name="close-circle" size={16} color="#1e40af" />
                         </Pressable>
@@ -986,124 +693,12 @@ export default function CreateTaskScreen({
           )}
 
           {/* Attachments */}
-          <View className="mb-6">
-            <View className="flex-row items-center mb-2">
-              <Text className="text-lg font-semibold text-gray-900">
-                {t.createTask.attachments}
-              </Text>
-              {/* Debug: Show attachment count */}
-              {formData && formData.attachments && (
-                <Text className="text-xs text-gray-500 ml-2">
-                  ({formData.attachments.length} {formData.attachments.length === 1 ? 'item' : 'items'})
-                </Text>
-              )}
-              {/* Debug: Show AsyncStorage photo count */}
-              {asyncStoragePhotoCount !== null && asyncStoragePhotoCount > 0 && (
-                <Text className="text-xs text-amber-600 ml-2">
-                  (Storage: {asyncStoragePhotoCount})
-                </Text>
-              )}
-            </View>
-            
-            {formData && formData.attachments && (() => {
-              console.log('🔍 [CreateTask] Rendering attachments section:', {
-                attachmentsCount: formData.attachments.length,
-                attachments: formData.attachments.map((att, idx) => ({
-                  index: idx,
-                  type: typeof att,
-                  uri: typeof att === 'string' ? att : att.uri,
-                  fileName: typeof att === 'string' ? 'URL' : att.fileName,
-                })),
-              });
-              return null;
-            })()}
-            
-            {formData && formData.attachments && formData.attachments.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                <View className="flex-row">
-                  {formData.attachments.map((attachment, index) => {
-                    // Handle both URLs (string) and photo objects
-                    const photoUri = typeof attachment === 'string' ? attachment : (attachment.annotatedUri || attachment.uri);
-                    const isNotUploaded = typeof attachment !== 'string';
-                    
-                    // Debug logging
-                    if (isNotUploaded) {
-                      console.log(`📸 [CreateTask] Rendering pending photo ${index}:`, {
-                        uri: attachment.uri,
-                        fileName: attachment.fileName,
-                        isAnnotated: attachment.isAnnotated,
-                        annotatedUri: attachment.annotatedUri,
-                        photoUri,
-                      });
-                    }
-                    
-                    return (
-                      <View key={`attachment-${index}-${typeof attachment === 'string' ? attachment : attachment.uri}`} className="mr-3 relative">
-                        <Image
-                          source={{ 
-                            uri: photoUri,
-                            // Ensure proper caching for local files
-                            cache: Platform.OS === 'ios' ? 'force-cache' : 'default'
-                          }}
-                          className="w-24 h-24 rounded-lg bg-gray-100"
-                          resizeMode="cover"
-                          onError={(error) => {
-                            console.error(`❌ [CreateTask] Failed to load image ${index}:`, {
-                              uri: photoUri,
-                              originalUri: typeof attachment === 'string' ? attachment : attachment.uri,
-                              annotatedUri: typeof attachment === 'string' ? undefined : attachment.annotatedUri,
-                              error: error.nativeEvent?.error || error,
-                              attachmentType: typeof attachment,
-                              fileName: typeof attachment === 'string' ? 'URL' : attachment.fileName,
-                              platform: Platform.OS,
-                            });
-                          }}
-                          onLoad={() => {
-                            console.log(`✅ [CreateTask] Successfully loaded image ${index}:`, {
-                              uri: photoUri.substring(0, 50) + '...',
-                              fileName: typeof attachment === 'string' ? 'URL' : attachment.fileName,
-                            });
-                          }}
-                        />
-                        {isNotUploaded && (
-                          <View className="absolute top-1 left-1 bg-amber-500 rounded px-1.5 py-0.5">
-                            <Text className="text-white text-xs font-semibold">Pending</Text>
-                          </View>
-                        )}
-                        <Pressable
-                          onPress={() => {
-                            setFormData((prev: any) => ({
-                              ...prev,
-                              attachments: prev.attachments.filter((_: any, i: number) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            ) : null}
-            
-            <Pressable
-              testID="createTask-add-photos"
-              onPress={handleAddPhotos}
-              className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
-            >
-              <View className="flex-row items-center flex-1">
-                <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
-                <Text className="text-gray-600 font-medium ml-2 text-sm">
-                  {formData && formData.attachments && formData.attachments.length === 0 ? t.createTask.tapToAddFiles : (formData && formData.attachments ? t.createTask.filesAdded(formData.attachments.length) : t.createTask.tapToAddFiles)}
-                </Text>
-              </View>
-              {formData && formData.attachments && formData.attachments.length > 0 && (
-                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-              )}
-            </Pressable>
-          </View>
+          <CreateTaskAttachmentSection
+            attachments={formData.attachments as any}
+            asyncStoragePhotoCount={asyncStoragePhotoCount}
+            onRemoveAttachment={removeAttachment}
+            onAddPhotos={handleAddPhotos}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1454,11 +1049,11 @@ export default function CreateTaskScreen({
           </View>
 
           <ScrollView className="flex-1 px-6 py-4">
-            {userProjects.map((project) => (
+            {projects.availableProjects.map((project) => (
               <Pressable
                 key={project.id}
                 onPress={() => {
-                  setFormData((prev: any) => ({ ...prev, projectId: project.id }));
+                  updateField('projectId', project.id);
                   setShowProjectPicker(false);
                 }}
                 className={cn(
@@ -1489,7 +1084,7 @@ export default function CreateTaskScreen({
               </Pressable>
             ))}
             
-            {userProjects.length === 0 && (
+            {projects.availableProjects.length === 0 && (
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <Ionicons name="folder-open-outline" size={48} color="#9ca3af" />
                 <Text className="text-gray-500 text-center mt-2">
@@ -1509,7 +1104,6 @@ export default function CreateTaskScreen({
         onRequestClose={() => {
           setShowUserPicker(false);
           setUserSearchQuery("");
-          setIsLoadingUsers(false);
         }}
       >
         <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
@@ -1522,7 +1116,6 @@ export default function CreateTaskScreen({
               onPress={() => {
                 setShowUserPicker(false);
                 setUserSearchQuery("");
-                setIsLoadingUsers(false);
               }}
               className="mr-4 w-10 h-10 items-center justify-center"
             >
@@ -1544,12 +1137,12 @@ export default function CreateTaskScreen({
                 className="flex-1 ml-2 text-lg text-gray-900"
                 placeholder={t.createTask.searchPlaceholder}
                 placeholderTextColor="#9ca3af"
-                value={userSearchQuery}
+                value={assigneePicker.userSearchQuery}
                 onChangeText={setUserSearchQuery}
                 autoCapitalize="none"
                 autoCorrect={false}
               />
-              {userSearchQuery.length > 0 && (
+              {assigneePicker.userSearchQuery.length > 0 && (
                 <Pressable onPress={() => setUserSearchQuery("")}>
                   <Ionicons name="close-circle" size={20} color="#6b7280" />
                 </Pressable>
@@ -1558,7 +1151,10 @@ export default function CreateTaskScreen({
             
             {/* Results count */}
             <Text className="text-sm text-gray-600 mt-2">
-              {t.createTask.usersAvailable(filteredAssignableUsers.length, userSearchQuery ? allAssignableUsers.length : undefined)}
+              {t.createTask.usersAvailable(
+                assigneePicker.filteredUsers.length,
+                assigneePicker.userSearchQuery ? assigneePicker.availableUsers.length : undefined
+              )}
             </Text>
           </View>
 
@@ -1575,8 +1171,8 @@ export default function CreateTaskScreen({
                   {t.createTask.fetchingTeamMembers}
                 </Text>
               </View>
-            ) : filteredAssignableUsers.length > 0 ? (
-              filteredAssignableUsers.map((assignableUser) => {
+            ) : assigneePicker.filteredUsers.length > 0 ? (
+              assigneePicker.filteredUsers.map((assignableUser) => {
                 const isSelected = selectedUsers.includes(assignableUser.id);
                 const isFavorite = user?.id ? isFavoriteUser(user.id, assignableUser.id) : false;
                 
@@ -1644,7 +1240,7 @@ export default function CreateTaskScreen({
                   </Pressable>
                 );
               })
-            ) : allAssignableUsers.length > 0 ? (
+            ) : assigneePicker.availableUsers.length > 0 ? (
               // No results found (filtered out)
               <View className="bg-white border border-gray-200 rounded-lg p-8 items-center">
                 <Ionicons name="search-outline" size={48} color="#9ca3af" />
@@ -1681,7 +1277,6 @@ export default function CreateTaskScreen({
               onPress={() => {
                 setShowUserPicker(false);
                 setUserSearchQuery("");
-                setIsLoadingUsers(false);
               }}
               className="bg-blue-600 rounded-lg py-3 items-center"
             >
@@ -1695,7 +1290,7 @@ export default function CreateTaskScreen({
 
       {/* Edit Reason Modal - Shown when editing an accepted task */}
       <Modal
-        visible={showEditReasonModal}
+        visible={modals.showEditReasonModal}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setShowEditReasonModal(false)}
@@ -1722,7 +1317,7 @@ export default function CreateTaskScreen({
             </Text>
 
             <TextInput
-              value={editReason}
+              value={modals.editReason}
               onChangeText={setEditReason}
               placeholder={t.taskDetail.editReasonPlaceholder}
               placeholderTextColor="#9ca3af"

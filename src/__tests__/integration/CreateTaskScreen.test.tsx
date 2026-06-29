@@ -29,11 +29,20 @@ React.createElement = function (type, ...args) {
   return originalCreateElement(type, ...args);
 };
 
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import CreateTaskScreen from '../../screens/CreateTaskScreen';
 import { NavigationContainer } from '@react-navigation/native';
 
 const mockUseTaskStore = jest.fn();
+const mockCreateTask = jest.fn();
+const mockCreateSubTask = jest.fn();
+const mockUpdateTask = jest.fn();
+const mockGetProjectsByUser = jest.fn();
+const mockGetProjectUserAssignments = jest.fn();
+const mockFetchProjectUserAssignments = jest.fn();
+const mockShowPhotoSelectionDialog = jest.fn();
+const mockNavigate = jest.fn();
+let mockSelectedProjectId: string | null = null;
 
 // Mock dependencies
 jest.mock('../../state/authStore', () => ({
@@ -48,7 +57,8 @@ jest.mock('../../state/taskStore.supabase', () => ({
 
 jest.mock('../../state/userStore.supabase', () => ({
   useUserStoreWithInit: () => ({
-    getUsersByRole: () => []
+    getUsersByRole: () => [],
+    getAllUsers: () => [],
   }),
   useUserStore: () => ({
     getAllUsers: () => []
@@ -57,23 +67,35 @@ jest.mock('../../state/userStore.supabase', () => ({
 
 jest.mock('../../state/projectStore.supabase', () => ({
   useProjectStoreWithCompanyInit: () => ({
-    getProjectsByUser: () => [],
-    getProjectUserAssignments: () => [],
-    fetchProjectUserAssignments: jest.fn().mockResolvedValue(undefined),
+    getProjectsByUser: mockGetProjectsByUser,
+    getProjectUserAssignments: mockGetProjectUserAssignments,
+    fetchProjectUserAssignments: mockFetchProjectUserAssignments,
   })
 }));
 
 jest.mock('../../state/projectFilterStore', () => ({
   useProjectFilterStore: (selector: (state: { selectedProjectId: string | null }) => unknown) =>
-    selector({ selectedProjectId: null }),
+    selector({ selectedProjectId: mockSelectedProjectId }),
 }));
 
 jest.mock('../../utils/useTranslation', () => ({
   useTranslation: () => ({
     tasks: { createTask: 'Create Task', title: 'Title', description: 'Description' },
+    userManagement: { pending: 'Pending' },
     createTask: { 
       textInput: 'Input', 
       textInputPlaceholder: 'Text',
+      nestedUnder: 'Nested under:',
+      subTaskOf: 'Sub-task of:',
+      editTask: 'Edit Task',
+      createSubTask: 'Create Sub-Task',
+      nestedSubTask: 'Nested Sub-Task',
+      createNewTask: 'Create New Task',
+      createTaskButton: 'Create Task',
+      updateTaskButton: 'Update Task',
+      creating: 'Creating...',
+      updating: 'Updating...',
+      filesAdded: (count: number) => `${count} file(s) added`,
       usersAvailable: () => 'Users Available',
       usersSelected: () => 'Users Selected',
        selectUsersToAssign: 'Select Users',
@@ -87,7 +109,7 @@ jest.mock('../../utils/useTranslation', () => ({
         submitReason: 'Submit',
         cancel: 'Cancel'
       },
-      common: { done: 'Done', selected: 'Selected' }
+      common: { done: 'Done', selected: 'Selected', save: 'Save', cancel: 'Cancel' }
   })
 }));
 
@@ -96,6 +118,12 @@ jest.mock('../../utils/dateFormatter', () => ({
     formatDateWithWeekday: (d: Date) => 'Today',
     locale: 'en'
   })
+}));
+
+jest.mock('../../utils/usePhotoSelection', () => ({
+  usePhotoSelection: () => ({
+    showPhotoSelectionDialog: mockShowPhotoSelectionDialog,
+  }),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -139,7 +167,7 @@ jest.mock('@react-native-community/slider', () => {
 });
 
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn(), setParams: jest.fn() }),
+  useNavigation: () => ({ navigate: mockNavigate, setParams: jest.fn() }),
   useRoute: () => ({ params: {} }),
   useFocusEffect: jest.fn((cb) => cb()),
   NavigationContainer: ({ children }: any) => <>{children}</>
@@ -155,7 +183,21 @@ describe('CreateTaskScreen Integration', () => {
       fetchTaskById: jest.fn(),
       addTaskUpdate: jest.fn(),
       addAssignerComment: jest.fn(),
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
     });
+    mockCreateTask.mockResolvedValue('task-1');
+    mockCreateSubTask.mockResolvedValue('subtask-1');
+    mockUpdateTask.mockResolvedValue(undefined);
+    mockSelectedProjectId = 'project-1';
+    mockGetProjectsByUser.mockReturnValue([
+      { id: 'project-1', name: 'Project Alpha', location: 'Tower A' },
+    ]);
+    mockGetProjectUserAssignments.mockReturnValue([]);
+    mockFetchProjectUserAssignments.mockResolvedValue(undefined);
+    mockShowPhotoSelectionDialog.mockReset();
+    mockNavigate.mockReset();
   });
 
   it('renders correctly with adapter bindings', () => {
@@ -248,5 +290,267 @@ describe('CreateTaskScreen Integration', () => {
     expect(
       getAllByTestId('Ionicons').filter((icon) => icon.props.name === 'close-circle')
     ).toHaveLength(0);
+  });
+
+  it('renders the parent banner for nested subtask creation', () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-parent',
+          projectId: 'project-1',
+          title: 'Parent task',
+          description: 'Parent',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'new',
+          completionPercentage: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'task-child',
+          projectId: 'project-1',
+          title: 'Nested child',
+          description: 'Child',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'new',
+          completionPercentage: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          parentTaskId: 'task-parent',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          parentTaskId="task-parent"
+          parentSubTaskId="task-child"
+        />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Nested under:')).toBeTruthy();
+    expect(getByText('Nested child')).toBeTruthy();
+  });
+
+  it('submits create mode and navigates back after a valid task creation', async () => {
+    const onNavigateBack = jest.fn();
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={onNavigateBack} />
+      </NavigationContainer>
+    );
+
+    fireEvent.changeText(getByTestId('createTask-title'), 'Install guard rails');
+    fireEvent.changeText(getByTestId('createTask-description'), 'Complete level 2 edge protection');
+    fireEvent.press(getByTestId('createTask-submit'));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Install guard rails',
+          description: 'Complete level 2 edge protection',
+        }),
+      );
+    });
+
+    expect(onNavigateBack).toHaveBeenCalled();
+  });
+
+  it('submits edit mode and navigates back after a valid task update', async () => {
+    const onNavigateBack = jest.fn();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'new',
+          completionPercentage: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={onNavigateBack} editTaskId="task-1" />
+      </NavigationContainer>
+    );
+
+    fireEvent.changeText(getByTestId('createTask-title'), 'Existing task updated');
+    fireEvent.press(getByTestId('createTask-submit'));
+
+    await waitFor(() => {
+      expect(mockUpdateTask).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          title: 'Existing task updated',
+        }),
+      );
+    });
+
+    expect(onNavigateBack).toHaveBeenCalled();
+  });
+
+  it('does not navigate away when create submission fails validation', async () => {
+    const onNavigateBack = jest.fn();
+    mockCreateTask.mockClear();
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={onNavigateBack} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(getByTestId('createTask-submit'));
+
+    await waitFor(() => {
+      expect(mockCreateTask).not.toHaveBeenCalled();
+    });
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+  });
+
+  it('requires an edit reason before submitting locked-status edits', async () => {
+    const onNavigateBack = jest.fn();
+    mockUpdateTask.mockClear();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Submitted task',
+          description: 'Ready for review',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'submitted_for_review',
+          completionPercentage: 100,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const { getByPlaceholderText, getByTestId, getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={onNavigateBack} editTaskId="task-1" />
+      </NavigationContainer>
+    );
+
+    fireEvent.changeText(getByTestId('createTask-title'), 'Submitted task updated');
+    fireEvent.press(getByTestId('createTask-submit'));
+
+    await waitFor(() => {
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+    });
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+
+    fireEvent.changeText(getByPlaceholderText('Reason'), 'Clarified scope');
+    fireEvent.press(getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockUpdateTask).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          title: 'Submitted task updated',
+          _editReason: 'Clarified scope',
+        }),
+      );
+    });
+
+    expect(onNavigateBack).toHaveBeenCalled();
+  });
+
+  it('opens the create-task photo selection flow from the attachment CTA', async () => {
+    mockShowPhotoSelectionDialog.mockResolvedValue(undefined);
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(getByTestId('createTask-add-photos'));
+
+    await waitFor(() => {
+      expect(mockShowPhotoSelectionDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          allowClipboard: true,
+          allowMultiple: true,
+          onPhotosSelected: expect.any(Function),
+        }),
+      );
+    });
+  });
+
+  it('renders translated attachment state for pending selected photos', () => {
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          selectedPhotos={[
+            {
+              uri: 'file:///photo-1.jpg',
+              fileName: 'photo-1.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Pending')).toBeTruthy();
+    expect(getByText('(1 file(s) added)')).toBeTruthy();
   });
 });

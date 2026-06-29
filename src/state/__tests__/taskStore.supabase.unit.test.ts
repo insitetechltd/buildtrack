@@ -329,6 +329,199 @@ describe('taskStore.supabase unit tests', () => {
     );
   });
 
+  it('declines flat subtasks without requiring a nested children tree', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { name: 'Reviewer User' },
+            error: null,
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const updateSubTaskMock = jest.fn().mockResolvedValue(undefined);
+    const addSubTaskUpdateMock = jest.fn().mockResolvedValue(undefined);
+
+    resetTaskStore();
+    useTaskStore.setState((state) => ({
+      ...state,
+      tasks: [
+        createTaskState(),
+        createTaskState({
+          id: 'subtask-123',
+          parentTaskId: 'task-123',
+          assignedTo: [workerId],
+          assignedBy: managerId,
+          completionPercentage: 75,
+        }),
+      ],
+      updateSubTask: updateSubTaskMock,
+      addSubTaskUpdate: addSubTaskUpdateMock,
+    }));
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.declineSubTask('task-123', 'subtask-123', 'reviewer-1', 'Need changes');
+    });
+
+    expect(updateSubTaskMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-123',
+      expect.objectContaining({
+        status: 'rejected',
+        declinedReason: 'Need changes',
+        assignedTo: [managerId],
+      }),
+    );
+    expect(addSubTaskUpdateMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-123',
+      expect.objectContaining({
+        status: 'rejected',
+        description: expect.stringContaining('Need changes'),
+      }),
+    );
+  });
+
+  it('declines nested subtasks via rootTaskId when the parent task is not the direct parent', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { name: 'Reviewer User' },
+            error: null,
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const updateSubTaskMock = jest.fn().mockResolvedValue(undefined);
+    const addSubTaskUpdateMock = jest.fn().mockResolvedValue(undefined);
+
+    resetTaskStore();
+    useTaskStore.setState((state) => ({
+      ...state,
+      tasks: [
+        createTaskState(),
+        createTaskState({
+          id: 'subtask-parent',
+          parentTaskId: 'task-123',
+          rootTaskId: 'task-123',
+          assignedTo: [workerId],
+          assignedBy: managerId,
+        }),
+        createTaskState({
+          id: 'subtask-leaf',
+          parentTaskId: 'subtask-parent',
+          rootTaskId: 'task-123',
+          assignedTo: [workerId],
+          assignedBy: managerId,
+          completionPercentage: 50,
+        }),
+      ],
+      updateSubTask: updateSubTaskMock,
+      addSubTaskUpdate: addSubTaskUpdateMock,
+    }));
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.declineSubTask('task-123', 'subtask-leaf', 'reviewer-1', 'Nested changes');
+    });
+
+    expect(updateSubTaskMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-leaf',
+      expect.objectContaining({
+        status: 'rejected',
+        assignedTo: [managerId],
+      }),
+    );
+    expect(addSubTaskUpdateMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-leaf',
+      expect.objectContaining({
+        status: 'rejected',
+        description: expect.stringContaining('Nested changes'),
+      }),
+    );
+  });
+
+  it('declines nested-only fallback subtasks stored under parent children arrays', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: { name: 'Reviewer User' },
+            error: null,
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const updateSubTaskMock = jest.fn().mockResolvedValue(undefined);
+    const addSubTaskUpdateMock = jest.fn().mockResolvedValue(undefined);
+
+    resetTaskStore();
+    useTaskStore.setState((state) => ({
+      ...state,
+      tasks: [
+        {
+          ...createTaskState(),
+          children: [
+            createTaskState({
+              id: 'subtask-nested-only',
+              parentTaskId: 'task-123',
+              assignedTo: [workerId],
+              assignedBy: managerId,
+              completionPercentage: 25,
+            }),
+          ],
+        },
+      ],
+      updateSubTask: updateSubTaskMock,
+      addSubTaskUpdate: addSubTaskUpdateMock,
+    }));
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.declineSubTask('task-123', 'subtask-nested-only', 'reviewer-1', 'Fallback child');
+    });
+
+    expect(updateSubTaskMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-nested-only',
+      expect.objectContaining({
+        status: 'rejected',
+        assignedTo: [managerId],
+      }),
+    );
+    expect(addSubTaskUpdateMock).toHaveBeenCalledWith(
+      'task-123',
+      'subtask-nested-only',
+      expect.objectContaining({
+        status: 'rejected',
+        description: expect.stringContaining('Fallback child'),
+      }),
+    );
+  });
+
   it('treats stale scoped task caches as background-refresh eligible only when the live coordinator envelope exists', async () => {
     let now = 1_000;
     const dateNowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
@@ -816,4 +1009,5 @@ describe('taskStore.supabase unit tests', () => {
       ],
     });
   });
+
 });

@@ -62,6 +62,50 @@ function buildAssigneeSummary(task: Task): string {
   return `${assignees.length} assignees`;
 }
 
+function matchesNewStatusFilter(status: TaskStatus): boolean {
+  return status === "new" || status === "not_started" || status === "assigned" || status === "received";
+}
+
+function matchesWipStatusFilter(status: TaskStatus): boolean {
+  return status === "accepted" || status === "in_progress" || status === "wip" || status === "rejected";
+}
+
+function matchesReviewingStatusFilter(status: TaskStatus): boolean {
+  return status === "submitted_for_review" || status === "reviewing" || status === "declined";
+}
+
+function matchesOutboxReviewingStatusFilter(status: TaskStatus): boolean {
+  return status === "submitted_for_review" || status === "reviewing";
+}
+
+function isOverdueFilter(statusFilter: string): boolean {
+  return (
+    statusFilter === "received-overdue" ||
+    statusFilter === "assigned-overdue" ||
+    statusFilter === "wip-overdue" ||
+    statusFilter === "reviewing-overdue"
+  );
+}
+
+function matchesStatusFilter(status: TaskStatus, statusFilter: string): boolean {
+  switch (statusFilter) {
+    case "new":
+    case "received":
+    case "assigned":
+    case "received-overdue":
+    case "assigned-overdue":
+      return matchesNewStatusFilter(status);
+    case "wip":
+    case "wip-overdue":
+      return matchesWipStatusFilter(status);
+    case "reviewing":
+    case "reviewing-overdue":
+      return matchesReviewingStatusFilter(status);
+    default:
+      return true;
+  }
+}
+
 export interface TasksViewAdapterProps {
   onNavigateToTaskDetail?: (taskId: string) => void;
 }
@@ -118,13 +162,26 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       const isOriginator = task.assignedBy === currentUserId && !isAssignedToUser;
 
       const sectionFilter = projectFilterStore.sectionFilter;
+      const statusFilter = projectFilterStore.statusFilter;
+      const isReviewQueueFilter =
+        statusFilter === "reviewing" || statusFilter === "reviewing-overdue";
 
       if (sectionFilter === "inbox") {
-        // Assigned to me by others
-        if (!isAssignedToUser || task.assignedBy === currentUserId) return false;
+        if (isReviewQueueFilter) {
+          // Persisted legacy reviewing filters were assigner-side queues.
+          if (task.assignedBy !== currentUserId) return false;
+        } else {
+          // Assigned to me by others
+          if (!isAssignedToUser || task.assignedBy === currentUserId) return false;
+        }
       } else if (sectionFilter === "outbox") {
-        // Assigned by me to others
-        if (!isOriginator) return false;
+        if (isReviewQueueFilter) {
+          // Persisted legacy outbox reviewing filters tracked my submitted work awaiting approval.
+          if (!isAssignedToUser || task.assignedBy === currentUserId) return false;
+        } else {
+          // Assigned by me to others
+          if (!isOriginator) return false;
+        }
       } else if (sectionFilter === "my_tasks") {
         // Self assigned
         if (!isAssignedToUser || task.assignedBy !== currentUserId) return false;
@@ -134,15 +191,32 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       }
 
       // 3. Status filter logic
-      const statusFilter = projectFilterStore.statusFilter;
       if (statusFilter !== "all") {
-        if (statusFilter === "new" && task.status !== "new") {
+        const matchesFilter =
+          sectionFilter === "outbox" && isReviewQueueFilter
+            ? matchesOutboxReviewingStatusFilter(task.status)
+            : matchesStatusFilter(task.status, statusFilter);
+
+        if (!matchesFilter) {
           return false;
         }
-        if (statusFilter === "wip" && task.status !== "in_progress" && task.status !== "accepted") {
+
+        if (
+          sectionFilter === "inbox" &&
+          statusFilter === "wip" &&
+          task.status === "rejected"
+        ) {
           return false;
         }
-        if (statusFilter === "reviewing" && task.status !== "submitted_for_review") {
+
+        if (
+          statusFilter === "wip-overdue" &&
+          task.status === "rejected"
+        ) {
+          return false;
+        }
+
+        if (isOverdueFilter(statusFilter) && !isTaskOverdue(task)) {
           return false;
         }
       }

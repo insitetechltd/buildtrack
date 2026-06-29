@@ -2953,17 +2953,30 @@ export const useTaskStore = create<TaskStore>()(
 
       updateSubTask: async (taskId, subTaskId, updates) => {
         if (!supabase) {
+          const updateNestedChildren = (children: Task[] | undefined): Task[] | undefined => {
+            if (!children) {
+              return children;
+            }
+
+            return children.map((child) => {
+              if (child.id === subTaskId) {
+                return { ...child, ...updates };
+              }
+
+              return {
+                ...child,
+                children: updateNestedChildren(child.children),
+              };
+            });
+          };
+
           // Fallback to local update
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === taskId
                 ? {
                     ...task,
-                    children: task.children?.map(subTask =>
-                      subTask.id === subTaskId
-                        ? { ...subTask, ...updates }
-                        : subTask
-                    )
+                    children: updateNestedChildren(task.children),
                   }
                 : task
             )
@@ -3103,23 +3116,30 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       declineSubTask: async (taskId, subTaskId, userId, reason) => {
-        // Get the parent task and find the subtask
-        const task = get().tasks.find(t => t.id === taskId);
-        if (!task) return;
+        const findNestedSubTask = (children: Task[] | undefined): Task | undefined => {
+          if (!children) {
+            return undefined;
+          }
 
-        const findSubTask = (children: any[] | undefined, id: string): any => {
-          if (!children) return null;
-          for (const st of children) {
-            if (st.id === id) return st;
-            if (st.children) {
-              const found = findSubTask(st.children, id);
-              if (found) return found;
+          for (const child of children) {
+            if (child.id === subTaskId) {
+              return child;
+            }
+
+            const nestedMatch = findNestedSubTask(child.children);
+            if (nestedMatch) {
+              return nestedMatch;
             }
           }
-          return null;
+
+          return undefined;
         };
 
-        const subTask = findSubTask(task.children, subTaskId);
+        const parentTask = get().tasks.find((task) => task.id === taskId);
+        const subTask =
+          get().tasks.find(
+            (task) => task.id === subTaskId && (task.parentTaskId === taskId || task.rootTaskId === taskId),
+          ) ?? findNestedSubTask(parentTask?.children);
         if (!subTask) return;
 
         // Get user who is rejecting to include their name in update

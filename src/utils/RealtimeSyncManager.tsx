@@ -27,29 +27,66 @@ export function RealtimeSyncManager() {
 
   const getTaskResourceKeys = (
     taskId: string,
-    nextTask?: {
+    taskPayload?: {
       project_id?: string | null;
       assigned_to?: Array<string | number> | null;
       assigned_by?: string | number | null;
     } | null,
+    options?: {
+      fallbackToKnownTaskQueries?: boolean;
+    },
   ) => {
     const taskStore = useTaskStore.getState();
     const cachedTask = taskStore.tasks.find((task) => task.id === taskId);
-    const projectId = nextTask?.project_id ?? cachedTask?.projectId ?? null;
-    const assignedTo = Array.isArray(nextTask?.assigned_to)
-      ? nextTask.assigned_to.map((assigneeId) => String(assigneeId))
+    const projectId = taskPayload?.project_id ?? cachedTask?.projectId ?? null;
+    const assignedTo = Array.isArray(taskPayload?.assigned_to)
+      ? taskPayload.assigned_to.map((assigneeId) => String(assigneeId))
       : cachedTask?.assignedTo || [];
-    const assignedBy = nextTask?.assigned_by !== undefined && nextTask?.assigned_by !== null
-      ? String(nextTask.assigned_by)
+    const assignedBy = taskPayload?.assigned_by !== undefined && taskPayload?.assigned_by !== null
+      ? String(taskPayload.assigned_by)
       : cachedTask?.assignedBy ?? null;
-
-    return [
+    const scopedKeys = [
       buildResourceKey('tasks', 'all'),
       buildResourceKey('task', taskId),
       projectId ? buildResourceKey('tasks', 'project', projectId) : '',
       ...assignedTo.map((assigneeId) => buildResourceKey('tasks', 'user', assigneeId)),
       assignedBy ? buildResourceKey('tasks', 'assignedBy', assignedBy) : '',
     ].filter(Boolean);
+
+    if (projectId || assignedTo.length > 0 || assignedBy) {
+      return scopedKeys;
+    }
+
+    if (!options?.fallbackToKnownTaskQueries) {
+      return scopedKeys;
+    }
+
+    const knownTaskKeys = Object.keys(taskStore.taskQueryMeta || {}).filter(
+      (resourceKey) => resourceKey.startsWith('tasks:') || resourceKey.startsWith('task:')
+    );
+
+    return Array.from(new Set([...scopedKeys, ...knownTaskKeys]));
+  };
+
+  const getMergedTaskResourceKeys = (
+    taskId: string,
+    previousTask?: {
+      project_id?: string | null;
+      assigned_to?: Array<string | number> | null;
+      assigned_by?: string | number | null;
+    } | null,
+    nextTask?: {
+      project_id?: string | null;
+      assigned_to?: Array<string | number> | null;
+      assigned_by?: string | number | null;
+    } | null,
+  ) => {
+    return Array.from(
+      new Set([
+        ...getTaskResourceKeys(taskId, previousTask, { fallbackToKnownTaskQueries: true }),
+        ...getTaskResourceKeys(taskId, nextTask, { fallbackToKnownTaskQueries: true }),
+      ])
+    );
   };
 
   useEffect(() => {
@@ -100,12 +137,17 @@ export function RealtimeSyncManager() {
               const deletedAt = (payload.new as any)?.deleted_at;
 
               if (deletedAt) {
+                invalidateResourceKeys(
+                  getTaskResourceKeys(newTaskId, payload.old as any, {
+                    fallbackToKnownTaskQueries: true,
+                  })
+                );
                 taskStore.evictTaskFromCache(newTaskId);
                 return;
               }
 
               invalidateResourceKeys(
-                getTaskResourceKeys(newTaskId, payload.new as any)
+                getMergedTaskResourceKeys(newTaskId, payload.old as any, payload.new as any)
               );
               const refreshedTask = await taskStore.fetchTaskById(newTaskId);
               if (!refreshedTask) {
@@ -116,6 +158,11 @@ export function RealtimeSyncManager() {
             // Remove task from local store
             const oldTaskId = (payload.old as any)?.id;
             if (oldTaskId) {
+              invalidateResourceKeys(
+                getTaskResourceKeys(oldTaskId, payload.old as any, {
+                  fallbackToKnownTaskQueries: true,
+                })
+              );
               taskStore.evictTaskFromCache(oldTaskId);
             }
           }

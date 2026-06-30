@@ -2,6 +2,7 @@ import {
   buildResourceKey,
   clearRequestCoordinator,
   getRequestCacheEnvelope,
+  invalidateResourceKeys,
   runSingleFlightRequest,
 } from "../supabase";
 
@@ -56,5 +57,22 @@ describe("supabase request coordinator", () => {
   it("builds stable colon-delimited resource keys", () => {
     expect(buildResourceKey("projects", "user", "user-123")).toBe("projects:user:user-123");
     expect(buildResourceKey("tasks", "project", "project-123")).toBe("tasks:project:project-123");
+  });
+
+  it("marks matching task resource envelopes stale and expired on manual invalidation", async () => {
+    const resourceKey = buildResourceKey("tasks", "all");
+
+    await runSingleFlightRequest(resourceKey, async () => ["task-1"], {
+      staleMs: 15_000,
+      ttlMs: 60_000,
+    });
+
+    invalidateResourceKeys([resourceKey]);
+
+    const envelope = getRequestCacheEnvelope<string[]>(resourceKey);
+    expect(envelope).not.toBeNull();
+    expect(envelope!.staleAt).toBeLessThanOrEqual(Date.now());
+    expect(envelope!.expiresAt).toBeLessThanOrEqual(Date.now());
+    expect(envelope?.data).toEqual(["task-1"]);
   });
 });

@@ -16,28 +16,22 @@ jest.mock("../../ui/viewAdapters/useUpdateProgressViewAdapter", () => ({
   useUpdateProgressViewAdapter: jest.fn(),
 }));
 
-jest.mock("../../components/StandardHeader", () => ({
-  __esModule: true,
-  default: function MockStandardHeader(props: {
-    title: string;
-    showBackButton?: boolean;
-    onBackPress?: () => void;
-    onBack?: () => void;
-    rightElement?: React.ReactNode;
-  }) {
-    const React = require("react");
-    const { Pressable, Text, View } = require("react-native");
+jest.mock("../../state/authStore", () => ({
+  useAuthStore: () => ({
+    user: { id: "user-1", companyId: "company-1", name: "Casey" },
+  }),
+}));
 
-    return (
-      <View testID="StandardHeader">
-        {props.showBackButton ? (
-          <Pressable testID="standardHeader-back" onPress={props.onBackPress ?? props.onBack} />
-        ) : null}
-        <Text>{props.title}</Text>
-        {props.rightElement}
-      </View>
-    );
-  },
+jest.mock("../../state/companyStore", () => ({
+  useCompanyStore: () => ({
+    getCompanyBanner: () => null,
+  }),
+}));
+
+jest.mock("../../state/themeStore", () => ({
+  useThemeStore: () => ({
+    isDarkMode: false,
+  }),
 }));
 
 jest.mock("../../utils/useTranslation", () => ({
@@ -61,6 +55,7 @@ jest.mock("../../utils/useTranslation", () => ({
 
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 jest.mock("expo-status-bar", () => ({
@@ -72,6 +67,20 @@ jest.mock("@expo/vector-icons", () => ({
 }));
 
 jest.mock("@react-native-community/slider", () => "Slider");
+
+jest.mock("../../components/ProfileMenu", () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+jest.mock("../../api/supabase", () => ({
+  checkSupabaseConnection: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock("../../utils/environmentDetector", () => ({
+  detectEnvironment: () => ({ mode: "test" }),
+  getEnvironmentStyles: () => ({}),
+}));
 
 describe("UpdateProgressScreen header regression", () => {
   const mockUseUpdateProgressViewAdapter =
@@ -115,7 +124,7 @@ describe("UpdateProgressScreen header regression", () => {
     expect(screen.getByText("Progress Update")).toBeTruthy();
     expect(screen.getByText("Modern UI")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("standardHeader-back"));
+    fireEvent.press(screen.getByTestId("modernHeader-back"));
 
     expect(mockGoBack).toHaveBeenCalledTimes(1);
   });

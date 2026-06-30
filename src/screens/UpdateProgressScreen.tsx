@@ -13,7 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { cn } from "../utils/cn";
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
 import ModernUiMarker from "../components/migration/ModernUiMarker";
 import { useTranslation } from "../utils/useTranslation";
 import { useUpdateProgressViewAdapter, UpdateProgressScreenProps } from "../ui/viewAdapters/useUpdateProgressViewAdapter";
@@ -27,7 +27,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
-        <StandardHeader 
+        <ModernScreenHeader 
           title={t.taskDetail.progressUpdate}
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
@@ -49,7 +49,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
-      <StandardHeader 
+      <ModernScreenHeader 
         title={t.taskDetail.progressUpdate}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}

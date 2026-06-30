@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
-import StandardHeader from "@/components/StandardHeader";
+import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
 import { cn } from "@/utils/cn";
@@ -204,7 +204,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   if (!output.readiness.hasUsableData) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <StandardHeader 
+        <ModernScreenHeader 
           title="Loading..." 
           showBackButton 
           onBackPress={props.onNavigateBack}
@@ -221,7 +221,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
-      <StandardHeader 
+      <ModernScreenHeader 
         title={output.header.title || "Task Details"}
         showBackButton={true}
         onBackPress={props.onNavigateBack}

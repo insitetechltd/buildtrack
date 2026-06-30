@@ -34,7 +34,7 @@ import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buil
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
 import ModernUiMarker from "../components/migration/ModernUiMarker";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
@@ -293,7 +293,7 @@ export default function CreateTaskScreen({
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
         <StatusBar style="dark" />
-        <StandardHeader 
+        <ModernScreenHeader 
           title={t.tasks.createTask}
           showBackButton={true}
           onBackPress={onNavigateBack}
@@ -311,7 +311,7 @@ export default function CreateTaskScreen({
       <StatusBar style="dark" />
       
       {/* Standard Header */}
-      <StandardHeader 
+      <ModernScreenHeader 
         title={context.headerTitle}
         showBackButton={true}
         onBackPress={onNavigateBack}
@@ -1578,7 +1578,7 @@ function TaskActionScreen({
     return (
       <View className="flex-1 bg-gray-50">
         <SafeAreaView edges={['top']} className="flex-1">
-          <StandardHeader
+          <ModernScreenHeader
             title={actionType === 'update' ? 'Update Progress' : 
                    actionType === 'photos' ? 'Add Photos' :
                    actionType === 'comment' ? 'Add Comment' :
@@ -1602,7 +1602,7 @@ function TaskActionScreen({
     return (
       <View className="flex-1 bg-gray-50">
         <SafeAreaView edges={['top']} className="flex-1">
-          <StandardHeader
+          <ModernScreenHeader
             title={t.taskDetail.progressUpdate}
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
@@ -1734,7 +1734,7 @@ function TaskActionScreen({
     return (
       <View className="flex-1 bg-gray-50">
         <SafeAreaView edges={['top']} className="flex-1">
-          <StandardHeader
+          <ModernScreenHeader
             title="Add Comment"
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
@@ -1850,7 +1850,7 @@ function TaskActionScreen({
   return (
     <View className="flex-1 bg-gray-50">
       <SafeAreaView edges={['top']} className="flex-1">
-        <StandardHeader
+        <ModernScreenHeader
           title="Add Photos"
           onBackPress={onNavigateBack}
           onNavigateToProfile={onNavigateToProfile}

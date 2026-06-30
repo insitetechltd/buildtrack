@@ -51,6 +51,18 @@ jest.mock('../../state/authStore', () => ({
   })
 }));
 
+jest.mock('../../state/companyStore', () => ({
+  useCompanyStore: () => ({
+    getCompanyBanner: () => null,
+  }),
+}));
+
+jest.mock('../../state/themeStore', () => ({
+  useThemeStore: () => ({
+    isDarkMode: false,
+  }),
+}));
+
 jest.mock('../../state/taskStore.supabase', () => ({
   useTaskStore: (selector?: (state: ReturnType<typeof mockUseTaskStore>) => unknown) => {
     const state = mockUseTaskStore();
@@ -140,23 +152,6 @@ jest.mock('@expo/vector-icons', () => {
   return { Ionicons: (props: any) => <View testID="Ionicons" {...props} /> };
 });
 
-jest.mock('../../components/StandardHeader', () => {
-  const React = require('react');
-  const { Pressable, Text, View } = require('react-native');
-
-  return {
-    __esModule: true,
-    default: (props: any) => (
-      <View testID="StandardHeader">
-        {props.showBackButton ? (
-          <Pressable testID="standardHeader-back" onPress={props.onBackPress || props.onBack} />
-        ) : null}
-        <Text>{props.title}</Text>
-        {props.rightElement}
-      </View>
-    ),
-  };
-});
 jest.mock('../../components/ModalHandle', () => {
   const { View } = require('react-native');
   return { __esModule: true, default: (props: any) => <View testID="ModalHandle" {...props} /> };
@@ -171,7 +166,10 @@ jest.mock('expo-status-bar', () => {
 });
 jest.mock('react-native-safe-area-context', () => {
   const { View } = require('react-native');
-  return { SafeAreaView: (props: any) => <View testID="SafeAreaView" {...props} /> };
+  return {
+    SafeAreaView: (props: any) => <View testID="SafeAreaView" {...props} />,
+    useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  };
 });
 jest.mock('@react-native-community/datetimepicker', () => {
   const { View } = require('react-native');
@@ -187,6 +185,20 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: {} }),
   useFocusEffect: jest.fn((cb) => cb()),
   NavigationContainer: ({ children }: any) => <>{children}</>
+}));
+
+jest.mock('../../components/ProfileMenu', () => {
+  const { View } = require('react-native');
+  return { __esModule: true, default: (props: any) => <View testID="ProfileMenu" {...props} /> };
+});
+
+jest.mock('../../api/supabase', () => ({
+  checkSupabaseConnection: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../utils/environmentDetector', () => ({
+  detectEnvironment: () => ({ mode: 'test' }),
+  getEnvironmentStyles: () => ({}),
 }));
 
 describe('CreateTaskScreen Integration', () => {
@@ -242,7 +254,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(getByText('Create New Task')).toBeTruthy();
     expect(getByText('Modern UI')).toBeTruthy();
 
-    fireEvent.press(getByTestId('standardHeader-back'));
+    fireEvent.press(getByTestId('modernHeader-back'));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
@@ -256,7 +268,7 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(getByText('Update Progress')).toBeTruthy();
     expect(getByText('Modern UI')).toBeTruthy();
-    expect(queryByTestId('standardHeader-back')).toBeNull();
+    expect(queryByTestId('modernHeader-back')).toBeNull();
   });
 
   it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', () => {

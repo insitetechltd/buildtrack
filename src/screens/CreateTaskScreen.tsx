@@ -67,8 +67,10 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
+  updateTargetSubTaskId?: string;
   uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen (legacy)
   selectedPhotos?: SelectedPhoto[]; // Photo objects selected but not yet uploaded
+  onClearDraftPayloads?: () => void;
   clearForm?: boolean; // Flag to clear form when "Create New Task" is pressed
   clearFormTimestamp?: number; // Timestamp to track when clearForm was set
   onNavigateToProfile?: () => void;
@@ -104,22 +106,26 @@ export default function CreateTaskScreen({
   parentSubTaskId,
   editTaskId,
   actionType,
+  updateTargetSubTaskId,
   uploadedPhotoUrls,
   selectedPhotos: selectedPhotosProp,
+  onClearDraftPayloads,
   clearForm,
   clearFormTimestamp,
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
-  const effectiveActionType = actionType || (editTaskId ? 'edit' : undefined);
+  const effectiveActionType = (actionType === 'photos' ? 'update' : actionType) || (editTaskId ? 'edit' : undefined);
 
   if (effectiveActionType && effectiveActionType !== 'edit' && editTaskId) {
     return <TaskActionScreen 
       actionType={effectiveActionType} 
       taskId={editTaskId} 
+      updateTargetSubTaskId={updateTargetSubTaskId}
       onNavigateBack={onNavigateBack}
       selectedPhotos={selectedPhotosProp}
       uploadedPhotoUrls={uploadedPhotoUrls}
+      onClearDraftPayloads={onClearDraftPayloads}
       onNavigateToProfile={onNavigateToProfile}
       onNavigateToProjectPicker={onNavigateToProjectPicker}
     />;
@@ -1373,17 +1379,21 @@ export default function CreateTaskScreen({
 function TaskActionScreen({ 
   actionType, 
   taskId, 
+  updateTargetSubTaskId,
   onNavigateBack,
   selectedPhotos,
   uploadedPhotoUrls,
+  onClearDraftPayloads,
   onNavigateToProfile,
   onNavigateToProjectPicker,
 }: { 
   actionType: 'update' | 'photos' | 'comment' | 'reassign';
   taskId: string;
+  updateTargetSubTaskId?: string;
   onNavigateBack: () => void;
   selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
+  onClearDraftPayloads?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }) {
@@ -1392,6 +1402,7 @@ function TaskActionScreen({
   const tasks = useTaskStore(state => state.tasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
   const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
+  const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
   const addAssignerComment = useTaskStore(state => state.addAssignerComment);
   const updateTask = useTaskStore(state => state.updateTask);
   const { getUserById } = useUserStore();
@@ -1403,47 +1414,68 @@ function TaskActionScreen({
   const navigation = useNavigation<any>();
 
   const task = tasks.find(t => t.id === taskId);
+  const targetTask = updateTargetSubTaskId
+    ? tasks.find((candidate) => candidate.id === updateTargetSubTaskId)
+    : task;
+  const initialSelectedPhotoUris = (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri);
+  const initialIncomingPhotos = Array.from(new Set([...initialSelectedPhotoUris, ...(uploadedPhotoUrls || [])]));
   
   // Update form state
   const [updateForm, setUpdateForm] = useState({
     description: "",
-    photos: [] as string[],
-    completionPercentage: task?.completionPercentage || 0,
-    status: (task?.status || "in_progress") as TaskStatus,
+    photos: actionType === 'comment' ? [] as string[] : initialIncomingPhotos,
+    completionPercentage: targetTask?.completionPercentage || 0,
+    status: (targetTask?.status || "in_progress") as TaskStatus,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
+  const [draftSelectedPhotos, setDraftSelectedPhotos] = useState<SelectedPhoto[]>(selectedPhotos || []);
 
   // Comment form state
   const [commentForm, setCommentForm] = useState({
     description: "",
-    photos: [] as string[],
+    photos: actionType === 'comment' ? initialIncomingPhotos : [] as string[],
   });
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const selectedPhotoUris = useMemo(
-    () => (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri),
-    [selectedPhotos],
+    () => draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
+    [draftSelectedPhotos],
   );
+  const hasMountedDraftHydrationRef = useRef(false);
+  const hasDirtyUpdateDraft =
+    updateForm.description.trim().length > 0 ||
+    updateForm.photos.length > 0 ||
+    draftSelectedPhotos.length > 0 ||
+    updateForm.completionPercentage !== (targetTask?.completionPercentage || 0);
 
 
   // Initialize form when task loads
   useEffect(() => {
-    if (task && actionType === 'update') {
+    if (targetTask && actionType === 'update') {
       setUpdateForm(prev => ({
         ...prev,
-        completionPercentage: task.completionPercentage || 0,
+        completionPercentage: targetTask.completionPercentage || 0,
+        status: (targetTask.status || "in_progress") as TaskStatus,
       }));
     }
-  }, [task, actionType]);
+  }, [targetTask, actionType]);
 
   // Fetch task on mount
   useEffect(() => {
     if (taskId) {
       fetchTaskById(taskId);
     }
-  }, [taskId, fetchTaskById]);
+    if (updateTargetSubTaskId) {
+      fetchTaskById(updateTargetSubTaskId);
+    }
+  }, [taskId, updateTargetSubTaskId, fetchTaskById]);
 
   useEffect(() => {
+    if (!hasMountedDraftHydrationRef.current) {
+      hasMountedDraftHydrationRef.current = true;
+      return;
+    }
+
     if (selectedPhotoUris.length === 0 && (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)) {
       return;
     }
@@ -1467,8 +1499,27 @@ function TaskActionScreen({
     }));
   }, [actionType, selectedPhotoUris, uploadedPhotoUrls]);
 
+  useEffect(() => {
+    if (!selectedPhotos || selectedPhotos.length === 0) {
+      return;
+    }
+
+    setDraftSelectedPhotos((prev) => {
+      const merged = [...prev];
+
+      for (const photo of selectedPhotos) {
+        const nextKey = photo.annotatedUri || photo.uri;
+        if (!merged.some((existing) => (existing.annotatedUri || existing.uri) === nextKey)) {
+          merged.push(photo);
+        }
+      }
+
+      return merged;
+    });
+  }, [selectedPhotos]);
+
   const handleAddPhotos = async () => {
-    if (!user || !task) return;
+    if (!user || !task || !targetTask) return;
 
     // Use unified photo selection utility
     showPhotoSelectionDialog({
@@ -1493,10 +1544,10 @@ function TaskActionScreen({
               // Navigate to PhotoSelectionScreen
               navigation.navigate("PhotoSelection", {
                 taskId: task.id,
-                subTaskId: undefined,
+                subTaskId: updateTargetSubTaskId,
                 companyId: user.companyId,
                 userId: user.id,
-                initialCompletionPercentage: task.completionPercentage || 0,
+                initialCompletionPercentage: targetTask?.completionPercentage || 0,
                 initialPhotos: serializablePhotos,
                 returnScreen: actionType === 'update' ? 'UpdateProgress' : actionType === 'comment' ? 'AddComment' : 'CreateTask',
                 actionType: actionType,
@@ -1517,29 +1568,70 @@ function TaskActionScreen({
   };
 
   const handleSubmitUpdate = async () => {
-    if (!updateForm.description.trim()) {
+    const hasUploadedPhotos = updateForm.photos.length > 0;
+    const hasSelectedDraftPhotos = draftSelectedPhotos.length > 0;
+
+    if (!updateForm.description.trim() && !hasUploadedPhotos && !hasSelectedDraftPhotos) {
       Alert.alert("Error", "Please provide a description for this update");
       return;
     }
 
-    if (!user || !task) return;
+    if (!user || !task || !targetTask) {
+      Alert.alert("Error", "Task details are still loading. Please try again.");
+      return;
+    }
 
     setIsSubmitting(true);
 
     try {
       const calculatedStatus: TaskStatus = 
-        (task.status === "accepted" || task.status === "in_progress" || task.status === "submitted_for_review") ? 
+        (targetTask?.status === "accepted" || targetTask?.status === "in_progress" || targetTask?.status === "submitted_for_review") ? 
           "in_progress" :
-        task.status || "in_progress";
+        targetTask?.status || "in_progress";
 
-      await addTaskUpdate(task.id, {
+      const selectedDraftPhotoUris = new Set(
+        draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
+      );
+      let durablePhotoUrls = updateForm.photos.filter((photoUrl) => !selectedDraftPhotoUris.has(photoUrl));
+
+      if (draftSelectedPhotos.length > 0) {
+        for (const photo of draftSelectedPhotos) {
+          const result = await uploadFileWithVerification({
+            file: {
+              uri: photo.annotatedUri || photo.uri,
+              name: photo.fileName,
+              type: "image/jpeg",
+            },
+            entityType: "task-update",
+            entityId: updateTargetSubTaskId || task.id,
+            companyId: user.companyId,
+            userId: user.id,
+          });
+
+          if (!result.success || !result.file) {
+            throw new Error(result.error || "Photo upload failed");
+          }
+
+          durablePhotoUrls.push(result.file.public_url);
+        }
+      }
+
+      const updatePayload = {
         description: updateForm.description,
-        photos: updateForm.photos,
+        photos: durablePhotoUrls,
         completionPercentage: updateForm.completionPercentage,
         status: calculatedStatus,
         userId: user.id,
-      });
+      };
 
+      if (updateTargetSubTaskId) {
+        await addSubTaskUpdate(task.id, updateTargetSubTaskId, updatePayload);
+      } else {
+        await addTaskUpdate(task.id, updatePayload);
+      }
+
+      setDraftSelectedPhotos([]);
+      onClearDraftPayloads?.();
       await fetchTaskById(task.id);
 
       Alert.alert("Success", updateForm.completionPercentage === 100 
@@ -1552,6 +1644,37 @@ function TaskActionScreen({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleAttemptNavigateBack = () => {
+    if (actionType !== "update" || !hasDirtyUpdateDraft) {
+      onNavigateBack();
+      return;
+    }
+
+    Alert.alert(
+      "Discard update?",
+      "Your draft photos and progress changes will be lost.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            setDraftSelectedPhotos([]);
+            setUpdateForm((prev) => ({
+              ...prev,
+              description: "",
+              photos: [],
+              completionPercentage: targetTask?.completionPercentage || 0,
+              status: (targetTask?.status || "in_progress") as TaskStatus,
+            }));
+            onClearDraftPayloads?.();
+            onNavigateBack();
+          },
+        },
+      ],
+    );
   };
 
   const handleSubmitComment = async () => {
@@ -1640,7 +1763,7 @@ function TaskActionScreen({
           <ModernScreenHeader
             title={t.taskDetail.progressUpdate}
             showBackButton={true}
-            onBackPress={onNavigateBack}
+            onBackPress={handleAttemptNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
             rightElement={<ModernUiMarker />}
@@ -1664,6 +1787,10 @@ function TaskActionScreen({
                         />
                         <Pressable
                           onPress={() => {
+                            const removedPhotoUri = photo;
+                            setDraftSelectedPhotos((prev) =>
+                              prev.filter((draftPhoto) => (draftPhoto.annotatedUri || draftPhoto.uri) !== removedPhotoUri),
+                            );
                             setUpdateForm(prev => ({
                               ...prev,
                               photos: prev.photos.filter((_: any, i: number) => i !== index)

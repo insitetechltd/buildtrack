@@ -34,6 +34,10 @@ import UpdateProgressScreen from "../screens/UpdateProgressScreen";
 import AddCommentScreen from "../screens/AddCommentScreen";
 import RejectTaskScreen from "../screens/RejectTaskScreen";
 import ReassignTaskScreen from "../screens/ReassignTaskScreen";
+import {
+  buildPhotoShortcutCreateTaskParams,
+  shouldReturnToCreateTaskShortcut,
+} from "./photoShortcutRoutes";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -257,13 +261,14 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId) => {
         // Navigate to CreateTask screen in the same stack with card transition
         navigation.navigate("CreateTask", {
           parentTaskId,
           parentSubTaskId,
           editTaskId,
           actionType,
+          updateTargetSubTaskId,
         });
       }}
       onNavigateToRejectTask={(taskId, subTaskId) => {
@@ -414,13 +419,14 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType) => {
+      onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId) => {
         // Navigate to CreateTask screen in the same stack with card transition
         navigation.navigate("CreateTask", {
           parentTaskId, 
           parentSubTaskId,
           editTaskId,
           actionType,
+          updateTargetSubTaskId,
         });
       }}
       onNavigateToRejectTask={(taskId, subTaskId) => {
@@ -537,11 +543,15 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
       navigation.goBack();
 
       setTimeout(() => {
-        navigateToCreateTaskRoute(navigation, {
-          editTaskId: taskId,
-          actionType,
-          uploadedPhotoUrls: photoUrls,
-        });
+        navigateToCreateTaskRoute(
+          navigation,
+          buildPhotoShortcutCreateTaskParams({
+            taskId,
+            subTaskId,
+            actionType: actionType as "update",
+            uploadedPhotoUrls: photoUrls,
+          }),
+        );
       }, 150);
     } else if (returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') {
       // For update/comment actions, navigate to UpdateProgress screen with uploaded URLs
@@ -594,15 +604,19 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
 
       navigateToCreateTaskRoute(navigation, navParams);
     } else if (returnScreen === 'UpdateProgress') {
-      if (actionType) {
+      if (shouldReturnToCreateTaskShortcut({ returnScreen, actionType })) {
         navigation.goBack();
 
         setTimeout(() => {
-          navigateToCreateTaskRoute(navigation, {
-            editTaskId: taskId,
-            actionType,
-            selectedPhotos: photos,
-          });
+          navigateToCreateTaskRoute(
+            navigation,
+            buildPhotoShortcutCreateTaskParams({
+              taskId,
+              subTaskId,
+              actionType: "update",
+              selectedPhotos: photos,
+            }),
+          );
         }, 150);
         return;
       }
@@ -690,7 +704,7 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
   console.log('📦 [CreateTaskScreenWrapper] ⚠️ THIS WRAPPER IS BEING USED');
   console.log('📦 [CreateTaskScreenWrapper] Used when navigating directly to CreateTaskScreen');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  const { parentTaskId, parentSubTaskId, editTaskId, actionType, uploadedPhotoUrls, selectedPhotos } = route.params || {};
+  const { parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId, uploadedPhotoUrls, selectedPhotos } = route.params || {};
   console.log('📦 [CreateTaskScreenWrapper] Route params:', {
     hasSelectedPhotos: !!selectedPhotos,
     selectedPhotosCount: selectedPhotos?.length || 0,
@@ -708,8 +722,15 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
       actionType={actionType}
+      updateTargetSubTaskId={updateTargetSubTaskId}
       uploadedPhotoUrls={uploadedPhotoUrls}
       selectedPhotos={selectedPhotos}
+      onClearDraftPayloads={() => {
+        navigation.setParams({
+          selectedPhotos: undefined,
+          uploadedPhotoUrls: undefined,
+        });
+      }}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
@@ -908,6 +929,7 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   const editTaskId = params.editTaskId;
   // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
   const actionType = params.actionType || (editTaskId ? 'edit' : undefined);
+  const updateTargetSubTaskId = params.updateTargetSubTaskId;
   const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
   const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use
@@ -1042,8 +1064,17 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
       actionType={actionType}
+      updateTargetSubTaskId={updateTargetSubTaskId}
       selectedPhotos={selectedPhotos}
       uploadedPhotoUrls={uploadedPhotoUrls}
+      onClearDraftPayloads={() => {
+        setSelectedPhotosState(undefined);
+        setUploadedPhotoUrlsState(undefined);
+        navigation.setParams({
+          selectedPhotos: undefined,
+          uploadedPhotoUrls: undefined,
+        });
+      }}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}

@@ -20,6 +20,7 @@ jest.mock('react/jsx-runtime', () => {
 });
 
 import React from 'react';
+import { Alert } from 'react-native';
 
 const originalCreateElement = React.createElement;
 React.createElement = function (type, ...args) {
@@ -43,7 +44,9 @@ const mockFetchProjectUserAssignments = jest.fn();
 const mockShowPhotoSelectionDialog = jest.fn();
 const mockNavigate = jest.fn();
 const mockAddTaskUpdate = jest.fn();
+const mockAddSubTaskUpdate = jest.fn();
 const mockAddAssignerComment = jest.fn();
+const mockUploadFileWithVerification = jest.fn();
 let mockSelectedProjectId: string | null = null;
 
 // Mock dependencies
@@ -189,8 +192,16 @@ jest.mock('@react-native-community/slider', () => {
   return { __esModule: true, default: (props: any) => <View testID="Slider" {...props} /> };
 });
 
+const mockNavigationDispatch = jest.fn();
+const mockNavigationAddListener = jest.fn(() => jest.fn());
+
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: mockNavigate, setParams: jest.fn() }),
+  useNavigation: () => ({
+    navigate: mockNavigate,
+    setParams: jest.fn(),
+    dispatch: mockNavigationDispatch,
+    addListener: mockNavigationAddListener,
+  }),
   useRoute: () => ({ params: {} }),
   useFocusEffect: jest.fn((cb) => cb()),
   NavigationContainer: ({ children }: any) => <>{children}</>
@@ -203,6 +214,10 @@ jest.mock('../../components/ProfileMenu', () => {
 
 jest.mock('../../api/supabase', () => ({
   checkSupabaseConnection: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('../../api/fileUploadService', () => ({
+  uploadFileWithVerification: (...args: unknown[]) => mockUploadFileWithVerification(...args),
 }));
 
 jest.mock('../../utils/environmentDetector', () => ({
@@ -219,6 +234,7 @@ describe('CreateTaskScreen Integration', () => {
       updateTask: jest.fn(),
       fetchTaskById: jest.fn(),
       addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
       addAssignerComment: mockAddAssignerComment,
       createTask: mockCreateTask,
       createSubTask: mockCreateSubTask,
@@ -236,7 +252,12 @@ describe('CreateTaskScreen Integration', () => {
     mockShowPhotoSelectionDialog.mockReset();
     mockNavigate.mockReset();
     mockAddTaskUpdate.mockReset();
+    mockAddSubTaskUpdate.mockReset();
     mockAddAssignerComment.mockReset();
+    mockUploadFileWithVerification.mockReset();
+    mockNavigationDispatch.mockReset();
+    mockNavigationAddListener.mockReset();
+    mockNavigationAddListener.mockReturnValue(jest.fn(() => jest.fn()));
   });
 
   it('renders correctly with adapter bindings', () => {
@@ -312,6 +333,7 @@ describe('CreateTaskScreen Integration', () => {
       updateTask: mockUpdateTask,
       fetchTaskById: jest.fn(),
       addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
       addAssignerComment: mockAddAssignerComment,
     });
 
@@ -332,6 +354,13 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: true,
+      file: {
+        public_url: 'https://cdn.example.com/progress-photo.jpg',
+      },
+    });
+
     fireEvent.changeText(getByPlaceholderText('Describe progress'), 'Installed wall framing');
     fireEvent.press(getByText('Submit Update'));
 
@@ -340,10 +369,259 @@ describe('CreateTaskScreen Integration', () => {
         'task-1',
         expect.objectContaining({
           description: 'Installed wall framing',
-          photos: ['file:///progress-photo.jpg'],
+          photos: ['https://cdn.example.com/progress-photo.jpg'],
         }),
       );
     });
+  });
+
+  it('allows submitting an update with uploaded photos and no description', async () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          editTaskId="task-1"
+          actionType="update"
+          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
+        />
+      </NavigationContainer>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Submit Update')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Submit Update'));
+
+    await waitFor(() => {
+      expect(mockAddTaskUpdate).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          description: '',
+          photos: ['https://cdn.example.com/photo-update.jpg'],
+        }),
+      );
+    });
+  });
+
+  it('still blocks empty updates when there is no description and no photo', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" actionType="update" />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(getByText('Submit Update'));
+
+    await waitFor(() => {
+      expect(mockAddTaskUpdate).not.toHaveBeenCalled();
+    });
+
+    expect(alertSpy).toHaveBeenCalledWith('Error', 'Please provide a description for this update');
+    alertSpy.mockRestore();
+  });
+
+  it('normalizes legacy photos actionType into update mode', () => {
+    const { getByText, queryByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" actionType="photos" />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Update Progress')).toBeTruthy();
+    expect(queryByText('Done')).toBeNull();
+  });
+
+  it('uses addSubTaskUpdate for shortcut submits targeting a subtask', async () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'subtask-1',
+          projectId: 'project-1',
+          title: 'Existing subtask',
+          description: 'Existing subtask description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 80,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          editTaskId="task-1"
+          actionType="update"
+          {...({ updateTargetSubTaskId: 'subtask-1' } as any)}
+          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
+        />
+      </NavigationContainer>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Submit Update')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Submit Update'));
+
+    await waitFor(() => {
+      expect(mockAddSubTaskUpdate).toHaveBeenCalledWith(
+        'task-1',
+        'subtask-1',
+        expect.objectContaining({
+          completionPercentage: 80,
+          photos: ['https://cdn.example.com/photo-update.jpg'],
+        }),
+      );
+    });
+  });
+
+  it('prompts before leaving a dirty photo-driven draft instead of navigating back immediately', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const onNavigateBack = jest.fn();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          editTaskId="task-1"
+          actionType="update"
+          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
+        />
+      </NavigationContainer>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('modernHeader-back')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('modernHeader-back'));
+
+    expect(alertSpy).toHaveBeenCalled();
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
   });
 
   it('hydrates uploaded photo urls into comment submissions after a round-trip', async () => {

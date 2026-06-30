@@ -187,4 +187,63 @@ describe("TaskDetailScreen header regression", () => {
     expect(onNavigateToRejectTask).toHaveBeenCalledWith("task-1", "subtask-1");
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
+
+  it("routes upload_photos into update mode with the active subtask context", () => {
+    const onNavigateToCreateTask = jest.fn();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: {
+        readiness: {
+          hasUsableData: true,
+        },
+        header: {
+          title: "Task Details",
+        },
+        banners: [],
+        detailSections: [],
+        assigners: [],
+        assignees: [],
+        activities: [],
+        childTasks: [],
+        actionItems: [
+          {
+            id: "photos-action",
+            actionId: "upload_photos",
+            label: "Add Photos",
+            icon: "camera-outline",
+            isDisabled: false,
+            density: "comfortable",
+            structuralState: "ready",
+          },
+        ],
+      },
+      actions: {
+        acceptTask: jest.fn(),
+        declineTask: jest.fn(),
+        submitForReview: jest.fn(),
+        approveTask: jest.fn(),
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        {...({
+          taskId: "task-1",
+          subTaskId: "subtask-1",
+          onNavigateBack: jest.fn(),
+          onNavigateToCreateTask,
+        } as any)}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Add Photos"));
+
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      "task-1",
+      "update",
+      "subtask-1",
+    );
+  });
 });

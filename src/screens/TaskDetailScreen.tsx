@@ -29,7 +29,13 @@ interface TaskDetailScreenProps {
   taskId: string;
   subTaskId?: string;
   onNavigateBack: () => void;
-  onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string, actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign') => void;
+  onNavigateToCreateTask?: (
+    parentTaskId?: string,
+    parentSubTaskId?: string,
+    editTaskId?: string,
+    actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign',
+    updateTargetSubTaskId?: string,
+  ) => void;
   onNavigateToRejectTask?: (taskId: string, subTaskId?: string) => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;
   onNavigateToProfile?: () => void;
@@ -195,7 +201,13 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         break;
       case 'upload_photos':
         if (props.onNavigateToCreateTask) {
-          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'photos');
+          props.onNavigateToCreateTask(
+            undefined,
+            undefined,
+            props.taskId,
+            'update',
+            props.subTaskId,
+          );
         }
         break;
     }

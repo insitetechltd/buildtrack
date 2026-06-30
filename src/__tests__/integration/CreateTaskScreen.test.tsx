@@ -52,7 +52,10 @@ jest.mock('../../state/authStore', () => ({
 }));
 
 jest.mock('../../state/taskStore.supabase', () => ({
-  useTaskStore: () => mockUseTaskStore()
+  useTaskStore: (selector?: (state: ReturnType<typeof mockUseTaskStore>) => unknown) => {
+    const state = mockUseTaskStore();
+    return typeof selector === 'function' ? selector(state) : state;
+  }
 }));
 
 jest.mock('../../state/userStore.supabase', () => ({
@@ -138,8 +141,21 @@ jest.mock('@expo/vector-icons', () => {
 });
 
 jest.mock('../../components/StandardHeader', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: (props: any) => <View testID="StandardHeader" {...props} /> };
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+
+  return {
+    __esModule: true,
+    default: (props: any) => (
+      <View testID="StandardHeader">
+        {props.showBackButton ? (
+          <Pressable testID="standardHeader-back" onPress={props.onBackPress || props.onBack} />
+        ) : null}
+        <Text>{props.title}</Text>
+        {props.rightElement}
+      </View>
+    ),
+  };
 });
 jest.mock('../../components/ModalHandle', () => {
   const { View } = require('react-native');
@@ -212,6 +228,35 @@ describe('CreateTaskScreen Integration', () => {
     // The screen should mount and show the title input
     expect(getByTestId('createTask-title')).toBeTruthy();
     expect(getByTestId('createTask-description')).toBeTruthy();
+  });
+
+  it('renders the create-mode header title and marker and wires the visible back button', () => {
+    const onNavigateBack = jest.fn();
+
+    const { getByText, getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={onNavigateBack} />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Create New Task')).toBeTruthy();
+    expect(getByText('Modern UI')).toBeTruthy();
+
+    fireEvent.press(getByTestId('standardHeader-back'));
+
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the update action header title and marker without a visible back button', () => {
+    const { getByText, queryByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" actionType="update" />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Update Progress')).toBeTruthy();
+    expect(getByText('Modern UI')).toBeTruthy();
+    expect(queryByTestId('standardHeader-back')).toBeNull();
   });
 
   it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', () => {

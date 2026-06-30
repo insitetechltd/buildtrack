@@ -4,8 +4,36 @@ import { fireEvent, render } from "@testing-library/react-native";
 
 import ModernScreenHeader from "../ModernScreenHeader";
 
+const mockNavigate = jest.fn();
+const mockProfileMenu = jest.fn(
+  ({
+    visible,
+    onNavigateToProfile,
+    onNavigateToProjectPicker,
+  }: {
+    visible: boolean;
+    onNavigateToProfile?: () => void;
+    onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  }) =>
+    visible ? (
+      <>
+        <Text>Profile Menu</Text>
+        <Text onPress={() => onNavigateToProjectPicker?.(true)}>Change Project</Text>
+        <Text onPress={() => onNavigateToProfile?.()}>Profile & Settings</Text>
+      </>
+    ) : null,
+);
+
 jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({ user: { id: "user-1", name: "Casey", companyId: "company-1" } }),
+}));
+
+jest.mock("@react-navigation/native", () => ({
+  useNavigation: () => ({
+    getParent: () => ({
+      navigate: mockNavigate,
+    }),
+  }),
 }));
 
 jest.mock("@/state/companyStore", () => ({
@@ -28,7 +56,16 @@ jest.mock("expo-status-bar", () => ({
   StatusBar: () => null,
 }));
 
+jest.mock("../ProfileMenu", () => ({
+  __esModule: true,
+  default: (props: unknown) => mockProfileMenu(props as never),
+}));
+
 describe("ModernScreenHeader", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("renders title and right element", () => {
     const screen = render(
       <ModernScreenHeader title="Task Details" rightElement={<Text>Modern UI</Text>} />,
@@ -48,5 +85,34 @@ describe("ModernScreenHeader", () => {
 
     expect(onBackPress).toHaveBeenCalledTimes(1);
   });
-});
 
+  it("preserves the legacy header top padding footprint", () => {
+    const screen = render(<ModernScreenHeader title="Task Details" />);
+
+    expect(screen.getByTestId("modernHeader-root").props.style).toEqual(
+      expect.objectContaining({ paddingTop: 16 }),
+    );
+  });
+
+  it("opens the profile menu and routes profile actions through the provided callbacks", () => {
+    const onNavigateToProfile = jest.fn();
+    const onNavigateToProjectPicker = jest.fn();
+    const screen = render(
+      <ModernScreenHeader
+        title="Task Details"
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("modernHeader-profile-trigger"));
+
+    expect(screen.getByText("Profile Menu")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Change Project"));
+    fireEvent.press(screen.getByText("Profile & Settings"));
+
+    expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
+    expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
+  });
+});

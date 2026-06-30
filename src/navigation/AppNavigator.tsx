@@ -38,6 +38,46 @@ import ReassignTaskScreen from "../screens/ReassignTaskScreen";
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+function navigateToProjectPicker(navigation: any, allowBack?: boolean) {
+  const currentRouteNames = navigation.getState?.()?.routeNames || [];
+  if (currentRouteNames.includes("ProjectPicker")) {
+    navigation.navigate("ProjectPicker", { allowBack });
+    return;
+  }
+
+  const parentNav = navigation.getParent?.();
+  if (parentNav) {
+    parentNav.navigate("Dashboard", {
+      screen: "ProjectPicker",
+      params: { allowBack },
+    });
+    return;
+  }
+
+  navigation.navigate("ProjectPicker", { allowBack });
+}
+
+function navigateToCreateTaskRoute(navigation: any, params: Record<string, unknown>) {
+  const currentRouteNames = navigation.getState?.()?.routeNames || [];
+  if (currentRouteNames.includes("CreateTask")) {
+    navigation.navigate("CreateTask", params);
+    return;
+  }
+
+  if (currentRouteNames.includes("CreateTaskMain")) {
+    navigation.navigate("CreateTaskMain", params);
+    return;
+  }
+
+  const parentNav = navigation.getParent?.();
+  if (parentNav) {
+    parentNav.navigate("CreateTask", {
+      screen: "CreateTaskMain",
+      params,
+    });
+  }
+}
+
 
 
 // Auth screens component
@@ -192,7 +232,7 @@ function ProjectPickerScreenWrapper({ route, navigation }: { route: any; navigat
       allowBack={allowBack}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigation.navigate("ProjectPicker", { allowBack });
       }}
     />
   );
@@ -226,9 +266,12 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
           actionType,
         });
       }}
+      onNavigateToRejectTask={(taskId, subTaskId) => {
+        navigation.navigate("RejectTask", { taskId, subTaskId });
+      }}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -351,7 +394,7 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
         }
       }}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -380,9 +423,12 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
           actionType,
         });
       }}
+      onNavigateToRejectTask={(taskId, subTaskId) => {
+        navigation.navigate("RejectTask", { taskId, subTaskId });
+      }}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -476,14 +522,27 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
     console.log('📸 [PhotoSelectionWrapper] returnScreen:', returnScreen);
     
     if (returnScreen === 'CreateTask') {
-      // Navigate back to CreateTask and pass the uploaded URLs
-      navigation.navigate("CreateTask", {
-        parentTaskId: route.params?.parentTaskId,
-        parentSubTaskId: route.params?.parentSubTaskId,
-        editTaskId: route.params?.editTaskId,
-        actionType: route.params?.actionType,
-        uploadedPhotoUrls: photoUrls,
-      });
+      navigation.goBack();
+
+      setTimeout(() => {
+        navigateToCreateTaskRoute(navigation, {
+          parentTaskId: route.params?.parentTaskId,
+          parentSubTaskId: route.params?.parentSubTaskId,
+          editTaskId: route.params?.editTaskId,
+          actionType: route.params?.actionType,
+          uploadedPhotoUrls: photoUrls,
+        });
+      }, 150);
+    } else if ((returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') && actionType) {
+      navigation.goBack();
+
+      setTimeout(() => {
+        navigateToCreateTaskRoute(navigation, {
+          editTaskId: taskId,
+          actionType,
+          uploadedPhotoUrls: photoUrls,
+        });
+      }, 150);
     } else if (returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') {
       // For update/comment actions, navigate to UpdateProgress screen with uploaded URLs
       console.log('📸 [PhotoSelectionWrapper] Navigating to UpdateProgress with photos:', photoUrls.length);
@@ -521,61 +580,33 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
         uri: p.uri?.substring(0, 50) + '...',
       })));
       
-      // Update params on CreateTaskMain before going back
-      // This ensures params are available when the screen comes into focus
-      const parentNav = navigation.getParent();
-      if (parentNav) {
-        // Navigate to CreateTask tab, then to CreateTaskMain screen with updated params
-        const navParams = {
-          parentTaskId: route.params?.parentTaskId,
-          parentSubTaskId: route.params?.parentSubTaskId,
-          editTaskId: route.params?.editTaskId,
-          actionType: route.params?.actionType,
-          selectedPhotos: photos, // Pass photo objects, not URLs
-        };
-        console.log('📸 [PhotoSelectionWrapper] Navigating with params:', {
-          ...navParams,
-          selectedPhotosCount: navParams.selectedPhotos?.length || 0,
-        });
-        parentNav.navigate("CreateTask", {
-          screen: "CreateTaskMain",
-          params: navParams,
-        });
-        
-        // Also try to set params directly after navigation completes
-        // This is a workaround for nested navigators not always updating params
-        setTimeout(() => {
-          try {
-            // Try to get the CreateTaskMain screen's navigation and set params
-            const createTaskNav = parentNav.getState()?.routes?.find((r: any) => r.name === 'CreateTask');
-            if (createTaskNav?.state) {
-              const createTaskMainRoute = createTaskNav.state.routes?.find((r: any) => r.name === 'CreateTaskMain');
-              if (createTaskMainRoute) {
-                console.log('📸 [PhotoSelectionWrapper] Found CreateTaskMain route, attempting to set params');
-                // Try to navigate again with merge to update params
-                parentNav.navigate("CreateTask", {
-                  screen: "CreateTaskMain",
-                  params: navParams,
-                  merge: true,
-                });
-              }
-            }
-          } catch (e) {
-            console.log('📸 [PhotoSelectionWrapper] Could not set params directly:', e);
-          }
-        }, 200);
-      } else {
-        // Fallback: navigate within current stack
-        console.log('📸 [PhotoSelectionWrapper] Using fallback navigation');
-        navigation.navigate("CreateTaskMain", {
-          parentTaskId: route.params?.parentTaskId,
-          parentSubTaskId: route.params?.parentSubTaskId,
-          editTaskId: route.params?.editTaskId,
-          actionType: route.params?.actionType,
-          selectedPhotos: photos,
-        });
-      }
+      const navParams = {
+        parentTaskId: route.params?.parentTaskId,
+        parentSubTaskId: route.params?.parentSubTaskId,
+        editTaskId: route.params?.editTaskId,
+        actionType: route.params?.actionType,
+        selectedPhotos: photos,
+      };
+      console.log('📸 [PhotoSelectionWrapper] Navigating with params:', {
+        ...navParams,
+        selectedPhotosCount: navParams.selectedPhotos?.length || 0,
+      });
+
+      navigateToCreateTaskRoute(navigation, navParams);
     } else if (returnScreen === 'UpdateProgress') {
+      if (actionType) {
+        navigation.goBack();
+
+        setTimeout(() => {
+          navigateToCreateTaskRoute(navigation, {
+            editTaskId: taskId,
+            actionType,
+            selectedPhotos: photos,
+          });
+        }, 150);
+        return;
+      }
+
       // For UpdateProgressScreen: navigate back with selected photos (not uploaded yet)
       console.log('📸 [PhotoSelectionWrapper] Going back to UpdateProgress with photos:', photos.length);
       console.log('📸 [PhotoSelectionWrapper] Photos to pass:', photos.map((p: any) => ({
@@ -681,7 +712,7 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
       selectedPhotos={selectedPhotos}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -707,7 +738,7 @@ function UpdateProgressScreenWrapper({ route, navigation }: { route: any; naviga
       selectedPhotos={selectedPhotos}
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -718,7 +749,7 @@ function AddCommentScreenWrapper({ route, navigation }: { route: any; navigation
     <AddCommentScreen 
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -729,7 +760,7 @@ function RejectTaskScreenWrapper({ route, navigation }: { route: any; navigation
     <RejectTaskScreen 
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -740,7 +771,7 @@ function ReassignTaskScreenWrapper({ route, navigation }: { route: any; navigati
     <ReassignTaskScreen 
       onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
@@ -868,6 +899,7 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   
   // Use state to store selectedPhotos so they persist and trigger re-renders
   const [selectedPhotosState, setSelectedPhotosState] = React.useState<any[] | undefined>(undefined);
+  const [uploadedPhotoUrlsState, setUploadedPhotoUrlsState] = React.useState<string[] | undefined>(undefined);
   
   // Try both direct params and nested params (for tab navigation)
   const params = route.params || {};
@@ -880,6 +912,7 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
   const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use
   const selectedPhotosFromParams = params.selectedPhotos; // Photos selected from PhotoSelectionScreen
+  const uploadedPhotoUrlsFromParams = params.uploadedPhotoUrls; // Uploaded URLs returned from PhotoSelectionScreen
   const clearForm = params.clearForm; // Flag to clear form when "Create New Task" is pressed
   const clearFormTimestamp = params._timestamp; // Timestamp to track when clearForm was set
   
@@ -894,6 +927,13 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       console.log('📸 [CreateTaskMainScreen] ⏸️ No selectedPhotosFromParams to update state');
     }
   }, [selectedPhotosFromParams, navigation]);
+
+  React.useEffect(() => {
+    if (uploadedPhotoUrlsFromParams && Array.isArray(uploadedPhotoUrlsFromParams) && uploadedPhotoUrlsFromParams.length > 0) {
+      setUploadedPhotoUrlsState(uploadedPhotoUrlsFromParams);
+      navigation.setParams({ uploadedPhotoUrls: undefined });
+    }
+  }, [navigation, uploadedPhotoUrlsFromParams]);
   
   // Also listen for navigation focus to catch params that arrive late
   React.useEffect(() => {
@@ -901,14 +941,21 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       // Check params again on focus
       const currentParams = route.params || {};
       const currentSelectedPhotos = currentParams.selectedPhotos;
+      const currentUploadedPhotoUrls = currentParams.uploadedPhotoUrls;
       console.log('📸 [CreateTaskMainScreen] 🔍 Focus event - checking params:', {
         hasSelectedPhotos: !!currentSelectedPhotos,
         count: currentSelectedPhotos?.length || 0,
+        hasUploadedPhotoUrls: !!currentUploadedPhotoUrls,
+        uploadedCount: currentUploadedPhotoUrls?.length || 0,
       });
       if (currentSelectedPhotos && Array.isArray(currentSelectedPhotos) && currentSelectedPhotos.length > 0) {
         console.log('📸 [CreateTaskMainScreen] ✅ Focus: Found selectedPhotos in params:', currentSelectedPhotos.length);
         setSelectedPhotosState(currentSelectedPhotos);
         navigation.setParams({ selectedPhotos: undefined });
+      }
+      if (currentUploadedPhotoUrls && Array.isArray(currentUploadedPhotoUrls) && currentUploadedPhotoUrls.length > 0) {
+        setUploadedPhotoUrlsState(currentUploadedPhotoUrls);
+        navigation.setParams({ uploadedPhotoUrls: undefined });
       }
     });
     return unsubscribe;
@@ -916,6 +963,7 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   
   // Use state value or params value (state takes precedence)
   const selectedPhotos = selectedPhotosState || selectedPhotosFromParams;
+  const uploadedPhotoUrls = uploadedPhotoUrlsState || uploadedPhotoUrlsFromParams;
   
   console.log('📸 [CreateTaskMainScreen] Current selectedPhotos to pass:', {
     fromState: selectedPhotosState?.length || 0,
@@ -995,8 +1043,13 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       editTaskId={editTaskId}
       actionType={actionType}
       selectedPhotos={selectedPhotos}
+      uploadedPhotoUrls={uploadedPhotoUrls}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
+      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigateToProjectPicker(navigation, allowBack);
+      }}
     />
   );
 }

@@ -30,6 +30,7 @@ interface TaskDetailScreenProps {
   subTaskId?: string;
   onNavigateBack: () => void;
   onNavigateToCreateTask?: (parentTaskId?: string, parentSubTaskId?: string, editTaskId?: string, actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign') => void;
+  onNavigateToRejectTask?: (taskId: string, subTaskId?: string) => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -168,9 +169,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         actions.approveTask();
         break;
       case 'reject_task':
-        // Navigate to reject task or prompt
-        if (props.onNavigateToCreateTask) {
-          props.onNavigateToCreateTask(props.taskId, props.subTaskId, props.taskId, 'comment'); // placeholder
+        if (props.onNavigateToRejectTask) {
+          props.onNavigateToRejectTask(props.taskId, props.subTaskId);
         }
         break;
       case 'edit_task':

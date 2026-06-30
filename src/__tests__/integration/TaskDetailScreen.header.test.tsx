@@ -131,4 +131,60 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
+
+  it("routes reject actions to the dedicated reject flow instead of the comment flow", () => {
+    const onNavigateToCreateTask = jest.fn();
+    const onNavigateToRejectTask = jest.fn();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: {
+        readiness: {
+          hasUsableData: true,
+        },
+        header: {
+          title: "Task Details",
+        },
+        banners: [],
+        detailSections: [],
+        assigners: [],
+        assignees: [],
+        activities: [],
+        childTasks: [],
+        actionItems: [
+          {
+            id: "reject-action",
+            actionId: "reject_task",
+            label: "Reject Task",
+            icon: "close-circle",
+            isDisabled: false,
+            density: "comfortable",
+            structuralState: "ready",
+          },
+        ],
+      },
+      actions: {
+        acceptTask: jest.fn(),
+        declineTask: jest.fn(),
+        submitForReview: jest.fn(),
+        approveTask: jest.fn(),
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        {...({
+          taskId: "task-1",
+          subTaskId: "subtask-1",
+          onNavigateBack: jest.fn(),
+          onNavigateToCreateTask,
+          onNavigateToRejectTask,
+        } as any)}
+      />,
+    );
+
+    fireEvent.press(screen.getByText("Reject Task"));
+
+    expect(onNavigateToRejectTask).toHaveBeenCalledWith("task-1", "subtask-1");
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
+  });
 });

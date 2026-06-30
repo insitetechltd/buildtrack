@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -118,6 +118,8 @@ export default function CreateTaskScreen({
       actionType={effectiveActionType} 
       taskId={editTaskId} 
       onNavigateBack={onNavigateBack}
+      selectedPhotos={selectedPhotosProp}
+      uploadedPhotoUrls={uploadedPhotoUrls}
       onNavigateToProfile={onNavigateToProfile}
       onNavigateToProjectPicker={onNavigateToProjectPicker}
     />;
@@ -1372,12 +1374,16 @@ function TaskActionScreen({
   actionType, 
   taskId, 
   onNavigateBack,
+  selectedPhotos,
+  uploadedPhotoUrls,
   onNavigateToProfile,
   onNavigateToProjectPicker,
 }: { 
   actionType: 'update' | 'photos' | 'comment' | 'reassign';
   taskId: string;
   onNavigateBack: () => void;
+  selectedPhotos?: SelectedPhoto[];
+  uploadedPhotoUrls?: string[];
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }) {
@@ -1414,6 +1420,10 @@ function TaskActionScreen({
     photos: [] as string[],
   });
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const selectedPhotoUris = useMemo(
+    () => (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri),
+    [selectedPhotos],
+  );
 
 
   // Initialize form when task loads
@@ -1432,6 +1442,30 @@ function TaskActionScreen({
       fetchTaskById(taskId);
     }
   }, [taskId, fetchTaskById]);
+
+  useEffect(() => {
+    if (selectedPhotoUris.length === 0 && (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)) {
+      return;
+    }
+
+    const incomingPhotos = [...selectedPhotoUris, ...(uploadedPhotoUrls || [])];
+    if (incomingPhotos.length === 0) {
+      return;
+    }
+
+    if (actionType === 'comment') {
+      setCommentForm((prev) => ({
+        ...prev,
+        photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
+      }));
+      return;
+    }
+
+    setUpdateForm((prev) => ({
+      ...prev,
+      photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
+    }));
+  }, [actionType, selectedPhotoUris, uploadedPhotoUrls]);
 
   const handleAddPhotos = async () => {
     if (!user || !task) return;
@@ -1583,6 +1617,7 @@ function TaskActionScreen({
                    actionType === 'photos' ? 'Add Photos' :
                    actionType === 'comment' ? 'Add Comment' :
                    actionType === 'reassign' ? 'Reassign Task' : 'Task Actions'}
+            showBackButton={true}
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
@@ -1604,6 +1639,7 @@ function TaskActionScreen({
         <SafeAreaView edges={['top']} className="flex-1">
           <ModernScreenHeader
             title={t.taskDetail.progressUpdate}
+            showBackButton={true}
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
@@ -1736,6 +1772,7 @@ function TaskActionScreen({
         <SafeAreaView edges={['top']} className="flex-1">
           <ModernScreenHeader
             title="Add Comment"
+            showBackButton={true}
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
@@ -1852,6 +1889,7 @@ function TaskActionScreen({
       <SafeAreaView edges={['top']} className="flex-1">
         <ModernScreenHeader
           title="Add Photos"
+          showBackButton={true}
           onBackPress={onNavigateBack}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
@@ -1898,7 +1936,7 @@ function TaskActionScreen({
                 <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
                 <Text className="text-gray-600 font-medium ml-2 text-sm">Tap to add photos</Text>
               </View>
-              {commentForm.photos.length > 0 && (
+              {updateForm.photos.length > 0 && (
                 <Ionicons name="checkmark-circle" size={20} color="#10b981" />
               )}
             </Pressable>

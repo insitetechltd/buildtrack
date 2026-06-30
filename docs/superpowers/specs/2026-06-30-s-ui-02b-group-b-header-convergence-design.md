@@ -1,4 +1,4 @@
-# Phase 4C Group B Header Convergence Design
+# S-UI-02B Group B Header Convergence Design
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design through an approved implementation plan. Do not start code changes directly from this document.
 
@@ -15,8 +15,8 @@
 Group B (“modernized body with bridge header”) is explicitly called out as a follow-up milestone in:
 
 - [2026-06-20-modern-ui-marker-and-screen-batch-design.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/specs/2026-06-20-modern-ui-marker-and-screen-batch-design.md)
-- [ui-migration-foundations-wave1-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/ui-migration-foundations-wave1-matrix.md#L47-L54)
-- [2026-06-28-post-sprint7-master-roadmap.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/plans/2026-06-28-post-sprint7-master-roadmap.md#L219-L257)
+- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md#L47-L54)
+- [2026-06-28-ws-roadmap-near-term-execution.md](file:///Volumes/KooDrive/Insite%20App/docs/superpowers/plans/2026-06-28-ws-roadmap-near-term-execution.md#L219-L257)
 
 Current Group B screens and their bridge header usage:
 
@@ -48,7 +48,7 @@ The desired milestone is to converge Group B onto a shared modern header composi
   - `onNavigateToProfile` / `onNavigateToProjectPicker` behavior where currently supported
   - `rightElement` behavior for `ModernUiMarker`
 - Freeze behavior with focused regression coverage before any refactor.
-- Checkpoint commit only after the full Phase 4C gate is green.
+- Checkpoint commit only after the full `S-UI-02B` gate is green.
 
 ### Non-Objectives
 
@@ -125,7 +125,7 @@ The intent is to keep the prop surface close to `StandardHeader` so callsites ca
    - If any navigation or header behavior drifts, fix it before checkpointing.
 
 5. **Checkpoint Commit**
-   - Commit only the Phase 4C files and tests after the gate is green.
+   - Commit only the `S-UI-02B` files and tests after the gate is green.
 
 ## Testing Strategy
 
@@ -153,7 +153,7 @@ Focus on header behavior rather than deep task/project store semantics.
 
 ## Definition Of Done
 
-Phase 4C is complete when:
+`S-UI-02B` is complete when:
 
 - Group B screens no longer import/use `StandardHeader`.
 - `ModernScreenHeader` is the shared header component for those screens.
@@ -163,5 +163,4 @@ Phase 4C is complete when:
 
 ## Follow-On
 
-After Phase 4C closes, a separate milestone can remove `ModernUiMarker` across migrated screens, since it remains a slot and not a baked-in header dependency.
-
+After `S-UI-02B` closes, a separate milestone can remove `ModernUiMarker` across migrated screens, since it remains a slot and not a baked-in header dependency.

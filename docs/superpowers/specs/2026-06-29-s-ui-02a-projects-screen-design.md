@@ -1,4 +1,4 @@
-# Phase 4B ProjectsScreen Design
+# S-UI-02A ProjectsScreen Design
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design through an approved implementation plan. Do not start code changes directly from this document.
 
@@ -12,7 +12,7 @@
 
 ## Context
 
-Phase `4A` closed the approved `CreateTaskScreen` factorization slice and checkpointed it cleanly. The next safest Wave 2 screen is `ProjectsScreen`, which remains explicitly deferred in the migration matrix and already has a partial adapter boundary in place.
+The earlier approved `CreateTaskScreen` factorization slice closed cleanly. The next safest Wave 2 screen is `ProjectsScreen`, which remains explicitly deferred in the migration matrix and already has a partial adapter boundary in place.
 
 Relevant files:
 
@@ -21,7 +21,7 @@ Relevant files:
 - `src/ui/contracts/viewAdapters.ts`
 - `src/__tests__/integration/ProjectsScreen.test.tsx`
 
-This phase is intentionally narrower than the full remaining Phase 4 roadmap. It is only the `ProjectsScreen` slice and does not include Group B header convergence.
+This slice is intentionally narrower than the full remaining `WS-UI / M-UI-02` roadmap. It covers only the `ProjectsScreen` slice and does not include Group B header convergence.
 
 ## Problem Statement
 
@@ -219,7 +219,7 @@ These files should only be added if they directly support the screen-shell thinn
 
 ## Definition Of Done
 
-Phase `4B` is complete when:
+`S-UI-02A` is complete when:
 
 - `ProjectsScreen` is materially thinner and more declarative
 - touched screen logic is adapter-owned or prop-driven rather than screen-owned
@@ -230,7 +230,7 @@ Phase `4B` is complete when:
 
 ## Follow-On Work
 
-The next slice after a clean `4B` close remains separate:
+The next slice after a clean `S-UI-02A` close remains separate:
 
 - Group B bridge-header convergence for:
   - `src/screens/TaskDetailScreen.tsx`

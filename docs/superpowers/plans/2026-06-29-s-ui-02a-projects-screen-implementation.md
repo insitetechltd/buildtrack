@@ -1,4 +1,4 @@
-# Phase 4B ProjectsScreen Implementation Plan
+# S-UI-02A ProjectsScreen Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -800,7 +800,7 @@ git add src/screens/ProjectsScreen.tsx src/screens/projects/EditProjectModal.tsx
 git commit -m "refactor(projects): isolate edit project modal"
 ```
 
-## Task 6: Final Verification And Phase 4B Checkpoint
+## Task 6: Final Verification And `S-UI-02A` Checkpoint
 
 **Files:**
 - Verify: `src/__tests__/integration/ProjectsScreen.test.tsx`
@@ -810,7 +810,7 @@ git commit -m "refactor(projects): isolate edit project modal"
 - Verify: `src/ui/viewAdapters/useProjectsViewAdapter.ts`
 - Verify: `src/screens/ProjectsScreen.tsx`
 
-- [ ] **Step 1: Run the focused 4B verification gate**
+- [ ] **Step 1: Run the focused `S-UI-02A` verification gate**
 
 Run:
 
@@ -860,10 +860,10 @@ git diff -- src/screens/ProjectsScreen.tsx src/ui/viewAdapters/useProjectsViewAd
 Expected:
 
 ```text
-Only the approved Phase 4B files are changed
+Only the approved `S-UI-02A` files are changed
 ```
 
-- [ ] **Step 4: Create the Phase 4B checkpoint commit**
+- [ ] **Step 4: Create the `S-UI-02A` checkpoint commit**
 
 ```bash
 git add src/screens/ProjectsScreen.tsx src/ui/viewAdapters/useProjectsViewAdapter.ts src/ui/contracts/viewAdapters.ts src/__tests__/integration/ProjectsScreen.test.tsx src/ui/viewAdapters/__tests__/useProjectsViewAdapter.test.ts src/screens/projects
@@ -873,7 +873,7 @@ git commit -m "refactor(projects): complete phase 4b projects migration"
 - [ ] **Step 5: Record handoff status for the next slice**
 
 ```text
-Phase 4B closed:
+`S-UI-02A` closed:
 - ProjectsScreen shell is thinner
 - adapter-driven render models are in place
 - focused screen and adapter regressions are green

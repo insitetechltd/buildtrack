@@ -1,4 +1,4 @@
-# Phase 4C Group B Header Convergence Implementation Plan
+# S-UI-02B Group B Header Convergence Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -362,7 +362,7 @@ git add src/screens/TaskDetailScreen.tsx src/screens/UpdateProgressScreen.tsx sr
 git commit -m "refactor(header): migrate group b screens to modern header"
 ```
 
-## Task 4: Final Verification Gate + Phase 4C Checkpoint
+## Task 4: Final Verification Gate + `S-UI-02B` Checkpoint
 
 **Files:**
 - Verify: `src/screens/TaskDetailScreen.tsx`
@@ -380,12 +380,12 @@ PATH=/opt/homebrew/bin:$PATH ./node_modules/.bin/jest src/__tests__/integration/
 PATH=/opt/homebrew/bin:$PATH ./node_modules/.bin/tsc --noEmit
 ```
 
-- [ ] **Step 2: Stage only Phase 4C files and checkpoint commit**
+- [ ] **Step 2: Stage only `S-UI-02B` files and checkpoint commit**
 
 ```bash
 git status --short
 git add src/components/ModernScreenHeader.tsx src/components/__tests__/ModernScreenHeader.test.tsx src/screens/TaskDetailScreen.tsx src/screens/UpdateProgressScreen.tsx src/screens/CreateTaskScreen.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/UpdateProgressScreen.header.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx
-git commit -m "refactor(header): complete phase 4c group b header convergence"
+git commit -m "refactor(header): complete s-ui-02b group b header convergence"
 ```
 
 ---
@@ -395,4 +395,3 @@ git commit -m "refactor(header): complete phase 4c group b header convergence"
 - Spec coverage: new shared header component + migration of the three named Group B screens.
 - Placeholder scan: each task has explicit files, tests, commands, and commit boundaries.
 - Type consistency: `ModernScreenHeader` prop surface is intentionally aligned with `StandardHeader`.
-

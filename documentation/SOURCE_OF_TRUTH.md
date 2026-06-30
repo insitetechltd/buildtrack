@@ -117,7 +117,7 @@ These are the primary human-readable references for current implementation-align
 
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
-- [ui-migration-foundations-wave1-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/ui-migration-foundations-wave1-matrix.md)
+- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
 
 ### 4. Canonical Operational Documentation
 
@@ -272,8 +272,8 @@ When a document should stay active:
   - consolidated current product description
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
   - current normalized role and permission reference
-- [ui-migration-foundations-wave1-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/ui-migration-foundations-wave1-matrix.md)
-  - current UI migration reference
+- [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
+  - current `WS-FND / M-FND-04` UI migration wave reference
 
 ### Operational Documentation Hub
 

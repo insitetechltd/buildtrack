@@ -1,4 +1,4 @@
-# Phase 4B ProjectsScreen Blueprint
+# S-UI-02A ProjectsScreen Blueprint
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,14 +12,14 @@
 
 ## Intent
 
-This is the recommended next Wave 2 slice after Phase `4A` closure.
+This is the recommended next Wave 2 slice after the earlier approved `CreateTaskScreen` factorization closure.
 
 `ProjectsScreen` is the safest next screen because:
 
-- it is explicitly listed as a deferred Wave 2 target in `documentation/ui-migration-foundations-wave1-matrix.md`
+- it is explicitly listed as a deferred Wave 2 target in `documentation/m-fnd-04-ui-migration-wave-matrix.md`
 - it already has an adapter boundary in `src/ui/viewAdapters/useProjectsViewAdapter.ts`
 - it has lower regression blast radius than reopening another task-heavy screen immediately
-- it lets Phase 4 continue with the same discipline used for `CreateTaskScreen`: narrow scope, stronger tests first, small checkpoint commit
+- it lets `WS-UI / M-UI-02` continue with the same discipline used for `CreateTaskScreen`: narrow scope, stronger tests first, small checkpoint commit
 
 ## Scope
 
@@ -69,9 +69,9 @@ This is the recommended next Wave 2 slice after Phase `4A` closure.
 
 `ProjectsScreen` is not as overloaded as pre-4A `CreateTaskScreen`, but it is still a hybrid screen rather than a clean adapter-driven shell. The biggest leak is the embedded edit modal, not the card list itself.
 
-## Recommended 4B Target State
+## Recommended S-UI-02A Target State
 
-At the end of Phase `4B`, `ProjectsScreen` should behave like an adapter-driven shell with:
+At the end of `S-UI-02A`, `ProjectsScreen` should behave like an adapter-driven shell with:
 
 - explicit header action inputs from the adapter
 - explicit list/filter/search render state from the adapter
@@ -141,15 +141,15 @@ The modal is the highest-risk part of this screen.
 
 Recommended rule:
 
-- if the modal can be extracted into a leaf component with the same behavior and explicit props, do that inside `4B`
+- if the modal can be extracted into a leaf component with the same behavior and explicit props, do that inside `S-UI-02A`
 - if isolating it requires broader project-domain redesign, stop short and keep it functionally intact
 
-Acceptable `4B` outcome:
+Acceptable `S-UI-02A` outcome:
 
 - modal extracted but still powered by current save/open/close flow
 - or modal left in place, but with surrounding screen shell thinned and tests strengthened
 
-Unacceptable `4B` outcome:
+Unacceptable `S-UI-02A` outcome:
 
 - silent redesign of project editing behavior
 - store logic moved into the screen
@@ -210,7 +210,7 @@ The following behaviors are part of the freeze line and must not drift:
 
 ## Validation Gate
 
-Minimum expected verification for `4B`:
+Minimum expected verification for `S-UI-02A`:
 
 - `PATH=/opt/homebrew/bin:$PATH npx jest src/__tests__/integration/ProjectsScreen.test.tsx --runInBand`
 - `PATH=/opt/homebrew/bin:$PATH npx jest src/screens/__tests__/ProjectsTasksScreen.test.tsx --runInBand`
@@ -224,7 +224,7 @@ Recommended extra check if the modal is touched materially:
 
 ## Definition Of Done
 
-Phase `4B` is done when:
+`S-UI-02A` is done when:
 
 - `ProjectsScreen` is materially thinner and more declarative
 - touched logic is adapter-owned or prop-driven rather than screen-owned
@@ -240,12 +240,12 @@ Phase `4B` is done when:
 3. Move only the minimum missing render-state logic into the contract/adapter.
 4. Thin the screen shell with small leaf extractions.
 5. Contain the edit modal only if it can be done behavior-preservingly.
-6. Run the `4B` verification gate.
+6. Run the `S-UI-02A` verification gate.
 7. Create a checkpoint commit before any Group B header work starts.
 
-## What Comes After 4B
+## What Comes After S-UI-02A
 
-If `4B` closes cleanly, the next logical follow-up remains:
+If `S-UI-02A` closes cleanly, the next logical follow-up remains:
 
 - Group B bridge-header convergence for:
   - `src/screens/TaskDetailScreen.tsx`

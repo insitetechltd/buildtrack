@@ -1,8 +1,8 @@
-# Post-Sprint 7 Master Roadmap Implementation Plan
+# WS Roadmap Near-Term Execution Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the remaining near-term post-Sprint 7 backlog in a dependency-aware order that protects runtime correctness, reduces worktree noise, and finishes deferred Stage 2 and Wave 2 work without mixing long-range initiatives into the same execution track.
+**Goal:** Close the remaining near-term execution backlog in a dependency-aware order that protects runtime correctness, reduces worktree noise, and finishes deferred milestones without mixing long-range initiatives into the same execution track.
 
 **Architecture:** Complete the remaining data authority and sync-hardening work before broad UI follow-on changes, then eliminate repository/environment noise, then unify the remaining legacy task activity and progress-log data model seams, and only then finish the deferred Wave 2 UI migration surfaces. Use small checkpoint commits at each verified boundary so the worktree never accumulates another mixed, rollback-hostile batch.
 
@@ -18,7 +18,7 @@
   - `MCP_HUB_ARCHITECTURE.md`
   - `AI_AGENT_TASK_AUTOMATION.md`
   - `CONSTRUCTION_PLATFORM_INTEGRATION_TARGETS.md`
-- Keep commit boundaries phase-sized or smaller:
+- Keep commit boundaries milestone-sized or smaller:
   - one cache/sync hardening checkpoint
   - one security/worktree sanitization checkpoint
   - one or more model-unification checkpoints
@@ -28,10 +28,10 @@
 
 This roadmap covers only the remaining execution work that is still relevant to the current repository state:
 
-1. Stage 2 cache authority and sync invalidation hardening
-2. Security and worktree sanitization
-3. Task activity and progress-log model unification
-4. Wave 2 UI migration and selector adoption
+1. `WS-DATA / M-DATA-01` Cache authority and sync invalidation hardening
+2. `WS-SEC / M-SEC-01` Security and worktree sanitization
+3. `WS-DATA / M-DATA-02` Task activity and progress-log model unification
+4. `WS-UI / M-UI-02` Wave 2 UI migration and selector adoption
 
 Out of scope for this plan:
 
@@ -40,7 +40,7 @@ Out of scope for this plan:
 - Construction platform integrations
 - broad release engineering changes beyond hygiene and file quarantine
 
-## Phase 1: Stage 2 Cache Authority & Sync Hardening
+## M-DATA-01: Cache Authority & Sync Hardening
 
 **Target Components:**
 - `src/state/taskStore.supabase.ts`
@@ -89,17 +89,17 @@ Out of scope for this plan:
   - `PATH=/opt/homebrew/bin:$PATH npx tsc --noEmit`
 
 **Why This Comes Here:**
-- this is the last unresolved data-authority seam left behind after Sprint 7
-- every later phase depends on trustworthy freshness, invalidation, and reconciliation semantics
+- this is the last unresolved data-authority seam left behind after the prior Sprint 7 closure
+- every later milestone depends on trustworthy freshness, invalidation, and reconciliation semantics
 - unifying task activities on top of unstable cache authority would make regressions harder to localize
 
 **Definition of Done (DoD):**
 - cached task reads cannot remain artificially fresh after invalidation or realtime deletion
 - cold-start request coordination no longer trusts persisted freshness without a corresponding live envelope
 - targeted task store and sync manager tests are green
-- the phase is checkpoint-committed on its own
+- the milestone is checkpoint-committed on its own
 
-## Phase 2: Security & Worktree Sanitization
+## M-SEC-01: Security & Worktree Sanitization
 
 **Target Components:**
 - Git tracking rules
@@ -111,7 +111,7 @@ Out of scope for this plan:
 **Primary Objective:**
 - remove environmental noise from the active working tree
 - ensure sensitive files remain outside normal commit candidates
-- stop machine-local artifacts from polluting implementation phases
+- stop machine-local artifacts from polluting later milestones
 
 **Deliverables:**
 - explicit quarantine handling for:
@@ -135,24 +135,24 @@ Out of scope for this plan:
   - release/security cleanup notes if promoted to canonical docs
 
 **Validation Gate:**
-- `git status --short` shows no product-code residue from prior phases and only intentional local-sensitive files if they are explicitly still quarantined
+- `git status --short` shows no product-code residue from prior milestones and only intentional local-sensitive files if they are explicitly still quarantined
 - no sensitive file is staged
 - if `.gitignore` changes:
   - `git status --short`
   - `PATH=/opt/homebrew/bin:$PATH npx tsc --noEmit`
 
 **Why This Comes Here:**
-- worktree hygiene must be restored before the larger model-unification phase
-- this phase reduces the chance of mixing credentials or editor/build noise into high-risk data-model refactors
+- worktree hygiene must be restored before the larger model-unification milestone
+- this milestone reduces the chance of mixing credentials or editor/build noise into high-risk data-model refactors
 - it also enforces the checkpoint discipline needed for the remaining backlog
 
 **Definition of Done (DoD):**
 - the product-code worktree is clean at the end of the phase
 - sensitive and local-only files are either ignored, quarantined, or explicitly deferred in the security/release track
 - `git status` is predictable and free of accidental environmental leaks
-- the phase is checkpoint-committed on its own
+- the milestone is checkpoint-committed on its own
 
-## Phase 3: Core Model Unification & Debt Elimination
+## M-DATA-02: Core Model Unification & Debt Elimination
 
 **Target Components:**
 - Task Activities Unification
@@ -208,15 +208,15 @@ Out of scope for this plan:
 **Why This Comes Here:**
 - once cache and sync authority are stable and the worktree is clean, this becomes the next highest-risk debt seam
 - the deferred Wave 2 screens, especially task-heavy surfaces, should migrate on top of the final activity contract rather than a temporary compatibility layer
-- this phase removes the largest remaining model drift in the task domain
+- this milestone removes the largest remaining model drift in the task domain
 
 **Definition of Done (DoD):**
 - active task read/write flows use the unified activity model
 - legacy tables are no longer the primary application contract
 - the active state and task workflow suites are green with updated data assertions
-- the phase is checkpointed in one or more small verified commits
+- the milestone is checkpointed in one or more small verified commits
 
-## Phase 4: Wave 2 UI Migration & Selector Adoption
+## M-UI-02: Wave 2 UI Migration & Selector Adoption
 
 **Target Components:**
 - `src/screens/CreateTaskScreen.tsx`
@@ -256,18 +256,18 @@ Out of scope for this plan:
   - `PATH=/opt/homebrew/bin:$PATH npx tsc --noEmit`
 
 **Why This Comes Here:**
-- this phase is intentionally last because it is downstream of both data correctness and model correctness
+- this milestone is intentionally last because it is downstream of both data correctness and model correctness
 - `CreateTaskScreen` was already deferred to Wave 2 due to blast radius
 - touching UI before the underlying cache and activity contracts are finished would multiply regression surfaces
 
 **Definition of Done (DoD):**
-- all deferred Wave 2 screens touched in this phase are migrated onto stable data contracts
-- remaining transitional bridge-header debt scheduled for this phase is resolved or explicitly re-scoped with a written reason
+- all deferred Wave 2 screens touched in this milestone are migrated onto stable data contracts
+- remaining transitional bridge-header debt scheduled for this milestone is resolved or explicitly re-scoped with a written reason
 - touched view adapters rely on strict memoized selector-style derivation instead of raw broad arrays
 - targeted UI tests and `npx tsc --noEmit` are green
-- the phase is checkpointed in one or more verified commits
+- the milestone is checkpointed in one or more verified commits
 
-## Future Phase: Deferred Long-Range Roadmaps
+## WS-FUTURE: Deferred Long-Range Roadmaps
 
 These tracks remain explicitly outside the near-term sequence:
 
@@ -275,7 +275,7 @@ These tracks remain explicitly outside the near-term sequence:
 - `AI_AGENT_TASK_AUTOMATION.md`
 - `CONSTRUCTION_PLATFORM_INTEGRATION_TARGETS.md`
 
-They should only be reopened after the four near-term phases are complete and the repository has:
+They should only be reopened after the four near-term milestones are complete and the repository has:
 
 - stable cache authority
 - clean worktree hygiene
@@ -284,16 +284,16 @@ They should only be reopened after the four near-term phases are complete and th
 
 ## Execution Order Summary
 
-1. Phase 1: Stage 2 Cache Authority & Sync Hardening
-2. Phase 2: Security & Worktree Sanitization
-3. Phase 3: Core Model Unification & Debt Elimination
-4. Phase 4: Wave 2 UI Migration & Selector Adoption
-5. Future Phase: Long-range roadmap bucket only after the near-term queue closes
+1. `WS-DATA / M-DATA-01` Cache Authority & Sync Hardening
+2. `WS-SEC / M-SEC-01` Security & Worktree Sanitization
+3. `WS-DATA / M-DATA-02` Core Model Unification & Debt Elimination
+4. `WS-UI / M-UI-02` Wave 2 UI Migration & Selector Adoption
+5. `WS-FUTURE` Long-range roadmap bucket only after the near-term queue closes
 
 ## Commit Discipline
 
-- Create a checkpoint commit at every verified phase boundary
-- If a phase is too large for one safe commit, split it into sub-checkpoints by behavior boundary, not by file-extension or folder
+- Create a checkpoint commit at every verified milestone boundary
+- If a milestone is too large for one safe commit, split it into sub-checkpoints by behavior boundary, not by file-extension or folder
 - Never include:
   - credentials
   - local swap files

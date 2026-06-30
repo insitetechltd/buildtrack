@@ -15,21 +15,21 @@ Source of truth scanned for this inventory:
 
 ## Current Delivery Status
 
-- Latest lifecycle milestone: `Sprint 4 - UI Migration Foundations` is delivered, verified, and safely staged for remote pipeline merge.
-- Previously closed milestone: `Sprint 3 - Workspace Automation & Script Cleanup` remains delivered and validated as the automation and observability foundation for the current UI contract work.
-- Earlier closed milestone: `Sprint 2 - Global Store Performance & Network Request Deduplication` remains delivered and validated as the performance foundation beneath the view-layer migration boundary.
-- Earlier closed milestone: `Sprint 1 - Field Reliability & Data Integrity` remains delivered and validated as the reliability foundation beneath the current workflow stack.
-- Completed Sprint 4 implementation scope:
+- Latest lifecycle milestone: `WS-FND / M-FND-04 - UI Migration Foundations` is delivered, verified, and safely staged for remote pipeline merge. This milestone was historically closed during Sprint 4.
+- Previously closed milestone: `WS-FND / M-FND-03 - Workspace Automation & Script Cleanup` remains delivered and validated as the automation and observability foundation for the current UI contract work.
+- Earlier closed milestone: `WS-FND / M-FND-02 - Global Store Performance & Network Request Deduplication` remains delivered and validated as the performance foundation beneath the view-layer migration boundary.
+- Earlier closed milestone: `WS-FND / M-FND-01 - Field Reliability & Data Integrity` remains delivered and validated as the reliability foundation beneath the current workflow stack.
+- Completed `WS-FND / M-FND-04` implementation scope:
   - style-free primitive family contracts in `src/ui/contracts/primitives.ts`
   - Wave 1 screen view adapter contracts in `src/ui/contracts/viewAdapters.ts`
   - navigation readiness and hybrid transition bridge contracts in `src/ui/contracts/navigationBridge.ts`
   - mathematical migration scoring inventory in `src/ui/contracts/screenScoring.ts`
   - focused contract coverage in `src/__tests__/integration/uiMigrationContracts.test.ts`
-  - aligned Wave 1 migration matrix documentation in `documentation/ui-migration-foundations-wave1-matrix.md`
-- Validation completed during Phase 3:
+  - aligned UI migration wave matrix documentation in `documentation/m-fnd-04-ui-migration-wave-matrix.md`
+- Validation completed during the third delivery slice of `WS-FND / M-FND-04`:
   - `npx jest src/__tests__/integration/uiMigrationContracts.test.ts`
   - `npx tsc --noEmit`
-- Delivery status: Phase 4 staging and commit protocol prepared and approved; Sprint 4 is considered closed locally unless post-merge CI, contract drift, or acceptance findings reopen the scope.
+- Delivery status: post-milestone staging and commit protocol prepared and approved; `WS-FND / M-FND-04` is considered closed locally unless post-merge CI, contract drift, or acceptance findings reopen the scope.
 - Likely next discovery entry point if the roadmap remains unchanged:
   - primitive implementation and component buildout
   - migrated screen shell construction for the Wave 1 foundation group

@@ -421,7 +421,7 @@ git commit -m "refactor(projects): modernize projects screen"
 ### Task 8: Record Group B Header Convergence Follow-Up
 
 **Files:**
-- Modify: `documentation/ui-migration-foundations-wave1-matrix.md`
+- Modify: `documentation/m-fnd-04-ui-migration-wave-matrix.md`
 
 - [ ] **Step 1: Add the follow-up note**
 
@@ -432,7 +432,7 @@ Append a short note stating that Group B screens using `StandardHeader` remain t
 Run:
 
 ```bash
-grep -n "Group B" documentation/ui-migration-foundations-wave1-matrix.md
+grep -n "Group B" documentation/m-fnd-04-ui-migration-wave-matrix.md
 ```
 
 Expected: one or more matching lines showing the follow-up note.
@@ -440,6 +440,6 @@ Expected: one or more matching lines showing the follow-up note.
 - [ ] **Step 3: Commit**
 
 ```bash
-git add documentation/ui-migration-foundations-wave1-matrix.md
+git add documentation/m-fnd-04-ui-migration-wave-matrix.md
 git commit -m "docs(ui): record group b header convergence follow-up"
 ```

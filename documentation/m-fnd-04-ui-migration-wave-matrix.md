@@ -1,4 +1,4 @@
-# Sprint 4 UI Migration Foundations Matrix
+# M-FND-04 UI Migration Wave Matrix
 
 This document records the Wave 1 technical priority scoring for the current high-value screen topology.
 
@@ -23,7 +23,7 @@ This document records the Wave 1 technical priority scoring for the current high
 - `Component Reuse Factor`: Likelihood that migrated primitives on the screen unlock reusable patterns elsewhere.
 - `Layout Instability Risk`: Current exposure to loading shell collapse, refresh churn, or structural shifts.
 - `Navigation Coupling Risk`: Sensitivity to rapid back-and-forth transitions and adjacent flow reuse.
-- `Selector Compliance Readiness`: Ease of binding the screen to Sprint 2 selector/view-model boundaries.
+- `Selector Compliance Readiness`: Ease of binding the screen to the selector/view-model boundaries established by `WS-FND / M-FND-02`.
 - `Regression Blast Radius`: Penalty dimension measuring how disruptive an early migration failure would be.
 
 ## Wave 1 Screen Matrix

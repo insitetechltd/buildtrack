@@ -1,4 +1,4 @@
-# Phase 4D Photo Update Shortcut Design
+# S-UI-02C Photo Update Shortcut Design
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this design through an approved implementation plan. Do not start code changes directly from this document.
 
@@ -12,7 +12,7 @@
 
 ## Context
 
-The Phase 4C closure review surfaced a residual behavior gap in the task action flow:
+The `S-UI-02B` closure review surfaced a residual behavior gap in the task action flow:
 
 - `TaskDetailScreen` exposes an `upload_photos` action from the task-detail adapter
 - that action currently routes into `CreateTaskScreen` action-mode with `actionType="photos"`
@@ -321,7 +321,7 @@ Run focused tests and `tsc --noEmit`, review the slice for navigation drift or f
 
 ## Definition Of Done
 
-Phase 4D is complete when:
+`S-UI-02C` is complete when:
 
 - `upload_photos` acts as a shortcut into update draft behavior rather than a terminal photos-only action.
 - selected photos survive the round trip and appear in the update draft UI.

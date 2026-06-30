@@ -1,4 +1,4 @@
-# Phase 4D Photo Update Shortcut Implementation Plan
+# S-UI-02C Photo Update Shortcut Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1059,5 +1059,5 @@ git add src/screens/TaskDetailScreen.tsx \
   src/__tests__/integration/TaskDetailScreen.header.test.tsx \
   src/__tests__/integration/CreateTaskScreen.test.tsx \
   src/navigation/__tests__/photoShortcutRoutes.test.tsx
-git commit -m "feat(task-ui): complete phase 4d photo shortcut"
+git commit -m "feat(task-ui): complete s-ui-02c photo shortcut"
 ```

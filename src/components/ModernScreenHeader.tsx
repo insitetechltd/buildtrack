@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -56,8 +57,14 @@ export default function ModernScreenHeader({
     <View testID="modernHeader-root" className={className} style={{ paddingTop: topPadding }}>
       <View className="flex-row items-center">
         {showBackButton ? (
-          <Pressable testID="modernHeader-back" onPress={handleBackPress}>
-            <Text>Back</Text>
+          <Pressable
+            testID="modernHeader-back"
+            onPress={handleBackPress}
+            className="mr-3 h-10 w-10 items-center justify-center rounded-full"
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons testID="modernHeader-back-icon" name="arrow-back" size={24} color="#374151" />
           </Pressable>
         ) : null}
 

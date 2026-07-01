@@ -56,6 +56,13 @@ jest.mock("expo-status-bar", () => ({
   StatusBar: () => null,
 }));
 
+jest.mock("@expo/vector-icons", () => {
+  const { View } = require("react-native");
+  return {
+    Ionicons: (props: unknown) => <View {...(props as object)} />,
+  };
+});
+
 jest.mock("../ProfileMenu", () => ({
   __esModule: true,
   default: (props: unknown) => mockProfileMenu(props as never),
@@ -84,6 +91,13 @@ describe("ModernScreenHeader", () => {
     fireEvent.press(screen.getByTestId("modernHeader-back"));
 
     expect(onBackPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the shared arrow-style back affordance instead of a Back label", () => {
+    const screen = render(<ModernScreenHeader title="Task Details" showBackButton onBackPress={jest.fn()} />);
+
+    expect(screen.queryByText("Back")).toBeNull();
+    expect(screen.getByTestId("modernHeader-back-icon")).toBeTruthy();
   });
 
   it("preserves the legacy header top padding footprint", () => {

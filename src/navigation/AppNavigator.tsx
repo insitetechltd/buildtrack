@@ -38,6 +38,7 @@ import {
   buildPhotoShortcutCreateTaskParams,
   shouldReturnToCreateTaskShortcut,
 } from "./photoShortcutRoutes";
+import { buildCreateTaskPhotoReturnParams } from "./createTaskRouteParams";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -531,13 +532,13 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
       navigation.goBack();
 
       setTimeout(() => {
-        navigateToCreateTaskRoute(navigation, {
-          parentTaskId: route.params?.parentTaskId,
-          parentSubTaskId: route.params?.parentSubTaskId,
-          editTaskId: route.params?.editTaskId,
-          actionType: route.params?.actionType,
-          uploadedPhotoUrls: photoUrls,
-        });
+        navigateToCreateTaskRoute(
+          navigation,
+          buildCreateTaskPhotoReturnParams({
+            routeParams: route.params,
+            uploadedPhotoUrls: photoUrls,
+          }),
+        );
       }, 150);
     } else if ((returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') && actionType) {
       navigation.goBack();
@@ -590,13 +591,10 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
         uri: p.uri?.substring(0, 50) + '...',
       })));
       
-      const navParams = {
-        parentTaskId: route.params?.parentTaskId,
-        parentSubTaskId: route.params?.parentSubTaskId,
-        editTaskId: route.params?.editTaskId,
-        actionType: route.params?.actionType,
+      const navParams = buildCreateTaskPhotoReturnParams({
+        routeParams: route.params,
         selectedPhotos: photos,
-      };
+      });
       console.log('📸 [PhotoSelectionWrapper] Navigating with params:', {
         ...navParams,
         selectedPhotosCount: navParams.selectedPhotos?.length || 0,

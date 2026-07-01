@@ -36,7 +36,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UI / M-UI-05 | Batch C | Closed | M-DATA-02, M-AUTHZ-01 | - | ../docs/superpowers/plans/2026-06-20-batch-c-utility-and-admin-tail-screens.md |
 | WS-UI / M-UI-06 | Photo screens modernization remainder | Closed | M-UI-05 | - | ../docs/superpowers/plans/2026-06-19-photo-screens-modernization.md |
 | WS-UI / M-UI-07 | CreateTaskScreen full modernization completion | Closed | M-UI-06 | - | ../docs/superpowers/plans/2026-06-20-create-task-modernization.md |
-| WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 8 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md |
+| WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 8 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
 
 ## Deferred Context
 

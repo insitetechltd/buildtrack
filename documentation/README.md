@@ -8,6 +8,7 @@ Use [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) to understand documentation gover
 
 - [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) - Master documentation governance and classification rules
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
+- [BUG_INVENTORY.md](./BUG_INVENTORY.md) - Single canonical live bug tracker for open, active, fixed-local, verified, and deferred defects
 - [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md) - Consolidated current product description aligned to code and config
 - [role-permission-matrix.md](./role-permission-matrix.md) - Canonical role, permission, and transitional model reference
 - [m-fnd-04-ui-migration-wave-matrix.md](./m-fnd-04-ui-migration-wave-matrix.md) - `WS-FND / M-FND-04` UI migration wave reference (milestone closed; retained for ongoing migration context)

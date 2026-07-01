@@ -116,6 +116,7 @@ These documents define how the repository should be interpreted and maintained:
 These are the primary human-readable references for current implementation-aligned behavior:
 
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
+- [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
 

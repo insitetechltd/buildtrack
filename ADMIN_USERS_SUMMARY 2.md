@@ -7,7 +7,7 @@ Successfully created admin users for all unique companies in the BuildTrack syst
 
 ### Company A - General Contractor
 - **Email**: `admin@companya-generalcontractor.com`
-- **Password**: `Admin123!`
+- **Password**: Removed from repository
 - **Name**: Company A - General Contractor Admin
 - **Phone**: 555-f959
 - **Role**: Administrator
@@ -15,7 +15,7 @@ Successfully created admin users for all unique companies in the BuildTrack syst
 
 ### Company B - Subcontractor
 - **Email**: `admin@companyb-subcontractor.com`
-- **Password**: `Admin123!`
+- **Password**: Removed from repository
 - **Name**: Company B - Subcontractor Admin
 - **Phone**: 555-a12f
 - **Role**: Administrator
@@ -24,7 +24,7 @@ Successfully created admin users for all unique companies in the BuildTrack syst
 ## Important Notes
 
 ### 🔐 Security
-- **Default Password**: All admin users have the default password `Admin123!`
+- **Default Password**: Removed from repository
 - **Action Required**: Each admin should change their password after first login
 - **Password Policy**: Use strong passwords with mixed case, numbers, and special characters
 
@@ -48,9 +48,8 @@ Successfully created admin users for all unique companies in the BuildTrack syst
 - **Total Companies**: 18 (with duplicates)
 - **Unique Companies**: 2
 - **Admin Users Created**: 2
-- **Database**: Supabase (zusulknbhaumougqckec.supabase.co)
+- **Database**: Supabase (`https://your-project-id.supabase.co`)
 
 ---
 *Generated on: $(date)*
 *Script: create-unique-company-admins.js*
-

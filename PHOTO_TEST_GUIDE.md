@@ -13,7 +13,7 @@ All backend tests have passed successfully:
 
 **Test URL Example:**
 ```
-https://zusulknbhaumougqckec.supabase.co/storage/v1/object/public/buildtrack-files/...
+https://your-project-id.supabase.co/storage/v1/object/public/buildtrack-files/...
 ```
 
 ---
@@ -67,7 +67,7 @@ Now you need to test the actual app to ensure photos work end-to-end.
 **Expected Result**:
 ```
 ✅ Update xxx... HAS 1 photo(s):
-   1. https://zusulknbhaumougqckec.supabase.co/storage/v1/object/public/buildtrack-files/...
+   1. https://your-project-id.supabase.co/storage/v1/object/public/buildtrack-files/...
 ```
 
 **FAIL** if you see:
@@ -340,4 +340,3 @@ node scripts/check-photo-data.js | head -20
 ```
 
 All should show success! ✅
-

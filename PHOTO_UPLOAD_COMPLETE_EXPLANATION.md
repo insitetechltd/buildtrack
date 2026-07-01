@@ -167,8 +167,8 @@ Example:
 ```json
 {
   "attachments": [
-    "https://zusulknbhaumougqckec.supabase.co/storage/v1/object/public/buildtrack-files/company-id/tasks/temp-1730286543829/photo1.jpg",
-    "https://zusulknbhaumougqckec.supabase.co/storage/v1/object/public/buildtrack-files/company-id/tasks/temp-1730286543829/photo2.jpg"
+    "https://your-project-id.supabase.co/storage/v1/object/public/buildtrack-files/company-id/tasks/temp-1730286543829/photo1.jpg",
+    "https://your-project-id.supabase.co/storage/v1/object/public/buildtrack-files/company-id/tasks/temp-1730286543829/photo2.jpg"
   ]
 }
 ```
@@ -301,7 +301,7 @@ node scripts/check-photo-data.js
 **Expected (NEW uploads)**:
 ```
 ✅ Update xxx... HAS 1 photo(s):
-   1. https://zusulknbhaumougqckec.supabase.co/storage/...
+   1. https://your-project-id.supabase.co/storage/...
 ```
 
 **Wrong (OLD data)**:
@@ -355,4 +355,3 @@ eas update --branch main
 ---
 
 **Thank you for catching this error!** The implementation is now correct across all photo upload points.
-

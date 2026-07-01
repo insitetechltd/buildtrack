@@ -13,7 +13,7 @@
 | Storage Bucket Public | ✅ PASS | Bucket is PUBLIC |
 | Test Image Creation | ✅ PASS | 1x1 PNG created |
 | Upload to Supabase | ✅ PASS | File uploaded successfully |
-| Public URL Generation | ✅ PASS | URL: `https://zusulknbhaumougqckec.supabase.co/...` |
+| Public URL Generation | ✅ PASS | URL: `https://your-project-id.supabase.co/...` |
 | URL Accessibility | ✅ PASS | HTTP 200, Content-Type: image/png |
 | File Download | ✅ PASS | 70 bytes downloaded |
 | Content Verification | ✅ PASS | Content matches original |
@@ -100,7 +100,7 @@ node scripts/check-photo-data.js
 
 **New Photo URLs (after fix)**:
 ```
-✅ https://zusulknbhaumougqckec.supabase.co/storage/v1/object/public/buildtrack-files/...
+✅ https://your-project-id.supabase.co/storage/v1/object/public/buildtrack-files/...
 ```
 
 ---
@@ -209,4 +209,3 @@ If you encounter any issues during testing:
 **Test Status**: ✅ Backend Ready, ⏳ App Testing Pending
 **Date**: October 30, 2025
 **Next Action**: User to test in app and verify cross-device functionality
-

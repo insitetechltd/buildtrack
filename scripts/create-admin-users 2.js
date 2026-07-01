@@ -57,7 +57,7 @@ async function createAdminUsers() {
       // Create auth user first
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: adminEmail,
-        password: 'Admin123!', // Default password - should be changed
+        password: process.env.ADMIN_DEFAULT_PASSWORD || 'change-me-before-running', // Provide via env var
         options: {
           data: {
             name: adminName,
@@ -97,7 +97,7 @@ async function createAdminUsers() {
 
         console.log(`✅ Successfully created admin user for ${company.name}`);
         console.log(`   📧 Email: ${adminEmail}`);
-        console.log(`   🔑 Password: Admin123!`);
+        console.log(`   🔑 Password: provided-via-ADMIN_DEFAULT_PASSWORD-or-change-me-before-running`);
         console.log(`   👤 Name: ${adminName}`);
         console.log(`   📱 Phone: ${adminPhone}`);
         
@@ -105,7 +105,7 @@ async function createAdminUsers() {
           company: company.name, 
           success: true, 
           email: adminEmail,
-          password: 'Admin123!',
+          password: '[provided via ADMIN_DEFAULT_PASSWORD or change-me-before-running]',
           name: adminName,
           phone: adminPhone
         });

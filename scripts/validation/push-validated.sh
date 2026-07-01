@@ -61,6 +61,11 @@ fi
 
 emit_event "stdout" "stage_5_push_remote" "5" "INFO" "[STAGE_BEGIN]" 0 "git-push" "BEGIN" "Preparing validated push" "continue"
 
+if [ "${ALLOW_VALIDATED_PUSH:-0}" != "1" ]; then
+  emit_event "stdout" "stage_5_push_remote" "5" "WARN" "[PUSH_SKIPPED]" 0 "git-push" "PASS" "Validated push skipped (set ALLOW_VALIDATED_PUSH=1 to enable)" "complete"
+  exit 0
+fi
+
 if ! command -v git >/dev/null 2>&1; then
   fail_now "stage_5_push_remote" "5" "[SCRIPT_CONTRACT_FAIL]" "40" "git" "git command is unavailable" "install_git"
 fi

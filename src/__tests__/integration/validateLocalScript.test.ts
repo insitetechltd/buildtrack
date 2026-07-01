@@ -1,9 +1,9 @@
 import { chmodSync, mkdtempSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { join, resolve } from "path";
 import { spawnSync } from "child_process";
 
-const REPO_ROOT = "/Volumes/KooDrive/Insite App";
+const REPO_ROOT = resolve(__dirname, "../../..");
 const SCRIPT_PATH = join(REPO_ROOT, "scripts/validation/validate-local.sh");
 
 function createExecutable(directory: string, name: string, contents: string) {
@@ -124,5 +124,63 @@ exit 0
     expect(result.stderr).toContain("error TS1005");
     expect(result.stdout).not.toContain("[VALIDATION_SUCCESS]");
     expect(result.stdout).not.toContain("stage_3_regression");
+  });
+
+  it("runs simulation gate when VALIDATE_LOCAL_RUN_SIMULATION=1 is set", () => {
+    const binDir = mkdtempSync(join(tmpdir(), "validate-local-bin-"));
+    const simulationMarkerPath = join(binDir, "simulation-marker.txt");
+
+    createExecutable(
+      binDir,
+      "git",
+      `#!/bin/sh
+if [ "$1" = "rev-parse" ] && [ "$2" = "--is-inside-work-tree" ]; then
+  echo true
+  exit 0
+fi
+if [ "$1" = "status" ] && [ "$2" = "--porcelain" ]; then
+  exit 0
+fi
+if [ "$1" = "rev-parse" ] && [ "$2" = "--abbrev-ref" ]; then
+  echo "feature/test"
+  exit 0
+fi
+exit 0
+`
+    );
+
+    createExecutable(
+      binDir,
+      "npx",
+      `#!/bin/sh
+exit 0
+`
+    );
+
+    createExecutable(
+      binDir,
+      "npm",
+      `#!/bin/sh
+if [ "$1" = "run" ] && [ "$2" = "test:simulation:ui" ]; then
+  echo "ran simulation" > "${simulationMarkerPath}"
+  exit 0
+fi
+exit 0
+`
+    );
+
+    const result = spawnSync("bash", [SCRIPT_PATH], {
+      cwd: REPO_ROOT,
+      env: {
+        ...process.env,
+        PATH: `${binDir}:${process.env.PATH}`,
+        VALIDATE_LOCAL_RUN_SIMULATION: "1",
+      },
+      encoding: "utf8",
+    });
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("[VALIDATION_SUCCESS]");
+    expect(() => require("fs").readFileSync(simulationMarkerPath, "utf8")).not.toThrow();
   });
 });

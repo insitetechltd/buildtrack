@@ -4,6 +4,7 @@ set -u -o pipefail
 MODE="validate-local"
 RUN_ID="$(date +"%Y%m%d%H%M%S")-$$"
 STRICT_DIRTY_TREE="${VALIDATE_LOCAL_STRICT_DIRTY_TREE:-0}"
+RUN_SIMULATION="${VALIDATE_LOCAL_RUN_SIMULATION:-0}"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR=""
 ROOT_DIR=""
@@ -146,6 +147,17 @@ run_stage_command \
   "30" \
   "fix_tests" \
   npm run test:regression
+
+if [ "$RUN_SIMULATION" = "1" ]; then
+  run_stage_command \
+    "stage_4_simulation" \
+    "4" \
+    "npm run test:simulation:ui" \
+    "[SIMULATION_FAILURE]" \
+    "31" \
+    "fix_simulation" \
+    npm run test:simulation:ui
+fi
 
 emit_event "stdout" "stage_4_success_exit" "4" "INFO" "[VALIDATION_SUCCESS]" 0 "validate-local" "PASS" "All local validation stages passed" "ready_for_staging"
 exit 0

@@ -16,8 +16,18 @@ export function getSandboxEnv(): SandboxEnv | null {
   const url = process.env.SUPABASE_TEST_URL;
   const anonKey = process.env.SUPABASE_TEST_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY;
+  const confirmed = process.env.SUPABASE_TEST_CONFIRM_SANDBOX;
 
   if (!url || !anonKey || !serviceRoleKey) {
+    return null;
+  }
+
+  if (confirmed !== '1') {
+    return null;
+  }
+
+  const productionUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (productionUrl && productionUrl === url) {
     return null;
   }
 
@@ -28,7 +38,7 @@ export function requireSandboxEnv(): SandboxEnv {
   const env = getSandboxEnv();
   if (!env) {
     throw new Error(
-      'Missing SUPABASE_TEST_URL / SUPABASE_TEST_ANON_KEY / SUPABASE_TEST_SERVICE_ROLE_KEY. Configure a Supabase sandbox project before running simulation tests.',
+      'Missing or unconfirmed SUPABASE_TEST_URL / SUPABASE_TEST_ANON_KEY / SUPABASE_TEST_SERVICE_ROLE_KEY. Set SUPABASE_TEST_CONFIRM_SANDBOX=1 for a Supabase sandbox project before running sandbox simulation tests.',
     );
   }
   return env;

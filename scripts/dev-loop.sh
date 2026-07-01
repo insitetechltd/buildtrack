@@ -3,9 +3,13 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 
-if [ "${1:-}" = "--no-push" ]; then
+if [ "${1:-}" = "--push" ]; then
   shift
-  exec bash "$ROOT_DIR/scripts/validation/validate-local.sh" "$@"
+  exec bash "$ROOT_DIR/scripts/validation/push-validated.sh" "$@"
 fi
 
-exec bash "$ROOT_DIR/scripts/validation/push-validated.sh" "$@"
+if [ "${1:-}" = "--no-push" ]; then
+  shift
+fi
+
+exec bash "$ROOT_DIR/scripts/validation/validate-local.sh" "$@"

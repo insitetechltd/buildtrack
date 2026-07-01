@@ -36,7 +36,7 @@ To:
 ### 2. Apple Developer Account Setup
 
 **Current Status**: 
-- ✅ Apple Team ID configured: `DSNR656S6Y` (in production-local profile)
+- ✅ Apple Team ID configured via environment injection
 - ✅ App Store Connect App ID: `6754898737`
 - ⚠️ Apple credentials source: `remote` (managed by EAS)
 
@@ -44,7 +44,7 @@ To:
 1. **Verify Apple Developer Membership**:
    - Go to: https://developer.apple.com/account
    - Ensure account is active ($99/year)
-   - Team ID: `DSNR656S6Y`
+   - Team ID: `YOURTEAMID`
 
 2. **Verify App Store Connect**:
    - Go to: https://appstoreconnect.apple.com
@@ -65,23 +65,12 @@ To:
 
 ### 3. Apple Team ID Missing from Production Profile
 
-**Current**: Apple Team ID only in `production-local` profile  
-**Fix**: Add to production profile in `eas.json`:
+**Current**: Apple identity should not be hardcoded in `eas.json`  
+**Fix**: Inject Apple identity using local `.env` (gitignored) or CI/EAS secrets:
 
 ```json
-"production": {
-  "autoIncrement": true,
-  "distribution": "store",
-  "ios": {
-    "credentialsSource": "remote",
-    "cocoapods": "1.16.1"
-    // ⚠️ Add Apple credentials here if needed
-  },
-  "env": {
-    "EXPO_APPLE_ID": "tristan.koo@insiteworks.com",  // Add this
-    "EXPO_APPLE_TEAM_ID": "DSNR656S6Y"  // Add this
-  }
-}
+EXPO_APPLE_ID=your-apple-id@example.com
+EXPO_APPLE_TEAM_ID=YOURTEAMID
 ```
 
 ---
@@ -270,6 +259,5 @@ Before submitting, ensure:
 ---
 
 **Status**: Configuration mostly ready, but **bundle identifier needs to be fixed** before submission.
-
 
 

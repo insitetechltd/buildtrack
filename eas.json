@@ -79,8 +79,9 @@
         "gradleCommand": ":app:bundleRelease"
       },
       "env": {
-        "EXPO_APPLE_ID": "tristan.koo@insiteworks.com",
-        "EXPO_APPLE_TEAM_ID": "DSNR656S6Y"
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true",
+        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
       }
     }
   },

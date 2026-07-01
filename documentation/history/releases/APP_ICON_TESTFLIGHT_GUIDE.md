@@ -28,7 +28,7 @@ If the icon still doesn't appear after processing completes:
 
 1. **Go to App Store Connect**
    - Visit: https://appstoreconnect.apple.com
-   - Sign in with: tristan.koo@insiteworks.com
+   - Sign in with: your-apple-id@example.com
 
 2. **Navigate to Your App**
    - Click on **"Insite Trackr"** (or your app name)
@@ -178,7 +178,6 @@ On your iOS device:
 **Status**: ✅ Icon ready, waiting for Apple processing
 **Next Check**: In 10 minutes
 **Last Updated**: November 12, 2025
-
 
 
 

@@ -74,14 +74,6 @@ Actions:
 
 - [NON_INTERACTIVE_LOCAL_BUILDS.md](./NON_INTERACTIVE_LOCAL_BUILDS.md)
 - [BUILD_ERRORS_SOLUTIONS.md](./BUILD_ERRORS_SOLUTIONS.md)
-```bash
-# Verify your Team ID
-# 1. Visit: https://developer.apple.com/account
-# 2. Check: Membership → Team ID
-# 3. Update .env with correct Team ID
-
-# Your current Team ID: DSNR656S6Y
-```
 
 ### Error: "Apple ID authentication failed"
 
@@ -117,16 +109,16 @@ echo "EXPO_APPLE_TEAM_ID: $EXPO_APPLE_TEAM_ID"
 2. **Check .env file format:**
 ```bash
 # ✅ Correct format (no spaces around =):
-EXPO_APPLE_ID=tristan.koo@insiteworks.com
+EXPO_APPLE_ID=your-apple-id@example.com
 
 # ❌ Wrong format:
-EXPO_APPLE_ID = tristan.koo@insiteworks.com
+EXPO_APPLE_ID = your-apple-id@example.com
 ```
 
 3. **Re-export variables:**
 ```bash
-export EXPO_APPLE_ID="tristan.koo@insiteworks.com"
-export EXPO_APPLE_TEAM_ID="DSNR656S6Y"
+export EXPO_APPLE_ID="your-apple-id@example.com"
+export EXPO_APPLE_TEAM_ID="YOURTEAMID"
 ./build-local.sh
 ```
 
@@ -174,13 +166,11 @@ nano .env
 # Update line:
 EXPO_APPLE_TEAM_ID=NEWTEAM123
 
-# Also update eas.json:
-nano eas.json
-# Change EXPO_APPLE_TEAM_ID in production-local profile
-
 # Save and run build
 ./build-local.sh
 ```
+
+If you use remote EAS builds or CI, inject these values using your secret manager instead of committing them into tracked config.
 
 ## Summary
 
@@ -192,17 +182,6 @@ nano eas.json
 
 ## Current Configuration
 
-Your current setup:
-- **Apple ID**: tristan.koo@insiteworks.com
-- **Team ID**: DSNR656S6Y
-- **Profile**: production-local
-- **Credentials**: Remote (from EAS)
-- **Status**: ✅ Configured and Ready
-
----
-
-**Last Updated**: November 12, 2025
-**Status**: ✅ Configured for Non-Interactive Builds
-
+This repository does not track account-specific credential values. Confirm your local `.env` (gitignored) or your CI/EAS secret manager is configured with the required variables before running builds.
 
 

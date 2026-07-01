@@ -22,7 +22,6 @@ export interface UseCreateTaskViewAdapterProps {
 }
 
 const FORM_DATA_STORAGE_KEY = '@createTask_formData';
-const SELECTED_USERS_STORAGE_KEY = '@createTask_selectedUsers';
 
 function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
   return Boolean(
@@ -108,6 +107,61 @@ export function useCreateTaskViewAdapter({
       console.error('Failed to persist draft', e);
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (clearForm || editTaskId) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const storedDraft = await AsyncStorage.getItem(FORM_DATA_STORAGE_KEY);
+        if (!storedDraft) {
+          return;
+        }
+
+        const parsedDraft = JSON.parse(storedDraft) as Partial<CreateTaskFormModel> & {
+          dueDate?: string;
+        };
+
+        if (cancelled) {
+          return;
+        }
+
+        setFormData((previous) => {
+          const isPristine =
+            !previous.title &&
+            !previous.description &&
+            !previous.taskReference &&
+            !previous.projectId &&
+            previous.assignedTo.length === 0 &&
+            previous.attachments.length === 0;
+
+          if (!isPristine) {
+            return previous;
+          }
+
+          const nextDueDate = parsedDraft.dueDate ? new Date(parsedDraft.dueDate) : previous.dueDate;
+
+          return {
+            ...previous,
+            ...parsedDraft,
+            dueDate: nextDueDate,
+          };
+        });
+      } catch (e) {
+        console.error('Failed to hydrate draft', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [clearForm, editTaskId]);
 
   useEffect(() => {
     if (clearForm) {

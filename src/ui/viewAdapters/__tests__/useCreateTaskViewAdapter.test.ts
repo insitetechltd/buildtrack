@@ -108,6 +108,34 @@ describe("useCreateTaskViewAdapter", () => {
     });
   });
 
+  it("hydrates draft form data from AsyncStorage for create mode", async () => {
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    AsyncStorage.getItem.mockResolvedValueOnce(
+      JSON.stringify({
+        title: "Draft title",
+        description: "Draft description",
+        taskReference: "DRAFT-1",
+        billingStatus: "billable",
+        priority: "high",
+        category: "electrical",
+        dueDate: "2099-02-02T00:00:00.000Z",
+        assignedTo: ["user-2"],
+        attachments: ["https://example.com/draft.jpg"],
+        projectId: "project-1",
+      }),
+    );
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    await waitFor(() => {
+      expect(result.current.output.formData.title).toBe("Draft title");
+    });
+
+    expect(result.current.output.formData.dueDate.toISOString()).toBe("2099-02-02T00:00:00.000Z");
+    expect(result.current.output.formData.projectId).toBe("project-1");
+    expect(result.current.output.formData.assignedTo).toEqual(["user-2"]);
+  });
+
   it("derives nested subtask context and assignable users from project state", async () => {
     mockUseProjectFilterStore.mockReturnValue({
       selectedProjectId: "project-1",

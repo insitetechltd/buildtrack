@@ -26,6 +26,15 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Local secrets
+.env
+.env.*
+!.env.example
+credentials.json
+credentials.json.*
+eas-keystores/
+GoogleService-Info*.plist
+
 # macOS
 .DS_Store
 *.pem

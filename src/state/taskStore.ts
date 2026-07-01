@@ -5,6 +5,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus } from "../types/buildtrack";
 
+// Legacy task store retained for reference only during M-DATA-02.
+// Runtime task timeline reads/writes must go through taskStore.supabase.ts and task_activities.
+
 interface TaskStore {
   tasks: Task[];
   taskReadStatuses: TaskReadStatus[];
@@ -487,90 +490,15 @@ export const useTaskStore = create<TaskStore>()(
 
       // Progress tracking methods
       addTaskUpdate: async (taskId, update) => {
-        if (!supabase) {
-          // Fallback to local update
-          const newUpdate: TaskUpdate = {
-            ...update,
-            id: `update-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-          };
-
-          set(state => ({
-            tasks: state.tasks.map(task =>
-              task.id === taskId
-                ? { ...task, updates: [...task.updates, newUpdate] }
-                : task
-            )
-          }));
-          return;
-        }
-
-        try {
-          const { error } = await supabase
-            .from('task_updates')
-            .insert({
-              task_id: taskId,
-              user_id: update.userId,
-              description: update.description,
-              photos: update.photos,
-              completion_percentage: update.completionPercentage,
-              status: update.status,
-            });
-
-          if (error) throw error;
-
-          // Refresh task data
-          await get().fetchTaskById(taskId);
-        } catch (error: any) {
-          console.error('Error adding task update:', error);
-          throw error;
-        }
+        throw new Error(
+          "Legacy taskStore.ts addTaskUpdate is no longer supported. Use taskStore.supabase.ts task_activities-backed flows."
+        );
       },
 
       addSubTaskUpdate: async (taskId, subTaskId, update) => {
-        if (!supabase) {
-          // Fallback to local update
-          const newUpdate: TaskUpdate = {
-            ...update,
-            id: `update-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-          };
-
-          set(state => ({
-            tasks: state.tasks.map(task =>
-              task.id === taskId
-                ? {
-                    ...task,
-                    subTasks: task.subTasks?.map(subTask =>
-                      subTask.id === subTaskId
-                        ? { ...subTask, updates: [...subTask.updates, newUpdate] }
-                        : subTask
-                    )
-                  }
-                : task
-            )
-          }));
-          return;
-        }
-
-        try {
-          const { error } = await supabase
-            .from('task_updates')
-            .insert({
-              task_id: taskId,
-              sub_task_id: subTaskId,
-              user_id: update.userId,
-              description: update.description,
-              photos: update.photos,
-              completion_percentage: update.completionPercentage,
-              status: update.status,
-            });
-
-          if (error) throw error;
-        } catch (error: any) {
-          console.error('Error adding subtask update:', error);
-          throw error;
-        }
+        throw new Error(
+          "Legacy taskStore.ts addSubTaskUpdate is no longer supported. Use taskStore.supabase.ts task_activities-backed flows."
+        );
       },
 
       updateTaskStatus: async (taskId, status, completionPercentage) => {

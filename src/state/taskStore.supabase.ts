@@ -1177,6 +1177,7 @@ export const useTaskStore = create<TaskStore>()(
             ...taskData,
             id: Date.now().toString(),
             createdAt: new Date().toISOString(),
+            activities: [],
             updates: [], // New task has no updates yet
             status: "new" as TaskStatus,
             completionPercentage: 0,
@@ -2423,7 +2424,6 @@ export const useTaskStore = create<TaskStore>()(
               task.id === taskId
                 ? {
                     ...task,
-                    updates: [...task.updates, newUpdate],
                     activities: [...(task.activities || []), newActivity],
                   }
                 : task
@@ -2468,7 +2468,6 @@ export const useTaskStore = create<TaskStore>()(
               task.id === taskId
                 ? { 
                     ...task, 
-                    updates: [...task.updates, newUpdate],
                     activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
@@ -2569,7 +2568,6 @@ export const useTaskStore = create<TaskStore>()(
               task.id === subTaskId
                 ? { 
                     ...task, 
-                    updates: [...(task.updates || []), newUpdate],
                     activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
@@ -2617,7 +2615,6 @@ export const useTaskStore = create<TaskStore>()(
               task.id === subTaskId
                 ? { 
                     ...task, 
-                    updates: [...(task.updates || []), newUpdate],
                     activities: [...(task.activities || []), newActivity],
                     completionPercentage: update.completionPercentage,
                     status: update.status,
@@ -2741,6 +2738,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             status: initialStatus as TaskStatus,
             completionPercentage: 0,
+            activities: [],
             updates: [], // New subtask has no updates yet
             accepted: isCreatorAssigned,
             acceptedBy: isCreatorAssigned ? subTaskData.assignedBy : undefined,
@@ -2811,6 +2809,105 @@ export const useTaskStore = create<TaskStore>()(
           
           console.log('✅ Sub-task created successfully:', data.id);
 
+          const creatorName = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', subTaskData.assignedBy)
+                .single();
+
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          const creationData = {
+            title: subTaskData.title,
+            assignedTo: subTaskData.assignedTo,
+            assignedBy: subTaskData.assignedBy,
+          };
+          const creationTimestamp = new Date().toISOString();
+          const { data: creationActivity, error: creationError } = await supabase
+            .from('task_activities')
+            .insert({
+              task_id: data.id,
+              user_id: subTaskData.assignedBy,
+              activity_type: 'creation' as ActivityType,
+              timestamp: creationTimestamp,
+              data: creationData,
+              description: `Task created by ${creatorName}`,
+              completion_percentage: 0,
+              status: 'new',
+            })
+            .select()
+            .single();
+
+          if (creationError) {
+            console.error('Error creating subtask creation activity:', creationError);
+          }
+
+          let statusChangeActivity = null;
+          if (isCreatorAssigned) {
+            const statusChangeData = {
+              fromStatus: 'new' as TaskStatus,
+              toStatus: 'in_progress' as TaskStatus,
+              reason: `Task auto-accepted by ${creatorName}`,
+            };
+            const statusChangeTimestamp = new Date().toISOString();
+            const { data: statusActivity, error: statusError } = await supabase
+              .from('task_activities')
+              .insert({
+                task_id: data.id,
+                user_id: subTaskData.assignedBy,
+                activity_type: 'status_change' as ActivityType,
+                timestamp: statusChangeTimestamp,
+                data: statusChangeData,
+                description: `Task accepted by ${creatorName}`,
+                completion_percentage: 0,
+                status: 'in_progress',
+              })
+              .select()
+              .single();
+
+            if (statusError) {
+              console.error('Error creating subtask status change activity:', statusError);
+            } else {
+              statusChangeActivity = statusActivity;
+            }
+          }
+
+          const activities: TaskActivity[] = [];
+          if (creationActivity) {
+            activities.push({
+              id: creationActivity.id,
+              taskId: creationActivity.task_id,
+              userId: creationActivity.user_id,
+              activityType: creationActivity.activity_type as ActivityType,
+              timestamp: creationActivity.timestamp,
+              data: creationActivity.data,
+              description: creationActivity.description,
+              completionPercentage: creationActivity.completion_percentage,
+              status: creationActivity.status as TaskStatus,
+              createdAt: creationActivity.timestamp,
+            });
+          }
+          if (statusChangeActivity) {
+            activities.push({
+              id: statusChangeActivity.id,
+              taskId: statusChangeActivity.task_id,
+              userId: statusChangeActivity.user_id,
+              activityType: statusChangeActivity.activity_type as ActivityType,
+              timestamp: statusChangeActivity.timestamp,
+              data: statusChangeActivity.data,
+              description: statusChangeActivity.description,
+              completionPercentage: statusChangeActivity.completion_percentage,
+              status: statusChangeActivity.status as TaskStatus,
+              createdAt: statusChangeActivity.timestamp,
+            });
+          }
+
           // Add to local state
           set(state => ({
             tasks: [...state.tasks, {
@@ -2835,7 +2932,20 @@ export const useTaskStore = create<TaskStore>()(
               acceptedBy: data.accepted_by || undefined,
               acceptedAt: data.accepted_at || undefined,
               createdAt: data.created_at,
-              updates: [],
+              activities,
+              updates: activities
+                .filter((activity) =>
+                  activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                )
+                .map((activity) => ({
+                  id: activity.id,
+                  description: activity.description,
+                  photos: (activity.data as any)?.photos || [],
+                  completionPercentage: activity.completionPercentage || 0,
+                  status: activity.status || ('new' as TaskStatus),
+                  timestamp: activity.timestamp,
+                  userId: activity.userId,
+                })),
             }]
           }));
           
@@ -2858,6 +2968,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             status: initialStatus as TaskStatus,
             completionPercentage: 0,
+            activities: [],
             updates: [], // New nested subtask has no updates yet
             accepted: isCreatorAssigned,
             acceptedBy: isCreatorAssigned ? subTaskData.assignedBy : undefined,
@@ -2915,6 +3026,105 @@ export const useTaskStore = create<TaskStore>()(
             .single();
 
           if (error) throw error;
+
+          const creatorName = await (async () => {
+            try {
+              const { data } = await supabase
+                .from('users')
+                .select('name')
+                .eq('id', subTaskData.assignedBy)
+                .single();
+
+              return data?.name || 'Unknown User';
+            } catch {
+              return 'Unknown User';
+            }
+          })();
+
+          const creationData = {
+            title: subTaskData.title,
+            assignedTo: subTaskData.assignedTo,
+            assignedBy: subTaskData.assignedBy,
+          };
+          const creationTimestamp = new Date().toISOString();
+          const { data: creationActivity, error: creationError } = await supabase
+            .from('task_activities')
+            .insert({
+              task_id: data.id,
+              user_id: subTaskData.assignedBy,
+              activity_type: 'creation' as ActivityType,
+              timestamp: creationTimestamp,
+              data: creationData,
+              description: `Task created by ${creatorName}`,
+              completion_percentage: 0,
+              status: 'new',
+            })
+            .select()
+            .single();
+
+          if (creationError) {
+            console.error('Error creating nested subtask creation activity:', creationError);
+          }
+
+          let statusChangeActivity = null;
+          if (isCreatorAssigned) {
+            const statusChangeData = {
+              fromStatus: 'new' as TaskStatus,
+              toStatus: 'in_progress' as TaskStatus,
+              reason: `Task auto-accepted by ${creatorName}`,
+            };
+            const statusChangeTimestamp = new Date().toISOString();
+            const { data: statusActivity, error: statusError } = await supabase
+              .from('task_activities')
+              .insert({
+                task_id: data.id,
+                user_id: subTaskData.assignedBy,
+                activity_type: 'status_change' as ActivityType,
+                timestamp: statusChangeTimestamp,
+                data: statusChangeData,
+                description: `Task accepted by ${creatorName}`,
+                completion_percentage: 0,
+                status: 'in_progress',
+              })
+              .select()
+              .single();
+
+            if (statusError) {
+              console.error('Error creating nested subtask status change activity:', statusError);
+            } else {
+              statusChangeActivity = statusActivity;
+            }
+          }
+
+          const activities: TaskActivity[] = [];
+          if (creationActivity) {
+            activities.push({
+              id: creationActivity.id,
+              taskId: creationActivity.task_id,
+              userId: creationActivity.user_id,
+              activityType: creationActivity.activity_type as ActivityType,
+              timestamp: creationActivity.timestamp,
+              data: creationActivity.data,
+              description: creationActivity.description,
+              completionPercentage: creationActivity.completion_percentage,
+              status: creationActivity.status as TaskStatus,
+              createdAt: creationActivity.timestamp,
+            });
+          }
+          if (statusChangeActivity) {
+            activities.push({
+              id: statusChangeActivity.id,
+              taskId: statusChangeActivity.task_id,
+              userId: statusChangeActivity.user_id,
+              activityType: statusChangeActivity.activity_type as ActivityType,
+              timestamp: statusChangeActivity.timestamp,
+              data: statusChangeActivity.data,
+              description: statusChangeActivity.description,
+              completionPercentage: statusChangeActivity.completion_percentage,
+              status: statusChangeActivity.status as TaskStatus,
+              createdAt: statusChangeActivity.timestamp,
+            });
+          }
           
           // Add to local state
           set(state => ({
@@ -2940,7 +3150,20 @@ export const useTaskStore = create<TaskStore>()(
               acceptedBy: data.accepted_by || undefined,
               acceptedAt: data.accepted_at || undefined,
               createdAt: data.created_at,
-              updates: [],
+              activities,
+              updates: activities
+                .filter((activity) =>
+                  activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                )
+                .map((activity) => ({
+                  id: activity.id,
+                  description: activity.description,
+                  photos: (activity.data as any)?.photos || [],
+                  completionPercentage: activity.completionPercentage || 0,
+                  status: activity.status || ('new' as TaskStatus),
+                  timestamp: activity.timestamp,
+                  userId: activity.userId,
+                })),
             }]
           }));
           

@@ -275,6 +275,8 @@ describe('taskStore.supabase workflow tests', () => {
         }),
       ])
     );
+    expect(result.current.tasks.find((task) => task.id === 'task-123')?.updates).toEqual([]);
+    expect(mockFrom).not.toHaveBeenCalledWith('task_updates');
     expect(updateEq).toHaveBeenCalledWith('id', 'task-123');
     expect(refreshTaskMock).toHaveBeenCalledWith('task-123');
   });
@@ -344,6 +346,8 @@ describe('taskStore.supabase workflow tests', () => {
         }),
       ])
     );
+    expect(result.current.tasks.find((task) => task.id === 'subtask-123')?.updates).toEqual([]);
+    expect(mockFrom).not.toHaveBeenCalledWith('task_updates');
     expect(updateEq).toHaveBeenCalledWith('id', 'subtask-123');
     expect(refreshTaskMock).toHaveBeenCalledWith('subtask-123');
   });
@@ -369,6 +373,24 @@ describe('taskStore.supabase workflow tests', () => {
       attachments: [],
       created_at: baseTimestamp,
     };
+    const taskActivitiesInsert = jest.fn((payload: Record<string, any>) => ({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: payload.activity_type === 'creation' ? 'activity-subtask-creation' : 'activity-subtask-status',
+            task_id: 'subtask-123',
+            user_id: managerId,
+            activity_type: payload.activity_type,
+            timestamp: payload.timestamp,
+            data: payload.data,
+            description: payload.description,
+            completion_percentage: payload.completion_percentage,
+            status: payload.status,
+          },
+          error: null,
+        }),
+      }),
+    }));
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
@@ -381,6 +403,24 @@ describe('taskStore.supabase workflow tests', () => {
               }),
             }),
           }),
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Jane Manager' },
+              error: null,
+            }),
+          })),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          insert: taskActivitiesInsert,
         };
       }
 
@@ -410,6 +450,19 @@ describe('taskStore.supabase workflow tests', () => {
 
     expect(subTaskId).toBe('subtask-123');
     expect(result.current.tasks.some(task => task.id === 'subtask-123')).toBe(true);
+    expect(taskActivitiesInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task_id: 'subtask-123',
+        activity_type: 'creation',
+      }),
+    );
+    expect(result.current.tasks.find((task) => task.id === 'subtask-123')?.activities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          activityType: 'creation',
+        }),
+      ])
+    );
   });
 
   it('auto-accepts self-assigned subtasks with an in-progress status', async () => {
@@ -442,11 +495,47 @@ describe('taskStore.supabase workflow tests', () => {
         }),
       }),
     });
+    const taskActivitiesInsert = jest.fn((payload: Record<string, any>) => ({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: payload.activity_type === 'creation' ? 'activity-self-creation' : 'activity-self-status',
+            task_id: 'subtask-self',
+            user_id: managerId,
+            activity_type: payload.activity_type,
+            timestamp: payload.timestamp,
+            data: payload.data,
+            description: payload.description,
+            completion_percentage: payload.completion_percentage,
+            status: payload.status,
+          },
+          error: null,
+        }),
+      }),
+    }));
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
         return {
           insert: taskInsert,
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Jane Manager' },
+              error: null,
+            }),
+          })),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          insert: taskActivitiesInsert,
         };
       }
 
@@ -477,6 +566,15 @@ describe('taskStore.supabase workflow tests', () => {
       expect.objectContaining({
         current_status: 'in_progress',
         accepted: true,
+      }),
+    );
+    expect(taskActivitiesInsert).toHaveBeenCalledTimes(2);
+    expect(taskActivitiesInsert).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        task_id: 'subtask-self',
+        activity_type: 'status_change',
+        status: 'in_progress',
       }),
     );
   });
@@ -511,11 +609,47 @@ describe('taskStore.supabase workflow tests', () => {
         }),
       }),
     });
+    const taskActivitiesInsert = jest.fn((payload: Record<string, any>) => ({
+      select: jest.fn().mockReturnValue({
+        single: jest.fn().mockResolvedValue({
+          data: {
+            id: 'activity-nested-creation',
+            task_id: 'subtask-nested',
+            user_id: managerId,
+            activity_type: payload.activity_type,
+            timestamp: payload.timestamp,
+            data: payload.data,
+            description: payload.description,
+            completion_percentage: payload.completion_percentage,
+            status: payload.status,
+          },
+          error: null,
+        }),
+      }),
+    }));
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
         return {
           insert: taskInsert,
+        };
+      }
+
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn(() => ({
+            single: jest.fn().mockResolvedValue({
+              data: { name: 'Jane Manager' },
+              error: null,
+            }),
+          })),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          insert: taskActivitiesInsert,
         };
       }
 
@@ -554,6 +688,12 @@ describe('taskStore.supabase workflow tests', () => {
       expect.objectContaining({
         current_status: 'new',
         accepted: false,
+      }),
+    );
+    expect(taskActivitiesInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task_id: 'subtask-nested',
+        activity_type: 'creation',
       }),
     );
   });

@@ -41,6 +41,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UIA / M-UIA-01 | P0 contract safety & navigation hardening | Pipeline | M-UI-07, M-DATA-02 | 10 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
 | WS-UIA / M-UIA-02 | P1 portability & boundary cleanup | Pipeline | M-UIA-01 | 11 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
 | WS-UIA / M-UIA-03 | P2 render performance hotspots | Pipeline | M-UIA-02 | 12 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |
 
 ## Deferred Context
 

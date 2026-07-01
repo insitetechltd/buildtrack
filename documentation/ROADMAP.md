@@ -37,6 +37,10 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UI / M-UI-06 | Photo screens modernization remainder | Closed | M-UI-05 | - | ../docs/superpowers/plans/2026-06-19-photo-screens-modernization.md |
 | WS-UI / M-UI-07 | CreateTaskScreen full modernization completion | Closed | M-UI-06 | - | ../docs/superpowers/plans/2026-06-20-create-task-modernization.md |
 | WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 8 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
+| WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 9 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
+| WS-UIA / M-UIA-01 | P0 contract safety & navigation hardening | Pipeline | M-UI-07, M-DATA-02 | 10 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-02 | P1 portability & boundary cleanup | Pipeline | M-UIA-01 | 11 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-03 | P2 render performance hotspots | Pipeline | M-UIA-02 | 12 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
 
 ## Deferred Context
 

@@ -210,6 +210,8 @@ The likely implementation work should cover:
 - focused adoption in `CreateTaskScreen` first because the inconsistency is already visible there
 - rollout across all user-facing forms and modals listed in scope
 - targeted tests for forward traversal, multiline traversal, and last-field-to-primary-action behavior
+- explicit exclusion of app-shell controls and non-text controls from normal text-field tab order, including FABs, profile triggers, picker triggers, and global navigation affordances
+- final-field handling that moves focus to the primary form action or blurs cleanly, without making the bottom action area an interrupting mid-form tab stop
 - container-card body behavior that collapses by default and expands only when meaningful media exists
 - task-card support for uploaded-photo display in an expandable body
 - dashboard project-summary contraction so cards stay compact when no rich body content exists
@@ -224,6 +226,8 @@ Implementation should verify:
 - the final field moves to the primary form action or blurs cleanly
 - modal forms behave the same way as full-screen forms
 - the removed app-level bottom bar is not reintroduced and is not part of focus traversal
+- FABs, profile triggers, picker triggers, and other non-text shell controls are not included in the normal text-field tab sequence
+- bottom action bars act only as final form-completion targets where appropriate, not as intermediate tab stops during text entry
 - dashboard summary cards do not render wasteful placeholder body spacing
 - task cards collapse body content when no meaningful content exists
 - task cards can reveal uploaded photos through the approved expandable body behavior when photo data exists

@@ -59,6 +59,20 @@ This is an explicit design decision:
 - after the last editable field, focus should move to the form’s primary action when practical
 - app-level shell controls such as FABs, profile triggers, and global navigation affordances must stay outside the normal text-entry tab sequence
 
+### 5. Collapsible Card Body Decision
+
+The shared card body used in task and dashboard summary cards should become **collapsible by default** rather than permanently expanded with placeholder content.
+
+This is an explicit companion decision to the approved tab and bottom-navigation behavior:
+
+- placeholder body copy such as `"Content is available and ready for composition"` should not be the default visible card experience
+- card bodies should collapse completely when there is no meaningful rich content to show
+- if photos or other meaningful rich content exist, the card may expose a collapsed affordance and expand on demand
+- the app-level bottom navigation bar still stays removed in the intended UX direction; expandable card content must not be used as a reason to restore app-level navigation chrome
+- form `Tab` behavior remains scoped to the active form only and does not traverse into card expansion or app-shell navigation
+
+This preserves the refreshed styling while removing wasteful vertical spacing.
+
 ## Architecture
 
 Implement a shared form-keyboard-navigation system with per-form field ordering.
@@ -117,6 +131,35 @@ must still use `Tab` to advance focus. This is the approved behavior even though
 - If a field becomes hidden or disabled while focused, focus should move to the next valid field.
 - If a section is collapsed or not currently active, its fields are skipped rather than auto-expanded by keyboard traversal.
 
+## Card Body Rules
+
+These rules apply to shared task/project summary cards that currently use the container-card body region.
+
+### Default Body State
+
+- if no meaningful rich content exists, the card body is fully collapsed
+- cards should not reserve body spacing purely for placeholder text
+- metadata-first cards should remain compact by default
+
+### Expandable Media State
+
+- if uploaded photos or other meaningful media exist, the card may render a collapsed media affordance
+- expanding the card should reveal only meaningful content such as photo thumbnails or media preview content
+- collapsed cards should remain visually compact even when expandable
+
+### Screen Targets
+
+This decision specifically applies to the current regressions observed in:
+
+- `DashboardScreen` project summary cards
+- `TasksScreen` task cards using `ContainerCard`
+
+The intended effect is:
+
+- tighter dashboard project-summary formatting
+- no wasteful spacing caused by placeholder container body content
+- support for showing task-creation photos through an expandable/collapsible card body when that data exists
+
 ## Return Key Behavior
 
 The `Return` or `Enter` key should keep platform-appropriate input semantics and should not replace the `Tab` standard.
@@ -154,6 +197,11 @@ This design does **not** require:
 - making non-text controls behave like text inputs
 - redesigning form layout beyond what is necessary to support consistent keyboard traversal
 
+This design also does not require:
+
+- keeping placeholder container-card body copy visible when no content exists
+- permanently expanding dashboard/task summary cards just to reserve space for possible future media
+
 ## Implementation Targets
 
 The likely implementation work should cover:
@@ -162,6 +210,9 @@ The likely implementation work should cover:
 - focused adoption in `CreateTaskScreen` first because the inconsistency is already visible there
 - rollout across all user-facing forms and modals listed in scope
 - targeted tests for forward traversal, multiline traversal, and last-field-to-primary-action behavior
+- container-card body behavior that collapses by default and expands only when meaningful media exists
+- task-card support for uploaded-photo display in an expandable body
+- dashboard project-summary contraction so cards stay compact when no rich body content exists
 
 ## Testing Requirements
 
@@ -173,6 +224,9 @@ Implementation should verify:
 - the final field moves to the primary form action or blurs cleanly
 - modal forms behave the same way as full-screen forms
 - the removed app-level bottom bar is not reintroduced and is not part of focus traversal
+- dashboard summary cards do not render wasteful placeholder body spacing
+- task cards collapse body content when no meaningful content exists
+- task cards can reveal uploaded photos through the approved expandable body behavior when photo data exists
 
 ## Risks And Guardrails
 

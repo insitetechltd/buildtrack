@@ -24,6 +24,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-FND / M-FND-04 | UI Migration Foundations | Closed | M-FND-02 | - | ./m-fnd-04-ui-migration-wave-matrix.md |
 | WS-DATA / M-DATA-01 | Cache authority & sync hardening | Closed | M-FND-02 | - | ../docs/superpowers/plans/2026-06-30-m-data-01-cache-authority-sync-hardening.md |
 | WS-SEC / M-SEC-01 | Security & worktree sanitization | Closed | None | - | ../docs/superpowers/plans/2026-07-01-m-sec-01-security-worktree-sanitization.md |
+| WS-SEC / M-SEC-02 | Credential rotation & secret-history remediation | Deferred | M-SEC-01 | - | ./BUG_INVENTORY.md |
 | WS-DATA / M-DATA-02 | Core model unification | Closed | M-DATA-01 | - | ../docs/superpowers/plans/2026-07-01-m-data-02-core-model-unification.md |
 | WS-UI / M-UI-02 | Wave 2 UI migration & selector adoption | Closed | M-FND-04 | - | ../docs/superpowers/plans/2026-06-28-ws-roadmap-near-term-execution.md |
 | WS-UI / M-UI-02 / S-UI-02A | ProjectsScreen migration | Closed | M-UI-02 | - | ../docs/superpowers/specs/2026-06-29-s-ui-02a-projects-screen-design.md |
@@ -36,17 +37,18 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UI / M-UI-05 | Batch C | Closed | M-DATA-02, M-AUTHZ-01 | - | ../docs/superpowers/plans/2026-06-20-batch-c-utility-and-admin-tail-screens.md |
 | WS-UI / M-UI-06 | Photo screens modernization remainder | Closed | M-UI-05 | - | ../docs/superpowers/plans/2026-06-19-photo-screens-modernization.md |
 | WS-UI / M-UI-07 | CreateTaskScreen full modernization completion | Closed | M-UI-06 | - | ../docs/superpowers/plans/2026-06-20-create-task-modernization.md |
-| WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 8 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
-| WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 9 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
-| WS-UIA / M-UIA-01 | P0 contract safety & navigation hardening | Pipeline | M-UI-07, M-DATA-02 | 10 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
-| WS-UIA / M-UIA-02 | P1 portability & boundary cleanup | Pipeline | M-UIA-01 | 11 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
-| WS-UIA / M-UIA-03 | P2 render performance hotspots | Pipeline | M-UIA-02 | 12 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-01 | P0 contract safety, navigation hardening & adapter contract alignment | Pipeline | M-UI-07, M-DATA-02 | 8 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-02 | P1 portability, boundary cleanup & parallel-work separation | Pipeline | M-UIA-01 | 9 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-03 | P2 render performance hotspots | Pipeline | M-UIA-02 | 10 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 11 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
+| WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
 | WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |
 
 ## Deferred Context
 
 These are intentionally outside the WS/M/S milestone inventory and current execution queue.
 
+- WS-SEC / M-SEC-02 remains intentionally deferred: rotate previously exposed credentials and decide later whether Git history rewriting is required beyond branch-tip cleanup.
 - WS-FUTURE: MCP Hub architecture, AI task automation, and construction platform integrations.
 
 ## Governance
@@ -55,3 +57,4 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 - Planning documents under `docs/superpowers/` may describe slices or execution detail, but must not become competing roadmap inventories.
 - When a milestone is closed, update its `Status` to `Closed` and, if relevant, update its primary reference to the latest execution plan or canonical doc.
 - Historically closed milestones may reference `AGENTS.md` as a summary record; milestone-level execution artifacts may not exist for all historical work.
+- `WS-UIA / M-UIA-01` and `WS-UIA / M-UIA-02` govern contract stabilization, boundary cleanup, and parallel-work separation for presentation, adapter, and data-layer ownership; roadmap-aligned coordination rules must be reflected in the canonical UI architecture references rather than tracked only in ad hoc prompt notes.

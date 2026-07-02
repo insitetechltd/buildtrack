@@ -1068,12 +1068,17 @@ export interface CreateTaskAssignableUserModel {
   role?: string;
 }
 
+export interface CreateTaskScreenActivityModel {
+  isSubmitting: boolean;
+  isLoadingUsers: boolean;
+  isUploading: boolean;
+}
+
 export interface CreateTaskScreenViewAdapterOutput {
-  readiness: {
-    isSubmitting: boolean;
-    isLoadingUsers: boolean;
-    isUploading: boolean;
-  };
+  screenId: "CreateTaskScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  activity: CreateTaskScreenActivityModel;
   context: CreateTaskContextModel;
   formData: CreateTaskFormModel;
   errors: Record<string, string>;

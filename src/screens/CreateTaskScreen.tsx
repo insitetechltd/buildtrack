@@ -131,7 +131,7 @@ export default function CreateTaskScreen({
     />;
   }
 
-  console.log("InputField is:", InputField); const t = useTranslation();
+  const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
@@ -152,7 +152,7 @@ export default function CreateTaskScreen({
     clearForm
   });
 
-  const { formData, errors, pickers, readiness, aiAssistant, context, assigneePicker, projects, modals } = output;
+  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, projects, modals } = output;
   const {
     updateField,
     togglePicker,
@@ -208,9 +208,9 @@ export default function CreateTaskScreen({
   const lastSuggestion = aiAssistant.lastSuggestion;
   const llmError = aiAssistant.error;
 
-  const isUploading = readiness.isUploading;
-  const isLoadingUsers = readiness.isLoadingUsers;
-  const isSubmitting = readiness.isSubmitting;
+  const isUploading = activity.isUploading;
+  const isLoadingUsers = activity.isLoadingUsers;
+  const isSubmitting = activity.isSubmitting;
 
   const handleOpenPhotoSelection = () => {};
   const handleAddPhotos = async () => {

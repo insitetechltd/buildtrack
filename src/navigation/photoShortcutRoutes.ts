@@ -1,9 +1,11 @@
+import type { CreateTaskParams, PhotoSelectionParams, SelectedPhoto } from "./navigationTypes";
+
 export function shouldReturnToCreateTaskShortcut({
   returnScreen,
   actionType,
 }: {
-  returnScreen?: string;
-  actionType?: string;
+  returnScreen?: PhotoSelectionParams["returnScreen"];
+  actionType?: CreateTaskParams["actionType"];
 }) {
   return returnScreen === "UpdateProgress" && actionType === "update";
 }
@@ -18,9 +20,9 @@ export function buildPhotoShortcutCreateTaskParams({
   taskId: string;
   subTaskId?: string;
   actionType: "update";
-  selectedPhotos?: unknown[];
+  selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
-}) {
+}): CreateTaskParams {
   return {
     editTaskId: taskId,
     actionType,

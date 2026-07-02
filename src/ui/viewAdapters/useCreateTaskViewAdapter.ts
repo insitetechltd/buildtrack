@@ -456,8 +456,31 @@ export function useCreateTaskViewAdapter({
     }
   };
 
+  const hasCachedFrame = allAssignableUsers.length > 0 || userProjects.length > 0;
+  const isInitialLoading = isLoadingUsers && !hasCachedFrame;
+  const isBackgroundRefreshing = isLoadingUsers && hasCachedFrame;
+
+  const continuity = {
+    isInitialLoading,
+    isBackgroundRefreshing,
+    hasCachedFrame,
+    shouldRenderSkeletonShell: isInitialLoading,
+    shouldRenderEmptyState: false,
+    freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
+  };
+
+  const readiness = {
+    hasInitialFrame: true,
+    hasUsableData: true,
+    isBackgroundRefreshing,
+    isNavigationTransitionActive: false,
+  };
+
   const output: CreateTaskScreenViewAdapterOutput = {
-    readiness: {
+    screenId: "CreateTaskScreen",
+    readiness,
+    continuity,
+    activity: {
       isSubmitting,
       isLoadingUsers,
       isUploading,

@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  FlatList,
   Modal,
   Pressable,
   RefreshControl,
@@ -302,9 +303,14 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         <Text className="text-base text-gray-600">{output.userCountLabel}</Text>
       </View>
 
-      <ScrollView
-        className="flex-1 px-6 py-4"
+      <FlatList
+        className="flex-1"
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingVertical: 16,
+          flexGrow: 1,
+        }}
         refreshControl={
           RefreshControlComponent ? (
             <RefreshControlComponent
@@ -313,8 +319,18 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
             />
           ) : undefined
         }
-      >
-        {output.userCards.length === 0 ? (
+        data={output.userCards}
+        keyExtractor={(card) => card.id}
+        renderItem={({ item }) => (
+          <UserCard
+            card={item}
+            onAssign={actions.requestAssignUser}
+            onApprove={actions.requestApproveUser}
+            onReject={actions.requestRejectUser}
+            onRemoveAssignment={actions.requestRemoveAssignment}
+          />
+        )}
+        ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-12">
             <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">
               <Ionicons name="people-outline" size={40} color="#9ca3af" />
@@ -334,19 +350,9 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
               </Pressable>
             ) : null}
           </View>
-        ) : (
-          output.userCards.map((card) => (
-            <UserCard
-              key={card.id}
-              card={card}
-              onAssign={actions.requestAssignUser}
-              onApprove={actions.requestApproveUser}
-              onReject={actions.requestRejectUser}
-              onRemoveAssignment={actions.requestRemoveAssignment}
-            />
-          ))
-        )}
-      </ScrollView>
+        }
+        ListFooterComponent={<View className="h-24" />}
+      />
 
       <ModalComponent
         visible={output.activeModal === "assign"}

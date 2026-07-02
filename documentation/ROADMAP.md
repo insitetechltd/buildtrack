@@ -37,9 +37,9 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UI / M-UI-05 | Batch C | Closed | M-DATA-02, M-AUTHZ-01 | - | ../docs/superpowers/plans/2026-06-20-batch-c-utility-and-admin-tail-screens.md |
 | WS-UI / M-UI-06 | Photo screens modernization remainder | Closed | M-UI-05 | - | ../docs/superpowers/plans/2026-06-19-photo-screens-modernization.md |
 | WS-UI / M-UI-07 | CreateTaskScreen full modernization completion | Closed | M-UI-06 | - | ../docs/superpowers/plans/2026-06-20-create-task-modernization.md |
-| WS-UIA / M-UIA-01 | P0 contract safety, navigation hardening & adapter contract alignment | Pipeline | M-UI-07, M-DATA-02 | 8 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
-| WS-UIA / M-UIA-02 | P1 portability, boundary cleanup & parallel-work separation | Pipeline | M-UIA-01 | 9 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
-| WS-UIA / M-UIA-03 | P2 render performance hotspots | Pipeline | M-UIA-02 | 10 | ../docs/superpowers/plans/2026-07-01-ws-uia-ui-architecture-improvement-backlog.md |
+| WS-UIA / M-UIA-01 | P0 contract safety, navigation hardening & adapter contract alignment | Closed | M-UI-07, M-DATA-02 | 8 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md |
+| WS-UIA / M-UIA-02 | P1 portability, boundary cleanup & parallel-work separation | Closed | M-UIA-01 | 9 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md; ./UI_ARCHITECTURE.md |
+| WS-UIA / M-UIA-03 | P2 render performance hotspots | Closed | M-UIA-02 | 10 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md |
 | WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 11 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
 | WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
 | WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |

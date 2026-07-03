@@ -33,6 +33,8 @@ type SortUpdater = SortDirection | null | ((prev: SortDirection | null) => SortD
 
 interface ProjectFilterState {
   selectedProjectId: string | null;
+  workspaceReady: boolean;
+  workspaceReadyUserId: string | null;
   sectionFilter: SectionFilter;
   statusFilter: StatusFilter;
   buttonLabel: string | null; // The label from the Dashboard button
@@ -54,12 +56,18 @@ interface ProjectFilterState {
   setSortByDueDate: (updater: SortUpdater) => void;
   resetFilters: () => void;
   getLastSelectedProject: (userId: string) => Promise<string | null>;
+  initializeWorkspaceProject: (userId: string) => Promise<void>;
 }
 
 export const useProjectFilterStore = create<ProjectFilterState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      let workspaceBootstrapRequestId = 0;
+
+      return ({
       selectedProjectId: null,
+      workspaceReady: false,
+      workspaceReadyUserId: null,
       sectionFilter: "all",
       statusFilter: "all",
       buttonLabel: null,
@@ -211,13 +219,16 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
                   },
                 }));
                 return dbProjectId;
-              } else if (localProjectId) {
-                // Database is null but local storage has a value
-                console.log(`⚠️ [getLastSelectedProject] Database is null, using local storage: ${localProjectId}`);
-                return localProjectId;
               } else {
-                // Both are null
-                console.log(`ℹ️ [getLastSelectedProject] No last selected project found (database: null, local: null)`);
+                // Database is authoritative when it returns a null value for this user
+                set(state => ({
+                  lastSelectedProjects: Object.fromEntries(
+                    Object.entries(state.lastSelectedProjects).filter(([key]) => key !== userId)
+                  ),
+                }));
+                console.log(
+                  `ℹ️ [getLastSelectedProject] No last selected project found in database for user ${userId}; clearing local fallback if present.`,
+                );
                 return null;
               }
             }
@@ -232,10 +243,51 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         console.log(`📦 [getLastSelectedProject] Using local storage fallback: ${localValue || 'null'}`);
         return localValue;
       },
-    }),
+
+      initializeWorkspaceProject: async (userId: string) => {
+        const requestId = ++workspaceBootstrapRequestId;
+        set({ workspaceReady: false, workspaceReadyUserId: null });
+
+        try {
+          const restoredProjectId = await get().getLastSelectedProject(userId);
+
+          if (requestId !== workspaceBootstrapRequestId) {
+            return;
+          }
+
+          set({
+            selectedProjectId: restoredProjectId ?? null,
+            workspaceReady: true,
+            workspaceReadyUserId: userId,
+          });
+        } catch (error) {
+          console.warn("⚠️ [initializeWorkspaceProject] Failed to restore workspace project:", error);
+
+          if (requestId !== workspaceBootstrapRequestId) {
+            return;
+          }
+
+          set({
+            selectedProjectId: null,
+            workspaceReady: true,
+            workspaceReadyUserId: userId,
+          });
+        }
+      },
+    })},
     {
       name: "buildtrack-project-filter",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        selectedProjectId: state.selectedProjectId,
+        sectionFilter: state.sectionFilter,
+        statusFilter: state.statusFilter,
+        buttonLabel: state.buttonLabel,
+        showSelfAssignedOnly: state.showSelfAssignedOnly,
+        sortByPriority: state.sortByPriority,
+        sortByDueDate: state.sortByDueDate,
+        lastSelectedProjects: state.lastSelectedProjects,
+      }),
     }
   )
 );

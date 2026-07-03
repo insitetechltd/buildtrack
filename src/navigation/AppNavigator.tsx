@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import {
   createBottomTabNavigator,
@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useAuthStore } from "../state/authStore";
+import { useProjectFilterStore } from "../state/projectFilterStore";
 import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { DataRefreshManager } from "../utils/DataRefreshManager";
@@ -1448,6 +1449,41 @@ function LoadingScreen() {
   );
 }
 
+export function WorkspaceBootstrapGate({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { isAuthenticated, user } = useAuthStore();
+  const currentUserId = user?.id ?? null;
+  const workspaceReady = useProjectFilterStore((state) => state.workspaceReady);
+  const workspaceReadyUserId = useProjectFilterStore(
+    (state) => state.workspaceReadyUserId,
+  );
+  const initializeWorkspaceProject = useProjectFilterStore(
+    (state) => state.initializeWorkspaceProject,
+  );
+  const hasWorkspaceReadyForCurrentUser =
+    !isAuthenticated ||
+    (Boolean(currentUserId) &&
+      workspaceReady &&
+      workspaceReadyUserId === currentUserId);
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUserId) {
+      return;
+    }
+
+    void initializeWorkspaceProject(currentUserId);
+  }, [currentUserId, initializeWorkspaceProject, isAuthenticated]);
+
+  if (!hasWorkspaceReadyForCurrentUser) {
+    return <LoadingScreen />;
+  }
+
+  return <>{children}</>;
+}
+
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuthStore();
 
@@ -1460,12 +1496,14 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
-      <DataRefreshManager />
-      <NetworkSyncManager />
-      <RealtimeSyncManager />
-      <MainTabs />
-    </NavigationContainer>
+    <WorkspaceBootstrapGate>
+      <NavigationContainer>
+        <DataRefreshManager />
+        <NetworkSyncManager />
+        <RealtimeSyncManager />
+        <MainTabs />
+      </NavigationContainer>
+    </WorkspaceBootstrapGate>
   );
 }
 

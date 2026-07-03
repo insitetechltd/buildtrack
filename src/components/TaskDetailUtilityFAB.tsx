@@ -141,11 +141,11 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
     setTimeout(() => onCancel(), 200);
   };
 
-  const handleDashboard = () => {
+  const handleActivity = () => {
     collapseImmediately();
     const parentNav = navigation.getParent();
     if (parentNav) {
-      parentNav.navigate("Dashboard");
+      parentNav.navigate("Activity");
     }
   };
 
@@ -297,8 +297,8 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
           </Animated.View>
         )}
 
-        {/* Dashboard Button */}
-        {/* Position: -108px - BLUE for Dashboard */}
+        {/* Activity Button */}
+        {/* Position: -108px - BLUE for Activity */}
         <Animated.View
           style={{
             transform: [
@@ -314,10 +314,10 @@ export default function TaskDetailUtilityFAB({ onEdit, onCreateSubTask, onCancel
           className="flex-row items-center"
         >
           <View className="px-3 py-2 rounded-lg mr-2 shadow-lg bg-gray-800">
-            <Text className="text-base font-medium text-white">{t.nav.dashboard || "Dashboard"}</Text>
+            <Text className="text-base font-medium text-white">{t.nav.activity || "Activity"}</Text>
           </View>
           <Pressable
-            onPress={handleDashboard}
+            onPress={handleActivity}
             className="w-12 h-12 rounded-full items-center justify-center shadow-lg bg-blue-500"
             style={{
               shadowColor: "#000",

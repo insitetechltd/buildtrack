@@ -78,7 +78,7 @@ describe("AppNavigator back helpers", () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it("redirects to the dashboard tab when the current dashboard stack has no history", () => {
+  it("redirects to the Activity tab when the current dashboard stack has no history", () => {
     const pop = jest.fn();
     const goBack = jest.fn();
     const navigate = jest.fn();
@@ -93,7 +93,7 @@ describe("AppNavigator back helpers", () => {
 
     expect(pop).not.toHaveBeenCalled();
     expect(goBack).not.toHaveBeenCalled();
-    expect(navigate).toHaveBeenCalledWith("Dashboard");
+    expect(navigate).toHaveBeenCalledWith("Activity");
   });
 
   it("pops the tasks task-detail screen from the current stack when stack history exists", () => {

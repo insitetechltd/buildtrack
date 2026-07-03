@@ -25,7 +25,6 @@ import { DashboardRoute, TasksRoute } from "./uiModeRoutes";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
-import ReportsScreen from "../screens/ReportsScreen";
 import ProjectsScreen from "../screens/ProjectsScreen";
 import CreateProjectScreen from "../screens/CreateProjectScreen";
 import UserManagementScreen from "../screens/UserManagementScreen";
@@ -57,7 +56,6 @@ import type {
   PhotoSelectionParams,
   PhotoViewerParams,
   ProfileStackParamList,
-  ReportsStackParamList,
   RootTabParamList,
   SelectedPhoto,
   TasksStackParamList,
@@ -68,7 +66,6 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 const DashboardStackNavigator = createNativeStackNavigator<DashboardStackParamList>();
 const TasksStackNavigator = createNativeStackNavigator<TasksStackParamList>();
 const ProfileStackNavigator = createNativeStackNavigator<ProfileStackParamList>();
-const ReportsStackNavigator = createNativeStackNavigator<ReportsStackParamList>();
 const CreateTaskStackNavigator = createNativeStackNavigator<CreateTaskStackParamList>();
 const AdminDashboardStackNavigator = createNativeStackNavigator<AdminDashboardStackParamList>();
 
@@ -158,7 +155,7 @@ function navigateToProjectPicker(
 
   const parentNav = navigation.getParent?.();
   if (parentNav) {
-    parentNav.navigate("Dashboard", {
+    parentNav.navigate("Activity", {
       screen: "ProjectPicker",
       params: { allowBack },
     });
@@ -193,7 +190,7 @@ function navigateToCreateTaskRoute(
 
   const parentNav = navigation.getParent?.();
   if (parentNav) {
-    parentNav.navigate("CreateTask", {
+    parentNav.navigate("Camera", {
       screen: "CreateTaskMain",
       params,
     });
@@ -208,7 +205,7 @@ export function handleDashboardTaskDetailBack(
   }
 
   const parentNav = navigation.getParent?.() as RootTabLikeNavigation | undefined;
-  parentNav?.navigate("Dashboard");
+  parentNav?.navigate("Activity");
 }
 
 export function handleTasksTaskDetailBack(
@@ -310,7 +307,7 @@ function DashboardMainScreen({
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("CreateTask", {
+          parentNav.navigate("Camera", {
             screen: "CreateTaskMain",
             params: {
               parentTaskId: undefined,
@@ -470,7 +467,7 @@ function ProjectsTasksListScreen({
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("CreateTask", {
+          parentNav.navigate("Camera", {
             screen: "CreateTaskMain",
             params: {
               parentTaskId: undefined,
@@ -485,7 +482,7 @@ function ProjectsTasksListScreen({
       }}
       onNavigateBack={() =>
         (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Dashboard",
+          "Activity",
         )
       }
       onNavigateToProfile={() =>
@@ -967,7 +964,7 @@ function ProfileMainScreen({
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("CreateTask", {
+          parentNav.navigate("Camera", {
             screen: "CreateTaskMain",
             params: {
               parentTaskId: undefined,
@@ -1014,25 +1011,6 @@ function DevAdminScreenWrapper({
   navigation,
 }: NativeStackScreenProps<AdminDashboardStackParamList, "DevAdmin">) {
   return <DevAdminScreen onNavigateBack={() => navigation.goBack()} />;
-}
-
-// Reports Stack
-function ReportsStack() {
-  return (
-    <ReportsStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
-      <ReportsStackNavigator.Screen name="ReportsMain" component={ReportsMainScreen} />
-    </ReportsStackNavigator.Navigator>
-  );
-}
-
-function ReportsMainScreen({
-  navigation,
-}: NativeStackScreenProps<ReportsStackParamList, "ReportsMain">) {
-  return (
-    <ReportsScreen
-      onNavigateBack={() => navigation.goBack()}
-    />
-  );
 }
 
 // Create Task Stack
@@ -1150,7 +1128,7 @@ function CreateTaskMainScreen({
       const parentNav = navigation.getParent();
       if (parentNav) {
         if (sourceScreen === 'dashboard') {
-          parentNav.navigate("Dashboard", {
+          parentNav.navigate("Activity", {
             screen: "TaskDetailFromDashboard",
             params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
           });
@@ -1363,12 +1341,12 @@ function MainTabs() {
     >
       {!isAdmin(user) && (
         <Tab.Screen
-          name="Dashboard"
+          name="Activity"
           component={DashboardStack}
           options={{
-            tabBarLabel: "Dashboard",
+            tabBarLabel: "Activity",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="hammer-outline" size={size} color={color} />
+              <Ionicons name="sparkles-outline" size={size} color={color} />
             ),
             tabBarBadge: badgeCount,
             tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
@@ -1401,13 +1379,13 @@ function MainTabs() {
       )}
       {!isAdmin(user) && (
         <Tab.Screen
-          name="CreateTask"
+          name="Camera"
           component={CreateTaskStack}
           options={{
-            tabBarLabel: "Create",
+            tabBarLabel: "Camera",
             tabBarIcon: ({ color, size }) => (
               <Ionicons
-                name="add-circle-outline"
+                name="camera-outline"
                 size={size}
                 color={color}
               />
@@ -1417,24 +1395,25 @@ function MainTabs() {
       )}
       {!isAdmin(user) && (
         <Tab.Screen
-          name="Reports"
-          component={ReportsStack}
+          name="Profile"
+          component={ProfileStack}
           options={{
-            tabBarLabel: "Reports",
+            tabBarLabel: "Profile",
             tabBarIcon: ({ color, size }) => (
-              <Ionicons name="bar-chart-outline" size={size} color={color} />
+              <Ionicons name="person-outline" size={size} color={color} />
             ),
           }}
         />
       )}
-      {/* Profile Screen - Hidden from tab bar but accessible via navigation */}
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStack}
-        options={{
-          tabBarButton: () => null, // Hide from tab bar
-        }}
-      />
+      {isAdmin(user) ? (
+        <Tab.Screen
+          name="Profile"
+          component={ProfileStack}
+          options={{
+            tabBarButton: () => null,
+          }}
+        />
+      ) : null}
     </Tab.Navigator>
   );
 }

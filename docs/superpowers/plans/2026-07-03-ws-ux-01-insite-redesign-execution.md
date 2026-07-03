@@ -16,7 +16,7 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | --- | --- | --- | --- |
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | Foundation slice completed ahead of navigation-facing bootstrap restore work. |
 | WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | Completed as a bootstrap-only slice without renaming the existing tab shell or expanding into broader navigation redesign work. |
-| WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Pipeline | Align the live shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
+| WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | Aligned the live worker shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
 | WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Pipeline | Replace the legacy dashboard with the approved project-scoped `Recent Activity` home. |
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Pipeline | Roll out the approved compact and collapsible project task list. |
 | WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
@@ -122,6 +122,15 @@ Closure criteria:
 - camera entry preserves optional task/project context params
 - the authenticated workspace still waits for current-user bootstrap readiness before rendering
 - roadmap and execution docs remain aligned with the slice status
+
+Closure evidence:
+
+- worker root tab contract renamed from `Dashboard / CreateTask / Reports` to `Activity / Tasks / Camera / Profile`
+- worker-facing parent-tab redirects updated to `Activity` and `Camera`
+- obsolete worker `Reports` shell artifacts removed from the touched navigation surface
+- focused validation passed:
+  - `npx jest src/navigation/__tests__/AppNavigator.back-behavior.test.tsx src/navigation/__tests__/WorkspaceBootstrapGate.test.tsx --runInBand`
+  - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01D — Activity-first home rollout
 

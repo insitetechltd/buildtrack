@@ -116,10 +116,6 @@ export type ProfileStackParamList = {
   PendingUsers: undefined;
 };
 
-export type ReportsStackParamList = {
-  ReportsMain: undefined;
-};
-
 export type CreateTaskStackParamList = {
   CreateTaskMain: CreateTaskParams | undefined;
   PhotoSelection: PhotoSelectionParams;
@@ -137,10 +133,9 @@ export type AdminDashboardStackParamList = {
 };
 
 export type RootTabParamList = {
-  Dashboard: NavigatorScreenParams<DashboardStackParamList> | undefined;
+  Activity: NavigatorScreenParams<DashboardStackParamList> | undefined;
   Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
-  CreateTask: NavigatorScreenParams<CreateTaskStackParamList> | undefined;
-  Reports: NavigatorScreenParams<ReportsStackParamList> | undefined;
+  Camera: NavigatorScreenParams<CreateTaskStackParamList> | undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
   AdminDashboard: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
 };

@@ -43,6 +43,7 @@ export const en = {
 
   // Navigation
   nav: {
+    activity: "Activity",
     dashboard: "Dashboard",
     tasks: "Tasks",
     projects: "Projects",

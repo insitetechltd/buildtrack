@@ -112,10 +112,10 @@ describe("WorkspaceBootstrapGate", () => {
     mockProjectFilterState.workspaceReadyUserId = null;
   });
 
-  it("initializes the authenticated user's workspace before rendering the app shell", async () => {
+  it("initializes the authenticated user's workspace before rendering the Activity shell", async () => {
     const screen = render(
       <WorkspaceBootstrapGate>
-        <Text>workspace shell</Text>
+        <Text>activity shell</Text>
       </WorkspaceBootstrapGate>,
     );
 
@@ -132,12 +132,12 @@ describe("WorkspaceBootstrapGate", () => {
 
     const screen = render(
       <WorkspaceBootstrapGate>
-        <Text>workspace shell</Text>
+        <Text>activity shell</Text>
       </WorkspaceBootstrapGate>,
     );
 
     expect(screen.getByText("Loading...")).toBeTruthy();
-    expect(screen.queryByText("workspace shell")).toBeNull();
+    expect(screen.queryByText("activity shell")).toBeNull();
 
     await waitFor(() => {
       expect(mockInitializeWorkspaceProject).toHaveBeenCalledWith("user-1");
@@ -150,11 +150,11 @@ describe("WorkspaceBootstrapGate", () => {
 
     const screen = render(
       <WorkspaceBootstrapGate>
-        <Text>workspace shell</Text>
+        <Text>activity shell</Text>
       </WorkspaceBootstrapGate>,
     );
 
-    expect(screen.getByText("workspace shell")).toBeTruthy();
+    expect(screen.getByText("activity shell")).toBeTruthy();
     expect(screen.queryByText("Loading...")).toBeNull();
   });
 
@@ -165,12 +165,12 @@ describe("WorkspaceBootstrapGate", () => {
 
     const screen = render(
       <WorkspaceBootstrapGate>
-        <Text>workspace shell</Text>
+        <Text>activity shell</Text>
       </WorkspaceBootstrapGate>,
     );
 
     expect(screen.getByText("Loading...")).toBeTruthy();
-    expect(screen.queryByText("workspace shell")).toBeNull();
+    expect(screen.queryByText("activity shell")).toBeNull();
     expect(mockInitializeWorkspaceProject).not.toHaveBeenCalled();
   });
 });

@@ -38,7 +38,7 @@ export default function ModernScreenHeader({
   const handleNavigateToProjectPicker =
     onNavigateToProjectPicker ??
     ((allowBack?: boolean) => {
-      navigation.getParent?.()?.navigate("Dashboard", {
+      navigation.getParent?.()?.navigate("Activity", {
         screen: "ProjectPicker",
         params: { allowBack },
       });

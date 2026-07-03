@@ -271,7 +271,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       const parentNav = navigation.getParent();
       if (sourceScreen && sourceTaskId && parentNav) {
         if (sourceScreen === 'dashboard') {
-          parentNav.navigate("Dashboard", {
+          parentNav.navigate("Activity", {
             screen: "TaskDetailFromDashboard",
             params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
           });

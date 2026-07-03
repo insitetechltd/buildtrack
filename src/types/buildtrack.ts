@@ -590,6 +590,7 @@ export interface Task {
   subContainerId?: string;
   tags?: string[];
   createdAt: string;
+  updatedAt?: string;
   updates: TaskUpdate[];
   
   // UNIFIED STATUS (replaces currentStatus, accepted, readyForReview, reviewAccepted)

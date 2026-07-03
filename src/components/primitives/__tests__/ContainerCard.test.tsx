@@ -2,6 +2,8 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 import ContainerCard from "../container/ContainerCard";
 import type { ContainerPrimitiveContract } from "@/ui/contracts/primitives";
+import { mapDashboardProjectToContainerCardProps } from "@/ui/mappers/dashboardMappers";
+import type { DashboardProjectSummaryItem } from "@/ui/contracts/viewAdapters";
 
 describe("ContainerCard", () => {
   const baseContract: ContainerPrimitiveContract = {
@@ -168,6 +170,37 @@ describe("ContainerCard", () => {
       disabled: true,
     });
     expect(getByTestId("container-card").props.className).toContain("opacity-60");
+  });
+
+  it("collapses the body region when no meaningful content is available", () => {
+    const { queryByTestId } = render(<ContainerCard contract={baseContract} />);
+
+    expect(queryByTestId("container-card__body")).toBeNull();
+  });
+
+  it("allows dashboard summary cards to remain metadata-first without a body region", () => {
+    const dashboardItem: DashboardProjectSummaryItem = {
+      id: "dashboard-project-1",
+      projectId: "project-1",
+      title: "North Tower",
+      subtitle: "Inspection Package A",
+      statusToken: "project_active",
+      statusLabel: "Active",
+      openTaskCount: 12,
+      overdueTaskCount: 2,
+      density: "standard",
+      structuralState: "stale",
+    };
+
+    const contract = mapDashboardProjectToContainerCardProps(dashboardItem);
+    const { queryByTestId } = render(<ContainerCard contract={contract} />);
+
+    expect(contract.body.shouldRenderBody).toBe(false);
+    expect(contract.body.media).toEqual({
+      mode: "hidden",
+      items: [],
+    });
+    expect(queryByTestId("container-card:project-1__body")).toBeNull();
   });
 
   it("switches shell geometry with density while preserving the per-density contract", () => {

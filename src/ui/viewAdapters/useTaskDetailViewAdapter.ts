@@ -246,6 +246,7 @@ export function useTaskDetailViewAdapter({
     priorityLabel: ct.priority,
     assigneeSummary: ct.assignedTo.map((id) => getUserById(id)?.name).filter(Boolean).join(', ') || 'Unassigned',
     projectName: ct.projectId || 'Unknown Project',
+    attachmentUris: ct.attachments ?? [],
     isOverdue:
       new Date(ct.dueDate) < new Date() &&
       !isApprovedTaskStatus(ct.status) &&

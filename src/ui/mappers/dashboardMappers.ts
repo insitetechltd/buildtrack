@@ -57,6 +57,11 @@ export function mapDashboardProjectToContainerCardProps(
       ],
     },
     body: {
+      shouldRenderBody: false,
+      media: {
+        mode: "hidden",
+        items: [],
+      },
       empty: {
         title: "No summary",
         message: "No project summary is available.",
@@ -69,4 +74,3 @@ export function mapDashboardProjectToContainerCardProps(
     },
   };
 }
-

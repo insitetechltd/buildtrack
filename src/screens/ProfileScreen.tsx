@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
+  NativeSyntheticEvent,
   View,
   Text,
   ScrollView,
   Pressable,
   Modal,
   TextInput,
+  TextInputKeyPressEventData,
   ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,7 +16,6 @@ import { Ionicons } from "@expo/vector-icons";
 
 import StandardHeader from "../components/StandardHeader";
 import ModalHandle from "../components/ModalHandle";
-import ExpandableUtilityFAB from "../components/ExpandableUtilityFAB";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import {
@@ -22,6 +23,12 @@ import {
   type ProfileScreenProps,
 } from "../ui/viewAdapters/useProfileViewAdapter";
 import type { ProfileSystemStatusItem } from "../ui/contracts/viewAdapters";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 
 function MenuOption({
   title,
@@ -83,7 +90,6 @@ function getSystemStatusTextClassName(item: ProfileSystemStatusItem): string {
 
 export default function ProfileScreen({
   onNavigateBack,
-  onNavigateToCreateTask,
   onNavigateToDeveloperSettings,
   onNavigateToPendingUsers,
   onNavigateToProfile,
@@ -92,12 +98,76 @@ export default function ProfileScreen({
   const t = useTranslation();
   const { output, actions } = useProfileViewAdapter({
     onNavigateBack,
-    onNavigateToCreateTask,
     onNavigateToDeveloperSettings,
     onNavigateToPendingUsers,
     onNavigateToProfile,
     onNavigateToProjectPicker,
   });
+  const currentPasswordInputRef = useRef<TextInput>(null);
+  const newPasswordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
+  const passwordFormNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "currentPassword", isFocusable: true },
+        { fieldId: "newPassword", isFocusable: true },
+        { fieldId: "confirmPassword", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusPasswordField = useCallback(
+    (fieldId: "currentPassword" | "newPassword" | "confirmPassword" | "submit" | null) => {
+      if (!fieldId || fieldId === "submit") {
+        currentPasswordInputRef.current?.blur?.();
+        newPasswordInputRef.current?.blur?.();
+        confirmPasswordInputRef.current?.blur?.();
+        return;
+      }
+
+      const focusTargetMap = {
+        currentPassword: currentPasswordInputRef,
+        newPassword: newPasswordInputRef,
+        confirmPassword: confirmPasswordInputRef,
+      } satisfies Record<
+        "currentPassword" | "newPassword" | "confirmPassword",
+        React.RefObject<TextInput | null>
+      >;
+
+      focusTargetMap[fieldId].current?.focus?.();
+    },
+    [],
+  );
+  const movePasswordFieldFocus = useCallback(
+    (
+      activeFieldId: "currentPassword" | "newPassword" | "confirmPassword",
+      direction: "next" | "previous" = "next",
+    ) => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(passwordFormNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(passwordFormNavigationRegistry, activeFieldId);
+
+      focusPasswordField(
+        (targetFieldId as "currentPassword" | "newPassword" | "confirmPassword" | "submit" | null) ??
+          null,
+      );
+    },
+    [focusPasswordField, passwordFormNavigationRegistry],
+  );
+  const handlePasswordFieldKeyPress = useCallback(
+    (
+      activeFieldId: "currentPassword" | "newPassword" | "confirmPassword",
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      movePasswordFieldFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [movePasswordFieldFocus],
+  );
 
   if (!output.readiness.hasUsableData) {
     return null;
@@ -208,6 +278,7 @@ export default function ProfileScreen({
               <View className="mb-4">
                 <Text className="mb-2 text-base font-medium text-gray-700">Current Password</Text>
                 <TextInput
+                  ref={currentPasswordInputRef}
                   className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
                   placeholder="Enter your current password"
                   value={output.passwordChange.currentPassword}
@@ -215,12 +286,19 @@ export default function ProfileScreen({
                   secureTextEntry
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
+                  returnKeyType="next"
+                  onKeyPress={(event) => handlePasswordFieldKeyPress("currentPassword", event)}
+                  onSubmitEditing={() => {
+                    movePasswordFieldFocus("currentPassword");
+                  }}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View className="mb-4">
                 <Text className="mb-2 text-base font-medium text-gray-700">New Password</Text>
                 <TextInput
+                  ref={newPasswordInputRef}
                   className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
                   placeholder="Enter new password (min. 6 characters)"
                   value={output.passwordChange.newPassword}
@@ -228,12 +306,19 @@ export default function ProfileScreen({
                   secureTextEntry
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
+                  returnKeyType="next"
+                  onKeyPress={(event) => handlePasswordFieldKeyPress("newPassword", event)}
+                  onSubmitEditing={() => {
+                    movePasswordFieldFocus("newPassword");
+                  }}
+                  blurOnSubmit={false}
                 />
               </View>
 
               <View className="mb-6">
                 <Text className="mb-2 text-base font-medium text-gray-700">Confirm New Password</Text>
                 <TextInput
+                  ref={confirmPasswordInputRef}
                   className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
                   placeholder="Confirm new password"
                   value={output.passwordChange.confirmPassword}
@@ -241,6 +326,11 @@ export default function ProfileScreen({
                   secureTextEntry
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
+                  returnKeyType="done"
+                  onKeyPress={(event) => handlePasswordFieldKeyPress("confirmPassword", event)}
+                  onSubmitEditing={() => {
+                    confirmPasswordInputRef.current?.blur();
+                  }}
                 />
               </View>
 
@@ -333,7 +423,6 @@ export default function ProfileScreen({
         </Modal>
       ) : null}
 
-      <ExpandableUtilityFAB onCreateTask={onNavigateToCreateTask || (() => {})} />
     </SafeAreaView>
   );
 }

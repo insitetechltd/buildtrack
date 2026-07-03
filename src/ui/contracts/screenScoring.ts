@@ -26,7 +26,7 @@ export interface ScreenMigrationDimensionScores {
 
 export interface ScreenMigrationInventoryEntry {
   screenId: ScreenMigrationCandidateId;
-  absolutePath: string;
+  repoPath: string;
   scores: ScreenMigrationDimensionScores;
 }
 
@@ -56,8 +56,7 @@ export const SCREEN_MIGRATION_INVENTORY: Record<
 > = {
   DashboardScreen: {
     screenId: "DashboardScreen",
-    absolutePath:
-      "/Volumes/KooDrive/Insite App/src/screens/DashboardScreen.tsx",
+    repoPath: "src/screens/DashboardScreen.tsx",
     scores: {
       userTrafficWeighting: 5,
       workflowCriticalityWeighting: 5,
@@ -70,7 +69,7 @@ export const SCREEN_MIGRATION_INVENTORY: Record<
   },
   TasksScreen: {
     screenId: "TasksScreen",
-    absolutePath: "/Volumes/KooDrive/Insite App/src/screens/TasksScreen.tsx",
+    repoPath: "src/screens/TasksScreen.tsx",
     scores: {
       userTrafficWeighting: 5,
       workflowCriticalityWeighting: 5,
@@ -83,8 +82,7 @@ export const SCREEN_MIGRATION_INVENTORY: Record<
   },
   TaskDetailScreen: {
     screenId: "TaskDetailScreen",
-    absolutePath:
-      "/Volumes/KooDrive/Insite App/src/screens/TaskDetailScreen.tsx",
+    repoPath: "src/screens/TaskDetailScreen.tsx",
     scores: {
       userTrafficWeighting: 4,
       workflowCriticalityWeighting: 5,
@@ -97,8 +95,7 @@ export const SCREEN_MIGRATION_INVENTORY: Record<
   },
   CreateTaskScreen: {
     screenId: "CreateTaskScreen",
-    absolutePath:
-      "/Volumes/KooDrive/Insite App/src/screens/CreateTaskScreen.tsx",
+    repoPath: "src/screens/CreateTaskScreen.tsx",
     scores: {
       userTrafficWeighting: 4,
       workflowCriticalityWeighting: 5,
@@ -111,8 +108,7 @@ export const SCREEN_MIGRATION_INVENTORY: Record<
   },
   ProjectsScreen: {
     screenId: "ProjectsScreen",
-    absolutePath:
-      "/Volumes/KooDrive/Insite App/src/screens/ProjectsScreen.tsx",
+    repoPath: "src/screens/ProjectsScreen.tsx",
     scores: {
       userTrafficWeighting: 3,
       workflowCriticalityWeighting: 4,

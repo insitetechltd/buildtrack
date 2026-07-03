@@ -432,7 +432,8 @@ describe("ProjectsScreen", () => {
       />,
     );
 
-    expect(screen.getByText("Projects")).toBeTruthy();
+    expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
+    expect(screen.getByText("Workspace")).toBeTruthy();
     expect(screen.getByPlaceholderText("Search projects...")).toBeTruthy();
     expect(screen.getByText("Tower A")).toBeTruthy();
 

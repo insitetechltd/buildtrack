@@ -1,0 +1,108 @@
+import React from "react";
+import { Text } from "react-native";
+import { fireEvent, render } from "@testing-library/react-native";
+
+import AppScreenHeader from "../AppScreenHeader";
+
+const mockProfileMenu = jest.fn(
+  ({
+    visible,
+    onNavigateToProfile,
+    onNavigateToProjectPicker,
+  }: {
+    visible: boolean;
+    onNavigateToProfile?: () => void;
+    onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  }) =>
+    visible ? (
+      <>
+        <Text>Profile Menu</Text>
+        <Text onPress={() => onNavigateToProjectPicker?.(true)}>Change Project</Text>
+        <Text onPress={() => onNavigateToProfile?.()}>Profile & Settings</Text>
+      </>
+    ) : null,
+);
+
+jest.mock("@/state/authStore", () => ({
+  useAuthStore: () => ({ user: { id: "user-1", name: "Casey", companyId: "company-1" } }),
+}));
+
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}));
+
+jest.mock("@expo/vector-icons", () => {
+  const { View } = require("react-native");
+  return {
+    Ionicons: (props: unknown) => <View {...(props as object)} />,
+  };
+});
+
+jest.mock("@/components/ProfileMenu", () => ({
+  __esModule: true,
+  default: (props: unknown) => mockProfileMenu(props as never),
+}));
+
+describe("AppScreenHeader", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("renders title, subtitle, back affordance, and action slot", () => {
+    const onBackPress = jest.fn();
+    const screen = render(
+      <AppScreenHeader
+        title="Projects"
+        subtitle="12 active"
+        showBackButton
+        onBackPress={onBackPress}
+        rightSlot={<Text>Action Slot</Text>}
+      />,
+    );
+
+    expect(screen.getByText("Projects")).toBeTruthy();
+    expect(screen.getByText("12 active")).toBeTruthy();
+    expect(screen.getByText("Action Slot")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("app-screen-header__back"));
+    expect(onBackPress).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders the canonical shared back icon when back is enabled", () => {
+    const screen = render(
+      <AppScreenHeader title="Projects" showBackButton onBackPress={jest.fn()} />,
+    );
+
+    const backButton = screen.getByTestId("app-screen-header__back");
+    const backIcon = screen.getByTestId("app-screen-header__back-icon");
+
+    expect(backButton).toBeTruthy();
+    expect(backButton.props.accessibilityLabel).toBe("Go back");
+    expect(backButton.props.className).toContain("h-10");
+    expect(backButton.props.className).toContain("w-10");
+    expect(backIcon).toBeTruthy();
+    expect(backIcon.props.name).toBe("arrow-back");
+  });
+
+  it("opens the profile menu and routes shared menu callbacks", () => {
+    const onNavigateToProfile = jest.fn();
+    const onNavigateToProjectPicker = jest.fn();
+    const screen = render(
+      <AppScreenHeader
+        title="Projects"
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("app-screen-header__profile-trigger"));
+
+    expect(screen.getByText("Profile Menu")).toBeTruthy();
+
+    fireEvent.press(screen.getByText("Change Project"));
+    fireEvent.press(screen.getByText("Profile & Settings"));
+
+    expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
+    expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
+  });
+});

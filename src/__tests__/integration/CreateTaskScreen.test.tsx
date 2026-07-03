@@ -115,6 +115,8 @@ jest.mock('../../utils/useTranslation', () => ({
       updateTaskButton: 'Update Task',
       creating: 'Creating...',
       updating: 'Updating...',
+      attachments: 'Attachments',
+      tapToAddFiles: 'Tap to add files',
       filesAdded: (count: number) => `${count} file(s) added`,
       usersAvailable: () => 'Users Available',
       usersSelected: () => 'Users Selected',
@@ -286,7 +288,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(getByText('Create New Task')).toBeTruthy();
     expect(getByText('Modern UI')).toBeTruthy();
 
-    fireEvent.press(getByTestId('modernHeader-back'));
+    fireEvent.press(getByTestId('app-screen-header__back'));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
@@ -302,9 +304,60 @@ describe('CreateTaskScreen Integration', () => {
     expect(getByText('Update Progress')).toBeTruthy();
     expect(getByText('Modern UI')).toBeTruthy();
 
-    fireEvent.press(getByTestId('modernHeader-back'));
+    fireEvent.press(getByTestId('app-screen-header__back'));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the create task form as grouped workflow sections', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByText('Task Basics')).toBeTruthy();
+    expect(screen.getByText('Assignment')).toBeTruthy();
+    expect(screen.getByText('Schedule')).toBeTruthy();
+    expect(screen.getByText('More Details')).toBeTruthy();
+    expect(screen.getByText('Attachments')).toBeTruthy();
+  });
+
+  it('advances through the create-task text fields in order and treats the submit action as the final target', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    const title = screen.getByTestId('createTask-title');
+    const description = screen.getByTestId('createTask-description');
+    const taskReference = screen.getByTestId('createTask-taskReference');
+    const submitFocusTarget = screen.getByTestId('createTask-submit-focus-target');
+
+    fireEvent(title, 'onKeyPress', {
+      nativeEvent: { key: 'Tab', shiftKey: false },
+    });
+
+    expect(description.props.accessibilityState?.selected).toBe(true);
+
+    fireEvent(description, 'onKeyPress', {
+      nativeEvent: { key: 'Tab', shiftKey: false },
+    });
+
+    expect(taskReference.props.accessibilityState?.selected).toBe(true);
+
+    fireEvent(taskReference, 'onKeyPress', {
+      nativeEvent: { key: 'Tab', shiftKey: false },
+    });
+
+    expect(submitFocusTarget.props.accessibilityState?.selected).toBe(true);
+
+    fireEvent(taskReference, 'onKeyPress', {
+      nativeEvent: { key: 'Tab', shiftKey: true },
+    });
+
+    expect(description.props.accessibilityState?.selected).toBe(true);
   });
 
   it('hydrates selected photos into update action submissions after a round-trip', async () => {
@@ -405,7 +458,7 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByText } = render(
+    const { getAllByText, getByText } = render(
       <NavigationContainer>
         <CreateTaskScreen
           onNavigateBack={jest.fn()}
@@ -614,10 +667,10 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     await waitFor(() => {
-      expect(getByTestId('modernHeader-back')).toBeTruthy();
+      expect(getByTestId('app-screen-header__back')).toBeTruthy();
     });
 
-    fireEvent.press(getByTestId('modernHeader-back'));
+    fireEvent.press(getByTestId('app-screen-header__back'));
 
     expect(alertSpy).toHaveBeenCalled();
     expect(onNavigateBack).not.toHaveBeenCalled();
@@ -820,7 +873,7 @@ describe('CreateTaskScreen Integration', () => {
   it('submits create mode and navigates back after a valid task creation', async () => {
     const onNavigateBack = jest.fn();
 
-    const { getByTestId } = render(
+    const { getByTestId, getByText } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={onNavigateBack} />
       </NavigationContainer>
@@ -828,7 +881,7 @@ describe('CreateTaskScreen Integration', () => {
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Install guard rails');
     fireEvent.changeText(getByTestId('createTask-description'), 'Complete level 2 edge protection');
-    fireEvent.press(getByTestId('createTask-submit'));
+    fireEvent.press(getByText('Create Task'));
 
     await waitFor(() => {
       expect(mockCreateTask).toHaveBeenCalledWith(
@@ -873,14 +926,14 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getByTestId } = render(
+    const { getByTestId, getByText } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={onNavigateBack} editTaskId="task-1" />
       </NavigationContainer>
     );
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Existing task updated');
-    fireEvent.press(getByTestId('createTask-submit'));
+    fireEvent.press(getByText('Update Task'));
 
     await waitFor(() => {
       expect(mockUpdateTask).toHaveBeenCalledWith(
@@ -898,13 +951,13 @@ describe('CreateTaskScreen Integration', () => {
     const onNavigateBack = jest.fn();
     mockCreateTask.mockClear();
 
-    const { getByTestId } = render(
+    const { getByText } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={onNavigateBack} />
       </NavigationContainer>
     );
 
-    fireEvent.press(getByTestId('createTask-submit'));
+    fireEvent.press(getByText('Create Task'));
 
     await waitFor(() => {
       expect(mockCreateTask).not.toHaveBeenCalled();
@@ -952,7 +1005,7 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Submitted task updated');
-    fireEvent.press(getByTestId('createTask-submit'));
+    fireEvent.press(getByText('Update Task'));
 
     await waitFor(() => {
       expect(mockUpdateTask).not.toHaveBeenCalled();
@@ -999,7 +1052,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('renders translated attachment state for pending selected photos', () => {
-    const { getByText } = render(
+    const screen = render(
       <NavigationContainer>
         <CreateTaskScreen
           onNavigateBack={jest.fn()}
@@ -1014,7 +1067,7 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    expect(getByText('Pending')).toBeTruthy();
-    expect(getByText('(1 file(s) added)')).toBeTruthy();
+    expect(screen.getByText('Pending')).toBeTruthy();
+    expect(screen.getAllByText('1 file(s) added').length).toBeGreaterThan(0);
   });
 });

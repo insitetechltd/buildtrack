@@ -4,8 +4,6 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Image,
-  Linking,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,15 +13,16 @@ import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAda
 import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
+import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
+import PrimaryActionBar from "@/components/ui/PrimaryActionBar";
 import { cn } from "@/utils/cn";
 import {
-  mapActionItemToButtonProps,
   mapBannerModelToBannerProps,
-  mapActivityModelToActivityProps,
   mapSectionModelToContainerProps,
 } from "@/ui/mappers/taskDetailMappers";
 import { mapTaskRowToContainerCardProps } from "@/ui/mappers/tasksMappers";
-import type { BannerPrimitiveContract, ActivityPrimitiveContract, ButtonPrimitiveContract } from "@/ui/contracts/primitives";
+import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
+import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -80,77 +79,40 @@ const BannerPrimitive = ({ contract }: { contract: BannerPrimitiveContract }) =>
   );
 };
 
-const ActivityPrimitive = ({ contract }: { contract: ActivityPrimitiveContract }) => {
-  return (
-    <View className="border-l-4 border-blue-200 pl-4 mb-4">
-      <View className="flex-row items-center justify-between mb-2">
-        <View className="flex-row items-center">
-          <Ionicons 
-            name={contract.activityType === 'status_change' ? 'sync' : contract.activityType === 'progress_update' ? 'trending-up' : 'document-text'} 
-            size={16} 
-            color="#3b82f6" 
-            style={{ marginRight: 6 }}
-          />
-          <Text className="font-medium text-gray-900">
-            {contract.userName}
-          </Text>
-        </View>
-        <Text className="text-sm text-gray-500">
-          {new Date(contract.timestamp).toLocaleString()}
-        </Text>
-      </View>
-      <Text className="text-gray-700 mb-2">{contract.description}</Text>
-      {contract.reason && (
-        <Text className="text-gray-600 italic mb-2">Reason: {contract.reason}</Text>
-      )}
-      {contract.completionPercentage !== undefined && contract.statusLabel && (
-        <View className="flex-row items-center space-x-4">
-          <Text className="text-base text-gray-500">
-            Progress: {contract.completionPercentage}%
-          </Text>
-          <View className="px-2 py-1 rounded bg-blue-50">
-            <Text className="text-sm capitalize text-blue-700">
-              {contract.statusLabel}
-            </Text>
-          </View>
-        </View>
-      )}
-      {contract.photos && contract.photos.length > 0 && (
-        <View className="flex-row mt-2 space-x-2">
-          {contract.photos.map((photo, i) => (
-            <Image key={i} source={{ uri: photo }} className="w-16 h-16 rounded" />
-          ))}
-        </View>
-      )}
-    </View>
-  );
+const ACTION_PRIORITY: Record<string, number> = {
+  approve_task: 0,
+  accept_task: 1,
+  submit_review: 2,
+  update_progress: 3,
+  reassign_task: 4,
+  edit_task: 5,
+  upload_photos: 6,
+  add_comment: 7,
+  decline_task: 8,
+  reject_task: 9,
 };
 
-const ButtonPrimitive = ({ contract, onPress }: { contract: ButtonPrimitiveContract; onPress: () => void }) => {
-  const isDestructive = contract.label.toLowerCase().includes('decline') || contract.label.toLowerCase().includes('reject');
-  const isPrimary = contract.label.toLowerCase().includes('accept') || contract.label.toLowerCase().includes('approve') || contract.label.toLowerCase().includes('update');
-  
-  const bgClass = isDestructive ? "bg-red-600" : isPrimary ? "bg-green-600" : "bg-blue-600";
-  
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={contract.isDisabled}
-      className={cn(
-        "flex-1 rounded-xl py-3 px-4 flex-row items-center justify-center",
-        bgClass,
-        contract.isDisabled && "opacity-50"
-      )}
-    >
-      {contract.icon && (
-        <Ionicons name={contract.icon as any} size={18} color="white" />
-      )}
-      <Text className="font-semibold text-base ml-2 text-white">
-        {contract.label}
-      </Text>
-    </Pressable>
-  );
-};
+function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
+  const prioritizedActions = actionItems
+    .map((action, index) => ({
+      action,
+      index,
+      priority: ACTION_PRIORITY[action.actionId] ?? 99,
+    }))
+    .sort((left, right) => {
+      if (left.priority !== right.priority) {
+        return left.priority - right.priority;
+      }
+
+      return left.index - right.index;
+    })
+    .map(({ action }) => action);
+
+  return {
+    primaryAction: prioritizedActions[0],
+    secondaryActions: prioritizedActions.slice(1),
+  };
+}
 
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const { output, actions } = useTaskDetailViewAdapter({
@@ -213,6 +175,9 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     }
   };
 
+  const { primaryAction, secondaryActions } = prioritizeActionItems(output.actionItems ?? []);
+  const scrollContentPaddingBottom = primaryAction ? 148 : 32;
+
   if (!output.readiness.hasUsableData) {
     return (
       <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
@@ -242,7 +207,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         rightElement={<ModernUiMarker />}
       />
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: scrollContentPaddingBottom }}>
         {/* Banners */}
         {output.banners.map(banner => (
           <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
@@ -270,12 +235,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
 
         {/* Activities */}
         {output.activities.length > 0 && (
-          <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
-            <Text className="text-lg font-semibold text-gray-900 mb-4">Activities</Text>
-            {output.activities.map(activity => (
-              <ActivityPrimitive key={activity.id} contract={mapActivityModelToActivityProps(activity)} />
-            ))}
-          </View>
+          <TaskActivityTimeline activities={output.activities} />
         )}
 
         {/* Child Tasks */}
@@ -295,26 +255,46 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             ))}
           </View>
         )}
-      </ScrollView>
 
-      {/* Action Buttons */}
-      {output.actionItems.length > 0 && (
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-          style={{ shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 8 }}
-        >
-          <SafeAreaView edges={['bottom']}>
-            <View className="flex-row gap-3 flex-wrap">
-              {output.actionItems.map(action => (
-                <ButtonPrimitive 
-                  key={action.id} 
-                  contract={mapActionItemToButtonProps(action)} 
+        {secondaryActions.length > 0 ? (
+          <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
+            <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+              Other actions
+            </Text>
+
+            <View className="flex-row flex-wrap gap-2">
+              {secondaryActions.map((action) => (
+                <Pressable
+                  key={action.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: action.isDisabled }}
+                  disabled={action.isDisabled}
                   onPress={() => handleActionPress(action.actionId)}
-                />
+                  className={cn(
+                    "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
+                    action.isDisabled && "opacity-50",
+                  )}
+                >
+                  {action.icon ? (
+                    <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
+                  ) : null}
+                  <Text className="text-sm font-medium text-gray-700">{action.label}</Text>
+                </Pressable>
               ))}
             </View>
-          </SafeAreaView>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      {primaryAction ? (
+        <View testID="task-detail__primary-action-bar" className="absolute bottom-0 left-0 right-0">
+          <PrimaryActionBar
+            primaryLabel={primaryAction.label}
+            onPrimaryPress={() => handleActionPress(primaryAction.actionId)}
+            isPrimaryDisabled={primaryAction.isDisabled}
+          />
         </View>
-      )}
+      ) : null}
     </SafeAreaView>
   );
 }

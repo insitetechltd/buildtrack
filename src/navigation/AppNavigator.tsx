@@ -1,7 +1,14 @@
 import React, { useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import {
+  createBottomTabNavigator,
+  type BottomTabNavigationProp,
+} from "@react-navigation/bottom-tabs";
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationProp,
+  type NativeStackScreenProps,
+} from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
 import { useAuthStore } from "../state/authStore";
@@ -39,14 +46,112 @@ import {
   shouldReturnToCreateTaskShortcut,
 } from "./photoShortcutRoutes";
 import { buildCreateTaskPhotoReturnParams } from "./createTaskRouteParams";
+import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
+import type {
+  AdminDashboardStackParamList,
+  CreateTaskParams,
+  CreateTaskStackParamList,
+  DashboardStackParamList,
+  PhotoAnnotationParams,
+  PhotoSelectionParams,
+  PhotoViewerParams,
+  ProfileStackParamList,
+  ReportsStackParamList,
+  RootTabParamList,
+  SelectedPhoto,
+  TasksStackParamList,
+  UpdateProgressParams,
+} from "./navigationTypes";
 
-const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator<RootTabParamList>();
+const DashboardStackNavigator = createNativeStackNavigator<DashboardStackParamList>();
+const TasksStackNavigator = createNativeStackNavigator<TasksStackParamList>();
+const ProfileStackNavigator = createNativeStackNavigator<ProfileStackParamList>();
+const ReportsStackNavigator = createNativeStackNavigator<ReportsStackParamList>();
+const CreateTaskStackNavigator = createNativeStackNavigator<CreateTaskStackParamList>();
+const AdminDashboardStackNavigator = createNativeStackNavigator<AdminDashboardStackParamList>();
 
-function navigateToProjectPicker(navigation: any, allowBack?: boolean) {
+type RouteStateLike = {
+  index?: number;
+  routeNames?: string[];
+  routes?: Array<{ key: string }>;
+};
+type RootTabLikeNavigation = Pick<
+  BottomTabNavigationProp<RootTabParamList>,
+  "navigate"
+>;
+
+type ProjectPickerNavigation = {
+  navigate:
+    | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
+    | NativeStackNavigationProp<TasksStackParamList>["navigate"];
+  getParent?: () => RootTabLikeNavigation | undefined;
+  getState?: () => RouteStateLike;
+};
+
+type CreateTaskRouteNavigation = {
+  navigate:
+    | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
+    | NativeStackNavigationProp<TasksStackParamList>["navigate"]
+    | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
+  getParent?: () => RootTabLikeNavigation | undefined;
+  getState?: () => RouteStateLike;
+};
+
+type DashboardTaskDetailBackNavigation = Pick<
+  NativeStackNavigationProp<DashboardStackParamList>,
+  "canGoBack" | "getParent" | "getState" | "goBack" | "pop"
+>;
+
+type TasksTaskDetailBackNavigation = Pick<
+  NativeStackNavigationProp<TasksStackParamList>,
+  "canGoBack" | "getState" | "goBack" | "navigate" | "pop"
+>;
+
+type StackBackNavigation = {
+  canGoBack: () => boolean;
+  getState?: () => RouteStateLike;
+  goBack: () => void;
+  pop: (count?: number) => void;
+};
+
+function hasCurrentStackHistory(state?: RouteStateLike) {
+  if (!state) {
+    return false;
+  }
+
+  if (typeof state.index === "number") {
+    return state.index > 0;
+  }
+
+  return Array.isArray(state.routes) && state.routes.length > 1;
+}
+
+function popCurrentStack(navigation: StackBackNavigation) {
+  if (navigation.canGoBack()) {
+    navigation.pop(1);
+    return true;
+  }
+
+  const state = navigation.getState?.() as RouteStateLike | undefined;
+
+  if (hasCurrentStackHistory(state)) {
+    navigation.pop(1);
+    return true;
+  }
+
+  return false;
+}
+
+function navigateToProjectPicker(
+  navigation: ProjectPickerNavigation,
+  allowBack?: boolean,
+) {
   const currentRouteNames = navigation.getState?.()?.routeNames || [];
   if (currentRouteNames.includes("ProjectPicker")) {
-    navigation.navigate("ProjectPicker", { allowBack });
+    (
+      navigation as NativeStackNavigationProp<DashboardStackParamList>
+    ).navigate("ProjectPicker", { allowBack });
     return;
   }
 
@@ -59,18 +164,29 @@ function navigateToProjectPicker(navigation: any, allowBack?: boolean) {
     return;
   }
 
-  navigation.navigate("ProjectPicker", { allowBack });
+  (
+    navigation as NativeStackNavigationProp<DashboardStackParamList>
+  ).navigate("ProjectPicker", { allowBack });
 }
 
-function navigateToCreateTaskRoute(navigation: any, params: Record<string, unknown>) {
+function navigateToCreateTaskRoute(
+  navigation: CreateTaskRouteNavigation,
+  params: CreateTaskParams,
+) {
   const currentRouteNames = navigation.getState?.()?.routeNames || [];
   if (currentRouteNames.includes("CreateTask")) {
-    navigation.navigate("CreateTask", params);
+    (
+      navigation as NativeStackNavigationProp<
+        DashboardStackParamList | TasksStackParamList
+      >
+    ).navigate("CreateTask", params);
     return;
   }
 
   if (currentRouteNames.includes("CreateTaskMain")) {
-    navigation.navigate("CreateTaskMain", params);
+    (
+      navigation as NativeStackNavigationProp<CreateTaskStackParamList>
+    ).navigate("CreateTaskMain", params);
     return;
   }
 
@@ -81,6 +197,27 @@ function navigateToCreateTaskRoute(navigation: any, params: Record<string, unkno
       params,
     });
   }
+}
+
+export function handleDashboardTaskDetailBack(
+  navigation: DashboardTaskDetailBackNavigation,
+) {
+  if (popCurrentStack(navigation)) {
+    return;
+  }
+
+  const parentNav = navigation.getParent?.() as RootTabLikeNavigation | undefined;
+  parentNav?.navigate("Dashboard");
+}
+
+export function handleTasksTaskDetailBack(
+  navigation: TasksTaskDetailBackNavigation,
+) {
+  if (popCurrentStack(navigation)) {
+    return;
+  }
+
+  navigation.navigate("TasksList");
 }
 
 
@@ -109,93 +246,66 @@ function AuthScreens() {
 // Dashboard Stack to handle navigation to other screens
 function DashboardStack() {
   return (
-    <Stack.Navigator 
-      screenOptions={{ 
-        headerShown: false,
-        presentation: "card"
-      }}
-    >
-      <Stack.Screen name="DashboardMain" component={DashboardMainScreen} />
-      <Stack.Screen 
+    <DashboardStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <DashboardStackNavigator.Screen name="DashboardMain" component={DashboardMainScreen} />
+      <DashboardStackNavigator.Screen 
         name="TaskDetailFromDashboard" 
         component={TaskDetailFromDashboardWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="ProjectPicker" 
         component={ProjectPickerScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="UpdateProgress" 
         component={UpdateProgressScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="AddComment" 
         component={AddCommentScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="RejectTask" 
         component={RejectTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="ReassignTask" 
         component={ReassignTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="CreateTask" 
         component={CreateTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="PhotoSelection" 
         component={PhotoSelectionScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <DashboardStackNavigator.Screen 
         name="PhotoAnnotation" 
         component={PhotoAnnotationScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-    </Stack.Navigator>
+    </DashboardStackNavigator.Navigator>
   );
 }
 
-function DashboardMainScreen({ navigation }: { navigation: any }) {
+function DashboardMainScreen({
+  navigation,
+}: NativeStackScreenProps<DashboardStackParamList, "DashboardMain">) {
   return (
     <DashboardRoute
-      onNavigateToTasks={() => navigation.getParent()?.navigate("Tasks")}
+      onNavigateToTasks={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Tasks",
+        )
+      }
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent();
+        const parentNav = navigation.getParent?.() as
+          | BottomTabNavigationProp<RootTabParamList>
+          | undefined;
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
@@ -212,9 +322,15 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
           });
         }
       }}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToDeveloperSettings={() => {
-        const parentNav = navigation.getParent();
+        const parentNav = navigation.getParent?.() as
+          | BottomTabNavigationProp<RootTabParamList>
+          | undefined;
         if (parentNav) {
           parentNav.navigate("Profile", { screen: "DeveloperSettings" });
         }
@@ -229,13 +345,20 @@ function DashboardMainScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function ProjectPickerScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+function ProjectPickerScreenWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<DashboardStackParamList, "ProjectPicker">) {
   const { allowBack = true } = route.params || {};
   return (
     <ProjectPickerScreen
       onNavigateBack={() => navigation.goBack()}
       allowBack={allowBack}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigation.navigate("ProjectPicker", { allowBack });
       }}
@@ -243,21 +366,16 @@ function ProjectPickerScreenWrapper({ route, navigation }: { route: any; navigat
   );
 }
 
-function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; navigation: any }) {
+function TaskDetailFromDashboardWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<DashboardStackParamList, "TaskDetailFromDashboard">) {
   const { taskId, subTaskId } = route.params;
   return (
     <TaskDetailScreen
       taskId={taskId}
       subTaskId={subTaskId}
-      onNavigateBack={() => {
-        // Always navigate to Tasks list, not just go back
-        const parentNav = navigation.getParent();
-        if (parentNav) {
-          parentNav.navigate("Tasks");
-        } else {
-          navigation.goBack();
-        }
-      }}
+      onNavigateBack={() => handleDashboardTaskDetailBack(navigation)}
       onNavigateToTaskDetail={(taskId, subTaskId) => {
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
@@ -275,7 +393,11 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
       onNavigateToRejectTask={(taskId, subTaskId) => {
         navigation.navigate("RejectTask", { taskId, subTaskId });
       }}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -286,95 +408,64 @@ function TaskDetailFromDashboardWrapper({ route, navigation }: { route: any; nav
 // Tasks Stack Navigator to include Task Detail screen and Create Task
 function TasksStack() {
   return (
-    <Stack.Navigator 
-      screenOptions={{ 
-        headerShown: false,
-        presentation: "card"
-      }}
-    >
-      <Stack.Screen name="TasksList" component={ProjectsTasksListScreen} />
-      <Stack.Screen 
+    <TasksStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <TasksStackNavigator.Screen name="TasksList" component={ProjectsTasksListScreen} />
+      <TasksStackNavigator.Screen 
         name="TaskDetail" 
         component={TaskDetailScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="CreateTaskFromTask" 
         component={CreateTaskFromTaskWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="PhotoAnnotation" 
         component={PhotoAnnotationScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="PhotoSelection" 
         component={PhotoSelectionScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="UpdateProgress" 
         component={UpdateProgressScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="AddComment" 
         component={AddCommentScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="RejectTask" 
         component={RejectTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="ReassignTask" 
         component={ReassignTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <TasksStackNavigator.Screen 
         name="CreateTask" 
         component={CreateTaskScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-    </Stack.Navigator>
+    </TasksStackNavigator.Navigator>
   );
 }
 
-function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
+function ProjectsTasksListScreen({
+  navigation,
+}: NativeStackScreenProps<TasksStackParamList, "TasksList">) {
   return (
     <TasksRoute
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent();
+        const parentNav = navigation.getParent?.() as
+          | BottomTabNavigationProp<RootTabParamList>
+          | undefined;
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
@@ -391,10 +482,20 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
           });
         }
       }}
-      onNavigateBack={() => navigation.getParent()?.navigate("Dashboard")}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateBack={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Dashboard",
+        )
+      }
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToDeveloperSettings={() => {
-        const parentNav = navigation.getParent();
+        const parentNav = navigation.getParent?.() as
+          | BottomTabNavigationProp<RootTabParamList>
+          | undefined;
         if (parentNav) {
           parentNav.navigate("Profile", { screen: "DeveloperSettings" });
         }
@@ -406,16 +507,16 @@ function ProjectsTasksListScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+function TaskDetailScreenWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<TasksStackParamList, "TaskDetail">) {
   const { taskId, subTaskId } = route.params;
   return (
     <TaskDetailScreen
       taskId={taskId}
       subTaskId={subTaskId}
-      onNavigateBack={() => {
-        // Always navigate to TasksList, not just go back
-        navigation.navigate("TasksList");
-      }}
+      onNavigateBack={() => handleTasksTaskDetailBack(navigation)}
       onNavigateToTaskDetail={(taskId, subTaskId) => {
         // Navigate to another TaskDetailScreen for sub-tasks
         navigation.navigate("TaskDetail", { taskId, subTaskId });
@@ -433,7 +534,11 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
       onNavigateToRejectTask={(taskId, subTaskId) => {
         navigation.navigate("RejectTask", { taskId, subTaskId });
       }}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -441,7 +546,10 @@ function TaskDetailScreenWrapper({ route, navigation }: { route: any; navigation
   );
 }
 
-function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigation: any }) {
+function CreateTaskFromTaskWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<TasksStackParamList, "CreateTaskFromTask">) {
   const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
   return (
     <CreateTaskScreen
@@ -453,7 +561,15 @@ function CreateTaskFromTaskWrapper({ route, navigation }: { route: any; navigati
   );
 }
 
-function PhotoViewerScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type PhotoViewerScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "PhotoViewer">
+  | NativeStackScreenProps<TasksStackParamList, "PhotoViewer">
+  | NativeStackScreenProps<CreateTaskStackParamList, "PhotoViewer">;
+
+function PhotoViewerScreenWrapper({
+  route,
+  navigation,
+}: PhotoViewerScreenWrapperProps) {
   const { photos, initialIndex, activityInfo } = route.params || {};
   return (
     <PhotoViewerScreen
@@ -465,15 +581,23 @@ function PhotoViewerScreenWrapper({ route, navigation }: { route: any; navigatio
   );
 }
 
-function PhotoAnnotationScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type PhotoAnnotationScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "PhotoAnnotation">
+  | NativeStackScreenProps<TasksStackParamList, "PhotoAnnotation">
+  | NativeStackScreenProps<CreateTaskStackParamList, "PhotoAnnotation">;
+
+function PhotoAnnotationScreenWrapper({
+  route,
+  navigation,
+}: PhotoAnnotationScreenWrapperProps) {
   const { photoUri, photoIndex, returnScreen } = route.params || {};
   
   const handleSave = (annotatedPhotoUri: string) => {
-    console.log('💾 [PhotoAnnotation] Saving annotated photo, navigating back to:', returnScreen);
-    
     // If we came from PhotoSelection, pass the result back via params
     if (returnScreen === 'PhotoSelection' && photoIndex !== undefined) {
-      navigation.navigate(returnScreen, {
+      (
+        navigation as NativeStackNavigationProp<CreateTaskStackParamList>
+      ).navigate("PhotoSelection", {
         annotationResult: annotatedPhotoUri,
         photoIndex: photoIndex,
       });
@@ -485,14 +609,22 @@ function PhotoAnnotationScreenWrapper({ route, navigation }: { route: any; navig
   
   return (
     <PhotoAnnotationScreen
-      photoUri={photoUri}
+      photoUri={photoUri as string}
       onSave={handleSave}
       onCancel={() => navigation.goBack()}
     />
   );
 }
 
-function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type PhotoSelectionScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "PhotoSelection">
+  | NativeStackScreenProps<TasksStackParamList, "PhotoSelection">
+  | NativeStackScreenProps<CreateTaskStackParamList, "PhotoSelection">;
+
+function PhotoSelectionScreenWrapper({
+  route,
+  navigation,
+}: PhotoSelectionScreenWrapperProps) {
   const { taskId, subTaskId, companyId, userId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId } = route.params || {};
   const uploadedUrlsRef = React.useRef<string[] | null>(null);
   
@@ -501,15 +633,6 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
   const effectiveUploadImmediately = uploadImmediately !== undefined 
     ? uploadImmediately 
     : (returnScreen === 'UpdateProgress' || returnScreen === 'CreateTask' ? false : true);
-  
-  // Debug logging
-  console.log('📸 [PhotoSelectionWrapper] Route params:', {
-    returnScreen,
-    uploadImmediately,
-    effectiveUploadImmediately,
-    uploadImmediatelyType: typeof uploadImmediately,
-    shouldUsePhotosSelected: (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false,
-  });
   
   // Listen for when we return from PhotoSelectionScreen with uploaded URLs
   React.useEffect(() => {
@@ -525,9 +648,6 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
   }, [navigation, route.params, returnScreen]);
 
   const handlePhotosUploaded = (photoUrls: string[]) => {
-    console.log('📸 [PhotoSelectionWrapper] handlePhotosUploaded called with:', photoUrls.length, 'photos');
-    console.log('📸 [PhotoSelectionWrapper] returnScreen:', returnScreen);
-    
     if (returnScreen === 'CreateTask') {
       navigation.goBack();
 
@@ -535,7 +655,7 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
         navigateToCreateTaskRoute(
           navigation,
           buildCreateTaskPhotoReturnParams({
-            routeParams: route.params,
+            routeParams: route.params as unknown as CreateTaskParams,
             uploadedPhotoUrls: photoUrls,
           }),
         );
@@ -547,7 +667,7 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
         navigateToCreateTaskRoute(
           navigation,
           buildPhotoShortcutCreateTaskParams({
-            taskId,
+            taskId: taskId as string,
             subTaskId,
             actionType: actionType as "update",
             uploadedPhotoUrls: photoUrls,
@@ -555,49 +675,55 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
         );
       }, 150);
     } else if (returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') {
-      // For update/comment actions, navigate to UpdateProgress screen with uploaded URLs
-      console.log('📸 [PhotoSelectionWrapper] Navigating to UpdateProgress with photos:', photoUrls.length);
-      navigation.navigate("UpdateProgress", {
-        taskId,
+      const updateProgressNavigation =
+        navigation as NativeStackNavigationProp<
+          DashboardStackParamList | TasksStackParamList
+        >;
+
+      updateProgressNavigation.navigate("UpdateProgress", {
+        taskId: taskId as string,
         subTaskId,
         initialCompletionPercentage,
         uploadedPhotoUrls: photoUrls, // Pass uploaded URLs
         actionType: actionType,
         sourceScreen: sourceScreen, // Pass source screen info for navigation back
-        sourceTaskId: sourceTaskId || taskId,
+        sourceTaskId: sourceTaskId || (taskId as string),
         sourceSubTaskId: sourceSubTaskId || subTaskId,
       });
     } else {
-      // Default: navigate to UpdateProgress (for TaskDetailScreen)
-      console.log('📸 [PhotoSelectionWrapper] Default navigation to UpdateProgress');
-      navigation.navigate("UpdateProgress", {
-        taskId,
+      const updateProgressNavigation =
+        navigation as NativeStackNavigationProp<
+          DashboardStackParamList | TasksStackParamList
+        >;
+
+      updateProgressNavigation.navigate("UpdateProgress", {
+        taskId: taskId as string,
         subTaskId,
         initialCompletionPercentage,
         uploadedPhotoUrls: photoUrls, // Also pass URLs in default case
         sourceScreen: sourceScreen, // Pass source screen info for navigation back
-        sourceTaskId: sourceTaskId || taskId,
+        sourceTaskId: sourceTaskId || (taskId as string),
         sourceSubTaskId: sourceSubTaskId || subTaskId,
       });
     }
   };
 
-  const handlePhotosSelected = (photos: any[]) => {
+  const handlePhotosSelected = (photos: unknown[]) => {
+    const normalizedPhotos: SelectedPhoto[] = photos.map((photo) => {
+      const candidate = photo as Partial<SelectedPhoto> | null;
+      return {
+        uri: candidate?.uri ?? "",
+        fileName: candidate?.fileName ?? "",
+        isAnnotated: Boolean(candidate?.isAnnotated),
+        annotatedUri: candidate?.annotatedUri,
+      };
+    });
+
     // For CreateTaskScreen or UpdateProgressScreen: go back and update params on the previous screen
     if (returnScreen === 'CreateTask') {
-      console.log('📸 [PhotoSelectionWrapper] Going back to CreateTaskMain with photos:', photos);
-      console.log('📸 [PhotoSelectionWrapper] Photos to pass:', photos.map((p: any) => ({
-        fileName: p.fileName,
-        uri: p.uri?.substring(0, 50) + '...',
-      })));
-      
       const navParams = buildCreateTaskPhotoReturnParams({
-        routeParams: route.params,
-        selectedPhotos: photos,
-      });
-      console.log('📸 [PhotoSelectionWrapper] Navigating with params:', {
-        ...navParams,
-        selectedPhotosCount: navParams.selectedPhotos?.length || 0,
+        routeParams: route.params as unknown as CreateTaskParams,
+        selectedPhotos: normalizedPhotos,
       });
 
       navigateToCreateTaskRoute(navigation, navParams);
@@ -609,23 +735,16 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
           navigateToCreateTaskRoute(
             navigation,
             buildPhotoShortcutCreateTaskParams({
-              taskId,
+              taskId: taskId as string,
               subTaskId,
               actionType: "update",
-              selectedPhotos: photos,
+              selectedPhotos: normalizedPhotos,
             }),
           );
         }, 150);
         return;
       }
 
-      // For UpdateProgressScreen: navigate back with selected photos (not uploaded yet)
-      console.log('📸 [PhotoSelectionWrapper] Going back to UpdateProgress with photos:', photos.length);
-      console.log('📸 [PhotoSelectionWrapper] Photos to pass:', photos.map((p: any) => ({
-        fileName: p.fileName,
-        uri: p.uri?.substring(0, 50) + '...',
-      })));
-      
       // Navigate to UpdateProgress with selected photos
       // PhotoSelection and UpdateProgress are in the same stack, so navigate directly
       // First go back to remove PhotoSelection from stack, then navigate to UpdateProgress
@@ -633,15 +752,19 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
       
       // Use setTimeout to ensure goBack completes before navigating
       setTimeout(() => {
-        console.log('📸 [PhotoSelectionWrapper] Navigating to UpdateProgress after goBack');
         // Navigate within the same stack (TasksStack or DashboardStack)
-        navigation.navigate("UpdateProgress", {
-          taskId,
+        const updateProgressNavigation =
+          navigation as NativeStackNavigationProp<
+            DashboardStackParamList | TasksStackParamList
+          >;
+
+        updateProgressNavigation.navigate("UpdateProgress", {
+          taskId: taskId as string,
           subTaskId,
           initialCompletionPercentage,
-          selectedPhotos: photos, // Pass photo objects, not URLs
+          selectedPhotos: normalizedPhotos, // Pass photo objects, not URLs
           sourceScreen: sourceScreen,
-          sourceTaskId: sourceTaskId || taskId,
+          sourceTaskId: sourceTaskId || (taskId as string),
           sourceSubTaskId: sourceSubTaskId || subTaskId,
         });
       }, 150);
@@ -653,17 +776,22 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
   
   return (
     <PhotoSelectionScreen
-      taskId={taskId}
+      taskId={taskId as string}
       subTaskId={subTaskId}
-      companyId={companyId}
-      userId={userId}
+      companyId={companyId as string}
+      userId={userId as string}
       initialCompletionPercentage={initialCompletionPercentage || 0}
       initialPhotos={initialPhotos}
       entityType={entityType}
       uploadImmediately={effectiveUploadImmediately}
       onNavigateBack={() => navigation.goBack()}
       onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number, uploadedPhotoUrls?: string[]) => {
-        navigation.navigate("UpdateProgress", {
+        const updateProgressNavigation =
+          navigation as NativeStackNavigationProp<
+            DashboardStackParamList | TasksStackParamList
+          >;
+
+        updateProgressNavigation.navigate("UpdateProgress", {
           taskId,
           subTaskId,
           initialCompletionPercentage,
@@ -677,14 +805,6 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
       onPhotosSelected={(() => {
         // Check if we should use onPhotosSelected (when uploadImmediately is false)
         const shouldUsePhotosSelected = (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false;
-        console.log('📸 [PhotoSelectionWrapper] onPhotosSelected condition check:', {
-          returnScreen,
-          uploadImmediately,
-          effectiveUploadImmediately,
-          uploadImmediatelyType: typeof uploadImmediately,
-          shouldUsePhotosSelected,
-          willPassCallback: shouldUsePhotosSelected,
-        });
         if (shouldUsePhotosSelected) {
           return handlePhotosSelected;
         }
@@ -694,25 +814,15 @@ function PhotoSelectionScreenWrapper({ route, navigation }: { route: any; naviga
   );
 }
 
-// WRAPPER: CreateTaskScreenWrapper
-// USED WHEN: Navigating directly to CreateTaskScreen (not through CreateTaskMain)
-// PURPOSE: Extracts route.params and passes them as props to CreateTaskScreen
-function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('📦 [CreateTaskScreenWrapper] ⚠️ THIS WRAPPER IS BEING USED');
-  console.log('📦 [CreateTaskScreenWrapper] Used when navigating directly to CreateTaskScreen');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+type CreateTaskScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "CreateTask">
+  | NativeStackScreenProps<TasksStackParamList, "CreateTask">;
+
+function CreateTaskScreenWrapper({
+  route,
+  navigation,
+}: CreateTaskScreenWrapperProps) {
   const { parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId, uploadedPhotoUrls, selectedPhotos } = route.params || {};
-  console.log('📦 [CreateTaskScreenWrapper] Route params:', {
-    hasSelectedPhotos: !!selectedPhotos,
-    selectedPhotosCount: selectedPhotos?.length || 0,
-    allParams: Object.keys(route.params || {}),
-  });
-  if (selectedPhotos && selectedPhotos.length > 0) {
-    console.log('📦 [CreateTaskScreenWrapper] ✅ Passing selectedPhotos to CreateTaskScreen:', selectedPhotos.length);
-  } else {
-    console.log('📦 [CreateTaskScreenWrapper] ❌ No selectedPhotos to pass');
-  }
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
@@ -721,7 +831,7 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
       editTaskId={editTaskId}
       actionType={actionType}
       updateTargetSubTaskId={updateTargetSubTaskId}
-      uploadedPhotoUrls={uploadedPhotoUrls}
+      uploadedPhotoUrls={uploadedPhotoUrls as string[] | undefined}
       selectedPhotos={selectedPhotos}
       onClearDraftPayloads={() => {
         navigation.setParams({
@@ -729,7 +839,11 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
           uploadedPhotoUrls: undefined,
         });
       }}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -737,25 +851,28 @@ function CreateTaskScreenWrapper({ route, navigation }: { route: any; navigation
   );
 }
 
-function UpdateProgressScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type UpdateProgressScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "UpdateProgress">
+  | NativeStackScreenProps<TasksStackParamList, "UpdateProgress">;
+
+function UpdateProgressScreenWrapper({
+  route,
+  navigation,
+}: UpdateProgressScreenWrapperProps) {
   // Extract params to pass to UpdateProgressScreen
-  const params = route.params || {};
-  const uploadedPhotoUrls = params.uploadedPhotoUrls; // Legacy: already uploaded URLs
-  const selectedPhotos = params.selectedPhotos; // New: photo objects not yet uploaded
-  
-  console.log('📸 [UpdateProgressWrapper] Route params:', {
-    hasUploadedPhotoUrls: !!uploadedPhotoUrls,
-    uploadedPhotoUrlsCount: uploadedPhotoUrls?.length || 0,
-    hasSelectedPhotos: !!selectedPhotos,
-    selectedPhotosCount: selectedPhotos?.length || 0,
-    allParams: Object.keys(params),
-  });
+  const params = route.params;
+  const uploadedPhotoUrls = params?.uploadedPhotoUrls; // Legacy: already uploaded URLs
+  const selectedPhotos = params?.selectedPhotos; // New: photo objects not yet uploaded
   
   return (
     <UpdateProgressScreen 
       uploadedPhotoUrls={uploadedPhotoUrls}
       selectedPhotos={selectedPhotos}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -763,10 +880,18 @@ function UpdateProgressScreenWrapper({ route, navigation }: { route: any; naviga
   );
 }
 
-function AddCommentScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type AddCommentScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "AddComment">
+  | NativeStackScreenProps<TasksStackParamList, "AddComment">;
+
+function AddCommentScreenWrapper({ navigation }: AddCommentScreenWrapperProps) {
   return (
     <AddCommentScreen 
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -774,10 +899,18 @@ function AddCommentScreenWrapper({ route, navigation }: { route: any; navigation
   );
 }
 
-function RejectTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type RejectTaskScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "RejectTask">
+  | NativeStackScreenProps<TasksStackParamList, "RejectTask">;
+
+function RejectTaskScreenWrapper({ navigation }: RejectTaskScreenWrapperProps) {
   return (
     <RejectTaskScreen 
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -785,10 +918,20 @@ function RejectTaskScreenWrapper({ route, navigation }: { route: any; navigation
   );
 }
 
-function ReassignTaskScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+type ReassignTaskScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "ReassignTask">
+  | NativeStackScreenProps<TasksStackParamList, "ReassignTask">;
+
+function ReassignTaskScreenWrapper({
+  navigation,
+}: ReassignTaskScreenWrapperProps) {
   return (
     <ReassignTaskScreen 
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -799,20 +942,27 @@ function ReassignTaskScreenWrapper({ route, navigation }: { route: any; navigati
 // Profile Stack
 function ProfileStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProfileMain" component={ProfileMainScreen} />
-      <Stack.Screen name="DeveloperSettings" component={DeveloperSettingsScreenWrapper} />
-      <Stack.Screen name="PendingUsers" component={PendingUsersScreenWrapper} />
-    </Stack.Navigator>
+    <ProfileStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <ProfileStackNavigator.Screen name="ProfileMain" component={ProfileMainScreen} />
+      <ProfileStackNavigator.Screen
+        name="DeveloperSettings"
+        component={DeveloperSettingsScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen name="PendingUsers" component={PendingUsersScreenWrapper} />
+    </ProfileStackNavigator.Navigator>
   );
 }
 
-function ProfileMainScreen({ navigation }: { navigation: any }) {
+function ProfileMainScreen({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "ProfileMain">) {
   return (
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent();
+        const parentNav = navigation.getParent?.() as
+          | BottomTabNavigationProp<RootTabParamList>
+          | undefined;
         if (parentNav) {
           // Navigate to CreateTask tab with clearForm flag
           // Use a unique timestamp to force navigation even if already on the tab
@@ -833,13 +983,15 @@ function ProfileMainScreen({ navigation }: { navigation: any }) {
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
       onNavigateToProfile={() => {}} // Already on profile screen
       onNavigateToProjectPicker={(allowBack?: boolean) => {
-        navigation.getParent()?.navigate("ProjectPicker", { allowBack });
+        navigateToProjectPicker(navigation, allowBack);
       }}
     />
   );
 }
 
-function PendingUsersScreenWrapper({ navigation }: { navigation: any }) {
+function PendingUsersScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "PendingUsers">) {
   return (
     <PendingUsersScreen
       onNavigateBack={() => navigation.goBack()}
@@ -847,7 +999,9 @@ function PendingUsersScreenWrapper({ navigation }: { navigation: any }) {
   );
 }
 
-function DeveloperSettingsScreenWrapper({ navigation }: { navigation: any }) {
+function DeveloperSettingsScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "DeveloperSettings">) {
   return (
     <DeveloperSettingsScreen
       onNavigateBack={() => navigation.goBack()}
@@ -855,20 +1009,24 @@ function DeveloperSettingsScreenWrapper({ navigation }: { navigation: any }) {
   );
 }
 
-function DevAdminScreenWrapper({ navigation }: { navigation: any }) {
+function DevAdminScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "DevAdmin">) {
   return <DevAdminScreen onNavigateBack={() => navigation.goBack()} />;
 }
 
 // Reports Stack
 function ReportsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ReportsMain" component={ReportsMainScreen} />
-    </Stack.Navigator>
+    <ReportsStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <ReportsStackNavigator.Screen name="ReportsMain" component={ReportsMainScreen} />
+    </ReportsStackNavigator.Navigator>
   );
 }
 
-function ReportsMainScreen({ navigation }: { navigation: any }) {
+function ReportsMainScreen({
+  navigation,
+}: NativeStackScreenProps<ReportsStackParamList, "ReportsMain">) {
   return (
     <ReportsScreen
       onNavigateBack={() => navigation.goBack()}
@@ -879,30 +1037,21 @@ function ReportsMainScreen({ navigation }: { navigation: any }) {
 // Create Task Stack
 function CreateTaskStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="CreateTaskMain" component={CreateTaskMainScreen} />
-      <Stack.Screen 
+    <CreateTaskStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <CreateTaskStackNavigator.Screen name="CreateTaskMain" component={CreateTaskMainScreen} />
+      <CreateTaskStackNavigator.Screen 
         name="PhotoSelection" 
         component={PhotoSelectionScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <CreateTaskStackNavigator.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-      <Stack.Screen 
+      <CreateTaskStackNavigator.Screen 
         name="PhotoAnnotation" 
         component={PhotoAnnotationScreenWrapper}
-        options={{
-          presentation: "card"
-        }}
       />
-    </Stack.Navigator>
+    </CreateTaskStackNavigator.Navigator>
   );
 }
 
@@ -910,18 +1059,34 @@ function CreateTaskStack() {
 // USED WHEN: Navigating to "CreateTaskMain" screen (main entry point for Create Task)
 // PURPOSE: Handles navigation params, stores selectedPhotos in state, and passes to CreateTaskScreen
 // NOTE: This is the PRIMARY wrapper used when returning from PhotoSelectionScreen
-function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: any }) {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('📱 [CreateTaskMainScreen] ⚠️ THIS WRAPPER IS BEING USED');
-  console.log('📱 [CreateTaskMainScreen] Used when navigating to CreateTaskMain (main entry point)');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  
+function CreateTaskMainScreen({
+  navigation,
+  route,
+}: NativeStackScreenProps<CreateTaskStackParamList, "CreateTaskMain">) {
   // Use state to store selectedPhotos so they persist and trigger re-renders
-  const [selectedPhotosState, setSelectedPhotosState] = React.useState<any[] | undefined>(undefined);
+  const [selectedPhotosState, setSelectedPhotosState] = React.useState<CreateTaskParams["selectedPhotos"]>(
+    undefined,
+  );
   const [uploadedPhotoUrlsState, setUploadedPhotoUrlsState] = React.useState<string[] | undefined>(undefined);
   
   // Try both direct params and nested params (for tab navigation)
-  const params = route.params || {};
+  const normalizeSelectedPhotos = (photos: unknown): CreateTaskParams["selectedPhotos"] => {
+    if (!Array.isArray(photos)) {
+      return undefined;
+    }
+
+    return photos.map((photo) => {
+      const candidate = photo as SelectedPhoto;
+      return {
+        uri: candidate.uri,
+        fileName: candidate.fileName,
+        isAnnotated: Boolean(candidate.isAnnotated),
+        annotatedUri: candidate.annotatedUri,
+      };
+    });
+  };
+
+  const params = (route.params || {}) as CreateTaskParams;
   const parentTaskId = params.parentTaskId;
   const parentSubTaskId = params.parentSubTaskId;
   const editTaskId = params.editTaskId;
@@ -931,7 +1096,7 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
   const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use
-  const selectedPhotosFromParams = params.selectedPhotos; // Photos selected from PhotoSelectionScreen
+  const selectedPhotosFromParams = normalizeSelectedPhotos(params.selectedPhotos); // Photos selected from PhotoSelectionScreen
   const uploadedPhotoUrlsFromParams = params.uploadedPhotoUrls; // Uploaded URLs returned from PhotoSelectionScreen
   const clearForm = params.clearForm; // Flag to clear form when "Create New Task" is pressed
   const clearFormTimestamp = params._timestamp; // Timestamp to track when clearForm was set
@@ -939,12 +1104,9 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   // Update state when params change
   React.useEffect(() => {
     if (selectedPhotosFromParams && Array.isArray(selectedPhotosFromParams) && selectedPhotosFromParams.length > 0) {
-      console.log('📸 [CreateTaskMainScreen] ✅ Updating selectedPhotosState from params:', selectedPhotosFromParams.length);
       setSelectedPhotosState(selectedPhotosFromParams);
       // Clear params after storing in state
       navigation.setParams({ selectedPhotos: undefined });
-    } else {
-      console.log('📸 [CreateTaskMainScreen] ⏸️ No selectedPhotosFromParams to update state');
     }
   }, [selectedPhotosFromParams, navigation]);
 
@@ -959,17 +1121,10 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   React.useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       // Check params again on focus
-      const currentParams = route.params || {};
-      const currentSelectedPhotos = currentParams.selectedPhotos;
+      const currentParams = (route.params || {}) as CreateTaskParams;
+      const currentSelectedPhotos = normalizeSelectedPhotos(currentParams.selectedPhotos);
       const currentUploadedPhotoUrls = currentParams.uploadedPhotoUrls;
-      console.log('📸 [CreateTaskMainScreen] 🔍 Focus event - checking params:', {
-        hasSelectedPhotos: !!currentSelectedPhotos,
-        count: currentSelectedPhotos?.length || 0,
-        hasUploadedPhotoUrls: !!currentUploadedPhotoUrls,
-        uploadedCount: currentUploadedPhotoUrls?.length || 0,
-      });
       if (currentSelectedPhotos && Array.isArray(currentSelectedPhotos) && currentSelectedPhotos.length > 0) {
-        console.log('📸 [CreateTaskMainScreen] ✅ Focus: Found selectedPhotos in params:', currentSelectedPhotos.length);
         setSelectedPhotosState(currentSelectedPhotos);
         navigation.setParams({ selectedPhotos: undefined });
       }
@@ -984,40 +1139,6 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   // Use state value or params value (state takes precedence)
   const selectedPhotos = selectedPhotosState || selectedPhotosFromParams;
   const uploadedPhotoUrls = uploadedPhotoUrlsState || uploadedPhotoUrlsFromParams;
-  
-  console.log('📸 [CreateTaskMainScreen] Current selectedPhotos to pass:', {
-    fromState: selectedPhotosState?.length || 0,
-    fromParams: selectedPhotosFromParams?.length || 0,
-    final: selectedPhotos?.length || 0,
-  });
-  
-  // Log params whenever route changes
-  React.useEffect(() => {
-    console.log('🎯 [CreateTaskMainScreen] Route params changed:', {
-      parentTaskId,
-      parentSubTaskId,
-      editTaskId,
-      actionType,
-      sourceTaskId,
-      sourceSubTaskId,
-      sourceScreen,
-      hasEditTaskId: !!editTaskId,
-      hasSelectedPhotos: !!selectedPhotos,
-      selectedPhotosCount: selectedPhotos?.length || 0,
-      allParams: Object.keys(params),
-      routeName: route.name,
-      routeKey: route.key
-    });
-    if (selectedPhotos && selectedPhotos.length > 0) {
-      console.log('📸 [CreateTaskMainScreen] ✅ Passing selectedPhotos to CreateTaskScreen:', selectedPhotos.length);
-      console.log('📸 [CreateTaskMainScreen] Photo details:', selectedPhotos.map((p: any) => ({
-        fileName: p.fileName,
-        uri: p.uri?.substring(0, 50) + '...',
-      })));
-    } else {
-      console.log('📸 [CreateTaskMainScreen] ❌ No selectedPhotos to pass to CreateTaskScreen');
-    }
-  }, [route.params, parentTaskId, parentSubTaskId, editTaskId, actionType, sourceTaskId, sourceSubTaskId, sourceScreen, selectedPhotos]);
 
   // Also listen for navigation focus to catch params that arrive late (already handled above)
   
@@ -1054,7 +1175,6 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
   // Route to appropriate screen based on actionType
   // For now, all actions go through CreateTaskScreen which will handle them
   // In the future, we can create separate screens for each action type
-  console.log('📸 [CreateTaskMainScreen] Rendering CreateTaskScreen with selectedPhotos:', selectedPhotos?.length || 0);
   return (
     <CreateTaskScreen
       onNavigateBack={handleNavigateBack}
@@ -1075,7 +1195,11 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
       }}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -1086,23 +1210,35 @@ function CreateTaskMainScreen({ navigation, route }: { navigation: any; route: a
 // Admin Dashboard Stack
 function AdminDashboardStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="AdminDashboardMain" component={AdminDashboardMainScreen} />
-      <Stack.Screen name="ProjectsList" component={ProjectsListScreen} />
-      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreenWrapper} />
-      <Stack.Screen name="CreateProject" component={CreateProjectMainScreen} />
-      <Stack.Screen name="UserManagement" component={UserManagementMainScreen} />
-      <Stack.Screen name="DevAdmin" component={DevAdminScreenWrapper} />
-    </Stack.Navigator>
+    <AdminDashboardStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <AdminDashboardStackNavigator.Screen
+        name="AdminDashboardMain"
+        component={AdminDashboardMainScreen}
+      />
+      <AdminDashboardStackNavigator.Screen name="ProjectsList" component={ProjectsListScreen} />
+      <AdminDashboardStackNavigator.Screen
+        name="ProjectDetail"
+        component={ProjectDetailScreenWrapper}
+      />
+      <AdminDashboardStackNavigator.Screen name="CreateProject" component={CreateProjectMainScreen} />
+      <AdminDashboardStackNavigator.Screen name="UserManagement" component={UserManagementMainScreen} />
+      <AdminDashboardStackNavigator.Screen name="DevAdmin" component={DevAdminScreenWrapper} />
+    </AdminDashboardStackNavigator.Navigator>
   );
 }
 
-function AdminDashboardMainScreen({ navigation }: { navigation: any }) {
+function AdminDashboardMainScreen({
+  navigation,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "AdminDashboardMain">) {
   return (
     <AdminDashboardScreen
       onNavigateToProjects={() => navigation.navigate("ProjectsList")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
-      onNavigateToProfile={() => navigation.getParent()?.navigate("Profile")}
+      onNavigateToProfile={() =>
+        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
+          "Profile",
+        )
+      }
       onNavigateToDevAdmin={() => navigation.navigate("DevAdmin")}
     />
   );
@@ -1111,26 +1247,35 @@ function AdminDashboardMainScreen({ navigation }: { navigation: any }) {
 // Projects Stack (Admin Only) - Kept for backwards compatibility
 function ProjectsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProjectsList" component={ProjectsListScreen} />
-      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreenWrapper} />
-      <Stack.Screen name="CreateProject" component={CreateProjectMainScreen} />
-      <Stack.Screen name="UserManagement" component={UserManagementMainScreen} />
-    </Stack.Navigator>
+    <AdminDashboardStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <AdminDashboardStackNavigator.Screen name="ProjectsList" component={ProjectsListScreen} />
+      <AdminDashboardStackNavigator.Screen
+        name="ProjectDetail"
+        component={ProjectDetailScreenWrapper}
+      />
+      <AdminDashboardStackNavigator.Screen name="CreateProject" component={CreateProjectMainScreen} />
+      <AdminDashboardStackNavigator.Screen name="UserManagement" component={UserManagementMainScreen} />
+    </AdminDashboardStackNavigator.Navigator>
   );
 }
 
 // Projects Stack for Non-Admin Users
 function UserProjectsStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ProjectsList" component={ProjectsListScreen} />
-      <Stack.Screen name="ProjectDetail" component={ProjectDetailScreenWrapper} />
-    </Stack.Navigator>
+    <AdminDashboardStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
+      <AdminDashboardStackNavigator.Screen name="ProjectsList" component={ProjectsListScreen} />
+      <AdminDashboardStackNavigator.Screen
+        name="ProjectDetail"
+        component={ProjectDetailScreenWrapper}
+      />
+    </AdminDashboardStackNavigator.Navigator>
   );
 }
 
-function ProjectsListScreen({ navigation, route }: { navigation: any; route: any }) {
+function ProjectsListScreen({
+  navigation,
+  route,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "ProjectsList">) {
   const newProjectId = route.params?.newProjectId;
   
   return (
@@ -1146,7 +1291,10 @@ function ProjectsListScreen({ navigation, route }: { navigation: any; route: any
   );
 }
 
-function ProjectDetailScreenWrapper({ route, navigation }: { route: any; navigation: any }) {
+function ProjectDetailScreenWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "ProjectDetail">) {
   const { projectId } = route.params;
   return (
     <ProjectDetailScreen
@@ -1156,7 +1304,9 @@ function ProjectDetailScreenWrapper({ route, navigation }: { route: any; navigat
   );
 }
 
-function CreateProjectMainScreen({ navigation }: { navigation: any }) {
+function CreateProjectMainScreen({
+  navigation,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "CreateProject">) {
   return (
     <CreateProjectScreen
       onNavigateBack={(projectId?: string) => {
@@ -1167,7 +1317,9 @@ function CreateProjectMainScreen({ navigation }: { navigation: any }) {
   );
 }
 
-function UserManagementMainScreen({ navigation }: { navigation: any }) {
+function UserManagementMainScreen({
+  navigation,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "UserManagement">) {
   return (
     <UserManagementScreen
       onNavigateBack={() => navigation.goBack()}
@@ -1188,10 +1340,14 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#3b82f6",
+        tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#6b7280",
         tabBarStyle: {
-          display: 'none',
+          height: 64,
+          paddingTop: 8,
+          paddingBottom: 8,
+          borderTopColor: "#e5e7eb",
+          backgroundColor: "#ffffff",
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -1209,16 +1365,12 @@ function MainTabs() {
           name="Dashboard"
           component={DashboardStack}
           options={{
-            tabBarLabel: "Home",
+            tabBarLabel: "Dashboard",
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="hammer-outline" size={size} color={color} />
             ),
             tabBarBadge: badgeCount,
             tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
-            tabBarItemStyle: {
-              maxWidth: 100,
-              marginRight: 'auto',
-            },
           }}
         />
       )}
@@ -1236,22 +1388,29 @@ function MainTabs() {
       ) : null}
       {!isAdmin(user) && (
         <Tab.Screen
+          name="Tasks"
+          component={TasksStack}
+          options={{
+            tabBarLabel: "Tasks",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="list-outline" size={size} color={color} />
+            ),
+          }}
+        />
+      )}
+      {!isAdmin(user) && (
+        <Tab.Screen
           name="CreateTask"
           component={CreateTaskStack}
           options={{
-            tabBarLabel: "New",
-            tabBarIcon: ({ focused }) => (
-              <View style={{ marginTop: -5 }}>
-                <Ionicons 
-                  name="add-circle" 
-                  size={32} 
-                  color="#f97316" 
-                />
-              </View>
+            tabBarLabel: "Create",
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons
+                name="add-circle-outline"
+                size={size}
+                color={color}
+              />
             ),
-            tabBarItemStyle: {
-              maxWidth: 100,
-            },
           }}
         />
       )}
@@ -1264,10 +1423,6 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="bar-chart-outline" size={size} color={color} />
             ),
-            tabBarItemStyle: {
-              maxWidth: 100,
-              marginLeft: 'auto',
-            },
           }}
         />
       )}
@@ -1279,16 +1434,6 @@ function MainTabs() {
           tabBarButton: () => null, // Hide from tab bar
         }}
       />
-      {/* Tasks Screen - Hidden from tab bar but accessible via navigation */}
-      {!isAdmin(user) && (
-        <Tab.Screen
-          name="Tasks"
-          component={TasksStack}
-          options={{
-            tabBarButton: () => null, // Hide from tab bar
-          }}
-        />
-      )}
     </Tab.Navigator>
   );
 }

@@ -1,5 +1,14 @@
-import React from "react";
-import { View, Text, ScrollView, Pressable, TextInput, Image } from "react-native";
+import React, { useCallback, useMemo, useRef } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  TextInput,
+  Image,
+  NativeSyntheticEvent,
+  TextInputKeyPressEventData,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +16,12 @@ import { useNavigation } from "@react-navigation/native";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
 import { useTranslation } from "../utils/useTranslation";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 import {
   useRejectTaskViewAdapter,
   type RejectTaskScreenProps,
@@ -19,6 +34,44 @@ export default function RejectTaskScreen({
   const navigation = useNavigation<any>();
   const t = useTranslation();
   const { output, actions } = useRejectTaskViewAdapter();
+  const rejectReasonInputRef = useRef<TextInput>(null);
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "reason", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "reason" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      rejectReasonInputRef.current?.blur?.();
+      return;
+    }
+
+    rejectReasonInputRef.current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "reason", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "reason" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleReasonKeyPress = useCallback(
+    (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus("reason", getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -101,12 +154,19 @@ export default function RejectTaskScreen({
             Reason for Rejection <Text className="text-red-500">*</Text>
           </Text>
           <TextInput
+            ref={rejectReasonInputRef}
             className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
             placeholder="Please provide a reason for rejecting this task..."
             value={output.rejectForm.reason}
             onChangeText={actions.setRejectReason}
             multiline
             textAlignVertical="top"
+            returnKeyType="done"
+            onKeyPress={handleReasonKeyPress}
+            onSubmitEditing={() => {
+              rejectReasonInputRef.current?.blur();
+            }}
+            blurOnSubmit={false}
           />
         </View>
       </ScrollView>

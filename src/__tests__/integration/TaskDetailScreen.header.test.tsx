@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../../screens/TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
@@ -127,7 +127,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByText("Task Details")).toBeTruthy();
     expect(screen.getByText("Modern UI")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("modernHeader-back"));
+    fireEvent.press(screen.getByTestId("app-screen-header__back"));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
@@ -245,5 +245,115 @@ describe("TaskDetailScreen header regression", () => {
       "update",
       "subtask-1",
     );
+  });
+
+  it("renders the activity timeline title when activities are available", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: {
+        readiness: {
+          hasUsableData: true,
+        },
+        header: {
+          title: "Task Details",
+        },
+        banners: [],
+        detailSections: [],
+        assigners: [],
+        assignees: [],
+        activities: [
+          {
+            id: "activity-1",
+            userId: "user-1",
+            userName: "Sam",
+            timestamp: "2026-07-02T10:00:00.000Z",
+            description: "Submitted for review",
+            activityType: "status_change",
+            density: "standard",
+            structuralState: "stale",
+            accessibilityLabel: "Submitted for review",
+            isEmpty: false,
+            isLoading: false,
+            isStale: true,
+            isDisabled: false,
+            photos: [],
+          },
+        ],
+        childTasks: [],
+        actionItems: [],
+      },
+      actions: {
+        acceptTask: jest.fn(),
+        declineTask: jest.fn(),
+        submitForReview: jest.fn(),
+        approveTask: jest.fn(),
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByText("Activity")).toBeTruthy();
+  });
+
+  it("promotes one primary footer action and keeps the rest in secondary actions", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: {
+        readiness: {
+          hasUsableData: true,
+        },
+        header: {
+          title: "Task Details",
+        },
+        banners: [],
+        detailSections: [],
+        assigners: [],
+        assignees: [],
+        activities: [],
+        childTasks: [],
+        actionItems: [
+          {
+            id: "action-decline",
+            actionId: "decline_task",
+            label: "Decline Task",
+            icon: "close-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "stale",
+          },
+          {
+            id: "action-accept",
+            actionId: "accept_task",
+            label: "Accept Task",
+            icon: "checkmark-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "stale",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "stale",
+          },
+        ],
+      },
+      actions: {
+        acceptTask: jest.fn(),
+        declineTask: jest.fn(),
+        submitForReview: jest.fn(),
+        approveTask: jest.fn(),
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    const footer = screen.getByTestId("task-detail__primary-action-bar");
+    expect(within(footer).getByText("Accept Task")).toBeTruthy();
+
+    const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
+    expect(within(secondaryActions).getByText("Decline Task")).toBeTruthy();
+    expect(within(secondaryActions).getByText("Add Comment")).toBeTruthy();
   });
 });

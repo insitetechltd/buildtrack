@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Modal,
+  NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  TextInputKeyPressEventData,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -27,6 +29,12 @@ import {
 } from "@/types/buildtrack";
 import { cn } from "@/utils/cn";
 import { useDateFormatter } from "@/utils/dateFormatter";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "@/utils/formNavigation";
 
 interface EditProjectModalProps {
   visible: boolean;
@@ -35,6 +43,8 @@ interface EditProjectModalProps {
   onSave: (project: Project) => Promise<void> | void;
   onSaveSuccess: () => Promise<void> | void;
 }
+
+type EditProjectFieldId = "name" | "description" | "location" | "submit";
 
 export function EditProjectModal({
   visible,
@@ -45,6 +55,9 @@ export function EditProjectModal({
 }: EditProjectModalProps) {
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
+  const nameInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
+  const locationInputRef = useRef<TextInput>(null);
   const { getUsersByCompany } = useUserStoreWithInit();
   const {
     getLeadPMForProject,
@@ -121,6 +134,59 @@ export function EditProjectModal({
   const selectedLeadPmLabel = selectedLeadPmUser
     ? `${selectedLeadPmUser.name} (${selectedLeadPmUser.role})`
     : "No Lead PM (Select one)";
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "name", isFocusable: true },
+        { fieldId: "description", isFocusable: true },
+        { fieldId: "location", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: EditProjectFieldId | null) => {
+    if (!fieldId || fieldId === "submit") {
+      nameInputRef.current?.blur?.();
+      descriptionInputRef.current?.blur?.();
+      locationInputRef.current?.blur?.();
+      return;
+    }
+
+    const focusTargetMap = {
+      name: nameInputRef,
+      description: descriptionInputRef,
+      location: locationInputRef,
+    } satisfies Record<Exclude<EditProjectFieldId, "submit">, React.RefObject<TextInput | null>>;
+
+    focusTargetMap[fieldId].current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (
+      activeFieldId: Exclude<EditProjectFieldId, "submit">,
+      direction: "next" | "previous" = "next",
+    ) => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as EditProjectFieldId | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: Exclude<EditProjectFieldId, "submit">,
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
@@ -230,17 +296,25 @@ export function EditProjectModal({
                     Project Name <Text className="text-red-500">*</Text>
                   </Text>
                   <TextInput
+                    ref={nameInputRef}
                     className="bg-gray-50 text-xl text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
                     placeholder="Enter project name"
                     value={formData.name}
                     onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
                     maxLength={100}
+                    returnKeyType="next"
+                    onKeyPress={(event) => handleFieldKeyPress("name", event)}
+                    onSubmitEditing={() => {
+                      moveFormFocus("name");
+                    }}
+                    blurOnSubmit={false}
                   />
                 </View>
 
                 <View>
                   <Text className="mb-2 text-base font-medium text-gray-700">Description</Text>
                   <TextInput
+                    ref={descriptionInputRef}
                     className="bg-gray-50 text-xl text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
                     placeholder="Project description"
                     value={formData.description}
@@ -251,6 +325,12 @@ export function EditProjectModal({
                     numberOfLines={3}
                     textAlignVertical="top"
                     maxLength={500}
+                    returnKeyType="next"
+                    onKeyPress={(event) => handleFieldKeyPress("description", event)}
+                    onSubmitEditing={() => {
+                      moveFormFocus("description");
+                    }}
+                    blurOnSubmit={false}
                   />
                 </View>
 
@@ -314,6 +394,7 @@ export function EditProjectModal({
 
               <View>
                 <TextInput
+                  ref={locationInputRef}
                   className="bg-gray-50 text-lg text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
                   placeholder="Enter full address (street, city, state/province, postal code, country)"
                   value={formData.location}
@@ -321,6 +402,12 @@ export function EditProjectModal({
                   multiline
                   numberOfLines={5}
                   textAlignVertical="top"
+                  returnKeyType="done"
+                  onKeyPress={(event) => handleFieldKeyPress("location", event)}
+                  onSubmitEditing={() => {
+                    locationInputRef.current?.blur();
+                  }}
+                  blurOnSubmit={false}
                 />
               </View>
             </View>

@@ -13,8 +13,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
+import AdminOverviewHero from "../components/admin/AdminOverviewHero";
 import ModalHandle from "../components/ModalHandle";
 import StandardHeader from "../components/StandardHeader";
+import ScreenSection from "../components/ui/ScreenSection";
 import { cn } from "../utils/cn";
 import type {
   AdminDashboardBannerSettingsModel,
@@ -285,7 +287,6 @@ function BannerSettingsModal({
 export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
   const { output, actions } = useAdminDashboardViewAdapter(props);
   const RefreshControlComponent = RefreshControl;
-  const ModalComponent = Modal;
 
   if (!output.readiness.hasUsableData) {
     return null;
@@ -308,22 +309,7 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
     <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
 
-      <StandardHeader
-        title="Admin Dashboard"
-        rightElement={
-          <Pressable
-            testID="admin-profile-trigger"
-            onPress={actions.toggleProfileMenu}
-            className="flex-row items-center"
-          >
-            <View className="w-8 h-8 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-base">
-                {output.profileMenu.avatarInitial}
-              </Text>
-            </View>
-          </Pressable>
-        }
-      />
+      <StandardHeader title="Admin Dashboard" />
 
       <ScrollView
         className="flex-1"
@@ -337,42 +323,62 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
           ) : undefined
         }
       >
-        {output.companyScope.companyName ? (
-          <View className="px-6">
-            <View className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
-              <View className="flex-row items-center">
-                <Ionicons name="business" size={16} color="#3b82f6" />
-                <Text className="text-blue-900 font-medium ml-2 flex-1">
-                  {output.companyScope.companyName}
-                </Text>
-              </View>
-              {output.companyScope.subtitle ? (
-                <Text className="text-blue-700 text-sm mt-1">{output.companyScope.subtitle}</Text>
+        <View className="py-4">
+          <AdminOverviewHero
+            title="Admin Dashboard"
+            companyName={output.companyScope.companyName}
+            summaryLabel={
+              output.companyScope.subtitle ??
+              `${output.topLevelStats.length} summary cards ready for review`
+            }
+          />
+
+          <ScreenSection
+            title="Company Overview"
+            subtitle="Monitor the latest company-wide health at a glance."
+          >
+            <View className="rounded-2xl border border-gray-200 bg-white p-4">
+              {output.companyScope.companyName ? (
+                <View className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <View className="flex-row items-center">
+                    <Ionicons name="business" size={16} color="#3b82f6" />
+                    <Text className="ml-2 flex-1 font-medium text-blue-900">
+                      {output.companyScope.companyName}
+                    </Text>
+                  </View>
+                  {output.companyScope.subtitle ? (
+                    <Text className="mt-1 text-sm text-blue-700">
+                      {output.companyScope.subtitle}
+                    </Text>
+                  ) : null}
+                </View>
               ) : null}
+
+              <View className="flex-row flex-wrap justify-between">
+                {output.topLevelStats.map((card) => (
+                  <StatCard key={card.id} card={card} />
+                ))}
+              </View>
             </View>
-          </View>
-        ) : null}
+          </ScreenSection>
 
-        <View className="px-6 pb-4 pt-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">Company Overview</Text>
-          <View className="flex-row flex-wrap justify-between">
-            {output.topLevelStats.map((card) => (
-              <StatCard key={card.id} card={card} />
-            ))}
-          </View>
-        </View>
-
-        <View className="px-6 pb-4">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">Administrative Actions</Text>
-          {output.quickActions
-            .filter((action) => action.isVisible)
-            .map((action) => (
-              <QuickActionCard
-                key={action.id}
-                action={action}
-                onPress={() => actions.pressQuickAction(action.actionId)}
-              />
-            ))}
+          <ScreenSection
+            title="Administrative Actions"
+            subtitle="Jump into the management workflows that need attention."
+            className="mb-0"
+          >
+            <View>
+              {output.quickActions
+                .filter((action) => action.isVisible)
+                .map((action) => (
+                  <QuickActionCard
+                    key={action.id}
+                    action={action}
+                    onPress={() => actions.pressQuickAction(action.actionId)}
+                  />
+                ))}
+            </View>
+          </ScreenSection>
         </View>
       </ScrollView>
 
@@ -386,68 +392,6 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
         onRemoveImage={actions.removeBannerImage}
         onSave={() => void actions.saveBannerSettings()}
       />
-
-      {ModalComponent ? (
-        <ModalComponent
-          visible={output.profileMenu.isVisible}
-          animationType="fade"
-          transparent={true}
-          onRequestClose={actions.toggleProfileMenu}
-        >
-          <Pressable className="flex-1 bg-black/50" onPress={actions.toggleProfileMenu}>
-            <View
-              className="absolute top-16 right-4 bg-white rounded-xl shadow-lg overflow-hidden min-w-[200px]"
-              style={{
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              }}
-            >
-              <View className="bg-purple-600 px-4 py-3 border-b border-purple-700">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-3">
-                    <Text className="text-purple-600 font-bold text-lg">
-                      {output.profileMenu.avatarInitial}
-                    </Text>
-                  </View>
-                  <View className="flex-1">
-                    <Text className="text-white font-semibold text-base" numberOfLines={1}>
-                      {output.profileMenu.displayName}
-                    </Text>
-                    <Text className="text-purple-100 text-sm capitalize">
-                      {output.profileMenu.roleLabel}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View className="py-2">
-                <Pressable
-                  onPress={actions.navigateToProfile}
-                  className="flex-row items-center px-4 py-3 active:bg-gray-100"
-                >
-                  <Ionicons name="person-outline" size={22} color="#9333ea" />
-                  <Text className="text-gray-900 text-base font-medium ml-3">
-                    Profile & Settings
-                  </Text>
-                </Pressable>
-
-                <View className="h-px bg-gray-200 mx-4" />
-
-                <Pressable
-                  onPress={actions.confirmLogout}
-                  className="flex-row items-center px-4 py-3 active:bg-gray-100"
-                >
-                  <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-                  <Text className="text-red-600 text-base font-medium ml-3">Logout</Text>
-                </Pressable>
-              </View>
-            </View>
-          </Pressable>
-        </ModalComponent>
-      ) : null}
     </SafeAreaView>
   );
 }

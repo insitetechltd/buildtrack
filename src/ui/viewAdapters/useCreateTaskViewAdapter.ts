@@ -456,13 +456,31 @@ export function useCreateTaskViewAdapter({
     }
   };
 
+  const hasUsableData = Boolean(user);
+  const isInitialLoading = !hasUsableData;
+
   const output: CreateTaskScreenViewAdapterOutput = {
+    screenId: "CreateTaskScreen",
     readiness: {
+      hasInitialFrame: true,
+      hasUsableData,
+      isBackgroundRefreshing: false,
+      isNavigationTransitionActive: false,
+    },
+    continuity: {
+      isInitialLoading,
+      isBackgroundRefreshing: false,
+      hasCachedFrame: hasUsableData,
+      shouldRenderSkeletonShell: isInitialLoading,
+      shouldRenderEmptyState: !hasUsableData,
+      freshnessLabel: hasUsableData ? (isSubmitting ? "Submitting" : "Ready") : "Unavailable",
+    },
+    context,
+    activity: {
       isSubmitting,
       isLoadingUsers,
       isUploading,
     },
-    context,
     formData,
     errors,
     pickers,

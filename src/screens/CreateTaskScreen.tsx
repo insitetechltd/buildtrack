@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TextInput,
+  type NativeSyntheticEvent,
   Pressable,
   Alert,
   KeyboardAvoidingView,
@@ -11,6 +12,7 @@ import {
   Modal as RNModal,
   Image,
   ActivityIndicator,
+  type TextInputKeyPressEventData,
 } from "react-native";
 
 const Modal = RNModal || View;
@@ -21,7 +23,12 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import {
+  type NavigationProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useCreateTaskViewAdapter } from "../ui/viewAdapters/useCreateTaskViewAdapter";
 import { isAdmin } from "../types/buildtrack";
@@ -33,6 +40,8 @@ import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
+import ScreenSection from "../components/ui/ScreenSection";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import ModernUiMarker from "../components/migration/ModernUiMarker";
@@ -45,8 +54,15 @@ import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { PhotoSelectionParams } from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 // Temporarily disabled due to expo-av CMake build issues
 // import VoiceTaskInput, { Language } from "../components/VoiceTaskInput";
 
@@ -76,6 +92,8 @@ interface CreateTaskScreenProps {
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
+
+type CreateTaskFormFieldId = "title" | "description" | "taskReference" | "submit";
 
 // InputField component defined outside to prevent re-creation
 const InputField = ({ 
@@ -131,19 +149,22 @@ export default function CreateTaskScreen({
     />;
   }
 
-  console.log("InputField is:", InputField); const t = useTranslation();
+  const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { getAllUsers } = useUserStore();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<
+    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
+  >();
   const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
   const taskReferenceInputRef = useRef<TextInput>(null);
+  const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<CreateTaskFormFieldId | null>(null);
 
   const { output, actions } = useCreateTaskViewAdapter({
     editTaskId,
@@ -152,7 +173,7 @@ export default function CreateTaskScreen({
     clearForm
   });
 
-  const { formData, errors, pickers, readiness, aiAssistant, context, assigneePicker, projects, modals } = output;
+  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, projects, modals } = output;
   const {
     updateField,
     togglePicker,
@@ -198,6 +219,65 @@ export default function CreateTaskScreen({
   const setShowUserPicker = (val: boolean) => togglePicker('showUserPicker', val);
 
   const selectedUsers = assigneePicker.selectedUserIds;
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "title", isFocusable: true },
+        { fieldId: "description", isFocusable: true },
+        { fieldId: "taskReference", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+
+  const focusFormField = useCallback((fieldId: CreateTaskFormFieldId | null) => {
+    if (!fieldId) {
+      return;
+    }
+
+    setActiveFormFocusTarget(fieldId);
+
+    if (fieldId === "submit") {
+      titleInputRef.current?.blur?.();
+      descriptionInputRef.current?.blur?.();
+      taskReferenceInputRef.current?.blur?.();
+      return;
+    }
+
+    const focusTargetMap: Record<Exclude<CreateTaskFormFieldId, "submit">, React.RefObject<TextInput | null>> = {
+      title: titleInputRef,
+      description: descriptionInputRef,
+      taskReference: taskReferenceInputRef,
+    };
+
+    focusTargetMap[fieldId].current?.focus?.();
+  }, []);
+
+  const moveFormFocus = useCallback(
+    (activeFieldId: CreateTaskFormFieldId, direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as CreateTaskFormFieldId | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: CreateTaskFormFieldId,
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
   
   const handleOpenUserPicker = () => setShowUserPicker(true);
 
@@ -208,9 +288,9 @@ export default function CreateTaskScreen({
   const lastSuggestion = aiAssistant.lastSuggestion;
   const llmError = aiAssistant.error;
 
-  const isUploading = readiness.isUploading;
-  const isLoadingUsers = readiness.isLoadingUsers;
-  const isSubmitting = readiness.isSubmitting;
+  const isUploading = activity.isUploading;
+  const isLoadingUsers = activity.isLoadingUsers;
+  const isSubmitting = activity.isSubmitting;
 
   const handleOpenPhotoSelection = () => {};
   const handleAddPhotos = async () => {
@@ -349,9 +429,9 @@ export default function CreateTaskScreen({
       >
         <ScrollView 
           ref={scrollViewRef}
-          className="flex-1 px-6 py-4" 
+          className="flex-1 py-4"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -441,11 +521,12 @@ export default function CreateTaskScreen({
             />
           )}
 
-          {/* Title */}
-          <InputField label={t.tasks.title} error={errors.title}>
+          <ScreenSection title="Task Basics" subtitle="Start with the essentials">
+            <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
                 testID="createTask-title"
                 ref={titleInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "title" }}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.title ? "border-red-300" : "border-gray-300"
@@ -456,19 +537,20 @@ export default function CreateTaskScreen({
                 maxLength={100}
                 autoCorrect={false}
                 returnKeyType="next"
+                onFocus={() => setActiveFormFocusTarget("title")}
+                onKeyPress={(event) => handleFieldKeyPress("title", event)}
                 onSubmitEditing={() => {
-                  // Move focus to description field
-                  descriptionInputRef.current?.focus();
+                  moveFormFocus("title");
                 }}
                 blurOnSubmit={false}
               />
-          </InputField>
+            </InputField>
 
-          {/* Description */}
-          <InputField label={t.tasks.description} error={errors.description}>
+            <InputField label={t.tasks.description} error={errors.description}>
               <TextInput
                 testID="createTask-description"
                 ref={descriptionInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "description" }}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
@@ -482,18 +564,192 @@ export default function CreateTaskScreen({
                 maxLength={500}
                 autoCorrect={false}
                 returnKeyType="next"
+                onFocus={() => setActiveFormFocusTarget("description")}
+                onKeyPress={(event) => handleFieldKeyPress("description", event)}
                 onSubmitEditing={() => {
-                  // Move focus to task reference field
-                  taskReferenceInputRef.current?.focus();
+                  moveFormFocus("description");
                 }}
                 blurOnSubmit={false}
               />
-          </InputField>
+            </InputField>
 
-          {/* Task Reference # */}
-          <InputField label={t.createTask.taskReference} required={false}>
+            <InputField label={t.tasks.priority}>
+              <View className="flex-row flex-wrap gap-2">
+                {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
+                  const isSelected = formData.priority === priority;
+
+                  return (
+                    <Pressable
+                      key={priority}
+                      testID={`createTask-priority-${priority}`}
+                      onPress={() => handlePriorityChange(priority)}
+                      className={cn(
+                        "rounded-full border px-4 py-2.5",
+                        isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          isSelected ? "text-blue-700" : "text-gray-700"
+                        )}
+                      >
+                        {t.tasks[priority as keyof typeof t.tasks] || priority}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </InputField>
+          </ScreenSection>
+
+          <ScreenSection title="Assignment" subtitle="Confirm the project and assignees">
+            <InputField label={t.createTask.project} error={errors.projectId}>
+              <View
+                className={cn(
+                  "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
+                  errors.projectId ? "border-red-300" : "border-gray-300"
+                )}
+              >
+                <Text
+                  className={cn(
+                    "flex-1 text-lg",
+                    context.activeProjectId ? "text-gray-900" : "text-gray-500"
+                  )}
+                >
+                  {context.activeProjectId
+                    ? projects.availableProjects.find((project) => project.id === context.activeProjectId)?.name
+                    : t.createTask.selectProject}
+                </Text>
+                <Ionicons name="lock-closed" size={16} color="#9ca3af" />
+              </View>
+            </InputField>
+
+            <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
+              {(() => {
+                const isDisabled = isLoadingUsers || context.assigneesLocked;
+
+                return (
+                  <Pressable
+                    onPress={handleOpenUserPicker}
+                    disabled={isDisabled}
+                    className={cn(
+                      "border rounded-lg px-3 py-3 flex-row items-center justify-between",
+                      context.assigneesLocked ? "bg-gray-100" : "bg-white",
+                      errors.assignedTo ? "border-red-300" : "border-gray-300",
+                      isDisabled && "opacity-50"
+                    )}
+                  >
+                    <Text
+                      className={cn(
+                        "text-lg",
+                        context.assigneesLocked ? "text-gray-500" : "text-gray-900"
+                      )}
+                    >
+                      {isLoadingUsers
+                        ? t.createTask.loadingUsers
+                        : context.assigneesLocked
+                          ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
+                          : selectedUsers.length > 0
+                            ? t.createTask.usersSelected(selectedUsers.length)
+                            : t.createTask.selectUsersToAssign}
+                    </Text>
+                    {isLoadingUsers ? (
+                      <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
+                    ) : context.assigneesLocked ? (
+                      <Ionicons name="lock-closed" size={20} color="#9ca3af" />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                    )}
+                  </Pressable>
+                );
+              })()}
+            </InputField>
+
+            {selectedUsers.length > 0 && (
+              <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
+                <View className="flex-row flex-wrap">
+                  {selectedUsers.map((userId) => {
+                    const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
+                    if (!selectedUser) return null;
+
+                    return (
+                      <View
+                        key={userId}
+                        className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                      >
+                        <Text className="text-blue-900 text-sm font-medium mr-1">{selectedUser.name}</Text>
+                        {!context.assigneesLocked ? (
+                          <Pressable onPress={() => toggleUserSelection(userId)}>
+                            <Ionicons name="close-circle" size={16} color="#1e40af" />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </ScreenSection>
+
+          <ScreenSection title="Schedule" subtitle="Set the target date">
+            <InputField label={t.tasks.dueDate} error={errors.dueDate}>
+              <Pressable
+                onPress={async () => {
+                  await saveFormDataToStorage();
+                  setShowDatePicker(!showDatePicker);
+                }}
+                className={cn(
+                  "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
+                  showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
+                )}
+              >
+                <Text className={cn("text-lg", showDatePicker ? "text-blue-600" : "text-gray-900")}>
+                  {dateFormatter.formatDateWithWeekday(formData.dueDate)}
+                </Text>
+                <Ionicons
+                  name={showDatePicker ? "calendar" : "calendar-outline"}
+                  size={20}
+                  color={showDatePicker ? "#3b82f6" : "#6b7280"}
+                />
+              </Pressable>
+            </InputField>
+
+            {showDatePicker && (
+              <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
+                <DateTimePicker
+                  value={formData.dueDate}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  locale={dateFormatter.locale}
+                  onChange={(_event, selectedDate) => {
+                    if (selectedDate) {
+                      handleDateChange(selectedDate);
+                    }
+                  }}
+                  textColor="#000000"
+                  style={{ height: 200 }}
+                />
+                <View className="flex-row justify-end p-3 border-t border-gray-200">
+                  <Pressable
+                    onPress={() => setShowDatePicker(false)}
+                    className="bg-blue-600 px-6 py-2 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold">{t.common.done}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </ScreenSection>
+
+          <ScreenSection title="More Details" subtitle="Optional context for downstream work">
+            <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
+                testID="createTask-taskReference"
                 ref={taskReferenceInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
                 className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
                 placeholder={t.createTask.taskReferencePlaceholder}
                 value={formData.taskReference}
@@ -501,206 +757,47 @@ export default function CreateTaskScreen({
                 maxLength={50}
                 autoCorrect={false}
                 returnKeyType="done"
+                onFocus={() => setActiveFormFocusTarget("taskReference")}
+                onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
                 onSubmitEditing={() => {
-                  // Dismiss keyboard when done with task reference
                   taskReferenceInputRef.current?.blur();
                 }}
                 blurOnSubmit={true}
               />
-          </InputField>
+            </InputField>
 
-          {/* Billing Status */}
-          <InputField label={t.createTask.billingStatus}>
-            <Pressable
-              onPress={() => setShowBillingStatusPicker(true)}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
-            >
-              <Text className="text-lg text-gray-900">
-                {formData.billingStatus === "billable" ? t.createTask.billable
-                  : formData.billingStatus === "non_billable" ? t.createTask.nonBillable
-                  : t.createTask.billed}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
+            <InputField label={t.createTask.billingStatus}>
+              <Pressable
+                onPress={() => setShowBillingStatusPicker(true)}
+                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
+              >
+                <Text className="text-lg text-gray-900">
+                  {formData.billingStatus === "billable"
+                    ? t.createTask.billable
+                    : formData.billingStatus === "non_billable"
+                      ? t.createTask.nonBillable
+                      : t.createTask.billed}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+              </Pressable>
+            </InputField>
 
-          {/* Project Selection - Read Only */}
-          <InputField label={t.createTask.project} error={errors.projectId}>
-            <View
-              className={cn(
-                "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
-                errors.projectId ? "border-red-300" : "border-gray-300"
-              )}
-            >
-              <Text className={cn(
-                "flex-1 text-lg",
-                context.activeProjectId ? "text-gray-900" : "text-gray-500"
-              )}>
-                {context.activeProjectId 
-                  ? projects.availableProjects.find(p => p.id === context.activeProjectId)?.name 
-                  : t.createTask.selectProject
-                }
-              </Text>
-              <Ionicons name="lock-closed" size={16} color="#9ca3af" />
-            </View>
-          </InputField>
-
-          {/* Priority */}
-          <InputField label={t.tasks.priority}>
-            <Pressable
-              testID="createTask-priority-open"
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowPriorityPicker(true);
-              }}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-            >
-              <Text className="text-lg text-gray-900 flex-1">
-                {t.tasks[formData.priority as keyof typeof t.tasks] || formData.priority}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
-
-          {/* Category */}
-          <InputField label={t.tasks.category}>
-            <Pressable
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowCategoryPicker(true);
-              }}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-            >
-              <Text className="text-lg text-gray-900 flex-1">
-                {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
-
-          {/* Due Date */}
-          <InputField label={t.tasks.dueDate} error={errors.dueDate}>
-            <Pressable
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowDatePicker(!showDatePicker);
-              }}
-              className={cn(
-                "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
-              )}
-            >
-              <Text className={cn(
-                "text-lg",
-                showDatePicker ? "text-blue-600" : "text-gray-900"
-              )}>
-                {dateFormatter.formatDateWithWeekday(formData.dueDate)}
-              </Text>
-              <Ionicons 
-                name={showDatePicker ? "calendar" : "calendar-outline"} 
-                size={20} 
-                color={showDatePicker ? "#3b82f6" : "#6b7280"} 
-              />
-            </Pressable>
-          </InputField>
-
-          {/* Date Picker - Visible when showDatePicker is true */}
-          {showDatePicker && (
-            <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
-              <DateTimePicker
-                value={formData.dueDate}
-                mode="date"
-                display="spinner"
-                minimumDate={new Date()}
-                locale={dateFormatter.locale}
-                onChange={(_event, selectedDate) => {
-                  if (selectedDate) {
-                    handleDateChange(selectedDate);
-                  }
+            <InputField label={t.tasks.category}>
+              <Pressable
+                onPress={async () => {
+                  await saveFormDataToStorage();
+                  setShowCategoryPicker(true);
                 }}
-                textColor="#000000"
-                style={{ height: 200 }}
-              />
-              <View className="flex-row justify-end p-3 border-t border-gray-200">
-                <Pressable
-                  onPress={() => setShowDatePicker(false)}
-                  className="bg-blue-600 px-6 py-2 rounded-lg"
-                >
-                  <Text className="text-white font-semibold">{t.common.done}</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
+                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
+              >
+                <Text className="text-lg text-gray-900 flex-1">
+                  {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Pressable>
+            </InputField>
+          </ScreenSection>
 
-          {/* Assign To */}
-          <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
-            {(() => {
-              const isDisabled = isLoadingUsers || context.assigneesLocked;
-              
-              return (
-                <Pressable
-                  onPress={handleOpenUserPicker}
-                  disabled={isDisabled}
-                  className={cn(
-                    "border rounded-lg px-3 py-3 flex-row items-center justify-between",
-                    context.assigneesLocked ? "bg-gray-100" : "bg-white",
-                    errors.assignedTo ? "border-red-300" : "border-gray-300",
-                    isDisabled && "opacity-50"
-                  )}
-                >
-                  <Text className={cn(
-                    "text-lg",
-                    context.assigneesLocked ? "text-gray-500" : "text-gray-900"
-                  )}>
-                    {isLoadingUsers 
-                      ? t.createTask.loadingUsers
-                      : context.assigneesLocked
-                        ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
-                      : selectedUsers.length > 0 
-                        ? t.createTask.usersSelected(selectedUsers.length)
-                        : t.createTask.selectUsersToAssign
-                    }
-                  </Text>
-                  {isLoadingUsers ? (
-                    <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
-                  ) : context.assigneesLocked ? (
-                    <Ionicons name="lock-closed" size={20} color="#9ca3af" />
-                  ) : (
-                    <Ionicons 
-                      name="chevron-forward" 
-                      size={20} 
-                      color="#6b7280" 
-                    />
-                  )}
-                </Pressable>
-              );
-            })()}
-          </InputField>
-
-          {/* Show selected users */}
-          {selectedUsers.length > 0 && (
-            <View className="bg-gray-50 border border-gray-200 rounded-lg p-3 -mt-6 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
-              <View className="flex-row flex-wrap">
-                {selectedUsers.map((userId) => {
-                  const user = assigneePicker.availableUsers.find(u => u.id === userId);
-                  if (!user) return null;
-                  return (
-                    <View key={userId} className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
-                      <Text className="text-blue-900 text-sm font-medium mr-1">{user.name}</Text>
-                      {!context.assigneesLocked ? (
-                        <Pressable onPress={() => toggleUserSelection(userId)}>
-                          <Ionicons name="close-circle" size={16} color="#1e40af" />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Attachments */}
           <CreateTaskAttachmentSection
             attachments={formData.attachments as any}
             asyncStoragePhotoCount={asyncStoragePhotoCount}
@@ -710,41 +807,15 @@ export default function CreateTaskScreen({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Fixed Bottom Bar with Create Task Button */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
-        }}
+      <View
+        testID="createTask-submit-focus-target"
+        accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
       >
-        <SafeAreaView edges={['bottom']}>
-          <Pressable
-            testID="createTask-submit"
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-            className={cn(
-              "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-              isSubmitting 
-                ? "bg-gray-300" 
-                : "bg-blue-600"
-            )}
-          >
-            <Ionicons 
-              name={editTaskId ? "checkmark-circle-outline" : "add-circle-outline"} 
-              size={18} 
-              color="white" 
-            />
-            <Text className="text-white font-semibold text-base ml-2">
-              {isSubmitting 
-                ? (editTaskId ? t.createTask.updating : t.createTask.creating) 
-                : (editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton)
-              }
-            </Text>
-          </Pressable>
-        </SafeAreaView>
+        <PrimaryActionBar
+          primaryLabel={editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
+          onPrimaryPress={handleSubmit}
+          isPrimaryDisabled={isSubmitting}
+        />
       </View>
 
       {/* Priority Picker Modal */}
@@ -1397,7 +1468,7 @@ function TaskActionScreen({
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }) {
-  console.log("InputField is:", InputField); const t = useTranslation();
+  const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
@@ -1411,7 +1482,9 @@ function TaskActionScreen({
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { pickAndUploadImages } = useFileUpload();
   const { showPhotoSelectionDialog } = usePhotoSelection();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<
+    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
+  >();
 
   const task = tasks.find(t => t.id === taskId);
   const targetTask = updateTargetSubTaskId

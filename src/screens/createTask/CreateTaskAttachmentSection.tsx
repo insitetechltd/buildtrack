@@ -27,22 +27,28 @@ export default function CreateTaskAttachmentSection({
   onAddPhotos,
 }: CreateTaskAttachmentSectionProps) {
   const t = useTranslation();
+  const attachmentCount = attachments.length + asyncStoragePhotoCount;
 
   return (
-    <View className="mb-6">
-      <View className="flex-row items-center mb-2">
-        <Text className="text-lg font-semibold text-gray-900">
-          {t.createTask.attachments}
-        </Text>
-        {attachments.length > 0 ? (
-          <Text className="text-xs text-gray-500 ml-2">
-            ({t.createTask.filesAdded(attachments.length)})
+    <View className="mx-4 mb-6 rounded-2xl border border-gray-200 bg-white p-4">
+      <View className="mb-3">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-lg font-semibold text-gray-900">
+            {t.createTask.attachments}
           </Text>
-        ) : null}
+          {attachmentCount > 0 ? (
+            <Text className="text-xs font-medium text-gray-500">
+              {t.createTask.filesAdded(attachmentCount)}
+            </Text>
+          ) : null}
+        </View>
+        <Text className="mt-1 text-sm text-gray-500">
+          Add photos before submitting the task.
+        </Text>
       </View>
 
       {attachments.length > 0 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
           <View className="flex-row">
             {attachments.map((attachment, index) => {
               const photoUri =
@@ -83,7 +89,7 @@ export default function CreateTaskAttachmentSection({
       <Pressable
         testID="createTask-add-photos"
         onPress={onAddPhotos}
-        className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
+        className="flex-row items-center justify-between rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3"
       >
         <View className="flex-row items-center flex-1">
           <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />

@@ -21,6 +21,15 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
   const densityClasses = CONTAINER_CARD_DENSITY_CLASS_MAP[contract.density];
   const stateClasses = CONTAINER_CARD_STRUCTURAL_STATE_CLASS_MAP[structuralState];
   const resolvedTestId = contract.testId ?? contract.primitiveId;
+  const hasVisibleMedia =
+    !!contract.body.media &&
+    contract.body.media.mode !== "hidden" &&
+    contract.body.media.items.length > 0;
+  const shouldRenderBodyState =
+    structuralState === "loading" ||
+    structuralState === "empty" ||
+    contract.body.shouldRenderBody ||
+    hasVisibleMedia;
 
   const marginClass = contract.indentationLevel === 1 ? 'ml-6' : contract.indentationLevel === 2 ? 'ml-10' : '';
   const CardView = contract.onPress ? Pressable : View;
@@ -64,12 +73,14 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
         ))}
       </View>
 
-      <ContainerBodyState
-        cardTestId={resolvedTestId}
-        body={contract.body}
-        density={contract.density}
-        structuralState={structuralState}
-      />
+      {shouldRenderBodyState ? (
+        <ContainerBodyState
+          cardTestId={resolvedTestId}
+          body={contract.body}
+          density={contract.density}
+          structuralState={structuralState}
+        />
+      ) : null}
     </CardView>
   );
 }

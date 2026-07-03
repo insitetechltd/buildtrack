@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
+  FlatList,
   ScrollView,
   Pressable,
   TextInput,
@@ -622,47 +623,48 @@ export default function ProjectsTasksScreen({
         </View>
       </View>
 
-      <ScrollView 
-        className="flex-1" 
+      <FlatList
+        className="flex-1"
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {/* Flat Tasks List */}
-        <View className="px-6 py-4">
-        {allTasks.length > 0 ? (
-          <>
+        contentContainerStyle={{
+          paddingHorizontal: 24,
+          paddingVertical: 16,
+          flexGrow: 1,
+        }}
+        data={allTasks}
+        keyExtractor={(task) =>
+          'isSubTask' in task && task.isSubTask
+            ? `subtask-${task.id}`
+            : `task-${task.id}`
+        }
+        renderItem={({ item }) => <CompactTaskCard task={item} />}
+        ListHeaderComponent={
+          allTasks.length > 0 ? (
             <Text className="text-sm text-gray-600 font-semibold mb-3">
               {allTasks.length} task{allTasks.length !== 1 ? "s" : ""}
             </Text>
-            {allTasks.map((task) => {
-              // Create unique key for subtasks vs parent tasks
-              const uniqueKey = 'isSubTask' in task && task.isSubTask 
-                ? `subtask-${task.id}` 
-                : `task-${task.id}`;
-              
-              return (
-                <CompactTaskCard key={uniqueKey} task={task} />
-              );
-            })}
-          </>
-        ) : (
+          ) : null
+        }
+        ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-16">
             <Ionicons name="clipboard-outline" size={64} color="#9ca3af" />
             <Text className="text-gray-500 text-lg font-medium mt-4">
-              {searchQuery || localStatusFilter !== "all" ? "No matching tasks" : "No tasks yet"}
+              {searchQuery || localStatusFilter !== "all"
+                ? "No matching tasks"
+                : "No tasks yet"}
             </Text>
             <Text className="text-gray-400 text-center mt-2 px-8">
               {searchQuery || localStatusFilter !== "all"
                 ? "Try adjusting your search or filters"
-                : "You haven't been assigned any tasks yet"
-              }
+                : "You haven't been assigned any tasks yet"}
             </Text>
           </View>
-        )}
-        </View>
-      </ScrollView>
+        }
+        ListFooterComponent={<View className="h-24" />}
+      />
 
       {/* Floating Action Button - New Task */}
       <Pressable

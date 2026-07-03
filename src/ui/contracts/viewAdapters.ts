@@ -105,6 +105,7 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   assigneeSummary: string;
   projectName: string;
   isOverdue: boolean;
+  attachmentUris: string[];
   indentationLevel?: number;
   onPress?: () => void;
 }
@@ -1069,12 +1070,15 @@ export interface CreateTaskAssignableUserModel {
 }
 
 export interface CreateTaskScreenViewAdapterOutput {
-  readiness: {
+  screenId: "CreateTaskScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  context: CreateTaskContextModel;
+  activity: {
     isSubmitting: boolean;
     isLoadingUsers: boolean;
     isUploading: boolean;
   };
-  context: CreateTaskContextModel;
   formData: CreateTaskFormModel;
   errors: Record<string, string>;
   pickers: {

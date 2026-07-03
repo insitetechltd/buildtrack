@@ -113,6 +113,7 @@ export function mapTaskRowToContainerCardProps(
   const flags = derivePrimitiveFlags(data.structuralState);
   const primitiveId = `tasks:row:${data.taskId}`;
   const status = mapTaskRowToStatusBadgeProps(data);
+  const photoCount = data.attachmentUris.length;
 
   return {
     primitiveId,
@@ -155,6 +156,22 @@ export function mapTaskRowToContainerCardProps(
       actionSlots: [],
     },
     body: {
+      shouldRenderBody: photoCount > 0,
+      media:
+        photoCount > 0
+          ? {
+              mode: "collapsible",
+              collapsedLabel: `Photos (${photoCount})`,
+              items: data.attachmentUris.map((uri, index) => ({
+                id: `photo-${index}`,
+                uri,
+                accessibilityLabel: `${data.title} attachment ${index + 1}`,
+              })),
+            }
+          : {
+              mode: "hidden",
+              items: [],
+            },
       empty: {
         title: "No task details",
         message: "This task has no additional details available.",

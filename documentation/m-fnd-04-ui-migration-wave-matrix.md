@@ -30,11 +30,11 @@ This document records the Wave 1 technical priority scoring for the current high
 
 | Screen | Path | User Traffic x5 | Workflow Criticality x5 | Reuse x4 | Instability x4 | Navigation x4 | Selector Readiness x3 | Blast Radius x3 Penalty | Positive Score | Penalty | Final Score | Wave |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TasksScreen | `/Volumes/KooDrive/Insite App/src/screens/TasksScreen.tsx` | 5 x 5 = 25 | 5 x 5 = 25 | 5 x 4 = 20 | 4 x 4 = 16 | 5 x 4 = 20 | 5 x 3 = 15 | 3 x 3 = 9 | 121 | 9 | 112 | Wave 1 |
-| DashboardScreen | `/Volumes/KooDrive/Insite App/src/screens/DashboardScreen.tsx` | 5 x 5 = 25 | 5 x 5 = 25 | 5 x 4 = 20 | 4 x 4 = 16 | 5 x 4 = 20 | 4 x 3 = 12 | 3 x 3 = 9 | 118 | 9 | 109 | Wave 1 |
-| TaskDetailScreen | `/Volumes/KooDrive/Insite App/src/screens/TaskDetailScreen.tsx` | 4 x 5 = 20 | 5 x 5 = 25 | 4 x 4 = 16 | 4 x 4 = 16 | 5 x 4 = 20 | 5 x 3 = 15 | 3 x 3 = 9 | 112 | 9 | 103 | Wave 1 |
-| CreateTaskScreen | `/Volumes/KooDrive/Insite App/src/screens/CreateTaskScreen.tsx` | 4 x 5 = 20 | 5 x 5 = 25 | 4 x 4 = 16 | 5 x 4 = 20 | 4 x 4 = 16 | 3 x 3 = 9 | 5 x 3 = 15 | 106 | 15 | 91 | Wave 2 |
-| ProjectsScreen | `/Volumes/KooDrive/Insite App/src/screens/ProjectsScreen.tsx` | 3 x 5 = 15 | 4 x 5 = 20 | 3 x 4 = 12 | 3 x 4 = 12 | 3 x 4 = 12 | 4 x 3 = 12 | 2 x 3 = 6 | 83 | 6 | 77 | Wave 2 |
+| TasksScreen | `src/screens/TasksScreen.tsx` | 5 x 5 = 25 | 5 x 5 = 25 | 5 x 4 = 20 | 4 x 4 = 16 | 5 x 4 = 20 | 5 x 3 = 15 | 3 x 3 = 9 | 121 | 9 | 112 | Wave 1 |
+| DashboardScreen | `src/screens/DashboardScreen.tsx` | 5 x 5 = 25 | 5 x 5 = 25 | 5 x 4 = 20 | 4 x 4 = 16 | 5 x 4 = 20 | 4 x 3 = 12 | 3 x 3 = 9 | 118 | 9 | 109 | Wave 1 |
+| TaskDetailScreen | `src/screens/TaskDetailScreen.tsx` | 4 x 5 = 20 | 5 x 5 = 25 | 4 x 4 = 16 | 4 x 4 = 16 | 5 x 4 = 20 | 5 x 3 = 15 | 3 x 3 = 9 | 112 | 9 | 103 | Wave 1 |
+| CreateTaskScreen | `src/screens/CreateTaskScreen.tsx` | 4 x 5 = 20 | 5 x 5 = 25 | 4 x 4 = 16 | 5 x 4 = 20 | 4 x 4 = 16 | 3 x 3 = 9 | 5 x 3 = 15 | 106 | 15 | 91 | Wave 2 |
+| ProjectsScreen | `src/screens/ProjectsScreen.tsx` | 3 x 5 = 15 | 4 x 5 = 20 | 3 x 4 = 12 | 3 x 4 = 12 | 3 x 4 = 12 | 4 x 3 = 12 | 2 x 3 = 6 | 83 | 6 | 77 | Wave 2 |
 
 ## Wave 1 Justification
 

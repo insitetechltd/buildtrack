@@ -3,10 +3,10 @@ export function buildCreateTaskPhotoReturnParams({
   selectedPhotos,
   uploadedPhotoUrls,
 }: {
-  routeParams?: Record<string, unknown>;
-  selectedPhotos?: unknown[];
+  routeParams?: import("./navigationTypes").CreateTaskParams;
+  selectedPhotos?: import("./navigationTypes").CreateTaskParams["selectedPhotos"];
   uploadedPhotoUrls?: string[];
-}) {
+}): import("./navigationTypes").CreateTaskParams {
   return {
     parentTaskId: routeParams?.parentTaskId,
     parentSubTaskId: routeParams?.parentSubTaskId,

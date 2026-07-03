@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
+  NativeSyntheticEvent,
   View,
   Text,
   TextInput,
+  TextInputKeyPressEventData,
   Pressable,
   KeyboardAvoidingView,
   Platform,
@@ -15,6 +17,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import { useLoginViewAdapter } from "../ui/viewAdapters/useLoginViewAdapter";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 
 interface LoginScreenProps {
   onToggleRegister?: () => void; // Optional - registration is hidden
@@ -28,6 +36,55 @@ function isPhoneNumber(value: string) {
 export default function LoginScreen(_props: LoginScreenProps) {
   const t = useTranslation();
   const { output, actions } = useLoginViewAdapter();
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "emailOrPhone", isFocusable: true },
+        { fieldId: "password", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "emailOrPhone" | "password" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      emailInputRef.current?.blur?.();
+      passwordInputRef.current?.blur?.();
+      return;
+    }
+
+    const focusTargetMap = {
+      emailOrPhone: emailInputRef,
+      password: passwordInputRef,
+    } satisfies Record<"emailOrPhone" | "password", React.RefObject<TextInput | null>>;
+
+    focusTargetMap[fieldId].current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "emailOrPhone" | "password", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "emailOrPhone" | "password" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: "emailOrPhone" | "password",
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -86,6 +143,7 @@ export default function LoginScreen(_props: LoginScreenProps) {
                   />
                   <TextInput
                     testID="login-emailOrPhone"
+                    ref={emailInputRef}
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.emailOrPhonePlaceholder}
                     value={output.emailOrPhone}
@@ -96,6 +154,11 @@ export default function LoginScreen(_props: LoginScreenProps) {
                     autoCorrect={false}
                     spellCheck={false}
                     returnKeyType="next"
+                    onKeyPress={(event) => handleFieldKeyPress("emailOrPhone", event)}
+                    onSubmitEditing={() => {
+                      moveFormFocus("emailOrPhone");
+                    }}
+                    blurOnSubmit={false}
                   />
                 </View>
                 {output.validationErrors.emailOrPhone && (
@@ -125,6 +188,7 @@ export default function LoginScreen(_props: LoginScreenProps) {
                   />
                   <TextInput
                     testID="login-password"
+                    ref={passwordInputRef}
                     className="flex-1 ml-3 text-gray-900"
                     placeholder={t.login.passwordPlaceholder}
                     value={output.password}
@@ -134,6 +198,10 @@ export default function LoginScreen(_props: LoginScreenProps) {
                     autoCorrect={false}
                     spellCheck={false}
                     returnKeyType="done"
+                    onKeyPress={(event) => handleFieldKeyPress("password", event)}
+                    onSubmitEditing={() => {
+                      passwordInputRef.current?.blur();
+                    }}
                   />
                   <Pressable
                     testID="login-togglePassword"

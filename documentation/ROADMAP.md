@@ -46,6 +46,12 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UX / M-UX-01 | Insite redesign implementation | Pipeline | M-UIA-03, M-DATA-02 | 14 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | M-DATA-02 | 14.1 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | S-UX-01A | 14.2 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Pipeline | S-UX-01B | 14.3 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Pipeline | S-UX-01C | 14.4 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Pipeline | S-UX-01D | 14.5 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | S-UX-01E | 14.6 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | S-UX-01F | 14.7 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | S-UX-01G | 14.8 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 
 ## Deferred Context
 

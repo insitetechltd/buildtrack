@@ -16,6 +16,12 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | --- | --- | --- | --- |
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | Foundation slice completed ahead of navigation-facing bootstrap restore work. |
 | WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | Completed as a bootstrap-only slice without renaming the existing tab shell or expanding into broader navigation redesign work. |
+| WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Pipeline | Align the live shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
+| WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Pipeline | Replace the legacy dashboard with the approved project-scoped `Recent Activity` home. |
+| WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Pipeline | Roll out the approved compact and collapsible project task list. |
+| WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
+| WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
+| WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
 
 ## Slice Detail
 
@@ -76,3 +82,106 @@ Closure criteria:
 - bootstrap clears stale selection when no restorable project exists for the current user
 - navigation shell stays gated until workspace readiness is established for the authenticated user
 - roadmap and execution docs reflect the slice without creating a competing inventory
+
+### WS-UX / M-UX-01 / S-UX-01C — Top-level shell and navigation IA alignment
+
+Purpose:
+
+- move the live app shell from the legacy tab framing to the approved `Activity / Tasks / Camera / Profile` navigation model
+- preserve the project-scoped workspace behavior introduced by `S-UX-01B`
+
+In scope:
+
+- update top-level tab and route naming in `src/navigation/AppNavigator.tsx`
+- align `src/navigation/navigationTypes.ts` with the new shell names and camera entry semantics
+- keep `ProjectPicker` and active-project access consistent from the new shell
+- add focused navigation coverage for the renamed shell
+
+Out of scope:
+
+- replacing the content of the Activity home itself
+- compact task list redesign
+- task detail redesign
+- batch-first capture review layout changes beyond shell entry alignment
+
+Primary files:
+
+- `src/navigation/AppNavigator.tsx`
+- `src/navigation/navigationTypes.ts`
+- `src/navigation/__tests__/AppNavigator.back-behavior.test.tsx`
+- `src/navigation/__tests__/WorkspaceBootstrapGate.test.tsx`
+
+Planned validation:
+
+- `npx jest src/navigation/__tests__/AppNavigator.back-behavior.test.tsx src/navigation/__tests__/WorkspaceBootstrapGate.test.tsx --runInBand`
+- `npx tsc --noEmit`
+
+Closure criteria:
+
+- the top-level shell exposes `Activity`, `Tasks`, `Camera`, and `Profile`
+- camera entry preserves optional task/project context params
+- the authenticated workspace still waits for current-user bootstrap readiness before rendering
+- roadmap and execution docs remain aligned with the slice status
+
+### WS-UX / M-UX-01 / S-UX-01D — Activity-first home rollout
+
+Purpose:
+
+- replace the legacy dashboard with the approved project-scoped `Recent Activity` home
+
+In scope:
+
+- repurpose the current dashboard route into the approved Activity home surface
+- scope visible activity to the active project only
+- preserve direct paths into tasks and capture
+
+### WS-UX / M-UX-01 / S-UX-01E — Compact project task surface
+
+Purpose:
+
+- deliver the approved compact and collapsible task list scoped to the active project
+
+In scope:
+
+- group tasks by lightweight container context
+- preserve fast drill-in and filter behavior
+- keep the compact collapsible variant as the production default
+
+### WS-UX / M-UX-01 / S-UX-01F — Task detail redesign
+
+Purpose:
+
+- redesign task detail as a lighter visual work thread while preserving workflow logic
+
+In scope:
+
+- delegation summary
+- activity log clarity
+- photo and subtask context
+- review and reassignment actions
+
+### WS-UX / M-UX-01 / S-UX-01G — Batch-first capture review
+
+Purpose:
+
+- align the photo flow to the approved project-first, batch-save experience
+
+In scope:
+
+- multi-photo review
+- optional task attachment
+- save-first and organize-later behavior
+- capture-related activity logging
+
+### WS-UX / M-UX-01 / S-UX-01H — Migration hardening and regression closure
+
+Purpose:
+
+- complete redesign-safe migration, validation, and closure evidence for `WS-UX / M-UX-01`
+
+In scope:
+
+- create/edit flow alignment
+- legacy data compatibility hardening
+- regression coverage for the redesigned surfaces
+- milestone-close validation and roadmap update

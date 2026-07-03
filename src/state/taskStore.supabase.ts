@@ -68,20 +68,40 @@ function createActivityFromLegacyUpdate(taskId: string, update: TaskUpdate): Tas
 }
 
 function normalizeTaskActivityCompatibility(task: Task): Task {
+  const normalizedAssignedTo = Array.isArray(task.assignedTo)
+    ? task.assignedTo.map((assigneeId) => String(assigneeId))
+    : [];
+  const normalizedDelegatedUserIds = Array.isArray(task.delegatedUserIds)
+    ? task.delegatedUserIds.map((userId) => String(userId))
+    : undefined;
   const updates = Array.isArray(task.updates) ? task.updates : [];
   const activities = Array.isArray(task.activities) ? task.activities : [];
+  const normalizedTask = {
+    ...task,
+    assignedTo: normalizedAssignedTo,
+    assignedBy: task.assignedBy ? String(task.assignedBy) : "",
+    primaryAssigneeId: task.primaryAssigneeId
+      ? String(task.primaryAssigneeId)
+      : normalizedAssignedTo[0],
+    delegatedUserIds:
+      normalizedDelegatedUserIds !== undefined
+        ? normalizedDelegatedUserIds
+        : normalizedAssignedTo.slice(1),
+    containerId: task.containerId ? String(task.containerId) : undefined,
+    subContainerId: task.subContainerId ? String(task.subContainerId) : undefined,
+    tags: Array.isArray(task.tags) ? task.tags.map((tag) => String(tag)) : [],
+    updates,
+  };
 
   if (activities.length > 0) {
     return {
-      ...task,
-      updates,
+      ...normalizedTask,
       activities,
     };
   }
 
   return {
-    ...task,
-    updates,
+    ...normalizedTask,
     activities: updates.map((update) => createActivityFromLegacyUpdate(task.id, update)),
   };
 }
@@ -449,10 +469,11 @@ export const useTaskStore = create<TaskStore>()(
         return !isRequestCacheFresh(resourceKey) && !isRequestCacheExpired(resourceKey);
       },
       replaceTasks: (tasks) => {
+        const normalizedTasks = tasks.map(normalizeTaskActivityCompatibility);
         set({
-          tasks,
+          tasks: normalizedTasks,
           allTasksFetchTimestamp: Date.now(),
-          taskFetchTimestamps: tasks.reduce<Record<string, number>>((accumulator, task) => {
+          taskFetchTimestamps: normalizedTasks.reduce<Record<string, number>>((accumulator, task) => {
             accumulator[task.id] = Date.now();
             return accumulator;
           }, {}),
@@ -463,16 +484,18 @@ export const useTaskStore = create<TaskStore>()(
           return;
         }
 
+        const normalizedTasks = tasks.map(normalizeTaskActivityCompatibility);
+
         set((state) => {
           const nextTasksById = new Map(state.tasks.map((task) => [task.id, task]));
 
-          for (const task of tasks) {
+          for (const task of normalizedTasks) {
             nextTasksById.set(task.id, task);
           }
 
           const now = Date.now();
           const nextTaskFetchTimestamps = { ...state.taskFetchTimestamps };
-          for (const task of tasks) {
+          for (const task of normalizedTasks) {
             nextTaskFetchTimestamps[task.id] = now;
           }
 
@@ -483,20 +506,21 @@ export const useTaskStore = create<TaskStore>()(
         });
       },
       mergeTask: (task) => {
+        const normalizedTask = normalizeTaskActivityCompatibility(task);
         set((state) => {
-          const existingIndex = state.tasks.findIndex((candidate) => candidate.id === task.id);
+          const existingIndex = state.tasks.findIndex((candidate) => candidate.id === normalizedTask.id);
           const nextTasks =
             existingIndex >= 0
               ? state.tasks.map((candidate) =>
-                  candidate.id === task.id ? task : candidate
+                  candidate.id === normalizedTask.id ? normalizedTask : candidate
                 )
-              : [task, ...state.tasks];
+              : [normalizedTask, ...state.tasks];
 
           return {
             tasks: nextTasks,
             taskFetchTimestamps: {
               ...state.taskFetchTimestamps,
-              [task.id]: Date.now(),
+              [normalizedTask.id]: Date.now(),
             },
           };
         });
@@ -608,7 +632,7 @@ export const useTaskStore = create<TaskStore>()(
                   : [];
                 const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
 
-                return {
+                return normalizeTaskActivityCompatibility({
                   id: task.id,
                   projectId: task.project_id,
                   parentTaskId: task.parent_task_id,
@@ -624,7 +648,14 @@ export const useTaskStore = create<TaskStore>()(
                   status: (task.current_status || 'new') as TaskStatus,
                   completionPercentage: task.completion_percentage,
                   assignedTo: normalizedAssignedTo,
+                  primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
+                  delegatedUserIds: Array.isArray(task.delegated_user_ids)
+                    ? task.delegated_user_ids.map((userId: unknown) => String(userId))
+                    : undefined,
                   assignedBy: normalizedAssignedBy,
+                  containerId: task.container_id ? String(task.container_id) : undefined,
+                  subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
+                  tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                   location: task.location,
                   attachments: task.attachments || [],
                   starredByUsers: task.starred_by_users || [],
@@ -655,7 +686,7 @@ export const useTaskStore = create<TaskStore>()(
                       timestamp: activity.timestamp,
                       userId: activity.userId,
                     })),
-                };
+                });
               });
 
               const tasksToFix: Array<{ id: string; assignedBy: string }> = [];
@@ -791,7 +822,7 @@ export const useTaskStore = create<TaskStore>()(
               });
 
               const scopedTaskIds = new Set(get().taskIdsByProject[projectId] || []);
-              const transformedTasks = (allTasksData || []).map(task => ({
+              const transformedTasks = (allTasksData || []).map(task => normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
                 parentTaskId: task.parent_task_id,
@@ -809,7 +840,14 @@ export const useTaskStore = create<TaskStore>()(
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
                   : [],
+                primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
+                delegatedUserIds: Array.isArray(task.delegated_user_ids)
+                  ? task.delegated_user_ids.map((userId: unknown) => String(userId))
+                  : undefined,
                 assignedBy: task.assigned_by ? String(task.assigned_by) : '',
+                containerId: task.container_id ? String(task.container_id) : undefined,
+                subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
+                tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -945,7 +983,7 @@ export const useTaskStore = create<TaskStore>()(
               });
 
               const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
-              const transformedTasks = (data || []).map(task => ({
+              const transformedTasks = (data || []).map(task => normalizeTaskActivityCompatibility({
                 id: task.id,
                 projectId: task.project_id,
                 parentTaskId: task.parent_task_id,
@@ -963,7 +1001,14 @@ export const useTaskStore = create<TaskStore>()(
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
                   : [],
+                primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
+                delegatedUserIds: Array.isArray(task.delegated_user_ids)
+                  ? task.delegated_user_ids.map((userId: unknown) => String(userId))
+                  : undefined,
                 assignedBy: task.assigned_by ? String(task.assigned_by) : '',
+                containerId: task.container_id ? String(task.container_id) : undefined,
+                subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
+                tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -1106,7 +1151,7 @@ export const useTaskStore = create<TaskStore>()(
           const normalizedAssignedBy = taskData.assigned_by ? String(taskData.assigned_by) : '';
 
           // Transform Supabase data to match local interface
-          const transformedTask = {
+          const transformedTask = normalizeTaskActivityCompatibility({
             id: taskData.id,
             projectId: taskData.project_id,
             parentTaskId: taskData.parent_task_id,
@@ -1122,7 +1167,14 @@ export const useTaskStore = create<TaskStore>()(
             status: (taskData.current_status || 'new') as TaskStatus,
             completionPercentage: taskData.completion_percentage,
             assignedTo: normalizedAssignedTo,
+            primaryAssigneeId: taskData.primary_assignee_id ? String(taskData.primary_assignee_id) : undefined,
+            delegatedUserIds: Array.isArray(taskData.delegated_user_ids)
+              ? taskData.delegated_user_ids.map((userId: unknown) => String(userId))
+              : undefined,
             assignedBy: normalizedAssignedBy,
+            containerId: taskData.container_id ? String(taskData.container_id) : undefined,
+            subContainerId: taskData.sub_container_id ? String(taskData.sub_container_id) : undefined,
+            tags: Array.isArray(taskData.tags) ? taskData.tags.map((tag: unknown) => String(tag)) : [],
             location: taskData.location,
             attachments: taskData.attachments || [],
             // Legacy fields for backward compatibility (derived from status)
@@ -1147,7 +1199,7 @@ export const useTaskStore = create<TaskStore>()(
             // Edit history and notifications
             hasUnreadChanges: taskData.has_unread_changes || false,
             lastEditedAt: taskData.last_edited_at || undefined,
-          };
+          });
 
               get().mergeTask(transformedTask);
               return transformedTask;
@@ -1173,7 +1225,7 @@ export const useTaskStore = create<TaskStore>()(
       createTask: async (taskData) => {
         if (!supabase) {
           // Fallback to local creation
-          const newTask: Task = {
+          const newTask: Task = normalizeTaskActivityCompatibility({
             ...taskData,
             id: Date.now().toString(),
             createdAt: new Date().toISOString(),
@@ -1183,7 +1235,7 @@ export const useTaskStore = create<TaskStore>()(
             completionPercentage: 0,
             delegationHistory: [],
             originalAssignedBy: taskData.assignedBy,
-          };
+          });
 
           set(state => ({
             tasks: [...state.tasks, newTask]
@@ -1222,7 +1274,12 @@ export const useTaskStore = create<TaskStore>()(
               current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: taskData.assignedTo,
+              primary_assignee_id: taskData.primaryAssigneeId || null,
+              delegated_user_ids: taskData.delegatedUserIds || null,
               assigned_by: taskData.assignedBy,
+              container_id: taskData.containerId || null,
+              sub_container_id: taskData.subContainerId || null,
+              tags: taskData.tags || [],
               attachments: taskData.attachments || [],
               // Auto-accept if creator is assigned to the task
               accepted: isCreatorAssigned ? true : false,
@@ -1348,7 +1405,7 @@ export const useTaskStore = create<TaskStore>()(
 
           // Transform Supabase data to match local interface
           // Include activities to prevent layout shifts when activities are later fetched
-          const transformedTask = {
+          const transformedTask = normalizeTaskActivityCompatibility({
             id: data.id,
             projectId: data.project_id,
             title: data.title,
@@ -1361,7 +1418,14 @@ export const useTaskStore = create<TaskStore>()(
             status: (data.current_status || 'new') as TaskStatus,
             completionPercentage: data.completion_percentage,
             assignedTo: data.assigned_to,
+            primaryAssigneeId: data.primary_assignee_id ? String(data.primary_assignee_id) : undefined,
+            delegatedUserIds: Array.isArray(data.delegated_user_ids)
+              ? data.delegated_user_ids.map((userId: unknown) => String(userId))
+              : undefined,
             assignedBy: data.assigned_by,
+            containerId: data.container_id ? String(data.container_id) : undefined,
+            subContainerId: data.sub_container_id ? String(data.sub_container_id) : undefined,
+            tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
             location: data.location,
             attachments: data.attachments || [],
             // Legacy fields for backward compatibility (derived from status)
@@ -1389,7 +1453,7 @@ export const useTaskStore = create<TaskStore>()(
                 userId: activity.userId,
               })),
             children: [],
-          };
+          });
 
           // Update local state with complete task data including activities
           get().mergeTask(transformedTask);
@@ -1420,7 +1484,7 @@ export const useTaskStore = create<TaskStore>()(
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === id
-                ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+                ? normalizeTaskActivityCompatibility({ ...task, ...updates, updatedAt: new Date().toISOString() })
                 : task
             )
           }));
@@ -1498,7 +1562,7 @@ export const useTaskStore = create<TaskStore>()(
           set(state => ({
             tasks: state.tasks.map(task =>
               task.id === id 
-                ? { ...task, ...updates, updatedAt: new Date().toISOString() } 
+                ? normalizeTaskActivityCompatibility({ ...task, ...updates, updatedAt: new Date().toISOString() }) 
                 : task
             ),
             isLoading: true,
@@ -1518,6 +1582,11 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.category) updateData.category = cleanUpdates.category;
           if (cleanUpdates.dueDate) updateData.due_date = cleanUpdates.dueDate;
           if (cleanUpdates.assignedTo) updateData.assigned_to = cleanUpdates.assignedTo;
+          if ('primaryAssigneeId' in cleanUpdates) updateData.primary_assignee_id = cleanUpdates.primaryAssigneeId || null;
+          if ('delegatedUserIds' in cleanUpdates) updateData.delegated_user_ids = cleanUpdates.delegatedUserIds || [];
+          if ('containerId' in cleanUpdates) updateData.container_id = cleanUpdates.containerId || null;
+          if ('subContainerId' in cleanUpdates) updateData.sub_container_id = cleanUpdates.subContainerId || null;
+          if ('tags' in cleanUpdates) updateData.tags = cleanUpdates.tags || [];
           if (cleanUpdates.attachments) updateData.attachments = cleanUpdates.attachments;
           // Legacy accepted field - map to status if needed
           if ('accepted' in cleanUpdates && cleanUpdates.accepted === true && !cleanUpdates.status) {

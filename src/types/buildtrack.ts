@@ -458,7 +458,11 @@ export type ActivityType =
   | 'review_submission'
   | 'review_acceptance'
   | 'review_rejection'
-  | 'assigner_comment';
+  | 'assigner_comment'
+  | 'delegation_added'
+  | 'delegation_removed'
+  | 'photo_batch_attached'
+  | 'draft_completed';
 
 // Type-specific data structures for each activity type
 export interface ProgressUpdateData {
@@ -578,8 +582,13 @@ export interface Task {
     longitude?: number;
   };
   assignedTo: string[];
+  primaryAssigneeId?: string;
+  delegatedUserIds?: string[];
   assignedBy: string;
   originalAssignedBy?: string; // Original creator before any delegation
+  containerId?: string;
+  subContainerId?: string;
+  tags?: string[];
   createdAt: string;
   updates: TaskUpdate[];
   

@@ -707,6 +707,156 @@ describe('taskStore.supabase unit tests', () => {
     expect(result.current.taskFetchTimestamps['subtask-123']).toEqual(expect.any(Number));
   });
 
+
+  it('normalizes legacy assignedTo arrays into redesign primary and delegated assignees', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-redesign-legacy',
+      assigned_to: ['u-primary', 'u-helper'],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: taskRow, error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let fetchedTask: Task | null = null;
+    await act(async () => {
+      fetchedTask = await result.current.fetchTaskById('task-redesign-legacy', true);
+    });
+
+    expect(fetchedTask).toMatchObject({
+      assignedTo: ['u-primary', 'u-helper'],
+    });
+    expect((fetchedTask as any)?.primaryAssigneeId).toBe('u-primary');
+    expect((fetchedTask as any)?.delegatedUserIds).toEqual(['u-helper']);
+    expect((fetchedTask as any)?.tags).toEqual([]);
+  });
+
+  it('preserves explicit redesign assignment metadata when it already exists', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-redesign-explicit',
+      assigned_to: ['u-primary', 'u-helper'],
+      primary_assignee_id: 'u-explicit-primary',
+      delegated_user_ids: ['u-explicit-helper'],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: taskRow, error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let fetchedTask: Task | null = null;
+    await act(async () => {
+      fetchedTask = await result.current.fetchTaskById('task-redesign-explicit', true);
+    });
+
+    expect((fetchedTask as any)?.primaryAssigneeId).toBe('u-explicit-primary');
+    expect((fetchedTask as any)?.delegatedUserIds).toEqual(['u-explicit-helper']);
+    expect(fetchedTask?.assignedTo).toEqual(['u-primary', 'u-helper']);
+  });
+
+  it('preserves redesign container fields and tags through normalization', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-redesign-container',
+      assigned_to: ['u-primary'],
+      container_id: 'container-7',
+      sub_container_id: 'sub-container-9',
+      tags: ['electrical', 'priority'],
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: taskRow, error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let fetchedTask: Task | null = null;
+    await act(async () => {
+      fetchedTask = await result.current.fetchTaskById('task-redesign-container', true);
+    });
+
+    expect((fetchedTask as any)?.containerId).toBe('container-7');
+    expect((fetchedTask as any)?.subContainerId).toBe('sub-container-9');
+    expect((fetchedTask as any)?.tags).toEqual(['electrical', 'priority']);
+  });
+
+  it('defaults missing redesign tags during persisted store normalization', () => {
+    const merge = useTaskStore.persist.getOptions().merge;
+    expect(merge).toBeDefined();
+
+    const persistedTask = createTaskState({
+      id: 'task-persisted-redesign-tags',
+      assignedTo: ['u-primary', 'u-helper'],
+    } as any);
+
+    const mergedState = merge?.(
+      {
+        tasks: [persistedTask],
+        taskReadStatuses: [],
+        allTasksFetchTimestamp: null,
+        taskQueryMeta: {},
+      } as any,
+      useTaskStore.getState() as any
+    ) as ReturnType<typeof useTaskStore.getState>;
+
+    expect((mergedState.tasks[0] as any).primaryAssigneeId).toBe('u-primary');
+    expect((mergedState.tasks[0] as any).delegatedUserIds).toEqual(['u-helper']);
+    expect((mergedState.tasks[0] as any).tags).toEqual([]);
+  });
+
   it('upserts scoped project fetch results without dropping unrelated cached tasks', async () => {
     const existingTask = createTaskState({
       id: 'task-existing',

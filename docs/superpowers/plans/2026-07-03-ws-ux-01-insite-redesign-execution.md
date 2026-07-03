@@ -17,7 +17,7 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | Foundation slice completed ahead of navigation-facing bootstrap restore work. |
 | WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | Completed as a bootstrap-only slice without renaming the existing tab shell or expanding into broader navigation redesign work. |
 | WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | Aligned the live worker shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
-| WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Pipeline | Replace the legacy dashboard with the approved project-scoped `Recent Activity` home. |
+| WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | Replaced the legacy dashboard with the approved project-scoped `Recent Activity` home while preserving task, project, and camera entry paths. |
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Pipeline | Roll out the approved compact and collapsible project task list. |
 | WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
 | WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
@@ -143,6 +143,15 @@ In scope:
 - repurpose the current dashboard route into the approved Activity home surface
 - scope visible activity to the active project only
 - preserve direct paths into tasks and capture
+
+Closure evidence:
+
+- `DashboardScreen` now renders the approved `Recent Activity` home instead of the legacy metric-grid dashboard
+- the activity adapter is scoped to the active project selected in the workspace filter store
+- no-selection behavior now suppresses project-specific pills, task shortcuts, and activity rows until a project is selected
+- focused validation passed:
+  - `npx jest src/__tests__/integration/activity-home.integration.test.tsx src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/navigation/__tests__/WorkspaceBootstrapGate.test.tsx --runInBand`
+  - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01E — Compact project task surface
 

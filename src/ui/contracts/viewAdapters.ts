@@ -49,6 +49,28 @@ export interface DashboardQuickActionItem extends PrimitiveReadyItemBase {
   isDisabled: boolean;
 }
 
+export interface DashboardActivityItem extends PrimitiveReadyItemBase {
+  id: string;
+  taskId: string;
+  title: string;
+  subtitle: string;
+  timestampLabel: string;
+  statusLabel: string;
+  previewPhotoUri?: string;
+}
+
+export interface DashboardSummaryPill {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface DashboardTaskShortcut {
+  title: string;
+  subtitle: string;
+  countLabel: string;
+}
+
 export interface DashboardScalarMetrics {
   openTaskCount: number;
   overdueTaskCount: number;
@@ -80,6 +102,15 @@ export interface DashboardScreenViewAdapterOutput {
   screenId: "DashboardScreen";
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
+  activeProject: {
+    id: string;
+    title: string;
+    subtitle?: string;
+  } | null;
+  summaryPills: DashboardSummaryPill[];
+  draftItems: DashboardActivityItem[];
+  activityItems: DashboardActivityItem[];
+  taskShortcut: DashboardTaskShortcut | null;
   projectSummaryItems: DashboardProjectSummaryItem[];
   highlightedTaskItems: DashboardHighlightedTaskItem[];
   quickActionItems: DashboardQuickActionItem[];

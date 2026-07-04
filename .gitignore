@@ -48,6 +48,7 @@ eas-keystores/
 
 # Local tooling state/logs
 .superpowers/
+.worktrees/
 
 # typescript
 *.tsbuildinfo

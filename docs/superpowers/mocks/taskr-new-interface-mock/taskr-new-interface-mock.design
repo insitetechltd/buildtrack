@@ -1,0 +1,114 @@
+{
+  "data": [
+    {
+      "id": "page-activity-home",
+      "title": "Activity Home",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783070000000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/activity-home.html",
+        "interactions": [
+          {
+            "domId": "activity-open-tasks",
+            "targetPageId": "page-all-tasks",
+            "transitionLabel": "Open tasks"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-all-tasks",
+      "title": "All Tasks",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783070000001,
+      "canvasData": {
+        "x": 420,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/all-tasks.html",
+        "interactions": [
+          {
+            "domId": "tasks-open-detail",
+            "targetPageId": "page-task-detail",
+            "transitionLabel": "Open task detail"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-task-detail",
+      "title": "Task Detail",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783070000002,
+      "canvasData": {
+        "x": 840,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/task-detail.html",
+        "interactions": [
+          {
+            "domId": "detail-open-capture",
+            "targetPageId": "page-batch-capture-review",
+            "transitionLabel": "Add photos"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-batch-capture-review",
+      "title": "Batch Capture Review",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783070000003,
+      "canvasData": {
+        "x": 1260,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/batch-capture-review.html",
+        "interactions": [
+          {
+            "domId": "capture-open-projects",
+            "targetPageId": "page-project-switcher",
+            "transitionLabel": "Switch project"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-project-switcher",
+      "title": "Project Switcher",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783070000004,
+      "canvasData": {
+        "x": 1680,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/project-switcher.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": true,
+    "deviceType": "mobile",
+    "projectName": "Taskr New Interface Mock",
+    "showEdge": true
+  }
+}

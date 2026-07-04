@@ -199,11 +199,37 @@ Not for:
 Top-level navigation is:
 
 - `Activity`
-- `Tasks`
 - `Camera`
-- `Profile`
+- `Tasks`
 
 These are all views of the same project-scoped workspace, not separate products.
+
+Profile is **not** a bottom-navigation destination in the approved shell. It belongs in the **top-right header area** as an account/access affordance, not as a primary bottom-tab work mode.
+
+## Approved Shell Hierarchy
+
+The approved shell should use a **3-item bottom navigation bar**:
+
+- `Activity` on the left
+- `Camera` in the center
+- `Tasks` on the right
+
+### Camera button treatment
+
+The center camera control is not a standard tab.
+
+It should be treated as:
+
+- the visually dominant bottom action
+- a larger circular center button
+- red camera iconography
+- the primary on-site field action in the shell
+
+This makes the app read as:
+
+- `Activity` = monitor / triage
+- `Camera` = act / capture
+- `Tasks` = process / work through the queue
 
 ## Activity Page — Approved Design
 
@@ -236,16 +262,23 @@ It should include:
 - active project identity
 - today’s date
 - project elapsed number of days
-- weather-app-inspired visual tile
+- compact inline weather status
 - inline `This Week’s Critical Dates` list
 
 ### Weather
 
 Weather behavior for the current design:
 
-- visual style may be inspired by the phone weather app
 - live weather integration is **not required in this pass**
-- treat weather as a styled visual module for now
+- weather should be visually **small and inline**, not a large tile
+- place it on the same line as the date / elapsed-day metadata
+- use:
+  - a small status icon
+  - short temperature label
+
+Example pattern:
+
+- `Fri, Jul 4 · Day 118 · ☁️ 29°`
 
 ### Critical Dates
 
@@ -440,6 +473,46 @@ Or phrased another way:
 - `Activity` is action-based / triage-based
 - `Tasks` is goal-based / worklist-based
 
+## Camera — Approved Model
+
+## Role
+
+`Camera` is the primary capture action in the shell.
+
+Its job is to:
+
+- encourage fast on-site documentation
+- reduce friction before task organization
+- support both general capture and task-specific updates
+
+## Default camera behavior
+
+When the center camera button is pressed:
+
+- open the camera immediately
+- put photo capture first
+- defer the organization choice until after capture
+
+## Outside task context
+
+When camera is launched from anywhere outside Task Detail:
+
+- capture first
+- default the post-capture route to **Create New Task**
+- still allow an alternate path to **Add to Existing Task**
+
+This keeps capture lightweight while preserving the ability to file evidence into an existing task when needed.
+
+## Inside task context
+
+When camera is launched from a Task Detail screen:
+
+- capture first
+- default directly into a **photo update for that same task**
+- skip the generic post-capture routing choice
+
+This should feel like a context-aware in-task update action, not a detached navigation flow.
+
 ## Critical Dates — Approved Model
 
 ## Concept
@@ -525,6 +598,14 @@ Implemented correction outcomes:
 - `Tasks` uses ownership-first queues with bucket-first interaction and a unified search mode
 - weekly critical dates are sourced from the `critical_this_week` task tag
 - the create/detail flows expose the lightweight critical-date flag entry path
+
+The following approved design decisions are documented here but are **not yet fully implemented** in the current correction slice:
+
+- 3-item bottom shell with `Activity / Camera / Tasks`
+- dominant center camera button
+- profile moved fully into the top-right header area
+- compact inline weather treatment replacing the larger weather tile
+- context-aware camera defaults based on whether the user launches camera from Task Detail or elsewhere
 
 ## Non-Goals In This Correction Stage
 

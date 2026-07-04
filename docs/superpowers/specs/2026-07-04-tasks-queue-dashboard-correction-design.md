@@ -297,6 +297,50 @@ The following is explicitly not part of this correction pass:
 
 Category reorganization remains a **future slice** and should be scheduled separately.
 
+## Approved Follow-On Shell Decisions
+
+The following decisions were approved after this correction scope was written and should guide the next shell/navigation slice:
+
+### Bottom navigation
+
+- reduce the bottom navigation to **three items**
+- `Activity` on the left
+- `Camera` as the dominant center action
+- `Tasks` on the right
+
+### Camera button treatment
+
+- center button should be visually larger than the other nav items
+- use a circular treatment
+- use red camera iconography
+- treat camera as the primary field action, not a standard peer tab
+
+### Profile placement
+
+- remove `Profile` from the bottom navigation
+- place profile access in the **top-right header area**
+
+### Weather treatment
+
+- reduce weather from a separate visual tile to a **compact inline weather status**
+- place weather on the same metadata line as the date and elapsed days
+
+### Camera behavior
+
+Outside Task Detail:
+
+- open camera immediately
+- capture first
+- default post-capture flow to **Create New Task**
+- still allow an alternate route to **Add to Existing Task**
+
+Inside Task Detail:
+
+- open camera immediately
+- capture first
+- default directly to a **photo update for the same task**
+- skip the generic routing choice in that context
+
 ## Implementation Implications
 
 This correction should revise the current Tasks direction that was just implemented.

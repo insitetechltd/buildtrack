@@ -41,6 +41,16 @@ describe("TasksScreen Interactions", () => {
 
     mockUseTasksViewAdapter.mockReturnValue({
       output: {
+        compactSections: [
+          {
+            id: "section-project-1-level-12",
+            projectId: "project-1",
+            title: "Level 12",
+            taskCountLabel: "0 tasks",
+            isCollapsed: false,
+            rows: [],
+          },
+        ],
         taskRowItems: [],
         scalarMetrics: {
           totalVisibleTaskCount: 0,
@@ -63,6 +73,7 @@ describe("TasksScreen Interactions", () => {
       },
       actions: {
         resetFilters: jest.fn(),
+        toggleSection: jest.fn(),
       },
     });
   });
@@ -77,10 +88,12 @@ describe("TasksScreen Interactions", () => {
 
     const inboxButton = getByText("Inbox");
     const outboxButton = getByText("Outbox");
+    const myTasksButton = getByText("My Tasks");
     const myWorkButton = getByText("My Work");
 
     expect(inboxButton).toBeTruthy();
     expect(outboxButton).toBeTruthy();
+    expect(myTasksButton).toBeTruthy();
     expect(myWorkButton).toBeTruthy();
 
     fireEvent.press(inboxButton);
@@ -88,6 +101,9 @@ describe("TasksScreen Interactions", () => {
 
     fireEvent.press(outboxButton);
     expect(mockSetSectionFilter).toHaveBeenCalledWith("outbox");
+
+    fireEvent.press(myTasksButton);
+    expect(mockSetSectionFilter).toHaveBeenCalledWith("my_tasks");
 
     fireEvent.press(myWorkButton);
     expect(mockSetSectionFilter).toHaveBeenCalledWith("my_work");

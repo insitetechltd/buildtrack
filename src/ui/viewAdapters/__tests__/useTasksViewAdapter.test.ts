@@ -435,9 +435,8 @@ describe("useTasksViewAdapter", () => {
 
     const { result } = renderHook(() => useTasksViewAdapter());
 
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "empty",
-    ]);
+    expect(result.current.output.taskRowItems).toEqual([]);
+    expect(result.current.output.compactSections).toEqual([]);
   });
 
   it("keeps declined tasks visible under persisted legacy reviewing filters", () => {
@@ -606,5 +605,158 @@ describe("useTasksViewAdapter", () => {
     expect(outputTasks[0].indentationLevel).toBeUndefined();
     expect(outputTasks[1].taskId).toBe("child-task");
     expect(outputTasks[1].indentationLevel).toBe(1);
+  });
+
+  it("groups visible tasks into compact collapsible sections for the active project only", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    setupBaseMocks();
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-1",
+      sectionFilter: "all",
+      statusFilter: "all",
+      resetFilters: jest.fn(),
+      setSelectedProject: jest.fn(),
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      isLoading: false,
+      getProjectById: jest.fn().mockImplementation((id: string) =>
+        id === "project-1" ? { id: "project-1", name: "Project A" } : { id, name: "Other Project" },
+      ),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-uncontained",
+          projectId: "project-1",
+          title: "Loose task",
+          status: "new",
+          priority: "high",
+          containerId: undefined,
+          subContainerId: undefined,
+        },
+        {
+          id: "task-level-12",
+          projectId: "project-1",
+          title: "Level 12 task",
+          status: "in_progress",
+          priority: "high",
+          containerId: "level-12",
+          subContainerId: undefined,
+        },
+        {
+          id: "task-other-project",
+          projectId: "project-2",
+          title: "Other project",
+          status: "new",
+          priority: "high",
+          containerId: "other",
+          subContainerId: undefined,
+        },
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.compactSections.map((section) => section.title)).toEqual([
+      "Uncontained Tasks",
+      "Level 12",
+    ]);
+    expect(
+      result.current.output.compactSections.every((section) => section.projectId === "project-1"),
+    ).toBe(true);
+  });
+
+  it("keeps same-named sections separate across projects when no active project is selected", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
+
+    setupBaseMocks();
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: null,
+      sectionFilter: "all",
+      statusFilter: "all",
+      resetFilters: jest.fn(),
+      setSelectedProject: jest.fn(),
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      isLoading: false,
+      getProjectById: jest.fn().mockImplementation((id: string) =>
+        id === "project-1"
+          ? { id: "project-1", name: "Project A" }
+          : { id: "project-2", name: "Project B" },
+      ),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-project-a",
+          projectId: "project-1",
+          title: "Level 12 A",
+          status: "new",
+          priority: "high",
+          containerId: "level-12",
+          subContainerId: undefined,
+        },
+        {
+          id: "task-project-b",
+          projectId: "project-2",
+          title: "Level 12 B",
+          status: "new",
+          priority: "high",
+          containerId: "level-12",
+          subContainerId: undefined,
+        },
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.compactSections).toHaveLength(2);
+    expect(result.current.output.compactSections.map((section) => section.id)).toEqual([
+      "section-project-1-level-12",
+      "section-project-2-level-12",
+    ]);
+  });
+
+  it("returns zero rows and zero sections when no tasks match the current filters", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+
+    setupBaseMocks();
+
+    useProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-1",
+      sectionFilter: "all",
+      statusFilter: "all",
+      resetFilters: jest.fn(),
+      setSelectedProject: jest.fn(),
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [],
+      isLoading: false,
+      buildTaskTree: () => [],
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.compactSections).toEqual([]);
+    expect(result.current.output.taskRowItems).toEqual([]);
+    expect(result.current.output.scalarMetrics.totalVisibleTaskCount).toBe(0);
+    expect(result.current.output.readiness.hasUsableData).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { FlatList, Pressable, Text, View, ScrollView } from "react-native";
+import { Pressable, Text, View, SectionList, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
@@ -25,20 +25,26 @@ export default function TasksScreen(props: TasksScreenProps) {
   });
   const projectFilterStore = useProjectFilterStore();
 
-  const containerCards = useMemo(() => {
-    return output.taskRowItems.map(mapTaskRowToContainerCardProps);
-  }, [output.taskRowItems]);
-
   const searchContract = useMemo(() => {
     return mapTaskInputToTextFieldProps(searchInput);
   }, [searchInput]);
+
+  const compactSections = useMemo(
+    () => output.compactSections.map((section) => ({ ...section, data: section.rows })),
+    [output.compactSections],
+  );
 
   const filterOptions: { label: string; value: SectionFilter }[] = [
     { label: "All Tasks", value: "all" },
     { label: "Inbox", value: "inbox" },
     { label: "Outbox", value: "outbox" },
+    { label: "My Tasks", value: "my_tasks" },
     { label: "My Work", value: "my_work" },
   ];
+  const isFilteredEmpty =
+    searchInput.value.trim().length > 0 ||
+    projectFilterStore.sectionFilter !== "all" ||
+    projectFilterStore.statusFilter !== "all";
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
@@ -129,19 +135,61 @@ export default function TasksScreen(props: TasksScreenProps) {
             </ScrollView>
           </View>
         </View>
-        <View className="flex-1 px-4">
-          <FlatList
-            testID="tasks-screen__list"
-            data={containerCards}
-            keyExtractor={(item) => item.primitiveId}
-            renderItem={({ item }) => (
+        <SectionList
+          testID="tasks-screen__list"
+          className="flex-1 px-4"
+          sections={compactSections}
+          keyExtractor={(item) => item.taskId}
+          renderSectionHeader={({ section }) => (
+            <View
+              testID={`tasks-screen__section_${section.id}`}
+              className="mb-3 rounded-3xl bg-white px-4 py-4"
+            >
+              <Pressable
+                testID={`tasks-screen__section_toggle_${section.id}`}
+                onPress={() => actions.toggleSection(section.id)}
+                className="flex-row items-center justify-between"
+              >
+                <View className="flex-1 pr-3">
+                  <Text className="text-base font-semibold text-slate-900">{section.title}</Text>
+                  <Text className="mt-1 text-sm text-slate-500">
+                    {section.subtitle ? `${section.subtitle} · ${section.taskCountLabel}` : section.taskCountLabel}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={section.isCollapsed ? "chevron-down" : "chevron-up"}
+                  size={18}
+                  color="#475569"
+                />
+              </Pressable>
+            </View>
+          )}
+          renderItem={({ item, section }) =>
+            section.isCollapsed ? null : (
               <View className="mb-3">
-                <ContainerCard contract={item} />
+                <ContainerCard contract={mapTaskRowToContainerCardProps(item)} />
               </View>
-            )}
-            ListFooterComponent={<View className="h-24" />}
-          />
-        </View>
+            )
+          }
+          stickySectionHeadersEnabled={false}
+          SectionSeparatorComponent={() => <View className="h-1" />}
+          ListEmptyComponent={
+            <View
+              testID="tasks-screen__empty_state"
+              className="rounded-3xl bg-white px-4 py-5"
+            >
+              <Text className="text-base font-semibold text-slate-900">No Tasks</Text>
+              <Text className="mt-1 text-sm text-slate-500">
+                {isFilteredEmpty
+                  ? "Try changing the current project, search query, or task filters."
+                  : projectFilterStore.selectedProjectId
+                    ? "This project does not have any tasks yet."
+                    : "There are no tasks in the current workspace yet."}
+              </Text>
+            </View>
+          }
+          ListFooterComponent={<View className="h-24" />}
+        />
         {visibility.showCreateTaskFab ? (
           <Pressable
             testID="tasks-screen__fab_create_task"

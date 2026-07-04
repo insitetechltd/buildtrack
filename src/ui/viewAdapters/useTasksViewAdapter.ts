@@ -6,6 +6,7 @@ import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import type {
+  TasksCompactSection,
   TasksScreenRowItem,
   TasksScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
@@ -47,6 +48,16 @@ function mapTaskStatusToToken(status: TaskStatus): StatusSemanticToken {
 
 function formatPriority(priority: Priority): string {
   return priority.replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatCompactSectionTitle(rawValue?: string | null): string {
+  if (!rawValue) {
+    return "Uncontained Tasks";
+  }
+
+  return rawValue
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function buildAssigneeSummary(task: Task): string {
@@ -124,6 +135,7 @@ export interface TasksViewAdapterHookResult {
   };
   actions: {
     resetFilters: () => void;
+    toggleSection: (sectionId: string) => void;
   };
 }
 
@@ -138,9 +150,10 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const isLoadingTasks = Boolean(taskStore.isLoading);
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
+  const [collapsedSectionIds, setCollapsedSectionIds] = useState<string[]>([]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
-  const { taskRowItems, scalarMetrics, continuity, structuralState } = useMemo(() => {
+  const { compactSections, taskRowItems, scalarMetrics, continuity, structuralState } = useMemo(() => {
     const hasTasks = tasks.length > 0;
     const isInitialLoading = isLoadingTasks && !hasTasks;
     const isBackgroundRefreshing = isLoadingTasks && hasTasks;
@@ -263,32 +276,54 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
               isOverdue: isTaskOverdue(task),
               attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
               indentationLevel: level > 0 ? level : undefined,
-              density: "standard",
+              density: "compact",
               structuralState,
             };
           })
-        : [
-            {
-              id: "tasks-row:empty",
-              taskId: "empty",
-              title: "No Tasks",
-              statusToken: "workspace_empty",
-              statusLabel: "Empty",
-              responsibilityToken: "VOID_ARCHIVED",
-              priorityLabel: "—",
-              dueDateLabel: undefined,
-              assigneeSummary: "—",
-              projectName: selectedProjectId ? "Project" : "Workspace",
-              isOverdue: false,
-              attachmentUris: [],
-              density: "standard",
-              structuralState,
-            },
-          ];
+        : [];
+
+    const compactSectionsMap = new Map<string, TasksCompactSection>();
+
+    rows.forEach((row) => {
+        const sourceTask = searchedTasks.find((task) => task.id === row.taskId);
+        const rawSectionKey =
+          sourceTask?.subContainerId || sourceTask?.containerId || "uncontainered";
+        const scopedProjectId = sourceTask?.projectId || selectedProjectId || "workspace";
+        const sectionId = `section-${scopedProjectId}-${rawSectionKey}`;
+        const projectName =
+          sourceTask?.projectId ? projectStore.getProjectById(sourceTask.projectId)?.name : undefined;
+
+        if (!compactSectionsMap.has(sectionId)) {
+          compactSectionsMap.set(sectionId, {
+            id: sectionId,
+            projectId: scopedProjectId,
+            title: formatCompactSectionTitle(
+              rawSectionKey === "uncontainered" ? undefined : rawSectionKey,
+            ),
+            subtitle:
+              selectedProjectId
+                ? rawSectionKey === "uncontainered"
+                  ? "Project-scoped loose tasks"
+                  : "Container"
+                : projectName || "Project",
+            taskCountLabel: "",
+            isCollapsed: collapsedSectionIds.includes(sectionId),
+            rows: [],
+          });
+        }
+
+        compactSectionsMap.get(sectionId)?.rows.push(row);
+      });
+
+    const compactSections = Array.from(compactSectionsMap.values()).map((section) => ({
+      ...section,
+      taskCountLabel: `${section.rows.length} ${section.rows.length === 1 ? "task" : "tasks"}`,
+    }));
 
     const overdueVisibleTaskCount = rows.filter((row) => row.isOverdue).length;
 
     return {
+      compactSections,
       taskRowItems: rows,
       scalarMetrics: {
         totalVisibleTaskCount: rows.length,
@@ -311,6 +346,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     isLoadingTasks,
     normalizedSearchQuery,
     projectStore,
+    collapsedSectionIds,
     selectedProjectId,
     tasks,
     projectFilterStore.sectionFilter,
@@ -336,6 +372,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       statusFilterLabel: "All",
       sortLabel: "Default",
     },
+    compactSections,
     taskRowItems,
     scalarMetrics,
   };
@@ -351,8 +388,17 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
 
   const resetFilters = () => {
     setSearchQuery("");
+    setCollapsedSectionIds([]);
     projectFilterStore.resetFilters();
     void projectFilterStore.setSelectedProject(null, user?.id);
+  };
+
+  const toggleSection = (sectionId: string) => {
+    setCollapsedSectionIds((current) =>
+      current.includes(sectionId)
+        ? current.filter((id) => id !== sectionId)
+        : [...current, sectionId],
+    );
   };
 
   return {
@@ -369,6 +415,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     },
     actions: {
       resetFilters,
+      toggleSection,
     },
   };
 }

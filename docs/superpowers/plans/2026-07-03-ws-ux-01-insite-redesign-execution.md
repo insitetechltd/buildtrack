@@ -18,7 +18,7 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | Completed as a bootstrap-only slice without renaming the existing tab shell or expanding into broader navigation redesign work. |
 | WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | Aligned the live worker shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
 | WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | Replaced the legacy dashboard with the approved project-scoped `Recent Activity` home while preserving task, project, and camera entry paths. |
-| WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Pipeline | Roll out the approved compact and collapsible project task list. |
+| WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | Rolled out the approved compact and collapsible project task list while preserving search, filters, drill-in behavior, and project scoping. |
 | WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
 | WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
 | WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
@@ -164,6 +164,15 @@ In scope:
 - group tasks by lightweight container context
 - preserve fast drill-in and filter behavior
 - keep the compact collapsible variant as the production default
+
+Closure evidence:
+
+- `TasksScreen` now renders compact collapsible task sections instead of the legacy flat task list
+- section grouping is scoped by active project, and same-named sections remain distinct across projects in all-project mode
+- empty results now render an explicit empty state rather than a blank task surface
+- focused validation passed:
+  - `npx jest src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/__tests__/integration/TasksScreenInteraction.test.tsx --runInBand`
+  - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01F — Task detail redesign
 

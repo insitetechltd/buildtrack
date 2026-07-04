@@ -124,6 +124,16 @@ export interface TasksFilterSummary {
   sortLabel: string;
 }
 
+export interface TasksCompactSection {
+  id: string;
+  projectId: string;
+  title: string;
+  subtitle?: string;
+  taskCountLabel: string;
+  isCollapsed: boolean;
+  rows: TasksScreenRowItem[];
+}
+
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   id: string;
   taskId: string;
@@ -153,6 +163,7 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
+  compactSections: TasksCompactSection[];
   taskRowItems: TasksScreenRowItem[];
   scalarMetrics: TasksScalarMetrics;
 }

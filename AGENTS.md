@@ -15,25 +15,9 @@ Source of truth scanned for this inventory:
 
 ## Current Delivery Status
 
-- Latest lifecycle milestone: `WS-FND / M-FND-04 - UI Migration Foundations` is delivered, verified, and safely staged for remote pipeline merge. This milestone was historically closed during Sprint 4.
-- Previously closed milestone: `WS-FND / M-FND-03 - Workspace Automation & Script Cleanup` remains delivered and validated as the automation and observability foundation for the current UI contract work.
-- Earlier closed milestone: `WS-FND / M-FND-02 - Global Store Performance & Network Request Deduplication` remains delivered and validated as the performance foundation beneath the view-layer migration boundary.
-- Earlier closed milestone: `WS-FND / M-FND-01 - Field Reliability & Data Integrity` remains delivered and validated as the reliability foundation beneath the current workflow stack.
-- Completed `WS-FND / M-FND-04` implementation scope:
-  - style-free primitive family contracts in `src/ui/contracts/primitives.ts`
-  - Wave 1 screen view adapter contracts in `src/ui/contracts/viewAdapters.ts`
-  - navigation readiness and hybrid transition bridge contracts in `src/ui/contracts/navigationBridge.ts`
-  - mathematical migration scoring inventory in `src/ui/contracts/screenScoring.ts`
-  - focused contract coverage in `src/__tests__/integration/uiMigrationContracts.test.ts`
-  - aligned UI migration wave matrix documentation in `documentation/m-fnd-04-ui-migration-wave-matrix.md`
-- Validation completed during the third delivery slice of `WS-FND / M-FND-04`:
-  - `npx jest src/__tests__/integration/uiMigrationContracts.test.ts`
-  - `npx tsc --noEmit`
-- Delivery status: post-milestone staging and commit protocol prepared and approved; `WS-FND / M-FND-04` is considered closed locally unless post-merge CI, contract drift, or acceptance findings reopen the scope.
-- Likely next discovery entry point if the roadmap remains unchanged:
-  - primitive implementation and component buildout
-  - migrated screen shell construction for the Wave 1 foundation group
-  - legacy-to-migrated navigation bridge rollout with stable visual continuity
+- Latest closed architecture milestone set: `WS-UIA / M-UIA-01`, `WS-UIA / M-UIA-02`, and `WS-UIA / M-UIA-03` are delivered and closed.
+- Current redesign workstream: `WS-UX / M-UX-01` is active, with slices `S-UX-01A` through `S-UX-01E2` closed and later slices still in pipeline per `documentation/ROADMAP.md`.
+- Current pipeline focus remains in `WS-QA / M-QA-01`, `WS-QA / M-QA-02`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
 
 ## Shared Repository Context
 
@@ -288,55 +272,6 @@ These constraints apply across the agent pack unless a role narrows them further
 - Must not duplicate large amounts of existing docs without a reason.
 - Must prefer updating canonical documents over scattering duplicate instructions.
 - Must include commands, paths, and prerequisites exactly as they exist in the repository.
-
-### 9. Agent Identifier & Role Name: `sre-observability` / Site Reliability Engineer
-
-**Primary Focus & Domains:**
-- Post-deployment production health monitoring and incident detection.
-- Owns analysis of runtime reliability signals spanning mobile performance, Supabase-backed operations, and Expo/EAS release telemetry.
-- Focus areas:
-  - client-side telemetry anomalies
-  - dashboard and task-flow latency breaches
-  - upload, sync, and background refresh failure spikes
-  - Supabase log threshold anomalies
-  - Expo/EAS crash dumps and release health regressions
-
-**Core Tooling & Capabilities:**
-- Recommended tools: `Read`, file search, terminal, web search, release/readiness artifacts, and future telemetry/dashboard integrations approved for the repository.
-- Can inspect and correlate:
-  - client telemetry summaries and crash-free-session trends
-  - p95/p99 performance indicators for critical user flows
-  - Supabase error-rate and log-volume thresholds
-  - Expo/EAS crash diagnostics and build incident artifacts
-  - runbooks and incident documentation under `documentation/`
-- Produces:
-  - incident summaries
-  - threshold breach reports
-  - candidate impact domains
-  - escalation recommendations
-  - Discovery Gate handoff briefs for follow-on sprint planning
-
-**Hard Constraints:**
-- Must not modify production code directly during monitoring or incident triage.
-- Must not treat isolated telemetry noise as a confirmed regression without threshold evidence.
-- Must not expose secrets, credentials, or sensitive operational payloads in reports.
-- Must not bypass the lifecycle protocol by jumping directly into implementation work.
-- Must separate observed evidence from inferred causes and clearly label assumptions.
-
-**Operational Trigger:**
-- Activates when a sustained production threshold breach is observed, including:
-  - critical-screen latency regressions
-  - elevated crash frequency
-  - repeated upload, sync, or dashboard continuity failures
-  - Supabase log or error bursts above the accepted baseline
-- When a threshold breach is confirmed, this agent initiates a new `Phase 1 - Discovery & Specification Gate` by producing an incident brief for the SOLO Orchestrator / CPM workflow with:
-  - incident identifier
-  - affected user flow
-  - timeframe
-  - evidence sources
-  - severity
-  - likely impacted repository domains
-  - recommendation for the next sprint discovery scope
 
 ## Operating Sequence Summary
 

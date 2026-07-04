@@ -108,13 +108,17 @@ Documentation must be updated to match these files, not the other way around.
 These documents define how the repository should be interpreted and maintained:
 
 - [SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOURCE_OF_TRUTH.md)
+- [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
 - [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
+- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
 - [README.md](file:///Volumes/KooDrive/Insite%20App/README.md)
 
-### 3. Canonical Product And Domain References
+### 3. Canonical Product, UX, Architecture, And Domain References
 
-These are the primary human-readable references for current implementation-aligned behavior:
+These are the primary human-readable references for current implementation-aligned behavior and approved target-state direction:
 
+- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+- [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
 - [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
@@ -181,7 +185,7 @@ A document is canonical if it:
 Canonical docs belong in:
 
 - repo root only if they are top-level governance or entrypoint docs
-- otherwise `documentation/`
+- otherwise `documentation/`, unless this file explicitly promotes a stable source-of-truth document under `docs/`
 
 ### Active Plan Or Spec
 
@@ -264,15 +268,23 @@ When a document should stay active:
   - top-level repo landing page
 - [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
   - repository-local agent inventory and workflow context
-- [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
-  - single canonical WS/M/S milestone inventory and execution order
 - [SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOURCE_OF_TRUTH.md)
   - documentation-governance authority
+- [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
+  - single canonical WS/M/S milestone inventory and execution order
+- [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
+  - canonical operator workflow reference
 
-### Product And Implementation Truth
+### Product, UX, Architecture, And Domain Truth
 
+- [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+  - canonical approved product UI/UX logic and target-state interaction model
+- [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)
+  - canonical UI ownership, layering, and navigation contract reference
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
   - consolidated current product description
+- [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
+  - single canonical live bug tracker
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
   - current normalized role and permission reference
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
@@ -290,7 +302,7 @@ When a document should stay active:
 - [CI_WORKFLOWS.md](file:///Volumes/KooDrive/Insite%20App/CI_WORKFLOWS.md)
   - CI workflow reference
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
-  - operator workflow reference, if still aligned with the current agent system
+  - canonical operator workflow reference
 
 ## Current Active Working-Docs Registry
 

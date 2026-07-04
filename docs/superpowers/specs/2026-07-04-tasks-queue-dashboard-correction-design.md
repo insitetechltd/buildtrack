@@ -17,6 +17,7 @@ This correction changes the current direction in two important ways:
 ### Activity page
 
 - Keep `Activity` as the high-level triage surface.
+- Add an **active-project summary card above the dense dashboard grid**.
 - Replace the current simplified summary treatment with a **dense dashboard grid**.
 - The grid should preserve all **six categories**:
   - three categories for work assigned to me
@@ -30,6 +31,24 @@ This correction changes the current direction in two important ways:
   - the correct queue selected
   - the correct bucket opened
   - the task list filtered to that category
+
+### Activity summary card
+
+The summary card is scoped to the **active project only**.
+
+It should include:
+
+- today’s date
+- project elapsed number of days
+- a weather-app-inspired visual tile
+- an inline list for **This Week’s Critical Dates**
+
+Weather is a **styled visual module only** in this correction pass.
+
+- the UI may resemble the phone weather style
+- live weather integration is not required yet
+
+The `This Week’s Critical Dates` list should be embedded directly inside the summary card, not moved into a separate tray or link-only module.
 
 ### Tasks page
 
@@ -62,8 +81,23 @@ The `Activity` page should answer:
 - what requires attention right now
 - how my workload is distributed
 - how team-delegated work is progressing
+- what critical dates are coming up for the active project this week
 
 It should not become the place where long queue lists are worked through. Its job is overview and launch.
+
+### Active-project summary structure
+
+The `Activity` page should open with an active-project summary block before the dense queue grid.
+
+Recommended internal order:
+
+1. active project identity
+2. today’s date and elapsed day count
+3. weather-style visual tile
+4. inline `This Week’s Critical Dates` list
+5. dense queue dashboard grid
+
+This preserves overview at the top and keeps the queue grid as the second major block instead of the very first element on the page.
 
 ### Dense dashboard grid structure
 
@@ -83,6 +117,24 @@ It should not become the place where long queue lists are worked through. Its jo
 - Tapping a cell does not reveal a list on `Activity`
 - Tapping a cell routes into `Tasks`
 - The destination state should be deterministic and restorable
+
+### Critical dates
+
+The weekly critical-date list is **not** a private note module and is **not** a separate object type.
+
+Instead, it is a **task-derived subset**.
+
+That means:
+
+- critical dates come from tasks
+- this keeps one source of truth
+- the model can later be extended to shared/team visibility without inventing a second interface now
+
+The summary card should show only the subset relevant to:
+
+- the active project
+- the current week
+- tasks marked for inclusion in the weekly critical-date list
 
 ## Tasks
 
@@ -168,6 +220,41 @@ When a dashboard cell is tapped, route to `Tasks` with state representing:
 
 This contract should support direct landing from the dashboard without requiring the user to manually reconstruct context.
 
+## Critical Date Entry Model
+
+Critical dates should be created through a **lightweight task-level flag**, not a separate creation flow.
+
+### Recommended interaction
+
+Primary entry point:
+
+- from the expanded task card
+- a quick action such as:
+  - `Mark Critical`
+  - or `Add to This Week`
+
+Secondary support:
+
+- task create/edit can include the same flag when needed
+
+### Reasoning
+
+This is the preferred model because it:
+
+- minimizes interface sprawl
+- avoids a second management surface
+- avoids duplicate data entry
+- supports later sharing without remapping the concept into a different object type
+
+### Display rule
+
+When a task is marked for the weekly critical-date list:
+
+- the displayed date should come from the task’s existing due date or milestone date
+- the displayed description should come from the task title or a lightweight task-derived label
+
+This correction pass does **not** require a separate reason picker or separate critical-date editor.
+
 ## Terminology
 
 Approved top-level ownership language:
@@ -192,6 +279,8 @@ The following is explicitly not part of this correction pass:
 - full category reorganization / renaming of the six underlying task buckets
 - larger task-detail redesign beyond the row expansion behavior needed in `Tasks`
 - rebuilding queue semantics across backend/store contracts unless necessary for routing state
+- live weather integration
+- a standalone critical-date management interface
 
 Category reorganization remains a **future slice** and should be scheduled separately.
 
@@ -206,31 +295,37 @@ This correction should revise the current Tasks direction that was just implemen
 
 ### Introduce
 
+- active-project summary card above the `Activity` dashboard grid
+- inline weekly critical-date list derived from marked tasks
 - dense six-cell dashboard grid on `Activity`
 - queue-to-tasks navigation contract
 - bucket-first queue interaction on `Tasks`
 - one-open-bucket-per-queue behavior
 - compact two-line rows
 - photo-centric per-task expansion
+- lightweight task-level flag for critical-date inclusion
 
 ## Testing Focus
 
 Critical verification points for implementation:
 
-1. `Activity` shows all six categories in a dense dashboard grid
-2. tapping any grid cell navigates to `Tasks` with the correct queue and bucket open
-3. both `My Queue` and `Team Queue` use the same interaction model
-4. opening one bucket auto-collapses sibling buckets
-5. default task rows remain compact and two-line
-6. expanded task rows show latest photos prominently
-7. opened lists sort by latest update
-8. draft content is no longer the most visually dominant section on `Activity`
+1. `Activity` shows the active-project summary card above the queue dashboard
+2. the summary card includes date, elapsed day count, weather-style tile, and inline weekly critical dates
+3. `Activity` shows all six categories in a dense dashboard grid
+4. tapping any grid cell navigates to `Tasks` with the correct queue and bucket open
+5. both `My Queue` and `Team Queue` use the same interaction model
+6. opening one bucket auto-collapses sibling buckets
+7. default task rows remain compact and two-line
+8. expanded task rows show latest photos prominently
+9. opened lists sort by latest update
+10. draft content is no longer the most visually dominant section on `Activity`
+11. critical dates can be flagged quickly from the task flow without a separate management screen
 
 ## Recommended Slice Breakdown
 
 This correction is best implemented as two linked redesign slices:
 
-1. `Activity` dense dashboard grid restoration and queue-launch routing
-2. `Tasks` bucket-first queue redesign with compact rows and photo-centric expansion
+1. `Activity` summary-card and dense dashboard grid restoration with queue-launch routing
+2. `Tasks` bucket-first queue redesign with compact rows, photo-centric expansion, and critical-date flag entry
 
 The later category reorganization should remain a separate follow-on slice.

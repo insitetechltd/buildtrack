@@ -18,6 +18,50 @@ Use it for:
 
 If any future design decision changes the approved direction, update this document first or at the same time as the supporting slice/spec.
 
+## Relationship To `ROADMAP.md`
+
+This document is intentionally **not** a competing roadmap.
+
+The documentation hierarchy should be:
+
+1. `documentation/ROADMAP.md`
+2. `docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md`
+3. slice specs and execution plans under `docs/superpowers/`
+
+### Responsibility split
+
+`documentation/ROADMAP.md` owns:
+
+- WS / M / S inventory
+- status (`Pipeline`, `Closed`, `Deferred`)
+- execution order
+- dependency ordering
+- milestone references
+
+`docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md` owns:
+
+- approved product logic
+- page-role distinctions
+- interaction models
+- information architecture decisions
+- naming / terminology decisions
+- latest accepted UX direction when implementation lags behind
+
+Slice specs and plans under `docs/superpowers/` own:
+
+- narrowly scoped design detail for a specific correction or slice
+- implementation sequencing
+- closure evidence
+- temporary design exploration before normalization into this canonical doc
+
+### Rule for future updates
+
+When a design decision changes product behavior:
+
+- update this canonical doc
+- update the relevant slice spec/plan if needed
+- update `documentation/ROADMAP.md` only if slice status, references, sequencing, or milestone boundaries change
+
 ## Source Documents Aggregated Here
 
 This document consolidates and normalizes decisions from:

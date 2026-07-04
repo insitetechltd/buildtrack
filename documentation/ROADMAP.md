@@ -63,6 +63,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 ## Governance
 
 - This file is the single source of truth for milestone inventory and execution order.
+- Canonical approved product UI/UX logic belongs in `../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md`, not in this roadmap ledger.
 - Planning documents under `docs/superpowers/` may describe slices or execution detail, but must not become competing roadmap inventories.
 - When a milestone is closed, update its `Status` to `Closed` and, if relevant, update its primary reference to the latest execution plan or canonical doc.
 - Historically closed milestones may reference `AGENTS.md` as a summary record; milestone-level execution artifacts may not exist for all historical work.

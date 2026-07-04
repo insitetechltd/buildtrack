@@ -3,6 +3,17 @@
 **Date:** 2026-07-04  
 **Scope:** Correction to the current `Activity` and `Tasks` redesign direction after validating the implemented `S-UX-01E` behavior against the intended mockup and workflow needs.
 
+## Document Role
+
+This document is a **scoped correction spec** for the current redesign pass.
+
+It should work together with:
+
+- `documentation/ROADMAP.md` for WS / M / S status, dependencies, and execution order
+- `docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md` for the latest canonical approved UI/UX logic
+
+If this correction is accepted and remains valid, its product-level logic should be normalized into the canonical source-of-truth document rather than living only here.
+
 ## Goal
 
 Correct the queue experience so it supports fast triage, preserves all six important task categories, and restores the intended photo-centric expansion behavior without overloading the `Activity` page.

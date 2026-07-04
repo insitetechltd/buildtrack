@@ -117,6 +117,8 @@ These documents define how the repository should be interpreted and maintained:
 
 These are the primary human-readable references for current implementation-aligned behavior and approved target-state direction:
 
+- [SOFTWARE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOFTWARE_ARCHITECTURE.md)
+- [DATABASE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/DATABASE_ARCHITECTURE.md)
 - [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
 - [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
@@ -277,6 +279,10 @@ When a document should stay active:
 
 ### Product, UX, Architecture, And Domain Truth
 
+- [SOFTWARE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/SOFTWARE_ARCHITECTURE.md)
+  - canonical system-level architecture reference
+- [DATABASE_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/DATABASE_ARCHITECTURE.md)
+  - canonical Supabase, schema, and persistence architecture reference
 - [INSITE_UI_UX_SOURCE_OF_TRUTH.md](file:///Volumes/KooDrive/Insite%20App/docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
   - canonical approved product UI/UX logic and target-state interaction model
 - [UI_ARCHITECTURE.md](file:///Volumes/KooDrive/Insite%20App/documentation/UI_ARCHITECTURE.md)

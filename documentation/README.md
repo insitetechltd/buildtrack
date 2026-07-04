@@ -12,10 +12,12 @@ For repository-wide orientation, read these in order:
 2. [ROADMAP.md](./ROADMAP.md)
 3. [AGENTS.md](../AGENTS.md)
 4. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
-5. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
-6. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
-7. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
-8. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
+5. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
+6. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
+7. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+8. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
+9. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
+10. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
 
 ## Canonical References
 
@@ -23,6 +25,8 @@ For repository-wide orientation, read these in order:
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
 - [AGENTS.md](../AGENTS.md) - Repository-local agent inventory and workflow context
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
+- [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference
+- [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md) - Canonical Supabase, schema, and persistence architecture reference
 - [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md) - Canonical approved product UI/UX logic and target-state interaction model
 - [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md) - Canonical UI ownership, layering, and navigation contract reference
 - [BUG_INVENTORY.md](./BUG_INVENTORY.md) - Single canonical live bug tracker for open, active, fixed-local, verified, and deferred defects

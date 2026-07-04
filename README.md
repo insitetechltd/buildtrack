@@ -26,6 +26,8 @@ Start here:
 - [`documentation/ROADMAP.md`](./documentation/ROADMAP.md) - Canonical WS/M/S milestone inventory and execution order
 - [`AGENTS.md`](./AGENTS.md) - Repository-local agent inventory and workflow context
 - [`SOLO_OPERATING_PROCEDURE.md`](./SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
+- [`documentation/SOFTWARE_ARCHITECTURE.md`](./documentation/SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference
+- [`documentation/DATABASE_ARCHITECTURE.md`](./documentation/DATABASE_ARCHITECTURE.md) - Canonical Supabase, schema, and persistence architecture reference
 - [`docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md`](./docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md) - Canonical approved product UI/UX logic and target-state direction
 - [`documentation/UI_ARCHITECTURE.md`](./documentation/UI_ARCHITECTURE.md) - Canonical UI ownership, layering, and navigation contract reference
 - [`documentation/README.md`](./documentation/README.md) - Canonical docs hub and read order

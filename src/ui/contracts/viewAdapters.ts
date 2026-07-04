@@ -65,6 +65,38 @@ export interface DashboardSummaryPill {
   value: string;
 }
 
+export interface DashboardProjectSummaryCard {
+  title: string;
+  todayLabel: string;
+  elapsedDayLabel: string;
+  weatherLabel: string;
+  weatherTemperatureLabel: string;
+  criticalDates: Array<{
+    id: string;
+    dateLabel: string;
+    title: string;
+    subtitle: string;
+  }>;
+}
+
+export interface DashboardQueueDashboardCell {
+  id: string;
+  queue: "my_queue" | "team_queue";
+  bucket: "new" | "wip" | "review";
+  title: string;
+  countLabel: string;
+}
+
+export interface DashboardQueueDashboardGroup {
+  id: string;
+  title: "My Queue" | "Team Queue";
+  cells: DashboardQueueDashboardCell[];
+}
+
+export interface DashboardQueueDashboard {
+  groups: DashboardQueueDashboardGroup[];
+}
+
 export interface DashboardTaskShortcut {
   title: string;
   subtitle: string;
@@ -107,6 +139,8 @@ export interface DashboardScreenViewAdapterOutput {
     title: string;
     subtitle?: string;
   } | null;
+  projectSummaryCard?: DashboardProjectSummaryCard | null;
+  queueDashboard?: DashboardQueueDashboard;
   summaryPills: DashboardSummaryPill[];
   draftItems: DashboardActivityItem[];
   activityItems: DashboardActivityItem[];
@@ -124,15 +158,30 @@ export interface TasksFilterSummary {
   sortLabel: string;
 }
 
-export interface TasksCompactSection {
+export type TasksQueueId = "my_queue" | "team_queue";
+
+export type TasksQueueBucketId = "new" | "wip" | "review";
+
+export interface TasksQueueBucket {
   id: string;
-  projectId: string;
   title: string;
-  subtitle?: string;
   taskCountLabel: string;
-  isCollapsed: boolean;
+  bucket: TasksQueueBucketId;
+  isOpen: boolean;
   rows: TasksScreenRowItem[];
 }
+
+export interface TasksQueuePanel {
+  id: string;
+  queue: TasksQueueId;
+  title: "My Queue" | "Team Queue";
+  totalCountLabel: string;
+  presentation: "primary" | "preview";
+  isExpanded: boolean;
+  buckets: TasksQueueBucket[];
+}
+
+export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
 
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   id: string;
@@ -148,6 +197,17 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   isOverdue: boolean;
   attachmentUris: string[];
   indentationLevel?: number;
+  queue?: TasksQueueId;
+  queueLabel?: "My Queue" | "Team Queue";
+  bucket?: TasksQueueBucketId;
+  bucketLabel?: string;
+  contextLabel?: string;
+  latestUpdateAt?: string;
+  latestUpdateLabel?: string;
+  isExpanded?: boolean;
+  primaryPhotoUri?: string;
+  photoCountLabel?: string;
+  photoDisplayMode?: "standard" | "photo_centric";
   onPress?: () => void;
 }
 
@@ -163,7 +223,10 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
-  compactSections: TasksCompactSection[];
+  isSearchMode: boolean;
+  queuePanels: TasksQueuePanel[];
+  searchResults: TasksScreenRowItem[];
+  expandedTaskIds: string[];
   taskRowItems: TasksScreenRowItem[];
   scalarMetrics: TasksScalarMetrics;
 }
@@ -195,6 +258,7 @@ export interface TaskDetailActionItem extends PrimitiveReadyItemBase {
   label: string;
   icon?: string;
   isDisabled: boolean;
+  isActive?: boolean;
 }
 
 export interface TaskDetailBannerModel extends PrimitiveReadyItemBase {
@@ -1086,6 +1150,7 @@ export interface CreateTaskFormModel {
   priority: string;
   category: string;
   dueDate: Date;
+  criticalThisWeek: boolean;
   assignedTo: string[];
   projectId: string;
   attachments: any[]; // Or Attachment type

@@ -49,8 +49,9 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | S-UX-01B | 14.3 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | S-UX-01C | 14.4 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | S-UX-01D | 14.5 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
-| WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | S-UX-01E | 14.6 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
-| WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | S-UX-01F | 14.7 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | S-UX-01E | 14.6 | ../docs/superpowers/plans/2026-07-04-activity-tasks-correction-implementation.md |
+| WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | S-UX-01E2 | 14.7 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | S-UX-01F | 14.8 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | S-UX-01G | 14.8 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 
 ## Deferred Context

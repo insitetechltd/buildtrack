@@ -1,5 +1,10 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { TaskActivity } from "@/types/buildtrack";
+import type {
+  TasksLaunchBucket,
+  TasksLaunchQueue,
+  TasksLaunchSource,
+} from "@/state/projectFilterStore";
 
 export type SelectedPhoto = {
   uri: string;
@@ -90,8 +95,17 @@ export type DashboardStackParamList = {
   PhotoAnnotation: PhotoAnnotationParams;
 };
 
+export type TasksListParams =
+  | {
+      launchQueue?: TasksLaunchQueue;
+      launchBucket?: TasksLaunchBucket;
+      launchSource?: TasksLaunchSource;
+      launchNonce?: number;
+    }
+  | undefined;
+
 export type TasksStackParamList = {
-  TasksList: undefined;
+  TasksList: TasksListParams;
   TaskDetail: TaskDetailParams;
   CreateTaskFromTask:
     | {

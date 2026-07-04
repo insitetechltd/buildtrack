@@ -4,6 +4,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 
 export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
+export type TasksLaunchQueue = "my_queue" | "team_queue";
+export type TasksLaunchBucket = "new" | "wip" | "review";
+export type TasksLaunchSource = "activity_dashboard" | "tasks";
+export type TasksLaunchPreset = {
+  queue: TasksLaunchQueue;
+  bucket: TasksLaunchBucket;
+  source: TasksLaunchSource;
+};
 export type StatusFilter =
   | "new"
   | "accepted"
@@ -35,6 +43,7 @@ interface ProjectFilterState {
   selectedProjectId: string | null;
   workspaceReady: boolean;
   workspaceReadyUserId: string | null;
+  tasksLaunchPreset: TasksLaunchPreset | null;
   sectionFilter: SectionFilter;
   statusFilter: StatusFilter;
   buttonLabel: string | null; // The label from the Dashboard button
@@ -46,6 +55,8 @@ interface ProjectFilterState {
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
   setSelectedProject: (projectId: string | null, userId?: string) => Promise<void>;
+  setTasksLaunchPreset: (preset: TasksLaunchPreset) => void;
+  clearTasksLaunchPreset: () => void;
   setSectionFilter: (section: SectionFilter) => void;
   clearSectionFilter: () => void;
   setStatusFilter: (status: StatusFilter) => void;
@@ -68,6 +79,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       selectedProjectId: null,
       workspaceReady: false,
       workspaceReadyUserId: null,
+      tasksLaunchPreset: null,
       sectionFilter: "all",
       statusFilter: "all",
       buttonLabel: null,
@@ -131,6 +143,14 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
             }
           }
         }
+      },
+
+      setTasksLaunchPreset: (preset: TasksLaunchPreset) => {
+        set({ tasksLaunchPreset: preset });
+      },
+
+      clearTasksLaunchPreset: () => {
+        set({ tasksLaunchPreset: null });
       },
       
       setSectionFilter: (section: SectionFilter) => {
@@ -280,6 +300,7 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         selectedProjectId: state.selectedProjectId,
+        tasksLaunchPreset: state.tasksLaunchPreset,
         sectionFilter: state.sectionFilter,
         statusFilter: state.statusFilter,
         buttonLabel: state.buttonLabel,

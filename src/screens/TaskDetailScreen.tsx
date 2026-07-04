@@ -136,6 +136,9 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       case 'approve_task':
         actions.approveTask();
         break;
+      case 'toggle_critical_this_week':
+        actions.toggleCriticalThisWeek();
+        break;
       case 'reject_task':
         if (props.onNavigateToRejectTask) {
           props.onNavigateToRejectTask(props.taskId, props.subTaskId);
@@ -153,12 +156,24 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         break;
       case 'add_comment':
         if (props.onNavigateToCreateTask) {
-          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'comment');
+          props.onNavigateToCreateTask(
+            undefined,
+            undefined,
+            props.taskId,
+            'comment',
+            props.subTaskId,
+          );
         }
         break;
       case 'update_progress':
         if (props.onNavigateToCreateTask) {
-          props.onNavigateToCreateTask(undefined, undefined, props.taskId, 'update');
+          props.onNavigateToCreateTask(
+            undefined,
+            undefined,
+            props.taskId,
+            'update',
+            props.subTaskId,
+          );
         }
         break;
       case 'upload_photos':
@@ -175,7 +190,12 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     }
   };
 
-  const { primaryAction, secondaryActions } = prioritizeActionItems(output.actionItems ?? []);
+  const criticalThisWeekAction = (output.actionItems ?? []).find(
+    (action) => action.actionId === "toggle_critical_this_week",
+  );
+  const { primaryAction, secondaryActions } = prioritizeActionItems(
+    (output.actionItems ?? []).filter((action) => action.actionId !== "toggle_critical_this_week"),
+  );
   const scrollContentPaddingBottom = primaryAction ? 148 : 32;
 
   if (!output.readiness.hasUsableData) {
@@ -212,6 +232,41 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         {output.banners.map(banner => (
           <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
         ))}
+
+        {criticalThisWeekAction ? (
+          <View className="px-4 pt-4">
+            <Pressable
+              testID="task-detail__toggle_critical_this_week"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
+              disabled={criticalThisWeekAction.isDisabled}
+              onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
+              className={cn(
+                "flex-row items-center justify-between rounded-2xl border px-4 py-3",
+                criticalThisWeekAction.isActive
+                  ? "border-amber-300 bg-amber-50"
+                  : "border-amber-200 bg-white",
+                criticalThisWeekAction.isDisabled && "opacity-50",
+              )}
+            >
+              <View className="mr-3 flex-1">
+                <Text className="text-base font-semibold text-slate-900">
+                  {criticalThisWeekAction.label}
+                </Text>
+                <Text className="mt-1 text-sm text-slate-600">
+                  {criticalThisWeekAction.isActive
+                    ? "Included in This Week’s Critical Dates."
+                    : "Highlight this task in This Week’s Critical Dates."}
+                </Text>
+              </View>
+              <Ionicons
+                name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
+                size={20}
+                color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
+              />
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Details Sections */}
         <View className="px-4 mt-4">

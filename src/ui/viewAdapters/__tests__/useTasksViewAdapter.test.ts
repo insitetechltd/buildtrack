@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-native";
+import { act, renderHook } from "@testing-library/react-native";
 import { useTasksViewAdapter } from "../useTasksViewAdapter";
 
 jest.mock("@/state/authStore", () => ({
@@ -22,9 +22,31 @@ describe("useTasksViewAdapter", () => {
     jest.clearAllMocks();
   });
 
+  function makeTask(overrides: Record<string, unknown>) {
+    return {
+      id: "task-1",
+      projectId: "project-1",
+      title: "Default Task",
+      description: "Default description",
+      status: "new",
+      priority: "high",
+      dueDate: "2026-07-10T00:00:00.000Z",
+      category: "general",
+      attachments: [],
+      assignedTo: ["user-1"],
+      assignedBy: "user-2",
+      createdAt: "2026-07-01T10:00:00.000Z",
+      updatedAt: "2026-07-01T10:00:00.000Z",
+      updates: [],
+      completionPercentage: 0,
+      ...overrides,
+    };
+  }
+
   function setupBaseMocks(
     sectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | "all" = "all",
-    statusFilter: string = "all"
+    statusFilter: string = "all",
+    tasksLaunchPreset: { queue: "my_queue" | "team_queue"; bucket: "new" | "wip" | "review"; source: "activity_dashboard" | "tasks" } | null = null,
   ) {
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
@@ -44,362 +66,168 @@ describe("useTasksViewAdapter", () => {
 
     useProjectFilterStore.mockReturnValue({
       selectedProjectId: null,
+      tasksLaunchPreset,
       sectionFilter,
       statusFilter,
       resetFilters: jest.fn(),
       setSelectedProject: jest.fn(),
+      clearTasksLaunchPreset: jest.fn(),
     });
   }
 
-  it("filters tasks by sectionFilter 'inbox' (assigned to me by others)", () => {
+  it("builds My Queue and Team Queue with Team Queue collapsed as a preview by default", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
-    setupBaseMocks("inbox");
+    setupBaseMocks();
 
     useTaskStore.mockReturnValue({
       tasks: [
-        {
-          id: "task-inbox",
-          projectId: "project-1",
-          title: "Inbox Task",
+        makeTask({
+          id: "task-my-new",
+          title: "My New Task",
           status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2", // assigned to me by someone else
-        },
-        {
-          id: "task-outbox",
-          projectId: "project-1",
-          title: "Outbox Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-2"],
-          assignedBy: "user-1", // assigned by me to someone else
-        },
-        {
-          id: "task-my-tasks",
-          projectId: "project-1",
-          title: "Self Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-1", // self assigned
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks, // Simple mock that just returns the tasks as root nodes
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(1);
-    expect(outputTasks[0].taskId).toBe("task-inbox");
-  });
-
-  it("filters tasks by sectionFilter 'outbox' (assigned by me to others)", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("outbox");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-inbox",
-          projectId: "project-1",
-          title: "Inbox Task",
-          status: "new",
-          priority: "high",
           assignedTo: ["user-1"],
           assignedBy: "user-2",
-        },
-        {
-          id: "task-outbox",
-          projectId: "project-1",
-          title: "Outbox Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-2"],
-          assignedBy: "user-1",
-        },
-        {
-          id: "task-my-tasks",
-          projectId: "project-1",
-          title: "Self Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(1);
-    expect(outputTasks[0].taskId).toBe("task-outbox");
-  });
-
-  it("filters tasks by sectionFilter 'my_tasks' (self assigned)", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("my_tasks");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-inbox",
-          projectId: "project-1",
-          title: "Inbox Task",
-          status: "new",
-          priority: "high",
+          updatedAt: "2026-07-04T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-my-wip",
+          title: "My Wip Task",
+          status: "in_progress",
           assignedTo: ["user-1"],
           assignedBy: "user-2",
-        },
-        {
-          id: "task-outbox",
-          projectId: "project-1",
-          title: "Outbox Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-2"],
-          assignedBy: "user-1",
-        },
-        {
-          id: "task-my-tasks",
-          projectId: "project-1",
-          title: "Self Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(1);
-    expect(outputTasks[0].taskId).toBe("task-my-tasks");
-  });
-
-  it("filters tasks by sectionFilter 'my_work' (inbox + my_tasks)", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("my_work");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-inbox",
-          projectId: "project-1",
-          title: "Inbox Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-        {
-          id: "task-outbox",
-          projectId: "project-1",
-          title: "Outbox Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-2"],
-          assignedBy: "user-1",
-        },
-        {
-          id: "task-my-tasks",
-          projectId: "project-1",
-          title: "Self Task",
-          status: "new",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(2);
-    expect(outputTasks.map(t => t.taskId).sort()).toEqual(["task-inbox", "task-my-tasks"].sort());
-  });
-
-  it("treats persisted reviewing filters as assigner-side review queues", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("inbox", "reviewing");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-review-queue",
-          projectId: "project-1",
-          title: "Review queue task",
+          updatedAt: "2026-07-03T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-team-review",
+          title: "Team Review Task",
           status: "submitted_for_review",
-          completionPercentage: 100,
-          priority: "high",
           assignedTo: ["user-2"],
           assignedBy: "user-1",
-        },
-        {
-          id: "task-inbox-new",
-          projectId: "project-1",
-          title: "New Task",
-          status: "new",
-          completionPercentage: 0,
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2", // inbox eligible but not awaiting approval
-        },
+          updatedAt: "2026-07-02T10:00:00.000Z",
+        }),
       ],
       isLoading: false,
       buildTaskTree: (tasks: any[]) => tasks,
     });
 
     const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(1);
-    expect(outputTasks[0].taskId).toBe("task-review-queue");
+    expect(result.current.output.queuePanels[0].title).toBe("My Queue");
+    expect(result.current.output.queuePanels[0].isExpanded).toBe(true);
+    expect(result.current.output.queuePanels[0].buckets).toHaveLength(3);
+    expect(result.current.output.queuePanels[0].buckets[0].isOpen).toBe(true);
+    expect(result.current.output.queuePanels[1].title).toBe("Team Queue");
+    expect(result.current.output.queuePanels[1].presentation).toBe("preview");
+    expect(result.current.output.queuePanels[1].isExpanded).toBe(false);
+    expect(result.current.output.queuePanels[1].totalCountLabel).toBe("1 task");
   });
 
-  it("keeps legacy not_started, wip, and reviewing aliases visible under modern quick filters", () => {
+  it("keeps one open bucket at a time inside a queue", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
-    setupBaseMocks("inbox", "new");
+    setupBaseMocks();
 
     useTaskStore.mockReturnValue({
       tasks: [
-        {
-          id: "task-not-started",
-          projectId: "project-1",
-          title: "Legacy not started",
-          status: "not_started",
-          priority: "high",
+        makeTask({
+          id: "task-new",
+          title: "Needs start",
+          status: "new",
           assignedTo: ["user-1"],
           assignedBy: "user-2",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const newFilter = renderHook(() => useTasksViewAdapter());
-    expect(newFilter.result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-not-started",
-    ]);
-
-    setupBaseMocks("inbox", "wip");
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
+        }),
+        makeTask({
           id: "task-wip",
-          projectId: "project-1",
-          title: "Legacy wip",
-          status: "wip",
-          priority: "high",
+          title: "Already doing",
+          status: "in_progress",
           assignedTo: ["user-1"],
           assignedBy: "user-2",
-        },
+        }),
       ],
       isLoading: false,
       buildTaskTree: (tasks: any[]) => tasks,
     });
 
-    const wipFilter = renderHook(() => useTasksViewAdapter());
-    expect(wipFilter.result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-wip",
+    const { result } = renderHook(() => useTasksViewAdapter());
+    expect(result.current.output.queuePanels[0].buckets.map((bucket) => bucket.isOpen)).toEqual([
+      true,
+      false,
+      false,
     ]);
 
-    setupBaseMocks("inbox", "reviewing");
+    act(() => {
+      result.current.actions.openBucket("my_queue", "wip");
+    });
+
+    expect(result.current.output.queuePanels[0].buckets.map((bucket) => bucket.isOpen)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(result.current.output.queuePanels[0].buckets[1].rows[0].taskId).toBe("task-wip");
+  });
+
+  it("switches into unified search mode with compact queue and bucket context", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
     useTaskStore.mockReturnValue({
       tasks: [
-        {
-          id: "task-reviewing",
-          projectId: "project-1",
-          title: "Legacy reviewing",
-          status: "reviewing",
-          completionPercentage: 100,
-          priority: "high",
+        makeTask({
+          id: "task-my-newer",
+          title: "Tower punch list",
+          status: "new",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-04T12:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-team-older",
+          title: "Tower review package",
+          status: "submitted_for_review",
           assignedTo: ["user-2"],
           assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const reviewingFilter = renderHook(() => useTasksViewAdapter());
-    expect(reviewingFilter.result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-reviewing",
-    ]);
-  });
-
-  it("honors persisted legacy dashboard filter tokens including overdue variants", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("inbox", "received-overdue");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-received-overdue",
-          projectId: "project-1",
-          title: "Received overdue",
-          status: "received",
-          dueDate: "2000-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-        {
-          id: "task-received-future",
-          projectId: "project-1",
-          title: "Received future",
-          status: "received",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
+          updatedAt: "2026-07-02T09:00:00.000Z",
+        }),
       ],
       isLoading: false,
       buildTaskTree: (tasks: any[]) => tasks,
     });
 
     const { result } = renderHook(() => useTasksViewAdapter());
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-received-overdue",
+
+    act(() => {
+      result.current.setSearchQuery("tower");
+    });
+
+    expect(result.current.output.isSearchMode).toBe(true);
+    expect(result.current.output.searchResults.map((row) => row.taskId)).toEqual([
+      "task-my-newer",
+      "task-team-older",
     ]);
+    expect(result.current.output.searchResults[0].contextLabel).toBe("My Queue · New · Project A");
+    expect(result.current.output.searchResults[1].contextLabel).toBe("Team Queue · Review · Project A");
+    expect(result.current.output.taskRowItems).toEqual(result.current.output.searchResults);
   });
 
-  it("keeps rejected rework tasks visible under persisted legacy outbox wip filters", () => {
+  it("opens the launched Team Queue bucket when a preset exists", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
-    setupBaseMocks("outbox", "wip");
+    setupBaseMocks("all", "all", {
+      queue: "team_queue",
+      bucket: "review",
+      source: "activity_dashboard",
+    });
 
     useTaskStore.mockReturnValue({
       tasks: [
-        {
-          id: "task-rejected-rework",
-          projectId: "project-1",
-          title: "Rejected rework",
-          status: "rejected",
-          priority: "high",
+        makeTask({
+          id: "task-team-review",
+          status: "submitted_for_review",
           assignedTo: ["user-2"],
           assignedBy: "user-1",
-        },
+        }),
       ],
       isLoading: false,
       buildTaskTree: (tasks: any[]) => tasks,
@@ -407,356 +235,12 @@ describe("useTasksViewAdapter", () => {
 
     const { result } = renderHook(() => useTasksViewAdapter());
 
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-rejected-rework",
+    expect(result.current.output.queuePanels[0].isExpanded).toBe(false);
+    expect(result.current.output.queuePanels[1].isExpanded).toBe(true);
+    expect(result.current.output.queuePanels[1].buckets.map((bucket) => bucket.isOpen)).toEqual([
+      false,
+      false,
+      true,
     ]);
-  });
-
-  it("does not surface rejected tasks in persisted inbox wip filters", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("inbox", "wip");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-rejected-inbox",
-          projectId: "project-1",
-          title: "Rejected inbox",
-          status: "rejected",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.taskRowItems).toEqual([]);
-    expect(result.current.output.compactSections).toEqual([]);
-  });
-
-  it("keeps declined tasks visible under persisted legacy reviewing filters", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("inbox", "reviewing");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-declined-review",
-          projectId: "project-1",
-          title: "Declined review",
-          status: "declined",
-          priority: "high",
-          assignedTo: ["user-3"],
-          assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-declined-review",
-    ]);
-  });
-
-  it("keeps submitter-side overdue review queues visible under persisted outbox reviewing filters", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("outbox", "reviewing-overdue");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-submitted-overdue",
-          projectId: "project-1",
-          title: "Submitted overdue",
-          status: "submitted_for_review",
-          completionPercentage: 100,
-          dueDate: "2000-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-        {
-          id: "task-submitted-future",
-          projectId: "project-1",
-          title: "Submitted future",
-          status: "submitted_for_review",
-          completionPercentage: 100,
-          dueDate: "2099-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-        {
-          id: "task-created-by-me",
-          projectId: "project-1",
-          title: "Created by me",
-          status: "submitted_for_review",
-          completionPercentage: 100,
-          dueDate: "2000-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-3"],
-          assignedBy: "user-1",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-submitted-overdue",
-    ]);
-  });
-
-  it("excludes rejected tasks from persisted wip-overdue filters", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks("inbox", "wip-overdue");
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-rejected-overdue",
-          projectId: "project-1",
-          title: "Rejected overdue",
-          status: "rejected",
-          dueDate: "2000-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-        {
-          id: "task-in-progress-overdue",
-          projectId: "project-1",
-          title: "In progress overdue",
-          status: "in_progress",
-          dueDate: "2000-01-01T00:00:00.000Z",
-          priority: "high",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-in-progress-overdue",
-    ]);
-  });
-
-  it("groups subtasks correctly and sets indentationLevel", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks();
-
-    const parentTask = {
-      id: "parent-task",
-      projectId: "project-1",
-      title: "Parent Task",
-      status: "new",
-      priority: "high",
-    };
-
-    const childTask = {
-      id: "child-task",
-      projectId: "project-1",
-      title: "Child Task",
-      status: "new",
-      priority: "high",
-      parentTaskId: "parent-task",
-    };
-
-    // A simple mock for buildTaskTree
-    useTaskStore.mockReturnValue({
-      tasks: [parentTask, childTask],
-      isLoading: false,
-      buildTaskTree: jest.fn().mockReturnValue([
-        {
-          ...parentTask,
-          children: [
-            {
-              ...childTask,
-              children: [],
-            },
-          ],
-        },
-      ]),
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-    
-    const outputTasks = result.current.output.taskRowItems;
-    expect(outputTasks.length).toBe(2);
-    expect(outputTasks[0].taskId).toBe("parent-task");
-    expect(outputTasks[0].indentationLevel).toBeUndefined();
-    expect(outputTasks[1].taskId).toBe("child-task");
-    expect(outputTasks[1].indentationLevel).toBe(1);
-  });
-
-  it("groups visible tasks into compact collapsible sections for the active project only", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-    const { useProjectFilterStore } = require("@/state/projectFilterStore");
-    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
-
-    setupBaseMocks();
-
-    useProjectFilterStore.mockReturnValue({
-      selectedProjectId: "project-1",
-      sectionFilter: "all",
-      statusFilter: "all",
-      resetFilters: jest.fn(),
-      setSelectedProject: jest.fn(),
-    });
-
-    useProjectStoreWithInit.mockReturnValue({
-      isLoading: false,
-      getProjectById: jest.fn().mockImplementation((id: string) =>
-        id === "project-1" ? { id: "project-1", name: "Project A" } : { id, name: "Other Project" },
-      ),
-    });
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-uncontained",
-          projectId: "project-1",
-          title: "Loose task",
-          status: "new",
-          priority: "high",
-          containerId: undefined,
-          subContainerId: undefined,
-        },
-        {
-          id: "task-level-12",
-          projectId: "project-1",
-          title: "Level 12 task",
-          status: "in_progress",
-          priority: "high",
-          containerId: "level-12",
-          subContainerId: undefined,
-        },
-        {
-          id: "task-other-project",
-          projectId: "project-2",
-          title: "Other project",
-          status: "new",
-          priority: "high",
-          containerId: "other",
-          subContainerId: undefined,
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.compactSections.map((section) => section.title)).toEqual([
-      "Uncontained Tasks",
-      "Level 12",
-    ]);
-    expect(
-      result.current.output.compactSections.every((section) => section.projectId === "project-1"),
-    ).toBe(true);
-  });
-
-  it("keeps same-named sections separate across projects when no active project is selected", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-    const { useProjectFilterStore } = require("@/state/projectFilterStore");
-    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
-
-    setupBaseMocks();
-
-    useProjectFilterStore.mockReturnValue({
-      selectedProjectId: null,
-      sectionFilter: "all",
-      statusFilter: "all",
-      resetFilters: jest.fn(),
-      setSelectedProject: jest.fn(),
-    });
-
-    useProjectStoreWithInit.mockReturnValue({
-      isLoading: false,
-      getProjectById: jest.fn().mockImplementation((id: string) =>
-        id === "project-1"
-          ? { id: "project-1", name: "Project A" }
-          : { id: "project-2", name: "Project B" },
-      ),
-    });
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-project-a",
-          projectId: "project-1",
-          title: "Level 12 A",
-          status: "new",
-          priority: "high",
-          containerId: "level-12",
-          subContainerId: undefined,
-        },
-        {
-          id: "task-project-b",
-          projectId: "project-2",
-          title: "Level 12 B",
-          status: "new",
-          priority: "high",
-          containerId: "level-12",
-          subContainerId: undefined,
-        },
-      ],
-      isLoading: false,
-      buildTaskTree: (tasks: any[]) => tasks,
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.compactSections).toHaveLength(2);
-    expect(result.current.output.compactSections.map((section) => section.id)).toEqual([
-      "section-project-1-level-12",
-      "section-project-2-level-12",
-    ]);
-  });
-
-  it("returns zero rows and zero sections when no tasks match the current filters", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-    const { useProjectFilterStore } = require("@/state/projectFilterStore");
-
-    setupBaseMocks();
-
-    useProjectFilterStore.mockReturnValue({
-      selectedProjectId: "project-1",
-      sectionFilter: "all",
-      statusFilter: "all",
-      resetFilters: jest.fn(),
-      setSelectedProject: jest.fn(),
-    });
-
-    useTaskStore.mockReturnValue({
-      tasks: [],
-      isLoading: false,
-      buildTaskTree: () => [],
-    });
-
-    const { result } = renderHook(() => useTasksViewAdapter());
-
-    expect(result.current.output.compactSections).toEqual([]);
-    expect(result.current.output.taskRowItems).toEqual([]);
-    expect(result.current.output.scalarMetrics.totalVisibleTaskCount).toBe(0);
-    expect(result.current.output.readiness.hasUsableData).toBe(false);
   });
 });

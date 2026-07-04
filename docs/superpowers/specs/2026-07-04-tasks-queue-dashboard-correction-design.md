@@ -14,6 +14,8 @@ It should work together with:
 
 If this correction is accepted and remains valid, its product-level logic should be normalized into the canonical source-of-truth document rather than living only here.
 
+**Implementation status:** Implemented and normalized into `docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md` via `WS-UX / M-UX-01 / S-UX-01E2`. This spec remains as the scoped correction record for the redesign turn.
+
 ## Goal
 
 Correct the queue experience so it supports fast triage, preserves all six important task categories, and restores the intended photo-centric expansion behavior without overloading the `Activity` page.

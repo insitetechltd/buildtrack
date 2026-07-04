@@ -34,6 +34,7 @@ describe("projectFilterStore workspace bootstrap", () => {
       lastSelectedProjects: {},
       workspaceReady: false,
       workspaceReadyUserId: null,
+      tasksLaunchPreset: null,
     });
   });
 
@@ -241,16 +242,45 @@ describe("projectFilterStore workspace bootstrap", () => {
     expect(useProjectFilterStore.getState().workspaceReady).toBe(true);
   });
 
-  it("does not persist transient workspace readiness fields", () => {
+  it("stores and clears a durable tasks launch preset without affecting workspace readiness", () => {
+    const preset = {
+      queue: "team_queue" as const,
+      bucket: "review" as const,
+      source: "activity_dashboard" as const,
+    };
+
+    act(() => {
+      useProjectFilterStore.getState().setTasksLaunchPreset(preset);
+    });
+
+    expect(useProjectFilterStore.getState().tasksLaunchPreset).toEqual(preset);
+    expect(useProjectFilterStore.getState().workspaceReady).toBe(false);
+    expect(useProjectFilterStore.getState().workspaceReadyUserId).toBeNull();
+
+    act(() => {
+      useProjectFilterStore.getState().clearTasksLaunchPreset();
+    });
+
+    expect(useProjectFilterStore.getState().tasksLaunchPreset).toBeNull();
+  });
+
+  it("does not persist transient workspace readiness fields while retaining launch presets", () => {
     const partialize = useProjectFilterStore.persist.getOptions().partialize;
+    const tasksLaunchPreset = {
+      queue: "my_queue" as const,
+      bucket: "wip" as const,
+      source: "tasks" as const,
+    };
 
     const persistedState = partialize?.({
       ...useProjectFilterStore.getState(),
+      tasksLaunchPreset,
       workspaceReady: true,
       workspaceReadyUserId: "user-1",
     });
 
     expect(persistedState).toBeDefined();
+    expect(persistedState).toHaveProperty("tasksLaunchPreset", tasksLaunchPreset);
     expect(persistedState).not.toHaveProperty("workspaceReady");
     expect(persistedState).not.toHaveProperty("workspaceReadyUserId");
   });

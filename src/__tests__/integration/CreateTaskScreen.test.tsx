@@ -323,6 +323,30 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Attachments')).toBeTruthy();
   });
 
+  it('renders the critical-dates toggle and persists the flag as a task tag on create', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByText('Show in This Week’s Critical Dates')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('create-task__toggle_critical_this_week'));
+    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Critical pour inspection');
+    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Surface this in the weekly critical dates list');
+    fireEvent.press(screen.getByText('Create Task'));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Critical pour inspection',
+          tags: ['critical_this_week'],
+        }),
+      );
+    });
+  });
+
   it('advances through the create-task text fields in order and treats the submit action as the final target', () => {
     const screen = render(
       <NavigationContainer>
@@ -726,6 +750,78 @@ describe('CreateTaskScreen Integration', () => {
         expect.objectContaining({
           description: 'Please review this issue',
           photos: ['https://cdn.example.com/comment-photo.jpg'],
+        }),
+      );
+    });
+  });
+
+  it('targets the subtask when posting a comment from a subtask action flow', async () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Parent task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          id: 'subtask-1',
+          projectId: 'project-1',
+          title: 'Child task',
+          description: 'Subtask description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-02T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          parentTaskId: 'task-1',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByPlaceholderText, getByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          editTaskId="task-1"
+          actionType="comment"
+          updateTargetSubTaskId="subtask-1"
+        />
+      </NavigationContainer>
+    );
+
+    fireEvent.changeText(getByPlaceholderText('Add your comment here...'), 'Subtask note');
+    fireEvent.press(getByText('Post'));
+
+    await waitFor(() => {
+      expect(mockAddAssignerComment).toHaveBeenCalledWith(
+        'subtask-1',
+        expect.objectContaining({
+          description: 'Subtask note',
         }),
       );
     });

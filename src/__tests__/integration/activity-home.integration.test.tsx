@@ -33,9 +33,44 @@ describe("Activity home integration", () => {
           title: "North Tower",
           subtitle: "Level 12",
         },
-        summaryPills: [
-          { id: "pill-open", label: "Open", value: "12" },
-        ],
+        projectSummaryCard: {
+          title: "North Tower",
+          todayLabel: "Today · Jul 4",
+          elapsedDayLabel: "Day 185",
+          weatherLabel: "Partly Cloudy",
+          weatherTemperatureLabel: "28°C",
+          criticalDates: [
+            {
+              id: "critical-date-1",
+              dateLabel: "Jul 7",
+              title: "Concrete inspection",
+              subtitle: "Submitted For Review · Critical",
+            },
+          ],
+        },
+        queueDashboard: {
+          groups: [
+            {
+              id: "group-my",
+              title: "My Queue",
+              cells: [
+                { id: "my-new", queue: "my_queue", bucket: "new", title: "New", countLabel: "4" },
+                { id: "my-wip", queue: "my_queue", bucket: "wip", title: "Doing", countLabel: "3" },
+                { id: "my-review", queue: "my_queue", bucket: "review", title: "Review", countLabel: "1" },
+              ],
+            },
+            {
+              id: "group-team",
+              title: "Team Queue",
+              cells: [
+                { id: "team-new", queue: "team_queue", bucket: "new", title: "New", countLabel: "2" },
+                { id: "team-wip", queue: "team_queue", bucket: "wip", title: "Doing", countLabel: "5" },
+                { id: "team-review", queue: "team_queue", bucket: "review", title: "Review", countLabel: "2" },
+              ],
+            },
+          ],
+        },
+        summaryPills: [],
         draftItems: [],
         activityItems: [
           {
@@ -47,11 +82,7 @@ describe("Activity home integration", () => {
             statusLabel: "In Progress",
           },
         ],
-        taskShortcut: {
-          title: "All Tasks",
-          subtitle: "North Tower",
-          countLabel: "12 active",
-        },
+        taskShortcut: null,
       },
       visibility: {
         showProjectPickerShortcut: true,
@@ -75,13 +106,21 @@ describe("Activity home integration", () => {
       />,
     );
 
-    expect(screen.getAllByText("Recent Activity")).toHaveLength(2);
-    expect(screen.getByText("All Tasks")).toBeTruthy();
-    expect(screen.queryByText("Tasks For Me")).toBeNull();
-    expect(screen.queryByText("Tasks From Me")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
+    expect(screen.getAllByText("North Tower").length).toBeGreaterThan(0);
+    expect(screen.getByText("Today · Jul 4 · Day 185")).toBeTruthy();
+    expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
+    expect(screen.getByText("Queue Overview")).toBeTruthy();
+    expect(screen.getByText("My Queue")).toBeTruthy();
+    expect(screen.getByText("Team Queue")).toBeTruthy();
+    expect(screen.getByText("Concrete pour")).toBeTruthy();
 
-    fireEvent.press(screen.getByText("All Tasks"));
-    expect(onNavigateToTasks).toHaveBeenCalledTimes(1);
+    fireEvent.press(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new"));
+    expect(onNavigateToTasks).toHaveBeenCalledWith({
+      launchQueue: "my_queue",
+      launchBucket: "new",
+      launchSource: "activity_dashboard",
+    });
 
     fireEvent.press(screen.getByTestId("dashboard-screen__header_project_picker"));
     expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
@@ -94,6 +133,10 @@ describe("Activity home integration", () => {
     mockUseDashboardViewAdapter.mockReturnValue({
       output: {
         activeProject: null,
+        projectSummaryCard: null,
+        queueDashboard: {
+          groups: [],
+        },
         summaryPills: [],
         draftItems: [],
         activityItems: [],
@@ -117,7 +160,9 @@ describe("Activity home integration", () => {
       />,
     );
 
-    expect(screen.getByText("Select a project to see task shortcuts and recent activity.")).toBeTruthy();
+    expect(
+      screen.getByText("Select a project to view the active project summary and queue overview."),
+    ).toBeTruthy();
     expect(screen.getByText("Select a project to view recent activity.")).toBeTruthy();
   });
 });

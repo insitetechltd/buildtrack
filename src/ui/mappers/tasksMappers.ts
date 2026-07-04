@@ -113,7 +113,17 @@ export function mapTaskRowToContainerCardProps(
   const flags = derivePrimitiveFlags(data.structuralState);
   const primitiveId = `tasks:row:${data.taskId}`;
   const status = mapTaskRowToStatusBadgeProps(data);
-  const photoCount = data.attachmentUris.length;
+  const orderedPhotoUris = [
+    data.primaryPhotoUri,
+    ...data.attachmentUris,
+  ].filter((value, index, collection): value is string => {
+    return Boolean(value) && collection.indexOf(value) === index;
+  });
+  const photoCount = orderedPhotoUris.length;
+  const subtitle = data.contextLabel ?? data.projectName;
+  const shouldRenderExpandedMedia =
+    photoCount > 0 && (data.isExpanded || data.photoDisplayMode === "photo_centric");
+  const photoCountLabel = data.photoCountLabel ?? `Photos (${photoCount})`;
 
   return {
     primitiveId,
@@ -129,7 +139,7 @@ export function mapTaskRowToContainerCardProps(
     ...flags,
     chrome: {
       title: data.title,
-      subtitle: data.projectName,
+      subtitle,
       metadataRows: [
         {
           rowId: "status",
@@ -142,6 +152,24 @@ export function mapTaskRowToContainerCardProps(
           label: "Priority",
           value: data.priorityLabel,
         },
+        ...(photoCount > 0
+          ? [
+              {
+                rowId: "photos",
+                label: "Photos",
+                value: photoCountLabel,
+              },
+            ]
+          : []),
+        ...(data.latestUpdateLabel
+          ? [
+              {
+                rowId: "latest-update",
+                label: "Updated",
+                value: data.latestUpdateLabel,
+              },
+            ]
+          : []),
         {
           rowId: "due",
           label: "Due",
@@ -160,9 +188,9 @@ export function mapTaskRowToContainerCardProps(
       media:
         photoCount > 0
           ? {
-              mode: "collapsible",
-              collapsedLabel: `Photos (${photoCount})`,
-              items: data.attachmentUris.map((uri, index) => ({
+              mode: shouldRenderExpandedMedia ? "expanded" : "collapsible",
+              collapsedLabel: photoCountLabel,
+              items: orderedPhotoUris.map((uri, index) => ({
                 id: `photo-${index}`,
                 uri,
                 accessibilityLabel: `${data.title} attachment ${index + 1}`,

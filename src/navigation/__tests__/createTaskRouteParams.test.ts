@@ -1,4 +1,5 @@
 import { buildCreateTaskPhotoReturnParams } from "../createTaskRouteParams";
+import type { RootTabParamList, TasksStackParamList } from "../navigationTypes";
 
 describe("buildCreateTaskPhotoReturnParams", () => {
   it("drops one-time clear-form flags when returning selected photos", () => {
@@ -53,5 +54,37 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       clearForm: undefined,
       _timestamp: undefined,
     });
+  });
+});
+
+describe("TasksList route params", () => {
+  it("allows queue launch params when targeting TasksList through the Tasks tab", () => {
+    const params: TasksStackParamList["TasksList"] = {
+      launchQueue: "my_queue",
+      launchBucket: "wip",
+      launchSource: "activity_dashboard",
+      launchNonce: 123,
+    };
+
+    const tabParams: RootTabParamList["Tasks"] = {
+      screen: "TasksList",
+      params,
+    };
+
+    expect(tabParams).toEqual({
+      screen: "TasksList",
+      params: {
+        launchQueue: "my_queue",
+        launchBucket: "wip",
+        launchSource: "activity_dashboard",
+        launchNonce: 123,
+      },
+    });
+  });
+
+  it("still allows navigating to TasksList without launch params", () => {
+    const params: TasksStackParamList["TasksList"] = undefined;
+
+    expect(params).toBeUndefined();
   });
 });

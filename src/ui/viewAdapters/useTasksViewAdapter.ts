@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
@@ -6,7 +6,10 @@ import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import type {
-  TasksCompactSection,
+  TasksQueueBucket,
+  TasksQueueBucketId,
+  TasksQueueId,
+  TasksQueuePanel,
   TasksScreenRowItem,
   TasksScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
@@ -48,16 +51,6 @@ function mapTaskStatusToToken(status: TaskStatus): StatusSemanticToken {
 
 function formatPriority(priority: Priority): string {
   return priority.replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-function formatCompactSectionTitle(rawValue?: string | null): string {
-  if (!rawValue) {
-    return "Uncontained Tasks";
-  }
-
-  return rawValue
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 function buildAssigneeSummary(task: Task): string {
@@ -117,6 +110,141 @@ function matchesStatusFilter(status: TaskStatus, statusFilter: string): boolean 
   }
 }
 
+function getQueueTitle(queue: TasksQueueId): "My Queue" | "Team Queue" {
+  return queue === "my_queue" ? "My Queue" : "Team Queue";
+}
+
+function getBucketTitle(bucket: TasksQueueBucketId): string {
+  switch (bucket) {
+    case "new":
+      return "New";
+    case "wip":
+      return "Doing";
+    case "review":
+      return "Review";
+  }
+
+  return "New";
+}
+
+function getLatestMeaningfulTimestamp(task: Task): string {
+  const activityTimestamps =
+    task.activities?.flatMap((activity) => [activity.timestamp, activity.createdAt].filter(Boolean)) ?? [];
+  const updateTimestamps = task.updates?.map((update) => update.timestamp).filter(Boolean) ?? [];
+
+  const timestamps = [
+    task.updatedAt,
+    task.lastEditedAt,
+    task.reviewedAt,
+    task.acceptedAt,
+    task.createdAt,
+    ...activityTimestamps,
+    ...updateTimestamps,
+  ].filter((value): value is string => Boolean(value));
+
+  return timestamps.sort((left, right) => right.localeCompare(left))[0] ?? "";
+}
+
+function formatLatestUpdateLabel(task: Task): string | undefined {
+  const timestamp = getLatestMeaningfulTimestamp(task);
+
+  if (!timestamp) {
+    return undefined;
+  }
+
+  return timestamp.slice(0, 10);
+}
+
+function compareTasksByLatestMeaningfulUpdate(left: Task, right: Task): number {
+  const rightTimestamp = getLatestMeaningfulTimestamp(right);
+  const leftTimestamp = getLatestMeaningfulTimestamp(left);
+
+  return rightTimestamp.localeCompare(leftTimestamp);
+}
+
+function resolveQueueForTask(task: Task, currentUserId: string): TasksQueueId | null {
+  const isAssignedToUser = (task.assignedTo ?? []).includes(currentUserId);
+  const isAssignedByUser = task.assignedBy === currentUserId;
+
+  if (isAssignedToUser) {
+    return "my_queue";
+  }
+
+  if (isAssignedByUser) {
+    return "team_queue";
+  }
+
+  return null;
+}
+
+function resolveBucketForTask(task: Task): TasksQueueBucketId | null {
+  if (matchesNewStatusFilter(task.status)) {
+    return "new";
+  }
+
+  if (matchesWipStatusFilter(task.status)) {
+    return "wip";
+  }
+
+  if (matchesReviewingStatusFilter(task.status)) {
+    return "review";
+  }
+
+  return null;
+}
+
+function matchesSearchQuery(task: Task, projectName: string, normalizedQuery: string): boolean {
+  if (normalizedQuery.length === 0) {
+    return true;
+  }
+
+  const haystack = [
+    task.title,
+    task.description,
+    task.taskReference,
+    task.containerId,
+    task.subContainerId,
+    projectName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return haystack.includes(normalizedQuery);
+}
+
+function deriveInitialQueueFromLegacyFilters(
+  sectionFilter: string,
+  statusFilter: string,
+): { queue: TasksQueueId; bucket: TasksQueueBucketId } {
+  const isReviewQueueFilter = statusFilter === "reviewing" || statusFilter === "reviewing-overdue";
+  const bucket: TasksQueueBucketId =
+    statusFilter === "wip" || statusFilter === "wip-overdue"
+      ? "wip"
+      : isReviewQueueFilter
+        ? "review"
+        : "new";
+
+  if (sectionFilter === "outbox") {
+    return { queue: "team_queue", bucket };
+  }
+
+  if (sectionFilter === "inbox" && isReviewQueueFilter) {
+    return { queue: "team_queue", bucket: "review" };
+  }
+
+  return { queue: "my_queue", bucket };
+}
+
+function sortTaskTree(nodes: Task[]): Task[] {
+  return [...nodes]
+    .sort(compareTasksByLatestMeaningfulUpdate)
+    .map((node) => ({
+      ...node,
+      children: Array.isArray(node.children) ? sortTaskTree(node.children) : [],
+    }));
+}
+
 export interface TasksViewAdapterProps {
   onNavigateToTaskDetail?: (taskId: string) => void;
 }
@@ -135,7 +263,9 @@ export interface TasksViewAdapterHookResult {
   };
   actions: {
     resetFilters: () => void;
-    toggleSection: (sectionId: string) => void;
+    toggleQueue: (queue: TasksQueueId) => void;
+    openBucket: (queue: TasksQueueId, bucket: TasksQueueBucketId) => void;
+    toggleTaskExpansion: (taskId: string) => void;
   };
 }
 
@@ -145,15 +275,63 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const projectStore = useProjectStoreWithInit();
   const projectFilterStore = useProjectFilterStore();
   const currentUserId = user?.id ?? "";
+  const initialLaunchState = useMemo(() => {
+    if (projectFilterStore.tasksLaunchPreset) {
+      return {
+        queue: projectFilterStore.tasksLaunchPreset.queue,
+        bucket: projectFilterStore.tasksLaunchPreset.bucket,
+      };
+    }
+
+    return deriveInitialQueueFromLegacyFilters(
+      projectFilterStore.sectionFilter,
+      projectFilterStore.statusFilter,
+    );
+  }, [
+    projectFilterStore.sectionFilter,
+    projectFilterStore.statusFilter,
+    projectFilterStore.tasksLaunchPreset,
+  ]);
 
   const tasks = taskStore.tasks ?? [];
   const isLoadingTasks = Boolean(taskStore.isLoading);
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
-  const [collapsedSectionIds, setCollapsedSectionIds] = useState<string[]>([]);
+  const [expandedQueues, setExpandedQueues] = useState<Record<TasksQueueId, boolean>>({
+    my_queue: initialLaunchState.queue === "my_queue",
+    team_queue: initialLaunchState.queue === "team_queue",
+  });
+  const [openBucketsByQueue, setOpenBucketsByQueue] = useState<Record<TasksQueueId, TasksQueueBucketId | null>>({
+    my_queue: initialLaunchState.queue === "my_queue" ? initialLaunchState.bucket : "new",
+    team_queue: initialLaunchState.queue === "team_queue" ? initialLaunchState.bucket : null,
+  });
+  const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
-  const { compactSections, taskRowItems, scalarMetrics, continuity, structuralState } = useMemo(() => {
+  const tasksLaunchPreset = projectFilterStore.tasksLaunchPreset;
+  const clearTasksLaunchPreset = projectFilterStore.clearTasksLaunchPreset;
+
+  useEffect(() => {
+    if (!tasksLaunchPreset) {
+      return;
+    }
+
+    setExpandedQueues({
+      my_queue: tasksLaunchPreset.queue === "my_queue",
+      team_queue: tasksLaunchPreset.queue === "team_queue",
+    });
+    setOpenBucketsByQueue({
+      my_queue: tasksLaunchPreset.queue === "my_queue"
+        ? tasksLaunchPreset.bucket
+        : "new",
+      team_queue: tasksLaunchPreset.queue === "team_queue"
+        ? tasksLaunchPreset.bucket
+        : null,
+    });
+    clearTasksLaunchPreset?.();
+  }, [clearTasksLaunchPreset, tasksLaunchPreset]);
+
+  const { queuePanels, searchResults, taskRowItems, scalarMetrics, continuity, structuralState } = useMemo(() => {
     const hasTasks = tasks.length > 0;
     const isInitialLoading = isLoadingTasks && !hasTasks;
     const isBackgroundRefreshing = isLoadingTasks && hasTasks;
@@ -165,192 +343,194 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
           : "stale"
         : "empty";
 
-    const filteredTasks = tasks.filter((task) => {
-      // 1. Project filter
-      if (selectedProjectId && task.projectId !== selectedProjectId) return false;
-
-      // 2. Section filter logic via ResponsibilityToken / ActorRelationship
-      const token = getResponsibilityToken(task, currentUserId);
-      const isAssignedToUser = (task.assignedTo ?? []).includes(currentUserId);
-      const isOriginator = task.assignedBy === currentUserId && !isAssignedToUser;
-
-      const sectionFilter = projectFilterStore.sectionFilter;
-      const statusFilter = projectFilterStore.statusFilter;
-      const isReviewQueueFilter =
-        statusFilter === "reviewing" || statusFilter === "reviewing-overdue";
-
-      if (sectionFilter === "inbox") {
-        if (isReviewQueueFilter) {
-          // Persisted legacy reviewing filters were assigner-side queues.
-          if (task.assignedBy !== currentUserId) return false;
-        } else {
-          // Assigned to me by others
-          if (!isAssignedToUser || task.assignedBy === currentUserId) return false;
-        }
-      } else if (sectionFilter === "outbox") {
-        if (isReviewQueueFilter) {
-          // Persisted legacy outbox reviewing filters tracked my submitted work awaiting approval.
-          if (!isAssignedToUser || task.assignedBy === currentUserId) return false;
-        } else {
-          // Assigned by me to others
-          if (!isOriginator) return false;
-        }
-      } else if (sectionFilter === "my_tasks") {
-        // Self assigned
-        if (!isAssignedToUser || task.assignedBy !== currentUserId) return false;
-      } else if (sectionFilter === "my_work") {
-        // Inbox + my_tasks
-        if (!isAssignedToUser) return false;
+    const candidateTasks = tasks.filter((task) => {
+      if (selectedProjectId && task.projectId !== selectedProjectId) {
+        return false;
       }
 
-      // 3. Status filter logic
-      if (statusFilter !== "all") {
-        const matchesFilter =
-          sectionFilter === "outbox" && isReviewQueueFilter
-            ? matchesOutboxReviewingStatusFilter(task.status)
-            : matchesStatusFilter(task.status, statusFilter);
+      const queue = resolveQueueForTask(task, currentUserId);
+      const bucket = resolveBucketForTask(task);
 
-        if (!matchesFilter) {
-          return false;
-        }
-
-        if (
-          sectionFilter === "inbox" &&
-          statusFilter === "wip" &&
-          task.status === "rejected"
-        ) {
-          return false;
-        }
-
-        if (
-          statusFilter === "wip-overdue" &&
-          task.status === "rejected"
-        ) {
-          return false;
-        }
-
-        if (isOverdueFilter(statusFilter) && !isTaskOverdue(task)) {
-          return false;
-        }
-      }
-
-      return true;
+      return Boolean(queue && bucket);
     });
 
-    const searchedTasks =
-      normalizedSearchQuery.length === 0
-        ? filteredTasks
-        : filteredTasks.filter((task) =>
-            task.title.toLowerCase().includes(normalizedSearchQuery),
-          );
+    const tasksByQueueAndBucket = new Map<string, Task[]>();
+    candidateTasks.forEach((task) => {
+      const queue = resolveQueueForTask(task, currentUserId);
+      const bucket = resolveBucketForTask(task);
 
-    const tree = taskStore.buildTaskTree(searchedTasks);
-
-    const flatTasks: Array<{ task: Task; level: number }> = [];
-    function flattenNode(node: any, level: number = 0) {
-      // In taskStore.buildTaskTree, nodes are just tasks with an optional `children` array
-      flatTasks.push({ task: node, level });
-      if (node.children) {
-        node.children.forEach((child: any) => flattenNode(child, level + 1));
+      if (!queue || !bucket) {
+        return;
       }
-    }
-    tree.forEach((node) => flattenNode(node, 0));
 
-    const rows: TasksScreenRowItem[] =
-      flatTasks.length > 0
-        ? flatTasks.map(({ task, level }) => {
-            const project = projectStore.getProjectById(task.projectId);
+      const key = `${queue}:${bucket}`;
+      const currentTasks = tasksByQueueAndBucket.get(key) ?? [];
+      currentTasks.push(task);
+      tasksByQueueAndBucket.set(key, currentTasks);
+    });
 
-            return {
-              id: `tasks-row:${task.id}`,
-              taskId: task.id,
-              title: task.title,
-              onPress: props?.onNavigateToTaskDetail ? () => props?.onNavigateToTaskDetail?.(task.id) : undefined,
-              statusToken: mapTaskStatusToToken(task.status),
-              statusLabel: formatTaskStatusLabel(task.status),
-              responsibilityToken: getResponsibilityToken(task, currentUserId),
-              priorityLabel: formatPriority(task.priority),
-              dueDateLabel: task.dueDate ? task.dueDate.slice(0, 10) : undefined,
-              assigneeSummary: buildAssigneeSummary(task),
-              projectName: project?.name ?? "Project",
-              isOverdue: isTaskOverdue(task),
-              attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
-              indentationLevel: level > 0 ? level : undefined,
-              density: "compact",
-              structuralState,
-            };
-          })
-        : [];
+    const buildRowsForBucket = (queue: TasksQueueId, bucket: TasksQueueBucketId): TasksScreenRowItem[] => {
+      const queueTasks = tasksByQueueAndBucket.get(`${queue}:${bucket}`) ?? [];
+      const sortedTree = sortTaskTree(taskStore.buildTaskTree(queueTasks));
+      const flatTasks: Array<{ task: Task; level: number }> = [];
 
-    const compactSectionsMap = new Map<string, TasksCompactSection>();
+      const flattenNode = (node: Task, level = 0) => {
+        flatTasks.push({ task: node, level });
+        node.children?.forEach((child) => flattenNode(child, level + 1));
+      };
 
-    rows.forEach((row) => {
-        const sourceTask = searchedTasks.find((task) => task.id === row.taskId);
-        const rawSectionKey =
-          sourceTask?.subContainerId || sourceTask?.containerId || "uncontainered";
-        const scopedProjectId = sourceTask?.projectId || selectedProjectId || "workspace";
-        const sectionId = `section-${scopedProjectId}-${rawSectionKey}`;
-        const projectName =
-          sourceTask?.projectId ? projectStore.getProjectById(sourceTask.projectId)?.name : undefined;
+      sortedTree.forEach((node) => flattenNode(node));
 
-        if (!compactSectionsMap.has(sectionId)) {
-          compactSectionsMap.set(sectionId, {
-            id: sectionId,
-            projectId: scopedProjectId,
-            title: formatCompactSectionTitle(
-              rawSectionKey === "uncontainered" ? undefined : rawSectionKey,
-            ),
-            subtitle:
-              selectedProjectId
-                ? rawSectionKey === "uncontainered"
-                  ? "Project-scoped loose tasks"
-                  : "Container"
-                : projectName || "Project",
-            taskCountLabel: "",
-            isCollapsed: collapsedSectionIds.includes(sectionId),
-            rows: [],
-          });
-        }
+      return flatTasks.map<TasksScreenRowItem>(({ task, level }) => {
+        const project = projectStore.getProjectById(task.projectId);
+        const projectName = project?.name ?? "Project";
+        const latestUpdateLabel = formatLatestUpdateLabel(task);
 
-        compactSectionsMap.get(sectionId)?.rows.push(row);
+        return {
+          id: `tasks-row:${queue}:${bucket}:${task.id}`,
+          taskId: task.id,
+          title: task.title,
+          onPress: props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(task.id) : undefined,
+          statusToken: mapTaskStatusToToken(task.status),
+          statusLabel: formatTaskStatusLabel(task.status),
+          responsibilityToken: getResponsibilityToken(task, currentUserId),
+          priorityLabel: formatPriority(task.priority),
+          dueDateLabel: task.dueDate ? task.dueDate.slice(0, 10) : undefined,
+          assigneeSummary: buildAssigneeSummary(task),
+          projectName,
+          isOverdue: isTaskOverdue(task),
+          attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
+          indentationLevel: level > 0 ? level : undefined,
+          queue,
+          queueLabel: getQueueTitle(queue),
+          bucket,
+          bucketLabel: getBucketTitle(bucket),
+          contextLabel: projectName,
+          latestUpdateAt: getLatestMeaningfulTimestamp(task),
+          latestUpdateLabel,
+          isExpanded: expandedTaskIds.includes(task.id),
+          density: "compact",
+          structuralState,
+        };
+      });
+    };
+
+    const buildBucket = (queue: TasksQueueId, bucket: TasksQueueBucketId): TasksQueueBucket => {
+      const rows = buildRowsForBucket(queue, bucket);
+
+      return {
+        id: `${queue}:${bucket}`,
+        title: getBucketTitle(bucket),
+        taskCountLabel: String(rows.length),
+        bucket,
+        isOpen: openBucketsByQueue[queue] === bucket,
+        rows,
+      };
+    };
+
+    const queuePanels: TasksQueuePanel[] = ([
+      { queue: "my_queue", presentation: "primary" as const },
+      { queue: "team_queue", presentation: "preview" as const },
+    ] as const).map(({ queue, presentation }) => {
+      const buckets = (["new", "wip", "review"] as TasksQueueBucketId[]).map((bucket) =>
+        buildBucket(queue, bucket),
+      );
+      const totalCount = buckets.reduce((sum, bucket) => sum + bucket.rows.length, 0);
+
+      return {
+        id: `tasks-queue:${queue}`,
+        queue,
+        title: getQueueTitle(queue),
+        totalCountLabel: `${totalCount} ${totalCount === 1 ? "task" : "tasks"}`,
+        presentation,
+        isExpanded: expandedQueues[queue],
+        buckets,
+      };
+    });
+
+    const searchResults = candidateTasks
+      .filter((task) => {
+        const projectName = projectStore.getProjectById(task.projectId)?.name ?? "Project";
+        return matchesSearchQuery(task, projectName, normalizedSearchQuery);
+      })
+      .sort(compareTasksByLatestMeaningfulUpdate)
+      .map<TasksScreenRowItem>((task) => {
+        const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
+        const bucket = resolveBucketForTask(task) ?? "new";
+        const project = projectStore.getProjectById(task.projectId);
+        const projectName = project?.name ?? "Project";
+        const latestUpdateLabel = formatLatestUpdateLabel(task);
+
+        return {
+          id: `tasks-search:${task.id}`,
+          taskId: task.id,
+          title: task.title,
+          onPress: props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(task.id) : undefined,
+          statusToken: mapTaskStatusToToken(task.status),
+          statusLabel: formatTaskStatusLabel(task.status),
+          responsibilityToken: getResponsibilityToken(task, currentUserId),
+          priorityLabel: formatPriority(task.priority),
+          dueDateLabel: task.dueDate ? task.dueDate.slice(0, 10) : undefined,
+          assigneeSummary: buildAssigneeSummary(task),
+          projectName,
+          isOverdue: isTaskOverdue(task),
+          attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
+          queue,
+          queueLabel: getQueueTitle(queue),
+          bucket,
+          bucketLabel: getBucketTitle(bucket),
+          contextLabel: `${getQueueTitle(queue)} · ${getBucketTitle(bucket)} · ${projectName}`,
+          latestUpdateAt: getLatestMeaningfulTimestamp(task),
+          latestUpdateLabel,
+          isExpanded: expandedTaskIds.includes(task.id),
+          density: "compact",
+          structuralState,
+        };
       });
 
-    const compactSections = Array.from(compactSectionsMap.values()).map((section) => ({
-      ...section,
-      taskCountLabel: `${section.rows.length} ${section.rows.length === 1 ? "task" : "tasks"}`,
-    }));
+    const activeQueueRows = queuePanels.flatMap((panel) => {
+      if (!panel.isExpanded) {
+        return [];
+      }
 
-    const overdueVisibleTaskCount = rows.filter((row) => row.isOverdue).length;
+      return panel.buckets.find((bucket) => bucket.isOpen)?.rows ?? [];
+    });
+
+    const taskRowItems = normalizedSearchQuery.length > 0 ? searchResults : activeQueueRows;
+    const overdueVisibleTaskCount = taskRowItems.filter((row) => row.isOverdue).length;
 
     return {
-      compactSections,
-      taskRowItems: rows,
+      queuePanels,
+      searchResults,
+      taskRowItems,
       scalarMetrics: {
-        totalVisibleTaskCount: rows.length,
+        totalVisibleTaskCount: taskRowItems.length,
         overdueVisibleTaskCount,
-        selectedProjectTaskCount: searchedTasks.length,
+        selectedProjectTaskCount: candidateTasks.length,
         hasActiveFilters: Boolean(selectedProjectId),
       },
       continuity: {
         isInitialLoading,
         isBackgroundRefreshing,
-        hasCachedFrame: searchedTasks.length > 0,
+        hasCachedFrame: candidateTasks.length > 0,
         shouldRenderSkeletonShell: isInitialLoading,
-        shouldRenderEmptyState: !isInitialLoading && searchedTasks.length === 0,
+        shouldRenderEmptyState: !isInitialLoading && taskRowItems.length === 0,
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
       structuralState,
     };
   }, [
     currentUserId,
+    expandedQueues,
+    expandedTaskIds,
     isLoadingTasks,
+    openBucketsByQueue,
     normalizedSearchQuery,
     projectStore,
-    collapsedSectionIds,
+    props,
     selectedProjectId,
     tasks,
-    projectFilterStore.sectionFilter,
-    projectFilterStore.statusFilter,
+    taskStore,
   ]);
 
   const readiness = useMemo(() => {
@@ -368,11 +548,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     continuity,
     filterSummary: {
       selectedProjectId,
-      sectionFilterLabel: "All",
-      statusFilterLabel: "All",
-      sortLabel: "Default",
+      sectionFilterLabel: normalizedSearchQuery.length > 0 ? "All Task Results" : "Ownership Queues",
+      statusFilterLabel: selectedProjectId ? "Project scoped" : "All projects",
+      sortLabel: "Latest update",
     },
-    compactSections,
+    isSearchMode: normalizedSearchQuery.length > 0,
+    queuePanels,
+    searchResults,
+    expandedTaskIds,
     taskRowItems,
     scalarMetrics,
   };
@@ -388,16 +571,41 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
 
   const resetFilters = () => {
     setSearchQuery("");
-    setCollapsedSectionIds([]);
+    setExpandedQueues({
+      my_queue: true,
+      team_queue: false,
+    });
+    setOpenBucketsByQueue({
+      my_queue: "new",
+      team_queue: null,
+    });
+    setExpandedTaskIds([]);
     projectFilterStore.resetFilters();
-    void projectFilterStore.setSelectedProject(null, user?.id);
   };
 
-  const toggleSection = (sectionId: string) => {
-    setCollapsedSectionIds((current) =>
-      current.includes(sectionId)
-        ? current.filter((id) => id !== sectionId)
-        : [...current, sectionId],
+  const toggleQueue = (queue: TasksQueueId) => {
+    setExpandedQueues((current) => ({
+      ...current,
+      [queue]: !current[queue],
+    }));
+  };
+
+  const openBucket = (queue: TasksQueueId, bucket: TasksQueueBucketId) => {
+    setExpandedQueues((current) => ({
+      ...current,
+      [queue]: true,
+    }));
+    setOpenBucketsByQueue((current) => ({
+      ...current,
+      [queue]: bucket,
+    }));
+  };
+
+  const toggleTaskExpansion = (taskId: string) => {
+    setExpandedTaskIds((current) =>
+      current.includes(taskId)
+        ? current.filter((id) => id !== taskId)
+        : [...current, taskId],
     );
   };
 
@@ -415,7 +623,9 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     },
     actions: {
       resetFilters,
-      toggleSection,
+      toggleQueue,
+      openBucket,
+      toggleTaskExpansion,
     },
   };
 }

@@ -34,7 +34,12 @@ function mapProjectStatusToToken(status: Project["status"]): StatusSemanticToken
 }
 
 function isPreAcceptanceTaskStatus(status: string): boolean {
-  return status === "new" || status === "not_started";
+  return (
+    status === "new" ||
+    status === "not_started" ||
+    status === "assigned" ||
+    status === "received"
+  );
 }
 
 function isTerminalTaskStatus(status: string): boolean {
@@ -42,9 +47,77 @@ function isTerminalTaskStatus(status: string): boolean {
     status === "approved" ||
     status === "completed" ||
     status === "done" ||
-    status === "cancelled" ||
-    status === "rejected"
+    status === "cancelled"
   );
+}
+
+function formatCalendarLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatStatusLabel(status: string): string {
+  return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatElapsedDayLabel(startDate?: string): string {
+  if (!startDate) {
+    return "Day 1";
+  }
+
+  const parsedStartDate = new Date(startDate);
+  if (Number.isNaN(parsedStartDate.getTime())) {
+    return "Day 1";
+  }
+
+  const dayDifference = Math.floor(
+    (Date.now() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  return `Day ${Math.max(1, dayDifference + 1)}`;
+}
+
+function getQueueBucket(taskStatus: string): "new" | "wip" | "review" | null {
+  if (isPreAcceptanceTaskStatus(taskStatus)) {
+    return "new";
+  }
+
+  if (
+    taskStatus === "in_progress" ||
+    taskStatus === "accepted" ||
+    taskStatus === "wip" ||
+    taskStatus === "rejected"
+  ) {
+    return "wip";
+  }
+
+  if (
+    taskStatus === "submitted_for_review" ||
+    taskStatus === "reviewing" ||
+    taskStatus === "declined"
+  ) {
+    return "review";
+  }
+
+  return null;
+}
+
+function buildCriticalDateSubtitle(task: {
+  status: string;
+  priority?: string;
+  tags?: string[];
+}): string {
+  const statusLabel = formatStatusLabel(task.status);
+  const priorityLabel = task.priority
+    ? task.priority.replace(/\b\w/g, (character) => character.toUpperCase())
+    : null;
+  const isTaggedCritical = Array.isArray(task.tags) && task.tags.includes("critical_this_week");
+
+  return [statusLabel, priorityLabel, isTaggedCritical ? "Critical this week" : null]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export interface DashboardViewAdapterHookResult {
@@ -68,7 +141,18 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const tasks = taskStore.tasks ?? [];
   const isLoadingProjects = Boolean(projectStore.isLoading);
 
-  const { activeProject, projectSummaryItems, scalarMetrics, continuity, summaryPills, draftItems, activityItems, taskShortcut } = useMemo(() => {
+  const {
+    activeProject,
+    projectSummaryItems,
+    scalarMetrics,
+    continuity,
+    summaryPills,
+    draftItems,
+    activityItems,
+    taskShortcut,
+    projectSummaryCard,
+    queueDashboard,
+  } = useMemo(() => {
     const hasProjects = projects.length > 0;
     const visibleProjectIds = new Set(projects.map((project) => project.id));
     const resolvedActiveProject = selectedProjectId
@@ -314,6 +398,140 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       )
       .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
 
+    const queueCounts = {
+      my_queue: {
+        new: 0,
+        wip: 0,
+        review: 0,
+      },
+      team_queue: {
+        new: 0,
+        wip: 0,
+        review: 0,
+      },
+    };
+
+    activeProjectTasks.forEach((task) => {
+      if (isTerminalTaskStatus(task.status)) {
+        return;
+      }
+
+      const bucket = getQueueBucket(task.status);
+      if (!bucket) {
+        return;
+      }
+
+      const isAssignedToMe = (task.assignedTo ?? []).includes(currentUserId);
+      const isAssignedByMe = task.assignedBy === currentUserId;
+
+      if (isAssignedToMe) {
+        queueCounts.my_queue[bucket] += 1;
+      }
+
+      if (isAssignedByMe && !isAssignedToMe) {
+        queueCounts.team_queue[bucket] += 1;
+      }
+    });
+
+    const criticalDates = [...activeProjectOpenTasks]
+      .filter((task) => {
+        const hasCriticalTag = Array.isArray(task.tags) && task.tags.includes("critical_this_week");
+        return hasCriticalTag;
+      })
+      .map((task) => {
+        const parsedDueDate = task.dueDate ? new Date(task.dueDate) : null;
+        const isValidDueDate = Boolean(parsedDueDate && !Number.isNaN(parsedDueDate.getTime()));
+        const dueTimestamp = isValidDueDate ? parsedDueDate!.getTime() : Number.MAX_SAFE_INTEGER;
+        const isOverdue = isValidDueDate ? parsedDueDate!.getTime() < Date.now() : false;
+
+        return {
+          task,
+          dateLabel: isValidDueDate ? formatCalendarLabel(parsedDueDate!) : "This week",
+          sortTimestamp: isOverdue ? 0 : dueTimestamp,
+        };
+      })
+      .sort((left, right) => {
+        return left.sortTimestamp - right.sortTimestamp;
+      })
+      .slice(0, 3)
+      .map(({ task, dateLabel }) => ({
+        id: `critical-date:${task.id}`,
+        dateLabel,
+        title: task.title,
+        subtitle: buildCriticalDateSubtitle(task),
+      }));
+
+    const today = new Date();
+    const resolvedProjectSummaryCard = resolvedActiveProject
+      ? {
+          title: resolvedActiveProject.name,
+          todayLabel: `Today · ${formatCalendarLabel(today)}`,
+          elapsedDayLabel: formatElapsedDayLabel(resolvedActiveProject.startDate),
+          weatherLabel: "Partly Cloudy",
+          weatherTemperatureLabel: "28°C",
+          criticalDates,
+        }
+      : null;
+
+    const resolvedQueueDashboard = {
+      groups: [
+        {
+          id: "dashboard-queue:my_queue",
+          title: "My Queue" as const,
+          cells: [
+            {
+              id: "dashboard-queue:my_queue:new",
+              queue: "my_queue" as const,
+              bucket: "new" as const,
+              title: "New",
+              countLabel: String(queueCounts.my_queue.new),
+            },
+            {
+              id: "dashboard-queue:my_queue:wip",
+              queue: "my_queue" as const,
+              bucket: "wip" as const,
+              title: "Doing",
+              countLabel: String(queueCounts.my_queue.wip),
+            },
+            {
+              id: "dashboard-queue:my_queue:review",
+              queue: "my_queue" as const,
+              bucket: "review" as const,
+              title: "Review",
+              countLabel: String(queueCounts.my_queue.review),
+            },
+          ],
+        },
+        {
+          id: "dashboard-queue:team_queue",
+          title: "Team Queue" as const,
+          cells: [
+            {
+              id: "dashboard-queue:team_queue:new",
+              queue: "team_queue" as const,
+              bucket: "new" as const,
+              title: "New",
+              countLabel: String(queueCounts.team_queue.new),
+            },
+            {
+              id: "dashboard-queue:team_queue:wip",
+              queue: "team_queue" as const,
+              bucket: "wip" as const,
+              title: "Doing",
+              countLabel: String(queueCounts.team_queue.wip),
+            },
+            {
+              id: "dashboard-queue:team_queue:review",
+              queue: "team_queue" as const,
+              bucket: "review" as const,
+              title: "Review",
+              countLabel: String(queueCounts.team_queue.review),
+            },
+          ],
+        },
+      ],
+    };
+
     return {
       activeProject: resolvedActiveProject
         ? {
@@ -332,6 +550,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         : [],
       draftItems: mappedDraftItems,
       activityItems: mappedActivityItems,
+      projectSummaryCard: resolvedProjectSummaryCard,
+      queueDashboard: resolvedQueueDashboard,
       taskShortcut: resolvedActiveProject
         ? {
             title: "All Tasks",
@@ -388,6 +608,8 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     readiness,
     continuity,
     activeProject,
+    projectSummaryCard,
+    queueDashboard,
     summaryPills,
     draftItems,
     activityItems,

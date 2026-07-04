@@ -1,4 +1,4 @@
-import { renderHook } from "@testing-library/react-native";
+import { act, renderHook } from "@testing-library/react-native";
 
 import { useTaskDetailViewAdapter } from "../useTaskDetailViewAdapter";
 
@@ -23,8 +23,12 @@ jest.mock("@/utils/useTranslation", () => ({
 }));
 
 describe("useTaskDetailViewAdapter", () => {
+  const mockUpdateTask = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUpdateTask.mockReset();
+    mockUpdateTask.mockResolvedValue(undefined);
 
     const { useAuthStore } = require("@/state/authStore");
     const { useTaskStore } = require("@/state/taskStore.supabase");
@@ -85,6 +89,7 @@ describe("useTaskDetailViewAdapter", () => {
           category: "general",
           description: "",
           attachments: [],
+          tags: [],
           updates: [],
           activities: [],
           completionPercentage: 50,
@@ -119,7 +124,37 @@ describe("useTaskDetailViewAdapter", () => {
       acceptSubTask: jest.fn(),
       declineSubTask: jest.fn(),
       cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
     });
+  });
+
+  it("exposes and toggles the critical-this-week action for the expanded task card", async () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    const criticalAction = result.current.output.actionItems.find(
+      (item) => item.actionId === "toggle_critical_this_week",
+    );
+
+    expect(criticalAction).toMatchObject({
+      actionId: "toggle_critical_this_week",
+      label: "Mark critical",
+      isActive: false,
+    });
+
+    await act(async () => {
+      await result.current.actions.toggleCriticalThisWeek();
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "task-parent",
+      expect.objectContaining({
+        tags: ["critical_this_week"],
+      }),
+    );
   });
 
   it("does not mark legacy completed child tasks as overdue", () => {
@@ -133,5 +168,53 @@ describe("useTaskDetailViewAdapter", () => {
       taskId: "task-child-completed",
       isOverdue: false,
     });
+  });
+
+  it("treats assigned and received tasks as pre-acceptance work", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate: new Date().toISOString(),
+          status: "assigned",
+          priority: "medium",
+          category: "general",
+          description: "",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).toEqual(
+      expect.arrayContaining(["accept_task", "decline_task"]),
+    );
   });
 });

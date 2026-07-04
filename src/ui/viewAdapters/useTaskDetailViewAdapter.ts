@@ -5,6 +5,7 @@ import { useUserStore } from '../../state/userStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
+import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type {
   TaskDetailScreenViewAdapterOutput,
   TaskDetailBannerModel,
@@ -23,11 +24,30 @@ export interface UseTaskDetailViewAdapterProps {
 }
 
 function isPreAcceptanceTaskStatus(status: TaskStatus): boolean {
-  return status === 'new' || status === 'not_started';
+  return (
+    status === 'new' ||
+    status === 'not_started' ||
+    status === 'assigned' ||
+    status === 'received'
+  );
 }
 
 function isApprovedTaskStatus(status: TaskStatus): boolean {
   return status === 'approved' || status === 'completed' || status === 'done';
+}
+
+function getTaskTags(tags?: string[]): string[] {
+  return Array.isArray(tags) ? tags.filter(Boolean) : [];
+}
+
+function hasCriticalThisWeekTag(task: Pick<Task, 'tags'>): boolean {
+  return getTaskTags(task.tags).includes(CRITICAL_THIS_WEEK_TAG);
+}
+
+function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
+  const normalizedTags = getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
+
+  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
 }
 
 export function useTaskDetailViewAdapter({
@@ -40,6 +60,7 @@ export function useTaskDetailViewAdapter({
     declineTask: (reason: string) => Promise<void>;
     submitForReview: () => Promise<void>;
     approveTask: () => Promise<void>;
+    toggleCriticalThisWeek: () => Promise<void>;
     cancelTask: () => Promise<void>;
     fetchTask: () => Promise<void>;
   };
@@ -47,7 +68,7 @@ export function useTaskDetailViewAdapter({
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, cancelTask } = useTaskStore();
+  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, cancelTask, updateTask } = useTaskStore();
   const { getUserById } = useUserStore();
 
   const foundTask = tasks.find((t) => t.id === taskId);
@@ -102,6 +123,7 @@ export function useTaskDetailViewAdapter({
         declineTask: async () => {},
         submitForReview: async () => {},
         approveTask: async () => {},
+        toggleCriticalThisWeek: async () => {},
         cancelTask: async () => {},
         fetchTask,
       },
@@ -111,25 +133,31 @@ export function useTaskDetailViewAdapter({
   const assignedTo = task.assignedTo || [];
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
+  const isCriticalThisWeek = hasCriticalThisWeekTag(task);
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
       case 'new': return 'task_new';
+      case 'assigned': return 'task_new';
+      case 'received': return 'task_new';
       case 'not_started': return 'task_new';
       case 'accepted': return 'task_accepted';
       case 'in_progress': return 'task_in_progress';
+      case 'wip': return 'task_in_progress';
       case 'submitted_for_review': return 'task_submitted_for_review';
+      case 'reviewing': return 'task_submitted_for_review';
       case 'approved': return 'task_approved';
       case 'completed': return 'task_approved';
       case 'done': return 'task_approved';
-      case 'rejected': return 'task_rejected';
+      case 'rejected': return 'task_in_progress';
       case 'cancelled': return 'task_cancelled';
-      case 'declined': return 'task_rejected';
+      case 'declined': return 'task_submitted_for_review';
       default: return 'custom';
     }
   };
 
-  const getStatusLabel = (status: TaskStatus) => status?.replace(/_/g, ' ') || 'new';
+  const getStatusLabel = (status: TaskStatus) =>
+    status?.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) || 'New';
 
   const banners: TaskDetailBannerModel[] = [];
 
@@ -277,6 +305,17 @@ export function useTaskDetailViewAdapter({
 
   const actionItems: TaskDetailActionItem[] = [];
 
+  actionItems.push({
+    id: 'action-critical-this-week',
+    actionId: 'toggle_critical_this_week',
+    density: 'standard',
+    structuralState: 'stale',
+    label: isCriticalThisWeek ? 'Remove from This Week' : 'Mark critical',
+    icon: isCriticalThisWeek ? 'flag' : 'flag-outline',
+    isDisabled: false,
+    isActive: isCriticalThisWeek,
+  });
+
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
   const canUpdateProgress = isAssignedToMe && !isTaskCreator && (task.status === 'accepted' || task.status === 'in_progress' || (task.status === 'rejected' && task.completionPercentage === 100));
   const canEditTask = isTaskCreator;
@@ -390,6 +429,12 @@ export function useTaskDetailViewAdapter({
         } else {
           await acceptTaskCompletion(task.id, user.id);
         }
+        await fetchTask();
+      },
+      toggleCriticalThisWeek: async () => {
+        await updateTask(task.id, {
+          tags: withCriticalThisWeekTag(task.tags, !isCriticalThisWeek),
+        } as Partial<Task>);
         await fetchTask();
       },
       cancelTask: async () => {

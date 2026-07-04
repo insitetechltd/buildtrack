@@ -29,20 +29,89 @@ describe("DashboardScreen", () => {
         shouldRenderEmptyState: false,
         freshnessLabel: "Ready",
       },
-      projectSummaryItems: [
-        {
-          id: "item-1",
-          projectId: "project-1",
-          title: "North Tower",
-          subtitle: "Package A",
-          statusToken: "project_active",
-          statusLabel: "Active",
-          openTaskCount: 2,
-          overdueTaskCount: 0,
-          density: "standard",
-          structuralState: "stale",
-        },
-      ],
+      activeProject: {
+        id: "project-1",
+        title: "North Tower",
+        subtitle: "Package A",
+      },
+      projectSummaryCard: {
+        title: "North Tower",
+        todayLabel: "Today · Jul 4",
+        elapsedDayLabel: "Day 185",
+        weatherLabel: "Partly Cloudy",
+        weatherTemperatureLabel: "28°C",
+        criticalDates: [
+          {
+            id: "critical-date-1",
+            dateLabel: "Jul 7",
+            title: "Concrete inspection",
+            subtitle: "Submitted For Review · Critical",
+          },
+        ],
+      },
+      queueDashboard: {
+        groups: [
+          {
+            id: "group-my",
+            title: "My Queue",
+            cells: [
+              {
+                id: "my-new",
+                queue: "my_queue",
+                bucket: "new",
+                title: "New",
+                countLabel: "3",
+              },
+              {
+                id: "my-wip",
+                queue: "my_queue",
+                bucket: "wip",
+                title: "Doing",
+                countLabel: "4",
+              },
+              {
+                id: "my-review",
+                queue: "my_queue",
+                bucket: "review",
+                title: "Review",
+                countLabel: "1",
+              },
+            ],
+          },
+          {
+            id: "group-team",
+            title: "Team Queue",
+            cells: [
+              {
+                id: "team-new",
+                queue: "team_queue",
+                bucket: "new",
+                title: "New",
+                countLabel: "2",
+              },
+              {
+                id: "team-wip",
+                queue: "team_queue",
+                bucket: "wip",
+                title: "Doing",
+                countLabel: "1",
+              },
+              {
+                id: "team-review",
+                queue: "team_queue",
+                bucket: "review",
+                title: "Review",
+                countLabel: "0",
+              },
+            ],
+          },
+        ],
+      },
+      summaryPills: [],
+      draftItems: [],
+      activityItems: [],
+      taskShortcut: null,
+      projectSummaryItems: [],
       highlightedTaskItems: [],
       quickActionItems: [],
       scalarMetrics: {
@@ -56,6 +125,18 @@ describe("DashboardScreen", () => {
         actionRequiredOverdueCount: 2,
         inProgressSentOverdueCount: 1,
         awaitingApprovalOverdueCount: 0,
+        inboxNewCount: 3,
+        inboxNewOverdueCount: 1,
+        inboxWipCount: 4,
+        inboxWipOverdueCount: 1,
+        inboxReviewingCount: 1,
+        inboxReviewingOverdueCount: 0,
+        outboxNewCount: 2,
+        outboxNewOverdueCount: 0,
+        outboxWipCount: 1,
+        outboxWipOverdueCount: 0,
+        outboxReviewingCount: 0,
+        outboxReviewingOverdueCount: 0,
       },
     };
 
@@ -70,13 +151,14 @@ describe("DashboardScreen", () => {
     });
 
     const onNavigateToCreateTask = jest.fn();
+    const onNavigateToTasks = jest.fn();
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
     const onNavigateToDeveloperSettings = jest.fn();
 
     const screen = render(
       <DashboardScreen
-        onNavigateToTasks={jest.fn()}
+        onNavigateToTasks={onNavigateToTasks}
         onNavigateToCreateTask={onNavigateToCreateTask}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToTaskDetail={jest.fn()}
@@ -85,15 +167,18 @@ describe("DashboardScreen", () => {
       />,
     );
 
-    expect(screen.getByTestId("container-card:project-1")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__metric_action_required")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__metric_in_progress")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__metric_awaiting_approval")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__metric_action_required_overdue")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__metric_in_progress_overdue")).toBeTruthy();
-    expect(screen.queryByTestId("dashboard-screen__metric_awaiting_approval_overdue")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("dashboard-screen__fab_create_task"));
+    fireEvent.press(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new"));
+    expect(onNavigateToTasks).toHaveBeenCalledWith({
+      launchQueue: "my_queue",
+      launchBucket: "new",
+      launchSource: "activity_dashboard",
+    });
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__fab_open_camera"));
     expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
 
     fireEvent.press(screen.getByTestId("dashboard-screen__header_profile"));

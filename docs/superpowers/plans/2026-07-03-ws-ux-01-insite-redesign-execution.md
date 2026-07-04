@@ -19,6 +19,7 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | Aligned the live worker shell to the approved `Activity / Tasks / Camera / Profile` model while preserving active-project behavior established by `S-UX-01B`. |
 | WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | Replaced the legacy dashboard with the approved project-scoped `Recent Activity` home while preserving task, project, and camera entry paths. |
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | Rolled out the approved compact and collapsible project task list while preserving search, filters, drill-in behavior, and project scoping. |
+| WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | Corrected the Activity and Tasks surfaces to the approved queue/dashboard model with task-derived critical dates, compact ownership queues, global task search, and photo-centric expansion plumbing. |
 | WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
 | WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
 | WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
@@ -172,6 +173,30 @@ Closure evidence:
 - empty results now render an explicit empty state rather than a blank task surface
 - focused validation passed:
   - `npx jest src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/__tests__/integration/TasksScreenInteraction.test.tsx --runInBand`
+  - `npx tsc --noEmit`
+
+### WS-UX / M-UX-01 / S-UX-01E2 — Activity/tasks correction
+
+Depends on:
+
+- `WS-UX / M-UX-01 / S-UX-01E`
+
+In scope:
+
+- restore the approved Activity project summary card and dense six-cell queue dashboard
+- correct Tasks into ownership-first queues with bucket-first interaction
+- add global all-task search mode on Tasks
+- model weekly critical dates as a task-derived flagged subset
+- add lightweight critical-date entry from task detail/create flows
+
+Closure evidence:
+
+- `DashboardScreen` now renders the active-project summary card above the dense `My Queue` / `Team Queue` dashboard grid
+- dashboard queue cells now launch Tasks with queue/bucket presets through navigation state
+- `TasksScreen` now uses ownership-first queues with a lighter Team Queue preview row, one-open-bucket behavior, and unified search results mode
+- `TaskDetailScreen` and `CreateTaskScreen` now expose the lightweight `critical_this_week` entry path
+- focused validation passed:
+  - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/__tests__/integration/activity-home.integration.test.tsx src/screens/__tests__/DashboardScreen.test.tsx src/__tests__/integration/DashboardScreenInteraction.test.tsx src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/__tests__/integration/TasksScreenInteraction.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/CreateTaskScreen.test.tsx src/navigation/__tests__/createTaskRouteParams.test.ts src/__tests__/integration/uiMigrationContracts.test.ts --runInBand`
   - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01F — Task detail redesign

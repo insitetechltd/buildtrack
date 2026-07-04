@@ -295,9 +295,18 @@ function DashboardMainScreen({
 }: NativeStackScreenProps<DashboardStackParamList, "DashboardMain">) {
   return (
     <DashboardRoute
-      onNavigateToTasks={() =>
+      onNavigateToTasks={(params) =>
         (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
           "Tasks",
+          params
+            ? {
+                screen: "TasksList",
+                params: {
+                  ...params,
+                  launchNonce: Date.now(),
+                },
+              }
+            : undefined,
         )
       }
       onNavigateToCreateTask={() => {
@@ -454,7 +463,28 @@ function TasksStack() {
 
 function ProjectsTasksListScreen({
   navigation,
+  route,
 }: NativeStackScreenProps<TasksStackParamList, "TasksList">) {
+  const setTasksLaunchPreset = useProjectFilterStore((state) => state.setTasksLaunchPreset);
+
+  useEffect(() => {
+    if (!route.params?.launchQueue || !route.params?.launchBucket || !route.params?.launchSource) {
+      return;
+    }
+
+    setTasksLaunchPreset({
+      queue: route.params.launchQueue,
+      bucket: route.params.launchBucket,
+      source: route.params.launchSource,
+    });
+  }, [
+    route.params?.launchBucket,
+    route.params?.launchNonce,
+    route.params?.launchQueue,
+    route.params?.launchSource,
+    setTasksLaunchPreset,
+  ]);
+
   return (
     <TasksRoute
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {

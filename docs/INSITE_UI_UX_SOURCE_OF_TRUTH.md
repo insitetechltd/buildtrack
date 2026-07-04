@@ -514,6 +514,18 @@ Specifically, the approved target is now:
 - photo-centric task expansion
 - global all-task search/filter mode
 
+### Current implemented correction state
+
+The approved correction is now implemented as `WS-UX / M-UX-01 / S-UX-01E2`.
+
+Implemented correction outcomes:
+
+- `Activity` renders the active-project summary card before the dense queue dashboard
+- dashboard cells launch the corresponding queue/bucket in `Tasks`
+- `Tasks` uses ownership-first queues with bucket-first interaction and a unified search mode
+- weekly critical dates are sourced from the `critical_this_week` task tag
+- the create/detail flows expose the lightweight critical-date flag entry path
+
 ## Non-Goals In This Correction Stage
 
 Not included in the current correction stage:

@@ -3,10 +3,11 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
+import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 
 interface DashboardScreenProps {
-  onNavigateToTasks: () => void;
+  onNavigateToTasks: (params?: TasksListParams) => void;
   onNavigateToCreateTask: () => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;
@@ -55,72 +56,103 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </View>
           </View>
 
-          <View className="mb-4 rounded-3xl bg-white p-4">
-            <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Active Project
-            </Text>
-            <Text className="mt-2 text-2xl font-semibold text-slate-900">
-              {output.activeProject?.title || "No Active Project"}
-            </Text>
-            {output.activeProject?.subtitle ? (
-              <Text className="mt-1 text-sm text-slate-500">{output.activeProject.subtitle}</Text>
-            ) : null}
-          </View>
+          {output.projectSummaryCard ? (
+            <View className="mb-4 rounded-3xl bg-white p-4" testID="dashboard-screen__project_summary_card">
+              <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Active Project
+              </Text>
+              <Text className="mt-2 text-3xl font-semibold text-slate-900">
+                {output.projectSummaryCard.title}
+              </Text>
+              <Text className="mt-1 text-sm text-slate-500">
+                {output.projectSummaryCard.todayLabel} · {output.projectSummaryCard.elapsedDayLabel}
+              </Text>
 
-          <View className="mb-4 flex-row gap-2">
-            {output.summaryPills.map((pill) => (
-              <View
-                key={pill.id}
-                className="flex-1 rounded-2xl bg-white px-3 py-4"
-                testID={`dashboard-screen__summary_pill_${pill.id}`}
-              >
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {pill.label}
+              <View className="mt-4 rounded-3xl bg-sky-50 px-4 py-4">
+                <Text className="text-sm font-medium text-sky-900">
+                  {output.projectSummaryCard.weatherLabel}
                 </Text>
-                <Text className="mt-2 text-xl font-semibold text-slate-900">{pill.value}</Text>
+                <Text className="mt-1 text-3xl font-semibold text-slate-900">
+                  {output.projectSummaryCard.weatherTemperatureLabel}
+                </Text>
+                {output.activeProject?.subtitle ? (
+                  <Text className="mt-2 text-sm text-sky-900/80">{output.activeProject.subtitle}</Text>
+                ) : null}
               </View>
-            ))}
-          </View>
 
-          {output.taskShortcut ? (
-            <Pressable
-              testID="dashboard-screen__shortcut_all_tasks"
-              onPress={props.onNavigateToTasks}
-              className="mb-4 rounded-3xl bg-slate-900 px-4 py-4"
-            >
-              <Text className="text-base font-semibold text-white">
-                {output.taskShortcut.title}
-              </Text>
-              <Text className="mt-1 text-sm text-slate-300">
-                {output.taskShortcut.subtitle}
-              </Text>
-              <Text className="mt-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-                {output.taskShortcut.countLabel}
-              </Text>
-            </Pressable>
+              <View className="mt-4">
+                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  This Week&apos;s Critical Dates
+                </Text>
+                {output.projectSummaryCard.criticalDates.length > 0 ? (
+                  <View className="mt-3 gap-3">
+                    {output.projectSummaryCard.criticalDates.map((item) => (
+                      <View
+                        key={item.id}
+                        className="flex-row items-start justify-between rounded-2xl bg-slate-50 px-3 py-3"
+                      >
+                        <View className="mr-3 flex-1">
+                          <Text className="text-sm font-semibold text-slate-900">{item.title}</Text>
+                          <Text className="mt-1 text-xs text-slate-500">{item.subtitle}</Text>
+                        </View>
+                        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                          {item.dateLabel}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+                    <Text className="text-sm text-slate-500">
+                      No critical dates flagged for this week yet.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
           ) : (
             <View className="mb-4 rounded-3xl border border-dashed border-slate-200 bg-white px-4 py-4">
               <Text className="text-sm font-medium text-slate-600">
-                Select a project to see task shortcuts and recent activity.
+                Select a project to view the active project summary and queue overview.
               </Text>
             </View>
           )}
 
-          {output.draftItems.length > 0 ? (
-            <View className="mb-4">
-              <Text className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
-                Drafts In Progress
+          {output.projectSummaryCard && output.queueDashboard ? (
+            <View className="mb-5" testID="dashboard-screen__queue_dashboard">
+              <Text className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Queue Overview
               </Text>
-              <View className="gap-3">
-                {output.draftItems.map((item) => (
-                  <Pressable
-                    key={item.id}
-                    onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                    className="rounded-2xl bg-white p-4"
-                  >
-                    <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
-                    <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
-                  </Pressable>
+              <View className="gap-4">
+                {output.queueDashboard.groups.map((group) => (
+                  <View key={group.id}>
+                    <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      {group.title}
+                    </Text>
+                    <View className="flex-row gap-2">
+                      {group.cells.map((cell) => (
+                        <Pressable
+                          key={cell.id}
+                          testID={`dashboard-screen__queue_cell_${cell.queue}_${cell.bucket}`}
+                          onPress={() =>
+                            props.onNavigateToTasks({
+                              launchQueue: cell.queue,
+                              launchBucket: cell.bucket,
+                              launchSource: "activity_dashboard",
+                            })
+                          }
+                          className="flex-1 rounded-2xl bg-white px-3 py-4"
+                        >
+                          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {cell.title}
+                          </Text>
+                          <Text className="mt-2 text-2xl font-semibold text-slate-900">
+                            {cell.countLabel}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
                 ))}
               </View>
             </View>
@@ -164,6 +196,26 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               )}
             </View>
           </View>
+
+          {output.draftItems.length > 0 ? (
+            <View className="mb-4">
+              <Text className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Drafts In Progress
+              </Text>
+              <View className="gap-3">
+                {output.draftItems.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
+                    <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
         {visibility.showCreateTaskFab ? (
           <Pressable

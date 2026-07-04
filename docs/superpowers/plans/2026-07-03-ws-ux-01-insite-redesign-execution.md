@@ -5,6 +5,7 @@
 - `documentation/ROADMAP.md` remains the single canonical WS/M/S inventory for the repository.
 - This document records execution intent, slice boundaries, and closure evidence for `WS-UX / M-UX-01` only.
 - Use WS/M/S identifiers only; do not introduce competing roadmap taxonomies or duplicate milestone ledgers elsewhere.
+- Default execution mode for redesign implementation is **subagent-driven**. Inline execution is an exception path and should be used only when explicitly requested by the user.
 - Slice wrap-up must include an explicit relaunch assessment before the slice can be marked `Closed`.
 - If the completed work requires an app relaunch to validate the live state, relaunch the app, verify the relaunch succeeds, and record that verification in the slice closure evidence.
 - Do not mark a slice `Closed` until required validation and any required relaunch verification are complete.

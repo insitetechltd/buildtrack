@@ -68,6 +68,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 - Planning documents under `docs/superpowers/` may describe slices or execution detail, but must not become competing roadmap inventories.
 - Before changing any milestone or slice status to `Closed`, explicitly assess whether the app must be relaunched to validate the completed work.
 - If relaunch is needed, relaunch the app, verify the relaunch succeeds, and treat that verification as part of slice wrap-up rather than an optional follow-up.
+- Default implementation mode is **subagent-driven execution**. Use inline execution only when the user explicitly asks for it or a specific task cannot be reasonably decomposed into reviewed sub-tasks.
 - When a milestone is closed, update its `Status` to `Closed` only after the required validation and any required relaunch verification are complete, and update its primary reference to the latest execution plan or canonical doc when relevant.
 - Historically closed milestones may reference `AGENTS.md` as a summary record; milestone-level execution artifacts may not exist for all historical work.
 - `WS-UIA / M-UIA-01` and `WS-UIA / M-UIA-02` govern contract stabilization, boundary cleanup, and parallel-work separation for presentation, adapter, and data-layer ownership; roadmap-aligned coordination rules must be reflected in the canonical UI architecture references rather than tracked only in ad hoc prompt notes.

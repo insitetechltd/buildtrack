@@ -120,6 +120,16 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     subTaskId: props.subTaskId
   });
 
+  const handleTaskDetailCameraShortcutPress = () => {
+    props.onNavigateToCreateTask?.(
+      undefined,
+      undefined,
+      props.taskId,
+      "update",
+      props.subTaskId,
+    );
+  };
+
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
       case 'accept_task':
@@ -226,6 +236,20 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
         rightElement={<ModernUiMarker />}
       />
+
+      <View className="px-4 pt-4">
+        <View className="flex-row justify-end">
+          <Pressable
+            testID="task-detail__camera_shortcut"
+            accessibilityRole="button"
+            accessibilityLabel="Add photos to this task"
+            onPress={handleTaskDetailCameraShortcutPress}
+            className="h-11 w-11 items-center justify-center rounded-full bg-red-700"
+          >
+            <Ionicons name="camera" size={20} color="#ffffff" />
+          </Pressable>
+        </View>
+      </View>
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: scrollContentPaddingBottom }}>
         {/* Banners */}

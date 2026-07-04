@@ -1,6 +1,10 @@
 import React from "react";
 import { act, render } from "@testing-library/react-native";
 import { DashboardRoute, TasksRoute } from "../uiModeRoutes";
+import type {
+  CreateTaskParams,
+  RootTabParamList,
+} from "../navigationTypes";
 import { useDevToggleStore } from "@/state/devToggleStore";
 
 jest.mock("@/screens/DashboardScreen", () => {
@@ -85,5 +89,48 @@ describe("uiModeRoutes", () => {
     });
 
     expect(modern.getByTestId("legacy-tasks")).toBeTruthy();
+  });
+
+  it("allows the camera tab to receive a global create-task capture intent", () => {
+    const params: RootTabParamList["Camera"] = {
+      screen: "CreateTaskMain",
+      params: {
+        actionType: "photos",
+        cameraLaunchContext: "global",
+        postCaptureDefault: "create_task",
+      },
+    };
+
+    expect(params).toEqual(
+      expect.objectContaining({
+        screen: "CreateTaskMain",
+        params: expect.objectContaining({
+          actionType: "photos",
+          cameraLaunchContext: "global",
+          postCaptureDefault: "create_task",
+        }),
+      }),
+    );
+  });
+
+  it("allows task-detail camera launches to target the current task update flow", () => {
+    const params: CreateTaskParams = {
+      editTaskId: "task-1",
+      actionType: "update",
+      cameraLaunchContext: "task_detail",
+      postCaptureDefault: "same_task_update",
+      updateTargetSubTaskId: "subtask-1",
+    };
+
+    expect(params.cameraLaunchContext).toBe("task_detail");
+    expect(params.postCaptureDefault).toBe("same_task_update");
+  });
+
+  it("keeps the profile route available for hidden worker-shell navigation", () => {
+    const params: RootTabParamList["Profile"] = {
+      screen: "ProfileMain",
+    };
+
+    expect(params.screen).toBe("ProfileMain");
   });
 });

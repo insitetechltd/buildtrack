@@ -69,7 +69,7 @@ export interface DashboardProjectSummaryCard {
   title: string;
   todayLabel: string;
   elapsedDayLabel: string;
-  weatherLabel: string;
+  weatherIconLabel: string;
   weatherTemperatureLabel: string;
   criticalDates: Array<{
     id: string;

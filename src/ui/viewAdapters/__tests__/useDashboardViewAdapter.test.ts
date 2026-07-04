@@ -334,7 +334,7 @@ describe("useDashboardViewAdapter", () => {
       title: "North Tower",
       todayLabel: "Today · Jul 4",
       elapsedDayLabel: "Day 185",
-      weatherLabel: "Partly Cloudy",
+      weatherIconLabel: "☁️",
       weatherTemperatureLabel: "28°C",
     });
     expect(result.current.output.projectSummaryCard?.criticalDates).toEqual([

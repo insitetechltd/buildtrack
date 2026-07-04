@@ -155,7 +155,7 @@ describe("Sprint 4 UI migration contracts", () => {
         title: "North Tower",
         todayLabel: "Today · Jul 4",
         elapsedDayLabel: "Day 185",
-        weatherLabel: "Partly Cloudy",
+        weatherIconLabel: "☁️",
         weatherTemperatureLabel: "28°C",
         criticalDates: [],
       },

@@ -24,8 +24,9 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | Replaced the legacy dashboard with the approved project-scoped `Recent Activity` home while preserving task, project, and camera entry paths. |
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | Rolled out the approved compact and collapsible project task list while preserving search, filters, drill-in behavior, and project scoping. |
 | WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | Corrected the Activity and Tasks surfaces to the approved queue/dashboard model with task-derived critical dates, compact ownership queues, global task search, and photo-centric expansion plumbing. |
-| WS-UX / M-UX-01 / S-UX-01F | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
-| WS-UX / M-UX-01 / S-UX-01G | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
+| WS-UX / M-UX-01 / S-UX-01F | Shell + camera redesign | Closed | Reworked the worker shell to `Activity / Camera / Tasks`, moved profile access into the header, compacted weather on `Activity`, and added context-aware camera defaults for global capture vs in-task photo updates. |
+| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
+| WS-UX / M-UX-01 / S-UX-01H | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
 | WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
 
 ## Slice Detail
@@ -202,6 +203,37 @@ Closure evidence:
 - focused validation passed:
   - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/__tests__/integration/activity-home.integration.test.tsx src/screens/__tests__/DashboardScreen.test.tsx src/__tests__/integration/DashboardScreenInteraction.test.tsx src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/__tests__/integration/TasksScreenInteraction.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/CreateTaskScreen.test.tsx src/navigation/__tests__/createTaskRouteParams.test.ts src/__tests__/integration/uiMigrationContracts.test.ts --runInBand`
   - `npx tsc --noEmit`
+
+### WS-UX / M-UX-01 / S-UX-01F — Shell + camera redesign
+
+Depends on:
+
+- `WS-UX / M-UX-01 / S-UX-01E2`
+
+In scope:
+
+- reduce the worker bottom shell to `Activity / Camera / Tasks`
+- make `Camera` the dominant center action
+- remove `Profile` from the worker bottom bar and keep it in the top-right header
+- compact weather into inline metadata on `Activity`
+- add a global post-capture routing sheet for camera-first capture
+- default task-detail camera capture into a same-task photo update flow
+
+Closure evidence:
+
+- worker bottom shell now shows `Activity`, `Camera`, and `Tasks`, with a dedicated center camera button
+- `DashboardScreen` now uses inline weather metadata instead of the larger weather tile
+- profile access now routes through the header affordance instead of the worker bottom bar
+- global camera-launched create-task flows now show the post-capture routing sheet
+- task-detail camera shortcut now routes directly into the same-task update flow while preserving subtask context
+- focused validation passed:
+  - `npx jest src/navigation/__tests__/AppNavigator.back-behavior.test.tsx src/navigation/__tests__/uiModeRoutes.test.tsx src/screens/__tests__/DashboardScreen.test.tsx src/__tests__/integration/DashboardScreenInteraction.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+  - `npx tsc --noEmit`
+- required relaunch assessment completed: relaunch required because the slice changed shell navigation and camera entry behavior
+- relaunch verification completed:
+  - Expo dev-client server restarted cleanly on `http://localhost:8081`
+  - installed app relaunched successfully on both booted iOS simulators
+  - runtime logs confirmed auth rehydration, project restore, realtime subscriptions, and project-store initialization
 
 ### WS-UX / M-UX-01 / S-UX-01F — Task detail redesign
 

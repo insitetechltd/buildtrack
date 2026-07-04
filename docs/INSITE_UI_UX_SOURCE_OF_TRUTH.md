@@ -599,11 +599,11 @@ Implemented correction outcomes:
 - weekly critical dates are sourced from the `critical_this_week` task tag
 - the create/detail flows expose the lightweight critical-date flag entry path
 
-The following approved design decisions are documented here but are **not yet fully implemented** in the current correction slice:
+The following approved design decisions are now implemented in `WS-UX / M-UX-01 / S-UX-01F`:
 
 - 3-item bottom shell with `Activity / Camera / Tasks`
 - dominant center camera button
-- profile moved fully into the top-right header area
+- profile moved into the top-right header area for the worker shell
 - compact inline weather treatment replacing the larger weather tile
 - context-aware camera defaults based on whether the user launches camera from Task Detail or elsewhere
 

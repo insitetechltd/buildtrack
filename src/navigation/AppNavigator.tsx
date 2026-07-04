@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import {
   createBottomTabNavigator,
+  type BottomTabBarButtonProps,
   type BottomTabNavigationProp,
 } from "@react-navigation/bottom-tabs";
 import {
@@ -10,7 +11,15 @@ import {
   type NativeStackScreenProps,
 } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
-import { View, ActivityIndicator, Text, StyleSheet } from "react-native";
+import {
+  View,
+  ActivityIndicator,
+  Text,
+  StyleSheet,
+  Pressable,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native";
 import { useAuthStore } from "../state/authStore";
 import { useProjectFilterStore } from "../state/projectFilterStore";
 import { isAdmin } from "../types/buildtrack";
@@ -216,6 +225,39 @@ export function handleTasksTaskDetailBack(
   }
 
   navigation.navigate("TasksList");
+}
+
+function CenterCameraTabButton({
+  accessibilityLabel,
+  accessibilityState,
+  onLongPress,
+  onPress,
+  children,
+  style,
+}: BottomTabBarButtonProps) {
+  const isFocused = accessibilityState?.selected === true;
+  const tabButtonStyle = style as StyleProp<ViewStyle>;
+
+  return (
+    <View pointerEvents="box-none" style={styles.centerCameraTabButtonSlot}>
+      <Pressable
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="button"
+        accessibilityState={accessibilityState}
+        onLongPress={onLongPress}
+        onPress={onPress}
+        testID="root-tab__camera_button"
+        style={({ pressed }) => [
+          tabButtonStyle,
+          styles.centerCameraTabButton,
+          isFocused ? styles.centerCameraTabButtonFocused : null,
+          pressed ? styles.centerCameraTabButtonPressed : null,
+        ]}
+      >
+        {children}
+      </Pressable>
+    </View>
+  );
 }
 
 
@@ -850,7 +892,17 @@ function CreateTaskScreenWrapper({
   route,
   navigation,
 }: CreateTaskScreenWrapperProps) {
-  const { parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId, uploadedPhotoUrls, selectedPhotos } = route.params || {};
+  const {
+    parentTaskId,
+    parentSubTaskId,
+    editTaskId,
+    actionType,
+    cameraLaunchContext,
+    postCaptureDefault,
+    updateTargetSubTaskId,
+    uploadedPhotoUrls,
+    selectedPhotos,
+  } = route.params || {};
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
@@ -858,6 +910,8 @@ function CreateTaskScreenWrapper({
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
       actionType={actionType}
+      cameraLaunchContext={cameraLaunchContext}
+      postCaptureDefault={postCaptureDefault}
       updateTargetSubTaskId={updateTargetSubTaskId}
       uploadedPhotoUrls={uploadedPhotoUrls as string[] | undefined}
       selectedPhotos={selectedPhotos}
@@ -1101,6 +1155,8 @@ function CreateTaskMainScreen({
   const editTaskId = params.editTaskId;
   // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
   const actionType = params.actionType || (editTaskId ? 'edit' : undefined);
+  const cameraLaunchContext = params.cameraLaunchContext;
+  const postCaptureDefault = params.postCaptureDefault;
   const updateTargetSubTaskId = params.updateTargetSubTaskId;
   const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
@@ -1191,6 +1247,8 @@ function CreateTaskMainScreen({
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
       actionType={actionType}
+      cameraLaunchContext={cameraLaunchContext}
+      postCaptureDefault={postCaptureDefault}
       updateTargetSubTaskId={updateTargetSubTaskId}
       selectedPhotos={selectedPhotos}
       uploadedPhotoUrls={uploadedPhotoUrls}
@@ -1352,8 +1410,9 @@ function MainTabs() {
         tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#6b7280",
         tabBarStyle: {
-          height: 64,
-          paddingTop: 8,
+          height: 72,
+          overflow: "visible",
+          paddingTop: 10,
           paddingBottom: 8,
           borderTopColor: "#e5e7eb",
           backgroundColor: "#ffffff",
@@ -1397,6 +1456,21 @@ function MainTabs() {
       ) : null}
       {!isAdmin(user) && (
         <Tab.Screen
+          name="Camera"
+          component={CreateTaskStack}
+          options={{
+            tabBarLabel: "Camera",
+            tabBarActiveTintColor: "#ffffff",
+            tabBarInactiveTintColor: "#ffffff",
+            tabBarButton: (props) => <CenterCameraTabButton {...props} />,
+            tabBarIcon: ({ color }) => (
+              <Ionicons name="camera" size={28} color={color} />
+            ),
+          }}
+        />
+      )}
+      {!isAdmin(user) && (
+        <Tab.Screen
           name="Tasks"
           component={TasksStack}
           options={{
@@ -1409,29 +1483,10 @@ function MainTabs() {
       )}
       {!isAdmin(user) && (
         <Tab.Screen
-          name="Camera"
-          component={CreateTaskStack}
-          options={{
-            tabBarLabel: "Camera",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons
-                name="camera-outline"
-                size={size}
-                color={color}
-              />
-            ),
-          }}
-        />
-      )}
-      {!isAdmin(user) && (
-        <Tab.Screen
           name="Profile"
           component={ProfileStack}
           options={{
-            tabBarLabel: "Profile",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="person-outline" size={size} color={color} />
-            ),
+            tabBarButton: () => null,
           }}
         />
       )}
@@ -1528,5 +1583,32 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: "#6b7280",
+  },
+  centerCameraTabButtonSlot: {
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  centerCameraTabButton: {
+    alignItems: "center",
+    backgroundColor: "#b91c1c",
+    borderColor: "#ffffff",
+    borderRadius: 36,
+    borderWidth: 4,
+    elevation: 8,
+    height: 72,
+    justifyContent: "center",
+    minWidth: 72,
+    shadowColor: "#7f1d1d",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    top: -18,
+    width: 72,
+  },
+  centerCameraTabButtonFocused: {
+    backgroundColor: "#991b1b",
+  },
+  centerCameraTabButtonPressed: {
+    transform: [{ scale: 0.97 }],
   },
 });

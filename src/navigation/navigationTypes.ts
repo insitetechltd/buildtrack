@@ -27,6 +27,13 @@ export type UpdateProgressParams = {
   sourceSubTaskId?: string;
 };
 
+export type CameraLaunchContext = "global" | "task_detail";
+
+export type CameraPostCaptureDefault =
+  | "create_task"
+  | "existing_task"
+  | "same_task_update";
+
 export type CreateTaskParams = {
   parentTaskId?: string;
   parentSubTaskId?: string;
@@ -38,6 +45,8 @@ export type CreateTaskParams = {
   sourceScreen?: "dashboard" | "tasks";
   selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
+  cameraLaunchContext?: CameraLaunchContext;
+  postCaptureDefault?: CameraPostCaptureDefault;
   clearForm?: boolean;
   _timestamp?: number;
 };

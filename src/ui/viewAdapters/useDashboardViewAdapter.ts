@@ -467,7 +467,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
           title: resolvedActiveProject.name,
           todayLabel: `Today · ${formatCalendarLabel(today)}`,
           elapsedDayLabel: formatElapsedDayLabel(resolvedActiveProject.startDate),
-          weatherLabel: "Partly Cloudy",
+          weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",
           criticalDates,
         }

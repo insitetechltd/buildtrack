@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, within } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../../screens/TaskDetailScreen";
+import { buildPhotoShortcutCreateTaskParams } from "../../navigation/photoShortcutRoutes";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
 
 const mockNavigate = jest.fn();
@@ -244,6 +245,79 @@ describe("TaskDetailScreen header regression", () => {
       "task-1",
       "update",
       "subtask-1",
+    );
+  });
+
+  it("renders a dedicated task-detail camera shortcut that routes into the same-task update flow", () => {
+    const onNavigateToCreateTask = jest.fn();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: {
+        readiness: {
+          hasUsableData: true,
+        },
+        header: {
+          title: "Task Details",
+        },
+        banners: [],
+        detailSections: [],
+        assigners: [],
+        assignees: [],
+        activities: [],
+        childTasks: [],
+        actionItems: [],
+      },
+      actions: {
+        acceptTask: jest.fn(),
+        declineTask: jest.fn(),
+        submitForReview: jest.fn(),
+        approveTask: jest.fn(),
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        {...({
+          taskId: "task-1",
+          subTaskId: "subtask-1",
+          onNavigateBack: jest.fn(),
+          onNavigateToCreateTask,
+        } as any)}
+      />,
+    );
+
+    const cameraShortcut = screen.getByTestId("task-detail__camera_shortcut");
+
+    expect(cameraShortcut).toBeTruthy();
+
+    fireEvent.press(cameraShortcut);
+
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      "task-1",
+      "update",
+      "subtask-1",
+    );
+  });
+
+  it("builds task-detail photo shortcut params for the same-task update path", () => {
+    expect(
+      buildPhotoShortcutCreateTaskParams({
+        taskId: "task-1",
+        subTaskId: "subtask-1",
+        actionType: "update",
+        selectedPhotos: [{ uri: "file:///photo-1.jpg", fileName: "photo-1.jpg", isAnnotated: false }],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        editTaskId: "task-1",
+        actionType: "update",
+        cameraLaunchContext: "task_detail",
+        postCaptureDefault: "same_task_update",
+        updateTargetSubTaskId: "subtask-1",
+        selectedPhotos: [{ uri: "file:///photo-1.jpg", fileName: "photo-1.jpg", isAnnotated: false }],
+      }),
     );
   });
 

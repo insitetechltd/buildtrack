@@ -12,6 +12,8 @@ export function buildCreateTaskPhotoReturnParams({
     parentSubTaskId: routeParams?.parentSubTaskId,
     editTaskId: routeParams?.editTaskId,
     actionType: routeParams?.actionType,
+    cameraLaunchContext: routeParams?.cameraLaunchContext,
+    postCaptureDefault: routeParams?.postCaptureDefault,
     selectedPhotos,
     uploadedPhotoUrls,
     clearForm: undefined,

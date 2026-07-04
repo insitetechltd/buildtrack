@@ -5,6 +5,28 @@ import { useDashboardViewAdapter } from "../../../src/ui/viewAdapters/useDashboa
 
 // Mock the view adapter
 jest.mock("../../../src/ui/viewAdapters/useDashboardViewAdapter");
+jest.mock("../../../src/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+  }) {
+    return (
+      <View testID="app-screen-header__root">
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
 const mockUseDashboardViewAdapter = useDashboardViewAdapter as jest.Mock;
 
 // Mock child components that might complain about missing Context or Navigation
@@ -32,7 +54,7 @@ describe("DashboardScreen Interactions", () => {
           title: "North Tower",
           todayLabel: "Today · Jul 4",
           elapsedDayLabel: "Day 185",
-          weatherLabel: "Partly Cloudy",
+          weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",
           criticalDates: [],
         },
@@ -100,13 +122,19 @@ describe("DashboardScreen Interactions", () => {
   });
 
   it("navigates to Tasks with the selected My Queue bucket", () => {
-    const { getByTestId } = render(
+    const { getByTestId, getByText, queryByText, queryByTestId } = render(
       <DashboardScreen
         onNavigateToTasks={mockOnNavigateToTasks}
         onNavigateToCreateTask={jest.fn()}
         onNavigateToProfile={jest.fn()}
       />
     );
+
+    expect(getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(queryByText("Partly Cloudy")).toBeNull();
+    expect(queryByTestId("dashboard-screen__weather_tile")).toBeNull();
+    expect(getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(queryByTestId("dashboard-screen__header_profile")).toBeNull();
 
     fireEvent.press(getByTestId("dashboard-screen__queue_cell_my_queue_new"));
 

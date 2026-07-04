@@ -17,6 +17,7 @@ export interface AppScreenHeaderProps {
   title: string;
   subtitle?: string;
   showBackButton?: boolean;
+  showProfileTrigger?: boolean;
   onBackPress?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -29,6 +30,7 @@ export default function AppScreenHeader({
   title,
   subtitle,
   showBackButton = false,
+  showProfileTrigger = true,
   onBackPress,
   onNavigateToProfile,
   onNavigateToProjectPicker,
@@ -85,7 +87,7 @@ export default function AppScreenHeader({
 
         <View className="ml-3 flex-row items-center">
           {rightSlot ? <View>{rightSlot}</View> : null}
-          {user ? (
+          {user && showProfileTrigger ? (
             <Pressable
               testID="app-screen-header__profile-trigger"
               onPress={handleProfilePress}

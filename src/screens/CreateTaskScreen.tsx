@@ -54,7 +54,11 @@ import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { PhotoSelectionParams } from "../navigation/navigationTypes";
+import type {
+  CameraLaunchContext,
+  CameraPostCaptureDefault,
+  PhotoSelectionParams,
+} from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
 import {
@@ -83,6 +87,8 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
+  cameraLaunchContext?: CameraLaunchContext;
+  postCaptureDefault?: CameraPostCaptureDefault;
   updateTargetSubTaskId?: string;
   uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen (legacy)
   selectedPhotos?: SelectedPhoto[]; // Photo objects selected but not yet uploaded
@@ -124,6 +130,8 @@ export default function CreateTaskScreen({
   parentSubTaskId,
   editTaskId,
   actionType,
+  cameraLaunchContext,
+  postCaptureDefault,
   updateTargetSubTaskId,
   uploadedPhotoUrls,
   selectedPhotos: selectedPhotosProp,
@@ -165,6 +173,13 @@ export default function CreateTaskScreen({
   const descriptionInputRef = useRef<TextInput>(null);
   const taskReferenceInputRef = useRef<TextInput>(null);
   const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<CreateTaskFormFieldId | null>(null);
+  const shouldShowPostCaptureRoutingSheet =
+    actionType === "photos" &&
+    cameraLaunchContext === "global" &&
+    Boolean(selectedPhotosProp?.length || uploadedPhotoUrls?.length);
+  const [captureRoutingChoice, setCaptureRoutingChoice] = useState<"create_task" | "existing_task">(
+    postCaptureDefault === "existing_task" ? "existing_task" : "create_task",
+  );
 
   const { output, actions } = useCreateTaskViewAdapter({
     editTaskId,
@@ -349,6 +364,10 @@ export default function CreateTaskScreen({
   };
 
   const handleSubmit = async () => {
+    if (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task") {
+      return;
+    }
+
     if (context.requiresEditReason) {
       setShowEditReasonModal(true);
       return;
@@ -520,6 +539,78 @@ export default function CreateTaskScreen({
               onDismiss={dismissSuggestionPreview}
             />
           )}
+
+          {shouldShowPostCaptureRoutingSheet ? (
+            <View
+              testID="create-task__post_capture_routing_sheet"
+              className="mb-6 rounded-3xl border border-gray-200 bg-white p-4"
+            >
+              <Text className="text-lg font-semibold text-gray-900">
+                What should this photo become?
+              </Text>
+              <Text className="mt-1 text-sm text-gray-500">
+                Choose where this capture should go before continuing.
+              </Text>
+
+              <View className="mt-4 flex-row gap-3">
+                <Pressable
+                  testID="create-task__routing_choice_create"
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: captureRoutingChoice === "create_task" }}
+                  onPress={() => setCaptureRoutingChoice("create_task")}
+                  className={cn(
+                    "flex-1 rounded-2xl border p-4",
+                    captureRoutingChoice === "create_task"
+                      ? "border-slate-900 bg-slate-900"
+                      : "border-gray-200 bg-white",
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      "text-base font-semibold",
+                      captureRoutingChoice === "create_task" ? "text-white" : "text-gray-900",
+                    )}
+                  >
+                    Create New Task
+                  </Text>
+                  <Text
+                    className={cn(
+                      "mt-1 text-sm",
+                      captureRoutingChoice === "create_task" ? "text-slate-200" : "text-gray-500",
+                    )}
+                  >
+                    Start a task draft with these photos attached.
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  testID="create-task__routing_choice_existing"
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: captureRoutingChoice === "existing_task" }}
+                  onPress={() => setCaptureRoutingChoice("existing_task")}
+                  className={cn(
+                    "flex-1 rounded-2xl border p-4",
+                    captureRoutingChoice === "existing_task"
+                      ? "border-blue-600 bg-blue-50"
+                      : "border-gray-200 bg-white",
+                  )}
+                >
+                  <Text className="text-base font-semibold text-gray-900">
+                    Add to Existing Task
+                  </Text>
+                  <Text className="mt-1 text-sm text-gray-500">
+                    Route the capture into an existing task instead.
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text className="mt-3 text-sm text-gray-600">
+                {captureRoutingChoice === "create_task"
+                  ? "Photos will be attached to the new task you create below."
+                  : "Existing-task attach flow is not part of this slice yet. Switch back to Create New Task to continue."}
+              </Text>
+            </View>
+          ) : null}
 
           <ScreenSection title="Task Basics" subtitle="Start with the essentials">
             <InputField label={t.tasks.title} error={errors.title}>
@@ -839,7 +930,10 @@ export default function CreateTaskScreen({
         <PrimaryActionBar
           primaryLabel={editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
           onPrimaryPress={handleSubmit}
-          isPrimaryDisabled={isSubmitting}
+          isPrimaryDisabled={
+            isSubmitting ||
+            (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
+          }
         />
       </View>
 

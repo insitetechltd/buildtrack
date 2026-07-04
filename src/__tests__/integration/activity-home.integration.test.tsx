@@ -5,6 +5,28 @@ import DashboardScreen from "@/screens/DashboardScreen";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 
 jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
+jest.mock("@/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+  }) {
+    return (
+      <View testID="app-screen-header__root">
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
 jest.mock("@/state/projectFilterStore", () => ({
   useProjectFilterStore: () => ({
     setSectionFilter: jest.fn(),
@@ -37,7 +59,7 @@ describe("Activity home integration", () => {
           title: "North Tower",
           todayLabel: "Today · Jul 4",
           elapsedDayLabel: "Day 185",
-          weatherLabel: "Partly Cloudy",
+          weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",
           criticalDates: [
             {
@@ -108,7 +130,9 @@ describe("Activity home integration", () => {
 
     expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
     expect(screen.getAllByText("North Tower").length).toBeGreaterThan(0);
-    expect(screen.getByText("Today · Jul 4 · Day 185")).toBeTruthy();
+    expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(screen.queryByText("Partly Cloudy")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
     expect(screen.getByText("Queue Overview")).toBeTruthy();
     expect(screen.getByText("My Queue")).toBeTruthy();

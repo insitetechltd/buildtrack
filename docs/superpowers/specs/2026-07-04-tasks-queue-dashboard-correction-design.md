@@ -301,6 +301,8 @@ Category reorganization remains a **future slice** and should be scheduled separ
 
 The following decisions were approved after this correction scope was written and should guide the next shell/navigation slice:
 
+**Implementation status:** Implemented in `WS-UX / M-UX-01 / S-UX-01F` and normalized into the canonical source-of-truth document.
+
 ### Bottom navigation
 
 - reduce the bottom navigation to **three items**

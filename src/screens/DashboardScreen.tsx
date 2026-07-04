@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import AppScreenHeader from "@/components/AppScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
@@ -21,9 +22,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
       <View className="flex-1">
-        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1 px-4 pt-3">
-          <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-xl font-semibold text-slate-900">Recent Activity</Text>
+        <AppScreenHeader
+          title="Recent Activity"
+          showProfileTrigger={visibility.showProfileShortcut}
+          onProfilePress={props.onNavigateToProfile}
+          className="border-b-0 bg-slate-50 pb-3"
+          rightSlot={
             <View className="flex-row items-center">
               <ModernUiMarker />
               {visibility.showProjectPickerShortcut && props.onNavigateToProjectPicker ? (
@@ -33,15 +37,6 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                   className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
                 >
                   <Ionicons name="business-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showProfileShortcut ? (
-                <Pressable
-                  testID="dashboard-screen__header_profile"
-                  onPress={props.onNavigateToProfile}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="person-circle-outline" size={22} color="#0f172a" />
                 </Pressable>
               ) : null}
               {visibility.showDeveloperSettingsShortcut && props.onNavigateToDeveloperSettings ? (
@@ -54,7 +49,9 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                 </Pressable>
               ) : null}
             </View>
-          </View>
+          }
+        />
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
             <View className="mb-4 rounded-3xl bg-white p-4" testID="dashboard-screen__project_summary_card">
@@ -65,20 +62,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                 {output.projectSummaryCard.title}
               </Text>
               <Text className="mt-1 text-sm text-slate-500">
-                {output.projectSummaryCard.todayLabel} · {output.projectSummaryCard.elapsedDayLabel}
+                {[
+                  output.projectSummaryCard.todayLabel,
+                  output.projectSummaryCard.elapsedDayLabel,
+                  `${output.projectSummaryCard.weatherIconLabel} ${output.projectSummaryCard.weatherTemperatureLabel}`,
+                ].join(" · ")}
               </Text>
-
-              <View className="mt-4 rounded-3xl bg-sky-50 px-4 py-4">
-                <Text className="text-sm font-medium text-sky-900">
-                  {output.projectSummaryCard.weatherLabel}
-                </Text>
-                <Text className="mt-1 text-3xl font-semibold text-slate-900">
-                  {output.projectSummaryCard.weatherTemperatureLabel}
-                </Text>
-                {output.activeProject?.subtitle ? (
-                  <Text className="mt-2 text-sm text-sky-900/80">{output.activeProject.subtitle}</Text>
-                ) : null}
-              </View>
 
               <View className="mt-4">
                 <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">

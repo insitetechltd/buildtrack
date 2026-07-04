@@ -4,13 +4,35 @@ import DashboardScreen from "../DashboardScreen";
 import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
 jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
+jest.mock("@/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+  }) {
+    return (
+      <View testID="app-screen-header__root">
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
 
 describe("DashboardScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("renders global actions (header shortcuts + create task FAB) and invokes navigation callbacks", () => {
+  it("renders compact inline weather metadata, keeps the header profile shortcut, and invokes non-profile navigation callbacks", () => {
     const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
 
     const adapterOutput: DashboardScreenViewAdapterOutput = {
@@ -38,7 +60,7 @@ describe("DashboardScreen", () => {
         title: "North Tower",
         todayLabel: "Today · Jul 4",
         elapsedDayLabel: "Day 185",
-        weatherLabel: "Partly Cloudy",
+        weatherIconLabel: "☁️",
         weatherTemperatureLabel: "28°C",
         criticalDates: [
           {
@@ -170,6 +192,11 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
+    expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(screen.queryByText("Partly Cloudy")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__header_profile")).toBeNull();
 
     fireEvent.press(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new"));
     expect(onNavigateToTasks).toHaveBeenCalledWith({
@@ -181,13 +208,12 @@ describe("DashboardScreen", () => {
     fireEvent.press(screen.getByTestId("dashboard-screen__fab_open_camera"));
     expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
 
-    fireEvent.press(screen.getByTestId("dashboard-screen__header_profile"));
-    expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
-
     fireEvent.press(screen.getByTestId("dashboard-screen__header_project_picker"));
     expect(onNavigateToProjectPicker).toHaveBeenCalledTimes(1);
 
     fireEvent.press(screen.getByTestId("dashboard-screen__header_developer_settings"));
     expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
+
+    expect(onNavigateToProfile).not.toHaveBeenCalled();
   });
 });

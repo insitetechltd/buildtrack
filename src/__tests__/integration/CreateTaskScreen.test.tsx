@@ -1166,4 +1166,64 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Pending')).toBeTruthy();
     expect(screen.getAllByText('1 file(s) added').length).toBeGreaterThan(0);
   });
+
+  it('shows the post-capture routing sheet when global camera capture returns with selected photos', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          actionType="photos"
+          cameraLaunchContext="global"
+          postCaptureDefault="create_task"
+          selectedPhotos={[
+            {
+              uri: 'file:///photo.jpg',
+              fileName: 'photo.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__post_capture_routing_sheet')).toBeTruthy();
+    expect(screen.getByText('What should this photo become?')).toBeTruthy();
+    expect(screen.getByTestId('create-task__routing_choice_create')).toBeTruthy();
+    expect(screen.getByTestId('create-task__routing_choice_existing')).toBeTruthy();
+  });
+
+  it('does not show the post-capture routing sheet during normal create-task mode', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.queryByTestId('create-task__post_capture_routing_sheet')).toBeNull();
+    expect(screen.queryByText('What should this photo become?')).toBeNull();
+  });
+
+  it('keeps the create-new-task route selected and active by default for the global camera path', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={jest.fn()}
+          actionType="photos"
+          cameraLaunchContext="global"
+          selectedPhotos={[
+            {
+              uri: 'file:///photo.jpg',
+              fileName: 'photo.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__routing_choice_create').props.accessibilityState?.selected).toBe(true);
+    expect(screen.getByTestId('create-task__routing_choice_existing').props.accessibilityState?.selected).toBe(false);
+    expect(screen.getByText('Photos will be attached to the new task you create below.')).toBeTruthy();
+    expect(screen.getByText('Create Task')).toBeTruthy();
+  });
 });

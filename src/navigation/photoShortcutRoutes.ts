@@ -24,6 +24,8 @@ export function buildPhotoShortcutCreateTaskParams({
   return {
     editTaskId: taskId,
     actionType,
+    cameraLaunchContext: "task_detail",
+    postCaptureDefault: "same_task_update",
     updateTargetSubTaskId: subTaskId,
     selectedPhotos,
     uploadedPhotoUrls,

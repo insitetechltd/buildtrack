@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Correct the newly redesigned Task Detail surface so camera behavior, critical-state treatment, evidence behavior, and edit-action permissions match the approved interaction model.
+**Goal:** Refine Task Detail into a compact, newest-first, photo-centric active-entry experience with correct camera/back behavior, clear text-only and PDF entry modes, and creator-only edit visibility.
 
-**Architecture:** Reuse the current Task Detail redesign and apply a focused correction pass instead of replacing the screen. The implementation will shift the task-detail-specific camera behavior into the bottom navigation context, move critical state into the hero model, turn the evidence rail into a pinned top region with an independently scrolling work thread, and gate edit actions by task creator status.
+**Architecture:** Reuse the existing Task Detail redesign and correct it in place. The implementation will (1) finish the task-detail-aware bottom-camera and back flow, (2) compact the hero and remove low-value metadata, (3) replace the old evidence strip with a pinned active-entry stage driven by the top-most thread entry, and (4) support three stage modes: photo, neutral no-photo, and PDF preview.
 
 **Tech Stack:** Expo 54, React Native, React Navigation, TypeScript, Zustand, Jest, React Native Testing Library
 
@@ -15,411 +15,418 @@
 ### Core files to modify
 
 - `src/navigation/AppNavigator.tsx`
-  Add task-detail-aware bottom-camera behavior and remove any dependency on a dedicated Task Detail top camera button.
+  Ensure the task-detail camera path returns back to Task Detail correctly and keeps task/subtask context intact.
 
 - `src/navigation/photoShortcutRoutes.ts`
-  Keep camera route generation aligned with task-detail context when the bottom-nav camera is used from Task Detail.
+  Keep task-detail launch params and return behavior aligned with same-task photo updates.
 
 - `src/screens/TaskDetailScreen.tsx`
-  Remove the top camera shortcut, move critical state out of the standalone section, implement the pinned-evidence + inner work-thread scroll structure, and keep secondary actions visible inline.
+  Compact the hero, remove the top project label and visible progress-update action, host the pinned active-entry stage, and keep the newest-first thread and visible inline secondary actions.
 
 - `src/components/taskDetail/TaskDetailHero.tsx`
-  Add compact critical-flag rendering inside the hero/title area.
+  Remove the top project string, keep the title dominant, and retain compact critical/status metadata.
 
 - `src/components/taskDetail/TaskDetailEvidenceStrip.tsx`
-  Adjust thumbnail presentation so the evidence rail shows clean, full-looking thumbnails and is suitable for sticky/pinned behavior.
+  Convert this component into a pinned active-entry stage that supports photo, no-photo, and PDF modes.
+
+- `src/components/taskDetail/TaskActivityTimeline.tsx`
+  Expose stable entry surfaces so the active-entry stage can be driven by the top-most entry without ambiguity.
 
 - `src/ui/contracts/viewAdapters.ts`
-  Extend the hero/evidence contracts as needed for the compact flag and creator-aware action decisions.
+  Extend task-detail contracts with active-entry-stage models, PDF attachment representation, and thread-entry summary fields.
 
 - `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
-  Move critical-state metadata into the hero model, gate edit visibility by creator, and keep evidence/task-detail actions aligned with the corrected layout.
+  Produce compact hero data, remove the visible progress-update action, keep creator-only edit visibility, and map each thread entry into one of the active-entry-stage modes.
 
-### Tests to modify or add
+### New focused helper/tests
 
-- `src/navigation/__tests__/AppNavigator.back-behavior.test.tsx`
-- `src/navigation/__tests__/uiModeRoutes.test.tsx`
+- `src/components/taskDetail/taskDetailActiveStage.ts` (new)
+  Pure helper for resolving which thread entry owns the pinned stage and how it should render.
+
+- `src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts` (new)
+- `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
 - `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
 - `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
-- `src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx`
 - `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
-- `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx` (new)
+- `src/navigation/__tests__/uiModeRoutes.test.tsx`
 
 ### Docs to update after implementation
 
 - `docs/superpowers/specs/2026-07-05-task-detail-correction-design.md`
 - `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
 
-## Task 1: Route bottom-nav camera dynamically on Task Detail and remove the top camera shortcut
+## Task 1: Finish the task-detail camera/back flow and remove the visible progress-update action
 
 **Files:**
 - Modify: `src/navigation/AppNavigator.tsx`
 - Modify: `src/navigation/photoShortcutRoutes.ts`
-- Modify: `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
+- Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
 - Modify: `src/navigation/__tests__/uiModeRoutes.test.tsx`
+- Modify: `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
 
-- [ ] **Step 1: Write the failing navigation and screen tests**
-
-```tsx
-it("does not render a dedicated top camera shortcut on task detail", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-
-  expect(screen.queryByTestId("task-detail__camera_shortcut")).toBeNull();
-});
-```
+- [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("routes the bottom camera tab to same-task update flow when task detail is active", () => {
+it("routes task-detail camera launches back to task detail instead of dashboard", () => {
   const params = buildPhotoShortcutCreateTaskParams({
     taskId: "task-1",
     subTaskId: "subtask-1",
     actionType: "photos",
-    selectedPhotos: [],
-    uploadedPhotoUrls: [],
   });
 
-  expect(params.cameraLaunchContext).toBe("task_detail");
-  expect(params.postCaptureDefault).toBe("same_task_update");
-  expect(params.updateTargetSubTaskId).toBe("subtask-1");
-});
-```
-
-- [ ] **Step 2: Run the focused tests to verify they fail**
-
-Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/uiModeRoutes.test.tsx --runInBand`
-
-Expected: FAIL because Task Detail still renders a top camera button and the bottom-nav camera is not yet task-detail-aware at the active-screen level.
-
-- [ ] **Step 3: Implement dynamic camera context and remove the top shortcut**
-
-```tsx
-// src/screens/TaskDetailScreen.tsx
-// remove handleTaskDetailCameraShortcutPress
-// remove task-detail__camera_shortcut block entirely
-```
-
-```ts
-// src/navigation/AppNavigator.tsx
-function resolveCameraTabPressContext(currentRoute: NavigationStateLike) {
-  if (isTaskDetailActive(currentRoute)) {
-    return buildPhotoShortcutCreateTaskParams({
-      taskId: activeTaskId,
-      subTaskId: activeSubTaskId,
-      actionType: "photos",
-      selectedPhotos: [],
-      uploadedPhotoUrls: [],
-    });
-  }
-
-  return undefined;
-}
-```
-
-- [ ] **Step 4: Re-run the focused tests**
-
-Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/uiModeRoutes.test.tsx --runInBand`
-
-Expected: PASS
-
-## Task 2: Move critical state into the hero and gate edit visibility by creator
-
-**Files:**
-- Modify: `src/ui/contracts/viewAdapters.ts`
-- Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
-- Modify: `src/components/taskDetail/TaskDetailHero.tsx`
-- Modify: `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
-- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
-
-- [ ] **Step 1: Write the failing adapter and screen tests**
-
-```ts
-it("surfaces critical state as compact hero metadata instead of a standalone section action", () => {
-  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-1" }));
-
-  expect(result.current.output.taskHero).toMatchObject({
-    isCritical: true,
-    criticalLabel: "Critical this week",
-  });
+  expect(params.sourceScreen).toBe("TaskDetail");
+  expect(params.sourceTaskId).toBe("task-1");
+  expect(params.sourceSubTaskId).toBe("subtask-1");
 });
 ```
 
 ```ts
-it("shows edit_task only for the task creator", () => {
-  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-1" }));
+it("removes the visible update_progress action from task detail", () => {
+  const { result } = renderHook(() =>
+    useTaskDetailViewAdapter({ taskId: "task-parent" }),
+  );
 
-  expect(result.current.output.actionItems.map((item) => item.actionId)).toContain("edit_task");
+  expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+    "update_progress",
+  );
 });
 ```
 
-```tsx
-it("renders a small critical flag in the hero and no standalone critical section", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+- [ ] **Step 2: Run test to verify it fails**
 
-  expect(screen.getByTestId("task-detail__hero_critical_flag")).toBeTruthy();
-  expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
-});
-```
+Run: `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Expected: FAIL because task-detail return metadata is incomplete and the visible progress action still exists.
 
-- [ ] **Step 2: Run the focused tests to verify they fail**
-
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
-
-Expected: FAIL because the hero contract lacks compact critical metadata and the screen still renders the standalone critical section.
-
-- [ ] **Step 3: Add hero critical metadata and creator-only edit gating**
+- [ ] **Step 3: Write minimal implementation**
 
 ```ts
-// src/ui/contracts/viewAdapters.ts
-export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
-  title: string;
-  statusLabel: string;
-  projectLabel: string;
-  completionLabel: string;
-  dueDateLabel?: string;
-  nextStepLabel?: string;
-  isCritical?: boolean;
-  criticalLabel?: string;
-}
+// src/navigation/photoShortcutRoutes.ts
+return {
+  editTaskId: taskId,
+  actionType,
+  cameraLaunchContext: "task_detail",
+  postCaptureDefault: "same_task_update",
+  updateTargetSubTaskId: subTaskId,
+  sourceScreen: "TaskDetail",
+  sourceTaskId: taskId,
+  sourceSubTaskId: subTaskId,
+};
 ```
 
 ```ts
 // src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-const canEditTaskDetails = isTaskCreator;
+// remove visible update_progress action push
+// keep camera-driven upload path plus comment path
+```
 
-if (canEditTaskDetails) {
-  actionItems.push({
-    id: "action-edit-task",
-    actionId: "edit_task",
-    label: t.taskDetail.editTaskDetails,
-    icon: "create-outline",
-    isDisabled: false,
-    density: "standard",
-    structuralState: "stale",
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Expected: PASS
+
+## Task 2: Compact the hero and make next-step guidance contextual
+
+**Files:**
+- Modify: `src/components/taskDetail/TaskDetailHero.tsx`
+- Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
+- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
+- Modify: `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
+
+- [ ] **Step 1: Write the failing tests**
+
+```tsx
+it("does not render the top project-label string in the compact hero", () => {
+  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+  expect(screen.queryByText("Project Alpha")).toBeNull();
+});
+```
+
+```ts
+it("uses contextual next-step guidance instead of a fixed update-progress phrase", () => {
+  const { result } = renderHook(() =>
+    useTaskDetailViewAdapter({ taskId: "task-parent" }),
+  );
+
+  expect(result.current.output.taskHero.nextStepLabel).not.toBe(
+    "Update progress and add photo evidence.",
+  );
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Expected: FAIL because the hero still renders wasted project-label space and the guidance is too generic.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```tsx
+// src/components/taskDetail/TaskDetailHero.tsx
+// remove projectLabel visual row
+<Text className="text-3xl font-semibold text-white">{model.title}</Text>
+```
+
+```ts
+// src/ui/viewAdapters/useTaskDetailViewAdapter.ts
+if (isAssignedToMe && task.status === "in_progress") {
+  return "Capture progress photos or add a work note.";
+}
+if (isTaskCreator) {
+  return "Review the latest update and support the assignee.";
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Expected: PASS
+
+## Task 3: Add a pure active-entry-stage resolver for newest-first ownership
+
+**Files:**
+- Create: `src/components/taskDetail/taskDetailActiveStage.ts`
+- Create: `src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+it("treats the top-most newest-first entry as the active stage owner", () => {
+  const result = resolveActiveStageEntry({
+    entries: [
+      { id: "entry-1", top: 12 },
+      { id: "entry-2", top: 164 },
+    ],
+    topEdge: 0,
   });
+
+  expect(result?.id).toBe("entry-1");
+});
+```
+
+```ts
+it("returns a neutral no-photo mode for text-only entries", () => {
+  expect(
+    buildActiveStageModel({
+      id: "entry-2",
+      mode: "text",
+      title: "Added status note",
+      summary: "Waiting on supplier confirmation.",
+    }),
+  ).toMatchObject({
+    stageMode: "no_photo",
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx jest src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts --runInBand`
+Expected: FAIL because the helper does not exist yet.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```ts
+export function resolveActiveStageEntry({
+  entries,
+  topEdge,
+}: {
+  entries: Array<{ id: string; top: number }>;
+  topEdge: number;
+}) {
+  return [...entries]
+    .filter((entry) => entry.top >= topEdge)
+    .sort((left, right) => left.top - right.top)[0];
+}
+```
+
+```ts
+export function buildActiveStageModel(entry: ThreadStageSource) {
+  if (entry.mode === "pdf") return { stageMode: "pdf_preview", ...entry };
+  if (entry.mode === "text") return { stageMode: "no_photo", ...entry };
+  return { stageMode: "photo", ...entry };
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx jest src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts --runInBand`
+Expected: PASS
+
+## Task 4: Replace the old evidence strip with a pinned active-entry stage
+
+**Files:**
+- Modify: `src/ui/contracts/viewAdapters.ts`
+- Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
+- Modify: `src/components/taskDetail/TaskDetailEvidenceStrip.tsx`
+- Modify: `src/screens/TaskDetailScreen.tsx`
+- Modify: `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
+
+- [ ] **Step 1: Write the failing tests**
+
+```tsx
+it("renders a neutral no-photo stage when the active entry has no photos", () => {
+  const screen = render(<TaskDetailEvidenceStrip model={noPhotoModel} />);
+
+  expect(screen.getByText("No photos for this update")).toBeTruthy();
+});
+```
+
+```tsx
+it("renders a document preview stage for PDF-bearing entries", () => {
+  const screen = render(<TaskDetailEvidenceStrip model={pdfModel} />);
+
+  expect(screen.getByText("Document attached")).toBeTruthy();
+  expect(screen.getByText("site-report.pdf")).toBeTruthy();
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Expected: FAIL because the stage still assumes a simple evidence strip.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```ts
+// src/ui/contracts/viewAdapters.ts
+export interface TaskDetailActiveStageModel extends PrimitiveReadyItemBase {
+  stageMode: "photo" | "no_photo" | "pdf_preview";
+  title: string;
+  summary: string;
+  actorLabel: string;
+  timestampLabel: string;
+  photos: string[];
+  activePhotoIndex?: number;
+  documentName?: string;
 }
 ```
 
 ```tsx
-// src/components/taskDetail/TaskDetailHero.tsx
-{model.isCritical ? (
-  <View testID="task-detail__hero_critical_flag" className="rounded-full bg-amber-100 px-2.5 py-1">
-    <Text className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-      {model.criticalLabel}
-    </Text>
-  </View>
-) : null}
+// src/components/taskDetail/TaskDetailEvidenceStrip.tsx
+if (model.stageMode === "no_photo") return <Text>No photos for this update</Text>;
+if (model.stageMode === "pdf_preview") return <Text>Document attached</Text>;
+// otherwise render swipeable photo stage
 ```
 
-- [ ] **Step 4: Re-run the focused tests**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
-
+Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
 Expected: PASS
 
-## Task 3: Implement sticky evidence rail with independently scrolling work thread
+## Task 5: Wire the newest-first thread to the active-entry stage and preserve inline actions
 
 **Files:**
-- Modify: `src/screens/TaskDetailScreen.tsx`
-- Modify: `src/components/taskDetail/TaskDetailEvidenceStrip.tsx`
 - Modify: `src/components/taskDetail/TaskActivityTimeline.tsx`
-- Create: `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
+- Modify: `src/screens/TaskDetailScreen.tsx`
+- Modify: `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
 - Modify: `src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx`
 
-- [ ] **Step 1: Write the failing layout tests**
+- [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("renders task detail with a pinned evidence rail and nested work-thread scroll region", () => {
+it("keeps the thread newest-first while the pinned stage reflects the active top-most entry", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-  expect(screen.getByTestId("task-detail__evidence_pinned_region")).toBeTruthy();
+  expect(screen.getByTestId("task-detail__active_entry_stage")).toBeTruthy();
   expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
 });
 ```
 
 ```tsx
-it("renders uncropped-looking evidence thumbnails in the pinned rail", () => {
-  const screen = render(
-    <TaskDetailEvidenceStrip
-      model={{
-        id: "evidence-summary",
-        density: "standard",
-        structuralState: "ready",
-        latestPhotoUrls: ["https://example.com/a.jpg"],
-        totalPhotoCount: 1,
-        emptyLabel: "No photo evidence yet.",
-      }}
-    />,
-  );
-
-  expect(screen.getByTestId("task-detail__evidence_thumbnail_0")).toBeTruthy();
-});
-```
-
-- [ ] **Step 2: Run the focused tests to verify they fail**
-
-Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
-
-Expected: FAIL because the screen still uses a single outer scroll container and the evidence strip is not pinned.
-
-- [ ] **Step 3: Split the layout into pinned top region + nested work-thread scroll**
-
-```tsx
-// src/screens/TaskDetailScreen.tsx
-<View className="flex-1 bg-gray-50">
-  <ScrollView
-    bounces={false}
-    scrollEnabled={false}
-    contentContainerStyle={{ paddingBottom: 16 }}
-  >
-    <TaskDetailHero model={output.taskHero} />
-    <View testID="task-detail__evidence_pinned_region">
-      <TaskDetailEvidenceStrip model={output.evidenceSummary} />
-    </View>
-  </ScrollView>
-
-  <ScrollView testID="task-detail__workthread_scroll" className="flex-1">
-    <TaskActivityTimeline testID="task-detail__activity_thread" thread={output.activityThread} />
-    <TaskDetailSubtasksSection ... />
-    <SecondaryActionsBlock ... />
-  </ScrollView>
-</View>
-```
-
-```tsx
-// src/components/taskDetail/TaskDetailEvidenceStrip.tsx
-<Image
-  testID={`task-detail__evidence_thumbnail_${index}`}
-  source={{ uri }}
-  resizeMode="cover"
-  className="h-24 w-24 rounded-2xl bg-slate-200"
-/>
-```
-
-- [ ] **Step 4: Re-run the focused tests**
-
-Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
-
-Expected: PASS
-
-## Task 4: Keep secondary actions visible inline and finalize permission-aware action ordering
-
-**Files:**
-- Modify: `src/screens/TaskDetailScreen.tsx`
-- Modify: `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
-- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
-
-- [ ] **Step 1: Write the failing action-group tests**
-
-```tsx
-it("keeps secondary actions visible inline and demotes edit_task below the primary action", () => {
+it("keeps secondary actions visible inline while hiding edit for non-creators", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
   expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
-  expect(screen.getByText("Other actions")).toBeTruthy();
-});
-```
-
-```tsx
-it("hides edit_task for non-creators while keeping other secondary actions visible", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-
   expect(screen.queryByText("Edit Task Details")).toBeNull();
-  expect(screen.getByText("Add Comment")).toBeTruthy();
 });
 ```
 
-- [ ] **Step 2: Run the focused tests to verify they fail**
+- [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+Expected: FAIL until the stage/thread coupling is updated.
 
-Expected: FAIL until the screen and adapter consistently gate `edit_task` and preserve the visible secondary actions region.
-
-- [ ] **Step 3: Finalize inline secondary action rendering**
+- [ ] **Step 3: Write minimal implementation**
 
 ```tsx
-<View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
-  <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-    Other actions
-  </Text>
-  <View className="flex-row flex-wrap gap-2">
-    {secondaryActions.map((action) => (
-      <Pressable key={action.id} onPress={() => handleActionPress(action.actionId)} ...>
-        <Text>{action.label}</Text>
-      </Pressable>
-    ))}
-  </View>
-</View>
+<TaskDetailEvidenceStrip
+  testID="task-detail__active_entry_stage"
+  model={activeStageModel}
+/>
+
+<TaskActivityTimeline
+  testID="task-detail__activity_thread"
+  thread={output.activityThread}
+  onVisibleEntryChange={setActiveEntryId}
+/>
 ```
 
-- [ ] **Step 4: Re-run the focused tests**
+- [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
-
+Run: `npx jest src/__tests__/integration/TaskDetailScreen.header.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
 Expected: PASS
 
-## Task 5: Validate, relaunch, document, and close the correction pass
+## Task 6: Validate, relaunch, document, and close the refined correction pass
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-07-05-task-detail-correction-design.md`
 - Modify: `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
-- Modify: `docs/superpowers/plans/2026-07-05-task-detail-redesign-implementation.md`
+- Modify: `docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md`
 
-- [ ] **Step 1: Run the focused correction validation suite**
+- [ ] **Step 1: Run the focused validation suite**
 
-Run: `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand && npx tsc --noEmit`
-
+Run: `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand && npx tsc --noEmit`
 Expected: PASS
 
 - [ ] **Step 2: Relaunch the app for visible verification**
 
 Run: `pkill -f "expo start --dev-client" || true && npx expo start --dev-client --clear`
-
 Expected: Metro restarts and reports `Waiting on http://localhost:8081`
 
 Run: `xcrun simctl launch booted com.buildtrack.app.local`
-
 Expected: simulator launch returns a running process id
 
 - [ ] **Step 3: Capture post-render acceptance evidence**
 
-Run: `xcrun simctl io booted screenshot /tmp/task-detail-correction-check.png`
-
+Run: `xcrun simctl io booted screenshot /tmp/task-detail-active-stage-check.png`
 Expected: screenshot capture succeeds after the screen finishes rendering.
 
-- [ ] **Step 4: Update the execution notes for the correction**
+- [ ] **Step 4: Update the execution notes**
 
 ```md
-- task detail now uses dynamic bottom-camera behavior instead of a dedicated top camera shortcut
-- critical state is reduced to a compact hero flag
-- evidence is pinned above an independently scrolling work-thread region
-- edit-task visibility is now creator-only
+- hero is now compact and no longer wastes space on project-label text
+- the pinned top unit is now an active-entry stage rather than a simple evidence strip
+- text-only entries render a neutral no-photo state
+- PDF-bearing entries render a document-preview state
+- newest-first thread + top-edge activation now drive the stage
 ```
 
 - [ ] **Step 5: Create the checkpoint commit**
 
 ```bash
-git add src/navigation/AppNavigator.tsx src/navigation/photoShortcutRoutes.ts src/screens/TaskDetailScreen.tsx src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailEvidenceStrip.tsx src/components/taskDetail/TaskActivityTimeline.tsx src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/navigation/__tests__/uiModeRoutes.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx docs/superpowers/specs/2026-07-05-task-detail-correction-design.md docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-redesign-implementation.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md
-git commit -m "fix(ux): correct task detail interaction model"
+git add src/navigation/AppNavigator.tsx src/navigation/photoShortcutRoutes.ts src/screens/TaskDetailScreen.tsx src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailEvidenceStrip.tsx src/components/taskDetail/TaskActivityTimeline.tsx src/components/taskDetail/taskDetailActiveStage.ts src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx docs/superpowers/specs/2026-07-05-task-detail-correction-design.md docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md
+git commit -m "fix(ux): refine task detail active-entry stage"
 ```
 
 ## Spec Coverage Check
 
-- dynamic bottom-nav camera on Task Detail: covered by Task 1
-- compact critical flag in hero/title: covered by Task 2
-- sticky evidence rail and independent work-thread scroll: covered by Task 3
-- visible inline secondary actions: covered by Task 4
-- creator-only edit visibility: covered by Tasks 2 and 4
-- relaunch and rendered verification: covered by Task 5
+- dynamic camera + correct back behavior: Task 1
+- compact hero + better next-step guidance: Task 2
+- newest-first top-edge entry ownership: Task 3
+- photo / no-photo / PDF stage modes: Task 4
+- inline action visibility + creator-only edit: Task 5
+- relaunch + rendered verification: Task 6
 
 ## Placeholder Scan
 
 - No `TBD` / `TODO`
 - No undefined file paths
-- No “similar to above” task shortcuts
-- Each task includes concrete tests, commands, and expected outputs
+- No “similar to above” shortcuts
+- Each task includes concrete commands, tests, and expected outputs
 
 ## Execution Handoff
 
 Plan complete and saved to `docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md`.
 
-Because the user explicitly requested continuing without another prompt, the default next step is **Subagent-Driven** execution of this plan.
+Because the user explicitly asked to commit and implement, the default next step is immediate execution of this updated plan.

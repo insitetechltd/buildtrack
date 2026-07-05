@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
@@ -25,7 +26,11 @@ import {
   mapSectionModelToContainerProps,
 } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
-import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
+import type {
+  TaskDetailActionItem,
+  TaskDetailActiveStageModel,
+  TaskDetailActivityThreadRow,
+} from "@/ui/contracts/viewAdapters";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -132,11 +137,92 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
   };
 }
 
+function resolveTopMostThreadEntryId(thread: TaskDetailActivityThreadRow[]) {
+  return resolveActiveStageEntry({
+    entries: thread.map((entry, index) => ({
+      id: entry.id,
+      top: index,
+    })),
+    topEdge: 0,
+  })?.id;
+}
+
+function buildPinnedActiveStageModel({
+  activeStage,
+  activityThread,
+  activeEntryId,
+}: {
+  activeStage: TaskDetailActiveStageModel;
+  activityThread: TaskDetailActivityThreadRow[];
+  activeEntryId?: string;
+}): TaskDetailActiveStageModel {
+  if (activityThread.length === 0) {
+    return activeStage;
+  }
+
+  const fallbackEntry = activityThread[0];
+  const activeThreadEntry =
+    activityThread.find((entry) => entry.id === activeEntryId) ?? fallbackEntry;
+
+  const usesAdapterStageDetails = activeThreadEntry.id === activeStage.id;
+  const nextStageMode =
+    activeThreadEntry.photoUrls.length > 0
+      ? "photo"
+      : usesAdapterStageDetails && activeStage.stageMode === "pdf_preview"
+        ? "pdf_preview"
+        : "no_photo";
+
+  return {
+    ...activeStage,
+    id: activeThreadEntry.id,
+    stageMode: nextStageMode,
+    title: activeThreadEntry.eventLabel,
+    summary:
+      activeThreadEntry.detailLabel ||
+      (usesAdapterStageDetails ? activeStage.summary : activeThreadEntry.eventLabel),
+    actorLabel: activeThreadEntry.actorLabel,
+    timestampLabel: activeThreadEntry.timestampLabel,
+    photos: activeThreadEntry.photoUrls,
+    activePhotoIndex: activeThreadEntry.photoUrls.length > 0 ? 0 : undefined,
+    documentName:
+      nextStageMode === "pdf_preview" && usesAdapterStageDetails
+        ? activeStage.documentName
+        : undefined,
+    documentUri:
+      nextStageMode === "pdf_preview" && usesAdapterStageDetails
+        ? activeStage.documentUri
+        : undefined,
+  };
+}
+
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const { output, actions } = useTaskDetailViewAdapter({
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
+  const safeActivityThread = output.activityThread ?? [];
+  const safeActiveStage = output.activeStage;
+  const initialActiveEntryId =
+    resolveTopMostThreadEntryId(safeActivityThread) ?? safeActiveStage?.id;
+  const [activeEntryId, setActiveEntryId] = React.useState<string | undefined>(
+    initialActiveEntryId,
+  );
+
+  React.useEffect(() => {
+    setActiveEntryId(resolveTopMostThreadEntryId(safeActivityThread) ?? safeActiveStage?.id);
+  }, [safeActivityThread, safeActiveStage?.id]);
+
+  const pinnedActiveStage = React.useMemo(
+    () =>
+      safeActiveStage
+        ? buildPinnedActiveStageModel({
+            activeStage: safeActiveStage,
+            activityThread: safeActivityThread,
+            activeEntryId,
+          })
+        : undefined,
+    [activeEntryId, safeActiveStage, safeActivityThread],
+  );
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -248,7 +334,10 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       <View className="flex-1">
         <View testID="task-detail__evidence_pinned_region">
           <TaskDetailHero model={output.taskHero} />
-          <TaskDetailEvidenceStrip model={output.evidenceSummary} />
+          <TaskDetailEvidenceStrip
+            testID="task-detail__active_entry_stage"
+            model={pinnedActiveStage ?? output.activeStage}
+          />
         </View>
 
         <ScrollView
@@ -301,6 +390,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
 
           <TaskActivityTimeline
             testID="task-detail__activity_thread"
+            activeEntryId={activeEntryId}
+            onVisibleEntryChange={setActiveEntryId}
             thread={output.activityThread}
           />
 

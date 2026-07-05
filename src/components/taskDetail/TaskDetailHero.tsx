@@ -10,10 +10,7 @@ interface TaskDetailHeroProps {
 export default function TaskDetailHero({ model }: TaskDetailHeroProps) {
   return (
     <View testID="task-detail__hero" className="mx-4 mt-4 rounded-3xl bg-slate-900 px-5 py-5">
-      <Text className="text-xs font-semibold uppercase tracking-[1.6px] text-slate-300">
-        {model.projectLabel}
-      </Text>
-      <Text className="mt-3 text-3xl font-semibold text-white">{model.title}</Text>
+      <Text className="text-3xl font-semibold text-white">{model.title}</Text>
 
       <View className="mt-4 flex-row flex-wrap gap-2">
         {model.isCritical ? (

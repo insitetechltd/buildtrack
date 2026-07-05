@@ -263,6 +263,18 @@ export interface TaskDetailEvidenceSummaryModel extends PrimitiveReadyItemBase {
   emptyLabel: string;
 }
 
+export interface TaskDetailActiveStageModel extends PrimitiveReadyItemBase {
+  stageMode: "photo" | "no_photo" | "pdf_preview";
+  title: string;
+  summary: string;
+  actorLabel: string;
+  timestampLabel: string;
+  photos: string[];
+  activePhotoIndex?: number;
+  documentName?: string;
+  documentUri?: string;
+}
+
 export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
   id: string;
   actorLabel: string;
@@ -344,6 +356,7 @@ export interface TaskDetailScreenViewAdapterOutput {
   header: TaskDetailHeaderModel;
   taskHero: TaskDetailHeroModel;
   delegationSummary: TaskDetailDelegationSummaryModel;
+  activeStage: TaskDetailActiveStageModel;
   evidenceSummary: TaskDetailEvidenceSummaryModel;
   activityThread: TaskDetailActivityThreadRow[];
   subtaskSummary: TaskDetailSubtaskSummaryModel;

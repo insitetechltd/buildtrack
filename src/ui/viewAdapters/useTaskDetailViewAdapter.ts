@@ -5,8 +5,10 @@ import { useUserStore } from '../../state/userStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
+import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
 import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type {
+  TaskDetailActiveStageModel,
   TaskDetailScreenViewAdapterOutput,
   TaskDetailBannerModel,
   TaskDetailActivityModel,
@@ -129,14 +131,55 @@ function buildTaskDetailTimestampLabel(
   return dateFormatter.formatDateTime(activity.timestamp);
 }
 
-function collectActivityPhotoUrls(activity: TaskActivity): string[] {
+function isPdfAssetUri(uri: string): boolean {
+  return /\.pdf(?:$|[?#])/i.test(uri);
+}
+
+function getActivityAssetUris(activity: TaskActivity): string[] {
   const activityData = activity.data as { photos?: string[] } | undefined;
   return Array.isArray(activityData?.photos) ? activityData.photos.filter(Boolean) : [];
 }
 
+function collectActivityPhotoUrls(activity: TaskActivity): string[] {
+  return getActivityAssetUris(activity).filter((uri) => !isPdfAssetUri(uri));
+}
+
+function collectActivityDocumentUri(activity: TaskActivity): string | undefined {
+  return getActivityAssetUris(activity).find((uri) => isPdfAssetUri(uri));
+}
+
+function collectTaskPhotoAttachments(task: Task): string[] {
+  return Array.isArray(task.attachments)
+    ? task.attachments.filter(Boolean).filter((uri) => !isPdfAssetUri(uri))
+    : [];
+}
+
+function collectTaskDocumentAttachment(task: Task): string | undefined {
+  return Array.isArray(task.attachments)
+    ? task.attachments.filter(Boolean).find((uri) => isPdfAssetUri(uri))
+    : undefined;
+}
+
+function getAttachmentFileName(uri: string | undefined): string | undefined {
+  if (!uri) {
+    return undefined;
+  }
+
+  const rawFileName = uri.split(/[?#]/)[0]?.split('/').pop();
+  if (!rawFileName) {
+    return undefined;
+  }
+
+  try {
+    return decodeURIComponent(rawFileName);
+  } catch {
+    return rawFileName;
+  }
+}
+
 function collectLatestTaskPhotoUrls(task: Task, activities: TaskActivity[]): string[] {
   const orderedActivityPhotos = activities.flatMap((activity) => collectActivityPhotoUrls(activity));
-  const taskAttachments = Array.isArray(task.attachments) ? task.attachments.filter(Boolean) : [];
+  const taskAttachments = collectTaskPhotoAttachments(task);
 
   return [...orderedActivityPhotos, ...taskAttachments].slice(0, 3);
 }
@@ -146,9 +189,80 @@ function collectTotalTaskPhotoCount(task: Task, activities: TaskActivity[]): num
     (total, activity) => total + collectActivityPhotoUrls(activity).length,
     0,
   );
-  const taskAttachmentCount = Array.isArray(task.attachments) ? task.attachments.filter(Boolean).length : 0;
+  const taskAttachmentCount = collectTaskPhotoAttachments(task).length;
 
   return activityPhotoCount + taskAttachmentCount;
+}
+
+function buildTaskDetailActiveStageModel({
+  task,
+  orderedActivities,
+  dateFormatter,
+  getUserById,
+}: {
+  task: Task;
+  orderedActivities: TaskActivity[];
+  dateFormatter: ReturnType<typeof useDateFormatter>;
+  getUserById: (userId?: string) => { name?: string } | undefined;
+}): TaskDetailActiveStageModel {
+  const latestActivity = orderedActivities[0];
+
+  if (latestActivity) {
+    const photos = collectActivityPhotoUrls(latestActivity);
+    const documentUri = collectActivityDocumentUri(latestActivity);
+    const stageSource = buildActiveStageModel({
+      id: latestActivity.id,
+      mode: photos.length > 0 ? "photo" : documentUri ? "pdf" : "text",
+      title: buildTaskDetailEventLabel(latestActivity),
+      summary:
+        buildTaskDetailEventDetail(latestActivity) ||
+        latestActivity.description?.trim() ||
+        "No additional update details.",
+    });
+
+    return {
+      id: stageSource.id,
+      density: "standard",
+      structuralState: "stale",
+      stageMode: stageSource.stageMode,
+      title: stageSource.title,
+      summary: stageSource.summary,
+      actorLabel: getUserById(latestActivity.userId)?.name || "Unknown User",
+      timestampLabel: buildTaskDetailTimestampLabel(latestActivity, dateFormatter),
+      photos,
+      activePhotoIndex: photos.length > 0 ? 0 : undefined,
+      documentName: getAttachmentFileName(documentUri),
+      documentUri,
+    };
+  }
+
+  const photos = collectTaskPhotoAttachments(task);
+  const documentUri = collectTaskDocumentAttachment(task);
+  const stageSource = buildActiveStageModel({
+    id: "task-active-stage",
+    mode: photos.length > 0 ? "photo" : documentUri ? "pdf" : "text",
+    title: "Latest task entry",
+    summary: task.description?.trim() || "No additional update details.",
+  });
+
+  return {
+    id: stageSource.id,
+    density: "standard",
+    structuralState: "stale",
+    stageMode: stageSource.stageMode,
+    title: stageSource.title,
+    summary: stageSource.summary,
+    actorLabel: getUserById(task.assignedBy)?.name || "Unknown User",
+    timestampLabel: task.updatedAt
+      ? dateFormatter.formatDateTime(task.updatedAt)
+      : task.createdAt
+        ? dateFormatter.formatDateTime(task.createdAt)
+        : "",
+    photos,
+    activePhotoIndex: photos.length > 0 ? 0 : undefined,
+    documentName: getAttachmentFileName(documentUri),
+    documentUri,
+  };
 }
 
 function buildNextStepLabel(
@@ -179,11 +293,27 @@ function buildNextStepLabel(
   }
 
   if (isAssignedToMe) {
-    return 'Update progress and add photo evidence.';
+    if (task.status === 'accepted') {
+      return 'Start work and share the first update when you begin.';
+    }
+
+    if (task.status === 'in_progress' || task.status === 'wip') {
+      return 'Capture progress photos or add a work note.';
+    }
+
+    return 'Share the latest work update for this task.';
   }
 
   if (isTaskCreator) {
-    return 'Track progress and support the assignee.';
+    if (task.status === 'accepted') {
+      return 'Confirm the assignee has what they need to get started.';
+    }
+
+    if (task.status === 'in_progress' || task.status === 'wip') {
+      return 'Review the latest update and support the assignee.';
+    }
+
+    return 'Track the latest update and support the assignee.';
   }
 
   return 'Track the latest task updates.';
@@ -263,6 +393,17 @@ export function useTaskDetailViewAdapter({
           structuralState: 'stale',
           assignedByLabel: '',
           assignedToLabel: '',
+        },
+        activeStage: {
+          id: 'task-active-stage',
+          density: 'standard',
+          structuralState: 'stale',
+          stageMode: 'no_photo',
+          title: '',
+          summary: '',
+          actorLabel: '',
+          timestampLabel: '',
+          photos: [],
         },
         evidenceSummary: {
           id: 'evidence-summary',
@@ -470,6 +611,12 @@ export function useTaskDetailViewAdapter({
 
   const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
   const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);
+  const activeStage = buildTaskDetailActiveStageModel({
+    task,
+    orderedActivities,
+    dateFormatter,
+    getUserById: (userId) => (userId ? getUserById(userId) : undefined),
+  });
 
   const taskHero: TaskDetailHeroModel = {
     id: 'task-hero',
@@ -562,7 +709,6 @@ export function useTaskDetailViewAdapter({
       actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
     }
     if (canUpdateProgress) {
-      actionItems.push({ id: 'action-update', actionId: 'update_progress', density: 'standard', structuralState: 'stale', label: t.taskDetail.updateTask, icon: 'trending-up-outline', isDisabled: false });
       actionItems.push({ id: 'action-photos', actionId: 'upload_photos', density: 'standard', structuralState: 'stale', label: t.taskDetail.photosUpdates, icon: 'camera-outline', isDisabled: false });
     }
     if (isTaskCreator && task.status !== 'declined' && !wasReassigned) {
@@ -606,6 +752,7 @@ export function useTaskDetailViewAdapter({
       },
       taskHero,
       delegationSummary,
+      activeStage,
       evidenceSummary,
       activityThread,
       subtaskSummary,

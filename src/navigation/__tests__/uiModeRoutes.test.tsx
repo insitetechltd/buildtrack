@@ -123,6 +123,7 @@ describe("uiModeRoutes", () => {
       taskId: "task-1",
       subTaskId: "subtask-1",
       actionType: "photos",
+      sourceScreen: "tasks",
       selectedPhotos: [],
       uploadedPhotoUrls: [],
     });
@@ -134,6 +135,9 @@ describe("uiModeRoutes", () => {
         cameraLaunchContext: "task_detail",
         postCaptureDefault: "same_task_update",
         updateTargetSubTaskId: "subtask-1",
+        sourceScreen: "tasks",
+        sourceTaskId: "task-1",
+        sourceSubTaskId: "subtask-1",
       }),
     );
   });
@@ -179,6 +183,9 @@ describe("uiModeRoutes", () => {
           cameraLaunchContext: "task_detail",
           postCaptureDefault: "same_task_update",
           updateTargetSubTaskId: "subtask-1",
+          sourceScreen: "tasks",
+          sourceTaskId: "task-1",
+          sourceSubTaskId: "subtask-1",
         }),
       }),
     );
@@ -199,6 +206,40 @@ describe("uiModeRoutes", () => {
         ],
       }),
     ).toBeUndefined();
+  });
+
+  it("marks dashboard task-detail camera launches with dashboard source metadata", () => {
+    expect(
+      resolveTaskDetailCameraTabParams({
+        index: 0,
+        routes: [
+          {
+            name: "Activity",
+            state: {
+              index: 1,
+              routes: [
+                { name: "DashboardMain" },
+                {
+                  name: "TaskDetailFromDashboard",
+                  params: { taskId: "task-9", subTaskId: "subtask-4" },
+                },
+              ],
+            },
+          },
+          { name: "Camera" },
+          { name: "Tasks" },
+        ],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        screen: "CreateTaskMain",
+        params: expect.objectContaining({
+          sourceScreen: "dashboard",
+          sourceTaskId: "task-9",
+          sourceSubTaskId: "subtask-4",
+        }),
+      }),
+    );
   });
 
   it("keeps the profile route available at the root stack after leaving the worker tab shell", () => {

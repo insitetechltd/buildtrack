@@ -349,6 +349,45 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.taskHero.title).toBeTruthy();
   });
 
+  it("removes the visible update_progress action from task detail while keeping photo updates", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+      "update_progress",
+    );
+    expect(result.current.output.actionItems.map((item) => item.actionId)).toContain(
+      "upload_photos",
+    );
+  });
+
+  it("uses contextual next-step guidance instead of the old fixed update-progress phrase", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.taskHero.nextStepLabel).not.toBe(
+      "Update progress and add photo evidence.",
+    );
+  });
+
+  it("uses assigned in-progress guidance that prompts a photo or work-note update", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.taskHero.nextStepLabel).toBe(
+      "Capture progress photos or add a work note.",
+    );
+  });
+
   it("shows edit_task for the task creator", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
@@ -461,7 +500,7 @@ describe("useTaskDetailViewAdapter", () => {
       projectLabel: "project-1",
       completionLabel: "50% complete",
       dueDateLabel: "Oct 10, 2026",
-      nextStepLabel: "Update progress and add photo evidence.",
+      nextStepLabel: "Capture progress photos or add a work note.",
     });
 
     expect(result.current.output.delegationSummary).toMatchObject({

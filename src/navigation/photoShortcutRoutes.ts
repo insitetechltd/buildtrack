@@ -29,12 +29,18 @@ export function buildPhotoShortcutCreateTaskParams({
   taskId,
   subTaskId,
   actionType,
+  sourceScreen,
+  sourceTaskId,
+  sourceSubTaskId,
   selectedPhotos,
   uploadedPhotoUrls,
 }: {
   taskId: string;
   subTaskId?: string;
   actionType: "photos" | "update";
+  sourceScreen?: CreateTaskParams["sourceScreen"];
+  sourceTaskId?: string;
+  sourceSubTaskId?: string;
   selectedPhotos?: CreateTaskParams["selectedPhotos"];
   uploadedPhotoUrls?: string[];
 }): CreateTaskParams {
@@ -44,6 +50,9 @@ export function buildPhotoShortcutCreateTaskParams({
     cameraLaunchContext: "task_detail",
     postCaptureDefault: "same_task_update",
     updateTargetSubTaskId: subTaskId,
+    sourceScreen,
+    sourceTaskId: sourceTaskId ?? taskId,
+    sourceSubTaskId: sourceSubTaskId ?? subTaskId,
     selectedPhotos,
     uploadedPhotoUrls,
   };
@@ -81,6 +90,8 @@ export function resolveTaskDetailCameraTabParams(
   tabState?: RouteStateLike,
 ): RootTabParamList["Camera"] | undefined {
   const activeTabIndex = getActiveIndex(tabState);
+  const activeTabName =
+    activeTabIndex === undefined ? undefined : tabState?.routes?.[activeTabIndex]?.name;
   const activeTabRoute = getActiveRoute({
     index: activeTabIndex,
     routes: tabState?.routes?.map((route) => ({
@@ -115,6 +126,7 @@ export function resolveTaskDetailCameraTabParams(
       taskId: taskDetailParams.taskId,
       subTaskId: taskDetailParams.subTaskId,
       actionType: "photos",
+      sourceScreen: activeTabName === "Activity" ? "dashboard" : "tasks",
     }),
   };
 }

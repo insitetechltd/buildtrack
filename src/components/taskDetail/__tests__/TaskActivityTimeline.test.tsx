@@ -105,4 +105,44 @@ describe("TaskActivityTimeline", () => {
     expect(actorLabels[0].props.children).toBe("Alex");
     expect(actorLabels[1].props.children).toBe("Sam");
   });
+
+  it("exposes stable newest-first entry surfaces and reports the top-most entry as active", () => {
+    const onVisibleEntryChange = jest.fn();
+
+    const screen = render(
+      <TaskActivityTimeline
+        activeEntryId="activity-newer"
+        onVisibleEntryChange={onVisibleEntryChange}
+        thread={[
+          {
+            id: "activity-newer",
+            actorLabel: "Alex",
+            eventLabel: "Submitted for review",
+            timestampLabel: "Jul 5, 10:00",
+            detailLabel: "Marked 100% complete",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "activity-older",
+            actorLabel: "Sam",
+            eventLabel: "Accepted the task",
+            timestampLabel: "Jul 4, 08:00",
+            detailLabel: "Started site setup",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("task-activity-timeline__entry-activity-newer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__entry-activity-older")).toBeTruthy();
+    expect(onVisibleEntryChange).toHaveBeenCalledWith("activity-newer");
+    expect(
+      screen.getByTestId("task-activity-timeline__entry-activity-newer").props.accessibilityState,
+    ).toMatchObject({ selected: true });
+  });
 });

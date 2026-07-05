@@ -788,6 +788,9 @@ function PhotoSelectionScreenWrapper({
             taskId: taskId as string,
             subTaskId,
             actionType: actionType as "update",
+            sourceScreen,
+            sourceTaskId: sourceTaskId || (taskId as string),
+            sourceSubTaskId: sourceSubTaskId || subTaskId,
             uploadedPhotoUrls: photoUrls,
           }),
         );
@@ -856,6 +859,9 @@ function PhotoSelectionScreenWrapper({
               taskId: taskId as string,
               subTaskId,
               actionType: "update",
+              sourceScreen,
+              sourceTaskId: sourceTaskId || (taskId as string),
+              sourceSubTaskId: sourceSubTaskId || subTaskId,
               selectedPhotos: normalizedPhotos,
             }),
           );

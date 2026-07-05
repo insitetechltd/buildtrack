@@ -1,43 +1,81 @@
 import React from "react";
 import { Image, Text, View } from "react-native";
 
-import type { TaskDetailEvidenceSummaryModel } from "@/ui/contracts/viewAdapters";
+import type { TaskDetailActiveStageModel } from "@/ui/contracts/viewAdapters";
 
 interface TaskDetailEvidenceStripProps {
-  model: TaskDetailEvidenceSummaryModel;
+  model: TaskDetailActiveStageModel;
+  testID?: string;
 }
 
-export default function TaskDetailEvidenceStrip({ model }: TaskDetailEvidenceStripProps) {
+export default function TaskDetailEvidenceStrip({
+  model,
+  testID = "task-detail__active_entry_stage",
+}: TaskDetailEvidenceStripProps) {
   return (
     <View
-      testID="task-detail__evidence_summary"
+      testID={testID}
       className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4"
     >
       <View className="flex-row items-center justify-between">
         <View className="flex-1">
-          <Text className="text-lg font-semibold text-slate-900">Evidence</Text>
-          <Text className="mt-1 text-sm text-slate-500">
-            {model.totalPhotoCount > 0
-              ? `${model.totalPhotoCount} photo${model.totalPhotoCount === 1 ? "" : "s"} attached`
-              : model.emptyLabel}
+          <Text className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+            Active update
           </Text>
+          <Text className="mt-2 text-lg font-semibold text-slate-900">{model.title}</Text>
+          <Text className="mt-1 text-sm font-medium text-slate-600">{model.actorLabel}</Text>
         </View>
         <View className="rounded-full bg-slate-100 px-3 py-1.5">
-          <Text className="text-sm font-semibold text-slate-700">{model.totalPhotoCount}</Text>
+          <Text className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {model.timestampLabel || "Latest"}
+          </Text>
         </View>
       </View>
 
-      {model.latestPhotoUrls.length > 0 ? (
-        <View testID="task-detail__evidence_thumbnails" className="mt-4 flex-row gap-3">
-          {model.latestPhotoUrls.slice(0, 3).map((photoUrl, index) => (
-            <Image
-              key={`${model.id}-photo-${index}`}
-              testID={`task-detail__evidence_thumbnail_${index}`}
-              source={{ uri: photoUrl }}
-              resizeMode="cover"
-              className="h-24 w-24 rounded-2xl bg-slate-100"
-            />
-          ))}
+      <Text className="mt-3 text-sm leading-5 text-slate-600">{model.summary}</Text>
+
+      {model.stageMode === "photo" && model.photos.length > 0 ? (
+        <View className="mt-4">
+          <Image
+            key={`${model.id}-photo-featured`}
+            testID="task-detail__active_stage_photo_featured"
+            source={{ uri: model.photos[model.activePhotoIndex ?? 0] }}
+            resizeMode="cover"
+            className="h-52 w-full rounded-[28px] bg-slate-100"
+          />
+          <View className="mt-3 flex-row gap-3">
+            {model.photos.slice(0, 3).map((photoUrl, index) => (
+              <Image
+                key={`${model.id}-photo-${index}`}
+                testID={`task-detail__active_stage_photo_${index}`}
+                source={{ uri: photoUrl }}
+                resizeMode="cover"
+                className="h-20 flex-1 rounded-2xl bg-slate-100"
+              />
+            ))}
+          </View>
+        </View>
+      ) : null}
+
+      {model.stageMode === "no_photo" ? (
+        <View className="mt-4 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
+          <Text className="text-center text-base font-semibold text-slate-700">
+            No photos for this update
+          </Text>
+        </View>
+      ) : null}
+
+      {model.stageMode === "pdf_preview" ? (
+        <View className="mt-4 rounded-[28px] border border-slate-200 bg-slate-50 px-4 py-5">
+          <Text className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
+            Document attached
+          </Text>
+          <Text className="mt-3 text-base font-semibold text-slate-900">
+            {model.documentName || "Attached document"}
+          </Text>
+          <Text className="mt-1 text-sm text-slate-600">
+            Preview support will be expanded in the next activation pass.
+          </Text>
         </View>
       ) : null}
     </View>

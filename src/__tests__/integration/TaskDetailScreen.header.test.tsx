@@ -102,6 +102,17 @@ describe("TaskDetailScreen header regression", () => {
       primaryOwnerLabel: "Sam",
       teamSummaryLabel: "1 assignee",
     },
+    activeStage: {
+      id: "active-stage",
+      density: "standard",
+      structuralState: "ready",
+      stageMode: "no_photo",
+      title: "Added status note",
+      summary: "Waiting on supplier confirmation.",
+      actorLabel: "Sam",
+      timestampLabel: "Jul 5, 09:30",
+      photos: [],
+    },
     evidenceSummary: {
       id: "evidence-summary",
       density: "standard",
@@ -320,6 +331,57 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByText("Work thread")).toBeTruthy();
   });
 
+  it("keeps the newest-first thread scroll while the pinned stage reflects the concrete top-most thread entry", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        activeStage: {
+          id: "placeholder-stage",
+          density: "standard",
+          structuralState: "ready",
+          stageMode: "no_photo",
+          title: "Latest task entry",
+          summary: "Static placeholder summary",
+          actorLabel: "Placeholder actor",
+          timestampLabel: "Latest",
+          photos: [],
+        },
+        activityThread: [
+          {
+            id: "activity-2",
+            actorLabel: "Sam",
+            eventLabel: "Submitted task for review",
+            timestampLabel: "Jul 5, 09:30",
+            detailLabel: "Marked 100% complete",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "activity-1",
+            actorLabel: "Casey",
+            eventLabel: "Accepted the task",
+            timestampLabel: "Jul 4, 08:15",
+            detailLabel: "Started the ceiling replacement work.",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const activeStage = screen.getByTestId("task-detail__active_entry_stage");
+
+    expect(activeStage).toBeTruthy();
+    expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
+    expect(within(activeStage).getByText("Submitted task for review")).toBeTruthy();
+    expect(within(activeStage).getByText("Marked 100% complete")).toBeTruthy();
+    expect(within(activeStage).getByText("Sam")).toBeTruthy();
+    expect(screen.queryByText("Static placeholder summary")).toBeNull();
+  });
+
   it("keeps secondary actions visible inline and demotes edit_task below the promoted primary action", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
@@ -355,5 +417,40 @@ describe("TaskDetailScreen header regression", () => {
     const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
     expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
     expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
+  });
+
+  it("keeps inline secondary actions visible while hiding edit for non-creators", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        actionItems: [
+          {
+            id: "action-photos",
+            actionId: "upload_photos",
+            label: "Add Photos",
+            icon: "camera-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
+    expect(screen.getByText("Other actions")).toBeTruthy();
+    expect(screen.getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByText("Edit Task Details")).toBeNull();
   });
 });

@@ -270,6 +270,14 @@ Closure evidence:
   - correction validation passed:
     - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
     - `npx tsc --noEmit`
+- refined correction applied on 2026-07-05:
+  - removed the wasted project-label line from the Task Detail hero and made `Next step` contextual to role/state
+  - replaced the simple evidence strip with a pinned active-entry stage
+  - active-entry stage now supports photo, neutral no-photo, and PDF-preview modes
+  - newest-first thread ownership now drives the pinned stage through dedicated resolver + screen wiring
+  - refined correction validation passed:
+    - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

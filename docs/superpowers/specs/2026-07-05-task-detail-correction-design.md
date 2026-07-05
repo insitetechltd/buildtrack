@@ -268,3 +268,24 @@ The correction is only complete if all of the following are true:
 This correction should be planned and executed as a focused follow-up to the existing Task Detail redesign work. It should reuse the current redesigned screen structure and adapter model where possible, rather than replacing the Task Detail redesign wholesale.
 
 The most important conceptual change is that the previous “evidence card” should now be treated as a **pinned active-entry stage** rather than a simple photo strip.
+
+## Implementation Status
+
+Implemented in the refined follow-up correction pass on 2026-07-05.
+
+### Closure evidence
+
+- Task Detail no longer depends on a visible top camera shortcut or visible `Progress update` button
+- task-detail camera launches now preserve task/subtask source metadata for the same-task return path
+- the hero is more compact and no longer renders the low-value project label above the title
+- `Next step` guidance is now contextual to task state and user role
+- the pinned top unit is now an active-entry stage rather than a simple evidence strip
+- the active-entry stage supports photo, neutral no-photo, and PDF-preview modes
+- the newest top thread entry now owns the pinned stage through a dedicated resolver and screen wiring
+- visible inline secondary actions remain in place and creator-only edit visibility remains enforced
+- focused validation passed:
+  - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+  - `npx tsc --noEmit`
+- Expo dev-client server restarted cleanly for post-refinement verification
+- installed app relaunched successfully on both booted iOS simulators
+- runtime logs confirmed successful initialization after relaunch

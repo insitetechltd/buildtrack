@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Image, Text, View } from "react-native";
 
+import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
@@ -9,6 +10,8 @@ import type {
 interface TaskActivityTimelineProps {
   activities?: TaskDetailActivityModel[];
   thread?: TaskDetailActivityThreadRow[];
+  activeEntryId?: string;
+  onVisibleEntryChange?: (entryId: string) => void;
   testID?: string;
 }
 
@@ -45,6 +48,8 @@ function normalizeActivityRow(
 export default function TaskActivityTimeline({
   activities = [],
   thread = [],
+  activeEntryId,
+  onVisibleEntryChange,
   testID,
 }: TaskActivityTimelineProps) {
   const normalizedActivities = useMemo(
@@ -61,6 +66,23 @@ export default function TaskActivityTimeline({
     },
     [activities, thread],
   );
+  const resolvedTopEntryId = useMemo(
+    () =>
+      resolveActiveStageEntry({
+        entries: normalizedActivities.map((activity, index) => ({
+          id: activity.id,
+          top: index,
+        })),
+        topEdge: 0,
+      })?.id,
+    [normalizedActivities],
+  );
+
+  useEffect(() => {
+    if (resolvedTopEntryId) {
+      onVisibleEntryChange?.(resolvedTopEntryId);
+    }
+  }, [onVisibleEntryChange, resolvedTopEntryId]);
 
   return (
     <View testID={testID} className="mx-4 mt-4 mb-4 rounded-2xl border border-gray-200 bg-white p-4">
@@ -76,13 +98,19 @@ export default function TaskActivityTimeline({
       <View className="gap-4">
         {normalizedActivities.map((activity, index) => {
           const isLastActivity = index === normalizedActivities.length - 1;
+          const isActiveEntry = (activeEntryId ?? resolvedTopEntryId) === activity.id;
           const photoCountLabel =
             activity.photoUrls.length === 1
               ? "1 photo"
               : `${activity.photoUrls.length} photos`;
 
           return (
-            <View key={activity.id} className="flex-row">
+            <View
+              key={activity.id}
+              testID={`task-activity-timeline__entry-${activity.id}`}
+              accessibilityState={{ selected: isActiveEntry }}
+              className="flex-row"
+            >
               <View className="mr-3 items-center">
                 <View className="mt-1 h-3 w-3 rounded-full border-2 border-blue-100 bg-blue-600" />
                 {!isLastActivity ? <View className="mt-2 w-0.5 flex-1 bg-blue-100" /> : null}

@@ -112,13 +112,17 @@ describe("TaskDetailScreen acceptance UI", () => {
       primaryOwnerLabel: "Sam",
       teamSummaryLabel: "2 assignees",
     },
-    evidenceSummary: {
-      id: "evidence-summary",
+    activeStage: {
+      id: "active-stage",
       density: "standard",
       structuralState: "ready",
-      latestPhotoUrls: ["https://example.com/photo-1.jpg", "https://example.com/photo-2.jpg"],
-      totalPhotoCount: 4,
-      emptyLabel: "No photo evidence yet.",
+      stageMode: "photo",
+      title: "Submitted task for review",
+      summary: "Marked 100% complete",
+      actorLabel: "Sam",
+      timestampLabel: "Jul 5, 09:30",
+      photos: ["https://example.com/photo-1.jpg", "https://example.com/photo-2.jpg"],
+      activePhotoIndex: 0,
     },
     activityThread: [
       {
@@ -202,12 +206,12 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders task detail as a work-thread surface with hero, delegation, evidence, activity, and subtasks", () => {
+  it("renders task detail as a work-thread surface with hero, delegation, active stage, activity, and subtasks", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
     expect(screen.getByTestId("task-detail__delegation_summary")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__evidence_summary")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__active_entry_stage")).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__subtasks")).toBeTruthy();
   });
@@ -245,6 +249,25 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(screen.getByTestId("task-detail__hero_critical_flag")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
+  });
+
+  it("does not render the top project-label string in the compact hero", () => {
+    const baseOutput = createAdapterOutput();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        taskHero: {
+          ...baseOutput.taskHero,
+          projectLabel: "Hero Project Label",
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByText("Replace ceiling tiles")).toBeTruthy();
+    expect(screen.queryByText("Hero Project Label")).toBeNull();
   });
 
   it("keeps secondary actions visible inline for creators and demotes edit below the promoted primary action", () => {

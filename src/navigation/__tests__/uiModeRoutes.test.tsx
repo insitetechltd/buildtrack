@@ -1,9 +1,14 @@
 import React from "react";
 import { act, render } from "@testing-library/react-native";
 import { DashboardRoute, TasksRoute } from "../uiModeRoutes";
+import {
+  buildPhotoShortcutCreateTaskParams,
+  resolveTaskDetailCameraTabParams,
+} from "../photoShortcutRoutes";
 import type {
-  CreateTaskParams,
+  RootStackParamList,
   RootTabParamList,
+  TaskDetailParams,
 } from "../navigationTypes";
 import { useDevToggleStore } from "@/state/devToggleStore";
 
@@ -113,21 +118,91 @@ describe("uiModeRoutes", () => {
     );
   });
 
-  it("allows task-detail camera launches to target the current task update flow", () => {
-    const params: CreateTaskParams = {
-      editTaskId: "task-1",
-      actionType: "update",
-      cameraLaunchContext: "task_detail",
-      postCaptureDefault: "same_task_update",
-      updateTargetSubTaskId: "subtask-1",
-    };
+  it("keeps task-detail camera params on the same-task update path with subtask preservation", () => {
+    const params = buildPhotoShortcutCreateTaskParams({
+      taskId: "task-1",
+      subTaskId: "subtask-1",
+      actionType: "photos",
+      selectedPhotos: [],
+      uploadedPhotoUrls: [],
+    });
 
-    expect(params.cameraLaunchContext).toBe("task_detail");
-    expect(params.postCaptureDefault).toBe("same_task_update");
+    expect(params).toEqual(
+      expect.objectContaining({
+        editTaskId: "task-1",
+        actionType: "photos",
+        cameraLaunchContext: "task_detail",
+        postCaptureDefault: "same_task_update",
+        updateTargetSubTaskId: "subtask-1",
+      }),
+    );
   });
 
-  it("keeps the profile route available for hidden worker-shell navigation", () => {
-    const params: RootTabParamList["Profile"] = {
+  it("resolves the bottom camera tab into task-detail shortcut params only while task detail is active", () => {
+    const taskDetailParams: TaskDetailParams = {
+      taskId: "task-1",
+      subTaskId: "subtask-1",
+    };
+
+    expect(
+      resolveTaskDetailCameraTabParams({
+        index: 2,
+        routes: [
+          {
+            name: "Activity",
+            state: {
+              index: 0,
+              routes: [{ name: "DashboardMain" }],
+            },
+          },
+          { name: "Camera" },
+          {
+            name: "Tasks",
+            state: {
+              index: 1,
+              routes: [
+                { name: "TasksList" },
+                {
+                  name: "TaskDetail",
+                  params: taskDetailParams,
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        screen: "CreateTaskMain",
+        params: expect.objectContaining({
+          actionType: "photos",
+          cameraLaunchContext: "task_detail",
+          postCaptureDefault: "same_task_update",
+          updateTargetSubTaskId: "subtask-1",
+        }),
+      }),
+    );
+
+    expect(
+      resolveTaskDetailCameraTabParams({
+        index: 0,
+        routes: [
+          {
+            name: "Activity",
+            state: {
+              index: 0,
+              routes: [{ name: "DashboardMain" }],
+            },
+          },
+          { name: "Camera" },
+          { name: "Tasks" },
+        ],
+      }),
+    ).toBeUndefined();
+  });
+
+  it("keeps the profile route available at the root stack after leaving the worker tab shell", () => {
+    const params: RootStackParamList["Profile"] = {
       screen: "ProfileMain",
     };
 

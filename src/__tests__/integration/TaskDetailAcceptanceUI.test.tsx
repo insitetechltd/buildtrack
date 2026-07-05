@@ -100,6 +100,8 @@ describe("TaskDetailScreen acceptance UI", () => {
       completionLabel: "50% complete",
       dueDateLabel: "Jul 10, 2026",
       nextStepLabel: "Update progress and add photo evidence.",
+      isCritical: false,
+      criticalLabel: undefined,
     },
     delegationSummary: {
       id: "delegation-summary",
@@ -223,5 +225,69 @@ describe("TaskDetailScreen acceptance UI", () => {
     fireEvent.press(screen.getByText("Inspect ceiling grid"));
 
     expect(onNavigateToTaskDetail).toHaveBeenCalledWith("child-1");
+  });
+
+  it("renders a small critical flag in the hero and no standalone critical section", () => {
+    const baseOutput = createAdapterOutput();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        taskHero: {
+          ...baseOutput.taskHero,
+          isCritical: true,
+          criticalLabel: "Critical this week",
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__hero_critical_flag")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
+  });
+
+  it("keeps secondary actions visible inline for creators and demotes edit below the promoted primary action", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        actionItems: [
+          {
+            id: "action-edit",
+            actionId: "edit_task",
+            label: "Edit Task Details",
+            icon: "create-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
+    expect(screen.getByText("Other actions")).toBeTruthy();
+    expect(screen.getByText("Edit Task Details")).toBeTruthy();
+    expect(screen.getByText("Add Comment")).toBeTruthy();
+  });
+
+  it("hides edit action for non-creators while keeping other secondary actions visible", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
+    expect(screen.getByText("Other actions")).toBeTruthy();
+    expect(screen.queryByText("Edit Task Details")).toBeNull();
+    expect(screen.getByText("Add Comment")).toBeTruthy();
   });
 });

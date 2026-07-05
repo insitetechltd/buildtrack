@@ -111,9 +111,24 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
     })
     .map(({ action }) => action);
 
+  if (prioritizedActions.length === 0) {
+    return {
+      primaryAction: undefined,
+      secondaryActions: [] as TaskDetailActionItem[],
+    };
+  }
+
+  const primaryActionIndex = prioritizedActions.findIndex(
+    (action) => action.actionId !== "edit_task",
+  );
+  const resolvedPrimaryActionIndex =
+    primaryActionIndex === -1 ? 0 : primaryActionIndex;
+
   return {
-    primaryAction: prioritizedActions[0],
-    secondaryActions: prioritizedActions.slice(1),
+    primaryAction: prioritizedActions[resolvedPrimaryActionIndex],
+    secondaryActions: prioritizedActions.filter(
+      (_, index) => index !== resolvedPrimaryActionIndex,
+    ),
   };
 }
 
@@ -122,16 +137,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
-
-  const handleTaskDetailCameraShortcutPress = () => {
-    props.onNavigateToCreateTask?.(
-      undefined,
-      undefined,
-      props.taskId,
-      "update",
-      props.subTaskId,
-    );
-  };
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -240,115 +245,111 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         rightElement={<ModernUiMarker />}
       />
 
-      <View className="px-4 pt-4">
-        <View className="flex-row justify-end">
-          <Pressable
-            testID="task-detail__camera_shortcut"
-            accessibilityRole="button"
-            accessibilityLabel="Add photos to this task"
-            onPress={handleTaskDetailCameraShortcutPress}
-            className="h-11 w-11 items-center justify-center rounded-full bg-red-700"
-          >
-            <Ionicons name="camera" size={20} color="#ffffff" />
-          </Pressable>
+      <View className="flex-1">
+        <View testID="task-detail__evidence_pinned_region">
+          <TaskDetailHero model={output.taskHero} />
+          <TaskDetailEvidenceStrip model={output.evidenceSummary} />
         </View>
-      </View>
 
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: scrollContentPaddingBottom }}>
-        {/* Banners */}
-        {output.banners.map(banner => (
-          <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
-        ))}
+        <ScrollView
+          testID="task-detail__workthread_scroll"
+          className="flex-1"
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: scrollContentPaddingBottom }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Banners */}
+          {output.banners.map(banner => (
+            <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+          ))}
 
-        {criticalThisWeekAction ? (
-          <View className="px-4 pt-4">
-            <Pressable
-              testID="task-detail__toggle_critical_this_week"
-              accessibilityRole="button"
-              accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
-              disabled={criticalThisWeekAction.isDisabled}
-              onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
-              className={cn(
-                "flex-row items-center justify-between rounded-2xl border px-4 py-3",
-                criticalThisWeekAction.isActive
-                  ? "border-amber-300 bg-amber-50"
-                  : "border-amber-200 bg-white",
-                criticalThisWeekAction.isDisabled && "opacity-50",
-              )}
-            >
-              <View className="mr-3 flex-1">
-                <Text className="text-base font-semibold text-slate-900">
-                  {criticalThisWeekAction.label}
-                </Text>
-                <Text className="mt-1 text-sm text-slate-600">
-                  {criticalThisWeekAction.isActive
-                    ? "Included in This Week’s Critical Dates."
-                    : "Highlight this task in This Week’s Critical Dates."}
-                </Text>
-              </View>
-              <Ionicons
-                name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
-                size={20}
-                color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
-              />
-            </Pressable>
-          </View>
-        ) : null}
+          {criticalThisWeekAction ? (
+            <View className="px-4 pt-4">
+              <Pressable
+                testID="task-detail__toggle_critical_this_week"
+                accessibilityRole="button"
+                accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
+                disabled={criticalThisWeekAction.isDisabled}
+                onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
+                className={cn(
+                  "flex-row items-center justify-between rounded-2xl border px-4 py-3",
+                  criticalThisWeekAction.isActive
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-amber-200 bg-white",
+                  criticalThisWeekAction.isDisabled && "opacity-50",
+                )}
+              >
+                <View className="mr-3 flex-1">
+                  <Text className="text-base font-semibold text-slate-900">
+                    {criticalThisWeekAction.label}
+                  </Text>
+                  <Text className="mt-1 text-sm text-slate-600">
+                    {criticalThisWeekAction.isActive
+                      ? "Included in This Week’s Critical Dates."
+                      : "Highlight this task in This Week’s Critical Dates."}
+                  </Text>
+                </View>
+                <Ionicons
+                  name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
+                  size={20}
+                  color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
+                />
+              </Pressable>
+            </View>
+          ) : null}
 
-        <TaskDetailHero model={output.taskHero} />
-        <TaskDetailDelegationCard model={output.delegationSummary} />
-        <TaskDetailEvidenceStrip model={output.evidenceSummary} />
+          <TaskDetailDelegationCard model={output.delegationSummary} />
 
-        <TaskActivityTimeline
-          testID="task-detail__activity_thread"
-          thread={output.activityThread}
-        />
+          <TaskActivityTimeline
+            testID="task-detail__activity_thread"
+            thread={output.activityThread}
+          />
 
-        <TaskDetailSubtasksSection
-          model={output.subtaskSummary}
-          childTasks={output.childTasks}
-          onNavigateToTaskDetail={props.onNavigateToTaskDetail}
-        />
+          <TaskDetailSubtasksSection
+            model={output.subtaskSummary}
+            childTasks={output.childTasks}
+            onNavigateToTaskDetail={props.onNavigateToTaskDetail}
+          />
 
-        {output.detailSections.length > 0 ? (
-          <View className="px-4 mt-4">
-            {output.detailSections.map((section) => (
-              <View key={section.id} className="mb-4">
-                <ContainerCard contract={mapSectionModelToContainerProps(section)} />
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {secondaryActions.length > 0 ? (
-          <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
-            <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Other actions
-            </Text>
-
-            <View className="flex-row flex-wrap gap-2">
-              {secondaryActions.map((action) => (
-                <Pressable
-                  key={action.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: action.isDisabled }}
-                  disabled={action.isDisabled}
-                  onPress={() => handleActionPress(action.actionId)}
-                  className={cn(
-                    "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
-                    action.isDisabled && "opacity-50",
-                  )}
-                >
-                  {action.icon ? (
-                    <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
-                  ) : null}
-                  <Text className="text-sm font-medium text-gray-700">{action.label}</Text>
-                </Pressable>
+          {output.detailSections.length > 0 ? (
+            <View className="px-4 mt-4">
+              {output.detailSections.map((section) => (
+                <View key={section.id} className="mb-4">
+                  <ContainerCard contract={mapSectionModelToContainerProps(section)} />
+                </View>
               ))}
             </View>
-          </View>
-        ) : null}
-      </ScrollView>
+          ) : null}
+
+          {secondaryActions.length > 0 ? (
+            <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
+              <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Other actions
+              </Text>
+
+              <View className="flex-row flex-wrap gap-2">
+                {secondaryActions.map((action) => (
+                  <Pressable
+                    key={action.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: action.isDisabled }}
+                    disabled={action.isDisabled}
+                    onPress={() => handleActionPress(action.actionId)}
+                    className={cn(
+                      "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
+                      action.isDisabled && "opacity-50",
+                    )}
+                  >
+                    {action.icon ? (
+                      <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
+                    ) : null}
+                    <Text className="text-sm font-medium text-gray-700">{action.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+        </ScrollView>
+      </View>
 
       {primaryAction ? (
         <View testID="task-detail__primary-action-bar" className="absolute bottom-0 left-0 right-0">

@@ -262,6 +262,14 @@ Closure evidence:
   - installed app relaunched successfully on both booted iOS simulators
   - runtime logs confirmed successful initialization after relaunch
   - simulator screenshot capture succeeded after render completion for acceptance evidence
+- post-close correction applied on 2026-07-05:
+  - removed the dedicated top camera shortcut from Task Detail and shifted camera behavior into the dynamic bottom-nav camera when Task Detail is active
+  - reduced critical-state treatment to a compact hero flag
+  - split the top evidence area from the independently scrolling work-thread region
+  - kept `Edit task details` creator-only while preserving visible inline secondary actions
+  - correction validation passed:
+    - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

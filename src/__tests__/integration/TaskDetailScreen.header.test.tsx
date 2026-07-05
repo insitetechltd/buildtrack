@@ -257,9 +257,7 @@ describe("TaskDetailScreen header regression", () => {
     );
   });
 
-  it("renders a dedicated task-detail camera shortcut that routes into the same-task update flow", () => {
-    const onNavigateToCreateTask = jest.fn();
-
+  it("does not render a dedicated top camera shortcut on task detail", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput(),
       actions: createAdapterActions(),
@@ -271,24 +269,11 @@ describe("TaskDetailScreen header regression", () => {
           taskId: "task-1",
           subTaskId: "subtask-1",
           onNavigateBack: jest.fn(),
-          onNavigateToCreateTask,
         } as any)}
       />,
     );
 
-    const cameraShortcut = screen.getByTestId("task-detail__camera_shortcut");
-
-    expect(cameraShortcut).toBeTruthy();
-
-    fireEvent.press(cameraShortcut);
-
-    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      "task-1",
-      "update",
-      "subtask-1",
-    );
+    expect(screen.queryByTestId("task-detail__camera_shortcut")).toBeNull();
   });
 
   it("builds task-detail photo shortcut params for the same-task update path", () => {
@@ -335,24 +320,15 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByText("Work thread")).toBeTruthy();
   });
 
-  it("promotes one primary footer action and keeps the rest in secondary actions", () => {
+  it("keeps secondary actions visible inline and demotes edit_task below the promoted primary action", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         actionItems: [
           {
-            id: "action-decline",
-            actionId: "decline_task",
-            label: "Decline Task",
-            icon: "close-circle-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "stale",
-          },
-          {
-            id: "action-accept",
-            actionId: "accept_task",
-            label: "Accept Task",
-            icon: "checkmark-circle-outline",
+            id: "action-edit",
+            actionId: "edit_task",
+            label: "Edit Task Details",
+            icon: "create-outline",
             isDisabled: false,
             density: "standard",
             structuralState: "stale",
@@ -374,10 +350,10 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     const footer = screen.getByTestId("task-detail__primary-action-bar");
-    expect(within(footer).getByText("Accept Task")).toBeTruthy();
+    expect(within(footer).getByText("Add Comment")).toBeTruthy();
 
     const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
-    expect(within(secondaryActions).getByText("Decline Task")).toBeTruthy();
-    expect(within(secondaryActions).getByText("Add Comment")).toBeTruthy();
+    expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
+    expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
   });
 });

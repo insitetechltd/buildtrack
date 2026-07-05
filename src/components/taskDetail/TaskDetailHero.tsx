@@ -16,6 +16,16 @@ export default function TaskDetailHero({ model }: TaskDetailHeroProps) {
       <Text className="mt-3 text-3xl font-semibold text-white">{model.title}</Text>
 
       <View className="mt-4 flex-row flex-wrap gap-2">
+        {model.isCritical ? (
+          <View
+            testID="task-detail__hero_critical_flag"
+            className="rounded-full bg-amber-100 px-3 py-1.5"
+          >
+            <Text className="text-sm font-semibold text-amber-900">
+              {model.criticalLabel}
+            </Text>
+          </View>
+        ) : null}
         <View className="rounded-full bg-white/10 px-3 py-1.5">
           <Text className="text-sm font-medium text-white">{model.statusLabel}</Text>
         </View>

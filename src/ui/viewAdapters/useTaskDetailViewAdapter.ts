@@ -481,6 +481,8 @@ export function useTaskDetailViewAdapter({
     completionLabel: `${task.completionPercentage}% complete`,
     dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
     nextStepLabel: buildNextStepLabel(task, isAssignedToMe, isTaskCreator),
+    isCritical: isCriticalThisWeek,
+    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
   };
 
   const primaryOwner = task.primaryAssigneeId
@@ -537,17 +539,6 @@ export function useTaskDetailViewAdapter({
   ];
 
   const actionItems: TaskDetailActionItem[] = [];
-
-  actionItems.push({
-    id: 'action-critical-this-week',
-    actionId: 'toggle_critical_this_week',
-    density: 'standard',
-    structuralState: 'stale',
-    label: isCriticalThisWeek ? 'Remove from This Week' : 'Mark critical',
-    icon: isCriticalThisWeek ? 'flag' : 'flag-outline',
-    isDisabled: false,
-    isActive: isCriticalThisWeek,
-  });
 
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
   const canUpdateProgress = isAssignedToMe && !isTaskCreator && (task.status === 'accepted' || task.status === 'in_progress' || (task.status === 'rejected' && task.completionPercentage === 100));

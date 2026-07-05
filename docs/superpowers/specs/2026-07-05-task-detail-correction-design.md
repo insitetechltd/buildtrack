@@ -166,3 +166,22 @@ The correction is only complete if all of the following are true:
 ## Implementation Notes
 
 This correction should be planned and executed as a focused follow-up to the existing Task Detail redesign work. It should reuse the current redesigned screen structure and adapter model where possible, rather than replacing the Task Detail redesign wholesale.
+
+## Implementation Status
+
+Implemented in the immediate follow-up correction pass on 2026-07-05.
+
+### Closure evidence
+
+- Task Detail no longer renders a separate top camera shortcut
+- bottom-nav camera now uses task-detail same-task update context when Task Detail is active
+- critical state is represented as compact hero metadata instead of a standalone prominent section
+- evidence is split into a pinned top evidence region and an independently scrolling work-thread region
+- edit-task visibility remains creator-only
+- visible inline secondary actions remain available after the correction pass
+- focused validation passed:
+  - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+  - `npx tsc --noEmit`
+- Expo dev-client server restarted cleanly for post-correction verification
+- installed app relaunched successfully on both booted iOS simulators
+- runtime logs confirmed successful initialization after relaunch

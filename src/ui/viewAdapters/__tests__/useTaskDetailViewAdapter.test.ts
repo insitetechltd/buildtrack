@@ -191,22 +191,65 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
-  it("exposes and toggles the critical-this-week action for the expanded task card", async () => {
+  it("surfaces critical state as compact hero metadata when the task is critical", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1", "user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Install the final light fixtures in the lobby.",
+          attachments: ["https://example.com/task-attachment-1.jpg"],
+          tags: ["critical_this_week"],
+          updates: [],
+          activities: [],
+          completionPercentage: 50,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
       }),
     );
 
-    const criticalAction = result.current.output.actionItems.find(
-      (item) => item.actionId === "toggle_critical_this_week",
-    );
-
-    expect(criticalAction).toMatchObject({
-      actionId: "toggle_critical_this_week",
-      label: "Mark critical",
-      isActive: false,
+    expect(result.current.output.taskHero).toMatchObject({
+      isCritical: true,
+      criticalLabel: "Critical this week",
     });
+    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+      "toggle_critical_this_week",
+    );
+  });
+
+  it("still updates task tags when critical state is toggled", async () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
 
     await act(async () => {
       await result.current.actions.toggleCriticalThisWeek();
@@ -304,6 +347,63 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(Array.isArray(result.current.output.actionItems)).toBe(true);
     expect(result.current.output.taskHero.title).toBeTruthy();
+  });
+
+  it("shows edit_task for the task creator", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "user-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Install the final light fixtures in the lobby.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 50,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).toContain("edit_task");
+  });
+
+  it("hides edit_task for non-creators", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain("edit_task");
   });
 
   it("maps task activities into readable work-thread events", () => {

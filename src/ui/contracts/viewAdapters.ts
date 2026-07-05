@@ -246,6 +246,8 @@ export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
   completionLabel: string;
   dueDateLabel?: string;
   nextStepLabel?: string;
+  isCritical?: boolean;
+  criticalLabel?: string;
 }
 
 export interface TaskDetailDelegationSummaryModel extends PrimitiveReadyItemBase {

@@ -52,6 +52,7 @@ import RejectTaskScreen from "../screens/RejectTaskScreen";
 import ReassignTaskScreen from "../screens/ReassignTaskScreen";
 import {
   buildPhotoShortcutCreateTaskParams,
+  resolveTaskDetailCameraTabParams,
   shouldReturnToCreateTaskShortcut,
 } from "./photoShortcutRoutes";
 import { buildCreateTaskPhotoReturnParams } from "./createTaskRouteParams";
@@ -65,6 +66,7 @@ import type {
   PhotoSelectionParams,
   PhotoViewerParams,
   ProfileStackParamList,
+  RootStackParamList,
   RootTabParamList,
   SelectedPhoto,
   TasksStackParamList,
@@ -72,6 +74,7 @@ import type {
 } from "./navigationTypes";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
+const RootStackNavigator = createNativeStackNavigator<RootStackParamList>();
 const DashboardStackNavigator = createNativeStackNavigator<DashboardStackParamList>();
 const TasksStackNavigator = createNativeStackNavigator<TasksStackParamList>();
 const ProfileStackNavigator = createNativeStackNavigator<ProfileStackParamList>();
@@ -83,16 +86,24 @@ type RouteStateLike = {
   routeNames?: string[];
   routes?: Array<{ key: string }>;
 };
-type RootTabLikeNavigation = Pick<
-  BottomTabNavigationProp<RootTabParamList>,
+type RootTabLikeNavigation = {
+  navigate: (...args: unknown[]) => void;
+};
+type RootStackLikeNavigation = Pick<
+  NativeStackNavigationProp<RootStackParamList>,
   "navigate"
 >;
+type ParentNavigationLike = {
+  getParent?: () => ParentNavigationLike | undefined;
+  getState?: () => RouteStateLike;
+  navigate?: (...args: unknown[]) => void;
+};
 
 type ProjectPickerNavigation = {
   navigate:
     | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
     | NativeStackNavigationProp<TasksStackParamList>["navigate"];
-  getParent?: () => RootTabLikeNavigation | undefined;
+  getParent?: () => ParentNavigationLike | undefined;
   getState?: () => RouteStateLike;
 };
 
@@ -101,7 +112,7 @@ type CreateTaskRouteNavigation = {
     | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
     | NativeStackNavigationProp<TasksStackParamList>["navigate"]
     | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
-  getParent?: () => RootTabLikeNavigation | undefined;
+  getParent?: () => ParentNavigationLike | undefined;
   getState?: () => RouteStateLike;
 };
 
@@ -150,6 +161,89 @@ function popCurrentStack(navigation: StackBackNavigation) {
   return false;
 }
 
+function hasAnyRoute(
+  navigation: ParentNavigationLike | undefined,
+  routeNames: string[],
+) {
+  const currentRouteNames = navigation?.getState?.()?.routeNames || [];
+  return routeNames.some((routeName) => currentRouteNames.includes(routeName));
+}
+
+function getRootTabsNavigation(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+) {
+  const parentNav = navigation.getParent?.();
+  if (hasAnyRoute(parentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])) {
+    return parentNav as RootTabLikeNavigation;
+  }
+
+  const grandParentNav = parentNav?.getParent?.();
+  if (
+    hasAnyRoute(grandParentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])
+  ) {
+    return grandParentNav as RootTabLikeNavigation;
+  }
+
+  return undefined;
+}
+
+function getRootStackNavigation(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+) {
+  const parentNav = navigation.getParent?.();
+  if (hasAnyRoute(parentNav, ["MainTabs", "Profile"])) {
+    return parentNav as RootStackLikeNavigation;
+  }
+
+  const grandParentNav = parentNav?.getParent?.();
+  if (hasAnyRoute(grandParentNav, ["MainTabs", "Profile"])) {
+    return grandParentNav as RootStackLikeNavigation;
+  }
+
+  return undefined;
+}
+
+function navigateToRootProfile(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+  screen: keyof ProfileStackParamList = "ProfileMain",
+) {
+  const rootNav = getRootStackNavigation(navigation);
+  if (!rootNav) {
+    return;
+  }
+
+  if (screen === "ProfileMain") {
+    rootNav.navigate("Profile");
+    return;
+  }
+
+  rootNav.navigate("Profile", { screen });
+}
+
+function navigateToRootTabScreen<T extends keyof RootTabParamList>(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+  screen: T,
+  params?: RootTabParamList[T],
+) {
+  const tabsNav = getRootTabsNavigation(navigation);
+  if (tabsNav) {
+    tabsNav.navigate(screen as never, params as never);
+    return;
+  }
+
+  const rootNav = getRootStackNavigation(navigation);
+  if (!rootNav) {
+    return;
+  }
+
+  if (params === undefined) {
+    rootNav.navigate("MainTabs", { screen } as RootStackParamList["MainTabs"]);
+    return;
+  }
+
+  rootNav.navigate("MainTabs", { screen, params } as RootStackParamList["MainTabs"]);
+}
+
 function navigateToProjectPicker(
   navigation: ProjectPickerNavigation,
   allowBack?: boolean,
@@ -162,18 +256,10 @@ function navigateToProjectPicker(
     return;
   }
 
-  const parentNav = navigation.getParent?.();
-  if (parentNav) {
-    parentNav.navigate("Activity", {
-      screen: "ProjectPicker",
-      params: { allowBack },
-    });
-    return;
-  }
-
-  (
-    navigation as NativeStackNavigationProp<DashboardStackParamList>
-  ).navigate("ProjectPicker", { allowBack });
+  navigateToRootTabScreen(navigation, "Activity", {
+    screen: "ProjectPicker",
+    params: { allowBack },
+  });
 }
 
 function navigateToCreateTaskRoute(
@@ -197,13 +283,10 @@ function navigateToCreateTaskRoute(
     return;
   }
 
-  const parentNav = navigation.getParent?.();
-  if (parentNav) {
-    parentNav.navigate("Camera", {
-      screen: "CreateTaskMain",
-      params,
-    });
-  }
+  navigateToRootTabScreen(navigation, "Camera", {
+    screen: "CreateTaskMain",
+    params,
+  });
 }
 
 export function handleDashboardTaskDetailBack(
@@ -232,14 +315,18 @@ function CenterCameraTabButton({
   accessibilityState,
   onLongPress,
   onPress,
-  children,
+  icon,
   style,
-}: BottomTabBarButtonProps) {
+}: BottomTabBarButtonProps & { icon: React.ReactNode }) {
   const isFocused = accessibilityState?.selected === true;
   const tabButtonStyle = style as StyleProp<ViewStyle>;
 
   return (
-    <View pointerEvents="box-none" style={styles.centerCameraTabButtonSlot}>
+    <View
+      pointerEvents="box-none"
+      style={styles.centerCameraTabButtonSlot}
+      testID="root-tab__camera_slot"
+    >
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
@@ -247,14 +334,19 @@ function CenterCameraTabButton({
         onLongPress={onLongPress}
         onPress={onPress}
         testID="root-tab__camera_button"
-        style={({ pressed }) => [
+        style={[
           tabButtonStyle,
           styles.centerCameraTabButton,
           isFocused ? styles.centerCameraTabButtonFocused : null,
-          pressed ? styles.centerCameraTabButtonPressed : null,
         ]}
       >
-        {children}
+        <View
+          pointerEvents="none"
+          style={styles.centerCameraTabIconSurface}
+          testID="root-tab__camera_icon_surface"
+        >
+          {icon}
+        </View>
       </Pressable>
     </View>
   );
@@ -352,38 +444,22 @@ function DashboardMainScreen({
         )
       }
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent?.() as
-          | BottomTabNavigationProp<RootTabParamList>
-          | undefined;
-        if (parentNav) {
-          // Navigate to CreateTask tab with clearForm flag
-          // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("Camera", {
-            screen: "CreateTaskMain",
-            params: {
-              parentTaskId: undefined,
-              parentSubTaskId: undefined,
-              editTaskId: undefined,
-              actionType: undefined,
-              clearForm: true, // Flag to clear form when "Create New Task" is pressed
-              _timestamp: Date.now(), // Force navigation by adding unique param
-            }
-          });
-        }
+        navigateToRootTabScreen(navigation, "Camera", {
+          screen: "CreateTaskMain",
+          params: {
+            parentTaskId: undefined,
+            parentSubTaskId: undefined,
+            editTaskId: undefined,
+            actionType: undefined,
+            clearForm: true, // Flag to clear form when "Create New Task" is pressed
+            _timestamp: Date.now(), // Force navigation by adding unique param
+          },
+        });
       }}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
+      onNavigateToDeveloperSettings={() =>
+        navigateToRootProfile(navigation, "DeveloperSettings")
       }
-      onNavigateToDeveloperSettings={() => {
-        const parentNav = navigation.getParent?.() as
-          | BottomTabNavigationProp<RootTabParamList>
-          | undefined;
-        if (parentNav) {
-          parentNav.navigate("Profile", { screen: "DeveloperSettings" });
-        }
-      }}
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => 
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId })
       }
@@ -403,11 +479,7 @@ function ProjectPickerScreenWrapper({
     <ProjectPickerScreen
       onNavigateBack={() => navigation.goBack()}
       allowBack={allowBack}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigation.navigate("ProjectPicker", { allowBack });
       }}
@@ -442,11 +514,7 @@ function TaskDetailFromDashboardWrapper({
       onNavigateToRejectTask={(taskId, subTaskId) => {
         navigation.navigate("RejectTask", { taskId, subTaskId });
       }}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -533,43 +601,27 @@ function ProjectsTasksListScreen({
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent?.() as
-          | BottomTabNavigationProp<RootTabParamList>
-          | undefined;
-        if (parentNav) {
-          // Navigate to CreateTask tab with clearForm flag
-          // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("Camera", {
-            screen: "CreateTaskMain",
-            params: {
-              parentTaskId: undefined,
-              parentSubTaskId: undefined,
-              editTaskId: undefined,
-              actionType: undefined,
-              clearForm: true, // Flag to clear form when "Create New Task" is pressed
-              _timestamp: Date.now(), // Force navigation by adding unique param
-            }
-          });
-        }
+        navigateToRootTabScreen(navigation, "Camera", {
+          screen: "CreateTaskMain",
+          params: {
+            parentTaskId: undefined,
+            parentSubTaskId: undefined,
+            editTaskId: undefined,
+            actionType: undefined,
+            clearForm: true, // Flag to clear form when "Create New Task" is pressed
+            _timestamp: Date.now(), // Force navigation by adding unique param
+          },
+        });
       }}
       onNavigateBack={() =>
         (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
           "Activity",
         )
       }
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
+      onNavigateToDeveloperSettings={() =>
+        navigateToRootProfile(navigation, "DeveloperSettings")
       }
-      onNavigateToDeveloperSettings={() => {
-        const parentNav = navigation.getParent?.() as
-          | BottomTabNavigationProp<RootTabParamList>
-          | undefined;
-        if (parentNav) {
-          parentNav.navigate("Profile", { screen: "DeveloperSettings" });
-        }
-      }}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -604,11 +656,7 @@ function TaskDetailScreenWrapper({
       onNavigateToRejectTask={(taskId, subTaskId) => {
         navigation.navigate("RejectTask", { taskId, subTaskId });
       }}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -921,11 +969,7 @@ function CreateTaskScreenWrapper({
           uploadedPhotoUrls: undefined,
         });
       }}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -950,11 +994,7 @@ function UpdateProgressScreenWrapper({
     <UpdateProgressScreen 
       uploadedPhotoUrls={uploadedPhotoUrls}
       selectedPhotos={selectedPhotos}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -969,11 +1009,7 @@ type AddCommentScreenWrapperProps =
 function AddCommentScreenWrapper({ navigation }: AddCommentScreenWrapperProps) {
   return (
     <AddCommentScreen 
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -988,11 +1024,7 @@ type RejectTaskScreenWrapperProps =
 function RejectTaskScreenWrapper({ navigation }: RejectTaskScreenWrapperProps) {
   return (
     <RejectTaskScreen 
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -1009,11 +1041,7 @@ function ReassignTaskScreenWrapper({
 }: ReassignTaskScreenWrapperProps) {
   return (
     <ReassignTaskScreen 
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -1042,24 +1070,17 @@ function ProfileMainScreen({
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
       onNavigateToCreateTask={() => {
-        const parentNav = navigation.getParent?.() as
-          | BottomTabNavigationProp<RootTabParamList>
-          | undefined;
-        if (parentNav) {
-          // Navigate to CreateTask tab with clearForm flag
-          // Use a unique timestamp to force navigation even if already on the tab
-          parentNav.navigate("Camera", {
-            screen: "CreateTaskMain",
-            params: {
-              parentTaskId: undefined,
-              parentSubTaskId: undefined,
-              editTaskId: undefined,
-              actionType: undefined,
-              clearForm: true, // Flag to clear form when "Create New Task" is pressed
-              _timestamp: Date.now(), // Force navigation by adding unique param
-            }
-          });
-        }
+        navigateToRootTabScreen(navigation, "Camera", {
+          screen: "CreateTaskMain",
+          params: {
+            parentTaskId: undefined,
+            parentSubTaskId: undefined,
+            editTaskId: undefined,
+            actionType: undefined,
+            clearForm: true, // Flag to clear form when "Create New Task" is pressed
+            _timestamp: Date.now(), // Force navigation by adding unique param
+          },
+        });
       }}
       onNavigateToDeveloperSettings={() => navigation.navigate("DeveloperSettings")}
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
@@ -1262,11 +1283,7 @@ function CreateTaskMainScreen({
       }}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
@@ -1301,11 +1318,7 @@ function AdminDashboardMainScreen({
     <AdminDashboardScreen
       onNavigateToProjects={() => navigation.navigate("ProjectsList")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
-      onNavigateToProfile={() =>
-        (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
-          "Profile",
-        )
-      }
+      onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToDevAdmin={() => navigation.navigate("DevAdmin")}
     />
   );
@@ -1394,6 +1407,15 @@ function UserManagementMainScreen({
   );
 }
 
+function AppRootStack() {
+  return (
+    <RootStackNavigator.Navigator screenOptions={{ headerShown: false }}>
+      <RootStackNavigator.Screen name="MainTabs" component={MainTabs} />
+      <RootStackNavigator.Screen name="Profile" component={ProfileStack} />
+    </RootStackNavigator.Navigator>
+  );
+}
+
 // Main Tab Navigator
 function MainTabs() {
   const { user } = useAuthStore();
@@ -1410,21 +1432,27 @@ function MainTabs() {
         tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#6b7280",
         tabBarStyle: {
-          height: 72,
+          height: 76,
           overflow: "visible",
-          paddingTop: 10,
-          paddingBottom: 8,
+          paddingTop: 8,
+          paddingBottom: 10,
           borderTopColor: "#e5e7eb",
           backgroundColor: "#ffffff",
+        },
+        tabBarItemStyle: {
+          alignItems: "center",
+          justifyContent: "center",
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "500",
           textAlign: "center",
+          marginTop: 2,
         },
         tabBarIconStyle: {
           justifyContent: "center",
           alignItems: "center",
+          marginBottom: 2,
         },
       }}
     >
@@ -1458,13 +1486,38 @@ function MainTabs() {
         <Tab.Screen
           name="Camera"
           component={CreateTaskStack}
+          listeners={({ navigation }) => ({
+            tabPress: (event) => {
+              const taskDetailCameraParams = resolveTaskDetailCameraTabParams(
+                navigation.getState() as Parameters<
+                  typeof resolveTaskDetailCameraTabParams
+                >[0],
+              );
+
+              if (!taskDetailCameraParams) {
+                return;
+              }
+
+              event.preventDefault();
+              navigation.navigate("Camera", taskDetailCameraParams);
+            },
+          })}
           options={{
             tabBarLabel: "Camera",
             tabBarActiveTintColor: "#ffffff",
             tabBarInactiveTintColor: "#ffffff",
-            tabBarButton: (props) => <CenterCameraTabButton {...props} />,
-            tabBarIcon: ({ color }) => (
-              <Ionicons name="camera" size={28} color={color} />
+            tabBarButton: (props) => (
+              <CenterCameraTabButton
+                {...props}
+                icon={
+                  <Ionicons
+                    testID="root-tab__camera_icon"
+                    name="camera"
+                    size={28}
+                    color="#ffffff"
+                  />
+                }
+              />
             ),
           }}
         />
@@ -1481,24 +1534,6 @@ function MainTabs() {
           }}
         />
       )}
-      {!isAdmin(user) && (
-        <Tab.Screen
-          name="Profile"
-          component={ProfileStack}
-          options={{
-            tabBarButton: () => null,
-          }}
-        />
-      )}
-      {isAdmin(user) ? (
-        <Tab.Screen
-          name="Profile"
-          component={ProfileStack}
-          options={{
-            tabBarButton: () => null,
-          }}
-        />
-      ) : null}
     </Tab.Navigator>
   );
 }
@@ -1565,7 +1600,7 @@ export default function AppNavigator() {
         <DataRefreshManager />
         <NetworkSyncManager />
         <RealtimeSyncManager />
-        <MainTabs />
+        <AppRootStack />
       </NavigationContainer>
     </WorkspaceBootstrapGate>
   );
@@ -1586,29 +1621,32 @@ const styles = StyleSheet.create({
   },
   centerCameraTabButtonSlot: {
     alignItems: "center",
-    justifyContent: "flex-start",
+    flex: 1,
+    justifyContent: "center",
   },
   centerCameraTabButton: {
     alignItems: "center",
-    backgroundColor: "#b91c1c",
+    alignSelf: "center",
+    backgroundColor: "#dc2626",
     borderColor: "#ffffff",
-    borderRadius: 36,
+    borderRadius: 32,
     borderWidth: 4,
     elevation: 8,
-    height: 72,
+    height: 64,
     justifyContent: "center",
-    minWidth: 72,
+    minWidth: 64,
     shadowColor: "#7f1d1d",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
     shadowRadius: 14,
-    top: -18,
-    width: 72,
+    top: -16,
+    width: 64,
   },
   centerCameraTabButtonFocused: {
-    backgroundColor: "#991b1b",
+    backgroundColor: "#b91c1c",
   },
-  centerCameraTabButtonPressed: {
-    transform: [{ scale: 0.97 }],
+  centerCameraTabIconSurface: {
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

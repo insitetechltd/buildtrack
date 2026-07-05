@@ -28,12 +28,14 @@ export default function TaskDetailEvidenceStrip({ model }: TaskDetailEvidenceStr
       </View>
 
       {model.latestPhotoUrls.length > 0 ? (
-        <View className="mt-4 flex-row gap-3">
+        <View testID="task-detail__evidence_thumbnails" className="mt-4 flex-row gap-3">
           {model.latestPhotoUrls.slice(0, 3).map((photoUrl, index) => (
             <Image
               key={`${model.id}-photo-${index}`}
+              testID={`task-detail__evidence_thumbnail_${index}`}
               source={{ uri: photoUrl }}
-              className="h-24 flex-1 rounded-2xl bg-slate-100"
+              resizeMode="cover"
+              className="h-24 w-24 rounded-2xl bg-slate-100"
             />
           ))}
         </View>

@@ -471,6 +471,88 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
+  it("builds thread rows with a dedicated progress label from the activity completion percentage", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.activityThread[0]).toMatchObject({
+      timestampLabel: "Oct 10, 2026, 2:45 PM",
+      actorLabel: "User user-2",
+      progressLabel: "100%",
+    });
+  });
+
+  it("falls back to the task completion percentage when an activity does not include one", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1", "user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Install the final light fixtures in the lobby.",
+          attachments: [
+            "https://example.com/task-attachment-1.jpg",
+          ],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "activity-1",
+              taskId: "task-parent",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampLatest,
+              data: {
+                description: "Installed conduit and verified the wiring path.",
+                photos: ["https://example.com/progress-photo-1.jpg"],
+                status: "in_progress",
+              },
+              description: "Installed conduit and verified the wiring path.",
+              status: "in_progress",
+              createdAt: activityTimestampLatest,
+            },
+          ],
+          completionPercentage: 50,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.activityThread[0]).toMatchObject({
+      actorLabel: "User user-1",
+      progressLabel: "50%",
+    });
+  });
+
   it("surfaces latest photo evidence in the redesigned evidence summary", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({

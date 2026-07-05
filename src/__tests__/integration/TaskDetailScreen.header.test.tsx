@@ -305,6 +305,7 @@ describe("TaskDetailScreen header regression", () => {
             actorLabel: "Sam",
             eventLabel: "Submitted for review",
             timestampLabel: "Jul 2, 10:00 AM",
+            progressLabel: "100%",
             density: "standard",
             structuralState: "ready",
             detailLabel: "Marked 100% complete",
@@ -320,7 +321,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByText("Work thread")).toBeTruthy();
   });
 
-  it("renders the pinned active-entry stage together with the activity thread", () => {
+  it("renders the activity thread without the pinned active-entry stage", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         activeStage: {
@@ -340,6 +341,7 @@ describe("TaskDetailScreen header regression", () => {
             actorLabel: "Sam",
             eventLabel: "Submitted task for review",
             timestampLabel: "Jul 5, 09:30",
+            progressLabel: "100%",
             detailLabel: "Marked 100% complete",
             photoUrls: [],
             density: "standard",
@@ -350,6 +352,7 @@ describe("TaskDetailScreen header regression", () => {
             actorLabel: "Casey",
             eventLabel: "Accepted the task",
             timestampLabel: "Jul 4, 08:15",
+            progressLabel: "0%",
             detailLabel: "Started the ceiling replacement work.",
             photoUrls: [],
             density: "standard",
@@ -361,15 +364,18 @@ describe("TaskDetailScreen header regression", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-    const activeStage = screen.getByTestId("task-detail__active_entry_stage");
     const activityThread = screen.getByTestId("task-detail__activity_thread");
 
-    expect(activeStage).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(activityThread).toBeTruthy();
     expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
     expect(within(activityThread).getByText("Work thread")).toBeTruthy();
-    expect(within(activityThread).getByText("Submitted task for review")).toBeTruthy();
-    expect(screen.getByText("No photos for this update")).toBeTruthy();
+    expect(within(activityThread).getByText("Marked 100% complete")).toBeTruthy();
+    expect(within(activityThread).getByText("Jul 5, 09:30")).toBeTruthy();
+    expect(within(activityThread).getByText("Sam")).toBeTruthy();
+    expect(within(activityThread).getByText("100%")).toBeTruthy();
+    expect(screen.queryByText("No photos for this update")).toBeNull();
+    expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
   });
 
   it("keeps task-detail actions inline with no promoted primary action bar", () => {

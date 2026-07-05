@@ -1,10 +1,10 @@
-# Task Detail Active-Link Refinement Implementation Plan
+# Task Detail Thread-Only Correction Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Refine Task Detail so the hero no longer shows `Next step`, delegation lives inside the hero, and the pinned active-entry stage becomes both media-first and dynamically driven by work-thread scroll position.
+**Goal:** Replace the separate evidence/delegation surfaces with a thread-only Task Detail layout and fix the photo-update form so every new photo update starts clean after submit.
 
-**Architecture:** Reuse the current Task Detail redesign and apply a focused follow-up correction. The implementation will move delegation into the hero contract and component, remove the old hero guidance block, simplify the pinned stage so it does not repeat a large text summary, then replace the current static top-entry ownership with real scroll-driven active-entry resolution sourced from measured thread row positions.
+**Architecture:** Keep the existing Task Detail hero, camera routing, and action hierarchy, but remove the pinned evidence section and lower delegation card from the screen. Push all update storytelling into `TaskActivityTimeline`, extend the thread row contract with a dedicated progress label for rail metadata, and reset both navigator-held draft photo payloads and `CreateTaskScreen` local state after a successful photo update.
 
 **Tech Stack:** Expo 54, React Native, React Navigation, TypeScript, Zustand, Jest, React Native Testing Library
 
@@ -15,288 +15,112 @@
 ### Core files to modify
 
 - `src/ui/contracts/viewAdapters.ts`
-  Add hero delegation fields and keep the active-stage/thread contracts aligned with scroll-driven ownership.
+  Add a dedicated progress label to `TaskDetailActivityThreadRow` so the thread rail can render Date, user, % without deriving `%` from free-form event text.
 
 - `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
-  Stop producing hero `nextStepLabel`, move delegation data into the hero model, and keep active-stage seed data available for runtime scroll ownership.
-
-- `src/components/taskDetail/TaskDetailHero.tsx`
-  Remove the `Next step` block and render delegation in its place inside the hero.
-
-- `src/components/taskDetail/taskDetailActiveStage.ts`
-  Expand the helper so it can resolve the currently focused thread entry from measured row positions plus scroll offset.
-
-- `src/components/taskDetail/TaskDetailEvidenceStrip.tsx`
-  Remove the large `Active update` text treatment and keep the pinned stage media-first across photo, no-photo, and PDF modes.
+  Populate the new thread-row progress label from activity/task data and keep delegation in the hero while the lower delegation summary remains available only until the screen stops rendering it.
 
 - `src/components/taskDetail/TaskActivityTimeline.tsx`
-  Measure thread rows, report their positions upward, and expose a stable focus-line callback for the screen.
+  Replace the current evidence-style card layout with Option B: rail metadata row ordered Date, user, %, large lead photo, compact thumbnail strip, and comment-only body.
 
 - `src/screens/TaskDetailScreen.tsx`
-  Track scroll position, compute the active entry dynamically, feed the pinned stage from that active entry, and keep the hero scrollable above the sticky stage.
+  Remove `TaskDetailEvidenceStrip`, remove `TaskDetailDelegationCard`, remove the sticky evidence region and scroll-driven active-stage state, and make the work thread the only update surface below the hero.
 
-### Tests to modify or add
+- `src/navigation/AppNavigator.tsx`
+  Ensure the create/update wrapper fully clears persisted selected-photo/uploaded-photo state after successful submit.
 
-- `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
-- `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
-- `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
-- `src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts`
+- `src/screens/CreateTaskScreen.tsx`
+  Reset update form local state after successful submit and when route-provided photos have already been consumed, so reopening photo update starts from a fresh draft.
+
+### Tests to modify
+
 - `src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx`
+- `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
+- `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 - `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
+- `src/__tests__/integration/CreateTaskScreen.test.tsx`
 
 ### Docs to update after implementation
 
 - `docs/superpowers/specs/2026-07-05-task-detail-correction-design.md`
 - `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
 
-## Task 1: Move delegation into the hero and remove `Next step`
+## Task 1: Extend the thread-row contract for rail metadata
 
 **Files:**
 - Modify: `src/ui/contracts/viewAdapters.ts`
 - Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
-- Modify: `src/components/taskDetail/TaskDetailHero.tsx`
 - Modify: `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
-- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 
-- [ ] **Step 1: Write the failing tests**
-
-```ts
-it("does not produce nextStepLabel for the task-detail hero", () => {
-  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-parent" }));
-
-  expect(result.current.output.taskHero.nextStepLabel).toBeUndefined();
-});
-```
+- [ ] **Step 1: Write the failing test**
 
 ```ts
-it("surfaces delegation inside the task-detail hero model", () => {
+it("builds thread rows with a dedicated progress label for rail metadata", () => {
   const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-parent" }));
 
-  expect(result.current.output.taskHero).toMatchObject({
-    assignedByLabel: expect.any(String),
-    assignedToLabel: expect.any(String),
+  expect(result.current.output.activityThread[0]).toMatchObject({
+    timestampLabel: expect.any(String),
+    actorLabel: expect.any(String),
+    progressLabel: "40%",
   });
-});
-```
-
-```tsx
-it("renders delegation in the hero and no longer renders the Next step block", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-
-  expect(screen.queryByText("Next step")).toBeNull();
-  expect(screen.getByTestId("task-detail__hero_delegation")).toBeTruthy();
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
 
-Expected: FAIL because the hero still exposes `nextStepLabel` and does not yet render delegation inside the hero.
+Expected: FAIL because `TaskDetailActivityThreadRow` does not yet expose `progressLabel`.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
 // src/ui/contracts/viewAdapters.ts
-export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
-  title: string;
-  statusLabel: string;
-  projectLabel: string;
-  completionLabel: string;
-  dueDateLabel?: string;
-  nextStepLabel?: undefined;
-  assignedByLabel?: string;
-  assignedToLabel?: string;
-  primaryOwnerLabel?: string;
-  isCritical?: boolean;
-  criticalLabel?: string;
+export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
+  id: string;
+  actorLabel: string;
+  eventLabel: string;
+  timestampLabel: string;
+  progressLabel: string;
+  detailLabel?: string;
+  photoUrls: string[];
+  statusLabel?: string;
 }
 ```
 
 ```ts
 // src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-taskHero: {
-  ...existingHero,
-  nextStepLabel: undefined,
-  assignedByLabel: delegationSummary.assignedByLabel,
-  assignedToLabel: delegationSummary.assignedToLabel,
-  primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
-}
-```
-
-```tsx
-// src/components/taskDetail/TaskDetailHero.tsx
-<View testID="task-detail__hero_delegation" className="mt-5 rounded-2xl bg-white/10 px-4 py-3">
-  <Text className="text-xs font-semibold uppercase tracking-[1.2px] text-slate-300">
-    Delegation
-  </Text>
-  <Text className="mt-1 text-sm text-white">
-    {model.assignedByLabel} → {model.assignedToLabel}
-  </Text>
-</View>
+const activityThread: TaskDetailActivityThreadRow[] = orderedActivities.map((activity) => ({
+  id: activity.id,
+  density: "standard",
+  structuralState: "stale",
+  actorLabel: getUserById(activity.userId)?.name || "Unknown User",
+  eventLabel: buildTaskDetailEventLabel(activity),
+  timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+  progressLabel:
+    activity.completionPercentage !== undefined
+      ? `${activity.completionPercentage}%`
+      : `${task.completionPercentage}%`,
+  detailLabel: buildTaskDetailEventDetail(activity),
+  photoUrls: collectActivityPhotoUrls(activity),
+  statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
+}));
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskDetailHero.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx
-git commit -m "fix(ux): move delegation into task detail hero"
+git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts
+git commit -m "fix(ux): add task detail thread progress rail label"
 ```
 
-## Task 2: Make the pinned active-entry stage media-first
-
-**Files:**
-- Modify: `src/components/taskDetail/TaskDetailEvidenceStrip.tsx`
-- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
-
-- [ ] **Step 1: Write the failing tests**
-
-```tsx
-it("does not render the large Active update text block inside the pinned stage", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-
-  expect(screen.queryByText("Active update")).toBeNull();
-});
-```
-
-```tsx
-it("keeps the pinned stage media-first in photo mode", () => {
-  const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-
-  expect(screen.getByTestId("task-detail__active_stage_photo_featured")).toBeTruthy();
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
-
-Expected: FAIL because the current pinned stage still renders the `Active update` label and supporting text block.
-
-- [ ] **Step 3: Write minimal implementation**
-
-```tsx
-// src/components/taskDetail/TaskDetailEvidenceStrip.tsx
-return (
-  <View testID={testID} className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-    {model.stageMode === "photo" ? (
-      <Image
-        testID="task-detail__active_stage_photo_featured"
-        source={{ uri: model.photos[model.activePhotoIndex ?? 0] }}
-        resizeMode="cover"
-        className="h-52 w-full rounded-[28px] bg-slate-100"
-      />
-    ) : null}
-    {/* keep no-photo and pdf states concise, without the large Active update block */}
-  </View>
-);
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
-
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/components/taskDetail/TaskDetailEvidenceStrip.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx
-git commit -m "fix(ux): simplify task detail active stage"
-```
-
-## Task 3: Make active-entry resolution truly scroll-driven
-
-**Files:**
-- Modify: `src/components/taskDetail/taskDetailActiveStage.ts`
-- Modify: `src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts`
-
-- [ ] **Step 1: Write the failing tests**
-
-```ts
-it("resolves the active entry from measured row positions and scroll offset", () => {
-  const result = resolveActiveStageEntry({
-    entries: [
-      { id: "entry-1", top: 0, height: 140 },
-      { id: "entry-2", top: 164, height: 140 },
-    ],
-    focusY: 180,
-    scrollY: 40,
-  });
-
-  expect(result?.id).toBe("entry-2");
-});
-```
-
-```ts
-it("keeps the previous entry active until the next row crosses the focus line", () => {
-  const result = resolveActiveStageEntry({
-    entries: [
-      { id: "entry-1", top: 0, height: 140 },
-      { id: "entry-2", top: 164, height: 140 },
-    ],
-    focusY: 120,
-    scrollY: 10,
-  });
-
-  expect(result?.id).toBe("entry-1");
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx jest src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts --runInBand`
-
-Expected: FAIL because the helper currently only resolves by static array index rather than measured scroll geometry.
-
-- [ ] **Step 3: Write minimal implementation**
-
-```ts
-// src/components/taskDetail/taskDetailActiveStage.ts
-export interface ActiveStageMeasuredEntry {
-  id: string;
-  top: number;
-  height: number;
-}
-
-export function resolveActiveStageEntry<T extends ActiveStageMeasuredEntry>({
-  entries,
-  focusY,
-  scrollY,
-}: {
-  entries: T[];
-  focusY: number;
-  scrollY: number;
-}): T | undefined {
-  const focusLine = scrollY + focusY;
-
-  return [...entries]
-    .sort((left, right) => left.top - right.top)
-    .find((entry) => entry.top <= focusLine && entry.top + entry.height > focusLine)
-    ?? [...entries].sort((left, right) => left.top - right.top)[0];
-}
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `npx jest src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts --runInBand`
-
-Expected: PASS
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/components/taskDetail/taskDetailActiveStage.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts
-git commit -m "fix(ux): resolve active task detail entry from scroll geometry"
-```
-
-## Task 4: Measure thread rows and report active entry changes upward
+## Task 2: Redesign the work thread to Option B
 
 **Files:**
 - Modify: `src/components/taskDetail/TaskActivityTimeline.tsx`
@@ -305,28 +129,58 @@ git commit -m "fix(ux): resolve active task detail entry from scroll geometry"
 - [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("reports measured thread rows for active-entry resolution", () => {
-  const onVisibleEntryChange = jest.fn();
+it("renders rail metadata in the order date, user, then progress", () => {
   const screen = render(
     <TaskActivityTimeline
-      thread={threadRows}
-      onVisibleEntryChange={onVisibleEntryChange}
-      activeEntryId="entry-1"
+      thread={[
+        {
+          id: "activity-1",
+          actorLabel: "Tristan",
+          eventLabel: "Updated progress to 40%",
+          timestampLabel: "Jul 5, 09:30",
+          progressLabel: "40%",
+          detailLabel: "Waiting on supplier confirmation.",
+          photoUrls: [],
+          density: "standard",
+          structuralState: "ready",
+        },
+      ]}
     />,
   );
 
-  expect(screen.getByTestId("task-activity-timeline__entry-entry-1")).toBeTruthy();
+  const metadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-1");
+  expect(metadata.props.children).toEqual(["Jul 5, 09:30", "Tristan", "40%"]);
 });
 ```
 
 ```tsx
-it("marks the active row selected when activeEntryId changes", () => {
+it("renders one large lead photo plus a compact thumbnail strip for remaining photos", () => {
   const screen = render(
-    <TaskActivityTimeline thread={threadRows} activeEntryId="entry-2" />,
+    <TaskActivityTimeline
+      thread={[
+        {
+          id: "activity-1",
+          actorLabel: "Tristan",
+          eventLabel: "Updated progress to 40%",
+          timestampLabel: "Jul 5, 09:30",
+          progressLabel: "40%",
+          detailLabel: "Waiting on supplier confirmation.",
+          photoUrls: [
+            "https://example.com/photo-1.jpg",
+            "https://example.com/photo-2.jpg",
+            "https://example.com/photo-3.jpg",
+          ],
+          density: "standard",
+          structuralState: "ready",
+        },
+      ]}
+    />,
   );
 
-  expect(screen.getByTestId("task-activity-timeline__entry-entry-2").props.accessibilityState)
-    .toEqual(expect.objectContaining({ selected: true }));
+  expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
+  expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-1")).toBeTruthy();
+  expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-2")).toBeTruthy();
+  expect(screen.queryByText("Photo evidence")).toBeNull();
 });
 ```
 
@@ -334,27 +188,64 @@ it("marks the active row selected when activeEntryId changes", () => {
 
 Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
 
-Expected: FAIL once the test expects row measurement/reporting hooks that are not yet present.
+Expected: FAIL because the timeline still renders event headline text, evidence labels, and square photo grids.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/components/taskDetail/TaskActivityTimeline.tsx
-interface TaskActivityTimelineProps {
-  ...
-  onEntryLayout?: (entryId: string, top: number, height: number) => void;
-}
+<View className="mr-3 items-start">
+  <View className="mt-1 h-3 w-3 rounded-full border-2 border-blue-100 bg-blue-600" />
+  {!isLastActivity ? <View className="mt-2 w-0.5 flex-1 bg-blue-100" /> : null}
+</View>
 
-<View
-  key={activity.id}
-  testID={`task-activity-timeline__entry-${activity.id}`}
-  onLayout={(event) => {
-    const { y, height } = event.nativeEvent.layout;
-    onEntryLayout?.(activity.id, y, height);
-  }}
-  accessibilityState={{ selected: isActiveEntry }}
-  className="flex-row"
->
+<View className="flex-1">
+  <View
+    testID={`task-activity-timeline__rail-metadata-${activity.id}`}
+    className="mb-2 flex-row items-center gap-2"
+  >
+    <Text className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+      {activity.timestampLabel}
+    </Text>
+    <Text className="text-xs text-slate-300">•</Text>
+    <Text className="text-sm font-medium text-slate-700">{activity.actorLabel}</Text>
+    <Text className="text-xs text-slate-300">•</Text>
+    <Text className="text-sm font-semibold text-slate-900">{activity.progressLabel}</Text>
+  </View>
+
+  <View className="rounded-3xl border border-slate-200 bg-slate-50 p-3">
+    {activity.photoUrls.length > 0 ? (
+      <View className="mb-3">
+        <Image
+          testID={`task-activity-timeline__lead-photo-${activity.id}`}
+          source={{ uri: activity.photoUrls[0] }}
+          className="h-44 w-full rounded-3xl bg-slate-200"
+        />
+        {activity.photoUrls.length > 1 ? (
+          <View className="mt-2 flex-row gap-2">
+            {activity.photoUrls.slice(1).map((photoUri, photoIndex) => (
+              <Image
+                key={`${activity.id}-thumb-${photoIndex + 1}`}
+                testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
+                source={{ uri: photoUri }}
+                className="h-14 w-14 rounded-2xl bg-slate-200"
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
+    ) : null}
+
+    {activity.detailLabel ? (
+      <Text
+        testID="task-activity-timeline__detail-label"
+        className="text-sm leading-5 text-slate-600"
+      >
+        {activity.detailLabel}
+      </Text>
+    ) : null}
+  </View>
+</View>
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -367,98 +258,205 @@ Expected: PASS
 
 ```bash
 git add src/components/taskDetail/TaskActivityTimeline.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx
-git commit -m "fix(ux): report task thread row layout for active stage"
+git commit -m "fix(ux): redesign task detail thread entries"
 ```
 
-## Task 5: Wire scroll position to the pinned active-entry stage
+## Task 3: Remove the evidence section and lower delegation card from Task Detail
 
 **Files:**
 - Modify: `src/screens/TaskDetailScreen.tsx`
 - Modify: `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
+- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 - Modify: `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("keeps the hero scrollable while the active-entry stage remains sticky at index 1", () => {
+it("renders the hero directly above the work thread with no evidence region", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-  const scrollView = screen.getByTestId("task-detail__workthread_scroll");
 
-  expect(scrollView.props.stickyHeaderIndices).toEqual([1]);
   expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+  expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
+  expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
+  expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
 });
 ```
 
 ```tsx
-it("feeds the pinned stage from the currently active thread entry", () => {
+it("does not render the lower delegation card once delegation is in the hero", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-  expect(screen.getByTestId("task-detail__active_entry_stage")).toBeTruthy();
-  expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+  expect(screen.queryByText("Delegation details")).toBeNull();
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
 
-Expected: FAIL because the screen still derives active entry from static top row ownership rather than measured scroll position.
+Expected: FAIL because the screen still renders the pinned evidence region and `TaskDetailDelegationCard`.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/screens/TaskDetailScreen.tsx
-const [scrollY, setScrollY] = React.useState(0);
-const [entryLayouts, setEntryLayouts] = React.useState<Record<string, { top: number; height: number }>>({});
-
-const resolvedActiveEntryId = resolveActiveStageEntry({
-  entries: Object.entries(entryLayouts).map(([id, layout]) => ({ id, ...layout })),
-  focusY: 24,
-  scrollY,
-})?.id ?? initialActiveEntryId;
-
 <ScrollView
   testID="task-detail__workthread_scroll"
-  stickyHeaderIndices={[1]}
-  onScroll={(event) => setScrollY(event.nativeEvent.contentOffset.y)}
-  scrollEventThrottle={16}
+  className="flex-1"
+  contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }}
+  scrollEnabled
+  showsVerticalScrollIndicator={false}
 >
-```
+  <TaskDetailHero model={output.taskHero} />
 
-```tsx
-<TaskActivityTimeline
-  testID="task-detail__activity_thread"
-  thread={output.activityThread}
-  activeEntryId={resolvedActiveEntryId}
-  onEntryLayout={(entryId, top, height) => {
-    setEntryLayouts((current) => ({ ...current, [entryId]: { top, height } }));
-  }}
-/>
+  {output.banners.map((banner) => (
+    <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+  ))}
+
+  <TaskActivityTimeline
+    testID="task-detail__activity_thread"
+    thread={output.activityThread}
+  />
+
+  <TaskDetailSubtasksSection
+    model={output.subtaskSummary}
+    childTasks={output.childTasks}
+    onNavigateToTaskDetail={props.onNavigateToTaskDetail}
+  />
+</ScrollView>
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/screens/TaskDetailScreen.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx
-git commit -m "fix(ux): drive task detail active stage from thread scroll"
+git add src/screens/TaskDetailScreen.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx
+git commit -m "fix(ux): remove task detail evidence and lower delegation sections"
 ```
 
-## Task 6: Validate, relaunch, document, and close the follow-up correction
+## Task 4: Reset the photo-update form after successful submit
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-07-05-task-detail-correction-design.md`
+- Modify: `src/navigation/AppNavigator.tsx`
+- Modify: `src/screens/CreateTaskScreen.tsx`
+- Modify: `src/__tests__/integration/CreateTaskScreen.test.tsx`
+
+- [ ] **Step 1: Write the failing tests**
+
+```tsx
+it("clears selected photo draft state after a successful update submit", async () => {
+  const onNavigateBack = jest.fn();
+  const screen = render(
+    <NavigationContainer>
+      <CreateTaskScreen
+        onNavigateBack={onNavigateBack}
+        editTaskId="task-1"
+        actionType="update"
+        selectedPhotos={[{ uri: "file:///photo-1.jpg", fileName: "photo-1.jpg", isAnnotated: false }]}
+      />
+    </NavigationContainer>,
+  );
+
+  fireEvent.changeText(screen.getByPlaceholderText("Describe your progress update..."), "Fresh update");
+  fireEvent.press(screen.getByText("Submit Update"));
+
+  await waitFor(() => expect(mockAddTaskUpdate).toHaveBeenCalled());
+  expect(onNavigateBack).toHaveBeenCalled();
+});
+```
+
+```tsx
+it("resets update form state when onClearDraftPayloads runs after submit", async () => {
+  const onClearDraftPayloads = jest.fn();
+  const screen = render(
+    <NavigationContainer>
+      <CreateTaskScreen
+        onNavigateBack={jest.fn()}
+        onClearDraftPayloads={onClearDraftPayloads}
+        editTaskId="task-1"
+        actionType="update"
+        selectedPhotos={[{ uri: "file:///photo-1.jpg", fileName: "photo-1.jpg", isAnnotated: false }]}
+      />
+    </NavigationContainer>,
+  );
+
+  fireEvent.changeText(screen.getByPlaceholderText("Describe your progress update..."), "Fresh update");
+  fireEvent.press(screen.getByText("Submit Update"));
+
+  await waitFor(() => expect(onClearDraftPayloads).toHaveBeenCalled());
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx jest src/__tests__/integration/CreateTaskScreen.test.tsx --runInBand`
+
+Expected: FAIL because local update state and wrapper-held draft payloads persist after successful submit.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```tsx
+// src/screens/CreateTaskScreen.tsx
+const resetUpdateDraft = React.useCallback(() => {
+  setDraftSelectedPhotos([]);
+  setFailedUploadsInSession([]);
+  setUpdateForm({
+    description: "",
+    photos: [],
+    completionPercentage: targetTask?.completionPercentage || 0,
+    status: (targetTask?.status || "in_progress") as TaskStatus,
+  });
+}, [targetTask]);
+```
+
+```tsx
+// src/screens/CreateTaskScreen.tsx
+await addTaskUpdate(task.id, updatePayload);
+resetUpdateDraft();
+onClearDraftPayloads?.();
+await fetchTaskById(task.id);
+onNavigateBack();
+```
+
+```tsx
+// src/navigation/AppNavigator.tsx
+onClearDraftPayloads={() => {
+  setSelectedPhotosState(undefined);
+  setUploadedPhotoUrlsState(undefined);
+  navigation.setParams({
+    selectedPhotos: undefined,
+    uploadedPhotoUrls: undefined,
+  });
+}}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx jest src/__tests__/integration/CreateTaskScreen.test.tsx --runInBand`
+
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/navigation/AppNavigator.tsx src/screens/CreateTaskScreen.tsx src/__tests__/integration/CreateTaskScreen.test.tsx
+git commit -m "fix(ux): reset task photo update drafts after submit"
+```
+
+## Task 5: Validate, relaunch, and update execution notes
+
+**Files:**
 - Modify: `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
 - Modify: `docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md`
 
 - [ ] **Step 1: Run the focused validation suite**
 
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand && npx tsc --noEmit`
+Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx --runInBand && npx tsc --noEmit`
 
 Expected: PASS
 
@@ -472,33 +470,34 @@ Run: `xcrun simctl terminate booted com.buildtrack.app.local || true && xcrun si
 
 Expected: app relaunch succeeds on the booted simulator.
 
-- [ ] **Step 3: Update the execution notes**
+- [ ] **Step 3: Update the execution ledger**
 
 ```md
-- removed the hero `Next step` block entirely
-- moved delegation into the hero in that space
-- removed the large `Active update` text treatment from the pinned stage
-- made the pinned active-entry stage change dynamically with thread scroll position
-- preserved photo / no-photo / PDF stage modes while strengthening stage-thread linkage
+- removed the separate evidence section from Task Detail
+- removed the lower delegation card so delegation only lives in the hero
+- redesigned the work thread to Option B with rail metadata ordered Date, user, %
+- moved photo storytelling fully into the thread with one large lead photo and compact thumbnails
+- fixed the photo-update flow so a new photo update starts from a clean form after submit
 ```
 
 - [ ] **Step 4: Create the checkpoint commit**
 
 ```bash
-git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailEvidenceStrip.tsx src/components/taskDetail/taskDetailActiveStage.ts src/components/taskDetail/TaskActivityTimeline.tsx src/screens/TaskDetailScreen.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx docs/superpowers/specs/2026-07-05-task-detail-correction-design.md docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md
-git commit -m "fix(ux): link task detail stage to thread scroll"
+git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskActivityTimeline.tsx src/screens/TaskDetailScreen.tsx src/navigation/AppNavigator.tsx src/screens/CreateTaskScreen.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md
+git commit -m "fix(ux): simplify task detail into thread-only updates"
 ```
 
 ## Spec Coverage Check
 
-- remove hero `Next step`: Task 1
-- move delegation into hero: Task 1
-- keep hero compact + critical metadata: Task 1
-- remove the large active-stage text treatment: Task 2
-- dynamic active-entry stage ownership from thread scroll: Tasks 3, 4, and 5
-- preserve newest-first thread: Tasks 4 and 5
-- preserve photo / no-photo / PDF stage modes: Tasks 2 and 5
-- keep no primary footer CTA + inline actions: Task 5 regression coverage and Task 6 validation
+- remove lower delegation section: Task 3
+- remove evidence section: Task 3
+- keep delegation only in hero: Task 3 regression coverage
+- thread-only update model: Tasks 2 and 3
+- Option B metadata order Date, user, %: Tasks 1 and 2
+- large lead photo + compact thumbnail strip: Task 2
+- comment inside thread card body: Task 2
+- photo-update form reset after submit: Task 4
+- preserve existing camera routing and inline actions: Task 3 regression coverage and Task 5 validation
 
 ## Placeholder Scan
 
@@ -510,7 +509,6 @@ git commit -m "fix(ux): link task detail stage to thread scroll"
 
 ## Type Consistency Check
 
-- `TaskDetailHeroModel` carries delegation fields used by `TaskDetailHero`
-- `resolveActiveStageEntry` accepts measured `top`/`height` geometry used by `TaskDetailScreen`
-- `TaskActivityTimeline` reports row layout through `onEntryLayout`
-- `TaskDetailScreen` consumes `activeEntryId` and row geometry from the same helper types
+- `TaskDetailActivityThreadRow` gains `progressLabel`, and both the adapter and timeline tests use the same field name
+- `TaskActivityTimeline` remains the only thread renderer and keeps `detailLabel` for comment content
+- `CreateTaskScreen` owns `resetUpdateDraft`, while `AppNavigator` continues clearing route-held draft payloads through `onClearDraftPayloads`

@@ -1622,6 +1622,7 @@ function TaskActionScreen({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
   const [draftSelectedPhotos, setDraftSelectedPhotos] = useState<SelectedPhoto[]>(selectedPhotos || []);
+  const [shouldIgnoreIncomingDraftPayloads, setShouldIgnoreIncomingDraftPayloads] = useState(false);
 
   // Comment form state
   const [commentForm, setCommentForm] = useState({
@@ -1634,6 +1635,17 @@ function TaskActionScreen({
     [draftSelectedPhotos],
   );
   const hasMountedDraftHydrationRef = useRef(false);
+  const resetUpdateDraft = useCallback(() => {
+    setShouldIgnoreIncomingDraftPayloads(true);
+    setDraftSelectedPhotos([]);
+    setFailedUploadsInSession([]);
+    setUpdateForm({
+      description: "",
+      photos: [],
+      completionPercentage: targetTask?.completionPercentage || 0,
+      status: (targetTask?.status || "in_progress") as TaskStatus,
+    });
+  }, [targetTask]);
   const hasDirtyUpdateDraft =
     updateForm.description.trim().length > 0 ||
     updateForm.photos.length > 0 ||
@@ -1663,8 +1675,26 @@ function TaskActionScreen({
   }, [taskId, updateTargetSubTaskId, fetchTaskById]);
 
   useEffect(() => {
+    if (
+      shouldIgnoreIncomingDraftPayloads &&
+      (!selectedPhotos || selectedPhotos.length === 0) &&
+      (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)
+    ) {
+      setShouldIgnoreIncomingDraftPayloads(false);
+    }
+  }, [
+    selectedPhotos,
+    shouldIgnoreIncomingDraftPayloads,
+    uploadedPhotoUrls,
+  ]);
+
+  useEffect(() => {
     if (!hasMountedDraftHydrationRef.current) {
       hasMountedDraftHydrationRef.current = true;
+      return;
+    }
+
+    if (shouldIgnoreIncomingDraftPayloads) {
       return;
     }
 
@@ -1689,9 +1719,13 @@ function TaskActionScreen({
       ...prev,
       photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
     }));
-  }, [actionType, selectedPhotoUris, uploadedPhotoUrls]);
+  }, [actionType, selectedPhotoUris, shouldIgnoreIncomingDraftPayloads, uploadedPhotoUrls]);
 
   useEffect(() => {
+    if (shouldIgnoreIncomingDraftPayloads) {
+      return;
+    }
+
     if (!selectedPhotos || selectedPhotos.length === 0) {
       return;
     }
@@ -1708,7 +1742,7 @@ function TaskActionScreen({
 
       return merged;
     });
-  }, [selectedPhotos]);
+  }, [selectedPhotos, shouldIgnoreIncomingDraftPayloads]);
 
   const handleAddPhotos = async () => {
     if (!user || !task || !targetTask) return;
@@ -1822,7 +1856,7 @@ function TaskActionScreen({
         await addTaskUpdate(task.id, updatePayload);
       }
 
-      setDraftSelectedPhotos([]);
+      resetUpdateDraft();
       onClearDraftPayloads?.();
       await fetchTaskById(task.id);
 
@@ -1853,14 +1887,7 @@ function TaskActionScreen({
           text: "Discard",
           style: "destructive",
           onPress: () => {
-            setDraftSelectedPhotos([]);
-            setUpdateForm((prev) => ({
-              ...prev,
-              description: "",
-              photos: [],
-              completionPercentage: targetTask?.completionPercentage || 0,
-              status: (targetTask?.status || "in_progress") as TaskStatus,
-            }));
+            resetUpdateDraft();
             onClearDraftPayloads?.();
             onNavigateBack();
           },

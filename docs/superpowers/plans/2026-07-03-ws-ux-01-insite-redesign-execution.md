@@ -286,6 +286,15 @@ Closure evidence:
   - follow-up correction validation passed:
     - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
     - `npx tsc --noEmit`
+- thread-only correction applied on 2026-07-05:
+  - removed the separate evidence section from Task Detail entirely
+  - removed the lower delegation card so delegation only remains in the hero
+  - redesigned the work thread to Option B with rail metadata ordered Date, user, %
+  - moved photo storytelling fully into the thread with one large lead photo and compact thumbnails
+  - fixed the photo-update flow so successful submits clear local and route-held draft payloads before the next update
+  - thread-only correction validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

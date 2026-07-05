@@ -552,6 +552,10 @@ export function useTaskDetailViewAdapter({
     actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
     eventLabel: buildTaskDetailEventLabel(activity),
     timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+    progressLabel:
+      activity.completionPercentage !== undefined
+        ? `${activity.completionPercentage}%`
+        : `${task.completionPercentage}%`,
     detailLabel: buildTaskDetailEventDetail(activity),
     photoUrls: collectActivityPhotoUrls(activity),
     statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,

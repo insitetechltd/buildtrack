@@ -3,12 +3,19 @@ import { fireEvent, render } from "@testing-library/react-native";
 
 import TaskActivityTimeline from "../TaskActivityTimeline";
 
+function getRailMetadataValues(node: { props: { children: React.ReactNode } }) {
+  return React.Children.toArray(node.props.children).map((child) =>
+    React.isValidElement<{ children?: React.ReactNode }>(child) ? child.props.children : child,
+  );
+}
+
 const threadRows = [
   {
     id: "activity-newer",
     actorLabel: "Alex",
     eventLabel: "Submitted for review",
     timestampLabel: "Jul 5, 10:00",
+    progressLabel: "100%",
     detailLabel: "Marked 100% complete",
     photoUrls: [],
     density: "standard" as const,
@@ -19,6 +26,7 @@ const threadRows = [
     actorLabel: "Sam",
     eventLabel: "Accepted the task",
     timestampLabel: "Jul 4, 08:00",
+    progressLabel: "10%",
     detailLabel: "Started site setup",
     photoUrls: [],
     density: "standard" as const,
@@ -27,17 +35,18 @@ const threadRows = [
 ];
 
 describe("TaskActivityTimeline", () => {
-  it("renders work-thread rows with clear event, actor, timestamp, and detail text", () => {
+  it("renders rail metadata in the order date, user, then progress", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
             id: "activity-1",
             actorLabel: "Tristan",
-            eventLabel: "Submitted task for review",
+            eventLabel: "Updated progress to 40%",
             timestampLabel: "Jul 5, 09:30",
-            detailLabel: "Marked 100% complete",
-            photoUrls: ["https://example.com/photo-1.jpg"],
+            progressLabel: "40%",
+            detailLabel: "Waiting on supplier confirmation.",
+            photoUrls: [],
             density: "standard",
             structuralState: "ready",
           },
@@ -46,26 +55,32 @@ describe("TaskActivityTimeline", () => {
     );
 
     expect(screen.getByText("Work thread")).toBeTruthy();
-    expect(screen.getByText("Submitted task for review")).toBeTruthy();
-    expect(screen.getByText("Tristan")).toBeTruthy();
-    expect(screen.getByText("Jul 5, 09:30")).toBeTruthy();
-    expect(screen.getByText("Marked 100% complete")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__event-label")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__actor-label")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__timestamp")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__event-label")).toBeNull();
+
+    const metadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-1");
+    const metadataValues = getRailMetadataValues(metadata);
+
+    expect(metadataValues).toEqual(["Jul 5, 09:30", "Tristan", "40%"]);
     expect(screen.getByTestId("task-activity-timeline__detail-label")).toBeTruthy();
+    expect(screen.getByText("Waiting on supplier confirmation.")).toBeTruthy();
   });
 
-  it("renders photo evidence rows when thread photos are present", () => {
+  it("renders one large lead photo plus a compact thumbnail strip for remaining photos", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
             id: "activity-1",
             actorLabel: "Tristan",
-            eventLabel: "Submitted task for review",
+            eventLabel: "Updated progress to 40%",
             timestampLabel: "Jul 5, 09:30",
-            photoUrls: ["https://example.com/photo-1.jpg", "https://example.com/photo-2.jpg"],
+            progressLabel: "40%",
+            detailLabel: "Waiting on supplier confirmation.",
+            photoUrls: [
+              "https://example.com/photo-1.jpg",
+              "https://example.com/photo-2.jpg",
+              "https://example.com/photo-3.jpg",
+            ],
             density: "standard",
             structuralState: "ready",
           },
@@ -73,14 +88,14 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    expect(screen.getByTestId("task-activity-timeline__photo-evidence")).toBeTruthy();
-    expect(screen.getByText("Photo evidence")).toBeTruthy();
-    expect(screen.getByText("2 photos")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo-activity-1-0")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo-activity-1-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-2")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo-evidence")).toBeNull();
+    expect(screen.queryByText("Photo evidence")).toBeNull();
   });
 
-  it("keeps legacy activities compatible and sorts them newest first", () => {
+  it("keeps legacy activities compatible, sorts them newest first, and derives progress labels", () => {
     const screen = render(
       <TaskActivityTimeline
         activities={[
@@ -98,6 +113,7 @@ describe("TaskActivityTimeline", () => {
             isLoading: false,
             isStale: true,
             isDisabled: false,
+            completionPercentage: 10,
             photos: [],
           },
           {
@@ -114,19 +130,27 @@ describe("TaskActivityTimeline", () => {
             isLoading: false,
             isStale: true,
             isDisabled: false,
+            completionPercentage: 100,
             photos: [],
           },
         ]}
       />,
     );
 
-    const eventLabels = screen.getAllByTestId("task-activity-timeline__event-label");
-    const actorLabels = screen.getAllByTestId("task-activity-timeline__actor-label");
+    const newerMetadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-newer");
+    const olderMetadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-older");
 
-    expect(eventLabels[0].props.children).toBe("Submitted for review");
-    expect(eventLabels[1].props.children).toBe("Accepted the task");
-    expect(actorLabels[0].props.children).toBe("Alex");
-    expect(actorLabels[1].props.children).toBe("Sam");
+    expect(screen.queryByTestId("task-activity-timeline__event-label")).toBeNull();
+    expect(getRailMetadataValues(newerMetadata)).toEqual([
+      expect.stringMatching(/2026/),
+      "Alex",
+      "100%",
+    ]);
+    expect(getRailMetadataValues(olderMetadata)).toEqual([
+      expect.stringMatching(/2026/),
+      "Sam",
+      "10%",
+    ]);
   });
 
   it("renders entry rows with stable testIDs", () => {

@@ -957,6 +957,12 @@ function CreateTaskScreenWrapper({
     uploadedPhotoUrls,
     selectedPhotos,
   } = route.params || {};
+  const clearDraftPayloads = React.useCallback(() => {
+    navigation.setParams({
+      selectedPhotos: undefined,
+      uploadedPhotoUrls: undefined,
+    });
+  }, [navigation]);
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
@@ -969,12 +975,7 @@ function CreateTaskScreenWrapper({
       updateTargetSubTaskId={updateTargetSubTaskId}
       uploadedPhotoUrls={uploadedPhotoUrls as string[] | undefined}
       selectedPhotos={selectedPhotos}
-      onClearDraftPayloads={() => {
-        navigation.setParams({
-          selectedPhotos: undefined,
-          uploadedPhotoUrls: undefined,
-        });
-      }}
+      onClearDraftPayloads={clearDraftPayloads}
       onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
@@ -1231,6 +1232,14 @@ function CreateTaskMainScreen({
   // Use state value or params value (state takes precedence)
   const selectedPhotos = selectedPhotosState || selectedPhotosFromParams;
   const uploadedPhotoUrls = uploadedPhotoUrlsState || uploadedPhotoUrlsFromParams;
+  const clearDraftPayloads = React.useCallback(() => {
+    setSelectedPhotosState(undefined);
+    setUploadedPhotoUrlsState(undefined);
+    navigation.setParams({
+      selectedPhotos: undefined,
+      uploadedPhotoUrls: undefined,
+    });
+  }, [navigation]);
 
   // Also listen for navigation focus to catch params that arrive late (already handled above)
   
@@ -1279,14 +1288,7 @@ function CreateTaskMainScreen({
       updateTargetSubTaskId={updateTargetSubTaskId}
       selectedPhotos={selectedPhotos}
       uploadedPhotoUrls={uploadedPhotoUrls}
-      onClearDraftPayloads={() => {
-        setSelectedPhotosState(undefined);
-        setUploadedPhotoUrlsState(undefined);
-        navigation.setParams({
-          selectedPhotos: undefined,
-          uploadedPhotoUrls: undefined,
-        });
-      }}
+      onClearDraftPayloads={clearDraftPayloads}
       clearForm={clearForm}
       clearFormTimestamp={clearFormTimestamp}
       onNavigateToProfile={() => navigateToRootProfile(navigation)}

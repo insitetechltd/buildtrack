@@ -284,6 +284,7 @@ export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
   actorLabel: string;
   eventLabel: string;
   timestampLabel: string;
+  progressLabel: string;
   detailLabel?: string;
   photoUrls: string[];
   statusLabel?: string;

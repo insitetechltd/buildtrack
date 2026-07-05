@@ -452,6 +452,94 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
+  it('resets the local update draft after a successful selected-photo submit', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const onNavigateBack = jest.fn();
+    const onClearDraftPayloads = jest.fn();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: true,
+      file: {
+        public_url: 'https://cdn.example.com/progress-photo.jpg',
+      },
+    });
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          onClearDraftPayloads={onClearDraftPayloads}
+          editTaskId="task-1"
+          actionType="update"
+          selectedPhotos={[
+            {
+              uri: 'file:///progress-photo.jpg',
+              fileName: 'progress-photo.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    fireEvent.changeText(screen.getByPlaceholderText('Describe progress'), 'Installed wall framing');
+    fireEvent(screen.getByTestId('Slider'), 'onValueChange', 55);
+    fireEvent.press(screen.getByText('Submit Update'));
+
+    await waitFor(() => {
+      expect(mockAddTaskUpdate).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          description: 'Installed wall framing',
+          completionPercentage: 55,
+          photos: ['https://cdn.example.com/progress-photo.jpg'],
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(onClearDraftPayloads).toHaveBeenCalledTimes(1);
+      expect(onNavigateBack).toHaveBeenCalledTimes(1);
+      expect(screen.getByPlaceholderText('Describe progress').props.value).toBe('');
+    });
+
+    expect(screen.getByText('25%')).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId('app-screen-header__back'));
+
+    expect(onNavigateBack).toHaveBeenCalledTimes(2);
+    alertSpy.mockRestore();
+  });
+
   it('allows submitting an update with uploaded photos and no description', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
@@ -508,6 +596,75 @@ describe('CreateTaskScreen Integration', () => {
         }),
       );
     });
+  });
+
+  it('clears draft payload callbacks after a successful uploaded-photo update submit', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const onNavigateBack = jest.fn();
+    const onClearDraftPayloads = jest.fn();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          onClearDraftPayloads={onClearDraftPayloads}
+          editTaskId="task-1"
+          actionType="update"
+          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
+        />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(screen.getByText('Submit Update'));
+
+    await waitFor(() => {
+      expect(mockAddTaskUpdate).toHaveBeenCalledWith(
+        'task-1',
+        expect.objectContaining({
+          description: '',
+          photos: ['https://cdn.example.com/photo-update.jpg'],
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(onClearDraftPayloads).toHaveBeenCalledTimes(1);
+      expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.press(screen.getByTestId('app-screen-header__back'));
+
+    expect(onNavigateBack).toHaveBeenCalledTimes(2);
+    alertSpy.mockRestore();
   });
 
   it('still blocks empty updates when there is no description and no photo', async () => {

@@ -133,6 +133,7 @@ describe("TaskDetailScreen acceptance UI", () => {
         actorLabel: "Sam",
         eventLabel: "Submitted task for review",
         timestampLabel: "Jul 5, 09:30",
+        progressLabel: "100%",
         detailLabel: "Marked 100% complete",
         photoUrls: ["https://example.com/activity-photo.jpg"],
         density: "standard",
@@ -209,12 +210,13 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders task detail as a work-thread surface with hero, delegation, active stage, activity, and subtasks", () => {
+  it("renders task detail as a work-thread surface with hero, thread, and subtasks but no evidence or lower delegation regions", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__delegation_summary")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__active_entry_stage")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
+    expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
+    expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__subtasks")).toBeTruthy();
   });
@@ -261,16 +263,18 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByTestId("task-detail__hero_delegation")).toBeTruthy();
   });
 
-  it("does not render the large Active update text block inside the pinned stage", () => {
+  it("does not render the active update stage surface anywhere on the screen", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.queryByText("Active update")).toBeNull();
+    expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
   });
 
-  it("keeps the pinned stage media-first in photo mode", () => {
+  it("keeps photo storytelling inside the work thread instead of a pinned evidence surface", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__active_stage_photo_featured")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__active_stage_photo_featured")).toBeNull();
   });
 
   it("does not render the top project-label string in the compact hero", () => {

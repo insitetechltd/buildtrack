@@ -295,6 +295,15 @@ Closure evidence:
   - thread-only correction validation passed:
     - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/CreateTaskScreen.test.tsx --runInBand`
     - `npx tsc --noEmit`
+- sticky-hero simplification applied on 2026-07-05:
+  - made the hero the only sticky element at the top of Task Detail
+  - added one scrolling merged info card for description, delegation, and compact details
+  - removed the separate subtasks card from the screen-level layout
+  - merged subtask activity into the same newest-first work thread as parent-task updates
+  - kept lead photos fully visible in-thread and added tap-to-open full-photo viewing from the work thread
+  - sticky-hero simplification validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

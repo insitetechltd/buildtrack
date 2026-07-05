@@ -25,6 +25,8 @@ jest.mock("@/utils/useTranslation", () => ({
 describe("useTaskDetailViewAdapter", () => {
   const mockUpdateTask = jest.fn();
   const dueDate = "2026-10-10T08:00:00.000Z";
+  const mergedInfoCardDueDate = "2026-10-12T08:00:00.000Z";
+  const childActivityTimestamp = "2026-10-10T16:15:00.000Z";
   const activityTimestampOlder = "2026-10-09T09:30:00.000Z";
   const activityTimestampLatest = "2026-10-10T14:45:00.000Z";
 
@@ -52,6 +54,14 @@ describe("useTaskDetailViewAdapter", () => {
           return "Oct 10, 2026";
         }
 
+        if (date === mergedInfoCardDueDate) {
+          return "Oct 12, 2026";
+        }
+
+        if (date === childActivityTimestamp) {
+          return "Oct 8, 2026";
+        }
+
         if (date === activityTimestampOlder) {
           return "Oct 9, 2026";
         }
@@ -63,6 +73,10 @@ describe("useTaskDetailViewAdapter", () => {
         return "Oct 10, 2026";
       }),
       formatDateTime: jest.fn((date: string) => {
+        if (date === childActivityTimestamp) {
+          return "Oct 10, 2026, 4:15 PM";
+        }
+
         if (date === activityTimestampOlder) {
           return "Oct 9, 2026, 9:30 AM";
         }
@@ -160,7 +174,7 @@ describe("useTaskDetailViewAdapter", () => {
         },
         {
           id: "task-child-completed",
-          title: "Completed Child Task",
+          title: "Install ceiling grid",
           projectId: "project-1",
           parentTaskId: "task-parent",
           assignedTo: ["user-1"],
@@ -172,7 +186,23 @@ describe("useTaskDetailViewAdapter", () => {
           description: "",
           attachments: [],
           updates: [],
-          activities: [],
+          activities: [
+            {
+              id: "activity-child-1",
+              taskId: "task-child-completed",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: childActivityTimestamp,
+              data: {
+                description: "Installed the suspended ceiling grid.",
+                completionPercentage: 80,
+              },
+              description: "Installed the suspended ceiling grid.",
+              completionPercentage: 80,
+              status: "completed",
+              createdAt: childActivityTimestamp,
+            },
+          ],
           completionPercentage: 80,
           createdAt: new Date().toISOString(),
         },
@@ -374,6 +404,62 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.taskHero.nextStepLabel).toBeUndefined();
   });
 
+  it("builds one merged info card that combines description, delegation, and compact details", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-2", "user-3"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "user-1",
+          dueDate: mergedInfoCardDueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Confirm supplier lead times before final delivery.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 50,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.infoCard).toMatchObject({
+      descriptionLabel: "Confirm supplier lead times before final delivery.",
+      assignedByLabel: "User user-1",
+      assignedToLabel: "User user-2, User user-3",
+      primaryOwnerLabel: "User user-2",
+      detailRows: expect.arrayContaining([
+        expect.objectContaining({ label: "Due", value: "Oct 12, 2026" }),
+        expect.objectContaining({ label: "Category", value: "general" }),
+      ]),
+    });
+  });
+
   it("surfaces delegation inside the task-detail hero model", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
@@ -453,7 +539,14 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.activityThread[0]).toMatchObject({
+    const submittedForReviewRow = result.current.output.activityThread.find(
+      (activity) => activity.id === "activity-2",
+    );
+    const progressUpdateRow = result.current.output.activityThread.find(
+      (activity) => activity.id === "activity-1",
+    );
+
+    expect(submittedForReviewRow).toMatchObject({
       actorLabel: "User user-2",
       eventLabel: "Submitted task for review",
       timestampLabel: "Oct 10, 2026, 2:45 PM",
@@ -461,7 +554,7 @@ describe("useTaskDetailViewAdapter", () => {
       statusLabel: "Submitted For Review",
     });
 
-    expect(result.current.output.activityThread[1]).toMatchObject({
+    expect(progressUpdateRow).toMatchObject({
       actorLabel: "User user-1",
       eventLabel: "Updated progress to 40%",
       timestampLabel: "Oct 9, 2026, 9:30 AM",
@@ -471,7 +564,25 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
-  it("builds thread rows with a dedicated progress label from the activity completion percentage", () => {
+  it("marks child-task activity rows with lightweight subtask context inside the main activity thread", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.activityThread).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "activity-child-1",
+          subtaskTitleLabel: "Install ceiling grid",
+          subtaskBadgeLabel: "Subtask",
+        }),
+      ]),
+    );
+  });
+
+  it("merges parent-task and child-task activities into one newest-first activity thread", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
@@ -479,6 +590,30 @@ describe("useTaskDetailViewAdapter", () => {
     );
 
     expect(result.current.output.activityThread[0]).toMatchObject({
+      id: "activity-child-1",
+      timestampLabel: "Oct 10, 2026, 4:15 PM",
+      subtaskTitleLabel: "Install ceiling grid",
+      subtaskBadgeLabel: "Subtask",
+    });
+    expect(result.current.output.activityThread.map((activity) => activity.id)).toEqual([
+      "activity-child-1",
+      "activity-2",
+      "activity-1",
+    ]);
+  });
+
+  it("builds thread rows with a dedicated progress label from the activity completion percentage", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    const submittedForReviewRow = result.current.output.activityThread.find(
+      (activity) => activity.id === "activity-2",
+    );
+
+    expect(submittedForReviewRow).toMatchObject({
       timestampLabel: "Oct 10, 2026, 2:45 PM",
       actorLabel: "User user-2",
       progressLabel: "100%",

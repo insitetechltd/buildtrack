@@ -11,7 +11,9 @@ jest.mock("../../ui/viewAdapters/useTaskDetailViewAdapter", () => ({
 jest.mock("../../components/primitives/container/ContainerCard", () => ({
   __esModule: true,
   default: function MockContainerCard() {
-    return null;
+    const ReactNative = require("react-native");
+    const MockView = ReactNative.View;
+    return <MockView testID="task-detail__detail_section_card" />;
   },
 }));
 
@@ -85,6 +87,22 @@ describe("TaskDetailScreen sticky layout", () => {
       primaryOwnerLabel: "Sam",
       teamSummaryLabel: "1 assignee",
     },
+    infoCard: {
+      id: "task-info-card",
+      density: "standard",
+      structuralState: "ready",
+      descriptionLabel: "Confirm supplier lead times before final delivery.",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Sam",
+      primaryOwnerLabel: "Sam",
+      detailRows: [
+        {
+          id: "row-due",
+          label: "Due",
+          value: "Jul 10, 2026",
+        },
+      ],
+    },
     activeStage: {
       id: "active-stage",
       density: "standard",
@@ -145,26 +163,59 @@ describe("TaskDetailScreen sticky layout", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders the hero directly above the work thread with no evidence region", () => {
+  it("keeps only the hero sticky while the info card scrolls with the page", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
 
     expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(workThreadScroll).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(workThreadScroll.props.scrollEnabled).not.toBe(false);
-    expect(workThreadScroll.props.stickyHeaderIndices).toBeUndefined();
+    expect(workThreadScroll.props.stickyHeaderIndices).toEqual([0]);
     expect(workThreadScroll.props.contentContainerStyle).toEqual(
       expect.objectContaining({ flexGrow: 1 }),
     );
   });
 
-  it("does not render the lower delegation card once delegation is in the hero", () => {
+  it("does not render separate subtasks or detail cards once info is merged into the new layout", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        subtaskSummary: {
+          id: "subtask-summary",
+          density: "standard",
+          structuralState: "ready",
+          title: "Subtasks",
+          totalCount: 2,
+        },
+        detailSections: [
+          {
+            id: "task-details",
+            title: "Details",
+            rows: [
+              {
+                id: "detail-row-1",
+                label: "Due",
+                value: "Jul 10, 2026",
+              },
+            ],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
+    expect(screen.getByText("Description")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
     expect(screen.queryByText("Delegation details")).toBeNull();
+    expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
+    expect(screen.queryByText("Subtasks")).toBeNull();
+    expect(screen.queryByTestId("task-detail__detail_section_card")).toBeNull();
   });
 });

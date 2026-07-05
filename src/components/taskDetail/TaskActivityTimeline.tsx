@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, Modal as RNModal, Pressable, Text, View } from "react-native";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import type {
@@ -15,6 +15,8 @@ interface TaskActivityTimelineProps {
   onVisibleEntryChange?: (entryId: string) => void;
   testID?: string;
 }
+
+const Modal = RNModal || View;
 
 function normalizeActivityRow(
   activity: TaskDetailActivityModel | TaskDetailActivityThreadRow,
@@ -57,6 +59,7 @@ export default function TaskActivityTimeline({
   onVisibleEntryChange,
   testID,
 }: TaskActivityTimelineProps) {
+  const [selectedPhotoUri, setSelectedPhotoUri] = React.useState<string | undefined>();
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -142,14 +145,38 @@ export default function TaskActivityTimeline({
                 </View>
 
                 <View className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
+                    <View className="mb-3 flex-row flex-wrap items-center gap-2">
+                      {activity.subtaskBadgeLabel ? (
+                        <View className="rounded-full bg-blue-50 px-2 py-1">
+                          <Text className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                            {activity.subtaskBadgeLabel}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {activity.subtaskTitleLabel ? (
+                        <Text className="text-sm font-medium text-slate-700">
+                          {activity.subtaskTitleLabel}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+
                   {activity.photoUrls.length > 0 ? (
                     <View className={activity.detailLabel ? "mb-3" : undefined}>
-                      <Image
-                        testID={`task-activity-timeline__lead-photo-${activity.id}`}
-                        accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                        source={{ uri: activity.photoUrls[0] }}
-                        className="h-44 w-full rounded-3xl bg-slate-200"
-                      />
+                      <Pressable
+                        testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
+                        accessibilityRole="button"
+                        onPress={() => setSelectedPhotoUri(activity.photoUrls[0])}
+                      >
+                        <Image
+                          testID={`task-activity-timeline__lead-photo-${activity.id}`}
+                          accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
+                          source={{ uri: activity.photoUrls[0] }}
+                          resizeMode="contain"
+                          className="h-44 w-full rounded-3xl bg-slate-200"
+                        />
+                      </Pressable>
 
                       {activity.photoUrls.length > 1 ? (
                         <View
@@ -157,13 +184,20 @@ export default function TaskActivityTimeline({
                           className="mt-2 flex-row flex-wrap gap-2"
                         >
                           {activity.photoUrls.slice(1).map((photoUri, photoIndex) => (
-                            <Image
+                            <Pressable
                               key={`${activity.id}-thumb-${photoIndex + 1}`}
-                              testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
-                              accessibilityLabel={`Thumbnail photo ${photoIndex + 2} for ${activity.eventLabel}`}
-                              source={{ uri: photoUri }}
-                              className="h-14 w-14 rounded-2xl bg-slate-200"
-                            />
+                              testID={`task-activity-timeline__thumb-photo-pressable-${activity.id}-${photoIndex + 1}`}
+                              accessibilityRole="button"
+                              onPress={() => setSelectedPhotoUri(photoUri)}
+                            >
+                              <Image
+                                testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
+                                accessibilityLabel={`Thumbnail photo ${photoIndex + 2} for ${activity.eventLabel}`}
+                                source={{ uri: photoUri }}
+                                resizeMode="cover"
+                                className="h-14 w-14 rounded-2xl bg-slate-200"
+                              />
+                            </Pressable>
                           ))}
                         </View>
                       ) : null}
@@ -184,6 +218,28 @@ export default function TaskActivityTimeline({
           );
         })}
       </View>
+
+      <Modal
+        visible={Boolean(selectedPhotoUri)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPhotoUri(undefined)}
+      >
+        <Pressable
+          testID="task-activity-timeline__photo_viewer"
+          className="flex-1 items-center justify-center bg-black/90 px-4"
+          onPress={() => setSelectedPhotoUri(undefined)}
+        >
+          {selectedPhotoUri ? (
+            <Image
+              testID="task-activity-timeline__photo_viewer_image"
+              source={{ uri: selectedPhotoUri }}
+              resizeMode="contain"
+              className="h-full w-full"
+            />
+          ) : null}
+        </Pressable>
+      </Modal>
     </View>
   );
 }

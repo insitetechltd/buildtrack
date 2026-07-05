@@ -22,7 +22,9 @@ jest.mock("@react-navigation/native", () => ({
 jest.mock("../../components/primitives/container/ContainerCard", () => ({
   __esModule: true,
   default: function MockContainerCard() {
-    return null;
+    const ReactNative = require("react-native");
+    const MockView = ReactNative.View;
+    return <MockView testID="task-detail__detail_section_card" />;
   },
 }));
 
@@ -101,6 +103,22 @@ describe("TaskDetailScreen header regression", () => {
       assignedToLabel: "Sam",
       primaryOwnerLabel: "Sam",
       teamSummaryLabel: "1 assignee",
+    },
+    infoCard: {
+      id: "task-info-card",
+      density: "standard",
+      structuralState: "ready",
+      descriptionLabel: "Confirm supplier lead times before final delivery.",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Sam",
+      primaryOwnerLabel: "Sam",
+      detailRows: [
+        {
+          id: "row-due",
+          label: "Due",
+          value: "Jul 10, 2026",
+        },
+      ],
     },
     activeStage: {
       id: "active-stage",
@@ -319,6 +337,58 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Work thread")).toBeTruthy();
+  });
+
+  it("renders the merged info card while keeping separate subtasks and detail cards out of the screen", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        activityThread: [
+          {
+            id: "activity-1",
+            actorLabel: "Sam",
+            eventLabel: "Submitted for review",
+            timestampLabel: "Jul 2, 10:00 AM",
+            progressLabel: "100%",
+            density: "standard",
+            structuralState: "ready",
+            detailLabel: "Marked 100% complete",
+            photoUrls: [],
+          },
+        ],
+        subtaskSummary: {
+          id: "subtask-summary",
+          density: "standard",
+          structuralState: "ready",
+          title: "Subtasks",
+          totalCount: 2,
+        },
+        detailSections: [
+          {
+            id: "task-details",
+            title: "Details",
+            rows: [
+              {
+                id: "detail-row-1",
+                label: "Due",
+                value: "Jul 10, 2026",
+              },
+            ],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
+    expect(screen.queryByText("Subtasks")).toBeNull();
+    expect(screen.queryByTestId("task-detail__detail_section_card")).toBeNull();
   });
 
   it("renders the activity thread without the pinned active-entry stage", () => {

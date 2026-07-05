@@ -261,6 +261,20 @@ export interface TaskDetailDelegationSummaryModel extends PrimitiveReadyItemBase
   teamSummaryLabel?: string;
 }
 
+export interface TaskDetailInfoCardRow {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
+  descriptionLabel?: string;
+  assignedByLabel?: string;
+  assignedToLabel?: string;
+  primaryOwnerLabel?: string;
+  detailRows: TaskDetailInfoCardRow[];
+}
+
 export interface TaskDetailEvidenceSummaryModel extends PrimitiveReadyItemBase {
   latestPhotoUrls: string[];
   totalPhotoCount: number;
@@ -288,6 +302,8 @@ export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
   detailLabel?: string;
   photoUrls: string[];
   statusLabel?: string;
+  subtaskBadgeLabel?: string;
+  subtaskTitleLabel?: string;
 }
 
 export interface TaskDetailSubtaskSummaryModel extends PrimitiveReadyItemBase {
@@ -361,6 +377,7 @@ export interface TaskDetailScreenViewAdapterOutput {
   header: TaskDetailHeaderModel;
   taskHero: TaskDetailHeroModel;
   delegationSummary: TaskDetailDelegationSummaryModel;
+  infoCard?: TaskDetailInfoCardModel;
   activeStage: TaskDetailActiveStageModel;
   evidenceSummary: TaskDetailEvidenceSummaryModel;
   activityThread: TaskDetailActivityThreadRow[];

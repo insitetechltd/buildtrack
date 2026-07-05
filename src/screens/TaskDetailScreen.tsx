@@ -12,15 +12,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
-import ContainerCard from "@/components/primitives/container/ContainerCard";
 import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
-import TaskDetailSubtasksSection from "@/components/taskDetail/TaskDetailSubtasksSection";
+import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
 import { cn } from "@/utils/cn";
-import {
-  mapBannerModelToBannerProps,
-  mapSectionModelToContainerProps,
-} from "@/ui/mappers/taskDetailMappers";
+import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
 
@@ -239,6 +235,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       <View className="flex-1">
         <ScrollView
           testID="task-detail__workthread_scroll"
+          stickyHeaderIndices={[0]}
           className="flex-1"
           contentContainerStyle={{
             paddingBottom: 32,
@@ -248,6 +245,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           showsVerticalScrollIndicator={false}
         >
           <TaskDetailHero model={output.taskHero} />
+
+          {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
 
           {/* Banners */}
           {output.banners.map(banner => (
@@ -293,22 +292,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             testID="task-detail__activity_thread"
             thread={output.activityThread}
           />
-
-          <TaskDetailSubtasksSection
-            model={output.subtaskSummary}
-            childTasks={output.childTasks}
-            onNavigateToTaskDetail={props.onNavigateToTaskDetail}
-          />
-
-          {output.detailSections.length > 0 ? (
-            <View className="px-4 mt-4">
-              {output.detailSections.map((section) => (
-                <View key={section.id} className="mb-4">
-                  <ContainerCard contract={mapSectionModelToContainerProps(section)} />
-                </View>
-              ))}
-            </View>
-          ) : null}
 
           {secondaryActions.length > 0 ? (
             <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">

@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
 import { Pressable, Text } from "react-native";
 
+import TaskDetailInfoCard from "../../components/taskDetail/TaskDetailInfoCard";
 import TaskDetailScreen from "../../screens/TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
 
@@ -115,6 +116,19 @@ describe("TaskDetailScreen acceptance UI", () => {
       primaryOwnerLabel: "Sam",
       teamSummaryLabel: "2 assignees",
     },
+    infoCard: {
+      id: "task-info-card",
+      density: "standard",
+      structuralState: "ready",
+      descriptionLabel: "Confirm supplier lead times before final delivery.",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Sam, Alex",
+      primaryOwnerLabel: "Sam",
+      detailRows: [
+        { id: "row-due", label: "Due", value: "Jul 10, 2026" },
+        { id: "row-category", label: "Category", value: "General" },
+      ],
+    },
     activeStage: {
       id: "active-stage",
       density: "standard",
@@ -135,7 +149,12 @@ describe("TaskDetailScreen acceptance UI", () => {
         timestampLabel: "Jul 5, 09:30",
         progressLabel: "100%",
         detailLabel: "Marked 100% complete",
-        photoUrls: ["https://example.com/activity-photo.jpg"],
+        photoUrls: [
+          "https://example.com/activity-photo.jpg",
+          "https://example.com/activity-photo-2.jpg",
+        ],
+        subtaskBadgeLabel: "Subtask",
+        subtaskTitleLabel: "Inspect ceiling grid",
         density: "standard",
         structuralState: "ready",
       },
@@ -210,30 +229,58 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders task detail as a work-thread surface with hero, thread, and subtasks but no evidence or lower delegation regions", () => {
+  it("renders one scrolling info card containing description, delegation, and compact details", () => {
+    const screen = render(
+      <TaskDetailInfoCard
+        model={{
+          id: "task-info-card",
+          density: "standard",
+          structuralState: "ready",
+          descriptionLabel: "Confirm supplier lead times before final delivery.",
+          assignedByLabel: "Casey",
+          assignedToLabel: "Sam, Alex",
+          primaryOwnerLabel: "Sam",
+          detailRows: [
+            { id: "row-due", label: "Due", value: "Jul 10, 2026" },
+            { id: "row-category", label: "Category", value: "Procurement" },
+          ],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByText("Delegation")).toBeTruthy();
+    expect(screen.getByText("Details")).toBeTruthy();
+    expect(screen.getByText("Confirm supplier lead times before final delivery.")).toBeTruthy();
+    expect(screen.getByText("Assigned by")).toBeTruthy();
+    expect(screen.getByText("Assigned to")).toBeTruthy();
+    expect(screen.getByText("Casey")).toBeTruthy();
+    expect(screen.getByText("Sam, Alex")).toBeTruthy();
+    expect(screen.getByText("Due")).toBeTruthy();
+    expect(screen.getByText("Jul 10, 2026")).toBeTruthy();
+  });
+
+  it("renders task detail as a work-thread surface with hero, info card, and unified thread but no evidence or separate subtasks card", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__subtasks")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
+    expect(screen.getByText("Subtask")).toBeTruthy();
+    expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
   });
 
-  it("keeps the subtask drill-in wired inside the redesigned layout", () => {
-    const onNavigateToTaskDetail = jest.fn();
-    const screen = render(
-      <TaskDetailScreen
-        taskId="task-1"
-        onNavigateBack={jest.fn()}
-        onNavigateToTaskDetail={onNavigateToTaskDetail}
-      />,
-    );
+  it("surfaces subtask context inside the unified thread entry", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    fireEvent.press(screen.getByText("Inspect ceiling grid"));
-
-    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("child-1");
+    expect(screen.getByText("Subtask")).toBeTruthy();
+    expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
+    expect(screen.getByText("Marked 100% complete")).toBeTruthy();
   });
 
   it("renders a small critical flag in the hero and no standalone critical section", () => {
@@ -275,6 +322,20 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__active_stage_photo_featured")).toBeNull();
+  });
+
+  it("renders subtask context in the work thread and opens the full-photo viewer on tap", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByText("Subtask")).toBeTruthy();
+    expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/activity-photo.jpg",
+    });
   });
 
   it("does not render the top project-label string in the compact hero", () => {

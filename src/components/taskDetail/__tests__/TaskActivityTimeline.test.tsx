@@ -65,22 +65,20 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByText("Waiting on supplier confirmation.")).toBeTruthy();
   });
 
-  it("renders one large lead photo plus a compact thumbnail strip for remaining photos", () => {
+  it("renders subtask updates as normal thread entries with lightweight subtask context", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
-            id: "activity-1",
+            id: "activity-2",
             actorLabel: "Tristan",
-            eventLabel: "Updated progress to 40%",
+            eventLabel: "Marked 40% complete",
             timestampLabel: "Jul 5, 09:30",
             progressLabel: "40%",
-            detailLabel: "Waiting on supplier confirmation.",
-            photoUrls: [
-              "https://example.com/photo-1.jpg",
-              "https://example.com/photo-2.jpg",
-              "https://example.com/photo-3.jpg",
-            ],
+            detailLabel: "Ceiling grid installed.",
+            photoUrls: [],
+            subtaskBadgeLabel: "Subtask",
+            subtaskTitleLabel: "Install ceiling grid",
             density: "standard",
             structuralState: "ready",
           },
@@ -88,11 +86,52 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-1-2")).toBeTruthy();
-    expect(screen.queryByTestId("task-activity-timeline__photo-evidence")).toBeNull();
-    expect(screen.queryByText("Photo evidence")).toBeNull();
+    expect(screen.getByText("Subtask")).toBeTruthy();
+    expect(screen.getByText("Install ceiling grid")).toBeTruthy();
+    expect(getRailMetadataValues(screen.getByTestId("task-activity-timeline__rail-metadata-activity-2"))).toEqual([
+      "Jul 5, 09:30",
+      "Tristan",
+      "40%",
+    ]);
+  });
+
+  it("shows the full lead photo preview and opens a full-photo viewer when the image is tapped", () => {
+    const screen = render(
+      <TaskActivityTimeline
+        thread={[
+          {
+            id: "activity-2",
+            actorLabel: "Tristan",
+            eventLabel: "Marked 40% complete",
+            timestampLabel: "Jul 5, 09:30",
+            progressLabel: "40%",
+            detailLabel: "Ceiling grid installed.",
+            photoUrls: [
+              "https://example.com/photo-1.jpg",
+              "https://example.com/photo-2.jpg",
+            ],
+            subtaskBadgeLabel: "Subtask",
+            subtaskTitleLabel: "Install ceiling grid",
+            density: "standard",
+            structuralState: "ready",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Subtask")).toBeTruthy();
+    expect(screen.getByText("Install ceiling grid")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.resizeMode).toBe(
+      "contain",
+    );
+    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-2-1")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-1.jpg",
+    });
   });
 
   it("keeps legacy activities compatible, sorts them newest first, and derives progress labels", () => {

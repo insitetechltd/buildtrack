@@ -16,6 +16,7 @@ import type {
   TaskDetailAssigneeModel,
   TaskDetailDelegationSummaryModel,
   TaskDetailEvidenceSummaryModel,
+  TaskDetailInfoCardModel,
   TasksScreenRowItem,
   TaskDetailActionItem,
   TaskDetailHeroModel,
@@ -342,6 +343,12 @@ export function useTaskDetailViewAdapter({
           assignedByLabel: '',
           assignedToLabel: '',
         },
+        infoCard: {
+          id: 'task-info-card',
+          density: 'standard',
+          structuralState: 'stale',
+          detailRows: [],
+        },
         activeStage: {
           id: 'task-active-stage',
           density: 'standard',
@@ -545,31 +552,6 @@ export function useTaskDetailViewAdapter({
     (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
   );
 
-  const activityThread: TaskDetailActivityThreadRow[] = orderedActivities.map((activity) => ({
-    id: activity.id,
-    density: 'standard',
-    structuralState: 'stale',
-    actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
-    eventLabel: buildTaskDetailEventLabel(activity),
-    timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
-    progressLabel:
-      activity.completionPercentage !== undefined
-        ? `${activity.completionPercentage}%`
-        : `${task.completionPercentage}%`,
-    detailLabel: buildTaskDetailEventDetail(activity),
-    photoUrls: collectActivityPhotoUrls(activity),
-    statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
-  }));
-
-  const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
-  const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);
-  const activeStage = buildTaskDetailActiveStageModel({
-    task,
-    orderedActivities,
-    dateFormatter,
-    getUserById: (userId) => (userId ? getUserById(userId) : undefined),
-  });
-
   const primaryOwner = task.primaryAssigneeId
     ? getUserById(task.primaryAssigneeId)
     : assignees[0];
@@ -583,6 +565,64 @@ export function useTaskDetailViewAdapter({
     primaryOwnerLabel: primaryOwner?.name,
     teamSummaryLabel: assignees.length > 1 ? `${assignees.length} assignees` : undefined,
   };
+
+  const detailRows = [
+    { id: 'row-due', label: t.taskDetail.due, value: dateFormatter.formatDateShort(task.dueDate) },
+    { id: 'row-category', label: 'Category', value: task.category || 'General' },
+  ];
+
+  const infoCard: TaskDetailInfoCardModel = {
+    id: 'task-info-card',
+    density: 'standard',
+    structuralState: 'stale',
+    descriptionLabel: task.description || '',
+    assignedByLabel: delegationSummary.assignedByLabel,
+    assignedToLabel: delegationSummary.assignedToLabel,
+    primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
+    detailRows,
+  };
+
+  const combinedActivities = [
+    ...(task.activities || []).map((activity) => ({
+      activity,
+      childTask: undefined as Task | undefined,
+    })),
+    ...childTasksData.flatMap((childTask) =>
+      (childTask.activities || []).map((activity) => ({
+        activity,
+        childTask,
+      })),
+    ),
+  ].sort(
+    (left, right) => new Date(right.activity.timestamp).getTime() - new Date(left.activity.timestamp).getTime(),
+  );
+
+  const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => ({
+    id: activity.id,
+    density: 'standard',
+    structuralState: 'stale',
+    actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
+    eventLabel: buildTaskDetailEventLabel(activity),
+    timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+    progressLabel:
+      activity.completionPercentage !== undefined
+        ? `${activity.completionPercentage}%`
+        : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
+    detailLabel: buildTaskDetailEventDetail(activity),
+    photoUrls: collectActivityPhotoUrls(activity),
+    statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
+    subtaskBadgeLabel: childTask ? 'Subtask' : undefined,
+    subtaskTitleLabel: childTask?.title,
+  }));
+
+  const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
+  const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);
+  const activeStage = buildTaskDetailActiveStageModel({
+    task,
+    orderedActivities,
+    dateFormatter,
+    getUserById: (userId) => (userId ? getUserById(userId) : undefined),
+  });
 
   const taskHero: TaskDetailHeroModel = {
     id: 'task-hero',
@@ -625,10 +665,7 @@ export function useTaskDetailViewAdapter({
       density: 'standard',
       structuralState: 'stale',
       title: 'Details',
-      rows: [
-        { id: 'row-due', label: t.taskDetail.due, value: dateFormatter.formatDateShort(task.dueDate) },
-        { id: 'row-category', label: 'Category', value: task.category || 'General' },
-      ],
+      rows: detailRows,
     },
     {
       id: 'section-description',
@@ -704,6 +741,7 @@ export function useTaskDetailViewAdapter({
       },
       taskHero,
       delegationSummary,
+      infoCard,
       activeStage,
       evidenceSummary,
       activityThread,

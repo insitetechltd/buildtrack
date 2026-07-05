@@ -10,7 +10,9 @@ Refine the current Task Detail redesign so it matches the intended compact, phot
 - no duplicate camera affordance in the top area
 - no oversized standalone critical treatment
 - no wasted hero space on low-value metadata
+- no redundant explanatory card inside the hero
 - a clearer active-entry stage above the work thread
+- a stronger visual linkage between the active-entry stage and the work thread
 - a safer model for text-only and document-bearing updates
 - tighter permission and back-navigation behavior
 
@@ -27,12 +29,14 @@ The approved direction is now:
 - back from the camera/update flow returns to Task Detail
 - compact hero with no project-label string above the title
 - status chip carries quick task-state context
+- no `Next step` card in the hero
+- delegation moves into the hero in place of the old `Next step` block
 - compact critical flag inside the hero/title area
 - visible inline secondary actions
 - creator-only visibility for `Edit task details`
 - newest-first work thread
 - pinned active-entry stage above the thread
-- top-edge trigger for determining the active entry
+- work-thread scroll position determines the active entry
 - photo, text-only, and PDF-bearing entries all render through the same active-entry stage model
 
 ## Design Decisions
@@ -66,6 +70,9 @@ Approved behavior:
 - remove the low-value project-label string above the title
 - let the task title become the first strong line in the hero
 - let the first status chip such as `In Progress` carry the quick state signal
+- remove the `Next step` card entirely
+- move delegation into the hero in place of the old `Next step` block
+- let the delegation block communicate ownership/assignment rather than duplicating workflow guidance
 - critical state is displayed as a small flag/badge inside the hero/title area
 - the flag is treated as metadata, not as a standalone section
 
@@ -73,6 +80,8 @@ Approved behavior:
 
 - the project-label string is taking space without earning enough visual value
 - the title should dominate more strongly
+- the status chip already carries enough quick state signal without an additional `Next step` card
+- delegation is more useful than workflow copy in the limited hero space
 - critical is important, but it is still metadata rather than a primary content block
 
 ### 3. Active-Entry Stage Behavior
@@ -84,10 +93,13 @@ It should behave as a **pinned active-entry stage**.
 Approved behavior:
 
 - the work thread remains vertically scrollable and newest-first
-- the top-most entry reaching the top edge of the thread region becomes the active entry
+- the active-entry stage is not a static latest-update card
+- the work-thread scroll position determines which entry is active
+- as thread entries move through the focus line during scrolling, the active-entry stage updates to match the currently focused entry
 - the pinned stage updates to display the active entry
 - the pinned stage does not control which thread entry is active
 - horizontal swipe inside the stage only changes photos belonging to the active entry
+- the hero remains separate from this interaction so the visual linkage is primarily between the active-entry stage and the work thread
 
 This means the interaction is:
 
@@ -99,6 +111,7 @@ This means the interaction is:
 - keeps the mental model clean
 - avoids disorienting bi-directional control between stage and thread
 - makes the pinned stage feel like a focused display rather than a controller
+- creates a more direct visual and conceptual relationship between the active-entry stage and the work thread itself
 
 ### 4. Entry Type Modes Inside the Active-Entry Stage
 
@@ -135,13 +148,15 @@ This rule is mandatory because otherwise a photo from another entry could be mis
 Approved thread behavior:
 
 - newest first
-- the active entry is determined by the top-edge trigger, not by center focus and not by tap-to-activate
+- the active entry is determined by the work-thread scroll position using a clear top-focus trigger
+- the active-entry stage should update dynamically as scrolling progresses
 
 #### Reasoning
 
 - the first thing the user sees should be the latest task state
 - the pinned stage should usually reflect the current/latest state first
 - top-edge activation is predictable and easy to understand
+- dynamic stage updates are required so the active-entry stage feels genuinely linked to the thread rather than statically summarizing it
 
 ### 6. Information Density Limits
 
@@ -160,16 +175,16 @@ Approved behavior:
 
 ### 7. Action Hierarchy
 
-The action hierarchy should remain:
+The action hierarchy should now be fully inline:
 
-- one primary action promoted
-- secondary actions visible inline lower in the screen
+- no promoted primary footer CTA
+- secondary actions remain visible inline lower in the screen
 
 Approved secondary-action behavior:
 
 - remove the visible `Progress update` button
 - for now, text-only progress updates should happen through comment
-- `Edit task details` is demoted into the visible secondary action group
+- `Edit task details` appears only as part of the visible inline secondary action group
 - `Edit task details` is only visible to the creator of the task
 - secondary actions remain visible rather than hidden in a sheet or overflow menu
 
@@ -177,6 +192,7 @@ Approved secondary-action behavior:
 
 - keeps actions discoverable
 - removes redundant progress affordances after camera becomes the photo-driven update path
+- avoids defaulting to an unwanted blue CTA button
 - avoids over-promoting edit behavior above workflow behavior
 - enforces the correct permission model directly in the interface
 
@@ -196,6 +212,7 @@ Explicit removals from the current version:
 - no standalone large `Mark critical` section
 - no project-label string above the task title
 - no visible `Progress update` button
+- no `Next step` card in the hero
 
 ## Interaction Rules
 
@@ -210,12 +227,14 @@ Explicit removals from the current version:
 - no project-label string above the title
 - title is the first strong line
 - first status chip handles quick state context
+- no `Next step` card
+- delegation occupies the old `Next step` position inside the hero
 - critical state is visible as a compact flag in the hero
 
 ### Active-Entry Stage
 
 - pinned above the thread
-- controlled by the top-most active thread entry
+- controlled dynamically by work-thread scroll position
 - does not control the thread vertically
 - horizontal swipe only changes photos within the active entry
 
@@ -252,40 +271,32 @@ The correction is only complete if all of the following are true:
 2. bottom-nav camera uses task-detail context when Task Detail is active
 3. back from the camera/update flow returns to Task Detail
 4. hero no longer renders the top project-label string
-5. critical marker appears only as a compact hero/title flag
-6. no visible `Progress update` button remains
-7. comment remains the text-only update path for now
-8. pinned active-entry stage stays above the work thread
-9. work thread is newest-first
-10. top-edge trigger determines the active entry
-11. text-only entries render a neutral no-photo state in the stage
-12. PDF entries render a document-preview state in the stage
-13. `Edit task details` is visible for task creators
-14. `Edit task details` is hidden for non-creators
+5. hero no longer renders a `Next step` card
+6. delegation is rendered inside the hero in place of the old `Next step` block
+7. critical marker appears only as a compact hero/title flag
+8. no visible `Progress update` button remains
+9. no promoted primary footer CTA appears on Task Detail
+10. comment remains the text-only update path for now
+11. pinned active-entry stage stays above the work thread
+12. work thread is newest-first
+13. active-entry stage changes dynamically with work-thread scroll position
+14. text-only entries render a neutral no-photo state in the stage
+15. PDF entries render a document-preview state in the stage
+16. `Edit task details` is visible for task creators
+17. `Edit task details` is hidden for non-creators
 
 ## Implementation Notes
 
 This correction should be planned and executed as a focused follow-up to the existing Task Detail redesign work. It should reuse the current redesigned screen structure and adapter model where possible, rather than replacing the Task Detail redesign wholesale.
 
-The most important conceptual change is that the previous “evidence card” should now be treated as a **pinned active-entry stage** rather than a simple photo strip.
+The most important conceptual change is that the previous “evidence card” should now be treated as a **pinned active-entry stage** rather than a simple photo strip, and that this stage must be dynamically driven by the work-thread scroll position rather than statically representing only the latest update.
 
 ## Implementation Status
 
-Implemented in the refined follow-up correction pass on 2026-07-05.
+This spec supersedes the previous refined correction state. The earlier implementation established the compact hero, pinned active-entry stage, and newest-first thread, but a new follow-up correction is now required to:
 
-### Closure evidence
+- remove the hero `Next step` block entirely
+- move delegation into the hero in that space
+- make the active-entry stage change dynamically with work-thread scroll position rather than behaving like a static latest-update surface
 
-- Task Detail no longer depends on a visible top camera shortcut or visible `Progress update` button
-- task-detail camera launches now preserve task/subtask source metadata for the same-task return path
-- the hero is more compact and no longer renders the low-value project label above the title
-- `Next step` guidance is now contextual to task state and user role
-- the pinned top unit is now an active-entry stage rather than a simple evidence strip
-- the active-entry stage supports photo, neutral no-photo, and PDF-preview modes
-- the newest top thread entry now owns the pinned stage through a dedicated resolver and screen wiring
-- visible inline secondary actions remain in place and creator-only edit visibility remains enforced
-- focused validation passed:
-  - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
-  - `npx tsc --noEmit`
-- Expo dev-client server restarted cleanly for post-refinement verification
-- installed app relaunched successfully on both booted iOS simulators
-- runtime logs confirmed successful initialization after relaunch
+Any future implementation plan should treat this updated spec as the source of truth.

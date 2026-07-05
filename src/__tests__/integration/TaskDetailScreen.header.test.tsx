@@ -226,9 +226,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
 
-  it("routes upload_photos into update mode with the active subtask context", () => {
-    const onNavigateToCreateTask = jest.fn();
-
+  it("does not render the Add Photos action even if upload_photos is present in actionItems", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         actionItems: [
@@ -252,20 +250,11 @@ describe("TaskDetailScreen header regression", () => {
           taskId: "task-1",
           subTaskId: "subtask-1",
           onNavigateBack: jest.fn(),
-          onNavigateToCreateTask,
         } as any)}
       />,
     );
 
-    fireEvent.press(screen.getByText("Add Photos"));
-
-    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      "task-1",
-      "update",
-      "subtask-1",
-    );
+    expect(screen.queryByText("Add Photos")).toBeNull();
   });
 
   it("does not render a dedicated top camera shortcut on task detail", () => {
@@ -331,7 +320,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByText("Work thread")).toBeTruthy();
   });
 
-  it("keeps the newest-first thread scroll while the pinned stage reflects the concrete top-most thread entry", () => {
+  it("renders the pinned active-entry stage together with the activity thread", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         activeStage: {
@@ -373,16 +362,17 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const activeStage = screen.getByTestId("task-detail__active_entry_stage");
+    const activityThread = screen.getByTestId("task-detail__activity_thread");
 
     expect(activeStage).toBeTruthy();
+    expect(activityThread).toBeTruthy();
     expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
-    expect(within(activeStage).getByText("Submitted task for review")).toBeTruthy();
-    expect(within(activeStage).getByText("Marked 100% complete")).toBeTruthy();
-    expect(within(activeStage).getByText("Sam")).toBeTruthy();
-    expect(screen.queryByText("Static placeholder summary")).toBeNull();
+    expect(within(activityThread).getByText("Work thread")).toBeTruthy();
+    expect(within(activityThread).getByText("Submitted task for review")).toBeTruthy();
+    expect(screen.getByText("No photos for this update")).toBeTruthy();
   });
 
-  it("keeps secondary actions visible inline and demotes edit_task below the promoted primary action", () => {
+  it("keeps task-detail actions inline with no promoted primary action bar", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         actionItems: [
@@ -411,12 +401,11 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    const footer = screen.getByTestId("task-detail__primary-action-bar");
-    expect(within(footer).getByText("Add Comment")).toBeTruthy();
-
     const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
     expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
+    expect(within(secondaryActions).getByText("Add Comment")).toBeTruthy();
     expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();
   });
 
   it("keeps inline secondary actions visible while hiding edit for non-creators", () => {
@@ -451,6 +440,8 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByText("Other actions")).toBeTruthy();
     expect(screen.getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByText("Add Photos")).toBeNull();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
+    expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();
   });
 });

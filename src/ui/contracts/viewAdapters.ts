@@ -245,7 +245,11 @@ export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
   projectLabel: string;
   completionLabel: string;
   dueDateLabel?: string;
-  nextStepLabel?: string;
+  nextStepLabel?: undefined;
+  assignedByLabel?: string;
+  assignedToLabel?: string;
+  primaryOwnerLabel?: string;
+  teamSummaryLabel?: string;
   isCritical?: boolean;
   criticalLabel?: string;
 }

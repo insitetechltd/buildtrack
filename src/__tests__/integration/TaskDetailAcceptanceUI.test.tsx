@@ -99,7 +99,10 @@ describe("TaskDetailScreen acceptance UI", () => {
       projectLabel: "Project Alpha",
       completionLabel: "50% complete",
       dueDateLabel: "Jul 10, 2026",
-      nextStepLabel: "Update progress and add photo evidence.",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Sam, Alex",
+      primaryOwnerLabel: "Sam",
+      teamSummaryLabel: "2 assignees",
       isCritical: false,
       criticalLabel: undefined,
     },
@@ -249,6 +252,25 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(screen.getByTestId("task-detail__hero_critical_flag")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
+  });
+
+  it("renders delegation in the hero and no longer renders the Next step block", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.queryByText("Next step")).toBeNull();
+    expect(screen.getByTestId("task-detail__hero_delegation")).toBeTruthy();
+  });
+
+  it("does not render the large Active update text block inside the pinned stage", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.queryByText("Active update")).toBeNull();
+  });
+
+  it("keeps the pinned stage media-first in photo mode", () => {
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__active_stage_photo_featured")).toBeTruthy();
   });
 
   it("does not render the top project-label string in the compact hero", () => {

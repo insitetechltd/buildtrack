@@ -11,6 +11,7 @@ interface TaskActivityTimelineProps {
   activities?: TaskDetailActivityModel[];
   thread?: TaskDetailActivityThreadRow[];
   activeEntryId?: string;
+  onEntryLayout?: (entryId: string, top: number, height: number) => void;
   onVisibleEntryChange?: (entryId: string) => void;
   testID?: string;
 }
@@ -49,6 +50,7 @@ export default function TaskActivityTimeline({
   activities = [],
   thread = [],
   activeEntryId,
+  onEntryLayout,
   onVisibleEntryChange,
   testID,
 }: TaskActivityTimelineProps) {
@@ -108,6 +110,10 @@ export default function TaskActivityTimeline({
             <View
               key={activity.id}
               testID={`task-activity-timeline__entry-${activity.id}`}
+              onLayout={(event) => {
+                const { y, height } = event.nativeEvent.layout;
+                onEntryLayout?.(activity.id, y, height);
+              }}
               accessibilityState={{ selected: isActiveEntry }}
               className="flex-row"
             >

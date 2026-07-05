@@ -1,5 +1,5 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import TaskDetailEvidenceStrip from "../../components/taskDetail/TaskDetailEvidenceStrip";
 import TaskDetailScreen from "../TaskDetailScreen";
@@ -145,13 +145,96 @@ describe("TaskDetailScreen sticky layout", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders task detail with a pinned active-entry stage and nested work-thread scroll region", () => {
+  it("keeps the hero scrollable while the active-entry stage remains sticky at index 1", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
 
+    expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
     expect(screen.getByTestId("task-detail__evidence_pinned_region")).toBeTruthy();
     expect(screen.getByTestId("task-detail__active_entry_stage")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
+    expect(workThreadScroll).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(workThreadScroll.props.scrollEnabled).not.toBe(false);
+    expect(workThreadScroll.props.stickyHeaderIndices).toEqual([1]);
+    expect(workThreadScroll.props.contentContainerStyle).toEqual(
+      expect.objectContaining({ flexGrow: 1 }),
+    );
+  });
+
+  it("updates the pinned stage from measured thread rows as the work thread scrolls", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        activeStage: {
+          id: "placeholder-stage",
+          density: "standard",
+          structuralState: "ready",
+          stageMode: "no_photo",
+          title: "Static placeholder",
+          summary: "This should be replaced by the active thread entry.",
+          actorLabel: "Casey",
+          timestampLabel: "Jul 5, 08:00",
+          photos: [],
+        },
+        activityThread: [
+          {
+            id: "activity-1",
+            actorLabel: "Sam",
+            eventLabel: "Added status note",
+            timestampLabel: "Jul 5, 09:00",
+            detailLabel: "Waiting on supplier confirmation.",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "activity-2",
+            actorLabel: "Sam",
+            eventLabel: "Uploaded site photos",
+            timestampLabel: "Jul 5, 10:00",
+            detailLabel: "Captured the finished ceiling install.",
+            photoUrls: ["https://example.com/activity-photo-2.jpg"],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
+    const activityThreadRegion = screen.getByTestId("task-detail__activity_thread_region");
+    const firstEntry = screen.getByTestId("task-activity-timeline__entry-activity-1");
+    const secondEntry = screen.getByTestId("task-activity-timeline__entry-activity-2");
+
+    fireEvent(activityThreadRegion, "layout", {
+      nativeEvent: { layout: { x: 0, y: 400, width: 320, height: 300 } },
+    });
+    fireEvent(firstEntry, "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 140 } },
+    });
+    fireEvent(secondEntry, "layout", {
+      nativeEvent: { layout: { x: 0, y: 180, width: 320, height: 140 } },
+    });
+
+    expect(screen.getByText("No photos for this update")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__active_stage_photo_featured")).toBeNull();
+    expect(screen.getByTestId("task-activity-timeline__entry-activity-1").props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
+
+    fireEvent.scroll(workThreadScroll, {
+      nativeEvent: {
+        contentOffset: { x: 0, y: 560 },
+        contentSize: { width: 320, height: 1400 },
+        layoutMeasurement: { width: 320, height: 640 },
+      },
+    });
+
+    expect(screen.getByTestId("task-detail__active_stage_photo_featured")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__entry-activity-2").props.accessibilityState).toEqual(
+      expect.objectContaining({ selected: true }),
+    );
   });
 
   it("renders stable photo surfaces in the pinned active-entry stage", () => {

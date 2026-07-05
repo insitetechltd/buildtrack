@@ -4,13 +4,27 @@ import {
 } from "../taskDetailActiveStage";
 
 describe("taskDetailActiveStage", () => {
-  it("treats the top-most newest-first entry as the active stage owner", () => {
+  it("switches the active entry when the focus line crosses into the next row", () => {
     const result = resolveActiveStageEntry({
       entries: [
-        { id: "entry-1", top: 12 },
-        { id: "entry-2", top: 164 },
+        { id: "entry-1", top: 0, height: 140 },
+        { id: "entry-2", top: 164, height: 140 },
       ],
-      topEdge: 0,
+      focusY: 180,
+      scrollY: 40,
+    });
+
+    expect(result?.id).toBe("entry-2");
+  });
+
+  it("keeps the previous entry active until the next row crosses the focus line", () => {
+    const result = resolveActiveStageEntry({
+      entries: [
+        { id: "entry-1", top: 0, height: 140 },
+        { id: "entry-2", top: 164, height: 140 },
+      ],
+      focusY: 120,
+      scrollY: 10,
     });
 
     expect(result?.id).toBe("entry-1");

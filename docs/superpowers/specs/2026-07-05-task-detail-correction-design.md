@@ -13,6 +13,7 @@ Refine the current Task Detail redesign so it matches the intended compact, phot
 - no redundant explanatory card inside the hero
 - a clearer active-entry stage above the work thread
 - a stronger visual linkage between the active-entry stage and the work thread
+- a more media-first active-entry stage with less text inside the evidence surface
 - a safer model for text-only and document-bearing updates
 - tighter permission and back-navigation behavior
 
@@ -37,6 +38,7 @@ The approved direction is now:
 - newest-first work thread
 - pinned active-entry stage above the thread
 - work-thread scroll position determines the active entry
+- the active-entry stage should not spend vertical space on a large textual `Active update` block
 - photo, text-only, and PDF-bearing entries all render through the same active-entry stage model
 
 ## Design Decisions
@@ -100,6 +102,7 @@ Approved behavior:
 - the pinned stage does not control which thread entry is active
 - horizontal swipe inside the stage only changes photos belonging to the active entry
 - the hero remains separate from this interaction so the visual linkage is primarily between the active-entry stage and the work thread
+- detailed textual update content should stay in the work-thread cards rather than being repeated prominently inside the stage
 
 This means the interaction is:
 
@@ -121,13 +124,14 @@ The active-entry stage must safely support three types of entries.
 
 - display the active entry in photo mode
 - show one prominent photo with horizontal swipe across that entry’s photo set
-- show event title, actor/timestamp, and short supporting summary below the image
+- keep the stage media-first and remove the large `Active update` text block from inside the stage
+- avoid repeating detailed event text that already exists in the work-thread card
 
 #### Text-only entry
 
 - switch the stage into a neutral no-photo state
 - do **not** carry forward the previous entry’s image
-- still show event title, actor/timestamp, and short supporting summary
+- keep the no-photo state concise rather than expanding into a large text card
 
 This rule is mandatory because otherwise a photo from another entry could be mistakenly associated with a text-only update.
 
@@ -135,7 +139,7 @@ This rule is mandatory because otherwise a photo from another entry could be mis
 
 - switch the stage into a document preview mode
 - show PDF/document styling rather than pretending it is a photo
-- include file identity and short supporting summary/status
+- keep document identity lightweight and avoid a large duplicated update summary inside the stage
 
 #### Reasoning
 
@@ -165,6 +169,7 @@ The pinned active-entry stage must be height-capped and summary-based.
 Approved behavior:
 
 - the stage should show only the summary version of the active entry
+- the stage should remain media-first and avoid a large explanatory block at the top
 - if an entry contains more information than fits comfortably, full detail remains in the thread card below
 - the stage must not grow so tall that it blocks access to later entries
 
@@ -237,6 +242,7 @@ Explicit removals from the current version:
 - controlled dynamically by work-thread scroll position
 - does not control the thread vertically
 - horizontal swipe only changes photos within the active entry
+- no large `Active update` text block is rendered inside the stage
 
 ### Text-only Entries
 
@@ -280,10 +286,11 @@ The correction is only complete if all of the following are true:
 11. pinned active-entry stage stays above the work thread
 12. work thread is newest-first
 13. active-entry stage changes dynamically with work-thread scroll position
-14. text-only entries render a neutral no-photo state in the stage
-15. PDF entries render a document-preview state in the stage
-16. `Edit task details` is visible for task creators
-17. `Edit task details` is hidden for non-creators
+14. active-entry stage does not render a large textual `Active update` block
+15. text-only entries render a neutral no-photo state in the stage
+16. PDF entries render a document-preview state in the stage
+17. `Edit task details` is visible for task creators
+18. `Edit task details` is hidden for non-creators
 
 ## Implementation Notes
 
@@ -298,5 +305,6 @@ This spec supersedes the previous refined correction state. The earlier implemen
 - remove the hero `Next step` block entirely
 - move delegation into the hero in that space
 - make the active-entry stage change dynamically with work-thread scroll position rather than behaving like a static latest-update surface
+- reduce the active-entry stage text treatment so it stays media-first
 
 Any future implementation plan should treat this updated spec as the source of truth.

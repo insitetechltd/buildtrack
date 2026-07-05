@@ -17,25 +17,8 @@ export default function TaskDetailEvidenceStrip({
       testID={testID}
       className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4"
     >
-      <View className="flex-row items-center justify-between">
-        <View className="flex-1">
-          <Text className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-            Active update
-          </Text>
-          <Text className="mt-2 text-lg font-semibold text-slate-900">{model.title}</Text>
-          <Text className="mt-1 text-sm font-medium text-slate-600">{model.actorLabel}</Text>
-        </View>
-        <View className="rounded-full bg-slate-100 px-3 py-1.5">
-          <Text className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-            {model.timestampLabel || "Latest"}
-          </Text>
-        </View>
-      </View>
-
-      <Text className="mt-3 text-sm leading-5 text-slate-600">{model.summary}</Text>
-
       {model.stageMode === "photo" && model.photos.length > 0 ? (
-        <View className="mt-4">
+        <View>
           <Image
             key={`${model.id}-photo-featured`}
             testID="task-detail__active_stage_photo_featured"
@@ -58,7 +41,7 @@ export default function TaskDetailEvidenceStrip({
       ) : null}
 
       {model.stageMode === "no_photo" ? (
-        <View className="mt-4 rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
+        <View className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
           <Text className="text-center text-base font-semibold text-slate-700">
             No photos for this update
           </Text>
@@ -66,15 +49,12 @@ export default function TaskDetailEvidenceStrip({
       ) : null}
 
       {model.stageMode === "pdf_preview" ? (
-        <View className="mt-4 rounded-[28px] border border-slate-200 bg-slate-50 px-4 py-5">
+        <View className="rounded-[28px] border border-slate-200 bg-slate-50 px-4 py-5">
           <Text className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-400">
             Document attached
           </Text>
-          <Text className="mt-3 text-base font-semibold text-slate-900">
+          <Text className="mt-2 text-base font-semibold text-slate-900">
             {model.documentName || "Attached document"}
-          </Text>
-          <Text className="mt-1 text-sm text-slate-600">
-            Preview support will be expanded in the next activation pass.
           </Text>
         </View>
       ) : null}

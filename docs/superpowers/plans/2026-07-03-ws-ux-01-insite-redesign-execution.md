@@ -278,6 +278,14 @@ Closure evidence:
   - refined correction validation passed:
     - `npx jest src/navigation/__tests__/uiModeRoutes.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
     - `npx tsc --noEmit`
+- active-link follow-up correction applied on 2026-07-05:
+  - removed the hero `Next step` block and moved delegation into that space inside the hero
+  - simplified the pinned active-entry stage so it stays media-first and no longer renders a large `Active update` text block
+  - replaced static latest/top-row stage ownership with measured scroll-geometry resolution from thread row layout + scroll position
+  - preserved sticky active-entry behavior, newest-first work thread order, and the no-primary-footer-CTA action model
+  - follow-up correction validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/taskDetailActiveStage.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

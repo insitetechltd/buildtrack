@@ -1,7 +1,30 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import TaskActivityTimeline from "../TaskActivityTimeline";
+
+const threadRows = [
+  {
+    id: "activity-newer",
+    actorLabel: "Alex",
+    eventLabel: "Submitted for review",
+    timestampLabel: "Jul 5, 10:00",
+    detailLabel: "Marked 100% complete",
+    photoUrls: [],
+    density: "standard" as const,
+    structuralState: "ready" as const,
+  },
+  {
+    id: "activity-older",
+    actorLabel: "Sam",
+    eventLabel: "Accepted the task",
+    timestampLabel: "Jul 4, 08:00",
+    detailLabel: "Started site setup",
+    photoUrls: [],
+    density: "standard" as const,
+    structuralState: "ready" as const,
+  },
+];
 
 describe("TaskActivityTimeline", () => {
   it("renders work-thread rows with clear event, actor, timestamp, and detail text", () => {
@@ -106,43 +129,57 @@ describe("TaskActivityTimeline", () => {
     expect(actorLabels[1].props.children).toBe("Sam");
   });
 
-  it("exposes stable newest-first entry surfaces and reports the top-most entry as active", () => {
-    const onVisibleEntryChange = jest.fn();
-
-    const screen = render(
-      <TaskActivityTimeline
-        activeEntryId="activity-newer"
-        onVisibleEntryChange={onVisibleEntryChange}
-        thread={[
-          {
-            id: "activity-newer",
-            actorLabel: "Alex",
-            eventLabel: "Submitted for review",
-            timestampLabel: "Jul 5, 10:00",
-            detailLabel: "Marked 100% complete",
-            photoUrls: [],
-            density: "standard",
-            structuralState: "ready",
-          },
-          {
-            id: "activity-older",
-            actorLabel: "Sam",
-            eventLabel: "Accepted the task",
-            timestampLabel: "Jul 4, 08:00",
-            detailLabel: "Started site setup",
-            photoUrls: [],
-            density: "standard",
-            structuralState: "ready",
-          },
-        ]}
-      />,
-    );
+  it("renders entry rows with stable testIDs", () => {
+    const screen = render(<TaskActivityTimeline thread={threadRows} activeEntryId="activity-newer" />);
 
     expect(screen.getByTestId("task-activity-timeline__entry-activity-newer")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__entry-activity-older")).toBeTruthy();
-    expect(onVisibleEntryChange).toHaveBeenCalledWith("activity-newer");
+  });
+
+  it("marks the active row selected when activeEntryId changes", () => {
+    const screen = render(<TaskActivityTimeline thread={threadRows} activeEntryId="activity-newer" />);
+
     expect(
       screen.getByTestId("task-activity-timeline__entry-activity-newer").props.accessibilityState,
     ).toMatchObject({ selected: true });
+    expect(
+      screen.getByTestId("task-activity-timeline__entry-activity-older").props.accessibilityState,
+    ).toMatchObject({ selected: false });
+
+    screen.rerender(<TaskActivityTimeline thread={threadRows} activeEntryId="activity-older" />);
+
+    expect(
+      screen.getByTestId("task-activity-timeline__entry-activity-newer").props.accessibilityState,
+    ).toMatchObject({ selected: false });
+    expect(
+      screen.getByTestId("task-activity-timeline__entry-activity-older").props.accessibilityState,
+    ).toMatchObject({ selected: true });
+  });
+
+  it("reports measured row layout upward when an entry lays out", () => {
+    const onEntryLayout = jest.fn();
+    const onVisibleEntryChange = jest.fn();
+    const screen = render(
+      <TaskActivityTimeline
+        thread={threadRows}
+        activeEntryId="activity-newer"
+        onVisibleEntryChange={onVisibleEntryChange}
+        onEntryLayout={onEntryLayout}
+      />,
+    );
+
+    fireEvent(screen.getByTestId("task-activity-timeline__entry-activity-newer"), "layout", {
+      nativeEvent: {
+        layout: {
+          x: 0,
+          y: 24,
+          width: 320,
+          height: 92,
+        },
+      },
+    });
+
+    expect(onVisibleEntryChange).toHaveBeenCalledWith("activity-newer");
+    expect(onEntryLayout).toHaveBeenCalledWith("activity-newer", 24, 92);
   });
 });

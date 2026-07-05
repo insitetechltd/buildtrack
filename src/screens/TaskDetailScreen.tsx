@@ -19,7 +19,6 @@ import TaskDetailEvidenceStrip from "@/components/taskDetail/TaskDetailEvidenceS
 import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
 import TaskDetailSubtasksSection from "@/components/taskDetail/TaskDetailSubtasksSection";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
-import PrimaryActionBar from "@/components/ui/PrimaryActionBar";
 import { cn } from "@/utils/cn";
 import {
   mapBannerModelToBannerProps,
@@ -94,11 +93,12 @@ const ACTION_PRIORITY: Record<string, number> = {
   update_progress: 3,
   reassign_task: 4,
   edit_task: 5,
-  upload_photos: 6,
-  add_comment: 7,
-  decline_task: 8,
-  reject_task: 9,
+  add_comment: 6,
+  decline_task: 7,
+  reject_task: 8,
 };
+
+const ACTIVE_ENTRY_FOCUS_Y = 24;
 
 function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
   const prioritizedActions = actionItems
@@ -123,17 +123,9 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
     };
   }
 
-  const primaryActionIndex = prioritizedActions.findIndex(
-    (action) => action.actionId !== "edit_task",
-  );
-  const resolvedPrimaryActionIndex =
-    primaryActionIndex === -1 ? 0 : primaryActionIndex;
-
   return {
-    primaryAction: prioritizedActions[resolvedPrimaryActionIndex],
-    secondaryActions: prioritizedActions.filter(
-      (_, index) => index !== resolvedPrimaryActionIndex,
-    ),
+    primaryAction: undefined,
+    secondaryActions: prioritizedActions,
   };
 }
 
@@ -202,15 +194,41 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   });
   const safeActivityThread = output.activityThread ?? [];
   const safeActiveStage = output.activeStage;
+  const activityThreadLayoutKey = React.useMemo(
+    () => safeActivityThread.map((entry) => entry.id).join("|"),
+    [safeActivityThread],
+  );
   const initialActiveEntryId =
     resolveTopMostThreadEntryId(safeActivityThread) ?? safeActiveStage?.id;
-  const [activeEntryId, setActiveEntryId] = React.useState<string | undefined>(
-    initialActiveEntryId,
+  const [scrollY, setScrollY] = React.useState(0);
+  const [activityThreadOriginY, setActivityThreadOriginY] = React.useState(0);
+  const [entryLayouts, setEntryLayouts] = React.useState<
+    Record<string, { top: number; height: number }>
+  >({});
+  const measuredThreadEntries = React.useMemo(
+    () =>
+      Object.entries(entryLayouts).map(([id, layout]) => ({
+        id,
+        top: activityThreadOriginY + layout.top,
+        height: layout.height,
+      })),
+    [activityThreadOriginY, entryLayouts],
+  );
+  const activeEntryId = React.useMemo(
+    () =>
+      resolveActiveStageEntry({
+        entries: measuredThreadEntries,
+        focusY: ACTIVE_ENTRY_FOCUS_Y,
+        scrollY,
+      })?.id ?? initialActiveEntryId,
+    [initialActiveEntryId, measuredThreadEntries, scrollY],
   );
 
   React.useEffect(() => {
-    setActiveEntryId(resolveTopMostThreadEntryId(safeActivityThread) ?? safeActiveStage?.id);
-  }, [safeActivityThread, safeActiveStage?.id]);
+    setScrollY(0);
+    setActivityThreadOriginY(0);
+    setEntryLayouts({});
+  }, [activityThreadLayoutKey, props.taskId, props.subTaskId]);
 
   const pinnedActiveStage = React.useMemo(
     () =>
@@ -298,9 +316,13 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     (action) => action.actionId === "toggle_critical_this_week",
   );
   const { primaryAction, secondaryActions } = prioritizeActionItems(
-    (output.actionItems ?? []).filter((action) => action.actionId !== "toggle_critical_this_week"),
+    (output.actionItems ?? []).filter(
+      (action) =>
+        action.actionId !== "toggle_critical_this_week" &&
+        action.actionId !== "upload_photos",
+    ),
   );
-  const scrollContentPaddingBottom = primaryAction ? 148 : 32;
+  const scrollContentPaddingBottom = 32;
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -332,20 +354,30 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       />
 
       <View className="flex-1">
-        <View testID="task-detail__evidence_pinned_region">
-          <TaskDetailHero model={output.taskHero} />
-          <TaskDetailEvidenceStrip
-            testID="task-detail__active_entry_stage"
-            model={pinnedActiveStage ?? output.activeStage}
-          />
-        </View>
-
         <ScrollView
           testID="task-detail__workthread_scroll"
           className="flex-1"
-          contentContainerStyle={{ paddingTop: 4, paddingBottom: scrollContentPaddingBottom }}
+          stickyHeaderIndices={[1]}
+          contentContainerStyle={{
+            paddingBottom: scrollContentPaddingBottom,
+            flexGrow: 1,
+          }}
+          scrollEnabled
+          onScroll={(event) => {
+            setScrollY(event.nativeEvent.contentOffset.y);
+          }}
+          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
         >
+          <TaskDetailHero model={output.taskHero} />
+
+          <View testID="task-detail__evidence_pinned_region" className="bg-gray-50 pt-4">
+            <TaskDetailEvidenceStrip
+              testID="task-detail__active_entry_stage"
+              model={pinnedActiveStage ?? output.activeStage}
+            />
+          </View>
+
           {/* Banners */}
           {output.banners.map(banner => (
             <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
@@ -388,12 +420,38 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
 
           <TaskDetailDelegationCard model={output.delegationSummary} />
 
-          <TaskActivityTimeline
-            testID="task-detail__activity_thread"
-            activeEntryId={activeEntryId}
-            onVisibleEntryChange={setActiveEntryId}
-            thread={output.activityThread}
-          />
+          <View
+            testID="task-detail__activity_thread_region"
+            onLayout={(event) => {
+              const nextOriginY = event.nativeEvent.layout.y;
+              setActivityThreadOriginY((currentOriginY) =>
+                currentOriginY === nextOriginY ? currentOriginY : nextOriginY,
+              );
+            }}
+          >
+            <TaskActivityTimeline
+              testID="task-detail__activity_thread"
+              activeEntryId={activeEntryId}
+              onEntryLayout={(entryId, top, height) => {
+                setEntryLayouts((currentLayouts) => {
+                  const existingLayout = currentLayouts[entryId];
+
+                  if (
+                    existingLayout?.top === top &&
+                    existingLayout?.height === height
+                  ) {
+                    return currentLayouts;
+                  }
+
+                  return {
+                    ...currentLayouts,
+                    [entryId]: { top, height },
+                  };
+                });
+              }}
+              thread={output.activityThread}
+            />
+          </View>
 
           <TaskDetailSubtasksSection
             model={output.subtaskSummary}
@@ -442,15 +500,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         </ScrollView>
       </View>
 
-      {primaryAction ? (
-        <View testID="task-detail__primary-action-bar" className="absolute bottom-0 left-0 right-0">
-          <PrimaryActionBar
-            primaryLabel={primaryAction.label}
-            onPrimaryPress={() => handleActionPress(primaryAction.actionId)}
-            isPrimaryDisabled={primaryAction.isDisabled}
-          />
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 }

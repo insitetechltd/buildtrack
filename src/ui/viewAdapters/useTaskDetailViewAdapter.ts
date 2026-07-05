@@ -265,60 +265,6 @@ function buildTaskDetailActiveStageModel({
   };
 }
 
-function buildNextStepLabel(
-  task: Task,
-  isAssignedToMe: boolean,
-  isTaskCreator: boolean,
-): string | undefined {
-  if (isApprovedTaskStatus(task.status)) {
-    return 'Work is complete and approved.';
-  }
-
-  if (task.status === 'submitted_for_review') {
-    return isTaskCreator ? 'Review the submitted work.' : 'Waiting for review.';
-  }
-
-  if (task.status === 'declined') {
-    return isTaskCreator ? 'Reassign or update task details.' : 'Review the decline reason.';
-  }
-
-  if (task.status === 'rejected') {
-    return isAssignedToMe
-      ? 'Update the work and resubmit for review.'
-      : 'Waiting for the assignee to resubmit.';
-  }
-
-  if (isPreAcceptanceTaskStatus(task.status)) {
-    return isAssignedToMe ? 'Accept this task to start work.' : 'Waiting for assignee acceptance.';
-  }
-
-  if (isAssignedToMe) {
-    if (task.status === 'accepted') {
-      return 'Start work and share the first update when you begin.';
-    }
-
-    if (task.status === 'in_progress' || task.status === 'wip') {
-      return 'Capture progress photos or add a work note.';
-    }
-
-    return 'Share the latest work update for this task.';
-  }
-
-  if (isTaskCreator) {
-    if (task.status === 'accepted') {
-      return 'Confirm the assignee has what they need to get started.';
-    }
-
-    if (task.status === 'in_progress' || task.status === 'wip') {
-      return 'Review the latest update and support the assignee.';
-    }
-
-    return 'Track the latest update and support the assignee.';
-  }
-
-  return 'Track the latest task updates.';
-}
-
 export function useTaskDetailViewAdapter({
   taskId,
   subTaskId,
@@ -386,6 +332,8 @@ export function useTaskDetailViewAdapter({
           statusLabel: '',
           projectLabel: '',
           completionLabel: '',
+          assignedByLabel: '',
+          assignedToLabel: '',
         },
         delegationSummary: {
           id: 'delegation-summary',
@@ -618,20 +566,6 @@ export function useTaskDetailViewAdapter({
     getUserById: (userId) => (userId ? getUserById(userId) : undefined),
   });
 
-  const taskHero: TaskDetailHeroModel = {
-    id: 'task-hero',
-    density: 'standard',
-    structuralState: 'stale',
-    title: task.title,
-    statusLabel: getStatusLabel(task.status),
-    projectLabel: task.projectId || 'Unknown Project',
-    completionLabel: `${task.completionPercentage}% complete`,
-    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
-    nextStepLabel: buildNextStepLabel(task, isAssignedToMe, isTaskCreator),
-    isCritical: isCriticalThisWeek,
-    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
-  };
-
   const primaryOwner = task.primaryAssigneeId
     ? getUserById(task.primaryAssigneeId)
     : assignees[0];
@@ -644,6 +578,24 @@ export function useTaskDetailViewAdapter({
     assignedToLabel: assignees.map((assignee) => assignee.name).join(', ') || 'Unassigned',
     primaryOwnerLabel: primaryOwner?.name,
     teamSummaryLabel: assignees.length > 1 ? `${assignees.length} assignees` : undefined,
+  };
+
+  const taskHero: TaskDetailHeroModel = {
+    id: 'task-hero',
+    density: 'standard',
+    structuralState: 'stale',
+    title: task.title,
+    statusLabel: getStatusLabel(task.status),
+    projectLabel: task.projectId || 'Unknown Project',
+    completionLabel: `${task.completionPercentage}% complete`,
+    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
+    nextStepLabel: undefined,
+    assignedByLabel: delegationSummary.assignedByLabel,
+    assignedToLabel: delegationSummary.assignedToLabel,
+    primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
+    teamSummaryLabel: delegationSummary.teamSummaryLabel,
+    isCritical: isCriticalThisWeek,
+    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
   };
 
   const evidenceSummary: TaskDetailEvidenceSummaryModel = {
@@ -688,7 +640,6 @@ export function useTaskDetailViewAdapter({
   const actionItems: TaskDetailActionItem[] = [];
 
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
-  const canUpdateProgress = isAssignedToMe && !isTaskCreator && (task.status === 'accepted' || task.status === 'in_progress' || (task.status === 'rejected' && task.completionPercentage === 100));
   const canEditTask = isTaskCreator;
 
   if (canEditTask && !(isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100)) {
@@ -707,9 +658,6 @@ export function useTaskDetailViewAdapter({
     }
     if (isTaskCreator && wasReassigned) {
       actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
-    }
-    if (canUpdateProgress) {
-      actionItems.push({ id: 'action-photos', actionId: 'upload_photos', density: 'standard', structuralState: 'stale', label: t.taskDetail.photosUpdates, icon: 'camera-outline', isDisabled: false });
     }
     if (isTaskCreator && task.status !== 'declined' && !wasReassigned) {
       actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });

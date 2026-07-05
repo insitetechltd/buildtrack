@@ -24,6 +24,9 @@ jest.mock("@/utils/useTranslation", () => ({
 
 describe("useTaskDetailViewAdapter", () => {
   const mockUpdateTask = jest.fn();
+  const dueDate = "2026-10-10T08:00:00.000Z";
+  const activityTimestampOlder = "2026-10-09T09:30:00.000Z";
+  const activityTimestampLatest = "2026-10-10T14:45:00.000Z";
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -44,7 +47,32 @@ describe("useTaskDetailViewAdapter", () => {
     });
 
     useDateFormatter.mockReturnValue({
-      formatDateShort: jest.fn().mockReturnValue("Oct 10, 2026"),
+      formatDateShort: jest.fn((date: string) => {
+        if (date === dueDate) {
+          return "Oct 10, 2026";
+        }
+
+        if (date === activityTimestampOlder) {
+          return "Oct 9, 2026";
+        }
+
+        if (date === activityTimestampLatest) {
+          return "Oct 10, 2026";
+        }
+
+        return "Oct 10, 2026";
+      }),
+      formatDateTime: jest.fn((date: string) => {
+        if (date === activityTimestampOlder) {
+          return "Oct 9, 2026, 9:30 AM";
+        }
+
+        if (date === activityTimestampLatest) {
+          return "Oct 10, 2026, 2:45 PM";
+        }
+
+        return "Oct 10, 2026, 8:00 AM";
+      }),
     });
 
     useTranslation.mockReturnValue({
@@ -81,17 +109,52 @@ describe("useTaskDetailViewAdapter", () => {
           id: "task-parent",
           title: "Parent Task",
           projectId: "project-1",
-          assignedTo: ["user-1"],
+          assignedTo: ["user-1", "user-2"],
+          primaryAssigneeId: "user-2",
           assignedBy: "manager-1",
-          dueDate: new Date().toISOString(),
+          dueDate,
           status: "in_progress",
           priority: "medium",
           category: "general",
-          description: "",
-          attachments: [],
+          description: "Install the final light fixtures in the lobby.",
+          attachments: [
+            "https://example.com/task-attachment-1.jpg",
+          ],
           tags: [],
           updates: [],
-          activities: [],
+          activities: [
+            {
+              id: "activity-1",
+              taskId: "task-parent",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampOlder,
+              data: {
+                description: "Installed conduit and verified the wiring path.",
+                photos: ["https://example.com/progress-photo-1.jpg"],
+                completionPercentage: 40,
+                status: "in_progress",
+              },
+              description: "Installed conduit and verified the wiring path.",
+              completionPercentage: 40,
+              status: "in_progress",
+              createdAt: activityTimestampOlder,
+            },
+            {
+              id: "activity-2",
+              taskId: "task-parent",
+              userId: "user-2",
+              activityType: "review_submission",
+              timestamp: activityTimestampLatest,
+              data: {
+                completionPercentage: 100,
+              },
+              description: "Submitted the completed installation for review.",
+              completionPercentage: 100,
+              status: "submitted_for_review",
+              createdAt: activityTimestampLatest,
+            },
+          ],
           completionPercentage: 50,
           createdAt: new Date().toISOString(),
         },
@@ -216,5 +279,96 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.actionItems.map((item) => item.actionId)).toEqual(
       expect.arrayContaining(["accept_task", "decline_task"]),
     );
+  });
+
+  it("returns explicit task-detail redesign groups for the visual work-thread surface", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.taskHero).toBeDefined();
+    expect(result.current.output.delegationSummary).toBeDefined();
+    expect(result.current.output.evidenceSummary).toBeDefined();
+    expect(Array.isArray(result.current.output.activityThread)).toBe(true);
+    expect(result.current.output.subtaskSummary).toBeDefined();
+  });
+
+  it("keeps legacy actionItems while exposing redesigned task-detail groups", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(Array.isArray(result.current.output.actionItems)).toBe(true);
+    expect(result.current.output.taskHero.title).toBeTruthy();
+  });
+
+  it("maps task activities into readable work-thread events", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.activityThread[0]).toMatchObject({
+      actorLabel: "User user-2",
+      eventLabel: "Submitted task for review",
+      timestampLabel: "Oct 10, 2026, 2:45 PM",
+      detailLabel: "Submitted the completed installation for review.",
+      statusLabel: "Submitted For Review",
+    });
+
+    expect(result.current.output.activityThread[1]).toMatchObject({
+      actorLabel: "User user-1",
+      eventLabel: "Updated progress to 40%",
+      timestampLabel: "Oct 9, 2026, 9:30 AM",
+      detailLabel: "Installed conduit and verified the wiring path.",
+      photoUrls: ["https://example.com/progress-photo-1.jpg"],
+      statusLabel: "In Progress",
+    });
+  });
+
+  it("surfaces latest photo evidence in the redesigned evidence summary", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.evidenceSummary).toMatchObject({
+      latestPhotoUrls: [
+        "https://example.com/progress-photo-1.jpg",
+        "https://example.com/task-attachment-1.jpg",
+      ],
+      totalPhotoCount: 2,
+      emptyLabel: "No photo evidence yet.",
+    });
+  });
+
+  it("maps task hero and delegation summary from existing task details", () => {
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.taskHero).toMatchObject({
+      title: "Parent Task",
+      statusLabel: "In Progress",
+      projectLabel: "project-1",
+      completionLabel: "50% complete",
+      dueDateLabel: "Oct 10, 2026",
+      nextStepLabel: "Update progress and add photo evidence.",
+    });
+
+    expect(result.current.output.delegationSummary).toMatchObject({
+      assignedByLabel: "User manager-1",
+      assignedToLabel: "User user-1, User user-2",
+      primaryOwnerLabel: "User user-2",
+      teamSummaryLabel: "2 assignees",
+    });
   });
 });

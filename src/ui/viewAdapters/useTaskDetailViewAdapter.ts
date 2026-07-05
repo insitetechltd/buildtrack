@@ -10,12 +10,17 @@ import type {
   TaskDetailScreenViewAdapterOutput,
   TaskDetailBannerModel,
   TaskDetailActivityModel,
+  TaskDetailActivityThreadRow,
   TaskDetailAssigneeModel,
+  TaskDetailDelegationSummaryModel,
+  TaskDetailEvidenceSummaryModel,
   TasksScreenRowItem,
   TaskDetailActionItem,
+  TaskDetailHeroModel,
   TaskDetailSectionModel,
+  TaskDetailSubtaskSummaryModel,
 } from '../contracts/viewAdapters';
-import type { Task, TaskStatus } from '../../types/buildtrack';
+import type { Task, TaskActivity, TaskStatus } from '../../types/buildtrack';
 import type { StatusSemanticToken } from '../contracts/primitives';
 
 export interface UseTaskDetailViewAdapterProps {
@@ -48,6 +53,140 @@ function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean)
   const normalizedTags = getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
 
   return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
+}
+
+function humanizeToken(value: string | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function buildTaskDetailEventLabel(activity: TaskActivity): string {
+  switch (activity.activityType) {
+    case 'progress_update':
+      return activity.completionPercentage !== undefined
+        ? `Updated progress to ${activity.completionPercentage}%`
+        : 'Updated progress';
+    case 'status_change':
+      return activity.status
+        ? `Changed status to ${humanizeToken(activity.status)}`
+        : 'Updated task status';
+    case 'assignment':
+      return 'Updated assignment';
+    case 'creation':
+      return 'Created task';
+    case 'cancellation':
+      return 'Cancelled task';
+    case 'review_submission':
+      return 'Submitted task for review';
+    case 'review_acceptance':
+      return 'Approved task completion';
+    case 'review_rejection':
+      return 'Rejected task completion';
+    case 'assigner_comment':
+      return 'Added assigner comment';
+    case 'delegation_added':
+      return 'Added delegation';
+    case 'delegation_removed':
+      return 'Removed delegation';
+    case 'photo_batch_attached':
+      return 'Added photo evidence';
+    case 'draft_completed':
+      return 'Completed draft update';
+    case 'metadata_edit':
+      return 'Updated task details';
+    default:
+      return humanizeToken(activity.activityType);
+  }
+}
+
+function buildTaskDetailEventDetail(activity: TaskActivity): string | undefined {
+  const trimmedDescription = activity.description?.trim();
+  const normalizedEventLabel = buildTaskDetailEventLabel(activity).toLowerCase();
+
+  if (trimmedDescription && trimmedDescription.toLowerCase() !== normalizedEventLabel) {
+    return trimmedDescription;
+  }
+
+  const reason = (activity.data as { reason?: string } | undefined)?.reason?.trim();
+  if (reason) {
+    return `Reason: ${reason}`;
+  }
+
+  return undefined;
+}
+
+function buildTaskDetailTimestampLabel(
+  activity: TaskActivity,
+  dateFormatter: ReturnType<typeof useDateFormatter>,
+): string {
+  if (!activity.timestamp) {
+    return '';
+  }
+
+  return dateFormatter.formatDateTime(activity.timestamp);
+}
+
+function collectActivityPhotoUrls(activity: TaskActivity): string[] {
+  const activityData = activity.data as { photos?: string[] } | undefined;
+  return Array.isArray(activityData?.photos) ? activityData.photos.filter(Boolean) : [];
+}
+
+function collectLatestTaskPhotoUrls(task: Task, activities: TaskActivity[]): string[] {
+  const orderedActivityPhotos = activities.flatMap((activity) => collectActivityPhotoUrls(activity));
+  const taskAttachments = Array.isArray(task.attachments) ? task.attachments.filter(Boolean) : [];
+
+  return [...orderedActivityPhotos, ...taskAttachments].slice(0, 3);
+}
+
+function collectTotalTaskPhotoCount(task: Task, activities: TaskActivity[]): number {
+  const activityPhotoCount = activities.reduce(
+    (total, activity) => total + collectActivityPhotoUrls(activity).length,
+    0,
+  );
+  const taskAttachmentCount = Array.isArray(task.attachments) ? task.attachments.filter(Boolean).length : 0;
+
+  return activityPhotoCount + taskAttachmentCount;
+}
+
+function buildNextStepLabel(
+  task: Task,
+  isAssignedToMe: boolean,
+  isTaskCreator: boolean,
+): string | undefined {
+  if (isApprovedTaskStatus(task.status)) {
+    return 'Work is complete and approved.';
+  }
+
+  if (task.status === 'submitted_for_review') {
+    return isTaskCreator ? 'Review the submitted work.' : 'Waiting for review.';
+  }
+
+  if (task.status === 'declined') {
+    return isTaskCreator ? 'Reassign or update task details.' : 'Review the decline reason.';
+  }
+
+  if (task.status === 'rejected') {
+    return isAssignedToMe
+      ? 'Update the work and resubmit for review.'
+      : 'Waiting for the assignee to resubmit.';
+  }
+
+  if (isPreAcceptanceTaskStatus(task.status)) {
+    return isAssignedToMe ? 'Accept this task to start work.' : 'Waiting for assignee acceptance.';
+  }
+
+  if (isAssignedToMe) {
+    return 'Update progress and add photo evidence.';
+  }
+
+  if (isTaskCreator) {
+    return 'Track progress and support the assignee.';
+  }
+
+  return 'Track the latest task updates.';
 }
 
 export function useTaskDetailViewAdapter({
@@ -109,6 +248,38 @@ export function useTaskDetailViewAdapter({
           freshnessLabel: '',
         },
         header: { taskId: '', title: '', statusLabel: '', projectName: '', assigneeSummary: '' },
+        taskHero: {
+          id: 'task-hero',
+          density: 'standard',
+          structuralState: 'stale',
+          title: '',
+          statusLabel: '',
+          projectLabel: '',
+          completionLabel: '',
+        },
+        delegationSummary: {
+          id: 'delegation-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          assignedByLabel: '',
+          assignedToLabel: '',
+        },
+        evidenceSummary: {
+          id: 'evidence-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          latestPhotoUrls: [],
+          totalPhotoCount: 0,
+          emptyLabel: '',
+        },
+        activityThread: [],
+        subtaskSummary: {
+          id: 'subtask-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          title: 'Subtasks',
+          totalCount: 0,
+        },
         detailSections: [],
         actionItems: [],
         scalarMetrics: { attachmentCount: 0, updateCount: 0, childTaskCount: 0, completionPercentage: 0 },
@@ -281,6 +452,68 @@ export function useTaskDetailViewAdapter({
       ct.completionPercentage < 100,
   }));
 
+  const orderedActivities = [...(task.activities || [])].sort(
+    (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+  );
+
+  const activityThread: TaskDetailActivityThreadRow[] = orderedActivities.map((activity) => ({
+    id: activity.id,
+    density: 'standard',
+    structuralState: 'stale',
+    actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
+    eventLabel: buildTaskDetailEventLabel(activity),
+    timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+    detailLabel: buildTaskDetailEventDetail(activity),
+    photoUrls: collectActivityPhotoUrls(activity),
+    statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
+  }));
+
+  const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
+  const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);
+
+  const taskHero: TaskDetailHeroModel = {
+    id: 'task-hero',
+    density: 'standard',
+    structuralState: 'stale',
+    title: task.title,
+    statusLabel: getStatusLabel(task.status),
+    projectLabel: task.projectId || 'Unknown Project',
+    completionLabel: `${task.completionPercentage}% complete`,
+    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
+    nextStepLabel: buildNextStepLabel(task, isAssignedToMe, isTaskCreator),
+  };
+
+  const primaryOwner = task.primaryAssigneeId
+    ? getUserById(task.primaryAssigneeId)
+    : assignees[0];
+
+  const delegationSummary: TaskDetailDelegationSummaryModel = {
+    id: 'delegation-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    assignedByLabel: assigners.map((assigner) => assigner.name).join(', ') || 'Unassigned',
+    assignedToLabel: assignees.map((assignee) => assignee.name).join(', ') || 'Unassigned',
+    primaryOwnerLabel: primaryOwner?.name,
+    teamSummaryLabel: assignees.length > 1 ? `${assignees.length} assignees` : undefined,
+  };
+
+  const evidenceSummary: TaskDetailEvidenceSummaryModel = {
+    id: 'evidence-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    latestPhotoUrls: latestEvidencePhotoUrls,
+    totalPhotoCount: totalEvidencePhotoCount,
+    emptyLabel: 'No photo evidence yet.',
+  };
+
+  const subtaskSummary: TaskDetailSubtaskSummaryModel = {
+    id: 'subtask-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    title: 'Subtasks',
+    totalCount: childTasks.length,
+  };
+
   const detailSections: TaskDetailSectionModel[] = [
     {
       id: 'section-details',
@@ -356,10 +589,6 @@ export function useTaskDetailViewAdapter({
     actionItems.push({ id: 'action-submit-review', actionId: 'submit_review', density: 'standard', structuralState: 'stale', label: 'Completed - Review Submission', icon: 'send', isDisabled: false });
   }
 
-  const allTaskFiles = new Set<string>();
-  if (task.attachments) task.attachments.forEach(a => allTaskFiles.add(a));
-  activities.forEach(a => a.photos.forEach(p => allTaskFiles.add(p)));
-
   return {
     output: {
       screenId: 'TaskDetailScreen',
@@ -384,10 +613,15 @@ export function useTaskDetailViewAdapter({
         projectName: task.projectId || 'Unknown Project',
         assigneeSummary: assignees.map((a) => a.name).join(', ') || 'Unassigned',
       },
+      taskHero,
+      delegationSummary,
+      evidenceSummary,
+      activityThread,
+      subtaskSummary,
       detailSections,
       actionItems,
       scalarMetrics: {
-        attachmentCount: allTaskFiles.size,
+        attachmentCount: totalEvidencePhotoCount,
         updateCount: activities.length,
         childTaskCount: childTasks.length,
         completionPercentage: task.completionPercentage,

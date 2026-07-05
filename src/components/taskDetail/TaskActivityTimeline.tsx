@@ -1,35 +1,71 @@
 import React, { useMemo } from "react";
 import { Image, Text, View } from "react-native";
 
-import type { TaskDetailActivityModel } from "@/ui/contracts/viewAdapters";
+import type {
+  TaskDetailActivityModel,
+  TaskDetailActivityThreadRow,
+} from "@/ui/contracts/viewAdapters";
 
 interface TaskActivityTimelineProps {
-  activities: TaskDetailActivityModel[];
+  activities?: TaskDetailActivityModel[];
+  thread?: TaskDetailActivityThreadRow[];
+  testID?: string;
 }
 
-function formatActivityTimestamp(timestamp: string) {
-  const parsedDate = new Date(timestamp);
-
-  if (Number.isNaN(parsedDate.getTime())) {
-    return timestamp;
+function normalizeActivityRow(
+  activity: TaskDetailActivityModel | TaskDetailActivityThreadRow,
+): TaskDetailActivityThreadRow {
+  if ("eventLabel" in activity) {
+    return {
+      ...activity,
+      actorLabel: activity.actorLabel || "Unknown actor",
+      eventLabel: activity.eventLabel || "Activity update",
+      timestampLabel: activity.timestampLabel || "Unknown time",
+      photoUrls: Array.isArray(activity.photoUrls) ? activity.photoUrls : [],
+    };
   }
 
-  return parsedDate.toLocaleString();
+  const parsedDate = new Date(activity.timestamp);
+
+  return {
+    id: activity.id,
+    density: activity.density,
+    structuralState: activity.structuralState,
+    actorLabel: activity.userName || "Unknown actor",
+    eventLabel: activity.description || "Activity update",
+    timestampLabel: Number.isNaN(parsedDate.getTime())
+      ? activity.timestamp
+      : parsedDate.toLocaleString(),
+    detailLabel: activity.reason,
+    photoUrls: Array.isArray(activity.photos) ? activity.photos : [],
+    statusLabel: activity.statusLabel,
+  };
 }
 
-export default function TaskActivityTimeline({ activities }: TaskActivityTimelineProps) {
-  const sortedActivities = useMemo(
-    () =>
-      [...activities].sort(
-        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
-      ),
-    [activities],
+export default function TaskActivityTimeline({
+  activities = [],
+  thread = [],
+  testID,
+}: TaskActivityTimelineProps) {
+  const normalizedActivities = useMemo(
+    () => {
+      if (thread.length > 0) {
+        return thread.map((activity) => normalizeActivityRow(activity));
+      }
+
+      return [...activities]
+        .sort(
+          (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+        )
+        .map((activity) => normalizeActivityRow(activity));
+    },
+    [activities, thread],
   );
 
   return (
-    <View className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-4">
+    <View testID={testID} className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-4">
       <View className="mb-4 flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-gray-900">Activity</Text>
+        <Text className="text-lg font-semibold text-gray-900">Work thread</Text>
         <View className="rounded-full bg-gray-100 px-3 py-1">
           <Text className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             Newest first
@@ -38,38 +74,56 @@ export default function TaskActivityTimeline({ activities }: TaskActivityTimelin
       </View>
 
       <View className="gap-4">
-        {sortedActivities.map((activity, index) => {
-          const isLastActivity = index === sortedActivities.length - 1;
+        {normalizedActivities.map((activity, index) => {
+          const isLastActivity = index === normalizedActivities.length - 1;
+          const photoCountLabel =
+            activity.photoUrls.length === 1
+              ? "1 photo"
+              : `${activity.photoUrls.length} photos`;
 
           return (
             <View key={activity.id} className="flex-row">
               <View className="mr-3 items-center">
-                <View className="mt-1 h-3 w-3 rounded-full bg-blue-600" />
-                {!isLastActivity ? <View className="mt-1 w-0.5 flex-1 bg-blue-100" /> : null}
+                <View className="mt-1 h-3 w-3 rounded-full border-2 border-blue-100 bg-blue-600" />
+                {!isLastActivity ? <View className="mt-2 w-0.5 flex-1 bg-blue-100" /> : null}
               </View>
 
-              <View className="flex-1 rounded-2xl bg-gray-50 p-3">
-                <View className="flex-row items-start justify-between gap-3">
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold text-gray-900">{activity.userName}</Text>
-                    <Text
-                      testID="task-activity-timeline__description"
-                      className="mt-1 text-sm leading-5 text-gray-700"
-                    >
-                      {activity.description}
-                    </Text>
-                  </View>
+              <View className="flex-1 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <Text
+                  testID="task-activity-timeline__event-label"
+                  className="text-base font-semibold leading-6 text-slate-900"
+                >
+                  {activity.eventLabel}
+                </Text>
 
-                  <Text className="max-w-[120px] text-right text-xs text-gray-500">
-                    {formatActivityTimestamp(activity.timestamp)}
+                <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1">
+                  <Text
+                    testID="task-activity-timeline__actor-label"
+                    className="text-sm font-medium text-slate-700"
+                  >
+                    {activity.actorLabel}
+                  </Text>
+                  <Text className="text-xs text-slate-300">•</Text>
+                  <Text
+                    testID="task-activity-timeline__timestamp"
+                    className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+                  >
+                    {activity.timestampLabel}
                   </Text>
                 </View>
 
-                {activity.reason ? (
-                  <Text className="mt-2 text-xs italic text-gray-600">Reason: {activity.reason}</Text>
+                {activity.detailLabel ? (
+                  <View className="mt-3 rounded-2xl bg-white px-3 py-2.5">
+                    <Text
+                      testID="task-activity-timeline__detail-label"
+                      className="text-sm leading-5 text-slate-600"
+                    >
+                      {activity.detailLabel}
+                    </Text>
+                  </View>
                 ) : null}
 
-                {activity.statusLabel || activity.completionPercentage !== undefined ? (
+                {activity.statusLabel ? (
                   <View className="mt-3 flex-row flex-wrap items-center gap-2">
                     {activity.statusLabel ? (
                       <View className="rounded-full bg-blue-50 px-2.5 py-1">
@@ -78,24 +132,32 @@ export default function TaskActivityTimeline({ activities }: TaskActivityTimelin
                         </Text>
                       </View>
                     ) : null}
-
-                    {activity.completionPercentage !== undefined ? (
-                      <Text className="text-xs font-medium text-gray-500">
-                        Progress {activity.completionPercentage}%
-                      </Text>
-                    ) : null}
                   </View>
                 ) : null}
 
-                {activity.photos.length > 0 ? (
-                  <View className="mt-3 flex-row flex-wrap gap-2">
-                    {activity.photos.map((photoUri, photoIndex) => (
-                      <Image
-                        key={`${activity.id}-photo-${photoIndex}`}
-                        source={{ uri: photoUri }}
-                        className="h-16 w-16 rounded-xl"
-                      />
-                    ))}
+                {activity.photoUrls.length > 0 ? (
+                  <View
+                    testID="task-activity-timeline__photo-evidence"
+                    className="mt-4 border-t border-slate-200 pt-3"
+                  >
+                    <View className="mb-3 flex-row items-center justify-between gap-3">
+                      <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Photo evidence
+                      </Text>
+                      <Text className="text-xs font-medium text-slate-400">{photoCountLabel}</Text>
+                    </View>
+
+                    <View className="flex-row flex-wrap gap-2">
+                      {activity.photoUrls.map((photoUri, photoIndex) => (
+                        <Image
+                          key={`${activity.id}-photo-${photoIndex}`}
+                          testID={`task-activity-timeline__photo-${activity.id}-${photoIndex}`}
+                          accessibilityLabel={`Photo evidence ${photoIndex + 1} for ${activity.eventLabel}`}
+                          source={{ uri: photoUri }}
+                          className="h-[72px] w-[72px] rounded-2xl bg-slate-200"
+                        />
+                      ))}
+                    </View>
                   </View>
                 ) : null}
               </View>

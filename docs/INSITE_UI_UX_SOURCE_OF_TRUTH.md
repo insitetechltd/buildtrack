@@ -607,6 +607,14 @@ The following approved design decisions are now implemented in `WS-UX / M-UX-01 
 - compact inline weather treatment replacing the larger weather tile
 - context-aware camera defaults based on whether the user launches camera from Task Detail or elsewhere
 
+The following approved design decisions are now implemented in `WS-UX / M-UX-01 / S-UX-01G`:
+
+- task detail is presented as a visual work-thread surface rather than a dense generic section stack
+- delegation context is promoted into a dedicated summary surface
+- evidence context is promoted into a dedicated photo/evidence summary surface
+- activity history is reframed as a clearer work thread with stronger event labeling and media grouping
+- subtask context remains visible and drillable inside the redesigned task-detail surface
+
 ## Non-Goals In This Correction Stage
 
 Not included in the current correction stage:

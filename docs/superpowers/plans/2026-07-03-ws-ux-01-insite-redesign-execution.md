@@ -25,9 +25,9 @@ Deliver the Insite redesign in narrowly governed slices while preserving the exi
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | Rolled out the approved compact and collapsible project task list while preserving search, filters, drill-in behavior, and project scoping. |
 | WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | Corrected the Activity and Tasks surfaces to the approved queue/dashboard model with task-derived critical dates, compact ownership queues, global task search, and photo-centric expansion plumbing. |
 | WS-UX / M-UX-01 / S-UX-01F | Shell + camera redesign | Closed | Reworked the worker shell to `Activity / Camera / Tasks`, moved profile access into the header, compacted weather on `Activity`, and added context-aware camera defaults for global capture vs in-task photo updates. |
-| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Pipeline | Recompose task detail into the approved visual work-thread surface without losing workflow controls. |
+| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Closed | Rebuilt task detail into a visual work-thread surface with promoted delegation, evidence, subtasks, and clearer activity context while preserving in-task workflow controls. |
 | WS-UX / M-UX-01 / S-UX-01H | Batch-first capture review | Pipeline | Convert capture review into the approved project-first, multi-photo save flow. |
-| WS-UX / M-UX-01 / S-UX-01H | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
+| WS-UX / M-UX-01 / S-UX-01I | Migration hardening and regression closure | Pipeline | Finish create/edit alignment, migration safety, validation, and milestone-close evidence. |
 
 ## Slice Detail
 
@@ -235,7 +235,7 @@ Closure evidence:
   - installed app relaunched successfully on both booted iOS simulators
   - runtime logs confirmed auth rehydration, project restore, realtime subscriptions, and project-store initialization
 
-### WS-UX / M-UX-01 / S-UX-01F — Task detail redesign
+### WS-UX / M-UX-01 / S-UX-01G — Task detail redesign
 
 Purpose:
 
@@ -248,7 +248,22 @@ In scope:
 - photo and subtask context
 - review and reassignment actions
 
-### WS-UX / M-UX-01 / S-UX-01G — Batch-first capture review
+Closure evidence:
+
+- task detail now renders as a visual work-thread surface with explicit hero, delegation summary, evidence summary, work-thread timeline, and subtasks sections
+- in-task camera shortcut remains available and preserves same-task update routing
+- primary footer action promotion remains intact while secondary actions stay available
+- focused validation passed:
+  - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailScreen.header.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+  - `npx tsc --noEmit`
+- required relaunch assessment completed: relaunch required because the slice changed a user-visible task-detail destination
+- relaunch verification completed:
+  - Expo dev-client server restarted cleanly on `http://localhost:8081`
+  - installed app relaunched successfully on both booted iOS simulators
+  - runtime logs confirmed successful initialization after relaunch
+  - simulator screenshot capture succeeded after render completion for acceptance evidence
+
+### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 
 Purpose:
 
@@ -261,7 +276,7 @@ In scope:
 - save-first and organize-later behavior
 - capture-related activity logging
 
-### WS-UX / M-UX-01 / S-UX-01H — Migration hardening and regression closure
+### WS-UX / M-UX-01 / S-UX-01I — Migration hardening and regression closure
 
 Purpose:
 

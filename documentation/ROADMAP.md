@@ -51,7 +51,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | S-UX-01D | 14.5 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | S-UX-01E | 14.6 | ../docs/superpowers/plans/2026-07-04-activity-tasks-correction-implementation.md |
 | WS-UX / M-UX-01 / S-UX-01F | Shell + camera redesign | Closed | S-UX-01E2 | 14.7 | ../docs/superpowers/plans/2026-07-04-shell-camera-redesign-implementation.md |
-| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Pipeline | S-UX-01F | 14.8 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Closed | S-UX-01F | 14.8 | ../docs/superpowers/plans/2026-07-05-task-detail-redesign-implementation.md |
 | WS-UX / M-UX-01 / S-UX-01H | Batch-first capture review | Pipeline | S-UX-01G | 14.9 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01I | Migration hardening and regression closure | Pipeline | S-UX-01H | 14.9 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 

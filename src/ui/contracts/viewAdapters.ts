@@ -239,6 +239,43 @@ export interface TaskDetailHeaderModel {
   assigneeSummary: string;
 }
 
+export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
+  title: string;
+  statusLabel: string;
+  projectLabel: string;
+  completionLabel: string;
+  dueDateLabel?: string;
+  nextStepLabel?: string;
+}
+
+export interface TaskDetailDelegationSummaryModel extends PrimitiveReadyItemBase {
+  assignedByLabel: string;
+  assignedToLabel: string;
+  primaryOwnerLabel?: string;
+  teamSummaryLabel?: string;
+}
+
+export interface TaskDetailEvidenceSummaryModel extends PrimitiveReadyItemBase {
+  latestPhotoUrls: string[];
+  totalPhotoCount: number;
+  emptyLabel: string;
+}
+
+export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
+  id: string;
+  actorLabel: string;
+  eventLabel: string;
+  timestampLabel: string;
+  detailLabel?: string;
+  photoUrls: string[];
+  statusLabel?: string;
+}
+
+export interface TaskDetailSubtaskSummaryModel extends PrimitiveReadyItemBase {
+  title: string;
+  totalCount: number;
+}
+
 export interface TaskDetailSectionRow {
   id: string;
   label: string;
@@ -303,6 +340,11 @@ export interface TaskDetailScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   header: TaskDetailHeaderModel;
+  taskHero: TaskDetailHeroModel;
+  delegationSummary: TaskDetailDelegationSummaryModel;
+  evidenceSummary: TaskDetailEvidenceSummaryModel;
+  activityThread: TaskDetailActivityThreadRow[];
+  subtaskSummary: TaskDetailSubtaskSummaryModel;
   detailSections: TaskDetailSectionModel[];
   actionItems: TaskDetailActionItem[];
   scalarMetrics: TaskDetailScalarMetrics;

@@ -13,6 +13,10 @@ import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAda
 import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
+import TaskDetailDelegationCard from "@/components/taskDetail/TaskDetailDelegationCard";
+import TaskDetailEvidenceStrip from "@/components/taskDetail/TaskDetailEvidenceStrip";
+import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
+import TaskDetailSubtasksSection from "@/components/taskDetail/TaskDetailSubtasksSection";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
 import PrimaryActionBar from "@/components/ui/PrimaryActionBar";
 import { cn } from "@/utils/cn";
@@ -20,7 +24,6 @@ import {
   mapBannerModelToBannerProps,
   mapSectionModelToContainerProps,
 } from "@/ui/mappers/taskDetailMappers";
-import { mapTaskRowToContainerCardProps } from "@/ui/mappers/tasksMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
 
@@ -292,48 +295,30 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           </View>
         ) : null}
 
-        {/* Details Sections */}
-        <View className="px-4 mt-4">
-          {output.detailSections.map(section => (
-            <View key={section.id} className="mb-4">
-              <ContainerCard contract={mapSectionModelToContainerProps(section)} />
-            </View>
-          ))}
-        </View>
+        <TaskDetailHero model={output.taskHero} />
+        <TaskDetailDelegationCard model={output.delegationSummary} />
+        <TaskDetailEvidenceStrip model={output.evidenceSummary} />
 
-        {/* Assignees & Assigners */}
-        <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
-          <Text className="font-semibold text-gray-900 mb-2">People</Text>
-          <Text className="text-gray-700">
-            Assigned By: {output.assigners.map(a => a.name).join(', ') || 'Unknown'}
-          </Text>
-          <Text className="text-gray-700 mt-1">
-            Assigned To: {output.assignees.map(a => a.name).join(', ') || 'Unassigned'}
-          </Text>
-        </View>
+        <TaskActivityTimeline
+          testID="task-detail__activity_thread"
+          thread={output.activityThread}
+        />
 
-        {/* Activities */}
-        {output.activities.length > 0 && (
-          <TaskActivityTimeline activities={output.activities} />
-        )}
+        <TaskDetailSubtasksSection
+          model={output.subtaskSummary}
+          childTasks={output.childTasks}
+          onNavigateToTaskDetail={props.onNavigateToTaskDetail}
+        />
 
-        {/* Child Tasks */}
-        {output.childTasks.length > 0 && (
-          <View className="bg-white mx-4 mb-4 rounded-xl border border-gray-200 p-4">
-            <Text className="text-lg font-semibold text-gray-900 mb-4">Sub-Tasks ({output.childTasks.length})</Text>
-            {output.childTasks.map(childTask => (
-              <ContainerCard
-                key={childTask.id}
-                contract={mapTaskRowToContainerCardProps({
-                  ...childTask,
-                  onPress: props.onNavigateToTaskDetail
-                    ? () => props.onNavigateToTaskDetail?.(childTask.taskId)
-                    : undefined,
-                })}
-              />
+        {output.detailSections.length > 0 ? (
+          <View className="px-4 mt-4">
+            {output.detailSections.map((section) => (
+              <View key={section.id} className="mb-4">
+                <ContainerCard contract={mapSectionModelToContainerProps(section)} />
+              </View>
             ))}
           </View>
-        )}
+        ) : null}
 
         {secondaryActions.length > 0 ? (
           <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">

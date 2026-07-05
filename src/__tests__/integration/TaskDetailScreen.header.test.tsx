@@ -76,6 +76,68 @@ describe("TaskDetailScreen header regression", () => {
     typeof useTaskDetailViewAdapter
   >;
 
+  const createAdapterOutput = (overrides: Record<string, unknown> = {}) => ({
+    readiness: {
+      hasUsableData: true,
+    },
+    header: {
+      title: "Task Details",
+    },
+    taskHero: {
+      id: "task-hero",
+      density: "standard",
+      structuralState: "ready",
+      title: "Replace ceiling tiles",
+      statusLabel: "In Progress",
+      projectLabel: "Project Alpha",
+      completionLabel: "50% complete",
+      nextStepLabel: "Update progress and add photo evidence.",
+    },
+    delegationSummary: {
+      id: "delegation-summary",
+      density: "standard",
+      structuralState: "ready",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Sam",
+      primaryOwnerLabel: "Sam",
+      teamSummaryLabel: "1 assignee",
+    },
+    evidenceSummary: {
+      id: "evidence-summary",
+      density: "standard",
+      structuralState: "ready",
+      latestPhotoUrls: [],
+      totalPhotoCount: 0,
+      emptyLabel: "No photo evidence yet.",
+    },
+    activityThread: [],
+    subtaskSummary: {
+      id: "subtask-summary",
+      density: "standard",
+      structuralState: "ready",
+      title: "Subtasks",
+      totalCount: 0,
+    },
+    banners: [],
+    detailSections: [],
+    assigners: [],
+    assignees: [],
+    activities: [],
+    childTasks: [],
+    actionItems: [],
+    ...overrides,
+  });
+
+  const createAdapterActions = () => ({
+    acceptTask: jest.fn(),
+    declineTask: jest.fn(),
+    submitForReview: jest.fn(),
+    approveTask: jest.fn(),
+    toggleCriticalThisWeek: jest.fn(),
+    cancelTask: jest.fn(),
+    fetchTask: jest.fn(),
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -87,7 +149,7 @@ describe("TaskDetailScreen header regression", () => {
           hasUsableData: false,
         },
       },
-      actions: {},
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
@@ -100,27 +162,8 @@ describe("TaskDetailScreen header regression", () => {
     const onNavigateBack = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
-        actionItems: [],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      output: createAdapterOutput(),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
@@ -138,19 +181,7 @@ describe("TaskDetailScreen header regression", () => {
     const onNavigateToRejectTask = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
+      output: createAdapterOutput({
         actionItems: [
           {
             id: "reject-action",
@@ -162,13 +193,8 @@ describe("TaskDetailScreen header regression", () => {
             structuralState: "ready",
           },
         ],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      }),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(
@@ -193,19 +219,7 @@ describe("TaskDetailScreen header regression", () => {
     const onNavigateToCreateTask = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
+      output: createAdapterOutput({
         actionItems: [
           {
             id: "photos-action",
@@ -217,13 +231,8 @@ describe("TaskDetailScreen header regression", () => {
             structuralState: "ready",
           },
         ],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      }),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(
@@ -252,27 +261,8 @@ describe("TaskDetailScreen header regression", () => {
     const onNavigateToCreateTask = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
-        actionItems: [],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      output: createAdapterOutput(),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(
@@ -323,66 +313,31 @@ describe("TaskDetailScreen header regression", () => {
 
   it("renders the activity timeline title when activities are available", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [
+      output: createAdapterOutput({
+        activityThread: [
           {
             id: "activity-1",
-            userId: "user-1",
-            userName: "Sam",
-            timestamp: "2026-07-02T10:00:00.000Z",
-            description: "Submitted for review",
-            activityType: "status_change",
+            actorLabel: "Sam",
+            eventLabel: "Submitted for review",
+            timestampLabel: "Jul 2, 10:00 AM",
             density: "standard",
-            structuralState: "stale",
-            accessibilityLabel: "Submitted for review",
-            isEmpty: false,
-            isLoading: false,
-            isStale: true,
-            isDisabled: false,
-            photos: [],
+            structuralState: "ready",
+            detailLabel: "Marked 100% complete",
+            photoUrls: [],
           },
         ],
-        childTasks: [],
-        actionItems: [],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      }),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Activity")).toBeTruthy();
+    expect(screen.getByText("Work thread")).toBeTruthy();
   });
 
   it("promotes one primary footer action and keeps the rest in secondary actions", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
+      output: createAdapterOutput({
         actionItems: [
           {
             id: "action-decline",
@@ -412,13 +367,8 @@ describe("TaskDetailScreen header regression", () => {
             structuralState: "stale",
           },
         ],
-      },
-      actions: {
-        acceptTask: jest.fn(),
-        declineTask: jest.fn(),
-        submitForReview: jest.fn(),
-        approveTask: jest.fn(),
-      },
+      }),
+      actions: createAdapterActions(),
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);

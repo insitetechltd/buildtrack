@@ -1,45 +1,43 @@
 # Task Detail Correction Design
 
 **Date:** 2026-07-05  
-**Scope:** Refined correction pass for the redesigned Task Detail surface before moving to the next roadmap slice.
+**Scope:** Follow-up correction pass for Task Detail after rejecting the separate evidence-stage model.
 
 ## Goal
 
-Refine the current Task Detail redesign so it matches the intended compact, photo-centric, operational interaction model:
+Refine Task Detail into a simpler, tighter operational surface:
 
-- no duplicate camera affordance in the top area
-- no oversized standalone critical treatment
-- no wasted hero space on low-value metadata
-- no redundant explanatory card inside the hero
-- a clearer active-entry stage above the work thread
-- a stronger visual linkage between the active-entry stage and the work thread
-- a more media-first active-entry stage with less text inside the evidence surface
-- a safer model for text-only and document-bearing updates
-- tighter permission and back-navigation behavior
+- no separate evidence section
+- no duplicate delegation section below the hero
+- one clear update surface: the work thread
+- photo-forward thread entries with tight metadata
+- cleaner visual density and less duplicated chrome
+- fresh photo-update forms after every submission
 
-This is still a focused correction pass to the current Task Detail redesign, not a new independent redesign slice.
+This is still a focused correction pass to the existing Task Detail redesign, not a new independent product slice.
 
 ## Approved Direction
 
 The approved direction is now:
 
-- dynamic bottom-nav camera behavior on Task Detail
+- dynamic bottom-nav camera behavior on Task Detail remains
 - no dedicated top camera shortcut
 - no visible `Progress update` button
-- text-only updates go through comment for now
+- text-only updates still go through comment for now
 - back from the camera/update flow returns to Task Detail
 - compact hero with no project-label string above the title
-- status chip carries quick task-state context
 - no `Next step` card in the hero
-- delegation moves into the hero in place of the old `Next step` block
-- compact critical flag inside the hero/title area
-- visible inline secondary actions
-- creator-only visibility for `Edit task details`
-- newest-first work thread
-- pinned active-entry stage above the thread
-- work-thread scroll position determines the active entry
-- the active-entry stage should not spend vertical space on a large textual `Active update` block
-- photo, text-only, and PDF-bearing entries all render through the same active-entry stage model
+- delegation lives only in the hero
+- the lower delegation section is removed entirely
+- visible inline secondary actions remain
+- creator-only visibility for `Edit task details` remains
+- the separate evidence section is removed entirely
+- the work thread becomes the only update surface
+- newest-first thread order remains
+- approved layout is **Option B**
+- metadata aligns with the thread rail in this order: **Date, user, %**
+- each thread entry contains media and comment only
+- photo-update form must reset fully after submit so reopening starts fresh
 
 ## Design Decisions
 
@@ -47,10 +45,10 @@ The approved direction is now:
 
 When Task Detail is the active screen:
 
-- the bottom navigation camera button becomes context-sensitive
+- the bottom navigation camera button remains context-sensitive
 - activating it routes directly into the same-task photo update flow
-- the dedicated Task Detail top camera button is removed
-- if the user backs out of the camera/update flow, they should return to Task Detail rather than to the dashboard
+- the dedicated Task Detail top camera button remains removed
+- backing out of the camera/update flow returns to Task Detail rather than the dashboard
 
 When Task Detail is not the active screen:
 
@@ -58,158 +56,169 @@ When Task Detail is not the active screen:
 
 #### Reasoning
 
-- removes duplicate camera entry points
-- prevents the top area from feeling crowded
-- keeps the camera as a consistent global affordance while still becoming smart in context
-- preserves continuity when the user is updating a specific task
+- preserves the camera workflow already approved
+- keeps the top area free of duplicate update affordances
+- keeps photo updates tightly attached to the task context
 
-### 2. Hero Compaction and Critical Marker Treatment
+### 2. Hero and Delegation
 
-The hero should be more compact than the current implementation.
+The hero remains compact and continues to own task identity and ownership.
 
 Approved behavior:
 
 - remove the low-value project-label string above the title
-- let the task title become the first strong line in the hero
-- let the first status chip such as `In Progress` carry the quick state signal
+- let the title remain the first strong line
+- let the first status chip carry quick task-state context
 - remove the `Next step` card entirely
-- move delegation into the hero in place of the old `Next step` block
-- let the delegation block communicate ownership/assignment rather than duplicating workflow guidance
-- critical state is displayed as a small flag/badge inside the hero/title area
-- the flag is treated as metadata, not as a standalone section
+- keep delegation only inside the hero
+- remove the lower delegation section entirely
+- keep critical state as a compact flag/badge in the hero title area
 
 #### Reasoning
 
-- the project-label string is taking space without earning enough visual value
-- the title should dominate more strongly
-- the status chip already carries enough quick state signal without an additional `Next step` card
-- delegation is more useful than workflow copy in the limited hero space
-- critical is important, but it is still metadata rather than a primary content block
+- the screen should have one clear ownership surface
+- duplicated delegation below the media/thread area weakens hierarchy
+- hero = task identity + ownership remains a clear, stable model
 
-### 3. Active-Entry Stage Behavior
+### 3. Remove the Evidence Section
 
-The top area below the hero should no longer be thought of as only an “evidence card.”
-
-It should behave as a **pinned active-entry stage**.
+The standalone evidence section is removed entirely.
 
 Approved behavior:
 
-- the work thread remains vertically scrollable and newest-first
-- the active-entry stage is not a static latest-update card
-- the work-thread scroll position determines which entry is active
-- as thread entries move through the focus line during scrolling, the active-entry stage updates to match the currently focused entry
-- the pinned stage updates to display the active entry
-- the pinned stage does not control which thread entry is active
-- horizontal swipe inside the stage only changes photos belonging to the active entry
-- the hero remains separate from this interaction so the visual linkage is primarily between the active-entry stage and the work thread
-- detailed textual update content should stay in the work-thread cards rather than being repeated prominently inside the stage
-
-This means the interaction is:
-
-- vertical scroll = change active entry
-- horizontal swipe = change photo within the active entry
+- no pinned evidence section
+- no separate active-entry stage
+- no staged photo surface above the work thread
+- all update storytelling happens through the work thread itself
 
 #### Reasoning
 
-- keeps the mental model clean
-- avoids disorienting bi-directional control between stage and thread
-- makes the pinned stage feel like a focused display rather than a controller
-- creates a more direct visual and conceptual relationship between the active-entry stage and the work thread itself
+- the separate evidence surface is visually heavy and not pleasing in this product context
+- the screen becomes easier to understand when there is only one update narrative
+- removing the extra section frees vertical space and reduces duplication
 
-### 4. Entry Type Modes Inside the Active-Entry Stage
+### 4. Work Thread as the Only Update Surface
 
-The active-entry stage must safely support three types of entries.
+The work thread becomes the sole update narrative on Task Detail.
+
+Approved behavior:
+
+- newest-first order remains
+- each entry is self-contained
+- thread point / rail carries the tight metadata row
+- card body carries media and comment content only
+
+This is the approved **Option B** direction.
+
+#### Reasoning
+
+- the thread already feels structurally right
+- aligning metadata to the rail improves scannability
+- keeping media + comment in the card makes each update visually tight
+
+### 5. Thread Entry Layout
+
+Each work-thread entry should use the following structure.
+
+#### Metadata rail row
+
+Aligned with the thread point:
+
+- Date
+- user
+- %
+
+This order is mandatory.
+
+The metadata row should be visually tight and label-light.
+
+#### Entry card body
+
+Inside the card:
+
+- one large lead photo at the top when photos exist
+- a small thumbnail strip when more than one photo exists
+- the comment below the media, if present
+
+The card should not repeat the metadata row inside the body.
 
 #### Photo-bearing entry
 
-- display the active entry in photo mode
-- show one prominent photo with horizontal swipe across that entry’s photo set
-- keep the stage media-first and remove the large `Active update` text block from inside the stage
-- avoid repeating detailed event text that already exists in the work-thread card
+- one large photo at the top
+- small thumbnail strip below if more than one
+- compact spacing
+- comment below if present
 
 #### Text-only entry
 
-- switch the stage into a neutral no-photo state
-- do **not** carry forward the previous entry’s image
-- keep the no-photo state concise rather than expanding into a large text card
+- no fake evidence placeholder
+- no large empty photo block
+- just the compact thread card with comment content if present
 
-This rule is mandatory because otherwise a photo from another entry could be mistakenly associated with a text-only update.
+#### Document/PDF entry
 
-#### PDF-bearing entry
-
-- switch the stage into a document preview mode
-- show PDF/document styling rather than pretending it is a photo
-- keep document identity lightweight and avoid a large duplicated update summary inside the stage
+- compact document tile inside the thread card
+- comment below if present
+- still uses the same Date / user / % rail metadata
 
 #### Reasoning
 
-- the stage must represent the active entry faithfully
-- no entry should accidentally inherit media from a different entry
-- PDFs should participate in the same narrative model without being forced into an image-only treatment
+- metadata belongs to the timeline structure
+- media and comments belong to the card body
+- this split produces a calmer, tighter thread layout
 
-### 5. Work Thread Order and Trigger
+### 6. Information Density
 
-Approved thread behavior:
-
-- newest first
-- the active entry is determined by the work-thread scroll position using a clear top-focus trigger
-- the active-entry stage should update dynamically as scrolling progresses
-
-#### Reasoning
-
-- the first thing the user sees should be the latest task state
-- the pinned stage should usually reflect the current/latest state first
-- top-edge activation is predictable and easy to understand
-- dynamic stage updates are required so the active-entry stage feels genuinely linked to the thread rather than statically summarizing it
-
-### 6. Information Density Limits
-
-The pinned active-entry stage must be height-capped and summary-based.
+The work thread should be much tighter than the current design.
 
 Approved behavior:
 
-- the stage should show only the summary version of the active entry
-- the stage should remain media-first and avoid a large explanatory block at the top
-- if an entry contains more information than fits comfortably, full detail remains in the thread card below
-- the stage must not grow so tall that it blocks access to later entries
+- remove large sectional labels such as `Photo evidence`
+- remove redundant descriptive helper copy
+- reduce padding inside thread cards
+- keep comments as the only longer text block
+- let media dominate photo updates
 
 #### Reasoning
 
-- protects scrollability and reachability of the thread
-- keeps the stage stable while the thread remains the detailed narrative
+- the current design is still visually padded and repetitive
+- the target direction is compact, operational, and easy to scan
 
 ### 7. Action Hierarchy
 
-The action hierarchy should now be fully inline:
+The action hierarchy remains fully inline:
 
 - no promoted primary footer CTA
-- secondary actions remain visible inline lower in the screen
+- visible inline secondary actions remain lower in the screen
+- `Edit task details` appears only for the creator
 
-Approved secondary-action behavior:
+This part of the prior correction direction remains unchanged.
 
-- remove the visible `Progress update` button
-- for now, text-only progress updates should happen through comment
-- `Edit task details` appears only as part of the visible inline secondary action group
-- `Edit task details` is only visible to the creator of the task
-- secondary actions remain visible rather than hidden in a sheet or overflow menu
+### 8. Photo Update Form Reset
+
+The photo-update form must reset completely after a successful submission.
+
+Approved behavior:
+
+- clear selected photos
+- clear comment text
+- clear progress/update value back to a fresh default state
+- clear any draft data associated with the just-submitted update
+- reopening photo update should never show the previous submission’s data
 
 #### Reasoning
 
-- keeps actions discoverable
-- removes redundant progress affordances after camera becomes the photo-driven update path
-- avoids defaulting to an unwanted blue CTA button
-- avoids over-promoting edit behavior above workflow behavior
-- enforces the correct permission model directly in the interface
+- carrying the previous update forward is a correctness bug, not just a visual bug
+- repeated update actions must always start from a fresh form state
 
 ## Final Screen Structure
 
 Approved Task Detail order:
 
-1. compact task hero
-2. pinned active-entry stage
-3. newest-first work-thread section
-4. subtasks
-5. visible inline secondary actions
+1. compact task hero with delegation
+2. newest-first work thread
+3. subtasks
+4. visible inline secondary actions
 
 Explicit removals from the current version:
 
@@ -218,12 +227,14 @@ Explicit removals from the current version:
 - no project-label string above the task title
 - no visible `Progress update` button
 - no `Next step` card in the hero
+- no lower delegation section
+- no evidence section
 
 ## Interaction Rules
 
 ### Camera
 
-- Task Detail active: bottom-nav camera routes to same-task update/photo flow
+- Task Detail active: bottom-nav camera routes to same-task photo update flow
 - leaving the camera/update flow via back returns to Task Detail
 - any other screen: bottom-nav camera retains global capture behavior
 
@@ -231,28 +242,22 @@ Explicit removals from the current version:
 
 - no project-label string above the title
 - title is the first strong line
-- first status chip handles quick state context
 - no `Next step` card
-- delegation occupies the old `Next step` position inside the hero
-- critical state is visible as a compact flag in the hero
+- delegation exists only in the hero
+- no lower delegation card remains
 
-### Active-Entry Stage
+### Work Thread
 
-- pinned above the thread
-- controlled dynamically by work-thread scroll position
-- does not control the thread vertically
-- horizontal swipe only changes photos within the active entry
-- no large `Active update` text block is rendered inside the stage
+- newest first
+- metadata aligns to the thread rail
+- metadata order is Date, user, %
+- entry card body contains media + comment only
+- no separate evidence section above the thread
 
-### Text-only Entries
+### Photo Update Form
 
-- switch the stage to a neutral no-photo state
-- never inherit or reuse a previous entry’s photo
-
-### PDF Entries
-
-- switch the stage to a document preview mode
-- show document identity and summary/status rather than a photo layout
+- successful submit resets all draft state
+- reopening update starts from a fresh form
 
 ### Edit Permissions
 
@@ -265,9 +270,9 @@ This correction pass does **not** include:
 
 - a new batch capture review flow
 - a new photo annotation model
-- a redesign of the global bottom navigation outside the camera-context behavior needed for Task Detail
+- a redesign of the global bottom navigation outside the existing camera-context behavior
 - a new hidden action menu or bottom sheet pattern
-- changes to the broader Activity or Tasks surfaces
+- changes to broader Activity or Tasks information architecture
 
 ## Validation Targets
 
@@ -278,33 +283,34 @@ The correction is only complete if all of the following are true:
 3. back from the camera/update flow returns to Task Detail
 4. hero no longer renders the top project-label string
 5. hero no longer renders a `Next step` card
-6. delegation is rendered inside the hero in place of the old `Next step` block
-7. critical marker appears only as a compact hero/title flag
+6. delegation is rendered only inside the hero
+7. the lower delegation section is removed entirely
 8. no visible `Progress update` button remains
 9. no promoted primary footer CTA appears on Task Detail
-10. comment remains the text-only update path for now
-11. pinned active-entry stage stays above the work thread
+10. the evidence section is removed entirely
+11. the work thread is the only update surface
 12. work thread is newest-first
-13. active-entry stage changes dynamically with work-thread scroll position
-14. active-entry stage does not render a large textual `Active update` block
-15. text-only entries render a neutral no-photo state in the stage
-16. PDF entries render a document-preview state in the stage
-17. `Edit task details` is visible for task creators
-18. `Edit task details` is hidden for non-creators
+13. thread metadata aligns to the rail in the order Date, user, %
+14. photo entries render one large photo with a smaller thumbnail strip when applicable
+15. comments render inside the thread card body
+16. text-only entries do not render fake photo placeholders
+17. photo update form reopens in a clean state after submit
+18. `Edit task details` is visible for task creators only
 
 ## Implementation Notes
 
-This correction should be planned and executed as a focused follow-up to the existing Task Detail redesign work. It should reuse the current redesigned screen structure and adapter model where possible, rather than replacing the Task Detail redesign wholesale.
+This correction should be planned and executed as a focused follow-up to the current Task Detail redesign work. It should reuse the current screen, camera-routing behavior, and thread data model where possible, while removing the separate evidence-stage concept entirely.
 
-The most important conceptual change is that the previous “evidence card” should now be treated as a **pinned active-entry stage** rather than a simple photo strip, and that this stage must be dynamically driven by the work-thread scroll position rather than statically representing only the latest update.
+The most important conceptual change is that Task Detail should no longer split update storytelling across an evidence section and a thread. The work thread alone becomes the update surface.
 
 ## Implementation Status
 
-This spec supersedes the previous refined correction state. The earlier implementation established the compact hero, pinned active-entry stage, and newest-first thread, but a new follow-up correction is now required to:
+This spec supersedes the previous correction state. The earlier implementation established a compact hero and a staged evidence-first model, but a new follow-up correction is now required to:
 
-- remove the hero `Next step` block entirely
-- move delegation into the hero in that space
-- make the active-entry stage change dynamically with work-thread scroll position rather than behaving like a static latest-update surface
-- reduce the active-entry stage text treatment so it stays media-first
+- remove the lower delegation section entirely
+- remove the evidence section entirely
+- move to a thread-only update model
+- implement Option B with rail metadata ordered as Date, user, %
+- reset the photo-update form fully after every submit
 
 Any future implementation plan should treat this updated spec as the source of truth.

@@ -196,11 +196,21 @@ The card should not repeat the metadata row inside the body.
 - detail/comment below if present
 - still uses the same Date / user / % rail metadata
 
+#### Photo display behavior
+
+- the lead photo should display the full image rather than cropping important content away
+- the default in-thread photo treatment should prefer full-image visibility within the card bounds
+- tapping the lead photo or any thumbnail should open a true full-photo viewer
+- the full-photo viewer should display the image at full available size with contain/fit behavior, not the constrained thread-card presentation
+- the user should be able to see the entire selected image after tapping it
+
 #### Reasoning
 
 - metadata belongs to the timeline structure
 - media and details belong to the card body
 - subtask work should feel like part of the same story, not a different module
+- field teams often need to inspect the full image, not just a cropped preview
+- the current card-only photo treatment hides important detail when the image aspect ratio is tall or wide
 
 ### 7. Information Density
 
@@ -340,10 +350,12 @@ The correction is only complete if all of the following are true:
 15. thread metadata aligns to the rail in the order Date, user, %
 16. photo entries render one large photo with a smaller thumbnail strip when applicable
 17. subtask updates render as normal chronological thread entries with lightweight subtask context
-18. detail/comment content renders inside the thread card body
-19. text-only entries do not render fake photo placeholders
-20. photo update form reopens in a clean state after submit
-21. `Edit task details` is visible for task creators only
+18. in-thread lead photos preserve full-image visibility rather than aggressively cropping
+19. tapping a thread photo opens a full-photo viewer that shows the entire selected image
+20. detail/comment content renders inside the thread card body
+21. text-only entries do not render fake photo placeholders
+22. photo update form reopens in a clean state after submit
+23. `Edit task details` is visible for task creators only
 
 ## Implementation Notes
 
@@ -352,6 +364,8 @@ This correction should be planned and executed as a focused follow-up to the cur
 - one sticky hero card
 - one scrolling merged info card
 - one unified chronological work thread
+
+The thread implementation must also support full-photo inspection from within the thread itself. The lead image should be preview-first but uncropped where possible, and tapping any photo must open a full-photo viewer.
 
 The most important conceptual change is that Task Detail should no longer separate subtask progress from the main progress narrative. Subtask activity belongs inside the same work thread as parent-task activity.
 

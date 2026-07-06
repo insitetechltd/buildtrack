@@ -1,10 +1,10 @@
-# Task Detail Sticky-Hero Simplification Implementation Plan
+# Task Detail Readability + Quick Actions Refinement Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Rework Task Detail so only the hero stays sticky, description/delegation/details collapse into one scrolling info card, and subtask progress is folded into the main chronological work thread.
+**Goal:** Refine Task Detail so the hero is lighter, the content scroll region is properly bounded, small text is readable, quick actions become state-aware, the bottom nav is evenly spaced, and full-screen thread photos support swipe browsing.
 
-**Architecture:** Keep the current Task Detail camera routing and thread styling direction, but rebalance the page structure. The implementation will introduce a dedicated merged info-card model/component, remove the separate subtasks section, extend thread rows with lightweight subtask context, and build one newest-first chronological activity feed that combines parent-task and child-task updates.
+**Architecture:** Reuse the existing sticky-hero, merged-info-card, and unified-thread foundations, then layer on a lighter hero model, a contextual quick-actions model, a true fixed-top plus bounded-scroll screen structure, larger mobile type, an equal-slot bottom navigation layout, and a swipeable per-entry photo gallery. The work is concentrated in the task-detail adapter, task-detail screen/components, and bottom navigation shell.
 
 **Tech Stack:** Expo 54, React Native, React Navigation, TypeScript, Zustand, Jest, React Native Testing Library
 
@@ -15,37 +15,45 @@
 ### Core files to modify
 
 - `src/ui/contracts/viewAdapters.ts`
-  Add a dedicated merged info-card model and extend thread rows with optional subtask context fields.
+  Remove delegation from the hero-facing contract, add a contextual quick-actions model if needed, and support per-entry gallery state assumptions without changing data ownership.
 
 - `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
-  Build the merged info-card data, fold child-task activities into the main activity thread, and stop producing screen output that depends on the separate subtasks card.
+  Build the state-aware quick actions row, remove delegation from the hero model, and keep lower-frequency actions separated for the lower actions area.
 
 - `src/components/taskDetail/TaskDetailHero.tsx`
-  Keep the hero visually compact so it works as the only sticky element.
+  Remove delegation rendering, bump small text sizing, and keep the hero status-only.
 
 - `src/components/taskDetail/TaskDetailInfoCard.tsx`
-  New component for the single scrolling merged card that contains description, delegation, and compact details.
+  Increase label/body sizes for readability while keeping delegation inside the info card.
+
+- `src/components/taskDetail/TaskDetailQuickActions.tsx`
+  New component for the contextual quick-actions row below the info card.
 
 - `src/components/taskDetail/TaskActivityTimeline.tsx`
-  Render lightweight subtask context inside chronological thread entries without creating a separate section, preserve full-image visibility for lead photos, and open a full-photo viewer when a thread photo is tapped.
+  Increase small text sizes, keep in-thread full-photo visibility, and replace the single-image modal with swipeable gallery navigation across an entry’s photos.
 
 - `src/screens/TaskDetailScreen.tsx`
-  Make the hero the only sticky element, render the merged info card below it in scroll content, remove the separate subtasks card, and keep the unified thread as the page body.
+  Change from sticky-over-scroll to fixed hero + bounded scroll content region, insert quick actions below the info card, and keep lower-frequency actions beneath the thread.
+
+- `src/navigation/AppNavigator.tsx`
+  Rebalance bottom nav spacing so Activity, Camera, and Tasks occupy equal visual slots while preserving camera emphasis.
 
 ### Tests to modify or add
 
 - `src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts`
 - `src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx`
+- `src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx`
 - `src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx`
 - `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 - `src/__tests__/integration/TaskDetailScreen.header.test.tsx`
+- `src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx`
 
 ### Docs to update after implementation
 
 - `docs/superpowers/specs/2026-07-05-task-detail-correction-design.md`
 - `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
 
-## Task 1: Add merged info-card and subtask thread context to the adapter contract
+## Task 1: Build contextual quick-actions data and lighten the hero contract
 
 **Files:**
 - Modify: `src/ui/contracts/viewAdapters.ts`
@@ -55,32 +63,41 @@
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("builds one merged info card that combines description, delegation, and compact details", () => {
+it("omits delegation from the hero model and keeps delegation only in the info card", () => {
   const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-parent" }));
 
-  expect(result.current.output.infoCard).toMatchObject({
-    descriptionLabel: "Confirm supplier lead times before final delivery.",
-    assignedByLabel: "User user-1",
-    assignedToLabel: "User user-2, User user-3",
-    detailRows: expect.arrayContaining([
-      expect.objectContaining({ label: "Due", value: "Oct 12, 2026" }),
-    ]),
-  });
+  expect(result.current.output.taskHero).not.toHaveProperty("assignedByLabel");
+  expect(result.current.output.infoCard?.assignedToLabel).toBe("User user-2, User user-3");
 });
 ```
 
 ```ts
-it("marks child-task activity rows with lightweight subtask context inside the main activity thread", () => {
-  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-parent" }));
+it("builds quick actions for pre-acceptance state", () => {
+  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-awaiting-acceptance" }));
 
-  expect(result.current.output.activityThread).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        subtaskTitleLabel: "Install ceiling grid",
-        subtaskBadgeLabel: "Subtask",
-      }),
-    ]),
-  );
+  expect(result.current.output.quickActions?.map((action) => action.actionId)).toEqual([
+    "accept_task",
+    "reject_task",
+  ]);
+});
+```
+
+```ts
+it("builds quick actions for active work and review/approval states", () => {
+  const active = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-in-progress" })).result.current;
+  const reviewer = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-pending-review" })).result.current;
+
+  expect(active.output.quickActions?.map((action) => action.actionId)).toEqual([
+    "update_progress",
+    "add_comment",
+    "add_subtask",
+  ]);
+
+  expect(reviewer.output.quickActions?.map((action) => action.actionId)).toEqual([
+    "approve_task",
+    "reject_task",
+    "add_comment",
+  ]);
 });
 ```
 
@@ -88,65 +105,44 @@ it("marks child-task activity rows with lightweight subtask context inside the m
 
 Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
 
-Expected: FAIL because the adapter does not yet expose a merged info-card model or subtask thread context.
+Expected: FAIL because the adapter does not yet expose state-aware quick actions and still couples some status context to the old action ordering assumptions.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
 // src/ui/contracts/viewAdapters.ts
-export interface TaskDetailInfoCardRow {
+export interface TaskDetailQuickActionRowModel extends PrimitiveReadyItemBase {
   id: string;
-  label: string;
-  value: string;
+  actions: TaskDetailActionItem[];
 }
+```
 
-export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
-  descriptionLabel?: string;
-  assignedByLabel?: string;
-  assignedToLabel?: string;
-  primaryOwnerLabel?: string;
-  detailRows: TaskDetailInfoCardRow[];
-}
-
-export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
-  id: string;
-  actorLabel: string;
-  eventLabel: string;
-  timestampLabel: string;
-  progressLabel: string;
-  detailLabel?: string;
-  photoUrls: string[];
-  statusLabel?: string;
-  subtaskBadgeLabel?: string;
-  subtaskTitleLabel?: string;
+```ts
+// src/ui/contracts/viewAdapters.ts
+export interface TaskDetailScreenViewAdapterOutput {
+  // ...
+  quickActions?: TaskDetailQuickActionRowModel;
+  actionItems: TaskDetailActionItem[];
+  // ...
 }
 ```
 
 ```ts
 // src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-const infoCard: TaskDetailInfoCardModel = {
-  id: "task-info-card",
+const quickActionIds = isAwaitingAcceptance
+  ? ["accept_task", "reject_task"]
+  : isReviewerApprovalState
+    ? ["approve_task", "reject_task", "add_comment"]
+    : isContributorReviewState
+      ? ["submit_review", "add_comment", "update_progress"]
+      : ["update_progress", "add_comment", "add_subtask"];
+
+const quickActions: TaskDetailQuickActionRowModel = {
+  id: "task-quick-actions",
   density: "standard",
   structuralState: "stale",
-  descriptionLabel: task.description || "",
-  assignedByLabel: delegationSummary.assignedByLabel,
-  assignedToLabel: delegationSummary.assignedToLabel,
-  primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
-  detailRows: [
-    { id: "row-due", label: t.taskDetail.due, value: dateFormatter.formatDateShort(task.dueDate) },
-    { id: "row-category", label: "Category", value: task.category || "General" },
-  ],
+  actions: actionItems.filter((action) => quickActionIds.includes(action.actionId)),
 };
-```
-
-```ts
-// src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-const childTaskActivities = childTasksData.flatMap((childTask) =>
-  (childTask.activities || []).map((activity) => ({
-    activity,
-    childTask,
-  })),
-);
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -159,64 +155,73 @@ Expected: PASS
 
 ```bash
 git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts
-git commit -m "fix(ux): add task detail info card and subtask thread context"
+git commit -m "fix(ux): add task detail contextual quick actions"
 ```
 
-## Task 2: Build the scrolling merged info card component
+## Task 2: Add the Quick Actions row component and raise Task Detail typography
 
 **Files:**
-- Create: `src/components/taskDetail/TaskDetailInfoCard.tsx`
+- Create: `src/components/taskDetail/TaskDetailQuickActions.tsx`
+- Modify: `src/components/taskDetail/TaskDetailHero.tsx`
+- Modify: `src/components/taskDetail/TaskDetailInfoCard.tsx`
+- Modify: `src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx`
 - Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("renders one scrolling info card containing description, delegation, and compact details", () => {
+it("renders the contextual quick actions row below the info card", () => {
+  const screen = render(
+    <TaskDetailQuickActions
+      model={{
+        id: "task-quick-actions",
+        density: "standard",
+        structuralState: "ready",
+        actions: [
+          { id: "a1", actionId: "accept_task", label: "Accept", isDisabled: false },
+          { id: "a2", actionId: "reject_task", label: "Reject", isDisabled: false },
+        ],
+      }}
+      onPress={jest.fn()}
+    />,
+  );
+
+  expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+  expect(screen.getByText("Accept")).toBeTruthy();
+  expect(screen.getByText("Reject")).toBeTruthy();
+});
+```
+
+```tsx
+it("uses larger readable sizes for hero and info-card secondary text", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-  expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
-  expect(screen.getByText("Description")).toBeTruthy();
-  expect(screen.getByText("Delegation")).toBeTruthy();
-  expect(screen.getByText("Details")).toBeTruthy();
+  expect(screen.getByText("Description").props.className).toContain("text-base");
+  expect(screen.getByText("Details").props.className).toContain("text-base");
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Run: `npx jest src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
 
-Expected: FAIL because no merged info-card component exists yet.
+Expected: FAIL because the quick-actions component does not exist and text sizing remains at the smaller scale.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```tsx
-// src/components/taskDetail/TaskDetailInfoCard.tsx
-interface TaskDetailInfoCardProps {
-  model: TaskDetailInfoCardModel;
-}
-
-export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
+// src/components/taskDetail/TaskDetailQuickActions.tsx
+export default function TaskDetailQuickActions({ model, onPress }: Props) {
   return (
-    <View testID="task-detail__info_card" className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-4">
-      {model.descriptionLabel ? (
-        <View>
-          <Text className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Description</Text>
-          <Text className="mt-2 text-sm leading-5 text-slate-700">{model.descriptionLabel}</Text>
-        </View>
-      ) : null}
-
-      <View className="mt-4">
-        <Text className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Delegation</Text>
-        <Text className="mt-2 text-sm text-slate-700">{model.assignedByLabel} → {model.assignedToLabel}</Text>
-      </View>
-
-      <View className="mt-4">
-        <Text className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Details</Text>
-        {model.detailRows.map((row) => (
-          <View key={row.id} className="mt-2 flex-row items-center justify-between">
-            <Text className="text-sm text-slate-500">{row.label}</Text>
-            <Text className="text-sm font-medium text-slate-800">{row.value}</Text>
-          </View>
+    <View testID="task-detail__quick-actions" className="mx-4 mt-4 rounded-2xl border border-gray-200 bg-white p-3">
+      <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
+        Quick Actions
+      </Text>
+      <View className="flex-row flex-wrap gap-2">
+        {model.actions.map((action) => (
+          <Pressable key={action.id} onPress={() => onPress(action.actionId)} className="rounded-full border border-gray-300 bg-white px-4 py-3">
+            <Text className="text-lg font-medium text-gray-700">{action.label}</Text>
+          </Pressable>
         ))}
       </View>
     </View>
@@ -224,20 +229,31 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
 }
 ```
 
+```tsx
+// src/components/taskDetail/TaskDetailHero.tsx
+<Text className="text-lg font-medium text-slate-600">{chip.label}</Text>
+```
+
+```tsx
+// src/components/taskDetail/TaskDetailInfoCard.tsx
+<Text className="text-base font-semibold uppercase tracking-[0.08em] text-slate-500">Description</Text>
+<Text className="mt-2 text-lg leading-7 text-slate-700">{model.descriptionLabel || "—"}</Text>
+```
+
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+Run: `npx jest src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/components/taskDetail/TaskDetailInfoCard.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx
-git commit -m "fix(ux): add scrolling task detail info card"
+git add src/components/taskDetail/TaskDetailQuickActions.tsx src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailInfoCard.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx
+git commit -m "fix(ux): add task detail quick actions row"
 ```
 
-## Task 3: Make the hero the only sticky surface and remove separate subtasks/details cards
+## Task 3: Replace sticky overlay behavior with a bounded scroll region
 
 **Files:**
 - Modify: `src/screens/TaskDetailScreen.tsx`
@@ -247,23 +263,22 @@ git commit -m "fix(ux): add scrolling task detail info card"
 - [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("keeps only the hero sticky while the info card scrolls with the page", () => {
+it("renders the hero outside the bounded scroll region so thread content never scrolls behind it", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-  const scrollView = screen.getByTestId("task-detail__workthread_scroll");
 
-  expect(scrollView.props.stickyHeaderIndices).toEqual([0]);
-  expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
-  expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+  expect(screen.queryByTestId("task-detail__workthread_scroll").props.stickyHeaderIndices).toBeUndefined();
+  expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
+  expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
 });
 ```
 
 ```tsx
-it("does not render separate subtasks or detail-section cards once info is merged into the new layout", () => {
+it("renders quick actions above the work thread and keeps other actions below the thread", () => {
   const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-  expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
-  expect(screen.queryByText("Subtasks")).toBeNull();
-  expect(screen.queryByText("Description")).toBeTruthy();
+  expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+  expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+  expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
 });
 ```
 
@@ -271,32 +286,24 @@ it("does not render separate subtasks or detail-section cards once info is merge
 
 Run: `npx jest src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
 
-Expected: FAIL because the screen currently renders the thread before separate detail sections and does not keep only the hero sticky.
+Expected: FAIL because the screen still relies on scroll-stickiness rather than a fixed-top bounded layout.
 
 - [ ] **Step 3: Write minimal implementation**
 
 ```tsx
 // src/screens/TaskDetailScreen.tsx
-<ScrollView
-  testID="task-detail__workthread_scroll"
-  stickyHeaderIndices={[0]}
-  className="flex-1"
-  contentContainerStyle={{ paddingBottom: 32 }}
-  showsVerticalScrollIndicator={false}
->
-  <View>
-    <TaskDetailHero model={output.taskHero} />
-  </View>
+<View testID="task-detail__hero_shell">
+  <TaskDetailHero model={output.taskHero} />
+</View>
 
-  <TaskDetailInfoCard model={output.infoCard} />
-
-  <TaskActivityTimeline
-    testID="task-detail__activity_thread"
-    thread={output.activityThread}
-  />
-
-  <View testID="task-detail__secondary-actions">{/* existing actions */}</View>
-</ScrollView>
+<View testID="task-detail__scroll_region" className="flex-1">
+  <ScrollView testID="task-detail__workthread_scroll" className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+    {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
+    {output.quickActions ? <TaskDetailQuickActions model={output.quickActions} onPress={handleActionPress} /> : null}
+    <TaskActivityTimeline testID="task-detail__activity_thread" thread={output.activityThread} />
+    <View testID="task-detail__secondary-actions">{/* lower-frequency actions */}</View>
+  </ScrollView>
+</View>
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -309,61 +316,19 @@ Expected: PASS
 
 ```bash
 git add src/screens/TaskDetailScreen.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx
-git commit -m "fix(ux): make task detail hero the only sticky section"
+git commit -m "fix(ux): bound task detail scrolling below hero"
 ```
 
-## Task 4: Fold subtask progress into the main chronological thread
+## Task 4: Add swipeable per-entry photo gallery behavior
 
 **Files:**
-- Modify: `src/ui/viewAdapters/useTaskDetailViewAdapter.ts`
 - Modify: `src/components/taskDetail/TaskActivityTimeline.tsx`
 - Modify: `src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx`
-- Modify: `src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx`
 
 - [ ] **Step 1: Write the failing tests**
 
 ```tsx
-it("renders subtask updates as normal thread entries with lightweight subtask context", () => {
-  const screen = render(
-    <TaskActivityTimeline
-      thread={[
-        {
-          id: "activity-2",
-          actorLabel: "Tristan",
-          timestampLabel: "Jul 5, 09:30",
-          progressLabel: "40%",
-          detailLabel: "Ceiling grid installed.",
-          photoUrls: [],
-          subtaskBadgeLabel: "Subtask",
-          subtaskTitleLabel: "Install ceiling grid",
-          density: "standard",
-          structuralState: "ready",
-          eventLabel: "Marked 40% complete",
-        },
-      ]}
-    />,
-  );
-
-  expect(screen.getByText("Subtask")).toBeTruthy();
-  expect(screen.getByText("Install ceiling grid")).toBeTruthy();
-});
-```
-
-```ts
-it("merges parent-task and child-task activities into one newest-first activity thread", () => {
-  const { result } = renderHook(() => useTaskDetailViewAdapter({ taskId: "task-parent" }));
-
-  expect(result.current.output.activityThread[0].timestampLabel).toBe("Oct 10, 2026, 4:15 PM");
-  expect(result.current.output.activityThread).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ subtaskTitleLabel: "Install ceiling grid" }),
-    ]),
-  );
-});
-```
-
-```tsx
-it("shows the full lead photo preview and opens a full-photo viewer when the image is tapped", () => {
+it("opens the full-screen photo viewer on the selected image and supports next/previous photo navigation", () => {
   const screen = render(
     <TaskActivityTimeline
       thread={[
@@ -374,8 +339,6 @@ it("shows the full lead photo preview and opens a full-photo viewer when the ima
           progressLabel: "40%",
           detailLabel: "Ceiling grid installed.",
           photoUrls: ["https://example.com/photo-1.jpg", "https://example.com/photo-2.jpg"],
-          subtaskBadgeLabel: "Subtask",
-          subtaskTitleLabel: "Install ceiling grid",
           density: "standard",
           structuralState: "ready",
           eventLabel: "Marked 40% complete",
@@ -384,9 +347,14 @@ it("shows the full lead photo preview and opens a full-photo viewer when the ima
     />,
   );
 
-  fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
+  fireEvent.press(screen.getByTestId("task-activity-timeline__thumb-photo-pressable-activity-2-1"));
 
-  expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
+  expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+    uri: "https://example.com/photo-2.jpg",
+  });
+
+  fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_previous"));
+
   expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
     uri: "https://example.com/photo-1.jpg",
   });
@@ -395,141 +363,131 @@ it("shows the full lead photo preview and opens a full-photo viewer when the ima
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
 
-Expected: FAIL because child-task activities are still excluded from the main thread, the timeline does not render subtask context, and thread photos do not yet open a full-photo viewer.
+Expected: FAIL because the viewer only opens a single selected image and does not provide gallery navigation.
 
 - [ ] **Step 3: Write minimal implementation**
 
-```ts
-// src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-const combinedActivities = [
-  ...(task.activities || []).map((activity) => ({ activity, childTask: undefined })),
-  ...childTasksData.flatMap((childTask) =>
-    (childTask.activities || []).map((activity) => ({ activity, childTask })),
-  ),
-].sort(
-  (left, right) =>
-    new Date(right.activity.timestamp).getTime() - new Date(left.activity.timestamp).getTime(),
-);
-```
+```tsx
+// src/components/taskDetail/TaskActivityTimeline.tsx
+const [selectedGallery, setSelectedGallery] = React.useState<{ photos: string[]; index: number } | undefined>();
 
-```ts
-// src/ui/viewAdapters/useTaskDetailViewAdapter.ts
-const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => ({
-  id: activity.id,
-  density: "standard",
-  structuralState: "stale",
-  actorLabel: getUserById(activity.userId)?.name || "Unknown User",
-  eventLabel: buildTaskDetailEventLabel(activity),
-  timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
-  progressLabel:
-    activity.completionPercentage !== undefined
-      ? `${activity.completionPercentage}%`
-      : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
-  detailLabel: buildTaskDetailEventDetail(activity),
-  photoUrls: collectActivityPhotoUrls(activity),
-  statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
-  subtaskBadgeLabel: childTask ? "Subtask" : undefined,
-  subtaskTitleLabel: childTask?.title,
-}));
+const openGallery = (photos: string[], index: number) => setSelectedGallery({ photos, index });
+const showPrevious = () =>
+  setSelectedGallery((current) =>
+    current ? { ...current, index: Math.max(current.index - 1, 0) } : current,
+  );
+const showNext = () =>
+  setSelectedGallery((current) =>
+    current ? { ...current, index: Math.min(current.index + 1, current.photos.length - 1) } : current,
+  );
 ```
 
 ```tsx
 // src/components/taskDetail/TaskActivityTimeline.tsx
-{activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
-  <View className="mb-2 flex-row items-center gap-2">
-    {activity.subtaskBadgeLabel ? (
-      <View className="rounded-full bg-blue-50 px-2 py-1">
-        <Text className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-700">
-          {activity.subtaskBadgeLabel}
-        </Text>
-      </View>
-    ) : null}
-    {activity.subtaskTitleLabel ? (
-      <Text className="text-sm font-medium text-slate-700">{activity.subtaskTitleLabel}</Text>
-    ) : null}
-  </View>
-) : null}
-```
-
-```tsx
-// src/components/taskDetail/TaskActivityTimeline.tsx
-const [selectedPhotoUri, setSelectedPhotoUri] = React.useState<string | undefined>();
-```
-
-```tsx
-// src/components/taskDetail/TaskActivityTimeline.tsx
-<Pressable
-  testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
-  onPress={() => setSelectedPhotoUri(activity.photoUrls[0])}
->
-  <Image
-    testID={`task-activity-timeline__lead-photo-${activity.id}`}
-    source={{ uri: activity.photoUrls[0] }}
-    resizeMode="contain"
-    className="h-56 w-full rounded-3xl bg-slate-100"
-  />
+<Pressable testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`} onPress={() => openGallery(activity.photoUrls, 0)}>
+  <Image resizeMode="contain" className="w-full rounded-3xl bg-slate-100" source={{ uri: activity.photoUrls[0] }} />
 </Pressable>
 ```
 
 ```tsx
 // src/components/taskDetail/TaskActivityTimeline.tsx
-{activity.photoUrls.slice(1).map((photoUri, photoIndex) => (
-  <Pressable
-    key={`${activity.id}-thumb-${photoIndex + 1}`}
-    testID={`task-activity-timeline__thumb-photo-pressable-${activity.id}-${photoIndex + 1}`}
-    onPress={() => setSelectedPhotoUri(photoUri)}
-  >
-    <Image
-      testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
-      source={{ uri: photoUri }}
-      resizeMode="cover"
-      className="h-14 w-14 rounded-2xl bg-slate-200"
-    />
-  </Pressable>
-))}
-```
-
-```tsx
-// src/components/taskDetail/TaskActivityTimeline.tsx
-<Modal
-  visible={Boolean(selectedPhotoUri)}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setSelectedPhotoUri(undefined)}
->
-  <Pressable
-    testID="task-activity-timeline__photo_viewer"
-    className="flex-1 items-center justify-center bg-black/90 px-4"
-    onPress={() => setSelectedPhotoUri(undefined)}
-  >
-    {selectedPhotoUri ? (
-      <Image
-        testID="task-activity-timeline__photo_viewer_image"
-        source={{ uri: selectedPhotoUri }}
-        resizeMode="contain"
-        className="h-full w-full"
-      />
-    ) : null}
-  </Pressable>
-</Modal>
+<Pressable testID="task-activity-timeline__photo_viewer_previous" onPress={showPrevious}>
+  <Ionicons name="chevron-back" size={28} color="#ffffff" />
+</Pressable>
+<Image testID="task-activity-timeline__photo_viewer_image" source={{ uri: selectedGallery.photos[selectedGallery.index] }} resizeMode="contain" className="h-full w-full" />
+<Pressable testID="task-activity-timeline__photo_viewer_next" onPress={showNext}>
+  <Ionicons name="chevron-forward" size={28} color="#ffffff" />
+</Pressable>
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts --runInBand`
+Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
 
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskActivityTimeline.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx
-git commit -m "fix(ux): merge subtask progress into task detail thread"
+git add src/components/taskDetail/TaskActivityTimeline.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx
+git commit -m "fix(ux): add swipeable task detail photo gallery"
 ```
 
-## Task 5: Validate, relaunch, and update execution notes
+## Task 5: Rebalance bottom navigation spacing
+
+**Files:**
+- Modify: `src/navigation/AppNavigator.tsx`
+- Modify: `src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+it("uses equal visual slot sizing for Activity, Camera, and Tasks tabs", () => {
+  const screen = render(<AppNavigator />);
+  const activityTab = screen.getByTestId("root-tab__activity");
+  const cameraTab = screen.getByTestId("root-tab__camera");
+  const tasksTab = screen.getByTestId("root-tab__tasks");
+
+  expect(activityTab.props.style.flex).toBe(1);
+  expect(cameraTab.props.style.flex).toBe(1);
+  expect(tasksTab.props.style.flex).toBe(1);
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx jest src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+
+Expected: FAIL because the current bottom nav does not expose equal slot styling for the three tabs.
+
+- [ ] **Step 3: Write minimal implementation**
+
+```tsx
+// src/navigation/AppNavigator.tsx
+tabBarItemStyle: {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+},
+```
+
+```tsx
+// src/navigation/AppNavigator.tsx
+options={{
+  tabBarTestID: "root-tab__activity",
+}}
+```
+
+```tsx
+// src/navigation/AppNavigator.tsx
+options={{
+  tabBarButton: (props) => (
+    <CenterCameraTabButton
+      {...props}
+      testID="root-tab__camera"
+      style={[props.style, { flex: 1 }]}
+      icon={/* existing icon */}
+    />
+  ),
+}}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx jest src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+
+Expected: PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/navigation/AppNavigator.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx
+git commit -m "fix(ux): rebalance bottom navigation spacing"
+```
+
+## Task 6: Validate, relaunch, and update execution notes
 
 **Files:**
 - Modify: `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
@@ -537,7 +495,7 @@ git commit -m "fix(ux): merge subtask progress into task detail thread"
 
 - [ ] **Step 1: Run the focused validation suite**
 
-Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand && npx tsc --noEmit`
+Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand && npx tsc --noEmit`
 
 Expected: PASS
 
@@ -554,33 +512,33 @@ Expected: app relaunch succeeds on the booted simulator.
 - [ ] **Step 3: Update the execution ledger**
 
 ```md
-- made the hero the only sticky element at the top of Task Detail
-- added one scrolling merged info card for description, delegation, and compact details
-- removed the separate subtasks card
-- merged subtask activity into the same newest-first work thread as parent-task updates
-- kept the simplified photo-forward thread layout and no-primary-footer-CTA action model
+- removed delegation from the fixed hero and kept it only inside the merged info card
+- increased Task Detail micro and secondary text sizing for mobile readability
+- replaced sticky overlay behavior with a bounded scroll region below the hero
+- added a contextual Quick Actions row for acceptance, active work, and review/approval states
+- rebalanced the bottom navigation so Activity, Camera, and Tasks occupy equal visual slots
+- upgraded full-screen thread photos into a swipeable per-entry gallery
 ```
 
 - [ ] **Step 4: Create the checkpoint commit**
 
 ```bash
-git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailInfoCard.tsx src/components/taskDetail/TaskActivityTimeline.tsx src/screens/TaskDetailScreen.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md docs/superpowers/specs/2026-07-05-task-detail-correction-design.md
-git commit -m "fix(ux): simplify task detail sticky hero layout"
+git add src/ui/contracts/viewAdapters.ts src/ui/viewAdapters/useTaskDetailViewAdapter.ts src/components/taskDetail/TaskDetailHero.tsx src/components/taskDetail/TaskDetailInfoCard.tsx src/components/taskDetail/TaskDetailQuickActions.tsx src/components/taskDetail/TaskActivityTimeline.tsx src/screens/TaskDetailScreen.tsx src/navigation/AppNavigator.tsx src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md docs/superpowers/specs/2026-07-05-task-detail-correction-design.md
+git commit -m "fix(ux): refine task detail readability and actions"
 ```
 
 ## Spec Coverage Check
 
-- sticky hero only: Task 3
-- one scrolling merged info card: Tasks 1, 2, and 3
-- merge description / delegation / compact details: Tasks 1 and 2
-- remove lower delegation card: Task 3 regression coverage
-- remove separate subtasks card: Task 3
-- fold subtask progress into the main thread: Task 4
-- keep chronological newest-first thread: Task 4
-- keep rail metadata order Date, user, %: Task 4 regression coverage through existing timeline contract
-- keep lead photos fully visible and open a full-photo viewer on tap: Task 4
-- preserve camera routing and inline actions: Task 3 regression coverage and Task 5 validation
-- keep photo-update form reset behavior: preserved by existing implementation, protected in Task 5 validation
+- remove delegation from hero: Task 1 and Task 2
+- keep merged info card as single delegation/details surface: Tasks 1 and 2
+- increase small text sizes: Task 2
+- bounded scroll region below hero: Task 3
+- contextual quick actions by state: Tasks 1, 2, and 3
+- lower-frequency actions separated below thread: Task 3
+- unified thread preserved: Task 3 regression coverage
+- swipeable full-screen photo gallery: Task 4
+- equal bottom-nav spacing: Task 5
+- preserve camera routing and photo-update reset behavior: Task 6 validation
 
 ## Placeholder Scan
 
@@ -592,7 +550,6 @@ git commit -m "fix(ux): simplify task detail sticky hero layout"
 
 ## Type Consistency Check
 
-- `TaskDetailInfoCardModel` is defined in Task 1 and consumed by `TaskDetailInfoCard` in Task 2
-- `subtaskBadgeLabel` and `subtaskTitleLabel` are defined in Task 1 and rendered by `TaskActivityTimeline` in Task 4
-- `infoCard` is added at the adapter layer in Task 1 and rendered by `TaskDetailScreen` in Task 3
-- `selectedPhotoUri` is local to `TaskActivityTimeline` in Task 4 and does not change the adapter contract
+- `TaskDetailQuickActionRowModel` is defined in Task 1 and consumed by `TaskDetailQuickActions` in Task 2
+- `quickActions` is produced by the adapter in Task 1 and rendered by `TaskDetailScreen` in Task 3
+- `selectedGallery` is local to `TaskActivityTimeline` in Task 4 and does not change the adapter contract

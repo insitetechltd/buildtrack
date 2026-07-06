@@ -91,9 +91,10 @@ describe("TaskDetailScreen header regression", () => {
       structuralState: "ready",
       title: "Replace ceiling tiles",
       statusLabel: "In Progress",
+      categoryLabel: "Interior",
       projectLabel: "Project Alpha",
       completionLabel: "50% complete",
-      nextStepLabel: "Update progress and add photo evidence.",
+      dueDateLabel: "Jul 10, 2026",
     },
     delegationSummary: {
       id: "delegation-summary",
@@ -112,13 +113,7 @@ describe("TaskDetailScreen header regression", () => {
       assignedByLabel: "Casey",
       assignedToLabel: "Sam",
       primaryOwnerLabel: "Sam",
-      detailRows: [
-        {
-          id: "row-due",
-          label: "Due",
-          value: "Jul 10, 2026",
-        },
-      ],
+      detailRows: [],
     },
     activeStage: {
       id: "active-stage",
@@ -153,6 +148,22 @@ describe("TaskDetailScreen header regression", () => {
     assignees: [],
     activities: [],
     childTasks: [],
+    quickActions: {
+      id: "task-quick-actions",
+      density: "standard",
+      structuralState: "ready",
+      actions: [
+        {
+          id: "quick-action-comment",
+          actionId: "add_comment",
+          label: "Add Comment",
+          icon: "chatbubble-outline",
+          isDisabled: false,
+          density: "standard",
+          structuralState: "ready",
+        },
+      ],
+    },
     actionItems: [],
     ...overrides,
   });
@@ -199,10 +210,66 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(screen.getByText("Task Details")).toBeTruthy();
     expect(screen.getByText("Modern UI")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps quick actions inside the bounded scroll region between the info card and lower actions", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "quick-action-approve",
+              actionId: "approve_task",
+              label: "Approve",
+              icon: "checkmark-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        activityThread: [
+          {
+            id: "activity-1",
+            actorLabel: "Sam",
+            eventLabel: "Submitted for review",
+            timestampLabel: "Jul 2, 10:00 AM",
+            progressLabel: "100%",
+            density: "standard",
+            structuralState: "ready",
+            detailLabel: "Marked 100% complete",
+            photoUrls: [],
+          },
+        ],
+        actionItems: [
+          {
+            id: "secondary-action-reassign",
+            actionId: "reassign_task",
+            label: "Reassign",
+            icon: "swap-horizontal-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__workthread_scroll").props.stickyHeaderIndices).toBeUndefined();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
   });
 
   it("routes reject actions to the dedicated reject flow instead of the comment flow", () => {
@@ -385,6 +452,7 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.queryByText("Details")).toBeNull();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
     expect(screen.queryByText("Subtasks")).toBeNull();
@@ -477,10 +545,12 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
+    const quickActions = screen.getByTestId("task-detail__quick-actions");
     const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
+    expect(within(quickActions).getByText("Add Comment")).toBeTruthy();
     expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
-    expect(within(secondaryActions).getByText("Add Comment")).toBeTruthy();
     expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
+    expect(within(secondaryActions).queryByText("Add Comment")).toBeNull();
     expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();
   });
 
@@ -513,9 +583,9 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
-    expect(screen.getByText("Other actions")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
     expect(screen.getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
     expect(screen.queryByText("Add Photos")).toBeNull();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
     expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();

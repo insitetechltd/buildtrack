@@ -313,6 +313,7 @@ export function handleTasksTaskDetailBack(
 function CenterCameraTabButton({
   accessibilityLabel,
   accessibilityState,
+  children,
   onLongPress,
   onPress,
   icon,
@@ -324,53 +325,83 @@ function CenterCameraTabButton({
   return (
     <View
       pointerEvents="box-none"
-      style={styles.centerCameraTabButtonSlot}
-      testID="root-tab__camera_slot"
+      style={styles.rootTabSlot}
+      testID="root-tab__camera"
     >
+      <View
+        pointerEvents="box-none"
+        style={[styles.centerCameraTabButtonSlot, tabButtonStyle]}
+        testID="root-tab__camera_slot"
+      >
+        <Pressable
+          accessibilityLabel={accessibilityLabel}
+          accessibilityRole="button"
+          accessibilityState={accessibilityState}
+          onLongPress={onLongPress}
+          onPress={onPress}
+          testID="root-tab__camera_button"
+          style={[
+            styles.centerCameraTabButton,
+            isFocused ? styles.centerCameraTabButtonFocused : null,
+          ]}
+        >
+          <View
+            pointerEvents="none"
+            style={styles.centerCameraTabIconSurface}
+            testID="root-tab__camera_icon_surface"
+          >
+            {icon}
+          </View>
+        </Pressable>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function RootTabButton({
+  accessibilityLabel,
+  accessibilityState,
+  children,
+  onLongPress,
+  onPress,
+  style,
+  testID,
+}: BottomTabBarButtonProps & { testID: string }) {
+  const tabButtonStyle = style as StyleProp<ViewStyle>;
+
+  return (
+    <View pointerEvents="box-none" style={styles.rootTabSlot} testID={testID}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         onLongPress={onLongPress}
         onPress={onPress}
-        testID="root-tab__camera_button"
-        style={[
-          tabButtonStyle,
-          styles.centerCameraTabButton,
-          isFocused ? styles.centerCameraTabButtonFocused : null,
-        ]}
+        style={[tabButtonStyle, styles.rootTabButton]}
       >
-        <View
-          pointerEvents="none"
-          style={styles.centerCameraTabIconSurface}
-          testID="root-tab__camera_icon_surface"
-        >
-          {icon}
-        </View>
+        {children}
       </Pressable>
     </View>
   );
 }
 
-
-
-// Auth screens component
 function AuthScreens() {
   // Registration temporarily disabled for App Store submission
   // const [showRegister, setShowRegister] = useState(false);
 
   // if (showRegister) {
   //   return (
-  //     <RegisterScreen 
-  //       onToggleLogin={() => setShowRegister(false)} 
+  //     <RegisterScreen
+  //       onToggleLogin={() => setShowRegister(false)}
   //     />
   //   );
   // }
 
   return (
-    <LoginScreen 
+    <LoginScreen
       // Registration is hidden - accounts are created by administrators
-      // onToggleRegister={() => setShowRegister(true)} 
+      // onToggleRegister={() => setShowRegister(true)}
     />
   );
 }
@@ -1470,6 +1501,9 @@ function MainTabs() {
           component={DashboardStack}
           options={{
             tabBarLabel: "Activity",
+            tabBarButton: (props) => (
+              <RootTabButton {...props} testID="root-tab__activity" />
+            ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="sparkles-outline" size={size} color={color} />
             ),
@@ -1536,6 +1570,9 @@ function MainTabs() {
           component={TasksStack}
           options={{
             tabBarLabel: "Tasks",
+            tabBarButton: (props) => (
+              <RootTabButton {...props} testID="root-tab__tasks" />
+            ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="list-outline" size={size} color={color} />
             ),
@@ -1627,8 +1664,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#6b7280",
   },
+  rootTabSlot: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  rootTabButton: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    flex: 1,
+    justifyContent: "center",
+  },
   centerCameraTabButtonSlot: {
     alignItems: "center",
+    alignSelf: "stretch",
     flex: 1,
     justifyContent: "center",
   },

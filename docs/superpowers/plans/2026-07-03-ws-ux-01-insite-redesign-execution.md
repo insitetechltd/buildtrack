@@ -304,6 +304,33 @@ Closure evidence:
   - sticky-hero simplification validation passed:
     - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
     - `npx tsc --noEmit`
+- readability + quick-actions refinement applied on 2026-07-06:
+  - removed delegation from the fixed hero and kept delegation only inside the merged info card
+  - increased Task Detail micro and secondary text sizing for better small-screen readability
+  - inserted a contextual `Quick Actions` row that now adapts across acceptance, active-work, and review/approval states
+  - replaced the sticky-overlay behavior with a bounded scroll region below the hero
+  - rebalanced the worker bottom navigation so `Activity`, `Camera`, and `Tasks` occupy equal visual slots while preserving the emphasized center camera affordance
+  - upgraded full-screen thread photos into a browsable per-entry gallery and kept lead photos fully visible with `contain`
+  - refinement validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+  - required relaunch assessment completed: relaunch required because the refinement changed a user-visible task-detail destination and the worker bottom-shell spacing
+  - relaunch verification completed:
+    - Expo dev-client server restarted cleanly on `http://localhost:8081`
+    - installed app relaunched successfully on the booted iOS simulator
+    - fresh simulator screenshot captured after relaunch for final UI review
+- final correction applied on 2026-07-06:
+  - moved task category into the fixed hero as a compact chip and removed the merged info-card `Details` section
+  - changed work-thread cards to action-first headlines with status rendered in the metadata rail
+  - removed the extra lead-photo inset so in-thread photos now own the usable card width while preserving `contain`
+  - corrected the center camera geometry so the bottom-nav camera button is optically centered relative to `Activity` and `Tasks`
+  - final correction validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+  - relaunch verification completed:
+    - Expo dev-client server restarted cleanly on `http://localhost:8081`
+    - installed app relaunched successfully on both booted iOS simulators
+    - refreshed simulator screenshots confirmed the category chip in the hero and improved bottom-nav centering
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

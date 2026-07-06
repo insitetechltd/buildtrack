@@ -9,6 +9,7 @@ import { buildActiveStageModel } from '../../components/taskDetail/taskDetailAct
 import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type {
   TaskDetailActiveStageModel,
+  TaskDetailQuickActionRowModel,
   TaskDetailScreenViewAdapterOutput,
   TaskDetailBannerModel,
   TaskDetailActivityModel,
@@ -44,6 +45,10 @@ function isApprovedTaskStatus(status: TaskStatus): boolean {
   return status === 'approved' || status === 'completed' || status === 'done';
 }
 
+function isActiveWorkTaskStatus(status: TaskStatus): boolean {
+  return status === 'accepted' || status === 'in_progress' || status === 'wip' || status === 'rejected';
+}
+
 function getTaskTags(tags?: string[]): string[] {
   return Array.isArray(tags) ? tags.filter(Boolean) : [];
 }
@@ -64,6 +69,16 @@ function humanizeToken(value: string | undefined): string {
   }
 
   return value.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getActivityNarrative(activity: TaskActivity): string | undefined {
+  const description = activity.description?.trim();
+  if (description) {
+    return description;
+  }
+
+  const dataDescription = (activity.data as { description?: string } | undefined)?.description?.trim();
+  return dataDescription || undefined;
 }
 
 function buildTaskDetailEventLabel(activity: TaskActivity): string {
@@ -105,14 +120,18 @@ function buildTaskDetailEventLabel(activity: TaskActivity): string {
   }
 }
 
-function buildTaskDetailEventDetail(activity: TaskActivity): string | undefined {
-  const trimmedDescription = activity.description?.trim();
-  const normalizedEventLabel = buildTaskDetailEventLabel(activity).toLowerCase();
+function buildTaskDetailHeadline(activity: TaskActivity): string {
+  const narrative = getActivityNarrative(activity);
+  const fallbackLabel = buildTaskDetailEventLabel(activity);
 
-  if (trimmedDescription && trimmedDescription.toLowerCase() !== normalizedEventLabel) {
-    return trimmedDescription;
+  if (narrative && narrative.toLowerCase() !== fallbackLabel.toLowerCase()) {
+    return narrative;
   }
 
+  return fallbackLabel;
+}
+
+function buildTaskDetailEventDetail(activity: TaskActivity): string | undefined {
   const reason = (activity.data as { reason?: string } | undefined)?.reason?.trim();
   if (reason) {
     return `Reason: ${reason}`;
@@ -401,6 +420,19 @@ export function useTaskDetailViewAdapter({
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
   const isCriticalThisWeek = hasCriticalThisWeekTag(task);
+  const isAwaitingAcceptance = isAssignedToMe && isPreAcceptanceTaskStatus(task.status);
+  const isReviewerApprovalState =
+    isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100;
+  const isContributorReviewState =
+    isAssignedToMe &&
+    !isTaskCreator &&
+    task.completionPercentage === 100 &&
+    task.status !== 'submitted_for_review' &&
+    task.status !== 'declined' &&
+    task.status !== 'cancelled' &&
+    !isApprovedTaskStatus(task.status) &&
+    !isPreAcceptanceTaskStatus(task.status);
+  const isActiveWorkState = isActiveWorkTaskStatus(task.status) && !isContributorReviewState;
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
@@ -579,7 +611,7 @@ export function useTaskDetailViewAdapter({
     assignedByLabel: delegationSummary.assignedByLabel,
     assignedToLabel: delegationSummary.assignedToLabel,
     primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
-    detailRows,
+    detailRows: [],
   };
 
   const combinedActivities = [
@@ -602,7 +634,7 @@ export function useTaskDetailViewAdapter({
     density: 'standard',
     structuralState: 'stale',
     actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
-    eventLabel: buildTaskDetailEventLabel(activity),
+    eventLabel: buildTaskDetailHeadline(activity),
     timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
     progressLabel:
       activity.completionPercentage !== undefined
@@ -630,14 +662,11 @@ export function useTaskDetailViewAdapter({
     structuralState: 'stale',
     title: task.title,
     statusLabel: getStatusLabel(task.status),
+    categoryLabel: humanizeToken(task.category || 'general'),
     projectLabel: task.projectId || 'Unknown Project',
     completionLabel: `${task.completionPercentage}% complete`,
     dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
     nextStepLabel: undefined,
-    assignedByLabel: delegationSummary.assignedByLabel,
-    assignedToLabel: delegationSummary.assignedToLabel,
-    primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
-    teamSummaryLabel: delegationSummary.teamSummaryLabel,
     isCritical: isCriticalThisWeek,
     criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
   };
@@ -679,40 +708,149 @@ export function useTaskDetailViewAdapter({
   ];
 
   const actionItems: TaskDetailActionItem[] = [];
+  const addActionItem = ({
+    actionId,
+    label,
+    icon,
+  }: {
+    actionId: string;
+    label: string;
+    icon?: string;
+  }) => {
+    if (actionItems.some((item) => item.actionId === actionId)) {
+      return;
+    }
+
+    actionItems.push({
+      id: `action-${actionId}`,
+      actionId,
+      density: 'standard',
+      structuralState: 'stale',
+      label,
+      icon,
+      isDisabled: false,
+    });
+  };
 
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
   const canEditTask = isTaskCreator;
 
-  if (canEditTask && !(isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100)) {
-    actionItems.push({ id: 'action-edit', actionId: 'edit_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.editTaskDetails, icon: 'create-outline', isDisabled: false });
+  if (canEditTask && !isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'edit_task',
+      label: t.taskDetail.editTaskDetails,
+      icon: 'create-outline',
+    });
   }
 
-  if (isAssignedToMe && isPreAcceptanceTaskStatus(task.status)) {
-    actionItems.push({ id: 'action-accept', actionId: 'accept_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.accept, icon: 'checkmark-circle-outline', isDisabled: false });
-    actionItems.push({ id: 'action-decline', actionId: 'decline_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.decline, icon: 'close-circle-outline', isDisabled: false });
-  } else if (isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100) {
-    actionItems.push({ id: 'action-approve', actionId: 'approve_task', density: 'standard', structuralState: 'stale', label: 'Approve', icon: 'checkmark-circle-outline', isDisabled: false });
-    actionItems.push({ id: 'action-reject', actionId: 'reject_task', density: 'standard', structuralState: 'stale', label: 'Reject', icon: 'close-circle-outline', isDisabled: false });
-  } else {
-    if (isTaskCreator && task.status === 'declined') {
-      actionItems.push({ id: 'action-reassign', actionId: 'reassign_task', density: 'standard', structuralState: 'stale', label: 'Reassign', icon: 'people-outline', isDisabled: false });
+  if (isAwaitingAcceptance) {
+    addActionItem({
+      actionId: 'accept_task',
+      label: t.taskDetail.accept,
+      icon: 'checkmark-circle-outline',
+    });
+    addActionItem({
+      actionId: 'decline_task',
+      label: t.taskDetail.decline,
+      icon: 'close-circle-outline',
+    });
+  }
+
+  if (isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'approve_task',
+      label: 'Approve',
+      icon: 'checkmark-circle-outline',
+    });
+    addActionItem({
+      actionId: 'reject_task',
+      label: 'Reject',
+      icon: 'close-circle-outline',
+    });
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+  }
+
+  if (isActiveWorkState || isContributorReviewState) {
+    if (isAssignedToMe) {
+      addActionItem({
+        actionId: 'update_progress',
+        label: t.taskDetail.updateTask || 'Update Progress',
+        icon: 'camera-outline',
+      });
     }
-    if (isTaskCreator && wasReassigned) {
-      actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
-    }
-    if (isTaskCreator && task.status !== 'declined' && !wasReassigned) {
-      actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
+
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+
+    if (!isViewingSubTask && isActiveWorkState) {
+      addActionItem({
+        actionId: 'add_subtask',
+        label: 'Add Subtask',
+        icon: 'add-circle-outline',
+      });
     }
   }
 
-  if (
-    isAssignedToMe &&
-    !isTaskCreator &&
-    task.completionPercentage === 100 &&
-    task.status !== 'submitted_for_review' &&
-    !isApprovedTaskStatus(task.status)
-  ) {
-    actionItems.push({ id: 'action-submit-review', actionId: 'submit_review', density: 'standard', structuralState: 'stale', label: 'Completed - Review Submission', icon: 'send', isDisabled: false });
+  if (isContributorReviewState) {
+    addActionItem({
+      actionId: 'submit_review',
+      label: 'Submit for Review',
+      icon: 'send',
+    });
+  }
+
+  if (isTaskCreator && task.status === 'declined') {
+    addActionItem({
+      actionId: 'reassign_task',
+      label: 'Reassign',
+      icon: 'people-outline',
+    });
+  }
+
+  if (isTaskCreator && wasReassigned) {
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+  }
+
+  const quickActionIds = isAwaitingAcceptance
+    ? ['accept_task', 'decline_task']
+    : isReviewerApprovalState
+      ? ['approve_task', 'reject_task', 'add_comment']
+      : isContributorReviewState
+        ? ['submit_review', 'add_comment', 'update_progress']
+        : isActiveWorkState
+          ? isViewingSubTask
+            ? ['update_progress', 'add_comment']
+            : ['update_progress', 'add_comment', 'add_subtask']
+          : [];
+
+  const quickActions: TaskDetailQuickActionRowModel | undefined = quickActionIds.length
+    ? {
+        id: 'task-quick-actions',
+        density: 'standard',
+        structuralState: 'stale',
+        actions: quickActionIds
+          .map((actionId) => actionItems.find((action) => action.actionId === actionId))
+          .filter((action): action is TaskDetailActionItem => Boolean(action)),
+      }
+    : undefined;
+
+  if (isTaskCreator && task.status !== 'declined' && !wasReassigned && !isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
   }
 
   return {
@@ -742,6 +880,7 @@ export function useTaskDetailViewAdapter({
       taskHero,
       delegationSummary,
       infoCard,
+      quickActions,
       activeStage,
       evidenceSummary,
       activityThread,

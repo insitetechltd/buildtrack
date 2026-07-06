@@ -35,17 +35,17 @@ const threadRows = [
 ];
 
 describe("TaskActivityTimeline", () => {
-  it("renders rail metadata in the order date, user, then progress", () => {
+  it("renders rail metadata in the order date, user, progress, then status", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
             id: "activity-1",
             actorLabel: "Tristan",
-            eventLabel: "Updated progress to 40%",
+            eventLabel: "Waiting on supplier confirmation.",
             timestampLabel: "Jul 5, 09:30",
             progressLabel: "40%",
-            detailLabel: "Waiting on supplier confirmation.",
+            statusLabel: "In Progress",
             photoUrls: [],
             density: "standard",
             structuralState: "ready",
@@ -55,14 +55,13 @@ describe("TaskActivityTimeline", () => {
     );
 
     expect(screen.getByText("Work thread")).toBeTruthy();
-    expect(screen.queryByTestId("task-activity-timeline__event-label")).toBeNull();
+    expect(screen.getByText("Waiting on supplier confirmation.")).toBeTruthy();
 
     const metadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-1");
     const metadataValues = getRailMetadataValues(metadata);
 
-    expect(metadataValues).toEqual(["Jul 5, 09:30", "Tristan", "40%"]);
-    expect(screen.getByTestId("task-activity-timeline__detail-label")).toBeTruthy();
-    expect(screen.getByText("Waiting on supplier confirmation.")).toBeTruthy();
+    expect(metadataValues).toEqual(["Jul 5, 09:30", "Tristan", "40%", "In Progress"]);
+    expect(screen.queryByTestId("task-activity-timeline__detail-label")).toBeNull();
   });
 
   it("renders subtask updates as normal thread entries with lightweight subtask context", () => {
@@ -95,7 +94,7 @@ describe("TaskActivityTimeline", () => {
     ]);
   });
 
-  it("shows the full lead photo preview and opens a full-photo viewer when the image is tapped", () => {
+  it("shows the lead photo at full usable card width with contain fit behavior", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
@@ -124,13 +123,53 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.resizeMode).toBe(
       "contain",
     );
+    expect(
+      screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className,
+    ).toContain("-mx-4");
     expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-2-1")).toBeTruthy();
+  });
 
-    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
+  it("opens the full-screen photo viewer on the selected image and supports next/previous photo navigation within the same entry", () => {
+    const screen = render(
+      <TaskActivityTimeline
+        thread={[
+          {
+            id: "activity-2",
+            actorLabel: "Tristan",
+            eventLabel: "Marked 40% complete",
+            timestampLabel: "Jul 5, 09:30",
+            progressLabel: "40%",
+            detailLabel: "Ceiling grid installed.",
+            photoUrls: [
+              "https://example.com/photo-1.jpg",
+              "https://example.com/photo-2.jpg",
+            ],
+            subtaskBadgeLabel: "Subtask",
+            subtaskTitleLabel: "Install ceiling grid",
+            density: "standard",
+            structuralState: "ready",
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__thumb-photo-pressable-activity-2-1"));
 
     expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-2.jpg",
+    });
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_previous"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
       uri: "https://example.com/photo-1.jpg",
+    });
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_next"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-2.jpg",
     });
   });
 
@@ -179,7 +218,8 @@ describe("TaskActivityTimeline", () => {
     const newerMetadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-newer");
     const olderMetadata = screen.getByTestId("task-activity-timeline__rail-metadata-activity-older");
 
-    expect(screen.queryByTestId("task-activity-timeline__event-label")).toBeNull();
+    expect(screen.getByText("Submitted for review")).toBeTruthy();
+    expect(screen.getByText("Accepted the task")).toBeTruthy();
     expect(getRailMetadataValues(newerMetadata)).toEqual([
       expect.stringMatching(/2026/),
       "Alex",

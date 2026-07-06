@@ -1,8 +1,10 @@
 import React from "react";
 import { fireEvent, render } from "@testing-library/react-native";
-import { Pressable, Text } from "react-native";
+import { View } from "react-native";
 
+import TaskDetailHero from "../../components/taskDetail/TaskDetailHero";
 import TaskDetailInfoCard from "../../components/taskDetail/TaskDetailInfoCard";
+import TaskDetailQuickActions from "../../components/taskDetail/TaskDetailQuickActions";
 import TaskDetailScreen from "../../screens/TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
 
@@ -97,13 +99,10 @@ describe("TaskDetailScreen acceptance UI", () => {
       structuralState: "ready",
       title: "Replace ceiling tiles",
       statusLabel: "In Progress",
+      categoryLabel: "Interior",
       projectLabel: "Project Alpha",
       completionLabel: "50% complete",
       dueDateLabel: "Jul 10, 2026",
-      assignedByLabel: "Casey",
-      assignedToLabel: "Sam, Alex",
-      primaryOwnerLabel: "Sam",
-      teamSummaryLabel: "2 assignees",
       isCritical: false,
       criticalLabel: undefined,
     },
@@ -124,10 +123,7 @@ describe("TaskDetailScreen acceptance UI", () => {
       assignedByLabel: "Casey",
       assignedToLabel: "Sam, Alex",
       primaryOwnerLabel: "Sam",
-      detailRows: [
-        { id: "row-due", label: "Due", value: "Jul 10, 2026" },
-        { id: "row-category", label: "Category", value: "General" },
-      ],
+      detailRows: [],
     },
     activeStage: {
       id: "active-stage",
@@ -229,7 +225,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders one scrolling info card containing description, delegation, and compact details", () => {
+  it("renders one scrolling info card containing only description and delegation", () => {
     const screen = render(
       <TaskDetailInfoCard
         model={{
@@ -240,10 +236,7 @@ describe("TaskDetailScreen acceptance UI", () => {
           assignedByLabel: "Casey",
           assignedToLabel: "Sam, Alex",
           primaryOwnerLabel: "Sam",
-          detailRows: [
-            { id: "row-due", label: "Due", value: "Jul 10, 2026" },
-            { id: "row-category", label: "Category", value: "Procurement" },
-          ],
+          detailRows: [],
         }}
       />,
     );
@@ -251,14 +244,80 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.getByText("Description")).toBeTruthy();
     expect(screen.getByText("Delegation")).toBeTruthy();
-    expect(screen.getByText("Details")).toBeTruthy();
+    expect(screen.queryByText("Details")).toBeNull();
     expect(screen.getByText("Confirm supplier lead times before final delivery.")).toBeTruthy();
     expect(screen.getByText("Assigned by")).toBeTruthy();
     expect(screen.getByText("Assigned to")).toBeTruthy();
     expect(screen.getByText("Casey")).toBeTruthy();
     expect(screen.getByText("Sam, Alex")).toBeTruthy();
-    expect(screen.getByText("Due")).toBeTruthy();
-    expect(screen.getByText("Jul 10, 2026")).toBeTruthy();
+  });
+
+  it("uses larger readable sizes for hero and info-card secondary text", () => {
+    const { taskHero, infoCard } = createAdapterOutput();
+
+    const hero = render(<TaskDetailHero model={taskHero} />);
+    const infoCardScreen = render(<TaskDetailInfoCard model={infoCard} />);
+
+    expect(hero.getByText("In Progress").props.className).toContain("text-base");
+    expect(hero.getByText("Interior").props.className).toContain("text-base");
+    expect(hero.getByText("50% complete").props.className).toContain("text-base");
+    expect(hero.getByText("Due Jul 10, 2026").props.className).toContain("text-base");
+
+    expect(infoCardScreen.getByText("Description").props.className).toContain("text-base");
+    expect(infoCardScreen.getByText("Confirm supplier lead times before final delivery.").props.className).toContain(
+      "text-lg",
+    );
+    expect(infoCardScreen.getByText("Delegation").props.className).toContain("text-base");
+    expect(infoCardScreen.getByText("Assigned by").props.className).toContain("text-base");
+    expect(infoCardScreen.getByText("Casey").props.className).toContain("text-lg");
+    expect(infoCardScreen.queryByText("Details")).toBeNull();
+  });
+
+  it("keeps quick actions below the info card in the task-detail content stack", () => {
+    const infoCard = createAdapterOutput().infoCard;
+    const screen = render(
+      <View>
+        <TaskDetailInfoCard model={infoCard} />
+        <TaskDetailQuickActions
+          model={{
+            id: "task-quick-actions",
+            density: "standard",
+            structuralState: "ready",
+            actions: [
+              {
+                id: "action-accept",
+                actionId: "accept_task",
+                label: "Accept",
+                isDisabled: false,
+                density: "standard",
+                structuralState: "ready",
+              },
+              {
+                id: "action-decline",
+                actionId: "decline_task",
+                label: "Decline",
+                isDisabled: false,
+                density: "standard",
+                structuralState: "ready",
+              },
+            ],
+          }}
+          onPress={jest.fn()}
+        />
+      </View>,
+    );
+
+    const tree = screen.toJSON();
+    const childTestIds =
+      tree && !Array.isArray(tree) && Array.isArray(tree.children)
+        ? tree.children.map((child: any) => child?.props?.testID)
+        : [];
+
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(screen.getByText("Accept")).toBeTruthy();
+    expect(screen.getByText("Decline")).toBeTruthy();
+    expect(childTestIds).toEqual(["task-detail__info_card", "task-detail__quick-actions"]);
   });
 
   it("renders task detail as a work-thread surface with hero, info card, and unified thread but no evidence or separate subtasks card", () => {
@@ -303,11 +362,12 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
   });
 
-  it("renders delegation in the hero and no longer renders the Next step block", () => {
-    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+  it("keeps the hero status-only even when delegation labels exist on the model", () => {
+    const screen = render(<TaskDetailHero model={createAdapterOutput().taskHero} />);
 
     expect(screen.queryByText("Next step")).toBeNull();
-    expect(screen.getByTestId("task-detail__hero_delegation")).toBeTruthy();
+    expect(screen.queryByText("Delegation")).toBeNull();
+    expect(screen.queryByTestId("task-detail__hero_delegation")).toBeNull();
   });
 
   it("does not render the active update stage surface anywhere on the screen", () => {

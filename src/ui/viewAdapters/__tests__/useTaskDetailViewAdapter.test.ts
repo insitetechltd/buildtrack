@@ -349,9 +349,10 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.actionItems.map((item) => item.actionId)).toEqual(
-      expect.arrayContaining(["accept_task", "decline_task"]),
-    );
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
+      "accept_task",
+      "decline_task",
+    ]);
   });
 
   it("returns explicit task-detail redesign groups for the visual work-thread surface", () => {
@@ -379,19 +380,18 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.taskHero.title).toBeTruthy();
   });
 
-  it("removes the visible update_progress action from task detail while keeping photo updates", () => {
+  it("builds quick actions for active work on parent task detail", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
       }),
     );
 
-    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
       "update_progress",
-    );
-    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
-      "upload_photos",
-    );
+      "add_comment",
+      "add_subtask",
+    ]);
   });
 
   it("does not produce nextStepLabel for the task-detail hero", () => {
@@ -453,26 +453,195 @@ describe("useTaskDetailViewAdapter", () => {
       assignedByLabel: "User user-1",
       assignedToLabel: "User user-2, User user-3",
       primaryOwnerLabel: "User user-2",
-      detailRows: expect.arrayContaining([
-        expect.objectContaining({ label: "Due", value: "Oct 12, 2026" }),
-        expect.objectContaining({ label: "Category", value: "general" }),
-      ]),
     });
+    expect(result.current.output.infoCard?.detailRows).toEqual([]);
   });
 
-  it("surfaces delegation inside the task-detail hero model", () => {
+  it("omits delegation from the hero model and keeps delegation only in the info card", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({
         taskId: "task-parent",
       }),
     );
 
-    expect(result.current.output.taskHero).toMatchObject({
-      assignedByLabel: "User manager-1",
-      assignedToLabel: "User user-1, User user-2",
-      primaryOwnerLabel: "User user-2",
-      teamSummaryLabel: "2 assignees",
+    expect(result.current.output.taskHero).not.toHaveProperty("assignedByLabel");
+    expect(result.current.output.taskHero).not.toHaveProperty("assignedToLabel");
+    expect(result.current.output.taskHero).not.toHaveProperty("primaryOwnerLabel");
+    expect(result.current.output.taskHero).not.toHaveProperty("teamSummaryLabel");
+    expect(result.current.output.infoCard?.assignedToLabel).toBe("User user-1, User user-2");
+  });
+
+  it("builds quick actions for reviewer approval state", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-pending-review",
+          title: "Pending Review Task",
+          projectId: "project-1",
+          assignedTo: ["user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "user-1",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Review the work package.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
     });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-pending-review",
+      }),
+    );
+
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
+      "approve_task",
+      "reject_task",
+      "add_comment",
+    ]);
+  });
+
+  it("builds quick actions for contributor review state", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-ready-for-review",
+          title: "Ready for Review Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Wrap up the remaining work.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-ready-for-review",
+      }),
+    );
+
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
+      "submit_review",
+      "add_comment",
+      "update_progress",
+    ]);
+  });
+
+  it("excludes add_subtask on subtask detail active work", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Parent task shell.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 50,
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "task-subtask",
+          title: "Subtask",
+          projectId: "project-1",
+          parentTaskId: "task-parent",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Subtask work item.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 35,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+        subTaskId: "task-subtask",
+      }),
+    );
+
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
+      "update_progress",
+      "add_comment",
+    ]);
   });
 
   it("shows edit_task for the task creator", () => {
@@ -548,17 +717,17 @@ describe("useTaskDetailViewAdapter", () => {
 
     expect(submittedForReviewRow).toMatchObject({
       actorLabel: "User user-2",
-      eventLabel: "Submitted task for review",
+      eventLabel: "Submitted the completed installation for review.",
       timestampLabel: "Oct 10, 2026, 2:45 PM",
-      detailLabel: "Submitted the completed installation for review.",
+      detailLabel: undefined,
       statusLabel: "Submitted For Review",
     });
 
     expect(progressUpdateRow).toMatchObject({
       actorLabel: "User user-1",
-      eventLabel: "Updated progress to 40%",
+      eventLabel: "Installed conduit and verified the wiring path.",
       timestampLabel: "Oct 9, 2026, 9:30 AM",
-      detailLabel: "Installed conduit and verified the wiring path.",
+      detailLabel: undefined,
       photoUrls: ["https://example.com/progress-photo-1.jpg"],
       statusLabel: "In Progress",
     });
@@ -715,15 +884,13 @@ describe("useTaskDetailViewAdapter", () => {
     expect(result.current.output.taskHero).toMatchObject({
       title: "Parent Task",
       statusLabel: "In Progress",
+      categoryLabel: "General",
       projectLabel: "project-1",
       completionLabel: "50% complete",
       dueDateLabel: "Oct 10, 2026",
-      assignedByLabel: "User manager-1",
-      assignedToLabel: "User user-1, User user-2",
-      primaryOwnerLabel: "User user-2",
-      teamSummaryLabel: "2 assignees",
     });
     expect(result.current.output.taskHero.nextStepLabel).toBeUndefined();
+    expect(result.current.output.taskHero).not.toHaveProperty("assignedByLabel");
 
     expect(result.current.output.delegationSummary).toMatchObject({
       assignedByLabel: "User manager-1",

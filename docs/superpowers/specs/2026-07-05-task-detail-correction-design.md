@@ -31,26 +31,28 @@ The approved direction is now:
 - delegation is removed from the hero entirely
 - the hero card keeps title and quick status/progress context only
 - the merged info card remains directly under the hero and continues to scroll with content
-- the merged info card contains description, delegation, and compact details
+- the merged info card contains description and delegation only
 - the lower delegation section remains removed
 - the separate evidence section remains removed
 - the separate subtasks card remains removed
 - the work thread remains the main progress body
 - the work thread includes both parent-task and subtask updates in one chronological flow
 - newest-first thread order remains
-- metadata remains aligned to the thread rail in this order: **Date, user, %**
+- metadata remains aligned to the thread rail in this order: **Date, user, %, status**
 - small/secondary text throughout Task Detail should increase by two size steps
 - the scrollable area should begin below the hero and end above the bottom nav so content never scrolls behind the hero
 - the bottom navigation should use equal visual spacing between Activity, Camera, and Tasks
+- the bottom navigation correction is not complete until the camera button is visually centered between Activity and Tasks on real simulators, not just in code structure
 - a new **Quick Actions** row should sit below the merged info card and above the thread
 - quick actions are contextual by state:
-  - before acceptance: `Accept`, `Reject`
+  - before acceptance: `Accept`, `Decline`
   - active work: `Photo Update`, `Add Comment`, `Add Subtask`
   - review / approval states:
     - contributor state: `Submit for Review`, `Add Comment`, `Photo Update`
     - approver/reviewer state: `Approve`, `Reject`, `Add Comment`
 - lower-frequency actions remain in a separate lower `Other actions` area
 - thread photos should preserve the full image in-card without cropping top or bottom
+- the lead photo should visually occupy the full available card width rather than appearing as a smaller centered image inside a second inset container
 - tapping any thread photo opens a full-screen viewer
 - full-screen photo viewer supports left/right swiping through all photos for that same thread entry
 - photo-update form must still reset fully after submit so reopening starts fresh
@@ -88,6 +90,7 @@ Approved behavior:
   - title
   - quick status chips
   - progress/completion context
+  - category as a compact chip
   - critical marker if applicable
 - hero no longer renders project label above the title
 - hero no longer renders `Next step`
@@ -125,19 +128,19 @@ Approved behavior:
 - combine:
   - description
   - delegation
-  - compact task details
 - do not split this into multiple stacked cards
+- remove the `Details` section entirely
 
 Suggested order inside the card:
 
 1. description
 2. delegation
-3. compact details such as due date / reference / supporting metadata
 
 #### Reasoning
 
 - one merged card is calmer than several stacked cards
 - delegation remains important, but belongs in the info card rather than the hero
+- category is the only remaining truly useful detail item and fits better as a compact hero chip than as its own full-width row
 - this preserves detail without making the fixed top region too heavy
 
 ### 5. Typography and Readability
@@ -177,7 +180,7 @@ Approved behavior:
 Show:
 
 - `Accept`
-- `Reject`
+- `Decline`
 
 ##### Active work
 
@@ -206,6 +209,8 @@ Approver / reviewer state shows:
 - the most relevant actions should be near the top of the content area
 - quick actions should match the user’s immediate task state
 - a camera button should remain photo-first rather than becoming a disguised generic action switcher
+- `Photo Update` in Quick Actions should invoke the same task-detail camera/update path as the bottom camera rather than a separate flow
+- `Add Subtask` should appear only on parent task detail; hide it on subtask detail to avoid ambiguous child-of-child behavior
 
 ### 7. Lower-Frequency Actions
 
@@ -253,6 +258,7 @@ Aligned with the thread point:
 - Date
 - user
 - %
+- status badge
 
 This order is mandatory.
 
@@ -262,11 +268,29 @@ The metadata row should remain visually tight but now with larger readable type.
 
 Inside the card:
 
+- one visible action-first headline describing the concrete action or detail
 - one large lead photo at the top when photos exist
 - a small thumbnail strip when more than one photo exists
-- the comment/detail below the media, if present
+- optional secondary supporting line below the media only when there is still additional useful context after promoting the action/detail
 
 The card should not repeat the metadata row inside the body.
+
+#### Headline priority
+
+The work-thread card should no longer lead with a generic status-change sentence.
+
+Approved behavior:
+
+- promote the action/detail text to the main headline for all thread cards whenever present
+- remove the generic status-change headline from the card body
+- use the event label only as a fallback when no better action/detail text exists
+- keep the current status visible via the metadata-rail status badge instead of repeating it in the body copy
+
+#### Reasoning
+
+- the action taken is usually more useful than a generic status-change summary
+- the status is already represented elsewhere and does not need a second prominent line
+- removing the generic status-change line makes the cards feel tighter and less repetitive
 
 #### Parent-task entry
 
@@ -282,7 +306,7 @@ The card should not repeat the metadata row inside the body.
 
 - no fake evidence placeholder
 - no large empty photo block
-- just the compact thread card with detail/comment content if present
+- just the compact thread card with the action-first headline and optional supporting line if still useful
 
 #### Document/PDF entry
 
@@ -297,6 +321,8 @@ The card should not repeat the metadata row inside the body.
 - the lead photo should span the available card width
 - the lead photo should always be tall enough to display the whole image without cropping the top or bottom
 - preserve the full image within the in-thread card using fit/contain-style behavior rather than aggressive crop/cover behavior
+- remove the extra visual inset effect that makes the photo feel boxed inside a smaller inner frame
+- the photo surface should align to the content width of the thread card so it reads as the primary asset, not as a thumbnail enlarged inside padding
 
 #### Full-screen viewer
 
@@ -306,12 +332,14 @@ The card should not repeat the metadata row inside the body.
 - the user can swipe left and right to browse other photos from the same thread entry
 - the viewer should not jump across different thread entries
 - include a clear close affordance or tap-to-dismiss behavior
+- reuse the app’s existing swipeable photo-viewer pattern rather than introducing a second gallery interaction model
 
 #### Reasoning
 
 - field users often need the full photo, not a cropped preview
 - cropping top or bottom can hide critical evidence
 - full-screen mode should behave like a lightweight gallery, not a static single-image modal
+- if the lead photo does not own the card width, it loses visual priority and weakens the photo-first storytelling goal
 
 ### 11. Bottom Navigation Balance
 
@@ -322,11 +350,14 @@ Approved behavior:
 - Activity, Camera, and Tasks use three equal visual slots
 - the camera may remain visually emphasized, but spacing must still be equalized
 - Activity and Tasks should not appear pushed away from the camera
+- the camera button must be optically centered, not just wrapped in an equal-flex container
+- visual balance must be verified on real simulator renders because the elevated circular camera affordance can still appear misaligned even when the slot math is nominally equal
 
 #### Reasoning
 
 - the current bar feels imbalanced because the center camera visually distorts spacing
 - equal slot spacing produces a calmer and more intentional navigation rhythm
+- this is a perception problem as much as a layout problem, so the acceptance bar is visual centering rather than only matching flex values
 
 ### 12. Photo Update Form Reset
 
@@ -388,11 +419,13 @@ Explicit removals from the current version:
 - begins below the hero
 - ends above the bottom nav
 - no thread content scrolls behind the hero
+- the hero is fully outside the scroll view
+- the scroll region must be padded for bottom nav height and safe-area inset
 
 ### Merged Info Card
 
 - scrolls with content
-- contains description, delegation, and compact details
+- contains description and delegation only
 
 ### Quick Actions
 
@@ -402,14 +435,16 @@ Explicit removals from the current version:
 ### Work Thread
 
 - newest first
-- metadata order is Date, user, %
+- metadata order is Date, user, %, status
 - includes both parent-task and subtask activity
+- the body headline is action-first rather than generic-status-first
 - photo entries display the full image in-card
 - tapping a photo opens a swipeable full-screen gallery for that entry’s photos
 
 ### Bottom Navigation
 
 - Activity, Camera, and Tasks are equally spaced
+- Camera is visually centered between Activity and Tasks on-device
 
 ### Edit Permissions
 
@@ -439,33 +474,42 @@ The correction is only complete if all of the following are true:
 8. scrollable content begins below the hero and does not move behind it
 9. one merged info card renders below the hero inside the bounded scroll region
 10. the lower delegation section is removed entirely
-11. no visible `Progress update` button remains
-12. no promoted primary footer CTA appears on Task Detail
-13. the evidence section is removed entirely
-14. the separate subtasks card is removed entirely
-15. the work thread remains the main progress surface
-16. work thread is newest-first
-17. thread metadata aligns to the rail in the order Date, user, %
-18. all small/secondary Task Detail text is increased by roughly two size steps
-19. quick actions appear below the info card and above the thread
-20. quick actions change correctly by pre-acceptance, active work, and review/approval states
-21. lower-frequency actions remain in a separate lower action area
-22. Activity, Camera, and Tasks appear equally spaced in the bottom nav
-23. in-thread lead photos preserve full-image visibility without cropping top or bottom
-24. tapping a thread photo opens a full-screen viewer
-25. the full-screen viewer supports left/right swiping across that entry’s photos
-26. text-only entries do not render fake photo placeholders
-27. photo update form reopens in a clean state after submit
+11. the merged info card no longer renders a `Details` section
+12. category appears as a compact chip in the hero instead of as a full-width detail row
+13. no visible `Progress update` button remains
+14. no promoted primary footer CTA appears on Task Detail
+15. the evidence section is removed entirely
+16. the separate subtasks card is removed entirely
+17. the work thread remains the main progress surface
+18. work thread is newest-first
+19. thread metadata aligns to the rail in the order Date, user, %, status
+20. all small/secondary Task Detail text is increased by roughly two size steps
+21. quick actions appear below the info card and above the thread
+22. quick actions change correctly by pre-acceptance, active work, and review/approval states
+23. lower-frequency actions remain in a separate lower action area
+24. Activity, Camera, and Tasks appear equally spaced in the bottom nav
+25. the camera button is visually centered relative to Activity and Tasks in real simulator renders
+26. in-thread lead photos preserve full-image visibility without cropping top or bottom
+27. the lead photo visually spans the usable card width instead of sitting inside an extra inset frame
+28. tapping a thread photo opens a full-screen viewer
+29. the full-screen viewer supports left/right swiping across that entry’s photos using the existing swipeable photo-viewer pattern
+30. each thread entry promotes the action/detail line to the primary headline whenever available
+31. generic status-change headlines are removed from the thread card body
+32. text-only entries do not render fake photo placeholders
+33. photo update form reopens in a clean state after submit
 
 ## Implementation Notes
 
 This correction should be planned and executed as a focused follow-up to the current Task Detail redesign work. It should reuse the existing camera-routing behavior and unified thread model where possible, while refining:
 
 - the fixed hero into a lighter status-only card
+- the hero chip set to carry category without reintroducing a full details section
 - the content layout into a truly bounded scroll region
 - the action model into a contextual quick-actions row
+- the thread card hierarchy into an action-first presentation
+- the photo presentation so the lead image truly owns the card width
 - the photo viewer into a swipeable gallery for each thread entry
-- the bottom navigation into an equal-slot layout
+- the bottom navigation into an optically centered three-slot layout verified on simulator
 
 The most important conceptual change is that Task Detail should now feel like a fixed-top operational shell with a clean, contained mobile content region beneath it, rather than a sticky overlay with content moving behind it.
 

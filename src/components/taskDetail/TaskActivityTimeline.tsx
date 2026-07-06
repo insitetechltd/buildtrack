@@ -59,7 +59,10 @@ export default function TaskActivityTimeline({
   onVisibleEntryChange,
   testID,
 }: TaskActivityTimelineProps) {
-  const [selectedPhotoUri, setSelectedPhotoUri] = React.useState<string | undefined>();
+  const [selectedGallery, setSelectedGallery] = React.useState<{
+    photos: string[];
+    index: number;
+  }>();
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -92,12 +95,45 @@ export default function TaskActivityTimeline({
     }
   }, [onVisibleEntryChange, resolvedTopEntryId]);
 
+  const openGallery = React.useCallback((photos: string[], index: number) => {
+    setSelectedGallery({
+      photos,
+      index,
+    });
+  }, []);
+
+  const closeGallery = React.useCallback(() => {
+    setSelectedGallery(undefined);
+  }, []);
+
+  const showPreviousPhoto = React.useCallback(() => {
+    setSelectedGallery((current) =>
+      current
+        ? {
+            ...current,
+            index: Math.max(current.index - 1, 0),
+          }
+        : current,
+    );
+  }, []);
+
+  const showNextPhoto = React.useCallback(() => {
+    setSelectedGallery((current) =>
+      current
+        ? {
+            ...current,
+            index: Math.min(current.index + 1, current.photos.length - 1),
+          }
+        : current,
+    );
+  }, []);
+
   return (
     <View testID={testID} className="mx-4 mt-4 mb-4 rounded-2xl border border-gray-200 bg-white p-4">
       <View className="mb-4 flex-row items-center justify-between">
         <Text className="text-lg font-semibold text-gray-900">Work thread</Text>
-        <View className="rounded-full bg-gray-100 px-3 py-1">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <View className="rounded-full bg-gray-100 px-3 py-1.5">
+          <Text className="text-sm font-semibold uppercase tracking-wide text-gray-500">
             Newest first
           </Text>
         </View>
@@ -129,19 +165,20 @@ export default function TaskActivityTimeline({
                   testID={`task-activity-timeline__rail-metadata-${activity.id}`}
                   className="mb-2 flex-row flex-wrap items-center gap-x-3 gap-y-1"
                 >
-                  <Text
-                    className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                  >
+                  <Text className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     {activity.timestampLabel}
                   </Text>
-                  <Text
-                    className="text-sm font-medium text-slate-700"
-                  >
+                  <Text className="text-base font-medium text-slate-700">
                     {activity.actorLabel}
                   </Text>
-                  <Text className="text-sm font-semibold text-slate-900">
+                  <Text className="text-base font-semibold text-slate-900">
                     {activity.progressLabel}
                   </Text>
+                  {activity.statusLabel ? (
+                    <Text className="rounded-full bg-slate-200 px-2.5 py-1 text-sm font-semibold text-slate-700">
+                      {activity.statusLabel}
+                    </Text>
+                  ) : null}
                 </View>
 
                 <View className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
@@ -149,32 +186,39 @@ export default function TaskActivityTimeline({
                     <View className="mb-3 flex-row flex-wrap items-center gap-2">
                       {activity.subtaskBadgeLabel ? (
                         <View className="rounded-full bg-blue-50 px-2 py-1">
-                          <Text className="text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                          <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
                             {activity.subtaskBadgeLabel}
                           </Text>
                         </View>
                       ) : null}
                       {activity.subtaskTitleLabel ? (
-                        <Text className="text-sm font-medium text-slate-700">
+                        <Text className="text-base font-medium text-slate-700">
                           {activity.subtaskTitleLabel}
                         </Text>
                       ) : null}
                     </View>
                   ) : null}
 
+                  <Text className="mb-3 text-lg font-semibold text-slate-900">
+                    {activity.eventLabel}
+                  </Text>
+
                   {activity.photoUrls.length > 0 ? (
-                    <View className={activity.detailLabel ? "mb-3" : undefined}>
+                    <View
+                      testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
+                      className={activity.detailLabel ? "-mx-4 mb-3" : "-mx-4"}
+                    >
                       <Pressable
                         testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
                         accessibilityRole="button"
-                        onPress={() => setSelectedPhotoUri(activity.photoUrls[0])}
+                        onPress={() => openGallery(activity.photoUrls, 0)}
                       >
                         <Image
                           testID={`task-activity-timeline__lead-photo-${activity.id}`}
                           accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
                           source={{ uri: activity.photoUrls[0] }}
                           resizeMode="contain"
-                          className="h-44 w-full rounded-3xl bg-slate-200"
+                          className="h-44 w-full bg-slate-200"
                         />
                       </Pressable>
 
@@ -188,7 +232,7 @@ export default function TaskActivityTimeline({
                               key={`${activity.id}-thumb-${photoIndex + 1}`}
                               testID={`task-activity-timeline__thumb-photo-pressable-${activity.id}-${photoIndex + 1}`}
                               accessibilityRole="button"
-                              onPress={() => setSelectedPhotoUri(photoUri)}
+                              onPress={() => openGallery(activity.photoUrls, photoIndex + 1)}
                             >
                               <Image
                                 testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
@@ -207,7 +251,7 @@ export default function TaskActivityTimeline({
                   {activity.detailLabel ? (
                     <Text
                       testID="task-activity-timeline__detail-label"
-                      className="text-sm leading-5 text-slate-600"
+                      className="text-base leading-6 text-slate-600"
                     >
                       {activity.detailLabel}
                     </Text>
@@ -220,25 +264,57 @@ export default function TaskActivityTimeline({
       </View>
 
       <Modal
-        visible={Boolean(selectedPhotoUri)}
+        visible={Boolean(selectedGallery)}
         transparent
         animationType="fade"
-        onRequestClose={() => setSelectedPhotoUri(undefined)}
+        onRequestClose={closeGallery}
       >
-        <Pressable
+        <View
           testID="task-activity-timeline__photo_viewer"
           className="flex-1 items-center justify-center bg-black/90 px-4"
-          onPress={() => setSelectedPhotoUri(undefined)}
         >
-          {selectedPhotoUri ? (
-            <Image
-              testID="task-activity-timeline__photo_viewer_image"
-              source={{ uri: selectedPhotoUri }}
-              resizeMode="contain"
-              className="h-full w-full"
-            />
+          <Pressable
+            testID="task-activity-timeline__photo_viewer_close"
+            accessibilityRole="button"
+            className="absolute top-12 right-6 z-10 rounded-full bg-white/10 px-3 py-2"
+            onPress={closeGallery}
+          >
+            <Text className="text-sm font-semibold text-white">Close</Text>
+          </Pressable>
+
+          {selectedGallery ? (
+            <>
+              {selectedGallery.index > 0 ? (
+                <Pressable
+                  testID="task-activity-timeline__photo_viewer_previous"
+                  accessibilityRole="button"
+                  className="absolute left-4 z-10 rounded-full bg-white/15 px-4 py-3"
+                  onPress={showPreviousPhoto}
+                >
+                  <Text className="text-sm font-semibold text-white">Previous</Text>
+                </Pressable>
+              ) : null}
+
+              <Image
+                testID="task-activity-timeline__photo_viewer_image"
+                source={{ uri: selectedGallery.photos[selectedGallery.index] }}
+                resizeMode="contain"
+                className="h-full w-full"
+              />
+
+              {selectedGallery.index < selectedGallery.photos.length - 1 ? (
+                <Pressable
+                  testID="task-activity-timeline__photo_viewer_next"
+                  accessibilityRole="button"
+                  className="absolute right-4 z-10 rounded-full bg-white/15 px-4 py-3"
+                  onPress={showNextPhoto}
+                >
+                  <Text className="text-sm font-semibold text-white">Next</Text>
+                </Pressable>
+              ) : null}
+            </>
           ) : null}
-        </Pressable>
+        </View>
       </Modal>
     </View>
   );

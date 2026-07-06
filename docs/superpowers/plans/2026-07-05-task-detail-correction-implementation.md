@@ -77,7 +77,7 @@ it("builds quick actions for pre-acceptance state", () => {
 
   expect(result.current.output.quickActions?.map((action) => action.actionId)).toEqual([
     "accept_task",
-    "reject_task",
+    "decline_task",
   ]);
 });
 ```
@@ -130,12 +130,14 @@ export interface TaskDetailScreenViewAdapterOutput {
 ```ts
 // src/ui/viewAdapters/useTaskDetailViewAdapter.ts
 const quickActionIds = isAwaitingAcceptance
-  ? ["accept_task", "reject_task"]
+  ? ["accept_task", "decline_task"]
   : isReviewerApprovalState
     ? ["approve_task", "reject_task", "add_comment"]
     : isContributorReviewState
       ? ["submit_review", "add_comment", "update_progress"]
-      : ["update_progress", "add_comment", "add_subtask"];
+      : isSubtaskDetail
+        ? ["update_progress", "add_comment"]
+        : ["update_progress", "add_comment", "add_subtask"];
 
 const quickActions: TaskDetailQuickActionRowModel = {
   id: "task-quick-actions",
@@ -179,7 +181,7 @@ it("renders the contextual quick actions row below the info card", () => {
         structuralState: "ready",
         actions: [
           { id: "a1", actionId: "accept_task", label: "Accept", isDisabled: false },
-          { id: "a2", actionId: "reject_task", label: "Reject", isDisabled: false },
+          { id: "a2", actionId: "decline_task", label: "Decline", isDisabled: false },
         ],
       }}
       onPress={jest.fn()}
@@ -188,7 +190,7 @@ it("renders the contextual quick actions row below the info card", () => {
 
   expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
   expect(screen.getByText("Accept")).toBeTruthy();
-  expect(screen.getByText("Reject")).toBeTruthy();
+  expect(screen.getByText("Decline")).toBeTruthy();
 });
 ```
 
@@ -297,7 +299,7 @@ Expected: FAIL because the screen still relies on scroll-stickiness rather than 
 </View>
 
 <View testID="task-detail__scroll_region" className="flex-1">
-  <ScrollView testID="task-detail__workthread_scroll" className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+  <ScrollView testID="task-detail__workthread_scroll" className="flex-1" contentContainerStyle={{ paddingBottom: tabBarHeight + bottomInset + 16 }}>
     {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
     {output.quickActions ? <TaskDetailQuickActions model={output.quickActions} onPress={handleActionPress} /> : null}
     <TaskActivityTimeline testID="task-detail__activity_thread" thread={output.activityThread} />
@@ -361,11 +363,35 @@ it("opens the full-screen photo viewer on the selected image and supports next/p
 });
 ```
 
+```tsx
+it("renders a visible event headline before media and detail content", () => {
+  const screen = render(
+    <TaskActivityTimeline
+      thread={[
+        {
+          id: "activity-2",
+          actorLabel: "Tristan",
+          timestampLabel: "Jul 5, 09:30",
+          progressLabel: "40%",
+          detailLabel: "Ceiling grid installed.",
+          photoUrls: [],
+          density: "standard",
+          structuralState: "ready",
+          eventLabel: "Marked 40% complete",
+        },
+      ]}
+    />,
+  );
+
+  expect(screen.getByText("Marked 40% complete")).toBeTruthy();
+});
+```
+
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
 
-Expected: FAIL because the viewer only opens a single selected image and does not provide gallery navigation.
+Expected: FAIL because the viewer only opens a single selected image, does not provide gallery navigation, and the thread card does not yet render a dedicated event headline.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -386,6 +412,7 @@ const showNext = () =>
 
 ```tsx
 // src/components/taskDetail/TaskActivityTimeline.tsx
+<Text className="mb-3 text-lg font-semibold text-slate-900">{activity.eventLabel}</Text>
 <Pressable testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`} onPress={() => openGallery(activity.photoUrls, 0)}>
   <Image resizeMode="contain" className="w-full rounded-3xl bg-slate-100" source={{ uri: activity.photoUrls[0] }} />
 </Pressable>
@@ -393,13 +420,11 @@ const showNext = () =>
 
 ```tsx
 // src/components/taskDetail/TaskActivityTimeline.tsx
-<Pressable testID="task-activity-timeline__photo_viewer_previous" onPress={showPrevious}>
-  <Ionicons name="chevron-back" size={28} color="#ffffff" />
-</Pressable>
-<Image testID="task-activity-timeline__photo_viewer_image" source={{ uri: selectedGallery.photos[selectedGallery.index] }} resizeMode="contain" className="h-full w-full" />
-<Pressable testID="task-activity-timeline__photo_viewer_next" onPress={showNext}>
-  <Ionicons name="chevron-forward" size={28} color="#ffffff" />
-</Pressable>
+<PhotoViewerScreen
+  images={selectedGallery.photos}
+  initialIndex={selectedGallery.index}
+  onClose={() => setSelectedGallery(undefined)}
+/>
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -493,13 +518,18 @@ git commit -m "fix(ux): rebalance bottom navigation spacing"
 - Modify: `docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md`
 - Modify: `docs/superpowers/plans/2026-07-05-task-detail-correction-implementation.md`
 
-- [ ] **Step 1: Run the focused validation suite**
+- [x] **Step 1: Run the focused validation suite**
 
 Run: `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand && npx tsc --noEmit`
 
 Expected: PASS
 
-- [ ] **Step 2: Relaunch the app for visual verification**
+Completed on 2026-07-06:
+- `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+- `npx tsc --noEmit`
+- Result: PASS (`7` suites, `61` tests)
+
+- [x] **Step 2: Relaunch the app for visual verification**
 
 Run: `pkill -f "expo start --dev-client" || true && env -u CI npx expo start --dev-client --clear`
 
@@ -509,7 +539,12 @@ Run: `xcrun simctl terminate booted com.buildtrack.app.local || true && xcrun si
 
 Expected: app relaunch succeeds on the booted simulator.
 
-- [ ] **Step 3: Update the execution ledger**
+Completed on 2026-07-06:
+- Metro restarted cleanly on `http://localhost:8081`
+- `xcrun simctl launch booted com.buildtrack.app.local` succeeded
+- Fresh simulator screenshot captured after relaunch for final UI review
+
+- [x] **Step 3: Update the execution ledger**
 
 ```md
 - removed delegation from the fixed hero and kept it only inside the merged info card
@@ -517,7 +552,7 @@ Expected: app relaunch succeeds on the booted simulator.
 - replaced sticky overlay behavior with a bounded scroll region below the hero
 - added a contextual Quick Actions row for acceptance, active work, and review/approval states
 - rebalanced the bottom navigation so Activity, Camera, and Tasks occupy equal visual slots
-- upgraded full-screen thread photos into a swipeable per-entry gallery
+- upgraded full-screen thread photos into a browsable per-entry gallery
 ```
 
 - [ ] **Step 4: Create the checkpoint commit**
@@ -536,7 +571,7 @@ git commit -m "fix(ux): refine task detail readability and actions"
 - contextual quick actions by state: Tasks 1, 2, and 3
 - lower-frequency actions separated below thread: Task 3
 - unified thread preserved: Task 3 regression coverage
-- swipeable full-screen photo gallery: Task 4
+- browsable full-screen photo gallery for per-entry thread photos: Task 4
 - equal bottom-nav spacing: Task 5
 - preserve camera routing and photo-update reset behavior: Task 6 validation
 

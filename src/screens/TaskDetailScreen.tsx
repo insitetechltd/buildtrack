@@ -6,7 +6,7 @@ import {
   Pressable,
   Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
@@ -14,6 +14,7 @@ import ModernScreenHeader from "@/components/ModernScreenHeader";
 import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
+import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
 import { cn } from "@/utils/cn";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
@@ -117,6 +118,7 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
 }
 
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
+  const insets = useSafeAreaInsets();
   const { output, actions } = useTaskDetailViewAdapter({
     taskId: props.taskId,
     subTaskId: props.subTaskId
@@ -195,13 +197,18 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const criticalThisWeekAction = (output.actionItems ?? []).find(
     (action) => action.actionId === "toggle_critical_this_week",
   );
+  const quickActionIds = new Set(
+    (output.quickActions?.actions ?? []).map((action) => action.actionId),
+  );
   const { secondaryActions } = prioritizeActionItems(
     (output.actionItems ?? []).filter(
       (action) =>
+        !quickActionIds.has(action.actionId) &&
         action.actionId !== "toggle_critical_this_week" &&
         action.actionId !== "upload_photos",
     ),
   );
+  const scrollRegionBottomPadding = 76 + insets.bottom + 16;
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -233,95 +240,105 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       />
 
       <View className="flex-1">
-        <ScrollView
-          testID="task-detail__workthread_scroll"
-          stickyHeaderIndices={[0]}
-          className="flex-1"
-          contentContainerStyle={{
-            paddingBottom: 32,
-            flexGrow: 1,
-          }}
-          scrollEnabled
-          showsVerticalScrollIndicator={false}
-        >
+        <View testID="task-detail__hero_shell">
           <TaskDetailHero model={output.taskHero} />
+        </View>
 
-          {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
+        <View testID="task-detail__scroll_region" className="flex-1">
+          <ScrollView
+            testID="task-detail__workthread_scroll"
+            className="flex-1"
+            contentContainerStyle={{
+              paddingBottom: scrollRegionBottomPadding,
+              flexGrow: 1,
+            }}
+            scrollEnabled
+            showsVerticalScrollIndicator={false}
+          >
+            {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
 
-          {/* Banners */}
-          {output.banners.map(banner => (
-            <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
-          ))}
+            {output.quickActions ? (
+              <TaskDetailQuickActions
+                model={output.quickActions}
+                onPress={handleActionPress}
+              />
+            ) : null}
 
-          {criticalThisWeekAction ? (
-            <View className="px-4 pt-4">
-              <Pressable
-                testID="task-detail__toggle_critical_this_week"
-                accessibilityRole="button"
-                accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
-                disabled={criticalThisWeekAction.isDisabled}
-                onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
-                className={cn(
-                  "flex-row items-center justify-between rounded-2xl border px-4 py-3",
-                  criticalThisWeekAction.isActive
-                    ? "border-amber-300 bg-amber-50"
-                    : "border-amber-200 bg-white",
-                  criticalThisWeekAction.isDisabled && "opacity-50",
-                )}
-              >
-                <View className="mr-3 flex-1">
-                  <Text className="text-base font-semibold text-slate-900">
-                    {criticalThisWeekAction.label}
-                  </Text>
-                  <Text className="mt-1 text-sm text-slate-600">
-                    {criticalThisWeekAction.isActive
-                      ? "Included in This Week’s Critical Dates."
-                      : "Highlight this task in This Week’s Critical Dates."}
-                  </Text>
-                </View>
-                <Ionicons
-                  name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
-                  size={20}
-                  color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
-                />
-              </Pressable>
-            </View>
-          ) : null}
+            {/* Banners */}
+            {output.banners.map(banner => (
+              <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
+            ))}
 
-          <TaskActivityTimeline
-            testID="task-detail__activity_thread"
-            thread={output.activityThread}
-          />
-
-          {secondaryActions.length > 0 ? (
-            <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
-              <Text className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Other actions
-              </Text>
-
-              <View className="flex-row flex-wrap gap-2">
-                {secondaryActions.map((action) => (
-                  <Pressable
-                    key={action.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ disabled: action.isDisabled }}
-                    disabled={action.isDisabled}
-                    onPress={() => handleActionPress(action.actionId)}
-                    className={cn(
-                      "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
-                      action.isDisabled && "opacity-50",
-                    )}
-                  >
-                    {action.icon ? (
-                      <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
-                    ) : null}
-                    <Text className="text-sm font-medium text-gray-700">{action.label}</Text>
-                  </Pressable>
-                ))}
+            {criticalThisWeekAction ? (
+              <View className="px-4 pt-4">
+                <Pressable
+                  testID="task-detail__toggle_critical_this_week"
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: criticalThisWeekAction.isDisabled, selected: criticalThisWeekAction.isActive }}
+                  disabled={criticalThisWeekAction.isDisabled}
+                  onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
+                  className={cn(
+                    "flex-row items-center justify-between rounded-2xl border px-4 py-3",
+                    criticalThisWeekAction.isActive
+                      ? "border-amber-300 bg-amber-50"
+                      : "border-amber-200 bg-white",
+                    criticalThisWeekAction.isDisabled && "opacity-50",
+                  )}
+                >
+                  <View className="mr-3 flex-1">
+                    <Text className="text-base font-semibold text-slate-900">
+                      {criticalThisWeekAction.label}
+                    </Text>
+                    <Text className="mt-1 text-base text-slate-600">
+                      {criticalThisWeekAction.isActive
+                        ? "Included in This Week’s Critical Dates."
+                        : "Highlight this task in This Week’s Critical Dates."}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={criticalThisWeekAction.isActive ? "flag" : "flag-outline"}
+                    size={20}
+                    color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
+                  />
+                </Pressable>
               </View>
-            </View>
-          ) : null}
-        </ScrollView>
+            ) : null}
+
+            <TaskActivityTimeline
+              testID="task-detail__activity_thread"
+              thread={output.activityThread}
+            />
+
+            {secondaryActions.length > 0 ? (
+              <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
+                <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
+                  Other actions
+                </Text>
+
+                <View className="flex-row flex-wrap gap-2">
+                  {secondaryActions.map((action) => (
+                    <Pressable
+                      key={action.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: action.isDisabled }}
+                      disabled={action.isDisabled}
+                      onPress={() => handleActionPress(action.actionId)}
+                      className={cn(
+                        "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
+                        action.isDisabled && "opacity-50",
+                      )}
+                    >
+                      {action.icon ? (
+                        <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
+                      ) : null}
+                      <Text className="text-base font-medium text-gray-700">{action.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
+        </View>
       </View>
 
     </SafeAreaView>

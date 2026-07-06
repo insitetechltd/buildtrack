@@ -141,6 +141,22 @@ describe("TaskDetailScreen sticky layout", () => {
     assignees: [],
     activities: [],
     childTasks: [],
+    quickActions: {
+      id: "task-quick-actions",
+      density: "standard",
+      structuralState: "ready",
+      actions: [
+        {
+          id: "quick-action-comment",
+          actionId: "add_comment",
+          label: "Add Comment",
+          icon: "chatbubble-outline",
+          isDisabled: false,
+          density: "standard",
+          structuralState: "ready",
+        },
+      ],
+    },
     actionItems: [],
     ...overrides,
   });
@@ -163,21 +179,64 @@ describe("TaskDetailScreen sticky layout", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("keeps only the hero sticky while the info card scrolls with the page", () => {
+  it("renders the hero outside the bounded scroll region so thread content never scrolls behind it", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
 
+    expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
     expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(workThreadScroll).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(workThreadScroll.props.scrollEnabled).not.toBe(false);
-    expect(workThreadScroll.props.stickyHeaderIndices).toEqual([0]);
+    expect(workThreadScroll.props.stickyHeaderIndices).toBeUndefined();
     expect(workThreadScroll.props.contentContainerStyle).toEqual(
       expect.objectContaining({ flexGrow: 1 }),
     );
+  });
+
+  it("renders quick actions above the work thread and keeps other actions below the thread", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "quick-action-accept",
+              actionId: "accept_task",
+              label: "Accept",
+              icon: "checkmark-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        actionItems: [
+          {
+            id: "secondary-action-edit",
+            actionId: "edit_task",
+            label: "Edit Task Details",
+            icon: "create-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
   });
 
   it("does not render separate subtasks or detail cards once info is merged into the new layout", () => {

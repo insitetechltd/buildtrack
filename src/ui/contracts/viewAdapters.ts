@@ -242,6 +242,7 @@ export interface TaskDetailHeaderModel {
 export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
   title: string;
   statusLabel: string;
+  categoryLabel?: string;
   projectLabel: string;
   completionLabel: string;
   dueDateLabel?: string;
@@ -333,6 +334,10 @@ export interface TaskDetailActionItem extends PrimitiveReadyItemBase {
   isActive?: boolean;
 }
 
+export interface TaskDetailQuickActionRowModel extends PrimitiveReadyItemBase {
+  actions: TaskDetailActionItem[];
+}
+
 export interface TaskDetailBannerModel extends PrimitiveReadyItemBase {
   id: string;
   type: 'submitted_for_review' | 'review_required' | 'approved' | 'declined' | 'rejected';
@@ -378,6 +383,7 @@ export interface TaskDetailScreenViewAdapterOutput {
   taskHero: TaskDetailHeroModel;
   delegationSummary: TaskDetailDelegationSummaryModel;
   infoCard?: TaskDetailInfoCardModel;
+  quickActions?: TaskDetailQuickActionRowModel;
   activeStage: TaskDetailActiveStageModel;
   evidenceSummary: TaskDetailEvidenceSummaryModel;
   activityThread: TaskDetailActivityThreadRow[];

@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppScreenHeader from "@/components/AppScreenHeader";
@@ -26,7 +26,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           title="Recent Activity"
           showProfileTrigger={visibility.showProfileShortcut}
           onProfilePress={props.onNavigateToProfile}
-          className="border-b-0 bg-slate-50 pb-3"
+          className="border-b-0 bg-slate-50 pb-1"
           rightSlot={
             <View className="flex-row items-center">
               <ModernUiMarker />
@@ -54,7 +54,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
-            <View className="mb-4 rounded-3xl bg-white p-4" testID="dashboard-screen__project_summary_card">
+            <View className="mb-5" testID="dashboard-screen__project_summary_section">
               <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Active Project
               </Text>
@@ -69,7 +69,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                 ].join(" · ")}
               </Text>
 
-              <View className="mt-4">
+              <View className="mt-4 rounded-3xl bg-white p-4">
                 <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                   This Week&apos;s Critical Dates
                 </Text>
@@ -158,20 +158,51 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                     key={item.id}
                     testID={`dashboard-screen__activity_${item.id}`}
                     onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                    className="rounded-2xl bg-white p-4"
+                    className="overflow-hidden rounded-2xl bg-white"
                   >
-                    <View className="flex-row items-start justify-between">
-                      <View className="mr-4 flex-1">
-                        <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
-                        <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
+                    {item.previewPhotoUri ? (
+                      <View className="flex-row">
+                        <View
+                          testID={`dashboard-screen__activity_${item.id}:thumbnail`}
+                          className="w-24 bg-slate-100"
+                        >
+                          <Image
+                            source={{ uri: item.previewPhotoUri }}
+                            className="h-full w-full"
+                            resizeMode="cover"
+                          />
+                        </View>
+                        <View className="min-w-0 flex-1 p-4">
+                          <View className="flex-row items-start justify-between">
+                            <View className="mr-4 flex-1">
+                              <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
+                              <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
+                            </View>
+                            <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                              {item.statusLabel}
+                            </Text>
+                          </View>
+                          <Text className="mt-3 text-xs font-medium text-slate-400">
+                            {item.timestampLabel}
+                          </Text>
+                        </View>
                       </View>
-                      <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                        {item.statusLabel}
-                      </Text>
-                    </View>
-                    <Text className="mt-3 text-xs font-medium text-slate-400">
-                      {item.timestampLabel}
-                    </Text>
+                    ) : (
+                      <View className="p-4">
+                        <View className="flex-row items-start justify-between">
+                          <View className="mr-4 flex-1">
+                            <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
+                            <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
+                          </View>
+                          <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            {item.statusLabel}
+                          </Text>
+                        </View>
+                        <Text className="mt-3 text-xs font-medium text-slate-400">
+                          {item.timestampLabel}
+                        </Text>
+                      </View>
+                    )}
                   </Pressable>
                 ))
               ) : (

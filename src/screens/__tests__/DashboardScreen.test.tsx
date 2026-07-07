@@ -32,7 +32,7 @@ describe("DashboardScreen", () => {
     jest.clearAllMocks();
   });
 
-  it("renders compact inline weather metadata, keeps the header profile shortcut, and invokes non-profile navigation callbacks", () => {
+  it("renders Active Project as a peer section, shows conditional activity thumbnails, and keeps existing shortcuts", () => {
     const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
 
     const adapterOutput: DashboardScreenViewAdapterOutput = {
@@ -131,7 +131,29 @@ describe("DashboardScreen", () => {
       },
       summaryPills: [],
       draftItems: [],
-      activityItems: [],
+      activityItems: [
+        {
+          id: "activity-1",
+          taskId: "task-1",
+          title: "Photo-backed activity",
+          subtitle: "Has a preview image",
+          timestampLabel: "Jul 7 at 6:48 PM",
+          statusLabel: "in progress",
+          previewPhotoUri: "https://example.com/activity-photo.jpg",
+          density: "standard",
+          structuralState: "stale",
+        },
+        {
+          id: "activity-2",
+          taskId: "task-2",
+          title: "Text-only activity",
+          subtitle: "No preview image",
+          timestampLabel: "Task activity",
+          statusLabel: "new",
+          density: "standard",
+          structuralState: "stale",
+        },
+      ],
       taskShortcut: null,
       projectSummaryItems: [],
       highlightedTaskItems: [],
@@ -189,12 +211,16 @@ describe("DashboardScreen", () => {
       />,
     );
 
-    expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__project_summary_section")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
+    expect(screen.getByText("Active Project")).toBeTruthy();
+    expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
     expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__header_profile")).toBeNull();
 
@@ -213,6 +239,9 @@ describe("DashboardScreen", () => {
 
     fireEvent.press(screen.getByTestId("dashboard-screen__header_developer_settings"));
     expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__activity_activity-1"));
+    expect(screen.getByText("Photo-backed activity")).toBeTruthy();
 
     expect(onNavigateToProfile).not.toHaveBeenCalled();
   });

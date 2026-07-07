@@ -716,6 +716,7 @@ describe("useDashboardViewAdapter", () => {
     expect(result.current.output.activityItems[0]).toMatchObject({
       title: "Concrete pour",
       subtitle: "Pour completed for section A",
+      previewPhotoUri: "https://example.com/photo-1.jpg",
     });
   });
 

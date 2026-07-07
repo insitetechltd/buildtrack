@@ -188,6 +188,21 @@ export interface TasksDraftsSection {
   rows: TasksScreenRowItem[];
 }
 
+export interface TasksFilterOption {
+  id: string;
+  value: "all" | TasksQueueId | "new" | "wip" | "review";
+  label: string;
+  count: number;
+  isSelected: boolean;
+}
+
+export interface TasksFilterControl {
+  id: "queue" | "bucket";
+  label: string;
+  selectedValue: string;
+  options: TasksFilterOption[];
+}
+
 export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
 
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
@@ -233,6 +248,10 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
+  filterControls?: {
+    queue: TasksFilterControl;
+    bucket: TasksFilterControl;
+  };
   isSearchMode: boolean;
   queuePanels: TasksQueuePanel[];
   draftsSection?: TasksDraftsSection | null;

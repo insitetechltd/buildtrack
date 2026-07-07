@@ -63,22 +63,24 @@ describe("container/ContainerCard task-list layout", () => {
     ...overrides,
   });
 
-  it("renders the task thumbnail card with a Recent Activity-style text stack", () => {
+  it("renders the task thumbnail card with a softer Recent Activity-style shell", () => {
     const { getByTestId, getByText, queryByText, queryByTestId } = render(
       <ContainerCard contract={buildTaskCardContract()} />,
     );
 
     expect(getByTestId("container-card:task-1:thumbnail")).toBeTruthy();
     expect(getByTestId("container-card:task-1").props.className).toContain("overflow-hidden");
-    expect(getByTestId("container-card:task-1").props.className).toContain("h-28");
+    expect(getByTestId("container-card:task-1").props.className).toContain("rounded-3xl");
+    expect(getByTestId("container-card:task-1").props.className).toContain("border-slate-200");
+    expect(getByTestId("container-card:task-1").props.className).toContain("shadow-sm");
     expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("self-stretch");
     expect(getByTestId("container-card:task-1:thumbnail").props.className).not.toContain("rounded-2xl");
     expect(getByTestId("container-card:task-1:thumbnail-image")).toBeTruthy();
     expect(getByTestId("container-card:task-1:status-badge")).toBeTruthy();
-    expect(getByTestId("container-card:task-1:content").props.className).toContain("justify-center");
-    expect(getByTestId("container-card:task-1:title").props.className).toContain("text-base");
+    expect(getByTestId("container-card:task-1:content").props.className).toContain("px-4");
+    expect(getByTestId("container-card:task-1:title").props.className).toContain("text-[17px]");
     expect(getByTestId("container-card:task-1:title").props.className).toContain("font-semibold");
-    expect(getByTestId("container-card:task-1:status-line").props.className).toContain("mt-1");
+    expect(getByTestId("container-card:task-1:status-line").props.className).toContain("mt-2");
     expect(getByText("Structural steel inspection — Level 12")).toBeTruthy();
     expect(getByText("Submitted for review")).toBeTruthy();
     expect(getByText("Level 12, Grid B–C")).toBeTruthy();

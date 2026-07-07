@@ -208,6 +208,8 @@ describe("useTasksViewAdapter", () => {
     ]);
     expect(result.current.output.searchResults[0].contextLabel).toBe("My Queue · New · Project A");
     expect(result.current.output.searchResults[1].contextLabel).toBe("Team Queue · Review · Project A");
+    expect(result.current.output.searchResults[0].contextLine).toBe("My Queue · New · Project A");
+    expect(result.current.output.searchResults[1].contextLine).toBe("Team Queue · Review · Project A");
     expect(result.current.output.taskRowItems).toEqual(result.current.output.searchResults);
   });
 

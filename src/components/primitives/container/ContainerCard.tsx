@@ -57,7 +57,7 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
   const contextRow = contract.chrome.metadataRows.find((row) => row.rowId === "task-card-context");
   const isTaskThumbnailCard = Boolean(statusRow);
 
-  const marginClass = contract.indentationLevel === 1 ? 'ml-6' : contract.indentationLevel === 2 ? 'ml-10' : '';
+  const marginClass = contract.indentationLevel === 1 ? "ml-6" : contract.indentationLevel === 2 ? "ml-10" : "";
   const CardView = contract.onPress ? Pressable : View;
 
   if (isTaskThumbnailCard && structuralState !== "loading" && structuralState !== "empty") {
@@ -78,7 +78,7 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
         accessibilityLabel={contract.accessibilityLabel}
         accessibilityHint={contract.accessibilityHint}
         className={cn(
-          "h-28 overflow-hidden border bg-white",
+          "min-h-32 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm",
           stateClasses.shell,
           marginClass,
           className,
@@ -87,7 +87,7 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
         <View className="flex-row items-stretch">
           <View
             testID={`${resolvedTestId}:thumbnail`}
-            className="w-28 self-stretch overflow-hidden bg-slate-100"
+            className="w-30 self-stretch overflow-hidden bg-slate-100"
           >
             {thumbnailItem ? (
               <Image
@@ -107,14 +107,13 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
 
           <View
             testID={`${resolvedTestId}:content`}
-            className="min-w-0 flex-1 justify-center px-3 py-3"
+            className="min-w-0 flex-1 justify-center px-4 py-4"
           >
             <Text
               testID={`${resolvedTestId}:title`}
               className={cn(
-                "text-base font-semibold text-slate-900",
-                contract.density === "compact" ? "leading-5" : "leading-6",
-                "pr-1",
+                "pr-1 text-[17px] font-semibold tracking-[-0.01em] text-slate-900",
+                contract.density === "compact" ? "leading-[22px]" : "leading-6",
               )}
               numberOfLines={2}
             >
@@ -122,12 +121,12 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
             </Text>
             <View
               testID={`${resolvedTestId}:status-line`}
-              className="mt-1 flex-row items-center gap-2"
+              className="mt-2 flex-row items-center gap-2"
             >
               <View
                 testID={`${resolvedTestId}:status-badge`}
                 className={cn(
-                  "self-start rounded-full border px-2 py-1",
+                  "self-start rounded-full border px-2.5 py-1",
                   statusBadgeDensityClasses.container,
                   statusToneClasses.container,
                 )}
@@ -135,7 +134,7 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
                 <Text
                   className={cn(
                     statusBadgeDensityClasses.label,
-                    "uppercase tracking-[0.08em]",
+                    "uppercase tracking-[0.06em]",
                     statusToneClasses.label,
                   )}
                   numberOfLines={1}
@@ -145,7 +144,11 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
               </View>
             </View>
             {contextRow?.value ? (
-              <Text className="mt-1 text-sm text-slate-500" numberOfLines={2}>
+              <Text
+                testID={`${resolvedTestId}:context-line`}
+                className="mt-2 text-[13px] leading-[18px] text-slate-500"
+                numberOfLines={2}
+              >
                 {contextRow.value}
               </Text>
             ) : null}

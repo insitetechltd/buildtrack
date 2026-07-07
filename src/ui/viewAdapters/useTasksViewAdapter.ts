@@ -497,6 +497,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         const projectName = project?.name ?? "Project";
         const latestUpdateLabel = formatLatestUpdateLabel(task);
         const photoUris = collectTaskPhotoUris(task);
+        const searchProvenanceLine = `${getQueueTitle(queue)} · ${getBucketTitle(bucket)} · ${projectName}`;
 
         return {
           id: `tasks-search:${task.id}`,
@@ -518,8 +519,8 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
           queueLabel: getQueueTitle(queue),
           bucket,
           bucketLabel: getBucketTitle(bucket),
-          contextLabel: `${getQueueTitle(queue)} · ${getBucketTitle(bucket)} · ${projectName}`,
-          contextLine: buildContextLine(task),
+          contextLabel: searchProvenanceLine,
+          contextLine: searchProvenanceLine,
           latestUpdateAt: getLatestMeaningfulTimestamp(task),
           latestUpdateLabel,
           isExpanded: expandedTaskIds.includes(task.id),

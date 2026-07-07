@@ -66,6 +66,36 @@ function buildAssigneeSummary(task: Task): string {
   return `${assignees.length} assignees`;
 }
 
+function collectTaskPhotoUris(task: Task): string[] {
+  const activityPhotos =
+    task.activities?.flatMap((activity) => {
+      const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+      return Array.isArray(photos) ? photos : [];
+    }) ?? [];
+  const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+
+  return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].filter(
+    (value, index, collection): value is string => Boolean(value) && collection.indexOf(value) === index,
+  );
+}
+
+function buildContextLine(task: Task): string | undefined {
+  const locationParts = [task.location?.address, task.containerId, task.subContainerId].filter(Boolean);
+  const locationLine = locationParts.join(", ");
+
+  if (locationLine) {
+    return locationLine;
+  }
+
+  const description = task.description?.trim();
+
+  if (description) {
+    return description;
+  }
+
+  return undefined;
+}
+
 function matchesNewStatusFilter(status: TaskStatus): boolean {
   return status === "new" || status === "not_started" || status === "assigned" || status === "received";
 }
@@ -122,6 +152,8 @@ function getBucketTitle(bucket: TasksQueueBucketId): string {
       return "Doing";
     case "review":
       return "Review";
+    case "overdue":
+      return "Overdue";
   }
 
   return "New";
@@ -385,12 +417,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         const project = projectStore.getProjectById(task.projectId);
         const projectName = project?.name ?? "Project";
         const latestUpdateLabel = formatLatestUpdateLabel(task);
+        const photoUris = collectTaskPhotoUris(task);
 
         return {
           id: `tasks-row:${queue}:${bucket}:${task.id}`,
           taskId: task.id,
           title: task.title,
           onPress: props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(task.id) : undefined,
+          cardPresentation: "thumbnail",
           statusToken: mapTaskStatusToToken(task.status),
           statusLabel: formatTaskStatusLabel(task.status),
           responsibilityToken: getResponsibilityToken(task, currentUserId),
@@ -399,13 +433,15 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
           assigneeSummary: buildAssigneeSummary(task),
           projectName,
           isOverdue: isTaskOverdue(task),
-          attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
+          primaryPhotoUri: photoUris[0],
+          attachmentUris: photoUris.slice(1),
           indentationLevel: level > 0 ? level : undefined,
           queue,
           queueLabel: getQueueTitle(queue),
           bucket,
           bucketLabel: getBucketTitle(bucket),
           contextLabel: projectName,
+          contextLine: buildContextLine(task),
           latestUpdateAt: getLatestMeaningfulTimestamp(task),
           latestUpdateLabel,
           isExpanded: expandedTaskIds.includes(task.id),
@@ -460,12 +496,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         const project = projectStore.getProjectById(task.projectId);
         const projectName = project?.name ?? "Project";
         const latestUpdateLabel = formatLatestUpdateLabel(task);
+        const photoUris = collectTaskPhotoUris(task);
 
         return {
           id: `tasks-search:${task.id}`,
           taskId: task.id,
           title: task.title,
           onPress: props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(task.id) : undefined,
+          cardPresentation: "thumbnail",
           statusToken: mapTaskStatusToToken(task.status),
           statusLabel: formatTaskStatusLabel(task.status),
           responsibilityToken: getResponsibilityToken(task, currentUserId),
@@ -474,12 +512,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
           assigneeSummary: buildAssigneeSummary(task),
           projectName,
           isOverdue: isTaskOverdue(task),
-          attachmentUris: Array.isArray(task.attachments) ? task.attachments : [],
+          primaryPhotoUri: photoUris[0],
+          attachmentUris: photoUris.slice(1),
           queue,
           queueLabel: getQueueTitle(queue),
           bucket,
           bucketLabel: getBucketTitle(bucket),
           contextLabel: `${getQueueTitle(queue)} · ${getBucketTitle(bucket)} · ${projectName}`,
+          contextLine: buildContextLine(task),
           latestUpdateAt: getLatestMeaningfulTimestamp(task),
           latestUpdateLabel,
           isExpanded: expandedTaskIds.includes(task.id),

@@ -160,7 +160,7 @@ export interface TasksFilterSummary {
 
 export type TasksQueueId = "my_queue" | "team_queue";
 
-export type TasksQueueBucketId = "new" | "wip" | "review";
+export type TasksQueueBucketId = "new" | "wip" | "review" | "overdue";
 
 export interface TasksQueueBucket {
   id: string;
@@ -181,12 +181,20 @@ export interface TasksQueuePanel {
   buckets: TasksQueueBucket[];
 }
 
+export interface TasksDraftsSection {
+  title: string;
+  countLabel: string;
+  isExpanded: boolean;
+  rows: TasksScreenRowItem[];
+}
+
 export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
 
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   id: string;
   taskId: string;
   title: string;
+  cardPresentation?: "default" | "thumbnail";
   statusToken: StatusSemanticToken;
   statusLabel: string;
   responsibilityToken: ResponsibilityToken;
@@ -205,6 +213,8 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   latestUpdateAt?: string;
   latestUpdateLabel?: string;
   isExpanded?: boolean;
+  supportingLine?: string;
+  contextLine?: string;
   primaryPhotoUri?: string;
   photoCountLabel?: string;
   photoDisplayMode?: "standard" | "photo_centric";
@@ -225,6 +235,7 @@ export interface TasksScreenViewAdapterOutput {
   filterSummary: TasksFilterSummary;
   isSearchMode: boolean;
   queuePanels: TasksQueuePanel[];
+  draftsSection?: TasksDraftsSection | null;
   searchResults: TasksScreenRowItem[];
   expandedTaskIds: string[];
   taskRowItems: TasksScreenRowItem[];

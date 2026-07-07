@@ -162,3 +162,8 @@ export type RootTabParamList = {
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
   AdminDashboard: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
 };
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
+};

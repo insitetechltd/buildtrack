@@ -125,6 +125,70 @@ export function mapTaskRowToContainerCardProps(
     photoCount > 0 && (data.isExpanded || data.photoDisplayMode === "photo_centric");
   const photoCountLabel = data.photoCountLabel ?? `Photos (${photoCount})`;
 
+  if (data.cardPresentation === "thumbnail") {
+    const thumbnailUri = orderedPhotoUris[0];
+
+    return {
+      primitiveId,
+      family: "container",
+      density: data.density,
+      structuralState: data.structuralState,
+      indentationLevel: data.indentationLevel,
+      onPress: data.onPress,
+      accessibilityLabel: `Task ${data.title}`,
+      accessibilityHint: "Task summary card",
+      analyticsId: primitiveId,
+      testId: `container-card:${data.taskId}`,
+      ...flags,
+      chrome: {
+        title: data.title,
+        subtitle: data.statusLabel,
+        metadataRows: [
+          {
+            rowId: "task-card-status",
+            label: "Status",
+            value: data.statusLabel,
+            semanticToken: data.statusToken,
+          },
+          ...(data.contextLine
+            ? [
+              {
+                rowId: "task-card-context",
+                label: "Context",
+                value: data.contextLine,
+              },
+            ]
+            : []),
+        ],
+        actionSlots: [],
+      },
+      body: {
+        shouldRenderBody: false,
+        media: {
+          mode: "hidden",
+          items: thumbnailUri
+            ? [
+                {
+                  id: "thumbnail",
+                  uri: thumbnailUri,
+                  accessibilityLabel: `${data.title} thumbnail`,
+                },
+              ]
+            : [],
+        },
+        empty: {
+          title: "No task details",
+          message: "This task has no additional details available.",
+        },
+        skeleton: {
+          rowCount: 2,
+          metadataColumnCount: 2,
+          hasMediaPlaceholder: false,
+        },
+      },
+    };
+  }
+
   return {
     primitiveId,
     family: "container",

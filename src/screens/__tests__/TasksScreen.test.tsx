@@ -40,6 +40,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         id: "row-1",
         taskId: "task-1",
         title: "Install guardrails",
+        cardPresentation: "thumbnail",
         statusToken: "task_new",
         statusLabel: "New",
         queue: "my_queue",
@@ -47,6 +48,8 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         bucket: "new",
         bucketLabel: "New",
         contextLabel: "North Tower",
+        contextLine: "Level 12, Grid B–C",
+        primaryPhotoUri: "https://example.com/task-photo.jpg",
       }),
       makeRow({
         id: "row-2",
@@ -400,5 +403,19 @@ describe("TasksScreen", () => {
 
     expect(screen.getByTestId("tasks-screen__empty_state")).toBeTruthy();
     expect(screen.getByText("No Tasks")).toBeTruthy();
+  });
+
+  it("renders the Tasks list card with the reskinned thumbnail hierarchy", () => {
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("container-card:task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("container-card:task-1:content")).toBeTruthy();
+    expect(screen.getByTestId("container-card:task-1:title")).toBeTruthy();
+    expect(screen.getByTestId("container-card:task-1:status-line")).toBeTruthy();
   });
 });

@@ -155,6 +155,8 @@ function resolveImageUri(uri?: string | null): string | undefined {
   return getFileUrl(uri) ?? undefined;
 }
 
+const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
+
 export interface DashboardViewAdapterHookResult {
   output: DashboardScreenViewAdapterOutput;
   visibility: {
@@ -350,6 +352,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     const activeProjectOverdueTasks = activeProjectOpenTasks.filter((task) =>
       isTaskOverdue(task),
     );
+    const recentActivityThreshold = Date.now() - RECENT_ACTIVITY_WINDOW_MS;
     const mappedActivityItems: DashboardActivityItem[] = activeProjectTasks
       .flatMap((task) => {
         const updates = Array.isArray(task.updates) ? task.updates : [];
@@ -388,6 +391,12 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
           structuralState,
           sortTimestamp: update.timestamp,
         }));
+      })
+      .filter((item) => {
+        const timestamp = new Date(
+          (item as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp,
+        ).getTime();
+        return Number.isFinite(timestamp) && timestamp >= recentActivityThreshold;
       })
       .sort(
         (left, right) =>

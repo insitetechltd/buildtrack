@@ -723,6 +723,103 @@ describe("useDashboardViewAdapter", () => {
     });
   });
 
+  it("limits recent activity to the last 120 hours for the active project", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-fresh-update",
+          projectId: "project-1",
+          title: "Fresh update task",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T08:00:00.000Z",
+          updates: [
+            {
+              id: "update-fresh",
+              description: "Fresh update inside the window",
+              photos: [],
+              completionPercentage: 40,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 40,
+        },
+        {
+          id: "task-stale-update",
+          projectId: "project-1",
+          title: "Stale update task",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-06-28T08:00:00.000Z",
+          updates: [
+            {
+              id: "update-stale",
+              description: "Stale update outside the window",
+              photos: [],
+              completionPercentage: 20,
+              status: "in_progress",
+              timestamp: "2026-06-29T08:59:59.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 20,
+        },
+        {
+          id: "task-fresh-fallback",
+          projectId: "project-1",
+          title: "Fresh fallback task",
+          description: "Uses createdAt fallback",
+          priority: "low",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-02T12:00:00.000Z",
+          updates: [],
+          status: "new",
+          completionPercentage: 0,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activityItems.map((item: any) => item.taskId)).toEqual([
+      "task-fresh-update",
+      "task-fresh-fallback",
+    ]);
+    expect(result.current.output.activityItems.map((item: any) => item.title)).toEqual([
+      "Fresh update task",
+      "Fresh fallback task",
+    ]);
+  });
+
   it("does not invent an active project when the workspace has no selected project", () => {
     const { useProjectFilterStore } = require("@/state/projectFilterStore");
 

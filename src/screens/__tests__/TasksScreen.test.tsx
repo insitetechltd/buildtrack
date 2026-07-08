@@ -426,6 +426,22 @@ describe("TasksScreen", () => {
     expect(screen.getByText("No matching tasks")).toBeTruthy();
   });
 
+  it("matches the Activity header safe-area treatment and keeps a tighter static control gap", () => {
+    const { SafeAreaView } = require("react-native-safe-area-context");
+
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    const safeArea = screen.UNSAFE_getByType(SafeAreaView);
+
+    expect(safeArea.props.edges).toEqual(["left", "right", "bottom"]);
+    expect(screen.getByTestId("tasks-screen__search_wrapper").props.className).toContain("mb-1");
+  });
+
   it("renders the Tasks list rows through the shared activity-style shell", () => {
     const screen = render(
       <TasksScreen

@@ -36,7 +36,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
+    <SafeAreaView className="flex-1 bg-slate-50" edges={["left", "right", "bottom"]}>
       <View className="flex-1">
         <AppScreenHeader
           title="Tasks"
@@ -63,7 +63,7 @@ export default function TasksScreen(props: TasksScreenProps) {
           }
         />
         <View className="px-4 pt-3">
-          <View className="mb-2">
+          <View testID="tasks-screen__search_wrapper" className="mb-1">
             <TextField
               contract={searchContract}
               onChangeText={setSearchQuery}

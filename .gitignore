@@ -46,6 +46,10 @@ eas-keystores/
 .xcode-derived-data/
 .cursor/debug.log
 
+.worktrees/
+.trae/skills/
+current-task-detail-runtime.png
+
 # Local tooling state/logs
 .superpowers/
 

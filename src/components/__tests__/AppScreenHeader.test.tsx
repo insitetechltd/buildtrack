@@ -78,7 +78,7 @@ describe("AppScreenHeader", () => {
     expect(screen.getByText("Projects").props.className).toContain("leading-8");
     expect(screen.getByText("12 active").props.className).toContain("text-base");
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-3");
-    expect(screen.getByTestId("app-screen-header__root").props.style).toMatchObject({ paddingTop: 12 });
+    expect(screen.getByTestId("app-screen-header__root").props.style).toMatchObject({ paddingTop: 16 });
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
     expect(onBackPress).toHaveBeenCalledTimes(1);

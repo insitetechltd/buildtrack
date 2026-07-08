@@ -45,7 +45,7 @@ export default function AppScreenHeader({
   const insets = useSafeAreaInsets();
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
 
-  const topPadding = insets.top > 0 ? insets.top + 4 : 12;
+  const topPadding = insets.top > 0 ? insets.top + 4 : 16;
   const profileInitial = useMemo(() => {
     const firstCharacter = user?.name?.trim()?.charAt(0);
     return firstCharacter ? firstCharacter.toUpperCase() : "?";

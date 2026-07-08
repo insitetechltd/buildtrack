@@ -53,7 +53,9 @@ cd "$ROOT_DIR" || fail_now "stage_0_root_resolution" "0" "[PATH_RESOLUTION_FAIL]
 
 emit_event "stdout" "stage_0_root_resolution" "0" "INFO" "[STAGE_PASS]" 0 "resolve-repo-root" "PASS" "Repository root resolved for push validation" "continue"
 
-VALIDATE_LOCAL_STRICT_DIRTY_TREE=1 bash "$ROOT_DIR/scripts/validation/validate-local.sh"
+ALLOW_PUSH_FLAG="${ALLOW_VALIDATED_PUSH:-0}"
+
+ALLOW_VALIDATED_PUSH=0 VALIDATE_LOCAL_STRICT_DIRTY_TREE=1 bash "$ROOT_DIR/scripts/validation/validate-local.sh"
 VALIDATION_EXIT=$?
 if [ "$VALIDATION_EXIT" -ne 0 ]; then
   exit "$VALIDATION_EXIT"
@@ -61,7 +63,7 @@ fi
 
 emit_event "stdout" "stage_5_push_remote" "5" "INFO" "[STAGE_BEGIN]" 0 "git-push" "BEGIN" "Preparing validated push" "continue"
 
-if [ "${ALLOW_VALIDATED_PUSH:-0}" != "1" ]; then
+if [ "$ALLOW_PUSH_FLAG" != "1" ]; then
   emit_event "stdout" "stage_5_push_remote" "5" "WARN" "[PUSH_SKIPPED]" 0 "git-push" "PASS" "Validated push skipped (set ALLOW_VALIDATED_PUSH=1 to enable)" "complete"
   exit 0
 fi

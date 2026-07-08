@@ -11,7 +11,6 @@ const BACK_BUTTON_TEST_ID = "app-screen-header__back";
 const BACK_ICON_TEST_ID = "app-screen-header__back-icon";
 const BACK_ICON_NAME = "arrow-back";
 const BACK_BUTTON_ACCESSIBILITY_LABEL = "Go back";
-const BACK_BUTTON_CLASS_NAME = "mr-3 h-10 w-10 items-center justify-center rounded-full bg-gray-100";
 
 export interface AppScreenHeaderProps {
   title: string;

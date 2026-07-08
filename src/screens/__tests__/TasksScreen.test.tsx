@@ -1,11 +1,36 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import TasksScreen from "../TasksScreen";
 import type { TasksScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
+jest.mock("@/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+    className,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+    className?: string;
+  }) {
+    return (
+      <View testID="app-screen-header__root" className={className}>
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
+
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
-  let overrideOutput: Record<string, unknown> | null = null;
+  let overrideOutput: Partial<TasksScreenViewAdapterOutput> | null = null;
   const makeRow = (overrides: Record<string, unknown>) => ({
     id: "row-1",
     taskId: "task-1",
@@ -19,44 +44,29 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
     projectName: "North Tower",
     isOverdue: false,
     attachmentUris: [],
-    cardPresentation: "thumbnail",
-    density: "compact",
+    density: "standard",
     structuralState: "stale",
     ...overrides,
   });
 
   const useTasksViewAdapter = () => {
     const [searchQuery, setSearchQuery] = React.useState("");
-    const [expandedQueues, setExpandedQueues] = React.useState({
-      my_queue: true,
-      team_queue: false,
-    });
-    const [openBucketsByQueue, setOpenBucketsByQueue] = React.useState({
-      my_queue: "new",
-      team_queue: null,
-    });
-    const [isDraftsExpanded, setIsDraftsExpanded] = React.useState(
-      Boolean((overrideOutput as any)?.draftsSection?.isExpanded),
-    );
-    const normalizedQuery = searchQuery.trim().toLowerCase();
     const allRows = [
       makeRow({
         id: "row-1",
         taskId: "task-1",
-        title: "Structural steel inspection — Level 12",
-        statusToken: "task_submitted_for_review",
-        statusLabel: "Submitted for review",
-        isOverdue: false,
-        primaryPhotoUri: "https://example.com/task-photo.jpg",
-        supportingLine: "REVIEW",
-        contextLine: "Level 12, Grid B–C",
-        photoDisplayMode: "photo_centric",
-        assigneeSummary: "1 assignee",
+        title: "Install guardrails",
+        cardPresentation: "thumbnail",
+        statusToken: "task_new",
+        statusLabel: "New",
         queue: "my_queue",
         queueLabel: "My Queue",
         bucket: "new",
         bucketLabel: "New",
         contextLabel: "North Tower",
+        contextLine: "Level 12, Grid B–C",
+        primaryPhotoUri: "https://example.com/task-photo.jpg",
+        latestUpdateAt: "2026-07-04T12:00:00.000Z",
       }),
       makeRow({
         id: "row-2",
@@ -69,6 +79,8 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         bucket: "wip",
         bucketLabel: "Doing",
         contextLabel: "North Tower",
+        latestUpdateAt: "2026-07-04T11:00:00.000Z",
+        indentationLevel: 1,
       }),
       makeRow({
         id: "row-3",
@@ -81,121 +93,76 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         bucket: "review",
         bucketLabel: "Review",
         contextLabel: "Team Queue · Review · North Tower",
+        contextLine: "Team Queue · Review · North Tower",
+        latestUpdateAt: "2026-07-04T10:00:00.000Z",
       }),
     ];
-    const draftRows = [
-      makeRow({
-        id: "draft-row-1",
-        taskId: "task-draft-1",
-        title: "Prepare handover notes",
-        statusLabel: "Draft",
-        contextLabel: "North Tower",
-      }),
-      makeRow({
-        id: "draft-row-2",
-        taskId: "task-draft-2",
-        title: "Confirm temporary signage",
-        statusLabel: "Draft",
-        contextLabel: "North Tower",
-      }),
-    ];
-    const searchResults =
-      normalizedQuery.length === 0
-        ? []
-        : allRows.filter((row) => row.title.toLowerCase().includes(normalizedQuery));
+    const [selectedQueue, setSelectedQueue] = React.useState<"all" | "my_queue" | "team_queue">("all");
+    const [selectedBucket, setSelectedBucket] = React.useState<"all" | "new" | "wip" | "review">("all");
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const queueFilteredRows =
+      selectedQueue === "all" ? allRows : allRows.filter((row) => row.queue === selectedQueue);
+    const visibleRows = queueFilteredRows.filter((row) => {
+      if (selectedBucket === "all") {
+        return true;
+      }
 
-    const queuePanels = [
+      return row.bucket === selectedBucket;
+    });
+    const taskRowItems = visibleRows.filter((row) => row.title.toLowerCase().includes(normalizedQuery));
+    const queueOptions = [
       {
-        id: "tasks-queue:my_queue",
-        queue: "my_queue",
-        title: "My Queue",
-        totalCountLabel: "2 tasks",
-        presentation: "primary" as const,
-        isExpanded: expandedQueues.my_queue,
-        buckets: [
-          {
-            id: "my_queue:new",
-            title: "New",
-            taskCountLabel: "1",
-            bucket: "new" as const,
-            isOpen: openBucketsByQueue.my_queue === "new",
-            rows: allRows.filter((row) => row.bucket === "new"),
-          },
-          {
-            id: "my_queue:wip",
-            title: "Doing",
-            taskCountLabel: "1",
-            bucket: "wip" as const,
-            isOpen: openBucketsByQueue.my_queue === "wip",
-            rows: allRows.filter((row) => row.bucket === "wip"),
-          },
-          {
-            id: "my_queue:review",
-            title: "Review",
-            taskCountLabel: "0",
-            bucket: "review" as const,
-            isOpen: openBucketsByQueue.my_queue === "review",
-            rows: [],
-          },
-          {
-            id: "my_queue:overdue",
-            title: "Overdue",
-            taskCountLabel: "0",
-            bucket: "overdue" as const,
-            isOpen: openBucketsByQueue.my_queue === "overdue",
-            rows: [],
-          },
-        ],
+        id: "queue:all",
+        value: "all",
+        label: `All ${allRows.length}`,
+        count: allRows.length,
+        isSelected: selectedQueue === "all",
       },
       {
-        id: "tasks-queue:team_queue",
-        queue: "team_queue",
-        title: "Team Queue",
-        totalCountLabel: "1 task",
-        presentation: "preview" as const,
-        isExpanded: expandedQueues.team_queue,
-        buckets: [
-          {
-            id: "team_queue:new",
-            title: "New",
-            taskCountLabel: "0",
-            bucket: "new" as const,
-            isOpen: openBucketsByQueue.team_queue === "new",
-            rows: [],
-          },
-          {
-            id: "team_queue:wip",
-            title: "Doing",
-            taskCountLabel: "0",
-            bucket: "wip" as const,
-            isOpen: openBucketsByQueue.team_queue === "wip",
-            rows: [],
-          },
-          {
-            id: "team_queue:review",
-            title: "Review",
-            taskCountLabel: "1",
-            bucket: "review" as const,
-            isOpen: openBucketsByQueue.team_queue === "review",
-            rows: allRows.filter((row) => row.bucket === "review"),
-          },
-          {
-            id: "team_queue:overdue",
-            title: "Overdue",
-            taskCountLabel: "0",
-            bucket: "overdue" as const,
-            isOpen: openBucketsByQueue.team_queue === "overdue",
-            rows: [],
-          },
-        ],
+        id: "queue:my_queue",
+        value: "my_queue",
+        label: `My Queue ${allRows.filter((row) => row.queue === "my_queue").length}`,
+        count: allRows.filter((row) => row.queue === "my_queue").length,
+        isSelected: selectedQueue === "my_queue",
+      },
+      {
+        id: "queue:team_queue",
+        value: "team_queue",
+        label: `Team Queue ${allRows.filter((row) => row.queue === "team_queue").length}`,
+        count: allRows.filter((row) => row.queue === "team_queue").length,
+        isSelected: selectedQueue === "team_queue",
       },
     ];
-    const taskRowItems =
-      normalizedQuery.length > 0
-        ? searchResults
-        : queuePanels.flatMap((panel) =>
-            panel.isExpanded ? panel.buckets.find((bucket) => bucket.isOpen)?.rows ?? [] : [],
-          );
+    const bucketOptions = [
+      {
+        id: "bucket:all",
+        value: "all",
+        label: `All ${queueFilteredRows.length}`,
+        count: queueFilteredRows.length,
+        isSelected: selectedBucket === "all",
+      },
+      {
+        id: "bucket:new",
+        value: "new",
+        label: `New ${queueFilteredRows.filter((row) => row.bucket === "new").length}`,
+        count: queueFilteredRows.filter((row) => row.bucket === "new").length,
+        isSelected: selectedBucket === "new",
+      },
+      {
+        id: "bucket:wip",
+        value: "wip",
+        label: `Doing ${queueFilteredRows.filter((row) => row.bucket === "wip").length}`,
+        count: queueFilteredRows.filter((row) => row.bucket === "wip").length,
+        isSelected: selectedBucket === "wip",
+      },
+      {
+        id: "bucket:review",
+        value: "review",
+        label: `Review ${queueFilteredRows.filter((row) => row.bucket === "review").length}`,
+        count: queueFilteredRows.filter((row) => row.bucket === "review").length,
+        isSelected: selectedBucket === "review",
+      },
+    ];
     const baseOutput: TasksScreenViewAdapterOutput = {
       screenId: "TasksScreen",
       readiness: {
@@ -214,60 +181,42 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
       },
       filterSummary: {
         selectedProjectId: null,
-        sectionFilterLabel: normalizedQuery.length > 0 ? "All Task Results" : "Ownership Queues",
+        sectionFilterLabel: "Search-first list",
         statusFilterLabel: "All projects",
-        sortLabel: "Latest update",
+        sortLabel: "Priority first",
       },
-      isSearchMode: normalizedQuery.length > 0,
-      queuePanels,
-      searchResults,
+      isSearchMode: false,
+      queuePanels: [],
+      searchResults: [],
       expandedTaskIds: [],
       taskRowItems,
-      draftsSection: null,
       scalarMetrics: {
         totalVisibleTaskCount: taskRowItems.length,
         overdueVisibleTaskCount: 0,
         selectedProjectTaskCount: allRows.length,
         hasActiveFilters: false,
       },
+    } as TasksScreenViewAdapterOutput;
+    (baseOutput as any).filterControls = {
+      queue: {
+        id: "queue",
+        label: "Queue",
+        selectedValue: selectedQueue,
+        options: queueOptions,
+      },
+      bucket: {
+        id: "bucket",
+        label: "Bucket",
+        selectedValue: selectedBucket,
+        options: bucketOptions,
+      },
     };
 
     if (overrideOutput) {
-      const overrideQueuePanels = (overrideOutput as any).queuePanels;
-      const overrideDraftsSection = (overrideOutput as any).draftsSection;
-      const draftsSection =
-        overrideDraftsSection === null || overrideDraftsSection === undefined
-          ? null
-          : {
-              title: overrideDraftsSection.title ?? "Drafts",
-              countLabel: overrideDraftsSection.countLabel ?? String((overrideDraftsSection.rows ?? draftRows).length),
-              isExpanded: isDraftsExpanded,
-              rows: overrideDraftsSection.rows ?? draftRows,
-            };
-      const queuePanels = overrideQueuePanels
-        ? overrideQueuePanels.map((panel: any) => ({
-            ...panel,
-            isExpanded: expandedQueues[panel.queue] ?? panel.isExpanded,
-            buckets: panel.buckets.map((bucket: any) => ({
-              ...bucket,
-              isOpen: openBucketsByQueue[panel.queue] === bucket.bucket,
-            })),
-          }))
-        : baseOutput.queuePanels;
-      const taskRowItems =
-        normalizedQuery.length > 0
-          ? searchResults
-          : queuePanels.flatMap((panel: any) =>
-              panel.isExpanded ? panel.buckets.find((bucket: any) => bucket.isOpen)?.rows ?? [] : [],
-            );
-
       return {
         output: {
           ...baseOutput,
           ...overrideOutput,
-          queuePanels,
-          taskRowItems,
-          draftsSection,
         },
         searchQuery,
         setSearchQuery,
@@ -289,27 +238,17 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         actions: {
           resetFilters: () => {
             setSearchQuery("");
-            setExpandedQueues({ my_queue: true, team_queue: false });
-            setOpenBucketsByQueue({ my_queue: "new", team_queue: null });
+            setSelectedQueue("all");
+            setSelectedBucket("all");
           },
-          toggleQueue: (queue: "my_queue" | "team_queue") => {
-            setExpandedQueues((current: typeof expandedQueues) => ({
-              ...current,
-              [queue]: !current[queue],
-            }));
+          selectQueue: (queue: "all" | "my_queue" | "team_queue") => {
+            setSelectedQueue(queue);
+            setSelectedBucket("all");
           },
-          openBucket: (queue: "my_queue" | "team_queue", bucket: "new" | "wip" | "review" | "overdue") => {
-            setExpandedQueues((current: typeof expandedQueues) => ({
-              ...current,
-              [queue]: true,
-            }));
-            setOpenBucketsByQueue((current: typeof openBucketsByQueue) => ({
-              ...current,
-              [queue]: bucket,
-            }));
+          selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
+            setSelectedBucket(bucket);
           },
           toggleTaskExpansion: jest.fn(),
-          toggleDraftsSection: () => setIsDraftsExpanded((current: boolean) => !current),
         },
       };
     }
@@ -338,32 +277,22 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
       actions: {
         resetFilters: () => {
           setSearchQuery("");
-          setExpandedQueues({ my_queue: true, team_queue: false });
-          setOpenBucketsByQueue({ my_queue: "new", team_queue: null });
+          setSelectedQueue("all");
+          setSelectedBucket("all");
         },
-        toggleQueue: (queue: "my_queue" | "team_queue") => {
-          setExpandedQueues((current: typeof expandedQueues) => ({
-            ...current,
-            [queue]: !current[queue],
-          }));
+        selectQueue: (queue: "all" | "my_queue" | "team_queue") => {
+          setSelectedQueue(queue);
+          setSelectedBucket("all");
         },
-        openBucket: (queue: "my_queue" | "team_queue", bucket: "new" | "wip" | "review" | "overdue") => {
-          setExpandedQueues((current: typeof expandedQueues) => ({
-            ...current,
-            [queue]: true,
-          }));
-          setOpenBucketsByQueue((current: typeof openBucketsByQueue) => ({
-            ...current,
-            [queue]: bucket,
-          }));
+        selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
+          setSelectedBucket(bucket);
         },
         toggleTaskExpansion: jest.fn(),
-        toggleDraftsSection: () => setIsDraftsExpanded((current: boolean) => !current),
       },
     };
   };
 
-  const __setTasksScreenOverride = (value: Record<string, unknown> | null) => {
+  const __setTasksScreenOverride = (value: Partial<TasksScreenViewAdapterOutput> | null) => {
     overrideOutput = value;
   };
 
@@ -377,7 +306,7 @@ describe("TasksScreen", () => {
     mockedModule.__setTasksScreenOverride(null);
   });
 
-  it("renders queue panels, keeps Team Queue in preview, and preserves existing shortcuts", () => {
+  it("renders dropdown filters, a single visible list, and preserves existing shortcuts", () => {
     const onNavigateToCreateTask = jest.fn();
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
@@ -394,37 +323,33 @@ describe("TasksScreen", () => {
       />,
     );
 
-    expect(screen.getByTestId("tasks-screen__queues")).toBeTruthy();
-    expect(screen.getByText("My Queue")).toBeTruthy();
-    expect(screen.getByText("Team Queue")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-3")).toBeNull();
-    expect(screen.getByText("Tasks").props.className).toContain("text-[28px]");
-    expect(screen.queryByText("Ownership Queues")).toBeNull();
-    expect(screen.queryByText("All projects · Latest update")).toBeNull();
-    expect(screen.queryByText("1 visible")).toBeNull();
-    expect(screen.getByText("My Queue").props.className).toContain("text-xl");
-    expect(screen.getByText("New · 1").props.className).toContain("text-base");
-    expect(screen.getByText("Structural steel inspection — Level 12").props.className).toContain("text-lg");
-    expect(screen.getByTestId("tasks-screen__queue_bucket_row_my_queue")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__queue_bucket_row_team_queue")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__queue_bucket_my_queue_new").props.className).toContain("flex-1");
-    expect(screen.getByTestId("tasks-screen__queue_bucket_my_queue_new").props.className).toContain("min-w-0");
-    expect(screen.queryByTestId("tasks-screen__queue_bucket_scroll_my_queue")).toBeNull();
-
-    fireEvent.press(screen.getByTestId("tasks-screen__fab_create_task"));
-    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
-
-    expect(screen.queryByTestId("app-screen-header__profile-trigger")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__filter_queue")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__filter_bucket")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
+    const searchRightSlot = screen.getByTestId("text-field:tasks-search__right-slot");
+    expect(within(searchRightSlot).getByTestId("tasks-screen__search_count")).toBeTruthy();
+    expect(within(searchRightSlot).getByText("3")).toBeTruthy();
+    expect(screen.queryByText("Search-first list")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__root").props.className).toContain("bg-[#08576E]");
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__queues")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__header_profile")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__header_project_picker")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__header_developer_settings")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("tasks-screen__fab_create_task"));
+    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
     expect(onNavigateToProfile).not.toHaveBeenCalled();
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
     expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
   });
 
-  it("opens Team Queue and keeps one bucket visible at a time", () => {
+  it("updates the visible list when queue and bucket filters change", () => {
     const screen = render(
       <TasksScreen
         onNavigateToTaskDetail={jest.fn()}
@@ -432,18 +357,27 @@ describe("TasksScreen", () => {
       />,
     );
 
-    expect(screen.queryByTestId("container-card:task-3")).toBeNull();
+    fireEvent.press(screen.getByTestId("tasks-screen__filter_queue"));
+    expect(screen.getByText("Team Queue 1")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("tasks-screen__queue_toggle_team_queue"));
-    fireEvent.press(screen.getByTestId("tasks-screen__queue_bucket_team_queue_review"));
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
+    fireEvent.press(screen.getByText("Team Queue 1"));
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("tasks-screen__queue_bucket_my_queue_wip"));
-    expect(screen.getByTestId("container-card:task-2")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
+    fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
+    fireEvent.press(screen.getByText("Review 1"));
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("tasks-screen__filter_queue"));
+    fireEvent.press(screen.getByText("My Queue 2"));
+    fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
+    fireEvent.press(screen.getByText("Doing 1"));
+    expect(screen.getByTestId("tasks-screen__row_task-2")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__row_task-3")).toBeNull();
   });
 
-  it("switches into global search mode when the search query is populated", () => {
+  it("keeps search visible and applies it on top of the selected filters", () => {
     const screen = render(
       <TasksScreen
         onNavigateToTaskDetail={jest.fn()}
@@ -454,18 +388,16 @@ describe("TasksScreen", () => {
     const input = screen.getByTestId("text-field:tasks-search__input");
     fireEvent.changeText(input, "team");
 
-    expect(screen.getByTestId("tasks-screen__search_results")).toBeTruthy();
-    expect(screen.queryByText("My Queue")).toBeNull();
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
 
     fireEvent.press(screen.getByTestId("tasks-screen__header_reset_filters"));
-    expect(screen.getByTestId("tasks-screen__queues")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
   });
 
-  it("renders the queue empty state when there are no visible tasks", () => {
+  it("renders the search-first empty state when no tasks match", () => {
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
     mockedModule.__setTasksScreenOverride({
-      isSearchMode: false,
       queuePanels: [],
       searchResults: [],
       expandedTaskIds: [],
@@ -486,51 +418,10 @@ describe("TasksScreen", () => {
     );
 
     expect(screen.getByTestId("tasks-screen__empty_state")).toBeTruthy();
-    expect(screen.getByText("No Tasks")).toBeTruthy();
+    expect(screen.getByText("No matching tasks")).toBeTruthy();
   });
 
-  it("renders a collapsed drafts section at the bottom of tasks when drafts exist", () => {
-    const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
-    mockedModule.__setTasksScreenOverride({
-      draftsSection: {
-        title: "Drafts",
-        countLabel: "2",
-        isExpanded: false,
-        rows: [
-          {
-            id: "draft-row-1",
-            taskId: "task-draft-1",
-            title: "Prepare handover notes",
-            statusToken: "custom",
-            statusLabel: "Draft",
-            responsibilityToken: "OTHER_OPEN",
-            priorityLabel: "Medium",
-            assigneeSummary: "Unassigned",
-            projectName: "North Tower",
-            isOverdue: false,
-            attachmentUris: [],
-            density: "compact",
-            structuralState: "stale",
-          },
-          {
-            id: "draft-row-2",
-            taskId: "task-draft-2",
-            title: "Confirm temporary signage",
-            statusToken: "custom",
-            statusLabel: "Draft",
-            responsibilityToken: "OTHER_OPEN",
-            priorityLabel: "Low",
-            assigneeSummary: "Unassigned",
-            projectName: "North Tower",
-            isOverdue: false,
-            attachmentUris: [],
-            density: "compact",
-            structuralState: "stale",
-          },
-        ],
-      },
-    });
-
+  it("renders the Tasks list rows through the shared activity-style shell", () => {
     const screen = render(
       <TasksScreen
         onNavigateToTaskDetail={jest.fn()}
@@ -538,212 +429,25 @@ describe("TasksScreen", () => {
       />,
     );
 
-    expect(screen.getByTestId("tasks-screen__drafts_section")).toBeTruthy();
-    expect(screen.getByText("Drafts · 2")).toBeTruthy();
-    expect(screen.queryByText("Prepare handover notes")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail-image")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
   });
 
-  it("expands the drafts section in place when tapped", () => {
-    const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
-    mockedModule.__setTasksScreenOverride({
-      draftsSection: {
-        title: "Drafts",
-        countLabel: "2",
-        isExpanded: false,
-      },
-    });
-
+  it("preserves nested-task indentation in the shared row path and keeps row tap-through navigation", () => {
+    const onNavigateToTaskDetail = jest.fn();
     const screen = render(
       <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToTaskDetail={onNavigateToTaskDetail}
         onNavigateToCreateTask={jest.fn()}
       />,
     );
 
-    fireEvent.press(screen.getByTestId("tasks-screen__drafts_toggle"));
+    expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
 
-    expect(screen.getByText("Prepare handover notes")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-draft-1")).toBeTruthy();
-  });
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-2"));
 
-  it("renders the Tasks list card with a compact full-height thumbnail, status badge, and location line", () => {
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("container-card:task-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1:status-badge")).toBeTruthy();
-    expect(screen.getByText("Structural steel inspection — Level 12")).toBeTruthy();
-    expect(screen.getByText("Submitted for review")).toBeTruthy();
-    expect(screen.getByText("Level 12, Grid B–C")).toBeTruthy();
-    expect(screen.queryByText("REVIEW")).toBeNull();
-  });
-
-  it("does not render the Ownership Queues summary container above the queue panels", () => {
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("tasks-screen__queues")).toBeTruthy();
-    expect(screen.queryByTestId("tasks-screen__summary_card")).toBeNull();
-    expect(screen.queryByText("Ownership Queues")).toBeNull();
-    expect(screen.queryByText("Project scoped · Latest update")).toBeNull();
-    expect(screen.queryByText("All projects · Latest update")).toBeNull();
-  });
-
-  it("renders an overdue bucket button for both queues even when the count is zero", () => {
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("tasks-screen__queue_bucket_my_queue_overdue")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__queue_bucket_team_queue_overdue")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__queue_bucket_my_queue_overdue").props.className).toContain("flex-1");
-    expect(screen.getByTestId("tasks-screen__queue_bucket_my_queue_overdue").props.className).toContain("min-w-0");
-  });
-
-  it("opens the overdue bucket list for a queue and shows mixed overdue tasks", () => {
-    const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
-    mockedModule.__setTasksScreenOverride({
-      queuePanels: [
-        {
-          id: "tasks-queue:my_queue",
-          queue: "my_queue",
-          title: "My Queue",
-          totalCountLabel: "2 tasks",
-          presentation: "primary",
-          isExpanded: true,
-          buckets: [
-            {
-              id: "my_queue:new",
-              title: "New",
-              taskCountLabel: "0",
-              bucket: "new",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "my_queue:wip",
-              title: "Doing",
-              taskCountLabel: "0",
-              bucket: "wip",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "my_queue:review",
-              title: "Review",
-              taskCountLabel: "0",
-              bucket: "review",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "my_queue:overdue",
-              title: "Overdue",
-              taskCountLabel: "2",
-              bucket: "overdue",
-              isOpen: false,
-              rows: [
-                {
-                  id: "overdue-row-1",
-                  taskId: "task-overdue-1",
-                  title: "Overdue install guardrails",
-                  statusToken: "task_new",
-                  statusLabel: "New",
-                  responsibilityToken: "OTHER_OPEN",
-                  priorityLabel: "High",
-                  assigneeSummary: "Sam",
-                  projectName: "North Tower",
-                  isOverdue: true,
-                  attachmentUris: [],
-                  density: "compact",
-                  structuralState: "stale",
-                },
-                {
-                  id: "overdue-row-2",
-                  taskId: "task-overdue-2",
-                  title: "Overdue review package",
-                  statusToken: "task_submitted_for_review",
-                  statusLabel: "Submitted for review",
-                  responsibilityToken: "OTHER_OPEN",
-                  priorityLabel: "High",
-                  assigneeSummary: "Sam",
-                  projectName: "North Tower",
-                  isOverdue: true,
-                  attachmentUris: [],
-                  density: "compact",
-                  structuralState: "stale",
-                },
-              ],
-            },
-          ],
-        },
-        {
-          id: "tasks-queue:team_queue",
-          queue: "team_queue",
-          title: "Team Queue",
-          totalCountLabel: "0 tasks",
-          presentation: "preview",
-          isExpanded: false,
-          buckets: [
-            {
-              id: "team_queue:new",
-              title: "New",
-              taskCountLabel: "0",
-              bucket: "new",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "team_queue:wip",
-              title: "Doing",
-              taskCountLabel: "0",
-              bucket: "wip",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "team_queue:review",
-              title: "Review",
-              taskCountLabel: "0",
-              bucket: "review",
-              isOpen: false,
-              rows: [],
-            },
-            {
-              id: "team_queue:overdue",
-              title: "Overdue",
-              taskCountLabel: "0",
-              bucket: "overdue",
-              isOpen: false,
-              rows: [],
-            },
-          ],
-        },
-      ],
-    });
-
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    fireEvent.press(screen.getByTestId("tasks-screen__queue_bucket_my_queue_overdue"));
-
-    expect(screen.getByTestId("tasks-screen__queue_bucket_list_my_queue_overdue")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-overdue-1")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-overdue-2")).toBeTruthy();
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-2");
   });
 });

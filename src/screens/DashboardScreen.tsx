@@ -1,11 +1,11 @@
 import React from "react";
-import { Image, ScrollView, Text, View, Pressable } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppScreenHeader from "@/components/AppScreenHeader";
+import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
-import { cn } from "@/utils/cn";
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -20,7 +20,11 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   const { output, visibility } = useDashboardViewAdapter();
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-slate-50">
+    <SafeAreaView
+      testID="dashboard-screen__root"
+      edges={["left", "right", "bottom"]}
+      className="flex-1 bg-slate-50"
+    >
       <View className="flex-1 bg-[#E7F4F8]">
         <AppScreenHeader
           title="Taskr"
@@ -36,10 +40,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
-            <View
-              className="mb-4 rounded-3xl border border-[#C8E6EF] bg-white px-5 py-5"
-              testID="dashboard-screen__project_summary_card"
-            >
+            <View className="mb-5" testID="dashboard-screen__project_summary_section">
               <Text className="text-[32px] leading-9 font-semibold text-[#0D2630]">
                 {output.projectSummaryCard.title}
               </Text>
@@ -114,12 +115,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                               launchSource: "activity_dashboard",
                             })
                           }
-                          className={cn(
-                            "min-w-0 flex-1 rounded-2xl border px-3 py-4",
-                            cell.bucket === "overdue"
-                              ? "border-rose-200 bg-rose-50"
-                              : "border-[#C8E6EF] bg-white",
-                          )}
+                          className="min-w-0 flex-1 rounded-2xl border border-[#C8E6EF] bg-white px-3 py-4"
                         >
                           <Text className="text-sm font-semibold uppercase tracking-wide text-[#497080]">
                             {cell.title}
@@ -143,41 +139,16 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             <View className="gap-3">
               {output.activityItems.length > 0 ? (
                 output.activityItems.map((item) => (
-                  <Pressable
+                  <ActivityStyleRowCard
                     key={item.id}
                     testID={`dashboard-screen__activity_${item.id}`}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    metaLabel={item.timestampLabel}
+                    badgeLabel={item.statusLabel}
+                    imageUri={item.previewPhotoUri}
                     onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                    className="rounded-2xl border border-[#C8E6EF] bg-white px-4 py-3"
-                  >
-                    <View className="flex-row items-start">
-                      <View
-                        testID={`dashboard-screen__activity_${item.id}_thumbnail`}
-                        className="mr-3 h-14 w-14 overflow-hidden rounded-2xl bg-slate-100"
-                      >
-                        {item.previewPhotoUri ? (
-                          <Image
-                            source={{ uri: item.previewPhotoUri }}
-                            className="h-full w-full"
-                            resizeMode="cover"
-                          />
-                        ) : (
-                          <View className="h-full w-full bg-slate-100" />
-                        )}
-                      </View>
-
-                      <View className="min-w-0 flex-1">
-                        <Text className="text-sm font-semibold text-[#0D2630]" numberOfLines={1}>
-                          {[item.actorLabel, item.actionLabel].filter(Boolean).join(" ") || item.subtitle}
-                        </Text>
-                        <Text className="mt-1 text-base font-medium text-[#214552]" numberOfLines={1}>
-                          {item.title}
-                        </Text>
-                        <Text className="mt-1 text-sm leading-5 text-[#6E919D]" numberOfLines={1}>
-                          {item.timestampLabel}
-                        </Text>
-                      </View>
-                    </View>
-                  </Pressable>
+                  />
                 ))
               ) : (
                 <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
@@ -190,6 +161,26 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               )}
             </View>
           </View>
+
+          {output.draftItems.length > 0 ? (
+            <View className="mb-4">
+              <Text className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                Drafts In Progress
+              </Text>
+              <View className="gap-3">
+                {output.draftItems.map((item) => (
+                  <Pressable
+                    key={item.id}
+                    onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                    className="rounded-2xl border border-slate-200 bg-white p-4"
+                  >
+                    <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
+                    <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
         </ScrollView>
       </View>
     </SafeAreaView>

@@ -130,7 +130,7 @@ describe("Activity home integration", () => {
       />,
     );
 
-    expect(screen.getByTestId("dashboard-screen__project_summary_card")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__project_summary_section")).toBeTruthy();
     expect(screen.getAllByText("North Tower").length).toBeGreaterThan(0);
     expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();

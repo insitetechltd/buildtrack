@@ -55,9 +55,7 @@ export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   title: string;
   subtitle: string;
   timestampLabel: string;
-  actorLabel?: string;
-  actionLabel?: string;
-  statusLabel?: string;
+  statusLabel: string;
   previewPhotoUri?: string;
 }
 
@@ -84,7 +82,7 @@ export interface DashboardProjectSummaryCard {
 export interface DashboardQueueDashboardCell {
   id: string;
   queue: "my_queue" | "team_queue";
-  bucket: "new" | "wip" | "review" | "overdue";
+  bucket: "new" | "wip" | "review";
   title: string;
   countLabel: string;
 }
@@ -190,6 +188,21 @@ export interface TasksDraftsSection {
   rows: TasksScreenRowItem[];
 }
 
+export interface TasksFilterOption {
+  id: string;
+  value: "all" | TasksQueueId | "new" | "wip" | "review";
+  label: string;
+  count: number;
+  isSelected: boolean;
+}
+
+export interface TasksFilterControl {
+  id: "queue" | "bucket";
+  label: string;
+  selectedValue: string;
+  options: TasksFilterOption[];
+}
+
 export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
 
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
@@ -235,6 +248,10 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
+  filterControls?: {
+    queue: TasksFilterControl;
+    bucket: TasksFilterControl;
+  };
   isSearchMode: boolean;
   queuePanels: TasksQueuePanel[];
   draftsSection?: TasksDraftsSection | null;

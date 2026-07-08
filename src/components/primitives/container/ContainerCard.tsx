@@ -57,7 +57,7 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
   const contextRow = contract.chrome.metadataRows.find((row) => row.rowId === "task-card-context");
   const isTaskThumbnailCard = Boolean(statusRow);
 
-  const marginClass = contract.indentationLevel === 1 ? 'ml-6' : contract.indentationLevel === 2 ? 'ml-10' : '';
+  const marginClass = contract.indentationLevel === 1 ? "ml-6" : contract.indentationLevel === 2 ? "ml-10" : "";
   const CardView = contract.onPress ? Pressable : View;
 
   if (isTaskThumbnailCard && structuralState !== "loading" && structuralState !== "empty") {
@@ -78,16 +78,16 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
         accessibilityLabel={contract.accessibilityLabel}
         accessibilityHint={contract.accessibilityHint}
         className={cn(
-          "h-28 overflow-hidden border bg-white",
+          "h-32 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm",
           stateClasses.shell,
           marginClass,
           className,
         )}
       >
-        <View className="flex-row items-stretch">
+        <View className="h-32 flex-row">
           <View
             testID={`${resolvedTestId}:thumbnail`}
-            className="w-28 self-stretch overflow-hidden bg-slate-100"
+            className="h-32 w-28 overflow-hidden bg-slate-100"
           >
             {thumbnailItem ? (
               <Image
@@ -95,40 +95,60 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
                 source={{ uri: thumbnailItem.uri }}
                 accessibilityLabel={thumbnailItem.accessibilityLabel}
                 resizeMode="cover"
-                className="h-full w-full"
+                className="h-32 w-28"
               />
             ) : (
               <View
                 testID={`${resolvedTestId}:thumbnail-placeholder`}
-                className="h-full w-full bg-slate-100"
+                className="h-32 w-28 bg-slate-100"
               />
             )}
           </View>
 
-          <View className="min-w-0 flex-1 px-3 py-3">
-            <Text className={cn(densityClasses.title, "pr-1")} numberOfLines={1}>
+          <View
+            testID={`${resolvedTestId}:content`}
+            className="min-w-0 flex-1 justify-center px-4 py-4"
+          >
+            <Text
+              testID={`${resolvedTestId}:title`}
+              className={cn(
+                "pr-1 text-[17px] font-semibold tracking-[-0.01em] text-slate-900",
+                contract.density === "compact" ? "leading-[22px]" : "leading-6",
+              )}
+              numberOfLines={2}
+            >
               {contract.chrome.title}
             </Text>
             <View
-              testID={`${resolvedTestId}:status-badge`}
-              className={cn(
-                "mt-2 self-start border",
-                statusBadgeDensityClasses.container,
-                statusToneClasses.container,
-              )}
+              testID={`${resolvedTestId}:status-line`}
+              className="mt-2 flex-row items-center gap-2"
             >
-              <Text
+              <View
+                testID={`${resolvedTestId}:status-badge`}
                 className={cn(
-                  statusBadgeDensityClasses.label,
-                  statusToneClasses.label,
+                  "self-start rounded-full border px-2.5 py-1",
+                  statusBadgeDensityClasses.container,
+                  statusToneClasses.container,
                 )}
-                numberOfLines={1}
               >
-                {statusRow?.value ?? contract.chrome.subtitle}
-              </Text>
+                <Text
+                  className={cn(
+                    statusBadgeDensityClasses.label,
+                    "uppercase tracking-[0.06em]",
+                    statusToneClasses.label,
+                  )}
+                  numberOfLines={1}
+                >
+                  {statusRow?.value ?? contract.chrome.subtitle}
+                </Text>
+              </View>
             </View>
             {contextRow?.value ? (
-              <Text className="mt-2 text-sm leading-5 text-slate-500" numberOfLines={1}>
+              <Text
+                testID={`${resolvedTestId}:context-line`}
+                className="mt-2 text-[13px] leading-[18px] text-slate-500"
+                numberOfLines={2}
+              >
                 {contextRow.value}
               </Text>
             ) : null}

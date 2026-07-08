@@ -13,6 +13,7 @@ interface StandardHeaderProps {
   onProfilePress?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToDeveloperSettings?: () => void;
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export default function StandardHeader({
   onProfilePress,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onNavigateToDeveloperSettings,
   className,
 }: StandardHeaderProps) {
   const navigation = useNavigation<any>();
@@ -33,7 +35,20 @@ export default function StandardHeader({
   const handleNavigateToProfile =
     onNavigateToProfile ??
     (() => {
-      navigation.getParent()?.navigate("Profile");
+      const parentNavigation = navigation.getParent?.();
+      const rootNavigation = parentNavigation?.getParent?.();
+      const parentRouteNames = parentNavigation?.getState?.()?.routeNames ?? [];
+
+      if (
+        parentRouteNames.includes("MainTabs") ||
+        parentRouteNames.includes("Profile") ||
+        !rootNavigation
+      ) {
+        parentNavigation?.navigate("Profile");
+        return;
+      }
+
+      rootNavigation?.navigate("Profile");
     });
   const handleNavigateToProjectPicker =
     onNavigateToProjectPicker ??
@@ -49,6 +64,7 @@ export default function StandardHeader({
       onBackPress={handleBackPress}
       onNavigateToProfile={handleNavigateToProfile}
       onNavigateToProjectPicker={handleNavigateToProjectPicker}
+      onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       rightSlot={rightElement}
       className={className}
       onProfilePress={onProfilePress}

@@ -375,6 +375,8 @@ export const zhTW = {
   createTask: {
     editTask: "更改工作細節",
     createNewTask: "新增工作",
+    headerCreateSubtitle: "建立工作",
+    headerEditSubtitle: "工作編輯",
     createSubTask: "新增子工作",
     nestedSubTask: "巢狀子任務",
     subTaskOf: "子任務：",

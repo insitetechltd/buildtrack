@@ -48,6 +48,7 @@ const mockAddSubTaskUpdate = jest.fn();
 const mockAddAssignerComment = jest.fn();
 const mockUploadFileWithVerification = jest.fn();
 let mockSelectedProjectId: string | null = null;
+let mockIsAdmin = false;
 
 // Mock dependencies
 jest.mock('../../state/authStore', () => ({
@@ -119,6 +120,8 @@ jest.mock('../../utils/useTranslation', () => ({
       createSubTask: 'Create Sub-Task',
       nestedSubTask: 'Nested Sub-Task',
       createNewTask: 'Create New Task',
+      headerCreateSubtitle: 'Field workflow',
+      headerEditSubtitle: 'Task editor localized',
       createTaskButton: 'Create Task',
       updateTaskButton: 'Update Task',
       taskBasicsTitle: 'Task Basics',
@@ -143,7 +146,8 @@ jest.mock('../../utils/useTranslation', () => ({
       usersSelected: () => 'Users Selected',
        selectUsersToAssign: 'Select Users',
        doneSelected: () => 'Done',
-       assigneesLocked: 'Assignees cannot be changed (task accepted)'
+       assigneesLocked: 'Assignees cannot be changed (task accepted)',
+       adminCannotCreateTasks: 'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.'
      },
       taskDetail: {
         editReasonTitle: 'Edit Reason',
@@ -162,6 +166,15 @@ jest.mock('../../utils/useTranslation', () => ({
       common: { done: 'Done', selected: 'Selected', save: 'Save', cancel: 'Cancel' }
   })
 }));
+
+jest.mock('../../types/buildtrack', () => {
+  const actual = jest.requireActual('../../types/buildtrack');
+
+  return {
+    ...actual,
+    isAdmin: () => mockIsAdmin,
+  };
+});
 
 jest.mock('../../utils/dateFormatter', () => ({
   useDateFormatter: () => ({
@@ -250,6 +263,7 @@ jest.mock('../../utils/environmentDetector', () => ({
 
 describe('CreateTaskScreen Integration', () => {
   beforeEach(() => {
+    mockIsAdmin = false;
     mockUseTaskStore.mockReturnValue({
       tasks: [],
       createTask: jest.fn(),
@@ -312,6 +326,17 @@ describe('CreateTaskScreen Integration', () => {
     fireEvent.press(getByTestId('app-screen-header__back'));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the branded create-task header subtitle from translations', () => {
+    const { getByText, queryByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Field workflow')).toBeTruthy();
+    expect(queryByText('Create task')).toBeNull();
   });
 
   it('renders the update action header title and workspace menu trigger and wires the visible back button', () => {
@@ -420,6 +445,25 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
     expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
     expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
+  });
+
+  it('keeps the branded shell visible when admins are blocked from creating tasks', () => {
+    mockIsAdmin = true;
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
+    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.',
+      ),
+    ).toBeTruthy();
   });
 
   it('surfaces project-scoped location options with an add-new path', async () => {

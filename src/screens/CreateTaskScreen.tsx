@@ -393,7 +393,9 @@ function CreateTaskEditorScreen({
   const handleCancel = () => onNavigateBack();
   const handleClearForm = () => {};
   const saveFormDataToStorage = async () => {};
-  const headerSubtitle = editTaskId ? "Task editor" : "Create task";
+  const headerSubtitle = editTaskId
+    ? t.createTask.headerEditSubtitle
+    : t.createTask.headerCreateSubtitle;
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
@@ -439,15 +441,25 @@ function CreateTaskEditorScreen({
   if (!user) return null;
   if (isAdmin(user)) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-        <ModernScreenHeader 
-          title={t.tasks.createTask}
+      <SafeAreaView
+        testID="create-task__root"
+        edges={['bottom', 'left', 'right']}
+        className="flex-1 bg-[#E7F4F8]"
+      >
+        <StatusBar style="light" />
+        <View testID="create-task__header" className="bg-[#08576E]">
+          <ModernScreenHeader
+            title={context.headerTitle}
+            subtitle={headerSubtitle}
           showBackButton={true}
           onBackPress={onNavigateBack}
-        />
+            onNavigateToProfile={onNavigateToProfile}
+            onNavigateToProjectPicker={onNavigateToProjectPicker}
+            className="border-b-0 bg-[#08576E] pb-2"
+          />
+        </View>
         <View className="flex-1 items-center justify-center px-6">
-          <Text>{t.createTask.adminCannotCreateTasks}</Text>
+          <Text className="text-center text-base text-gray-700">{t.createTask.adminCannotCreateTasks}</Text>
         </View>
       </SafeAreaView>
     );

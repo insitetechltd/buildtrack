@@ -375,6 +375,8 @@ export const en = {
   createTask: {
     editTask: "Edit Task",
     createNewTask: "Create New Task",
+    headerCreateSubtitle: "Create task",
+    headerEditSubtitle: "Task editor",
     createSubTask: "Create Sub-Task",
     nestedSubTask: "Nested Sub-Task",
     subTaskOf: "Sub-task of:",

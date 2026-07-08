@@ -9,8 +9,11 @@ import { useProjectFilterStore } from '../../state/projectFilterStore';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
-import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
-import type { CreateTaskScreenViewAdapterOutput, CreateTaskFormModel } from '../contracts/viewAdapters';
+import type {
+  CreateTaskScreenViewAdapterOutput,
+  CreateTaskFormModel,
+  CreateTaskLocationOptionModel,
+} from '../contracts/viewAdapters';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
@@ -39,21 +42,10 @@ function requiresEditReasonForStatus(status?: TaskStatus): boolean {
   return status === 'accepted' || status === 'in_progress' || status === 'submitted_for_review';
 }
 
-function hasCriticalThisWeekTag(tags?: string[]): boolean {
-  return Array.isArray(tags) && tags.includes(CRITICAL_THIS_WEEK_TAG);
-}
-
-function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
-  const normalizedTags = Array.isArray(tags)
-    ? tags.filter((tag) => Boolean(tag) && tag !== CRITICAL_THIS_WEEK_TAG)
-    : [];
-
-  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
-}
-
 function getProjectScopedLocationOptions(
   tasks: Array<{ projectId?: string; locationOnSite?: string }>,
   projectId: string,
+  addNewLabel: string,
   currentLocationOnSite?: string,
 ) {
   const normalizedOptions = new Set<string>();
@@ -74,7 +66,7 @@ function getProjectScopedLocationOptions(
     normalizedOptions.add(normalizedCurrentLocation);
   }
 
-  const options = Array.from(normalizedOptions).map((locationValue) => ({
+  const options: CreateTaskLocationOptionModel[] = Array.from(normalizedOptions).map((locationValue) => ({
     id: `location-option-${locationValue}`,
     label: locationValue,
     value: locationValue,
@@ -82,7 +74,7 @@ function getProjectScopedLocationOptions(
 
   options.push({
     id: 'location-option-add-new',
-    label: 'Add new location',
+    label: addNewLabel,
     value: ADD_NEW_LOCATION_OPTION_VALUE,
     isAddNew: true,
   });
@@ -112,7 +104,6 @@ export function useCreateTaskViewAdapter({
     priority: 'medium',
     category: 'general',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    criticalThisWeek: false,
     locationOnSite: '',
     assignedTo: [],
     attachments: [],
@@ -229,7 +220,6 @@ export function useCreateTaskViewAdapter({
         priority: 'medium',
         category: 'general',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        criticalThisWeek: false,
         locationOnSite: '',
         assignedTo: [],
         attachments: [],
@@ -436,7 +426,6 @@ export function useCreateTaskViewAdapter({
         priority: editTask.priority || 'medium',
         category: editTask.category || 'general',
         dueDate: new Date(editTask.dueDate),
-        criticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         locationOnSite: editTask.locationOnSite || '',
         assignedTo: editTask.assignedTo || [],
         attachments: editTask.attachments || [],
@@ -458,16 +447,20 @@ export function useCreateTaskViewAdapter({
   }, [activeProjectId, fetchProjectUserAssignments]);
 
   const locationOptions = useMemo(
-    () => getProjectScopedLocationOptions(tasks, activeProjectId, formData.locationOnSite),
-    [activeProjectId, formData.locationOnSite, tasks]
+    () =>
+      getProjectScopedLocationOptions(
+        tasks,
+        activeProjectId,
+        t.createTask.addNewLocation,
+        formData.locationOnSite,
+      ),
+    [activeProjectId, formData.locationOnSite, t.createTask.addNewLocation, tasks]
   );
 
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
-      const tags = withCriticalThisWeekTag(editTask?.tags, formData.criticalThisWeek);
-
       // Basic submit logic extracted from screen
       if (editTaskId) {
         await updateTask(editTaskId, {
@@ -482,7 +475,6 @@ export function useCreateTaskViewAdapter({
           locationOnSite: formData.locationOnSite.trim() || undefined,
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
-          tags,
           _editReason: options?.editReason,
         } as Partial<any>);
       } else if (parentTaskId) {
@@ -499,7 +491,6 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
-          tags,
         });
       } else {
         await createTask({
@@ -515,7 +506,6 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
-          tags,
         });
       }
       await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);

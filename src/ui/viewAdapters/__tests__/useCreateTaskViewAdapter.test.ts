@@ -75,6 +75,7 @@ jest.mock("../../../utils/useTranslation", () => ({
       createNewTask: "Create New Task",
       nestedUnder: "Nested under:",
       subTaskOf: "Sub-task of:",
+      addNewLocation: "Add new location",
     },
   }),
 }));
@@ -409,6 +410,7 @@ describe("useCreateTaskViewAdapter", () => {
       }),
     );
     expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("location");
+    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("tags");
 
     mockUseTaskStore.mockReturnValue({
       tasks: [
@@ -466,6 +468,7 @@ describe("useCreateTaskViewAdapter", () => {
       }),
     );
     expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("location");
+    expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("tags");
   });
 
   it("returns false and does not submit when validation fails", async () => {

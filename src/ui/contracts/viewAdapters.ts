@@ -1267,7 +1267,6 @@ export interface CreateTaskFormModel {
   priority: string;
   category: string;
   dueDate: Date;
-  criticalThisWeek: boolean;
   locationOnSite: string;
   assignedTo: string[];
   projectId: string;

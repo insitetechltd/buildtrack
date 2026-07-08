@@ -100,7 +100,15 @@ jest.mock('../../state/projectFilterStore', () => ({
 
 jest.mock('../../utils/useTranslation', () => ({
   useTranslation: () => ({
-    tasks: { createTask: 'Create Task', title: 'Title', description: 'Description' },
+    tasks: {
+      createTask: 'Create Task',
+      title: 'Title',
+      description: 'Description',
+      priority: 'Priority',
+      dueDate: 'Due Date',
+      category: 'Category',
+      assignTo: 'Assign To',
+    },
     userManagement: { pending: 'Pending' },
     createTask: { 
       textInput: 'Input', 
@@ -113,6 +121,19 @@ jest.mock('../../utils/useTranslation', () => ({
       createNewTask: 'Create New Task',
       createTaskButton: 'Create Task',
       updateTaskButton: 'Update Task',
+      taskBasicsTitle: 'Task Basics',
+      taskBasicsSubtitle: 'Start with the essentials',
+      scheduleTitle: 'Schedule',
+      scheduleSubtitle: 'Set the target date',
+      moreDetailsTitle: 'More Details',
+      moreDetailsSubtitle: 'Optional context for downstream work',
+      locationOnSite: 'Location on Site',
+      selectLocationOnSite: 'Select a location on site',
+      addNewLocation: 'Add new location',
+      addNewLocationPlaceholder: 'Enter a new location on site',
+      saveNewLocation: 'Save location',
+      changeLocation: 'Change location',
+      selectLocationOnSiteFirstProject: 'Select a project to add a location on site',
       creating: 'Creating...',
       updating: 'Updating...',
       attachments: 'Attachments',
@@ -369,33 +390,36 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(screen.getByText('Task Basics')).toBeTruthy();
-    expect(screen.getByText('Assignment')).toBeTruthy();
+    expect(screen.getByText(/Assign To/)).toBeTruthy();
+    expect(screen.getByText('Location on Site')).toBeTruthy();
+    expect(screen.queryByText('Assignment')).toBeNull();
     expect(screen.getByText('Schedule')).toBeTruthy();
     expect(screen.getByText('More Details')).toBeTruthy();
     expect(screen.getByText('Attachments')).toBeTruthy();
   });
 
-  it('renders the critical-dates toggle and persists the flag as a task tag on create', async () => {
+  it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
       </NavigationContainer>
     );
 
-    expect(screen.getByText('Show in This Week’s Critical Dates')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.getByTestId('createTask-submit-focus-target')).toBeTruthy();
+  });
 
-    fireEvent.press(screen.getByTestId('create-task__toggle_critical_this_week'));
-    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Critical pour inspection');
-    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Surface this in the weekly critical dates list');
-    fireEvent.press(screen.getByText('Create Task'));
+  it('surfaces project-scoped location options with an add-new path', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__location-picker-trigger'));
 
     await waitFor(() => {
-      expect(mockCreateTask).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Critical pour inspection',
-          tags: ['critical_this_week'],
-        }),
-      );
+      expect(screen.getByText('Add new location')).toBeTruthy();
     });
   });
 
@@ -1411,6 +1435,8 @@ describe('CreateTaskScreen Integration', () => {
         }),
       );
     });
+
+    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty('tags');
 
     expect(onNavigateBack).toHaveBeenCalled();
   });

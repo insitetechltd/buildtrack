@@ -1,0 +1,54 @@
+import React from "react";
+import { fireEvent, render } from "@testing-library/react-native";
+
+import ActivityStyleRowCard from "../ActivityStyleRowCard";
+
+describe("ActivityStyleRowCard", () => {
+  it("renders the shared activity-style card with a balanced left rail and a no-photo placeholder icon", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-1"
+        title="Test critical date"
+        subtitle="Task accepted by Herman"
+        metaLabel="Jul 7 at 6:48 PM"
+        badgeLabel="In Progress"
+        imageUri={undefined}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:task-1")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-1:thumbnail-placeholder")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-1:no-photo-icon")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:task-1:thumbnail-image")).toBeNull();
+    expect(screen.getByText("Test critical date")).toBeTruthy();
+    expect(screen.getByText("Task accepted by Herman")).toBeTruthy();
+    expect(screen.getByText("Jul 7 at 6:48 PM")).toBeTruthy();
+    expect(screen.getByText("In Progress")).toBeTruthy();
+  });
+
+  it("renders a real thumbnail, preserves tap-through, and falls back to the placeholder rail after an image error", () => {
+    const onPress = jest.fn();
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-2"
+        title="Concrete inspection"
+        subtitle="North Tower"
+        metaLabel="Jul 8 at 9:15 AM"
+        badgeLabel="Review"
+        imageUri="https://example.com/preview.jpg"
+        onPress={onPress}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("shared-card:task-2"));
+    fireEvent(screen.getByTestId("shared-card:task-2:thumbnail-image"), "error");
+
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("shared-card:task-2:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-2:thumbnail-placeholder")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-2:no-photo-icon")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:task-2:thumbnail-image")).toBeNull();
+  });
+});

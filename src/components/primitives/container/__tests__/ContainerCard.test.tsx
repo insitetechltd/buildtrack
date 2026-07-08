@@ -73,7 +73,9 @@ describe("container/ContainerCard task-list layout", () => {
     expect(getByTestId("container-card:task-1").props.className).toContain("rounded-3xl");
     expect(getByTestId("container-card:task-1").props.className).toContain("border-slate-200");
     expect(getByTestId("container-card:task-1").props.className).toContain("shadow-sm");
-    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("self-stretch");
+    expect(getByTestId("container-card:task-1").props.className).toContain("h-32");
+    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("w-28");
+    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("h-32");
     expect(getByTestId("container-card:task-1:thumbnail").props.className).not.toContain("rounded-2xl");
     expect(getByTestId("container-card:task-1:thumbnail-image")).toBeTruthy();
     expect(getByTestId("container-card:task-1:status-badge")).toBeTruthy();
@@ -116,9 +118,13 @@ describe("container/ContainerCard task-list layout", () => {
 
     expect(getByTestId("container-card:task-1:thumbnail")).toBeTruthy();
     expect(getByTestId("container-card:task-1:thumbnail-placeholder")).toBeTruthy();
-    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("self-stretch");
-    expect(getByTestId("container-card:task-1:thumbnail-placeholder").props.className).toContain("h-full");
-    expect(getByTestId("container-card:task-1:thumbnail-placeholder").props.className).toContain("w-full");
+    expect(getByTestId("container-card:task-1").props.className).toContain("h-32");
+    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("w-28");
+    expect(getByTestId("container-card:task-1:thumbnail").props.className).toContain("h-32");
+    expect(getByTestId("container-card:task-1:thumbnail").props.className).not.toContain("self-stretch");
+    expect(getByTestId("container-card:task-1:thumbnail-placeholder").props.className).toContain("h-32");
+    expect(getByTestId("container-card:task-1:thumbnail-placeholder").props.className).toContain("w-28");
+    expect(getByTestId("container-card:task-1:thumbnail-placeholder").props.className).not.toContain("h-full");
     expect(queryByTestId("container-card:task-1:thumbnail-image")).toBeNull();
     expect(onPress).toHaveBeenCalledTimes(1);
   });

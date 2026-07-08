@@ -10,6 +10,7 @@ interface ProfileMenuProps {
   onClose: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToDeveloperSettings?: () => void;
 }
 
 export default function ProfileMenu({
@@ -17,6 +18,7 @@ export default function ProfileMenu({
   onClose,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onNavigateToDeveloperSettings,
 }: ProfileMenuProps) {
   const { user, logout } = useAuthStore();
   const t = useTranslation();
@@ -33,6 +35,11 @@ export default function ProfileMenu({
   const handleNavigateToProjectPicker = () => {
     onClose();
     onNavigateToProjectPicker?.(true);
+  };
+
+  const handleNavigateToDeveloperSettings = () => {
+    onClose();
+    onNavigateToDeveloperSettings?.();
   };
 
   const handleLogout = () => {
@@ -55,7 +62,7 @@ export default function ProfileMenu({
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <Pressable className="flex-1 bg-black/30" onPress={onClose}>
         <View
-          className="absolute right-4 top-16 min-w-[220px] overflow-hidden rounded-2xl bg-white"
+          className="absolute right-4 top-16 min-w-[240px] overflow-hidden rounded-3xl border border-[#B9D9E4] bg-[#F8FCFF]"
           style={{
             shadowColor: "#000",
             shadowOffset: { width: 0, height: 4 },
@@ -64,11 +71,11 @@ export default function ProfileMenu({
             elevation: 8,
           }}
         >
-          <View className="border-b border-gray-100 px-4 py-3">
-            <Text className="text-sm font-medium text-gray-500" numberOfLines={1}>
+          <View className="border-b border-[#D8EBF2] px-4 py-3">
+            <Text className="text-sm font-medium text-[#497080]" numberOfLines={1}>
               {user.name}
             </Text>
-            <Text className="mt-1 text-xs uppercase tracking-wide text-gray-400">
+            <Text className="mt-1 text-xs uppercase tracking-wide text-[#7FA7B4]">
               {user.role}
             </Text>
           </View>
@@ -76,25 +83,39 @@ export default function ProfileMenu({
           <View className="py-2">
             <Pressable
               onPress={handleNavigateToProfile}
-              className="flex-row items-center px-4 py-3 active:bg-gray-100"
+              className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
             >
-              <Ionicons name="person-outline" size={20} color="#2563eb" />
-              <Text className="ml-3 text-base font-medium text-gray-900">
+              <Ionicons name="person-outline" size={20} color="#0A556B" />
+              <Text className="ml-3 text-base font-medium text-[#10222B]">
                 {t.dashboard.profileAndSettings || "Profile & Settings"}
               </Text>
             </Pressable>
 
-            <Pressable
-              onPress={handleNavigateToProjectPicker}
-              className="flex-row items-center px-4 py-3 active:bg-gray-100"
-            >
-              <Ionicons name="business-outline" size={20} color="#2563eb" />
-              <Text className="ml-3 text-base font-medium text-gray-900">
-                {t.dashboard.changeProject || "Change Project"}
-              </Text>
-            </Pressable>
+            {onNavigateToProjectPicker ? (
+              <Pressable
+                onPress={handleNavigateToProjectPicker}
+                className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+              >
+                <Ionicons name="business-outline" size={20} color="#0A556B" />
+                <Text className="ml-3 text-base font-medium text-[#10222B]">
+                  {t.dashboard.changeProject || "Change Project"}
+                </Text>
+              </Pressable>
+            ) : null}
 
-            <Pressable onPress={handleLogout} className="flex-row items-center px-4 py-3 active:bg-gray-100">
+            {onNavigateToDeveloperSettings ? (
+              <Pressable
+                onPress={handleNavigateToDeveloperSettings}
+                className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+              >
+                <Ionicons name="settings-outline" size={20} color="#0A556B" />
+                <Text className="ml-3 text-base font-medium text-[#10222B]">
+                  Developer Settings
+                </Text>
+              </Pressable>
+            ) : null}
+
+            <Pressable onPress={handleLogout} className="flex-row items-center px-4 py-3 active:bg-[#FFF1F1]">
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text className="ml-3 text-base font-medium text-red-600">
                 {t.dashboard.logout || "Logout"}

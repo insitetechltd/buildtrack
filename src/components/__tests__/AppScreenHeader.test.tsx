@@ -9,16 +9,19 @@ const mockProfileMenu = jest.fn(
     visible,
     onNavigateToProfile,
     onNavigateToProjectPicker,
+    onNavigateToDeveloperSettings,
   }: {
     visible: boolean;
     onNavigateToProfile?: () => void;
     onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+    onNavigateToDeveloperSettings?: () => void;
   }) =>
     visible ? (
       <>
         <Text>Profile Menu</Text>
         <Text onPress={() => onNavigateToProjectPicker?.(true)}>Change Project</Text>
         <Text onPress={() => onNavigateToProfile?.()}>Profile & Settings</Text>
+        <Text onPress={() => onNavigateToDeveloperSettings?.()}>Developer Settings</Text>
       </>
     ) : null,
 );
@@ -87,11 +90,13 @@ describe("AppScreenHeader", () => {
   it("opens the profile menu and routes shared menu callbacks", () => {
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
+    const onNavigateToDeveloperSettings = jest.fn();
     const screen = render(
       <AppScreenHeader
         title="Projects"
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
+        onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       />,
     );
 
@@ -101,8 +106,10 @@ describe("AppScreenHeader", () => {
 
     fireEvent.press(screen.getByText("Change Project"));
     fireEvent.press(screen.getByText("Profile & Settings"));
+    fireEvent.press(screen.getByText("Developer Settings"));
 
     expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
     expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
+    expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
   });
 });

@@ -5,6 +5,7 @@ import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
+import { getFileUrl } from "@/api/fileUploadService";
 import type {
   TasksQueueBucketId,
   TasksQueueId,
@@ -72,9 +73,23 @@ function collectTaskPhotoUris(task: Task): string[] {
     }) ?? [];
   const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
 
-  return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].filter(
+  return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos]
+    .map(resolveImageUri)
+    .filter(
     (value, index, collection): value is string => Boolean(value) && collection.indexOf(value) === index,
   );
+}
+
+function resolveImageUri(uri?: string | null): string | undefined {
+  if (!uri) {
+    return undefined;
+  }
+
+  if (/^(https?:|file:|content:|data:|asset:)/i.test(uri)) {
+    return uri;
+  }
+
+  return getFileUrl(uri) ?? undefined;
 }
 
 function buildContextLine(task: Task): string | undefined {

@@ -1,7 +1,32 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import TasksScreen from "../TasksScreen";
 import type { TasksScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
+
+jest.mock("@/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+    className,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+    className?: string;
+  }) {
+    return (
+      <View testID="app-screen-header__root" className={className}>
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
 
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
@@ -55,6 +80,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         bucketLabel: "Doing",
         contextLabel: "North Tower",
         latestUpdateAt: "2026-07-04T11:00:00.000Z",
+        indentationLevel: 1,
       }),
       makeRow({
         id: "row-3",
@@ -300,21 +326,27 @@ describe("TasksScreen", () => {
     expect(screen.getByTestId("tasks-screen__filter_queue")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__filter_bucket")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
+    const searchRightSlot = screen.getByTestId("text-field:tasks-search__right-slot");
+    expect(within(searchRightSlot).getByTestId("tasks-screen__search_count")).toBeTruthy();
+    expect(within(searchRightSlot).getByText("3")).toBeTruthy();
+    expect(screen.queryByText("Search-first list")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__root").props.className).toContain("bg-[#08576E]");
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__queues")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__header_profile")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__header_project_picker")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__header_developer_settings")).toBeNull();
 
     fireEvent.press(screen.getByTestId("tasks-screen__fab_create_task"));
     expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
-
-    fireEvent.press(screen.getByTestId("tasks-screen__header_profile"));
-    expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
-
-    fireEvent.press(screen.getByTestId("tasks-screen__header_project_picker"));
-    expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
-
-    fireEvent.press(screen.getByTestId("tasks-screen__header_developer_settings"));
-    expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
+    expect(onNavigateToProfile).not.toHaveBeenCalled();
+    expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
+    expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
   });
 
   it("updates the visible list when queue and bucket filters change", () => {
@@ -329,20 +361,20 @@ describe("TasksScreen", () => {
     expect(screen.getByText("Team Queue 1")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Team Queue 1"));
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
 
     fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
     fireEvent.press(screen.getByText("Review 1"));
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("tasks-screen__filter_queue"));
     fireEvent.press(screen.getByText("My Queue 2"));
     fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
     fireEvent.press(screen.getByText("Doing 1"));
-    expect(screen.getByTestId("container-card:task-2")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
-    expect(screen.queryByTestId("container-card:task-3")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-2")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__row_task-3")).toBeNull();
   });
 
   it("keeps search visible and applies it on top of the selected filters", () => {
@@ -356,8 +388,8 @@ describe("TasksScreen", () => {
     const input = screen.getByTestId("text-field:tasks-search__input");
     fireEvent.changeText(input, "team");
 
-    expect(screen.getByTestId("container-card:task-3")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
 
     fireEvent.press(screen.getByTestId("tasks-screen__header_reset_filters"));
     expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
@@ -389,7 +421,7 @@ describe("TasksScreen", () => {
     expect(screen.getByText("No matching tasks")).toBeTruthy();
   });
 
-  it("renders the Tasks list card with the reskinned thumbnail hierarchy", () => {
+  it("renders the Tasks list rows through the shared activity-style shell", () => {
     const screen = render(
       <TasksScreen
         onNavigateToTaskDetail={jest.fn()}
@@ -397,9 +429,25 @@ describe("TasksScreen", () => {
       />,
     );
 
-    expect(screen.getByTestId("container-card:task-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1:content")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1:title")).toBeTruthy();
-    expect(screen.getByTestId("container-card:task-1:status-line")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail-image")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:thumbnail")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
+  });
+
+  it("preserves nested-task indentation in the shared row path and keeps row tap-through navigation", () => {
+    const onNavigateToTaskDetail = jest.fn();
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={onNavigateToTaskDetail}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-2"));
+
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-2");
   });
 });

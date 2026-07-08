@@ -78,16 +78,16 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
         accessibilityLabel={contract.accessibilityLabel}
         accessibilityHint={contract.accessibilityHint}
         className={cn(
-          "min-h-32 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm",
+          "h-32 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm",
           stateClasses.shell,
           marginClass,
           className,
         )}
       >
-        <View className="flex-row items-stretch">
+        <View className="h-32 flex-row">
           <View
             testID={`${resolvedTestId}:thumbnail`}
-            className="w-30 self-stretch overflow-hidden bg-slate-100"
+            className="h-32 w-28 overflow-hidden bg-slate-100"
           >
             {thumbnailItem ? (
               <Image
@@ -95,12 +95,12 @@ export default function ContainerCard({ contract, className }: ContainerCardProp
                 source={{ uri: thumbnailItem.uri }}
                 accessibilityLabel={thumbnailItem.accessibilityLabel}
                 resizeMode="cover"
-                className="h-full w-full"
+                className="h-32 w-28"
               />
             ) : (
               <View
                 testID={`${resolvedTestId}:thumbnail-placeholder`}
-                className="h-full w-full bg-slate-100"
+                className="h-32 w-28 bg-slate-100"
               />
             )}
           </View>

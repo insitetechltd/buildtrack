@@ -18,6 +18,10 @@ jest.mock("@/state/taskStore.supabase", () => ({
   useTaskStore: jest.fn(),
 }));
 
+jest.mock("@/api/fileUploadService", () => ({
+  getFileUrl: jest.fn((value: string) => `https://cdn.example.com/${value}`),
+}));
+
 describe("useTasksViewAdapter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -275,5 +279,33 @@ describe("useTasksViewAdapter", () => {
       "task-wip",
       "task-review",
     ]);
+  });
+
+  it("resolves storage-path task photos into public card thumbnail URLs", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-photo",
+          title: "Photo task",
+          status: "new",
+          attachments: ["company-123/tasks/task-photo/photo-1.jpg"],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-04T12:00:00.000Z",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.taskRowItems[0].primaryPhotoUri).toBe(
+      "https://cdn.example.com/company-123/tasks/task-photo/photo-1.jpg",
+    );
   });
 });

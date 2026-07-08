@@ -5,6 +5,7 @@ import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Project } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
+import { getFileUrl } from "@/api/fileUploadService";
 import type {
   DashboardActivityItem,
   DashboardProjectSummaryItem,
@@ -118,6 +119,18 @@ function buildCriticalDateSubtitle(task: {
   return [statusLabel, priorityLabel, isTaggedCritical ? "Critical this week" : null]
     .filter(Boolean)
     .join(" · ");
+}
+
+function resolveImageUri(uri?: string | null): string | undefined {
+  if (!uri) {
+    return undefined;
+  }
+
+  if (/^(https?:|file:|content:|data:|asset:)/i.test(uri)) {
+    return uri;
+  }
+
+  return getFileUrl(uri) ?? undefined;
 }
 
 export interface DashboardViewAdapterHookResult {
@@ -328,7 +341,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               subtitle: task.description || resolvedActiveProject?.name || "Active project task",
               timestampLabel: "Task activity",
               statusLabel: task.status.replace(/_/g, " "),
-              previewPhotoUri: task.attachments?.[0],
+              previewPhotoUri: resolveImageUri(task.attachments?.[0]),
               density: "standard" as const,
               structuralState,
               sortTimestamp: task.createdAt,
@@ -348,7 +361,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             minute: "2-digit",
           }),
           statusLabel: update.status.replace(/_/g, " "),
-          previewPhotoUri: update.photos?.[0] || task.attachments?.[0],
+          previewPhotoUri: resolveImageUri(update.photos?.[0] || task.attachments?.[0]),
           density: "standard" as const,
           structuralState,
           sortTimestamp: update.timestamp,
@@ -385,7 +398,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               })
             : "In progress",
           statusLabel: task.status.replace(/_/g, " "),
-          previewPhotoUri: latestUpdate?.photos?.[0] || task.attachments?.[0],
+          previewPhotoUri: resolveImageUri(latestUpdate?.photos?.[0] || task.attachments?.[0]),
           density: "standard",
           structuralState,
           sortTimestamp: latestUpdate?.timestamp || task.createdAt,

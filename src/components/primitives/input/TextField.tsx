@@ -15,6 +15,7 @@ import InputLabel from "./InputLabel";
 interface TextFieldProps {
   contract: InputPrimitiveContract;
   className?: string;
+  rightSlot?: React.ReactNode;
   onChangeText: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -32,6 +33,7 @@ function resolveHelperText(contract: InputPrimitiveContract): string {
 export default function TextField({
   contract,
   className,
+  rightSlot,
   onChangeText,
   onFocus,
   onBlur,
@@ -76,18 +78,25 @@ export default function TextField({
           isReadOnly && !isDisabled ? "bg-slate-50" : "",
         )}
       >
-        <TextInput
-          testID={`${resolvedTestId}__input`}
-          value={contract.content.value}
-          placeholder={contract.content.placeholder}
-          editable={editable}
-          accessibilityLabel={contract.accessibilityLabel}
-          accessibilityHint={contract.accessibilityHint}
-          className={cn("w-full", densityClasses.inputText, stateClasses.inputText)}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
-          onBlur={onBlur}
-        />
+        <View className="flex-row items-center">
+          <TextInput
+            testID={`${resolvedTestId}__input`}
+            value={contract.content.value}
+            placeholder={contract.content.placeholder}
+            editable={editable}
+            accessibilityLabel={contract.accessibilityLabel}
+            accessibilityHint={contract.accessibilityHint}
+            className={cn("min-w-0 flex-1", densityClasses.inputText, stateClasses.inputText)}
+            onChangeText={onChangeText}
+            onFocus={onFocus}
+            onBlur={onBlur}
+          />
+          {rightSlot ? (
+            <View testID={`${resolvedTestId}__right-slot`} className="ml-2">
+              {rightSlot}
+            </View>
+          ) : null}
+        </View>
       </View>
 
       <View
@@ -103,4 +112,3 @@ export default function TextField({
     </View>
   );
 }
-

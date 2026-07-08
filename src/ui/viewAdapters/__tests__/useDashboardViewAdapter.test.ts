@@ -17,6 +17,10 @@ jest.mock("@/state/projectFilterStore", () => ({
   useProjectFilterStore: jest.fn(),
 }));
 
+jest.mock("@/api/fileUploadService", () => ({
+  getFileUrl: jest.fn((value: string) => `https://cdn.example.com/${value}`),
+}));
+
 describe("useDashboardViewAdapter", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -745,6 +749,56 @@ describe("useDashboardViewAdapter", () => {
     expect(result.current.output.taskShortcut).toBeNull();
     expect(result.current.output.activityItems).toEqual([]);
     expect(result.current.output.scalarMetrics.hasSelectedProject).toBe(false);
+  });
+
+  it("resolves storage paths into public preview-photo URLs for activity cards", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: ["company-123/tasks/task-1/photo-1.jpg"],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [
+            {
+              id: "update-1",
+              description: "Pour completed for section A",
+              photos: ["company-123/tasks/task-1/photo-1.jpg"],
+              completionPercentage: 65,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 65,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
+      "https://cdn.example.com/company-123/tasks/task-1/photo-1.jpg",
+    );
   });
 
   it("excludes declined and archived tasks from activity-home counts", () => {

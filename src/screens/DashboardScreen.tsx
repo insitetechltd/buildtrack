@@ -1,9 +1,9 @@
 import React from "react";
-import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import AppScreenHeader from "@/components/AppScreenHeader";
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
+import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 
@@ -20,102 +20,87 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   const { output, visibility } = useDashboardViewAdapter();
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="flex-1">
+    <SafeAreaView
+      testID="dashboard-screen__root"
+      edges={["left", "right", "bottom"]}
+      className="flex-1 bg-slate-50"
+    >
+      <View className="flex-1 bg-[#E7F4F8]">
         <AppScreenHeader
-          title="Recent Activity"
+          title="Taskr"
+          titleNode={<BrandHeaderTitle subtitle="Site activity" />}
           showProfileTrigger={visibility.showProfileShortcut}
-          onProfilePress={props.onNavigateToProfile}
-          className="border-b-0 bg-slate-50 pb-1"
-          rightSlot={
-            <View className="flex-row items-center">
-              <ModernUiMarker />
-              {visibility.showProjectPickerShortcut && props.onNavigateToProjectPicker ? (
-                <Pressable
-                  testID="dashboard-screen__header_project_picker"
-                  onPress={() => props.onNavigateToProjectPicker?.(true)}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="business-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showDeveloperSettingsShortcut && props.onNavigateToDeveloperSettings ? (
-                <Pressable
-                  testID="dashboard-screen__header_developer_settings"
-                  onPress={props.onNavigateToDeveloperSettings}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="settings-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-            </View>
+          onNavigateToProfile={props.onNavigateToProfile}
+          onNavigateToProjectPicker={visibility.showProjectPickerShortcut ? props.onNavigateToProjectPicker : undefined}
+          onNavigateToDeveloperSettings={
+            visibility.showDeveloperSettingsShortcut ? props.onNavigateToDeveloperSettings : undefined
           }
+          className="border-b-0 bg-[#08576E] pb-2"
         />
         <ScrollView contentContainerStyle={{ paddingBottom: 120 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
             <View className="mb-5" testID="dashboard-screen__project_summary_section">
-              <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Active Project
-              </Text>
-              <Text className="mt-2 text-3xl font-semibold text-slate-900">
+              <Text className="text-[32px] leading-9 font-semibold text-[#0D2630]">
                 {output.projectSummaryCard.title}
               </Text>
-              <Text className="mt-1 text-sm text-slate-500">
+              <Text className="mt-2 text-base leading-6 text-[#577783]">
                 {[
                   output.projectSummaryCard.todayLabel,
                   output.projectSummaryCard.elapsedDayLabel,
                   `${output.projectSummaryCard.weatherIconLabel} ${output.projectSummaryCard.weatherTemperatureLabel}`,
                 ].join(" · ")}
               </Text>
-
-              <View className="mt-4 rounded-3xl bg-white p-4">
-                <Text className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  This Week&apos;s Critical Dates
-                </Text>
-                {output.projectSummaryCard.criticalDates.length > 0 ? (
-                  <View className="mt-3 gap-3">
-                    {output.projectSummaryCard.criticalDates.map((item) => (
-                      <View
-                        key={item.id}
-                        className="flex-row items-start justify-between rounded-2xl bg-slate-50 px-3 py-3"
-                      >
-                        <View className="mr-3 flex-1">
-                          <Text className="text-sm font-semibold text-slate-900">{item.title}</Text>
-                          <Text className="mt-1 text-xs text-slate-500">{item.subtitle}</Text>
-                        </View>
-                        <Text className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          {item.dateLabel}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <View className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
-                    <Text className="text-sm text-slate-500">
-                      No critical dates flagged for this week yet.
-                    </Text>
-                  </View>
-                )}
-              </View>
             </View>
           ) : (
-            <View className="mb-4 rounded-3xl border border-dashed border-slate-200 bg-white px-4 py-4">
-              <Text className="text-sm font-medium text-slate-600">
+            <View className="mb-4 rounded-3xl border border-dashed border-[#A8D3E0] bg-white px-4 py-4">
+              <Text className="text-base leading-6 font-medium text-[#577783]">
                 Select a project to view the active project summary and queue overview.
               </Text>
             </View>
           )}
 
+          {output.projectSummaryCard ? (
+            <View className="mb-5">
+              <Text className="mb-3 text-base font-semibold uppercase tracking-wider text-[#497080]">
+                This Week&apos;s Critical Dates
+              </Text>
+              {output.projectSummaryCard.criticalDates.length > 0 ? (
+                <View className="gap-3">
+                  {output.projectSummaryCard.criticalDates.map((item) => (
+                    <View
+                      key={item.id}
+                      className="flex-row items-start justify-between rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4"
+                    >
+                      <View className="mr-3 flex-1">
+                        <Text className="text-base font-semibold text-[#0D2630]">{item.title}</Text>
+                        <Text className="mt-1 text-sm leading-5 text-[#577783]">{item.subtitle}</Text>
+                      </View>
+                      <Text className="text-sm font-semibold uppercase tracking-wide text-[#0A728F]">
+                        {item.dateLabel}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className="rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4">
+                  <Text className="text-base leading-6 text-[#577783]">
+                    No critical dates flagged for this week yet.
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : null}
+
           {output.projectSummaryCard && output.queueDashboard ? (
             <View className="mb-5" testID="dashboard-screen__queue_dashboard">
-              <Text className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
+              <Text className="mb-3 text-base font-semibold uppercase tracking-wider text-[#497080]">
                 Queue Overview
               </Text>
               <View className="gap-4">
                 {output.queueDashboard.groups.map((group) => (
                   <View key={group.id}>
-                    <Text className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    <Text className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#497080]">
                       {group.title}
                     </Text>
                     <View className="flex-row gap-2">
@@ -130,12 +115,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                               launchSource: "activity_dashboard",
                             })
                           }
-                          className="flex-1 rounded-2xl bg-white px-3 py-4"
+                          className="min-w-0 flex-1 rounded-2xl border border-[#C8E6EF] bg-white px-3 py-4"
                         >
-                          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                          <Text className="text-sm font-semibold uppercase tracking-wide text-[#497080]">
                             {cell.title}
                           </Text>
-                          <Text className="mt-2 text-2xl font-semibold text-slate-900">
+                          <Text className="mt-2 text-[28px] leading-8 font-semibold text-[#0D2630]">
                             {cell.countLabel}
                           </Text>
                         </Pressable>
@@ -148,66 +133,26 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           ) : null}
 
           <View className="mb-4">
-            <Text className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-500">
+            <Text className="mb-2 text-base font-semibold uppercase tracking-wider text-[#497080]">
               Recent Activity
             </Text>
             <View className="gap-3">
               {output.activityItems.length > 0 ? (
                 output.activityItems.map((item) => (
-                  <Pressable
+                  <ActivityStyleRowCard
                     key={item.id}
                     testID={`dashboard-screen__activity_${item.id}`}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    metaLabel={item.timestampLabel}
+                    badgeLabel={item.statusLabel}
+                    imageUri={item.previewPhotoUri}
                     onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                    className="overflow-hidden rounded-2xl bg-white"
-                  >
-                    {item.previewPhotoUri ? (
-                      <View className="flex-row">
-                        <View
-                          testID={`dashboard-screen__activity_${item.id}:thumbnail`}
-                          className="w-24 bg-slate-100"
-                        >
-                          <Image
-                            source={{ uri: item.previewPhotoUri }}
-                            className="h-full w-full"
-                            resizeMode="cover"
-                          />
-                        </View>
-                        <View className="min-w-0 flex-1 p-4">
-                          <View className="flex-row items-start justify-between">
-                            <View className="mr-4 flex-1">
-                              <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
-                              <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
-                            </View>
-                            <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                              {item.statusLabel}
-                            </Text>
-                          </View>
-                          <Text className="mt-3 text-xs font-medium text-slate-400">
-                            {item.timestampLabel}
-                          </Text>
-                        </View>
-                      </View>
-                    ) : (
-                      <View className="p-4">
-                        <View className="flex-row items-start justify-between">
-                          <View className="mr-4 flex-1">
-                            <Text className="text-base font-semibold text-slate-900">{item.title}</Text>
-                            <Text className="mt-1 text-sm text-slate-500">{item.subtitle}</Text>
-                          </View>
-                          <Text className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                            {item.statusLabel}
-                          </Text>
-                        </View>
-                        <Text className="mt-3 text-xs font-medium text-slate-400">
-                          {item.timestampLabel}
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
+                  />
                 ))
               ) : (
-                <View className="rounded-2xl bg-white p-4">
-                  <Text className="text-sm text-slate-500">
+                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
+                  <Text className="text-base leading-6 text-[#577783]">
                     {output.activeProject
                       ? "No recent activity for the current project yet."
                       : "Select a project to view recent activity."}
@@ -237,15 +182,6 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </View>
           ) : null}
         </ScrollView>
-        {visibility.showCreateTaskFab ? (
-          <Pressable
-            testID="dashboard-screen__fab_open_camera"
-            onPress={props.onNavigateToCreateTask}
-            className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-slate-900 shadow-lg"
-          >
-            <Ionicons name="camera-outline" size={24} color="#ffffff" />
-          </Pressable>
-        ) : null}
       </View>
     </SafeAreaView>
   );

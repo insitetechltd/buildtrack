@@ -59,7 +59,7 @@ describe("Activity home integration", () => {
         },
         projectSummaryCard: {
           title: "North Tower",
-          todayLabel: "Today · Jul 4",
+          todayLabel: "Saturday · Jul 4",
           elapsedDayLabel: "Day 185",
           weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",
@@ -132,7 +132,7 @@ describe("Activity home integration", () => {
 
     expect(screen.getByTestId("dashboard-screen__project_summary_section")).toBeTruthy();
     expect(screen.getAllByText("North Tower").length).toBeGreaterThan(0);
-    expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(screen.getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-2");
@@ -149,9 +149,7 @@ describe("Activity home integration", () => {
       launchBucket: "new",
       launchSource: "activity_dashboard",
     });
-
-    fireEvent.press(screen.getByTestId("dashboard-screen__header_project_picker"));
-    expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
+    expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
 

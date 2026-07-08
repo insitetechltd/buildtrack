@@ -59,6 +59,12 @@ function formatCalendarLabel(date: Date): string {
   });
 }
 
+function formatWeekdayLabel(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+  });
+}
+
 function formatStatusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
@@ -478,7 +484,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     const resolvedProjectSummaryCard = resolvedActiveProject
       ? {
           title: resolvedActiveProject.name,
-          todayLabel: `Today · ${formatCalendarLabel(today)}`,
+          todayLabel: `${formatWeekdayLabel(today)} · ${formatCalendarLabel(today)}`,
           elapsedDayLabel: formatElapsedDayLabel(resolvedActiveProject.startDate),
           weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",

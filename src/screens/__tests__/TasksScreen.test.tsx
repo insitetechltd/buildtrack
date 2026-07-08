@@ -9,16 +9,18 @@ jest.mock("@/components/AppScreenHeader", () => {
 
   return function MockAppScreenHeader({
     title,
+    titleNode,
     rightSlot,
     className,
   }: {
     title: string;
+    titleNode?: React.ReactNode;
     rightSlot?: React.ReactNode;
     className?: string;
   }) {
     return (
       <View testID="app-screen-header__root" className={className}>
-        <Text>{title}</Text>
+        {titleNode ? titleNode : <Text>{title}</Text>}
         {rightSlot}
         <Pressable testID="app-screen-header__profile-trigger">
           <Text>Profile</Text>
@@ -341,12 +343,15 @@ describe("TasksScreen", () => {
     expect(screen.queryByTestId("tasks-screen__header_profile")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__header_project_picker")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__header_developer_settings")).toBeNull();
+    expect(screen.getByTestId("brand-header-title")).toBeTruthy();
+    expect(screen.getByText("TASKR")).toBeTruthy();
+    expect(screen.getByText("Tasks")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__fab_create_task")).toBeNull();
 
-    fireEvent.press(screen.getByTestId("tasks-screen__fab_create_task"));
-    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
     expect(onNavigateToProfile).not.toHaveBeenCalled();
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
     expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
 
   it("updates the visible list when queue and bucket filters change", () => {

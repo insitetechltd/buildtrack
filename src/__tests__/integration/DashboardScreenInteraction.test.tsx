@@ -54,7 +54,7 @@ describe("DashboardScreen Interactions", () => {
         },
         projectSummaryCard: {
           title: "North Tower",
-          todayLabel: "Today · Jul 4",
+          todayLabel: "Saturday · Jul 4",
           elapsedDayLabel: "Day 185",
           weatherIconLabel: "☁️",
           weatherTemperatureLabel: "28°C",
@@ -132,7 +132,7 @@ describe("DashboardScreen Interactions", () => {
       />
     );
 
-    expect(getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(queryByText("Partly Cloudy")).toBeNull();
     expect(queryByTestId("dashboard-screen__weather_tile")).toBeNull();
     expect(getByTestId("app-screen-header__profile-trigger")).toBeTruthy();

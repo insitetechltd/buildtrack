@@ -39,8 +39,9 @@ import { useCompanyStore } from "../state/companyStore";
 import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
+import AppScreenHeader from "../components/AppScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ModalHandle from "../components/ModalHandle";
-import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import ScreenSection from "../components/ui/ScreenSection";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
@@ -112,8 +113,8 @@ const InputField = ({
   error?: string; 
   children: React.ReactNode;
 }) => (
-  <View className="mb-4">
-    <Text className="text-base font-semibold text-gray-700 mb-2">
+  <View className="mb-5">
+    <Text className="mb-3 text-sm font-semibold uppercase tracking-[0.14em] text-[#577783]">
       {label} {required && <Text className="text-red-500">*</Text>}
     </Text>
     {children}
@@ -392,6 +393,11 @@ function CreateTaskEditorScreen({
   const handleCancel = () => onNavigateBack();
   const handleClearForm = () => {};
   const saveFormDataToStorage = async () => {};
+  const sectionCardClassName = "mb-5 rounded-[28px] border border-[#C8E6EF] bg-[#F8FCFF] py-4";
+  const headerSubtitle = editTaskId ? "Task editor" : "Create task";
+  const submitLabel = editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton;
+  const isSubmitDisabled =
+    isSubmitting || (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task");
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
@@ -452,27 +458,34 @@ function CreateTaskEditorScreen({
   }
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
-      
-      {/* Standard Header */}
-      <ModernScreenHeader 
-        title={context.headerTitle}
-        showBackButton={true}
-        onBackPress={onNavigateBack}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
-      />
+    <SafeAreaView
+      testID="create-task__root"
+      edges={['bottom', 'left', 'right']}
+      className="flex-1 bg-[#E7F4F8]"
+    >
+      <StatusBar style="light" />
+
+      <View testID="create-task__header" className="bg-[#08576E]">
+        <AppScreenHeader
+          title={context.headerTitle}
+          titleNode={<BrandHeaderTitle subtitle={headerSubtitle} />}
+          showBackButton
+          onBackPress={onNavigateBack}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
+      </View>
 
       {/* Parent Task Info Banner */}
       {context.parentBanner && (
-        <View className="bg-blue-50 border-b border-blue-100 px-6 py-3">
+        <View className="border-b border-[#C8E6EF] bg-[#D7EEF5] px-4 py-3">
           <View className="flex-row items-center">
-            <Ionicons name="link-outline" size={18} color="#3b82f6" />
-            <Text className="text-base text-gray-600 ml-2">
+            <Ionicons name="link-outline" size={18} color="#0D6E87" />
+            <Text className="ml-2 text-sm font-medium uppercase tracking-[0.12em] text-[#577783]">
               {context.parentBanner.label}
             </Text>
-            <Text className="text-base font-semibold text-gray-900 flex-1" numberOfLines={1}>
+            <Text className="flex-1 text-base font-semibold text-[#0D2630]" numberOfLines={1}>
               {context.parentBanner.title}
             </Text>
           </View>
@@ -485,9 +498,9 @@ function CreateTaskEditorScreen({
       >
         <ScrollView 
           ref={scrollViewRef}
-          className="flex-1 py-4"
+          className="flex-1"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingTop: 12, paddingBottom: 180 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -580,12 +593,12 @@ function CreateTaskEditorScreen({
           {shouldShowPostCaptureRoutingSheet ? (
             <View
               testID="create-task__post_capture_routing_sheet"
-              className="mb-6 rounded-3xl border border-gray-200 bg-white p-4"
+              className="mx-4 mb-6 rounded-[28px] border border-[#C8E6EF] bg-[#F8FCFF] p-5"
             >
-              <Text className="text-lg font-semibold text-gray-900">
+              <Text className="text-[24px] font-semibold text-[#0D2630]">
                 What should this photo become?
               </Text>
-              <Text className="mt-1 text-sm text-gray-500">
+              <Text className="mt-1 text-base leading-6 text-[#577783]">
                 Choose where this capture should go before continuing.
               </Text>
 
@@ -649,15 +662,15 @@ function CreateTaskEditorScreen({
             </View>
           ) : null}
 
-          <ScreenSection title="Task Basics" subtitle="Start with the essentials">
+          <ScreenSection title="Task Basics" subtitle="Start with the essentials" className={sectionCardClassName}>
             <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
                 testID="createTask-title"
                 ref={titleInputRef}
                 accessibilityState={{ selected: activeFormFocusTarget === "title" }}
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
-                  errors.title ? "border-red-300" : "border-gray-300"
+                  "rounded-2xl border border-[#C8E6EF] bg-white px-4 py-4 text-lg text-[#0D2630]",
+                  errors.title ? "border-red-300" : "border-[#C8E6EF]"
                 )}
                 placeholder={t.createTask.titlePlaceholder}
                 value={formData.title}
@@ -680,8 +693,8 @@ function CreateTaskEditorScreen({
                 ref={descriptionInputRef}
                 accessibilityState={{ selected: activeFormFocusTarget === "description" }}
                 className={cn(
-                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
-                  errors.description ? "border-red-300" : "border-gray-300"
+                  "rounded-2xl border bg-white px-4 py-4 text-lg text-[#0D2630]",
+                  errors.description ? "border-red-300" : "border-[#C8E6EF]"
                 )}
                 placeholder={t.createTask.descriptionPlaceholder}
                 value={formData.description}
@@ -712,14 +725,14 @@ function CreateTaskEditorScreen({
                       testID={`createTask-priority-${priority}`}
                       onPress={() => handlePriorityChange(priority)}
                       className={cn(
-                        "rounded-full border px-4 py-2.5",
-                        isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
+                        "rounded-full border px-4 py-3",
+                        isSelected ? "border-[#0D6E87] bg-[#D7EEF5]" : "border-[#C8E6EF] bg-white"
                       )}
                     >
                       <Text
                         className={cn(
                           "text-sm font-medium",
-                          isSelected ? "text-blue-700" : "text-gray-700"
+                          isSelected ? "text-[#08576E]" : "text-[#35515B]"
                         )}
                       >
                         {t.tasks[priority as keyof typeof t.tasks] || priority}
@@ -731,18 +744,22 @@ function CreateTaskEditorScreen({
             </InputField>
           </ScreenSection>
 
-          <ScreenSection title="Assignment" subtitle="Confirm the project and assignees">
+          <ScreenSection
+            title="Assignment"
+            subtitle="Confirm the project and assignees"
+            className={sectionCardClassName}
+          >
             <InputField label={t.createTask.project} error={errors.projectId}>
               <View
                 className={cn(
-                  "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
-                  errors.projectId ? "border-red-300" : "border-gray-300"
+                  "flex-row items-center justify-between rounded-2xl border bg-[#EEF7FA] px-4 py-4",
+                  errors.projectId ? "border-red-300" : "border-[#C8E6EF]"
                 )}
               >
                 <Text
                   className={cn(
                     "flex-1 text-lg",
-                    context.activeProjectId ? "text-gray-900" : "text-gray-500"
+                    context.activeProjectId ? "text-[#0D2630]" : "text-[#577783]"
                   )}
                 >
                   {context.activeProjectId
@@ -762,16 +779,16 @@ function CreateTaskEditorScreen({
                     onPress={handleOpenUserPicker}
                     disabled={isDisabled}
                     className={cn(
-                      "border rounded-lg px-3 py-3 flex-row items-center justify-between",
-                      context.assigneesLocked ? "bg-gray-100" : "bg-white",
-                      errors.assignedTo ? "border-red-300" : "border-gray-300",
+                      "flex-row items-center justify-between rounded-2xl border px-4 py-4",
+                      context.assigneesLocked ? "bg-[#EEF7FA]" : "bg-white",
+                      errors.assignedTo ? "border-red-300" : "border-[#C8E6EF]",
                       isDisabled && "opacity-50"
                     )}
                   >
                     <Text
                       className={cn(
                         "text-lg",
-                        context.assigneesLocked ? "text-gray-500" : "text-gray-900"
+                        context.assigneesLocked ? "text-[#577783]" : "text-[#0D2630]"
                       )}
                     >
                       {isLoadingUsers
@@ -795,8 +812,10 @@ function CreateTaskEditorScreen({
             </InputField>
 
             {selectedUsers.length > 0 && (
-              <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
-                <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
+              <View className="mb-4 rounded-2xl border border-[#C8E6EF] bg-[#EEF7FA] p-4">
+                <Text className="mb-2 text-sm font-semibold uppercase tracking-[0.12em] text-[#577783]">
+                  {t.createTask.selectedUsers}
+                </Text>
                 <View className="flex-row flex-wrap">
                   {selectedUsers.map((userId) => {
                     const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
@@ -805,9 +824,9 @@ function CreateTaskEditorScreen({
                     return (
                       <View
                         key={userId}
-                        className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                        className="mb-2 mr-2 flex-row items-center rounded-full bg-[#D7EEF5] px-3 py-1.5"
                       >
-                        <Text className="text-blue-900 text-sm font-medium mr-1">{selectedUser.name}</Text>
+                        <Text className="mr-1 text-sm font-medium text-[#08576E]">{selectedUser.name}</Text>
                         {!context.assigneesLocked ? (
                           <Pressable onPress={() => toggleUserSelection(userId)}>
                             <Ionicons name="close-circle" size={16} color="#1e40af" />
@@ -821,7 +840,7 @@ function CreateTaskEditorScreen({
             )}
           </ScreenSection>
 
-          <ScreenSection title="Schedule" subtitle="Set the target date">
+          <ScreenSection title="Schedule" subtitle="Set the target date" className={sectionCardClassName}>
             <InputField label={t.tasks.dueDate} error={errors.dueDate}>
               <Pressable
                 onPress={async () => {
@@ -829,23 +848,23 @@ function CreateTaskEditorScreen({
                   setShowDatePicker(!showDatePicker);
                 }}
                 className={cn(
-                  "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                  showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
+                  "flex-row items-center justify-between rounded-2xl border-2 bg-white px-4 py-4",
+                  showDatePicker ? "border-[#0D6E87]" : errors.dueDate ? "border-red-300" : "border-[#C8E6EF]"
                 )}
               >
-                <Text className={cn("text-lg", showDatePicker ? "text-blue-600" : "text-gray-900")}>
+                <Text className={cn("text-lg", showDatePicker ? "text-[#08576E]" : "text-[#0D2630]")}>
                   {dateFormatter.formatDateWithWeekday(formData.dueDate)}
                 </Text>
                 <Ionicons
                   name={showDatePicker ? "calendar" : "calendar-outline"}
                   size={20}
-                  color={showDatePicker ? "#3b82f6" : "#6b7280"}
+                  color={showDatePicker ? "#08576E" : "#577783"}
                 />
               </Pressable>
             </InputField>
 
             {showDatePicker && (
-              <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
+              <View className="mb-4 overflow-hidden rounded-2xl border-2 border-[#0D6E87] bg-white">
                 <DateTimePicker
                   value={formData.dueDate}
                   mode="date"
@@ -860,10 +879,10 @@ function CreateTaskEditorScreen({
                   textColor="#000000"
                   style={{ height: 200 }}
                 />
-                <View className="flex-row justify-end p-3 border-t border-gray-200">
+                <View className="flex-row justify-end border-t border-[#C8E6EF] p-3">
                   <Pressable
                     onPress={() => setShowDatePicker(false)}
-                    className="bg-blue-600 px-6 py-2 rounded-lg"
+                    className="rounded-full bg-[#0D6E87] px-6 py-2.5"
                   >
                     <Text className="text-white font-semibold">{t.common.done}</Text>
                   </Pressable>
@@ -872,13 +891,17 @@ function CreateTaskEditorScreen({
             )}
           </ScreenSection>
 
-          <ScreenSection title="More Details" subtitle="Optional context for downstream work">
+          <ScreenSection
+            title="More Details"
+            subtitle="Optional context for downstream work"
+            className={sectionCardClassName}
+          >
             <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
                 testID="createTask-taskReference"
                 ref={taskReferenceInputRef}
                 accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
-                className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
+                className="rounded-2xl border border-[#C8E6EF] bg-white px-4 py-4 text-lg text-[#0D2630]"
                 placeholder={t.createTask.taskReferencePlaceholder}
                 value={formData.taskReference}
                 onChangeText={handleTaskReferenceChange}
@@ -897,9 +920,9 @@ function CreateTaskEditorScreen({
             <InputField label={t.createTask.billingStatus}>
               <Pressable
                 onPress={() => setShowBillingStatusPicker(true)}
-                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
+                className="flex-row items-center justify-between rounded-2xl border border-[#C8E6EF] bg-white px-4 py-4"
               >
-                <Text className="text-lg text-gray-900">
+                <Text className="text-lg text-[#0D2630]">
                   {formData.billingStatus === "billable"
                     ? t.createTask.billable
                     : formData.billingStatus === "non_billable"
@@ -916,9 +939,9 @@ function CreateTaskEditorScreen({
                   await saveFormDataToStorage();
                   setShowCategoryPicker(true);
                 }}
-                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
+                className="flex-row items-center justify-between rounded-2xl border border-[#C8E6EF] bg-white px-4 py-4"
               >
-                <Text className="text-lg text-gray-900 flex-1">
+                <Text className="flex-1 text-lg text-[#0D2630]">
                   {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
                 </Text>
                 <Ionicons name="chevron-down" size={20} color="#6b7280" />
@@ -939,14 +962,22 @@ function CreateTaskEditorScreen({
         testID="createTask-submit-focus-target"
         accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
       >
-        <PrimaryActionBar
-          primaryLabel={editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
-          onPrimaryPress={handleSubmit}
-          isPrimaryDisabled={
-            isSubmitting ||
-            (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
-          }
-        />
+        <View
+          testID="create-task__bottom_action_bar"
+          className="border-t border-[#C8E6EF] bg-[#E7F4F8] px-4 pb-28 pt-4"
+        >
+          <Pressable
+            testID="createTask-submit"
+            onPress={handleSubmit}
+            disabled={isSubmitDisabled}
+            className={cn(
+              "h-14 items-center justify-center rounded-2xl bg-[#2563EB]",
+              isSubmitDisabled && "opacity-50"
+            )}
+          >
+            <Text className="text-lg font-semibold text-white">{submitLabel}</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Priority Picker Modal */}

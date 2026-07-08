@@ -214,6 +214,39 @@ jest.mock('../../components/ProfileMenu', () => {
   return { __esModule: true, default: (props: any) => <View testID="ProfileMenu" {...props} /> };
 });
 
+jest.mock('../../components/AppScreenHeader', () => {
+  const React = require('react');
+  const { Pressable, Text, View } = require('react-native');
+
+  return function MockAppScreenHeader({
+    title,
+    subtitle,
+    showBackButton,
+    onBackPress,
+    showProfileTrigger = true,
+    className,
+    rightSlot,
+  }: any) {
+    return (
+      <View testID="app-screen-header__root" className={className}>
+        {showBackButton ? (
+          <Pressable testID="app-screen-header__back" onPress={onBackPress}>
+            <Text>Back</Text>
+          </Pressable>
+        ) : null}
+        <Text>{title}</Text>
+        {subtitle ? <Text>{subtitle}</Text> : null}
+        {rightSlot}
+        {showProfileTrigger ? (
+          <Pressable testID="app-screen-header__profile-trigger">
+            <Text>Profile</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  };
+});
+
 jest.mock('../../api/supabase', () => ({
   checkSupabaseConnection: jest.fn().mockResolvedValue(true),
 }));
@@ -384,6 +417,18 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(screen.queryByText('Show in This Week’s Critical Dates')).toBeNull();
     expect(screen.queryByTestId('create-task__toggle_critical_this_week')).toBeNull();
+  });
+
+  it('matches the main shell styling for header, background, and bottom action spacing', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
+    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('create-task__bottom_action_bar').props.className).toContain('pb-28');
   });
 
   it('advances through the create-task text fields in order and treats the submit action as the final target', () => {

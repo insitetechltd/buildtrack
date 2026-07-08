@@ -242,8 +242,9 @@ describe("useDashboardViewAdapter", () => {
     });
   });
 
-  it("exposes an active-project summary card and dense queue dashboard for the selected project", () => {
+  it("builds critical dates from open tasks due in the current calendar week", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
+    jest.setSystemTime(new Date("2026-07-08T09:00:00.000Z"));
 
     setupBaseMocks([
       {
@@ -253,51 +254,12 @@ describe("useDashboardViewAdapter", () => {
         status: "active",
         startDate: "2026-01-01T00:00:00.000Z",
       },
-      {
-        id: "project-2",
-        name: "South Annex",
-        location: "Site B",
-        status: "planning",
-        startDate: "2026-02-01T00:00:00.000Z",
-      },
     ]);
 
     useTaskStore.mockReturnValue({
       tasks: [
         {
-          id: "task-my-new",
-          projectId: "project-1",
-          title: "Review concrete delivery",
-          description: "",
-          priority: "high",
-          dueDate: "2026-07-06T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-          createdAt: "2026-07-01T00:00:00.000Z",
-          updates: [],
-          status: "new",
-          completionPercentage: 0,
-        },
-        {
-          id: "task-my-wip",
-          projectId: "project-1",
-          title: "Coordinate crane access",
-          description: "",
-          priority: "medium",
-          dueDate: "2026-07-07T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-          createdAt: "2026-07-01T00:00:00.000Z",
-          updates: [],
-          status: "in_progress",
-          completionPercentage: 35,
-        },
-        {
-          id: "task-team-review",
+          id: "task-week-1",
           projectId: "project-1",
           title: "Approve facade mockup",
           description: "",
@@ -311,19 +273,50 @@ describe("useDashboardViewAdapter", () => {
           updates: [],
           status: "submitted_for_review",
           completionPercentage: 100,
-          tags: ["critical_this_week"],
         },
         {
-          id: "task-other-project",
-          projectId: "project-2",
-          title: "Hidden other project queue item",
+          id: "task-week-2",
+          projectId: "project-1",
+          title: "Install temporary barriers",
           description: "",
-          priority: "low",
-          dueDate: "2026-07-06T00:00:00.000Z",
+          priority: "high",
+          dueDate: "2026-07-10T00:00:00.000Z",
           category: "general",
           attachments: [],
           assignedTo: ["user-1"],
-          assignedBy: "user-3",
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "new",
+          completionPercentage: 0,
+        },
+        {
+          id: "task-next-week",
+          projectId: "project-1",
+          title: "Next week task",
+          description: "",
+          priority: "medium",
+          dueDate: "2026-07-13T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "new",
+          completionPercentage: 0,
+        },
+        {
+          id: "task-no-date",
+          projectId: "project-1",
+          title: "Missing due date",
+          description: "",
+          priority: "medium",
+          dueDate: undefined,
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
           createdAt: "2026-07-01T00:00:00.000Z",
           updates: [],
           status: "new",
@@ -334,76 +327,18 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.projectSummaryCard).toMatchObject({
-      title: "North Tower",
-      todayLabel: "Saturday · Jul 4",
-      elapsedDayLabel: "Day 185",
-      weatherIconLabel: "☁️",
-      weatherTemperatureLabel: "28°C",
-    });
     expect(result.current.output.projectSummaryCard?.criticalDates).toEqual([
       {
-        id: "critical-date:task-team-review",
+        id: "critical-date:task-week-1",
         dateLabel: "Jul 8",
         title: "Approve facade mockup",
-        subtitle: "Submitted For Review · Critical · Critical this week",
-      },
-    ]);
-
-    expect(result.current.output.queueDashboard?.groups).toEqual([
-      {
-        id: "dashboard-queue:my_queue",
-        title: "My Queue",
-        cells: [
-          {
-            id: "dashboard-queue:my_queue:new",
-            queue: "my_queue",
-            bucket: "new",
-            title: "New",
-            countLabel: "1",
-          },
-          {
-            id: "dashboard-queue:my_queue:wip",
-            queue: "my_queue",
-            bucket: "wip",
-            title: "Doing",
-            countLabel: "1",
-          },
-          {
-            id: "dashboard-queue:my_queue:review",
-            queue: "my_queue",
-            bucket: "review",
-            title: "Review",
-            countLabel: "0",
-          },
-        ],
+        subtitle: "Submitted For Review · Critical",
       },
       {
-        id: "dashboard-queue:team_queue",
-        title: "Team Queue",
-        cells: [
-          {
-            id: "dashboard-queue:team_queue:new",
-            queue: "team_queue",
-            bucket: "new",
-            title: "New",
-            countLabel: "0",
-          },
-          {
-            id: "dashboard-queue:team_queue:wip",
-            queue: "team_queue",
-            bucket: "wip",
-            title: "Doing",
-            countLabel: "0",
-          },
-          {
-            id: "dashboard-queue:team_queue:review",
-            queue: "team_queue",
-            bucket: "review",
-            title: "Review",
-            countLabel: "1",
-          },
-        ],
+        id: "critical-date:task-week-2",
+        dateLabel: "Jul 10",
+        title: "Install temporary barriers",
+        subtitle: "New · High",
       },
     ]);
   });

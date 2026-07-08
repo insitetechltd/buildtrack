@@ -65,6 +65,22 @@ function formatWeekdayLabel(date: Date): string {
   });
 }
 
+function startOfLocalWeek(date: Date): Date {
+  const start = new Date(date);
+  const currentDay = start.getDay();
+  const daysFromMonday = (currentDay + 6) % 7;
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - daysFromMonday);
+  return start;
+}
+
+function endOfLocalWeek(date: Date): Date {
+  const end = startOfLocalWeek(date);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
 function formatStatusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
@@ -452,26 +468,32 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       }
     });
 
+    const today = new Date();
+    const weekStart = startOfLocalWeek(today);
+    const weekEnd = endOfLocalWeek(today);
+
     const criticalDates = [...activeProjectOpenTasks]
       .filter((task) => {
-        const hasCriticalTag = Array.isArray(task.tags) && task.tags.includes("critical_this_week");
-        return hasCriticalTag;
+        if (!task.dueDate) {
+          return false;
+        }
+
+        const parsedDueDate = new Date(task.dueDate);
+        if (Number.isNaN(parsedDueDate.getTime())) {
+          return false;
+        }
+
+        return parsedDueDate >= weekStart && parsedDueDate <= weekEnd;
       })
       .map((task) => {
-        const parsedDueDate = task.dueDate ? new Date(task.dueDate) : null;
-        const isValidDueDate = Boolean(parsedDueDate && !Number.isNaN(parsedDueDate.getTime()));
-        const dueTimestamp = isValidDueDate ? parsedDueDate!.getTime() : Number.MAX_SAFE_INTEGER;
-        const isOverdue = isValidDueDate ? parsedDueDate!.getTime() < Date.now() : false;
-
+        const parsedDueDate = new Date(task.dueDate!);
         return {
           task,
-          dateLabel: isValidDueDate ? formatCalendarLabel(parsedDueDate!) : "This week",
-          sortTimestamp: isOverdue ? 0 : dueTimestamp,
+          dateLabel: formatCalendarLabel(parsedDueDate),
+          sortTimestamp: parsedDueDate.getTime(),
         };
       })
-      .sort((left, right) => {
-        return left.sortTimestamp - right.sortTimestamp;
-      })
+      .sort((left, right) => left.sortTimestamp - right.sortTimestamp)
       .slice(0, 3)
       .map(({ task, dateLabel }) => ({
         id: `critical-date:${task.id}`,
@@ -479,8 +501,6 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         title: task.title,
         subtitle: buildCriticalDateSubtitle(task),
       }));
-
-    const today = new Date();
     const resolvedProjectSummaryCard = resolvedActiveProject
       ? {
           title: resolvedActiveProject.name,

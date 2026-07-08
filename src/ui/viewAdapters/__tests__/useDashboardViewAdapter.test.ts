@@ -242,7 +242,7 @@ describe("useDashboardViewAdapter", () => {
     });
   });
 
-  it("exposes an active-project summary card and dense queue dashboard for the selected project", () => {
+  it("exposes an active-project summary card with week-based critical dates and a dense queue dashboard for the selected project", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -302,7 +302,7 @@ describe("useDashboardViewAdapter", () => {
           title: "Approve facade mockup",
           description: "",
           priority: "critical",
-          dueDate: "2026-07-08T00:00:00.000Z",
+          dueDate: "2026-07-05T00:00:00.000Z",
           category: "general",
           attachments: [],
           assignedTo: ["user-2"],
@@ -311,7 +311,6 @@ describe("useDashboardViewAdapter", () => {
           updates: [],
           status: "submitted_for_review",
           completionPercentage: 100,
-          tags: ["critical_this_week"],
         },
         {
           id: "task-other-project",
@@ -344,9 +343,9 @@ describe("useDashboardViewAdapter", () => {
     expect(result.current.output.projectSummaryCard?.criticalDates).toEqual([
       {
         id: "critical-date:task-team-review",
-        dateLabel: "Jul 8",
+        dateLabel: "Jul 5",
         title: "Approve facade mockup",
-        subtitle: "Submitted For Review · Critical · Critical this week",
+        subtitle: "Submitted For Review · Critical",
       },
     ]);
 

@@ -393,6 +393,7 @@ function CreateTaskEditorScreen({
   const handleCancel = () => onNavigateBack();
   const handleClearForm = () => {};
   const saveFormDataToStorage = async () => {};
+  const headerSubtitle = editTaskId ? "Task editor" : "Create task";
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
@@ -453,17 +454,24 @@ function CreateTaskEditorScreen({
   }
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
-      
-      {/* Standard Header */}
-      <ModernScreenHeader 
-        title={context.headerTitle}
-        showBackButton={true}
-        onBackPress={onNavigateBack}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
-      />
+    <SafeAreaView
+      testID="create-task__root"
+      edges={['bottom', 'left', 'right']}
+      className="flex-1 bg-[#E7F4F8]"
+    >
+      <StatusBar style="light" />
+
+      <View testID="create-task__header" className="bg-[#08576E]">
+        <ModernScreenHeader
+          title={context.headerTitle}
+          subtitle={headerSubtitle}
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
+      </View>
 
       {/* Parent Task Info Banner */}
       {context.parentBanner && (

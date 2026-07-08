@@ -409,6 +409,19 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByTestId('createTask-submit-focus-target')).toBeTruthy();
   });
 
+  it('keeps the branded create-task shell styling while preserving the inline submit flow', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
+    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
+  });
+
   it('surfaces project-scoped location options with an add-new path', async () => {
     const screen = render(
       <NavigationContainer>
@@ -420,6 +433,33 @@ describe('CreateTaskScreen Integration', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Add new location')).toBeTruthy();
+    });
+  });
+
+  it('submits a trimmed custom location-on-site value through the create-task flow', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__location-picker-trigger'));
+    fireEvent.press(screen.getByTestId('create-task__location-option-add-new'));
+    fireEvent.changeText(screen.getByTestId('create-task__location-input'), '  Level 9 Rooftop  ');
+    fireEvent.press(screen.getByTestId('create-task__location-save'));
+
+    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Install guard rails');
+    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Complete level 2 edge protection');
+    fireEvent.press(screen.getByText('Create Task'));
+
+    await waitFor(() => {
+      expect(mockCreateTask).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Install guard rails',
+          description: 'Complete level 2 edge protection',
+          locationOnSite: 'Level 9 Rooftop',
+        }),
+      );
     });
   });
 

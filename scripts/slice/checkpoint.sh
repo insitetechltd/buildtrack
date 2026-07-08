@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/../.." >/dev/null 2>&1 && pwd -P)"
-cd "$ROOT_DIR"
-
 SLICE_ID="${1:-}"
 MESSAGE="${2:-}"
 
@@ -18,15 +14,21 @@ if ! command -v git >/dev/null 2>&1; then
   exit 3
 fi
 
-TOPLEVEL="$(git rev-parse --show-toplevel)"
-CURRENT_DIR="$(pwd -P)"
-case "$CURRENT_DIR" in
-  "$TOPLEVEL/.worktrees/"*) ;;
+TOPLEVEL="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$TOPLEVEL" ]; then
+  printf '%s\n' "checkpoint must run inside a git worktree" >&2
+  exit 4
+fi
+
+case "$TOPLEVEL" in
+  */.worktrees/*) ;;
   *)
     printf '%s\n' "checkpoint must run from a worktree under .worktrees/" >&2
     exit 10
     ;;
 esac
+
+cd "$TOPLEVEL"
 
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'HEAD')"
 if [ "$BRANCH" = "HEAD" ]; then

@@ -153,7 +153,7 @@ describe("Sprint 4 UI migration contracts", () => {
       },
       projectSummaryCard: {
         title: "North Tower",
-        todayLabel: "Today · Jul 4",
+        todayLabel: "Saturday · Jul 4",
         elapsedDayLabel: "Day 185",
         weatherIconLabel: "☁️",
         weatherTemperatureLabel: "28°C",

@@ -62,7 +62,7 @@ describe("DashboardScreen", () => {
       },
       projectSummaryCard: {
         title: "North Tower",
-        todayLabel: "Today · Jul 4",
+        todayLabel: "Saturday · Jul 4",
         elapsedDayLabel: "Day 185",
         weatherIconLabel: "☁️",
         weatherTemperatureLabel: "28°C",
@@ -134,7 +134,18 @@ describe("DashboardScreen", () => {
         ],
       },
       summaryPills: [],
-      draftItems: [],
+      draftItems: [
+        {
+          id: "draft:task-draft-1",
+          taskId: "task-draft-1",
+          title: "Draft inspection",
+          subtitle: "Pending notes",
+          timestampLabel: "Jul 4 at 8:30 AM",
+          statusLabel: "in progress",
+          density: "standard",
+          structuralState: "stale",
+        },
+      ],
       activityItems: [
         {
           id: "activity-1",
@@ -203,13 +214,14 @@ describe("DashboardScreen", () => {
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
     const onNavigateToDeveloperSettings = jest.fn();
+    const onNavigateToTaskDetail = jest.fn();
 
     const screen = render(
       <DashboardScreen
         onNavigateToTasks={onNavigateToTasks}
         onNavigateToCreateTask={onNavigateToCreateTask}
         onNavigateToProfile={onNavigateToProfile}
-        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToTaskDetail={onNavigateToTaskDetail}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
         onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       />,
@@ -222,13 +234,15 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
     expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
-    expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(screen.getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Active Project")).toBeNull();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:no-photo-icon")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__drafts_toggle")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__draft_item_task-draft-1")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__header_profile")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__header_project_picker")).toBeNull();
@@ -243,6 +257,10 @@ describe("DashboardScreen", () => {
 
     fireEvent.press(screen.getByTestId("dashboard-screen__activity_activity-1"));
     expect(screen.getByText("Photo-backed activity")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__drafts_toggle"));
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-draft-1");
 
     expect(onNavigateToProfile).not.toHaveBeenCalled();
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();

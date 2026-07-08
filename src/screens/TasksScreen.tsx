@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
@@ -39,6 +40,7 @@ export default function TasksScreen(props: TasksScreenProps) {
       <View className="flex-1">
         <AppScreenHeader
           title="Tasks"
+          titleNode={<BrandHeaderTitle subtitle="Tasks" />}
           showBackButton={Boolean(props.onNavigateBack)}
           onBackPress={props.onNavigateBack}
           showProfileTrigger={visibility.showProfileShortcut}
@@ -70,7 +72,7 @@ export default function TasksScreen(props: TasksScreenProps) {
                   testID="tasks-screen__search_count"
                   className="rounded-full bg-slate-100 px-3 py-1"
                 >
-                  <Text className="text-xs font-medium text-slate-700">{visibleTaskCount}</Text>
+                  <Text className="text-sm font-medium text-slate-700">{visibleTaskCount}</Text>
                 </View>
               }
             />
@@ -83,8 +85,8 @@ export default function TasksScreen(props: TasksScreenProps) {
               }
               className="flex-1 rounded-2xl bg-white px-4 py-3"
             >
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">Queue</Text>
-              <Text className="mt-1 text-sm font-medium text-slate-900">{selectedQueueLabel}</Text>
+              <Text className="text-sm font-semibold uppercase tracking-wide text-slate-500">Queue</Text>
+              <Text className="mt-1 text-base font-medium text-slate-900">{selectedQueueLabel}</Text>
             </Pressable>
             <Pressable
               testID="tasks-screen__filter_bucket"
@@ -93,8 +95,8 @@ export default function TasksScreen(props: TasksScreenProps) {
               }
               className="flex-1 rounded-2xl bg-white px-4 py-3"
             >
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500">Bucket</Text>
-              <Text className="mt-1 text-sm font-medium text-slate-900">{selectedBucketLabel}</Text>
+              <Text className="text-sm font-semibold uppercase tracking-wide text-slate-500">Bucket</Text>
+              <Text className="mt-1 text-base font-medium text-slate-900">{selectedBucketLabel}</Text>
             </Pressable>
           </View>
           {openFilterMenu === "queue" && output.filterControls ? (
@@ -111,7 +113,7 @@ export default function TasksScreen(props: TasksScreenProps) {
                     option.isSelected ? "bg-slate-100" : "bg-white",
                   )}
                 >
-                  <Text className="text-sm text-slate-900">{option.label}</Text>
+                  <Text className="text-base text-slate-900">{option.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -130,7 +132,7 @@ export default function TasksScreen(props: TasksScreenProps) {
                     option.isSelected ? "bg-slate-100" : "bg-white",
                   )}
                 >
-                  <Text className="text-sm text-slate-900">{option.label}</Text>
+                  <Text className="text-base text-slate-900">{option.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -163,23 +165,14 @@ export default function TasksScreen(props: TasksScreenProps) {
               testID="tasks-screen__empty_state"
               className="rounded-3xl bg-white px-4 py-5"
             >
-              <Text className="text-base font-semibold text-slate-900">No matching tasks</Text>
-              <Text className="mt-1 text-sm text-slate-500">
+              <Text className="text-lg font-semibold text-slate-900">No matching tasks</Text>
+              <Text className="mt-1 text-base text-slate-500">
                 Try a different queue, bucket, project, or search term.
               </Text>
             </View>
           )}
           <View className="h-24" />
         </ScrollView>
-        {visibility.showCreateTaskFab ? (
-          <Pressable
-            testID="tasks-screen__fab_create_task"
-            onPress={props.onNavigateToCreateTask}
-            className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-orange-500 shadow-lg"
-          >
-            <Ionicons name="add" size={28} color="#ffffff" />
-          </Pressable>
-        ) : null}
       </View>
     </SafeAreaView>
   );

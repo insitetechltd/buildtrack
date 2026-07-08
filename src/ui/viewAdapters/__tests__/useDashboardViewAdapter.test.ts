@@ -336,7 +336,7 @@ describe("useDashboardViewAdapter", () => {
 
     expect(result.current.output.projectSummaryCard).toMatchObject({
       title: "North Tower",
-      todayLabel: "Today · Jul 4",
+      todayLabel: "Saturday · Jul 4",
       elapsedDayLabel: "Day 185",
       weatherIconLabel: "☁️",
       weatherTemperatureLabel: "28°C",

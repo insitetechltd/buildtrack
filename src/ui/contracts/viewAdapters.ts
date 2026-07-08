@@ -1268,6 +1268,7 @@ export interface CreateTaskFormModel {
   category: string;
   dueDate: Date;
   criticalThisWeek: boolean;
+  locationOnSite: string;
   assignedTo: string[];
   projectId: string;
   attachments: any[]; // Or Attachment type
@@ -1299,6 +1300,13 @@ export interface CreateTaskScreenActivityModel {
   isUploading: boolean;
 }
 
+export interface CreateTaskLocationOptionModel {
+  id: string;
+  label: string;
+  value: string;
+  isAddNew?: boolean;
+}
+
 export interface CreateTaskScreenViewAdapterOutput {
   screenId: "CreateTaskScreen";
   readiness: NavigationScreenReadiness;
@@ -1320,6 +1328,10 @@ export interface CreateTaskScreenViewAdapterOutput {
     userSearchQuery: string;
     filteredUsers: CreateTaskAssignableUserModel[];
     selectedUserIds: string[];
+  };
+  locationPicker: {
+    projectId: string;
+    options: CreateTaskLocationOptionModel[];
   };
   projects: {
     availableProjects: Project[];

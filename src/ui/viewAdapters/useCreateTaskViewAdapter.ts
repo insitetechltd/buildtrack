@@ -23,6 +23,7 @@ export interface UseCreateTaskViewAdapterProps {
 }
 
 const FORM_DATA_STORAGE_KEY = '@createTask_formData';
+const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 
 function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
   return Boolean(
@@ -50,6 +51,45 @@ function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean)
   return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
 }
 
+function getProjectScopedLocationOptions(
+  tasks: Array<{ projectId?: string; locationOnSite?: string }>,
+  projectId: string,
+  currentLocationOnSite?: string,
+) {
+  const normalizedOptions = new Set<string>();
+
+  tasks.forEach((task) => {
+    if (task.projectId !== projectId) {
+      return;
+    }
+
+    const normalizedLocation = task.locationOnSite?.trim();
+    if (normalizedLocation) {
+      normalizedOptions.add(normalizedLocation);
+    }
+  });
+
+  const normalizedCurrentLocation = currentLocationOnSite?.trim();
+  if (normalizedCurrentLocation) {
+    normalizedOptions.add(normalizedCurrentLocation);
+  }
+
+  const options = Array.from(normalizedOptions).map((locationValue) => ({
+    id: `location-option-${locationValue}`,
+    label: locationValue,
+    value: locationValue,
+  }));
+
+  options.push({
+    id: 'location-option-add-new',
+    label: 'Add new location',
+    value: ADD_NEW_LOCATION_OPTION_VALUE,
+    isAddNew: true,
+  });
+
+  return options;
+}
+
 export function useCreateTaskViewAdapter({
   editTaskId,
   parentTaskId,
@@ -73,6 +113,7 @@ export function useCreateTaskViewAdapter({
     category: 'general',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     criticalThisWeek: false,
+    locationOnSite: '',
     assignedTo: [],
     attachments: [],
     projectId: '',
@@ -189,6 +230,7 @@ export function useCreateTaskViewAdapter({
         category: 'general',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         criticalThisWeek: false,
+        locationOnSite: '',
         assignedTo: [],
         attachments: [],
         projectId: '',
@@ -395,6 +437,7 @@ export function useCreateTaskViewAdapter({
         category: editTask.category || 'general',
         dueDate: new Date(editTask.dueDate),
         criticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
+        locationOnSite: editTask.locationOnSite || '',
         assignedTo: editTask.assignedTo || [],
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
@@ -414,6 +457,11 @@ export function useCreateTaskViewAdapter({
     }
   }, [activeProjectId, fetchProjectUserAssignments]);
 
+  const locationOptions = useMemo(
+    () => getProjectScopedLocationOptions(tasks, activeProjectId, formData.locationOnSite),
+    [activeProjectId, formData.locationOnSite, tasks]
+  );
+
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
@@ -431,6 +479,7 @@ export function useCreateTaskViewAdapter({
           category: formData.category as TaskCategory,
           billingStatus: formData.billingStatus as BillingStatus,
           dueDate: formData.dueDate.toISOString(),
+          locationOnSite: formData.locationOnSite.trim() || undefined,
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
           tags,
@@ -446,6 +495,7 @@ export function useCreateTaskViewAdapter({
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
+          locationOnSite: formData.locationOnSite.trim() || undefined,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
@@ -461,6 +511,7 @@ export function useCreateTaskViewAdapter({
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
+          locationOnSite: formData.locationOnSite.trim() || undefined,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
@@ -510,6 +561,10 @@ export function useCreateTaskViewAdapter({
       userSearchQuery,
       filteredUsers: filteredAssignableUsers,
       selectedUserIds: formData.assignedTo,
+    },
+    locationPicker: {
+      projectId: activeProjectId,
+      options: locationOptions,
     },
     projects: {
       availableProjects: userProjects,

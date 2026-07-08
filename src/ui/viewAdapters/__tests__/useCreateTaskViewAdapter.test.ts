@@ -119,6 +119,7 @@ describe("useCreateTaskViewAdapter", () => {
         priority: "high",
         category: "electrical",
         dueDate: "2099-02-02T00:00:00.000Z",
+        locationOnSite: "Level 3 - South Core",
         assignedTo: ["user-2"],
         attachments: ["https://example.com/draft.jpg"],
         projectId: "project-1",
@@ -133,7 +134,119 @@ describe("useCreateTaskViewAdapter", () => {
 
     expect(result.current.output.formData.dueDate.toISOString()).toBe("2099-02-02T00:00:00.000Z");
     expect(result.current.output.formData.projectId).toBe("project-1");
+    expect(result.current.output.formData.locationOnSite).toBe("Level 3 - South Core");
     expect(result.current.output.formData.assignedTo).toEqual(["user-2"]);
+  });
+
+  it("derives location options from the active project task history only", async () => {
+    mockUseProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-1",
+    });
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          title: "Project 1 roof task",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "Roof plant room",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          attachments: [],
+          status: "new",
+        },
+        {
+          id: "task-2",
+          title: "Project 1 duplicate location",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-02T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "Roof plant room",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          attachments: [],
+          status: "new",
+        },
+        {
+          id: "task-3",
+          title: "Project 1 level task",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-03T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "Level 1 - Lobby",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          attachments: [],
+          status: "new",
+        },
+        {
+          id: "task-4",
+          title: "Project 2 foreign task",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-04T00:00:00.000Z",
+          projectId: "project-2",
+          locationOnSite: "Basement switch room",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          attachments: [],
+          status: "new",
+        },
+      ],
+      fetchTaskById: mockFetchTaskById,
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+    });
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-1", name: "Project Alpha", location: "Tower A" },
+      { id: "project-2", name: "Project Beta", location: "Tower B" },
+    ]);
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    await waitFor(() => {
+      expect(result.current.output.locationPicker).toEqual(
+        expect.objectContaining({
+          projectId: "project-1",
+        }),
+      );
+    });
+
+    expect(result.current.output.locationPicker.options).toEqual([
+      {
+        id: "location-option-Roof plant room",
+        label: "Roof plant room",
+        value: "Roof plant room",
+      },
+      {
+        id: "location-option-Level 1 - Lobby",
+        label: "Level 1 - Lobby",
+        value: "Level 1 - Lobby",
+      },
+      {
+        id: "location-option-add-new",
+        label: "Add new location",
+        value: "__add_new_location__",
+        isAddNew: true,
+      },
+    ]);
   });
 
   it("derives nested subtask context and assignable users from project state", async () => {
@@ -233,6 +346,7 @@ describe("useCreateTaskViewAdapter", () => {
           category: "electrical",
           dueDate: "2099-01-01T00:00:00.000Z",
           projectId: "project-1",
+          locationOnSite: "Roof plant room",
           assignedTo: ["user-2"],
           assignedBy: "user-1",
           attachments: ["https://example.com/photo.jpg"],
@@ -260,6 +374,7 @@ describe("useCreateTaskViewAdapter", () => {
 
     expect(result.current.output.formData.description).toBe("Ready for review");
     expect(result.current.output.formData.taskReference).toBe("REF-1");
+    expect(result.current.output.formData.locationOnSite).toBe("Roof plant room");
     expect(result.current.output.context.headerTitle).toBe("Edit Task");
     expect(result.current.output.context.assigneesLocked).toBe(true);
     expect(result.current.output.context.requiresEditReason).toBe(true);
@@ -275,6 +390,7 @@ describe("useCreateTaskViewAdapter", () => {
       createResult.current.actions.updateField("title", "New Task");
       createResult.current.actions.updateField("description", "Install rails");
       createResult.current.actions.updateField("projectId", "project-1");
+      createResult.current.actions.updateField("locationOnSite", "Lift lobby");
       createResult.current.actions.updateField("assignedTo", ["user-2"]);
     });
 
@@ -287,10 +403,12 @@ describe("useCreateTaskViewAdapter", () => {
         title: "New Task",
         description: "Install rails",
         projectId: "project-1",
+        locationOnSite: "Lift lobby",
         assignedTo: ["user-2"],
         assignedBy: "user-1",
       }),
     );
+    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("location");
 
     mockUseTaskStore.mockReturnValue({
       tasks: [
@@ -304,6 +422,7 @@ describe("useCreateTaskViewAdapter", () => {
           category: "general",
           dueDate: "2099-01-01T00:00:00.000Z",
           projectId: "project-1",
+          locationOnSite: "Roof plant room",
           assignedTo: ["user-2"],
           assignedBy: "user-1",
           attachments: [],
@@ -329,6 +448,7 @@ describe("useCreateTaskViewAdapter", () => {
     act(() => {
       editResult.current.actions.updateField("title", "Existing task updated");
       editResult.current.actions.updateField("taskReference", "REF-UPDATED");
+      editResult.current.actions.updateField("locationOnSite", "Level 2 riser");
     });
 
     await act(async () => {
@@ -341,9 +461,11 @@ describe("useCreateTaskViewAdapter", () => {
         title: "Existing task updated",
         taskReference: "REF-UPDATED",
         projectId: "project-1",
+        locationOnSite: "Level 2 riser",
         assignedTo: ["user-2"],
       }),
     );
+    expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("location");
   });
 
   it("returns false and does not submit when validation fails", async () => {

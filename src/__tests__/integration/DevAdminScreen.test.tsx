@@ -34,8 +34,7 @@ jest.mock("@/components/StandardHeader", () => ({
 jest.mock("@/components/migration/ModernUiMarker", () => ({
   __esModule: true,
   default: function MockModernUiMarker() {
-    const { Text } = require("react-native");
-    return <Text>Modern UI</Text>;
+    return null;
   },
 }));
 
@@ -249,7 +248,6 @@ describe("DevAdminScreen", () => {
     expect(screen.getByText("Dev Admin")).toBeTruthy();
     expect(screen.getByText("Database Health Check")).toBeTruthy();
     expect(screen.getAllByText("testing").length).toBeGreaterThan(0);
-    expect(screen.getByText("Modern UI")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Database Health Check"));
 

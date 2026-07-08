@@ -49,6 +49,60 @@ export interface DashboardQuickActionItem extends PrimitiveReadyItemBase {
   isDisabled: boolean;
 }
 
+export interface DashboardActivityItem extends PrimitiveReadyItemBase {
+  id: string;
+  taskId: string;
+  title: string;
+  subtitle: string;
+  timestampLabel: string;
+  statusLabel: string;
+  previewPhotoUri?: string;
+}
+
+export interface DashboardSummaryPill {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface DashboardProjectSummaryCard {
+  title: string;
+  todayLabel: string;
+  elapsedDayLabel: string;
+  weatherIconLabel: string;
+  weatherTemperatureLabel: string;
+  criticalDates: Array<{
+    id: string;
+    dateLabel: string;
+    title: string;
+    subtitle: string;
+  }>;
+}
+
+export interface DashboardQueueDashboardCell {
+  id: string;
+  queue: "my_queue" | "team_queue";
+  bucket: "new" | "wip" | "review";
+  title: string;
+  countLabel: string;
+}
+
+export interface DashboardQueueDashboardGroup {
+  id: string;
+  title: "My Queue" | "Team Queue";
+  cells: DashboardQueueDashboardCell[];
+}
+
+export interface DashboardQueueDashboard {
+  groups: DashboardQueueDashboardGroup[];
+}
+
+export interface DashboardTaskShortcut {
+  title: string;
+  subtitle: string;
+  countLabel: string;
+}
+
 export interface DashboardScalarMetrics {
   openTaskCount: number;
   overdueTaskCount: number;
@@ -80,6 +134,17 @@ export interface DashboardScreenViewAdapterOutput {
   screenId: "DashboardScreen";
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
+  activeProject: {
+    id: string;
+    title: string;
+    subtitle?: string;
+  } | null;
+  projectSummaryCard?: DashboardProjectSummaryCard | null;
+  queueDashboard?: DashboardQueueDashboard;
+  summaryPills: DashboardSummaryPill[];
+  draftItems: DashboardActivityItem[];
+  activityItems: DashboardActivityItem[];
+  taskShortcut: DashboardTaskShortcut | null;
   projectSummaryItems: DashboardProjectSummaryItem[];
   highlightedTaskItems: DashboardHighlightedTaskItem[];
   quickActionItems: DashboardQuickActionItem[];
@@ -93,10 +158,58 @@ export interface TasksFilterSummary {
   sortLabel: string;
 }
 
+export type TasksQueueId = "my_queue" | "team_queue";
+
+export type TasksQueueBucketId = "new" | "wip" | "review" | "overdue";
+
+export interface TasksQueueBucket {
+  id: string;
+  title: string;
+  taskCountLabel: string;
+  bucket: TasksQueueBucketId;
+  isOpen: boolean;
+  rows: TasksScreenRowItem[];
+}
+
+export interface TasksQueuePanel {
+  id: string;
+  queue: TasksQueueId;
+  title: "My Queue" | "Team Queue";
+  totalCountLabel: string;
+  presentation: "primary" | "preview";
+  isExpanded: boolean;
+  buckets: TasksQueueBucket[];
+}
+
+export interface TasksDraftsSection {
+  title: string;
+  countLabel: string;
+  isExpanded: boolean;
+  rows: TasksScreenRowItem[];
+}
+
+export interface TasksFilterOption {
+  id: string;
+  value: "all" | TasksQueueId | "new" | "wip" | "review";
+  label: string;
+  count: number;
+  isSelected: boolean;
+}
+
+export interface TasksFilterControl {
+  id: "queue" | "bucket";
+  label: string;
+  selectedValue: string;
+  options: TasksFilterOption[];
+}
+
+export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
+
 export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   id: string;
   taskId: string;
   title: string;
+  cardPresentation?: "default" | "thumbnail";
   statusToken: StatusSemanticToken;
   statusLabel: string;
   responsibilityToken: ResponsibilityToken;
@@ -105,7 +218,21 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   assigneeSummary: string;
   projectName: string;
   isOverdue: boolean;
+  attachmentUris: string[];
   indentationLevel?: number;
+  queue?: TasksQueueId;
+  queueLabel?: "My Queue" | "Team Queue";
+  bucket?: TasksQueueBucketId;
+  bucketLabel?: string;
+  contextLabel?: string;
+  latestUpdateAt?: string;
+  latestUpdateLabel?: string;
+  isExpanded?: boolean;
+  supportingLine?: string;
+  contextLine?: string;
+  primaryPhotoUri?: string;
+  photoCountLabel?: string;
+  photoDisplayMode?: "standard" | "photo_centric";
   onPress?: () => void;
 }
 
@@ -121,6 +248,15 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
+  filterControls?: {
+    queue: TasksFilterControl;
+    bucket: TasksFilterControl;
+  };
+  isSearchMode: boolean;
+  queuePanels: TasksQueuePanel[];
+  draftsSection?: TasksDraftsSection | null;
+  searchResults: TasksScreenRowItem[];
+  expandedTaskIds: string[];
   taskRowItems: TasksScreenRowItem[];
   scalarMetrics: TasksScalarMetrics;
 }
@@ -131,6 +267,80 @@ export interface TaskDetailHeaderModel {
   statusLabel: string;
   projectName: string;
   assigneeSummary: string;
+}
+
+export interface TaskDetailHeroModel extends PrimitiveReadyItemBase {
+  title: string;
+  statusLabel: string;
+  categoryLabel?: string;
+  projectLabel: string;
+  completionLabel: string;
+  dueDateLabel?: string;
+  nextStepLabel?: undefined;
+  assignedByLabel?: string;
+  assignedToLabel?: string;
+  primaryOwnerLabel?: string;
+  teamSummaryLabel?: string;
+  isCritical?: boolean;
+  criticalLabel?: string;
+}
+
+export interface TaskDetailDelegationSummaryModel extends PrimitiveReadyItemBase {
+  assignedByLabel: string;
+  assignedToLabel: string;
+  primaryOwnerLabel?: string;
+  teamSummaryLabel?: string;
+}
+
+export interface TaskDetailInfoCardRow {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
+  descriptionLabel?: string;
+  assignedByLabel?: string;
+  assignedToLabel?: string;
+  primaryOwnerLabel?: string;
+  detailRows: TaskDetailInfoCardRow[];
+}
+
+export interface TaskDetailEvidenceSummaryModel extends PrimitiveReadyItemBase {
+  latestPhotoUrls: string[];
+  totalPhotoCount: number;
+  emptyLabel: string;
+}
+
+export interface TaskDetailActiveStageModel extends PrimitiveReadyItemBase {
+  stageMode: "photo" | "no_photo" | "pdf_preview";
+  title: string;
+  summary: string;
+  actorLabel: string;
+  timestampLabel: string;
+  photos: string[];
+  activePhotoIndex?: number;
+  documentName?: string;
+  documentUri?: string;
+}
+
+export interface TaskDetailActivityThreadRow extends PrimitiveReadyItemBase {
+  id: string;
+  actorLabel: string;
+  eventLabel: string;
+  timestampLabel: string;
+  progressLabel: string;
+  detailLabel?: string;
+  photoUrls: string[];
+  photoAspectRatio?: number;
+  statusLabel?: string;
+  subtaskBadgeLabel?: string;
+  subtaskTitleLabel?: string;
+}
+
+export interface TaskDetailSubtaskSummaryModel extends PrimitiveReadyItemBase {
+  title: string;
+  totalCount: number;
 }
 
 export interface TaskDetailSectionRow {
@@ -152,6 +362,11 @@ export interface TaskDetailActionItem extends PrimitiveReadyItemBase {
   label: string;
   icon?: string;
   isDisabled: boolean;
+  isActive?: boolean;
+}
+
+export interface TaskDetailQuickActionRowModel extends PrimitiveReadyItemBase {
+  actions: TaskDetailActionItem[];
 }
 
 export interface TaskDetailBannerModel extends PrimitiveReadyItemBase {
@@ -196,6 +411,14 @@ export interface TaskDetailScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   header: TaskDetailHeaderModel;
+  taskHero: TaskDetailHeroModel;
+  delegationSummary: TaskDetailDelegationSummaryModel;
+  infoCard?: TaskDetailInfoCardModel;
+  quickActions?: TaskDetailQuickActionRowModel;
+  activeStage: TaskDetailActiveStageModel;
+  evidenceSummary: TaskDetailEvidenceSummaryModel;
+  activityThread: TaskDetailActivityThreadRow[];
+  subtaskSummary: TaskDetailSubtaskSummaryModel;
   detailSections: TaskDetailSectionModel[];
   actionItems: TaskDetailActionItem[];
   scalarMetrics: TaskDetailScalarMetrics;
@@ -729,6 +952,7 @@ export type DeveloperSettingsActionColor =
   | "green";
 
 export type DeveloperSettingsActionId =
+  | "open-task-detail-verification"
   | "force-sync-all"
   | "clear-task-cache"
   | "clear-project-cache"
@@ -1043,6 +1267,7 @@ export interface CreateTaskFormModel {
   priority: string;
   category: string;
   dueDate: Date;
+  criticalThisWeek: boolean;
   assignedTo: string[];
   projectId: string;
   attachments: any[]; // Or Attachment type
@@ -1078,8 +1303,8 @@ export interface CreateTaskScreenViewAdapterOutput {
   screenId: "CreateTaskScreen";
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
-  activity: CreateTaskScreenActivityModel;
   context: CreateTaskContextModel;
+  activity: CreateTaskScreenActivityModel;
   formData: CreateTaskFormModel;
   errors: Record<string, string>;
   pickers: {

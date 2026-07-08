@@ -1,0 +1,145 @@
+<h2>Updated Shell + Camera Flow</h2>
+<p class="subtitle">Approved direction: compact inline weather, 3-item bottom nav with a dominant center camera button, profile in the top-right, and context-aware camera behavior.</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Activity</div>
+    <div class="mockup-body" style="padding:14px;background:#f8fafc">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div>
+          <div style="font-size:11px;letter-spacing:.08em;color:#64748b;text-transform:uppercase">Active Project</div>
+          <div style="font-size:28px;font-weight:700;color:#0f172a">North Tower</div>
+          <div style="font-size:13px;color:#64748b">Fri, Jul 4 · Day 118 · ☁️ 29°</div>
+        </div>
+        <div style="width:38px;height:38px;border-radius:999px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px">👤</div>
+      </div>
+
+      <div style="border-radius:24px;background:#ffffff;padding:16px;border:1px solid #e2e8f0;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <strong>This Week’s Critical Dates</strong>
+          <span style="font-size:12px;color:#64748b">2 items</span>
+        </div>
+        <div style="padding:8px 0;border-top:1px solid #f1f5f9">
+          <div style="font-weight:600;color:#0f172a">Jul 5 · Concrete pour approval</div>
+          <div style="font-size:12px;color:#64748b">Task-derived · marked critical</div>
+        </div>
+        <div style="padding:8px 0;border-top:1px solid #f1f5f9">
+          <div style="font-weight:600;color:#0f172a">Jul 7 · Safety inspection</div>
+          <div style="font-size:12px;color:#64748b">Task-derived · marked critical</div>
+        </div>
+      </div>
+
+      <div style="border-radius:24px;background:#ffffff;padding:16px;border:1px solid #e2e8f0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <strong>Queue Overview</strong>
+          <span style="font-size:12px;color:#64748b">Tap to open Tasks</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
+          <div style="grid-column:1 / -1;font-size:12px;color:#64748b;text-transform:uppercase">My Queue</div>
+          <div style="border-radius:16px;background:#0f172a;color:#fff;padding:10px;text-align:center">
+            <div style="font-size:11px;opacity:.72">New</div>
+            <div style="font-size:22px;font-weight:700">5</div>
+          </div>
+          <div style="border-radius:16px;background:#f8fafc;padding:10px;text-align:center;border:1px solid #e2e8f0">
+            <div style="font-size:11px;color:#64748b">Doing</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a">12</div>
+          </div>
+          <div style="border-radius:16px;background:#f8fafc;padding:10px;text-align:center;border:1px solid #e2e8f0">
+            <div style="font-size:11px;color:#64748b">Review</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a">7</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <div style="grid-column:1 / -1;font-size:12px;color:#64748b;text-transform:uppercase">Team Queue</div>
+          <div style="border-radius:16px;background:#f8fafc;padding:10px;text-align:center;border:1px solid #e2e8f0">
+            <div style="font-size:11px;color:#64748b">New</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a">3</div>
+          </div>
+          <div style="border-radius:16px;background:#f8fafc;padding:10px;text-align:center;border:1px solid #e2e8f0">
+            <div style="font-size:11px;color:#64748b">Doing</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a">9</div>
+          </div>
+          <div style="border-radius:16px;background:#f8fafc;padding:10px;text-align:center;border:1px solid #e2e8f0">
+            <div style="font-size:11px;color:#64748b">Review</div>
+            <div style="font-size:22px;font-weight:700;color:#0f172a">6</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="position:relative;margin-top:18px;padding-top:18px">
+        <div style="height:68px;border-radius:26px;background:#ffffff;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-around;padding:0 20px">
+          <div style="text-align:center;color:#0f172a">
+            <div style="font-size:18px">◫</div>
+            <div style="font-size:11px">Activity</div>
+          </div>
+          <div style="width:70px"></div>
+          <div style="text-align:center;color:#0f172a">
+            <div style="font-size:18px">☰</div>
+            <div style="font-size:11px">Tasks</div>
+          </div>
+        </div>
+        <div style="position:absolute;left:50%;top:0;transform:translateX(-50%);width:72px;height:72px;border-radius:999px;background:#b91c1c;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px rgba(185,28,28,.28);border:6px solid #f8fafc">
+          <div style="position:relative;width:28px;height:22px;border:2px solid #ffffff;border-radius:8px">
+            <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border:2px solid #ffffff;border-radius:999px"></div>
+            <div style="position:absolute;right:4px;top:4px;width:3px;height:3px;background:#ffffff;border-radius:999px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Camera Flow</div>
+    <div class="mockup-body" style="padding:14px;background:#f8fafc">
+      <div style="border-radius:24px;background:#0f172a;color:#fff;padding:14px;margin-bottom:12px">
+        <div style="font-size:12px;opacity:.72;margin-bottom:8px">Global Camera Action</div>
+        <div style="height:188px;border-radius:18px;background:linear-gradient(180deg,#334155,#0f172a);display:flex;align-items:center;justify-content:center;position:relative">
+          <div style="position:absolute;top:14px;left:14px;font-size:12px;opacity:.7">Photo first</div>
+          <div style="width:72px;height:72px;border-radius:999px;background:#b91c1c;display:flex;align-items:center;justify-content:center">
+            <div style="position:relative;width:28px;height:22px;border:2px solid #ffffff;border-radius:8px">
+              <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border:2px solid #ffffff;border-radius:999px"></div>
+              <div style="position:absolute;right:4px;top:4px;width:3px;height:3px;background:#ffffff;border-radius:999px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-radius:22px;background:#ffffff;padding:14px;border:1px solid #e2e8f0;margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>After Capture</strong>
+          <span style="font-size:12px;color:#64748b">Outside Task Detail</span>
+        </div>
+        <div style="border-radius:18px;background:#f8fafc;padding:12px;border:1px solid #e2e8f0">
+          <div style="font-size:12px;color:#64748b;margin-bottom:8px">Quick routing sheet</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="border-radius:14px;background:#ffffff;padding:12px;border:1px solid #e2e8f0;min-height:88px">
+              <div style="font-weight:700;color:#0f172a">Create New Task</div>
+              <div style="font-size:12px;color:#64748b;margin-top:6px">Recommended default outside task context</div>
+            </div>
+            <div style="border-radius:14px;background:#ffffff;padding:12px;border:1px solid #e2e8f0;min-height:88px">
+              <div style="font-weight:700;color:#0f172a">Add to Existing Task</div>
+              <div style="font-size:12px;color:#64748b;margin-top:6px">Secondary route after capture</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-radius:22px;background:#ffffff;padding:14px;border:1px solid #e2e8f0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Task Detail Context</strong>
+          <span style="font-size:12px;color:#64748b">In-task behavior</span>
+        </div>
+        <div style="border-radius:18px;background:#0f172a;color:#fff;padding:14px">
+          <div style="font-size:12px;opacity:.72">Camera launched from Task Detail</div>
+          <div style="font-size:18px;font-weight:700;margin-top:8px">Auto-default to Photo Update</div>
+          <div style="font-size:12px;opacity:.82;margin-top:6px">Skip the generic routing choice and keep the user inside the same task update flow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Approved Direction</h3>
+  <p class="subtitle">Bottom nav becomes `Activity / Camera / Tasks`, profile moves to the upper-right header, weather collapses into a compact inline indicator, and the camera behaves like a context-aware primary action instead of a standard tab.</p>
+</div>

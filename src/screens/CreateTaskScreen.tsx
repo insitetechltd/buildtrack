@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   TextInput,
+  type NativeSyntheticEvent,
   Pressable,
   Alert,
   KeyboardAvoidingView,
@@ -11,6 +12,7 @@ import {
   Modal as RNModal,
   Image,
   ActivityIndicator,
+  type TextInputKeyPressEventData,
 } from "react-native";
 
 const Modal = RNModal || View;
@@ -21,7 +23,12 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import Slider from "@react-native-community/slider";
 import * as ImagePicker from "expo-image-picker";
 import * as Clipboard from "expo-clipboard";
-import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import {
+  type NavigationProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useCreateTaskViewAdapter } from "../ui/viewAdapters/useCreateTaskViewAdapter";
 import { isAdmin } from "../types/buildtrack";
@@ -33,9 +40,10 @@ import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
+import ScreenSection from "../components/ui/ScreenSection";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
@@ -45,8 +53,19 @@ import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
 import { uploadFileWithVerification } from "../api/fileUploadService";
 import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type {
+  CameraLaunchContext,
+  CameraPostCaptureDefault,
+  PhotoSelectionParams,
+} from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 // Temporarily disabled due to expo-av CMake build issues
 // import VoiceTaskInput, { Language } from "../components/VoiceTaskInput";
 
@@ -67,6 +86,8 @@ interface CreateTaskScreenProps {
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
+  cameraLaunchContext?: CameraLaunchContext;
+  postCaptureDefault?: CameraPostCaptureDefault;
   updateTargetSubTaskId?: string;
   uploadedPhotoUrls?: string[]; // Photo URLs uploaded from PhotoSelectionScreen (legacy)
   selectedPhotos?: SelectedPhoto[]; // Photo objects selected but not yet uploaded
@@ -76,6 +97,8 @@ interface CreateTaskScreenProps {
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
+
+type CreateTaskFormFieldId = "title" | "description" | "taskReference" | "submit";
 
 // InputField component defined outside to prevent re-creation
 const InputField = ({ 
@@ -106,6 +129,8 @@ export default function CreateTaskScreen({
   parentSubTaskId,
   editTaskId,
   actionType,
+  cameraLaunchContext,
+  postCaptureDefault,
   updateTargetSubTaskId,
   uploadedPhotoUrls,
   selectedPhotos: selectedPhotosProp,
@@ -115,35 +140,85 @@ export default function CreateTaskScreen({
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
-  const effectiveActionType = (actionType === 'photos' ? 'update' : actionType) || (editTaskId ? 'edit' : undefined);
+  const effectiveActionType = actionType || (editTaskId ? "edit" : undefined);
 
-  if (effectiveActionType && effectiveActionType !== 'edit' && editTaskId) {
-    return <TaskActionScreen 
-      actionType={effectiveActionType} 
-      taskId={editTaskId} 
-      updateTargetSubTaskId={updateTargetSubTaskId}
-      onNavigateBack={onNavigateBack}
-      selectedPhotos={selectedPhotosProp}
-      uploadedPhotoUrls={uploadedPhotoUrls}
-      onClearDraftPayloads={onClearDraftPayloads}
-      onNavigateToProfile={onNavigateToProfile}
-      onNavigateToProjectPicker={onNavigateToProjectPicker}
-    />;
+  if (effectiveActionType && effectiveActionType !== "edit" && editTaskId) {
+    return (
+      <TaskActionScreen
+        actionType={effectiveActionType}
+        taskId={editTaskId}
+        updateTargetSubTaskId={updateTargetSubTaskId}
+        onNavigateBack={onNavigateBack}
+        selectedPhotos={selectedPhotosProp}
+        uploadedPhotoUrls={uploadedPhotoUrls}
+        onClearDraftPayloads={onClearDraftPayloads}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+      />
+    );
   }
 
+  return (
+    <CreateTaskEditorScreen
+      onNavigateBack={onNavigateBack}
+      parentTaskId={parentTaskId}
+      parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
+      actionType={effectiveActionType}
+      cameraLaunchContext={cameraLaunchContext}
+      postCaptureDefault={postCaptureDefault}
+      updateTargetSubTaskId={updateTargetSubTaskId}
+      uploadedPhotoUrls={uploadedPhotoUrls}
+      selectedPhotos={selectedPhotosProp}
+      onClearDraftPayloads={onClearDraftPayloads}
+      clearForm={clearForm}
+      clearFormTimestamp={clearFormTimestamp}
+      onNavigateToProfile={onNavigateToProfile}
+      onNavigateToProjectPicker={onNavigateToProjectPicker}
+    />
+  );
+}
+
+function CreateTaskEditorScreen({
+  onNavigateBack,
+  parentTaskId,
+  parentSubTaskId,
+  editTaskId,
+  actionType,
+  cameraLaunchContext,
+  postCaptureDefault,
+  updateTargetSubTaskId,
+  uploadedPhotoUrls,
+  selectedPhotos: selectedPhotosProp,
+  onClearDraftPayloads,
+  clearForm,
+  clearFormTimestamp,
+  onNavigateToProfile,
+  onNavigateToProjectPicker
+}: CreateTaskScreenProps) {
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
   const { getCompanyBanner } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { getAllUsers } = useUserStore();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<
+    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
+  >();
   const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
   const taskReferenceInputRef = useRef<TextInput>(null);
+  const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<CreateTaskFormFieldId | null>(null);
+  const shouldShowPostCaptureRoutingSheet =
+    actionType === "photos" &&
+    cameraLaunchContext === "global" &&
+    Boolean(selectedPhotosProp?.length || uploadedPhotoUrls?.length);
+  const [captureRoutingChoice, setCaptureRoutingChoice] = useState<"create_task" | "existing_task">(
+    postCaptureDefault === "existing_task" ? "existing_task" : "create_task",
+  );
 
   const { output, actions } = useCreateTaskViewAdapter({
     editTaskId,
@@ -198,6 +273,65 @@ export default function CreateTaskScreen({
   const setShowUserPicker = (val: boolean) => togglePicker('showUserPicker', val);
 
   const selectedUsers = assigneePicker.selectedUserIds;
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "title", isFocusable: true },
+        { fieldId: "description", isFocusable: true },
+        { fieldId: "taskReference", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+
+  const focusFormField = useCallback((fieldId: CreateTaskFormFieldId | null) => {
+    if (!fieldId) {
+      return;
+    }
+
+    setActiveFormFocusTarget(fieldId);
+
+    if (fieldId === "submit") {
+      titleInputRef.current?.blur?.();
+      descriptionInputRef.current?.blur?.();
+      taskReferenceInputRef.current?.blur?.();
+      return;
+    }
+
+    const focusTargetMap: Record<Exclude<CreateTaskFormFieldId, "submit">, React.RefObject<TextInput | null>> = {
+      title: titleInputRef,
+      description: descriptionInputRef,
+      taskReference: taskReferenceInputRef,
+    };
+
+    focusTargetMap[fieldId].current?.focus?.();
+  }, []);
+
+  const moveFormFocus = useCallback(
+    (activeFieldId: CreateTaskFormFieldId, direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as CreateTaskFormFieldId | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: CreateTaskFormFieldId,
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
   
   const handleOpenUserPicker = () => setShowUserPicker(true);
 
@@ -269,6 +403,10 @@ export default function CreateTaskScreen({
   };
 
   const handleSubmit = async () => {
+    if (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task") {
+      return;
+    }
+
     if (context.requiresEditReason) {
       setShowEditReasonModal(true);
       return;
@@ -305,7 +443,6 @@ export default function CreateTaskScreen({
           title={t.tasks.createTask}
           showBackButton={true}
           onBackPress={onNavigateBack}
-          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center px-6">
           <Text>{t.createTask.adminCannotCreateTasks}</Text>
@@ -325,7 +462,6 @@ export default function CreateTaskScreen({
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
-        rightElement={<ModernUiMarker />}
       />
 
       {/* Parent Task Info Banner */}
@@ -349,9 +485,9 @@ export default function CreateTaskScreen({
       >
         <ScrollView 
           ref={scrollViewRef}
-          className="flex-1 px-6 py-4" 
+          className="flex-1 py-4"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -441,11 +577,84 @@ export default function CreateTaskScreen({
             />
           )}
 
-          {/* Title */}
-          <InputField label={t.tasks.title} error={errors.title}>
+          {shouldShowPostCaptureRoutingSheet ? (
+            <View
+              testID="create-task__post_capture_routing_sheet"
+              className="mb-6 rounded-3xl border border-gray-200 bg-white p-4"
+            >
+              <Text className="text-lg font-semibold text-gray-900">
+                What should this photo become?
+              </Text>
+              <Text className="mt-1 text-sm text-gray-500">
+                Choose where this capture should go before continuing.
+              </Text>
+
+              <View className="mt-4 flex-row gap-3">
+                <Pressable
+                  testID="create-task__routing_choice_create"
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: captureRoutingChoice === "create_task" }}
+                  onPress={() => setCaptureRoutingChoice("create_task")}
+                  className={cn(
+                    "flex-1 rounded-2xl border p-4",
+                    captureRoutingChoice === "create_task"
+                      ? "border-slate-900 bg-slate-900"
+                      : "border-gray-200 bg-white",
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      "text-base font-semibold",
+                      captureRoutingChoice === "create_task" ? "text-white" : "text-gray-900",
+                    )}
+                  >
+                    Create New Task
+                  </Text>
+                  <Text
+                    className={cn(
+                      "mt-1 text-sm",
+                      captureRoutingChoice === "create_task" ? "text-slate-200" : "text-gray-500",
+                    )}
+                  >
+                    Start a task draft with these photos attached.
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  testID="create-task__routing_choice_existing"
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: captureRoutingChoice === "existing_task" }}
+                  onPress={() => setCaptureRoutingChoice("existing_task")}
+                  className={cn(
+                    "flex-1 rounded-2xl border p-4",
+                    captureRoutingChoice === "existing_task"
+                      ? "border-blue-600 bg-blue-50"
+                      : "border-gray-200 bg-white",
+                  )}
+                >
+                  <Text className="text-base font-semibold text-gray-900">
+                    Add to Existing Task
+                  </Text>
+                  <Text className="mt-1 text-sm text-gray-500">
+                    Route the capture into an existing task instead.
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Text className="mt-3 text-sm text-gray-600">
+                {captureRoutingChoice === "create_task"
+                  ? "Photos will be attached to the new task you create below."
+                  : "Existing-task attach flow is not part of this slice yet. Switch back to Create New Task to continue."}
+              </Text>
+            </View>
+          ) : null}
+
+          <ScreenSection title="Task Basics" subtitle="Start with the essentials">
+            <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
                 testID="createTask-title"
                 ref={titleInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "title" }}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.title ? "border-red-300" : "border-gray-300"
@@ -456,19 +665,20 @@ export default function CreateTaskScreen({
                 maxLength={100}
                 autoCorrect={false}
                 returnKeyType="next"
+                onFocus={() => setActiveFormFocusTarget("title")}
+                onKeyPress={(event) => handleFieldKeyPress("title", event)}
                 onSubmitEditing={() => {
-                  // Move focus to description field
-                  descriptionInputRef.current?.focus();
+                  moveFormFocus("title");
                 }}
                 blurOnSubmit={false}
               />
-          </InputField>
+            </InputField>
 
-          {/* Description */}
-          <InputField label={t.tasks.description} error={errors.description}>
+            <InputField label={t.tasks.description} error={errors.description}>
               <TextInput
                 testID="createTask-description"
                 ref={descriptionInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "description" }}
                 className={cn(
                   "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
                   errors.description ? "border-red-300" : "border-gray-300"
@@ -482,18 +692,217 @@ export default function CreateTaskScreen({
                 maxLength={500}
                 autoCorrect={false}
                 returnKeyType="next"
+                onFocus={() => setActiveFormFocusTarget("description")}
+                onKeyPress={(event) => handleFieldKeyPress("description", event)}
                 onSubmitEditing={() => {
-                  // Move focus to task reference field
-                  taskReferenceInputRef.current?.focus();
+                  moveFormFocus("description");
                 }}
                 blurOnSubmit={false}
               />
-          </InputField>
+            </InputField>
 
-          {/* Task Reference # */}
-          <InputField label={t.createTask.taskReference} required={false}>
+            <InputField label={t.tasks.priority}>
+              <View className="flex-row flex-wrap gap-2">
+                {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
+                  const isSelected = formData.priority === priority;
+
+                  return (
+                    <Pressable
+                      key={priority}
+                      testID={`createTask-priority-${priority}`}
+                      onPress={() => handlePriorityChange(priority)}
+                      className={cn(
+                        "rounded-full border px-4 py-2.5",
+                        isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
+                      )}
+                    >
+                      <Text
+                        className={cn(
+                          "text-sm font-medium",
+                          isSelected ? "text-blue-700" : "text-gray-700"
+                        )}
+                      >
+                        {t.tasks[priority as keyof typeof t.tasks] || priority}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </InputField>
+          </ScreenSection>
+
+          <ScreenSection title="Assignment" subtitle="Confirm the project and assignees">
+            <InputField label={t.createTask.project} error={errors.projectId}>
+              <View
+                className={cn(
+                  "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
+                  errors.projectId ? "border-red-300" : "border-gray-300"
+                )}
+              >
+                <Text
+                  className={cn(
+                    "flex-1 text-lg",
+                    context.activeProjectId ? "text-gray-900" : "text-gray-500"
+                  )}
+                >
+                  {context.activeProjectId
+                    ? projects.availableProjects.find((project) => project.id === context.activeProjectId)?.name
+                    : t.createTask.selectProject}
+                </Text>
+                <Ionicons name="lock-closed" size={16} color="#9ca3af" />
+              </View>
+            </InputField>
+
+            <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
+              {(() => {
+                const isDisabled = isLoadingUsers || context.assigneesLocked;
+
+                return (
+                  <Pressable
+                    onPress={handleOpenUserPicker}
+                    disabled={isDisabled}
+                    className={cn(
+                      "border rounded-lg px-3 py-3 flex-row items-center justify-between",
+                      context.assigneesLocked ? "bg-gray-100" : "bg-white",
+                      errors.assignedTo ? "border-red-300" : "border-gray-300",
+                      isDisabled && "opacity-50"
+                    )}
+                  >
+                    <Text
+                      className={cn(
+                        "text-lg",
+                        context.assigneesLocked ? "text-gray-500" : "text-gray-900"
+                      )}
+                    >
+                      {isLoadingUsers
+                        ? t.createTask.loadingUsers
+                        : context.assigneesLocked
+                          ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
+                          : selectedUsers.length > 0
+                            ? t.createTask.usersSelected(selectedUsers.length)
+                            : t.createTask.selectUsersToAssign}
+                    </Text>
+                    {isLoadingUsers ? (
+                      <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
+                    ) : context.assigneesLocked ? (
+                      <Ionicons name="lock-closed" size={20} color="#9ca3af" />
+                    ) : (
+                      <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                    )}
+                  </Pressable>
+                );
+              })()}
+            </InputField>
+
+            {selectedUsers.length > 0 && (
+              <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
+                <View className="flex-row flex-wrap">
+                  {selectedUsers.map((userId) => {
+                    const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
+                    if (!selectedUser) return null;
+
+                    return (
+                      <View
+                        key={userId}
+                        className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                      >
+                        <Text className="text-blue-900 text-sm font-medium mr-1">{selectedUser.name}</Text>
+                        {!context.assigneesLocked ? (
+                          <Pressable onPress={() => toggleUserSelection(userId)}>
+                            <Ionicons name="close-circle" size={16} color="#1e40af" />
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </ScreenSection>
+
+          <ScreenSection title="Schedule" subtitle="Set the target date">
+            <InputField label={t.tasks.dueDate} error={errors.dueDate}>
+              <Pressable
+                onPress={async () => {
+                  await saveFormDataToStorage();
+                  setShowDatePicker(!showDatePicker);
+                }}
+                className={cn(
+                  "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
+                  showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
+                )}
+              >
+                <Text className={cn("text-lg", showDatePicker ? "text-blue-600" : "text-gray-900")}>
+                  {dateFormatter.formatDateWithWeekday(formData.dueDate)}
+                </Text>
+                <Ionicons
+                  name={showDatePicker ? "calendar" : "calendar-outline"}
+                  size={20}
+                  color={showDatePicker ? "#3b82f6" : "#6b7280"}
+                />
+              </Pressable>
+            </InputField>
+
+            {showDatePicker && (
+              <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
+                <DateTimePicker
+                  value={formData.dueDate}
+                  mode="date"
+                  display="spinner"
+                  minimumDate={new Date()}
+                  locale={dateFormatter.locale}
+                  onChange={(_event, selectedDate) => {
+                    if (selectedDate) {
+                      handleDateChange(selectedDate);
+                    }
+                  }}
+                  textColor="#000000"
+                  style={{ height: 200 }}
+                />
+                <View className="flex-row justify-end p-3 border-t border-gray-200">
+                  <Pressable
+                    onPress={() => setShowDatePicker(false)}
+                    className="bg-blue-600 px-6 py-2 rounded-lg"
+                  >
+                    <Text className="text-white font-semibold">{t.common.done}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+
+            <Pressable
+              testID="create-task__toggle_critical_this_week"
+              accessibilityRole="button"
+              accessibilityState={{ selected: formData.criticalThisWeek }}
+              onPress={() => updateField('criticalThisWeek', !formData.criticalThisWeek)}
+              className={cn(
+                "border rounded-lg px-4 py-3 bg-white flex-row items-center justify-between",
+                formData.criticalThisWeek ? "border-amber-300 bg-amber-50" : "border-gray-300",
+              )}
+            >
+              <View className="mr-3 flex-1">
+                <Text className="text-base font-semibold text-gray-900">
+                  Show in This Week’s Critical Dates
+                </Text>
+                <Text className="mt-1 text-sm text-gray-500">
+                  Highlight this task in the weekly critical dates list.
+                </Text>
+              </View>
+              <Ionicons
+                name={formData.criticalThisWeek ? "checkmark-circle" : "ellipse-outline"}
+                size={22}
+                color={formData.criticalThisWeek ? "#b45309" : "#6b7280"}
+              />
+            </Pressable>
+          </ScreenSection>
+
+          <ScreenSection title="More Details" subtitle="Optional context for downstream work">
+            <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
+                testID="createTask-taskReference"
                 ref={taskReferenceInputRef}
+                accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
                 className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
                 placeholder={t.createTask.taskReferencePlaceholder}
                 value={formData.taskReference}
@@ -501,206 +910,47 @@ export default function CreateTaskScreen({
                 maxLength={50}
                 autoCorrect={false}
                 returnKeyType="done"
+                onFocus={() => setActiveFormFocusTarget("taskReference")}
+                onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
                 onSubmitEditing={() => {
-                  // Dismiss keyboard when done with task reference
                   taskReferenceInputRef.current?.blur();
                 }}
                 blurOnSubmit={true}
               />
-          </InputField>
+            </InputField>
 
-          {/* Billing Status */}
-          <InputField label={t.createTask.billingStatus}>
-            <Pressable
-              onPress={() => setShowBillingStatusPicker(true)}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
-            >
-              <Text className="text-lg text-gray-900">
-                {formData.billingStatus === "billable" ? t.createTask.billable
-                  : formData.billingStatus === "non_billable" ? t.createTask.nonBillable
-                  : t.createTask.billed}
-              </Text>
-              <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
+            <InputField label={t.createTask.billingStatus}>
+              <Pressable
+                onPress={() => setShowBillingStatusPicker(true)}
+                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
+              >
+                <Text className="text-lg text-gray-900">
+                  {formData.billingStatus === "billable"
+                    ? t.createTask.billable
+                    : formData.billingStatus === "non_billable"
+                      ? t.createTask.nonBillable
+                      : t.createTask.billed}
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+              </Pressable>
+            </InputField>
 
-          {/* Project Selection - Read Only */}
-          <InputField label={t.createTask.project} error={errors.projectId}>
-            <View
-              className={cn(
-                "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
-                errors.projectId ? "border-red-300" : "border-gray-300"
-              )}
-            >
-              <Text className={cn(
-                "flex-1 text-lg",
-                context.activeProjectId ? "text-gray-900" : "text-gray-500"
-              )}>
-                {context.activeProjectId 
-                  ? projects.availableProjects.find(p => p.id === context.activeProjectId)?.name 
-                  : t.createTask.selectProject
-                }
-              </Text>
-              <Ionicons name="lock-closed" size={16} color="#9ca3af" />
-            </View>
-          </InputField>
-
-          {/* Priority */}
-          <InputField label={t.tasks.priority}>
-            <Pressable
-              testID="createTask-priority-open"
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowPriorityPicker(true);
-              }}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-            >
-              <Text className="text-lg text-gray-900 flex-1">
-                {t.tasks[formData.priority as keyof typeof t.tasks] || formData.priority}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
-
-          {/* Category */}
-          <InputField label={t.tasks.category}>
-            <Pressable
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowCategoryPicker(true);
-              }}
-              className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-            >
-              <Text className="text-lg text-gray-900 flex-1">
-                {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
-              </Text>
-              <Ionicons name="chevron-down" size={20} color="#6b7280" />
-            </Pressable>
-          </InputField>
-
-          {/* Due Date */}
-          <InputField label={t.tasks.dueDate} error={errors.dueDate}>
-            <Pressable
-              onPress={async () => {
-                await saveFormDataToStorage();
-                setShowDatePicker(!showDatePicker);
-              }}
-              className={cn(
-                "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
-              )}
-            >
-              <Text className={cn(
-                "text-lg",
-                showDatePicker ? "text-blue-600" : "text-gray-900"
-              )}>
-                {dateFormatter.formatDateWithWeekday(formData.dueDate)}
-              </Text>
-              <Ionicons 
-                name={showDatePicker ? "calendar" : "calendar-outline"} 
-                size={20} 
-                color={showDatePicker ? "#3b82f6" : "#6b7280"} 
-              />
-            </Pressable>
-          </InputField>
-
-          {/* Date Picker - Visible when showDatePicker is true */}
-          {showDatePicker && (
-            <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
-              <DateTimePicker
-                value={formData.dueDate}
-                mode="date"
-                display="spinner"
-                minimumDate={new Date()}
-                locale={dateFormatter.locale}
-                onChange={(_event, selectedDate) => {
-                  if (selectedDate) {
-                    handleDateChange(selectedDate);
-                  }
+            <InputField label={t.tasks.category}>
+              <Pressable
+                onPress={async () => {
+                  await saveFormDataToStorage();
+                  setShowCategoryPicker(true);
                 }}
-                textColor="#000000"
-                style={{ height: 200 }}
-              />
-              <View className="flex-row justify-end p-3 border-t border-gray-200">
-                <Pressable
-                  onPress={() => setShowDatePicker(false)}
-                  className="bg-blue-600 px-6 py-2 rounded-lg"
-                >
-                  <Text className="text-white font-semibold">{t.common.done}</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
+                className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
+              >
+                <Text className="text-lg text-gray-900 flex-1">
+                  {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Pressable>
+            </InputField>
+          </ScreenSection>
 
-          {/* Assign To */}
-          <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
-            {(() => {
-              const isDisabled = isLoadingUsers || context.assigneesLocked;
-              
-              return (
-                <Pressable
-                  onPress={handleOpenUserPicker}
-                  disabled={isDisabled}
-                  className={cn(
-                    "border rounded-lg px-3 py-3 flex-row items-center justify-between",
-                    context.assigneesLocked ? "bg-gray-100" : "bg-white",
-                    errors.assignedTo ? "border-red-300" : "border-gray-300",
-                    isDisabled && "opacity-50"
-                  )}
-                >
-                  <Text className={cn(
-                    "text-lg",
-                    context.assigneesLocked ? "text-gray-500" : "text-gray-900"
-                  )}>
-                    {isLoadingUsers 
-                      ? t.createTask.loadingUsers
-                      : context.assigneesLocked
-                        ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
-                      : selectedUsers.length > 0 
-                        ? t.createTask.usersSelected(selectedUsers.length)
-                        : t.createTask.selectUsersToAssign
-                    }
-                  </Text>
-                  {isLoadingUsers ? (
-                    <Ionicons name="hourglass-outline" size={20} color="#6b7280" />
-                  ) : context.assigneesLocked ? (
-                    <Ionicons name="lock-closed" size={20} color="#9ca3af" />
-                  ) : (
-                    <Ionicons 
-                      name="chevron-forward" 
-                      size={20} 
-                      color="#6b7280" 
-                    />
-                  )}
-                </Pressable>
-              );
-            })()}
-          </InputField>
-
-          {/* Show selected users */}
-          {selectedUsers.length > 0 && (
-            <View className="bg-gray-50 border border-gray-200 rounded-lg p-3 -mt-6 mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-2">{t.createTask.selectedUsers}</Text>
-              <View className="flex-row flex-wrap">
-                {selectedUsers.map((userId) => {
-                  const user = assigneePicker.availableUsers.find(u => u.id === userId);
-                  if (!user) return null;
-                  return (
-                    <View key={userId} className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center">
-                      <Text className="text-blue-900 text-sm font-medium mr-1">{user.name}</Text>
-                      {!context.assigneesLocked ? (
-                        <Pressable onPress={() => toggleUserSelection(userId)}>
-                          <Ionicons name="close-circle" size={16} color="#1e40af" />
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* Attachments */}
           <CreateTaskAttachmentSection
             attachments={formData.attachments as any}
             asyncStoragePhotoCount={asyncStoragePhotoCount}
@@ -710,41 +960,18 @@ export default function CreateTaskScreen({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Fixed Bottom Bar with Create Task Button */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
-        }}
+      <View
+        testID="createTask-submit-focus-target"
+        accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
       >
-        <SafeAreaView edges={['bottom']}>
-          <Pressable
-            testID="createTask-submit"
-            onPress={handleSubmit}
-            disabled={isSubmitting}
-            className={cn(
-              "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-              isSubmitting 
-                ? "bg-gray-300" 
-                : "bg-blue-600"
-            )}
-          >
-            <Ionicons 
-              name={editTaskId ? "checkmark-circle-outline" : "add-circle-outline"} 
-              size={18} 
-              color="white" 
-            />
-            <Text className="text-white font-semibold text-base ml-2">
-              {isSubmitting 
-                ? (editTaskId ? t.createTask.updating : t.createTask.creating) 
-                : (editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton)
-              }
-            </Text>
-          </Pressable>
-        </SafeAreaView>
+        <PrimaryActionBar
+          primaryLabel={editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
+          onPrimaryPress={handleSubmit}
+          isPrimaryDisabled={
+            isSubmitting ||
+            (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
+          }
+        />
       </View>
 
       {/* Priority Picker Modal */}
@@ -1397,7 +1624,7 @@ function TaskActionScreen({
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }) {
-  console.log("InputField is:", InputField); const t = useTranslation();
+  const t = useTranslation();
   const { user } = useAuthStore();
   const tasks = useTaskStore(state => state.tasks);
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
@@ -1411,7 +1638,9 @@ function TaskActionScreen({
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { pickAndUploadImages } = useFileUpload();
   const { showPhotoSelectionDialog } = usePhotoSelection();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<
+    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
+  >();
 
   const task = tasks.find(t => t.id === taskId);
   const targetTask = updateTargetSubTaskId
@@ -1419,29 +1648,38 @@ function TaskActionScreen({
     : task;
   const initialSelectedPhotoUris = (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri);
   const initialIncomingPhotos = Array.from(new Set([...initialSelectedPhotoUris, ...(uploadedPhotoUrls || [])]));
+  const isSharedUpdateComposerMode = actionType === 'update' || actionType === 'photos' || actionType === 'comment';
+  const isPhotoFirstEntry = actionType === 'photos';
+  const isCommentFirstEntry = actionType === 'comment';
   
   // Update form state
   const [updateForm, setUpdateForm] = useState({
     description: "",
-    photos: actionType === 'comment' ? [] as string[] : initialIncomingPhotos,
+    photos: initialIncomingPhotos,
     completionPercentage: targetTask?.completionPercentage || 0,
     status: (targetTask?.status || "in_progress") as TaskStatus,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
   const [draftSelectedPhotos, setDraftSelectedPhotos] = useState<SelectedPhoto[]>(selectedPhotos || []);
-
-  // Comment form state
-  const [commentForm, setCommentForm] = useState({
-    description: "",
-    photos: actionType === 'comment' ? initialIncomingPhotos : [] as string[],
-  });
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [shouldIgnoreIncomingDraftPayloads, setShouldIgnoreIncomingDraftPayloads] = useState(false);
+  const hasAutoOpenedPhotoSelectionRef = useRef(false);
   const selectedPhotoUris = useMemo(
     () => draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
     [draftSelectedPhotos],
   );
   const hasMountedDraftHydrationRef = useRef(false);
+  const resetUpdateDraft = useCallback(() => {
+    setShouldIgnoreIncomingDraftPayloads(true);
+    setDraftSelectedPhotos([]);
+    setFailedUploadsInSession([]);
+    setUpdateForm({
+      description: "",
+      photos: [],
+      completionPercentage: targetTask?.completionPercentage || 0,
+      status: (targetTask?.status || "in_progress") as TaskStatus,
+    });
+  }, [targetTask]);
   const hasDirtyUpdateDraft =
     updateForm.description.trim().length > 0 ||
     updateForm.photos.length > 0 ||
@@ -1451,14 +1689,14 @@ function TaskActionScreen({
 
   // Initialize form when task loads
   useEffect(() => {
-    if (targetTask && actionType === 'update') {
+    if (targetTask && isSharedUpdateComposerMode) {
       setUpdateForm(prev => ({
         ...prev,
         completionPercentage: targetTask.completionPercentage || 0,
         status: (targetTask.status || "in_progress") as TaskStatus,
       }));
     }
-  }, [targetTask, actionType]);
+  }, [isSharedUpdateComposerMode, targetTask]);
 
   // Fetch task on mount
   useEffect(() => {
@@ -1471,8 +1709,26 @@ function TaskActionScreen({
   }, [taskId, updateTargetSubTaskId, fetchTaskById]);
 
   useEffect(() => {
+    if (
+      shouldIgnoreIncomingDraftPayloads &&
+      (!selectedPhotos || selectedPhotos.length === 0) &&
+      (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)
+    ) {
+      setShouldIgnoreIncomingDraftPayloads(false);
+    }
+  }, [
+    selectedPhotos,
+    shouldIgnoreIncomingDraftPayloads,
+    uploadedPhotoUrls,
+  ]);
+
+  useEffect(() => {
     if (!hasMountedDraftHydrationRef.current) {
       hasMountedDraftHydrationRef.current = true;
+      return;
+    }
+
+    if (shouldIgnoreIncomingDraftPayloads) {
       return;
     }
 
@@ -1485,21 +1741,17 @@ function TaskActionScreen({
       return;
     }
 
-    if (actionType === 'comment') {
-      setCommentForm((prev) => ({
-        ...prev,
-        photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
-      }));
-      return;
-    }
-
     setUpdateForm((prev) => ({
       ...prev,
       photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
     }));
-  }, [actionType, selectedPhotoUris, uploadedPhotoUrls]);
+  }, [selectedPhotoUris, shouldIgnoreIncomingDraftPayloads, uploadedPhotoUrls]);
 
   useEffect(() => {
+    if (shouldIgnoreIncomingDraftPayloads) {
+      return;
+    }
+
     if (!selectedPhotos || selectedPhotos.length === 0) {
       return;
     }
@@ -1516,7 +1768,28 @@ function TaskActionScreen({
 
       return merged;
     });
-  }, [selectedPhotos]);
+  }, [selectedPhotos, shouldIgnoreIncomingDraftPayloads]);
+
+  useEffect(() => {
+    if (!isPhotoFirstEntry) {
+      return;
+    }
+
+    if (!user || !task || !targetTask) {
+      return;
+    }
+
+    if (hasAutoOpenedPhotoSelectionRef.current) {
+      return;
+    }
+
+    if (initialIncomingPhotos.length > 0 || draftSelectedPhotos.length > 0 || updateForm.photos.length > 0) {
+      return;
+    }
+
+    hasAutoOpenedPhotoSelectionRef.current = true;
+    handleAddPhotos();
+  }, [draftSelectedPhotos.length, initialIncomingPhotos.length, isPhotoFirstEntry, updateForm.photos.length]);
 
   const handleAddPhotos = async () => {
     if (!user || !task || !targetTask) return;
@@ -1630,7 +1903,7 @@ function TaskActionScreen({
         await addTaskUpdate(task.id, updatePayload);
       }
 
-      setDraftSelectedPhotos([]);
+      resetUpdateDraft();
       onClearDraftPayloads?.();
       await fetchTaskById(task.id);
 
@@ -1647,7 +1920,7 @@ function TaskActionScreen({
   };
 
   const handleAttemptNavigateBack = () => {
-    if (actionType !== "update" || !hasDirtyUpdateDraft) {
+    if (!isSharedUpdateComposerMode || !hasDirtyUpdateDraft) {
       onNavigateBack();
       return;
     }
@@ -1661,48 +1934,13 @@ function TaskActionScreen({
           text: "Discard",
           style: "destructive",
           onPress: () => {
-            setDraftSelectedPhotos([]);
-            setUpdateForm((prev) => ({
-              ...prev,
-              description: "",
-              photos: [],
-              completionPercentage: targetTask?.completionPercentage || 0,
-              status: (targetTask?.status || "in_progress") as TaskStatus,
-            }));
+            resetUpdateDraft();
             onClearDraftPayloads?.();
             onNavigateBack();
           },
         },
       ],
     );
-  };
-
-  const handleSubmitComment = async () => {
-    if (!commentForm.description.trim()) {
-      Alert.alert("Error", "Please provide a comment");
-      return;
-    }
-
-    if (!user || !task) return;
-
-    setIsSubmittingComment(true);
-
-    try {
-      await addAssignerComment(task.id, {
-        description: commentForm.description,
-        photos: commentForm.photos,
-        userId: user.id,
-      });
-
-      await fetchTaskById(task.id);
-      Alert.alert("Success", "Comment added successfully");
-      onNavigateBack();
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      Alert.alert("Error", error.message || "Failed to add comment");
-    } finally {
-      setIsSubmittingComment(false);
-    }
   };
 
   const handleReassignTask = async (selectedUserIds: string[]) => {
@@ -1744,7 +1982,6 @@ function TaskActionScreen({
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
           />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#3b82f6" />
@@ -1756,19 +1993,36 @@ function TaskActionScreen({
   }
 
   // Render based on action type
-  if (actionType === 'update') {
+  if (isSharedUpdateComposerMode) {
     return (
       <View className="flex-1 bg-gray-50">
         <SafeAreaView edges={['top']} className="flex-1">
           <ModernScreenHeader
-            title={t.taskDetail.progressUpdate}
+            title={actionType === 'photos' ? 'Add Photos' : actionType === 'comment' ? 'Add Comment' : t.taskDetail.progressUpdate}
             showBackButton={true}
             onBackPress={handleAttemptNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Description */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                {t.taskDetail.updateDescription}
+              </Text>
+              <TextInput
+                autoFocus={isCommentFirstEntry}
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder={t.taskDetail.updateDescriptionPlaceholder}
+                value={updateForm.description}
+                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                style={{ height: 120 }}
+              />
+            </View>
+
             {/* Photos Section */}
             <View className="mb-6">
               <Text className="text-xl font-semibold text-gray-900 mb-3">
@@ -1818,23 +2072,6 @@ function TaskActionScreen({
                   <Ionicons name="checkmark-circle" size={20} color="#10b981" />
                 )}
               </Pressable>
-            </View>
-
-            {/* Description */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.updateDescription}
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-                placeholder={t.taskDetail.updateDescriptionPlaceholder}
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                style={{ height: 120 }}
-              />
             </View>
 
             {/* Completion Percentage */}
@@ -1893,110 +2130,6 @@ function TaskActionScreen({
     );
   }
 
-  if (actionType === 'comment') {
-    return (
-      <View className="flex-1 bg-gray-50">
-        <SafeAreaView edges={['top']} className="flex-1">
-          <ModernScreenHeader
-            title="Add Comment"
-            showBackButton={true}
-            onBackPress={onNavigateBack}
-            onNavigateToProfile={onNavigateToProfile}
-            onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
-          />
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Photos Section */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Photos (Optional)
-              </Text>
-              
-              {commentForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {commentForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => {
-                            setCommentForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_: any, i: number) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              <Pressable
-                onPress={handleAddPhotos}
-                className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
-              >
-                <Ionicons name="camera-outline" size={24} color="#6b7280" />
-                <Text className="text-gray-600 ml-2 font-medium">
-                  Add Photos
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Comment Text */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Comment
-              </Text>
-              <TextInput
-                className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
-                placeholder="Add your comment here..."
-                value={commentForm.description}
-                onChangeText={(text) => setCommentForm(prev => ({ ...prev, description: text }))}
-                multiline
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 8
-            }}
-          >
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitComment}
-                disabled={isSubmittingComment || !commentForm.description.trim()}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  (isSubmittingComment || !commentForm.description.trim()) ? "bg-gray-300" : "bg-indigo-600"
-                )}
-              >
-                <Ionicons name="send-outline" size={18} color="white" />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmittingComment ? t.common.loading : "Post"}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
   if (actionType === 'reassign') {
     return (
       <View className="flex-1 bg-transparent">
@@ -2020,7 +2153,6 @@ function TaskActionScreen({
           onBackPress={onNavigateBack}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
-          rightElement={<ModernUiMarker />}
         />
         <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
           <View className="mb-6">
@@ -2081,15 +2213,16 @@ function TaskActionScreen({
         >
           <SafeAreaView edges={['bottom']}>
             <Pressable
-              onPress={() => {
-                Alert.alert("Success", "Photos added. You can now submit an update with these photos.");
-                onNavigateBack();
-              }}
-              className="w-full rounded-xl py-3 px-4 flex-row items-center justify-center bg-blue-600"
+              onPress={handleSubmitUpdate}
+              disabled={isSubmitting}
+              className={cn(
+                "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
+                isSubmitting ? "bg-gray-300" : "bg-blue-600"
+              )}
             >
               <Ionicons name="checkmark-circle-outline" size={18} color="white" />
               <Text className="text-white font-semibold text-base ml-2">
-                Done
+                {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
               </Text>
             </Pressable>
           </SafeAreaView>

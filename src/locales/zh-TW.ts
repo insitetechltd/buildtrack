@@ -43,6 +43,7 @@ export const zhTW = {
 
   // Navigation
   nav: {
+    activity: "活動",
     dashboard: "儀表板",
     tasks: "任務",
     projects: "專案",

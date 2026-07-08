@@ -7,6 +7,7 @@ import type {
 } from "@/ui/contracts/primitives";
 import { cn } from "@/utils/cn";
 import { CONTAINER_CARD_DENSITY_CLASS_MAP } from "../tokens";
+import ContainerBodyMedia from "./ContainerBodyMedia";
 
 interface ContainerBodyStateProps {
   cardTestId: string;
@@ -80,16 +81,20 @@ export default function ContainerBodyState({
     );
   }
 
-  return (
-    <View
-      testID={`${cardTestId}__body`}
-      className={cn("justify-center", densityClasses.body)}
-    >
-      <Text className={densityClasses.bodyText}>
-        {structuralState === "disabled"
-          ? "Content is currently unavailable."
-          : "Content is available and ready for composition."}
-      </Text>
-    </View>
-  );
+  if (!body.shouldRenderBody && (!body.media || body.media.mode === "hidden")) {
+    return null;
+  }
+
+  if (body.media && body.media.mode !== "hidden" && body.media.items.length > 0) {
+    return (
+      <View
+        testID={`${cardTestId}__body`}
+        className={cn("justify-center", densityClasses.body)}
+      >
+        <ContainerBodyMedia cardTestId={cardTestId} media={body.media} />
+      </View>
+    );
+  }
+
+  return null;
 }

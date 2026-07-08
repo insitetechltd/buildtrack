@@ -63,7 +63,7 @@ jest.mock("@expo/vector-icons", () => {
   };
 });
 
-jest.mock("../ProfileMenu", () => ({
+jest.mock("@/components/ProfileMenu", () => ({
   __esModule: true,
   default: (props: unknown) => mockProfileMenu(props as never),
 }));
@@ -88,7 +88,7 @@ describe("ModernScreenHeader", () => {
       <ModernScreenHeader title="Task Details" showBackButton onBackPress={onBackPress} />,
     );
 
-    fireEvent.press(screen.getByTestId("modernHeader-back"));
+    fireEvent.press(screen.getByTestId("app-screen-header__back"));
 
     expect(onBackPress).toHaveBeenCalledTimes(1);
   });
@@ -96,14 +96,21 @@ describe("ModernScreenHeader", () => {
   it("uses the shared arrow-style back affordance instead of a Back label", () => {
     const screen = render(<ModernScreenHeader title="Task Details" showBackButton onBackPress={jest.fn()} />);
 
+    const backButton = screen.getByTestId("app-screen-header__back");
+    const backIcon = screen.getByTestId("app-screen-header__back-icon");
+
     expect(screen.queryByText("Back")).toBeNull();
-    expect(screen.getByTestId("modernHeader-back-icon")).toBeTruthy();
+    expect(backButton.props.accessibilityLabel).toBe("Go back");
+    expect(backButton.props.className).toContain("h-10");
+    expect(backButton.props.className).toContain("w-10");
+    expect(backIcon).toBeTruthy();
+    expect(backIcon.props.name).toBe("arrow-back");
   });
 
-  it("preserves the legacy header top padding footprint", () => {
+  it("preserves the shared header top padding footprint", () => {
     const screen = render(<ModernScreenHeader title="Task Details" />);
 
-    expect(screen.getByTestId("modernHeader-root").props.style).toEqual(
+    expect(screen.getByTestId("app-screen-header__root").props.style).toEqual(
       expect.objectContaining({ paddingTop: 16 }),
     );
   });
@@ -119,7 +126,7 @@ describe("ModernScreenHeader", () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId("modernHeader-profile-trigger"));
+    fireEvent.press(screen.getByTestId("app-screen-header__profile-trigger"));
 
     expect(screen.getByText("Profile Menu")).toBeTruthy();
 

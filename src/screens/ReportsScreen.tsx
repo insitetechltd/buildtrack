@@ -5,12 +5,14 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
+import ReportsOverviewHero from "../components/reports/ReportsOverviewHero";
 import type {
   ReportsStatisticCard,
   ReportsVisibleTaskRow,
 } from "../ui/contracts/viewAdapters";
 import { useReportsViewAdapter } from "../ui/viewAdapters/useReportsViewAdapter";
 import StandardHeader from "../components/StandardHeader";
+import ScreenSection from "../components/ui/ScreenSection";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 
@@ -65,6 +67,8 @@ function TaskRow({ row }: { row: ReportsVisibleTaskRow }) {
 export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
   const t = useTranslation();
   const { output, actions } = useReportsViewAdapter();
+  const heroSummaryLabel = `${output.totalVisibleTaskCount} ${t.tasks.tasksPlural} in the current preview`;
+  const heroDateRangeLabel = `${output.dateRange.fromLabel} • ${output.dateRange.toLabel}`;
 
   if (!output.readiness.hasUsableData) {
     return null;
@@ -89,106 +93,113 @@ export default function ReportsScreen({ onNavigateBack }: ReportsScreenProps) {
         }
       />
 
-      <ScrollView className="flex-1 px-6 py-4">
+      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <View className="py-4">
+          <ReportsOverviewHero
+            title={t.nav.reports}
+            summaryLabel={heroSummaryLabel}
+            dateRangeLabel={heroDateRangeLabel}
+          />
 
-        {/* Report Configuration */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-semibold text-gray-900 mb-4">
-            {t.reports.reportConfiguration}
-          </Text>
-
-          {/* Report Type */}
-          <View className="mb-4">
-            <Text className="text-base font-medium text-gray-700 mb-2">{t.reports.reportType}</Text>
-            <View className="flex-row space-x-2">
-              {output.reportTypeOptions
-                .filter((option) => option.isVisible)
-                .map((option) => (
-                <Pressable
-                  key={option.id}
-                  onPress={() => actions.selectReportType(option.value)}
-                  className={cn(
-                    "flex-1 py-2 px-3 rounded-lg border",
-                    option.isSelected
-                      ? "bg-blue-50 border-blue-300"
-                      : "bg-gray-50 border-gray-300"
-                  )}
-                >
-                  <Text className={cn(
-                    "text-center font-medium",
-                    option.isSelected ? "text-blue-700" : "text-gray-700"
-                  )}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-
-          {/* Date Range */}
-          <View className="mb-4">
-            <Text className="text-base font-medium text-gray-700 mb-2">{t.reports.dateRange}</Text>
-            <View className="flex-row space-x-2">
-              <Pressable
-                onPress={actions.openFromDatePicker}
-                className="flex-1 py-2 px-3 bg-gray-50 border border-gray-300 rounded-lg"
-              >
-                <Text className="text-gray-900 text-center">{output.dateRange.fromLabel}</Text>
-              </Pressable>
-              <Pressable
-                onPress={actions.openToDatePicker}
-                className="flex-1 py-2 px-3 bg-gray-50 border border-gray-300 rounded-lg"
-              >
-                <Text className="text-gray-900 text-center">{output.dateRange.toLabel}</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        {/* Statistics Overview */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <Text className="text-xl font-semibold text-gray-900 mb-4">
-            {t.reports.statisticsOverview}
-          </Text>
-
-          <View className="flex-row flex-wrap -mr-3">
-            {output.statisticsCards.map((card) => (
-              <StatCard key={card.id} card={card} />
-            ))}
-          </View>
-        </View>
-
-        {/* Task List Preview */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-semibold text-gray-900">
-              {t.reports.taskPreview}
-            </Text>
-            <Text className="text-base text-gray-500">
-              {output.totalVisibleTaskCount} {t.tasks.tasksPlural}
-            </Text>
-          </View>
-
-          {output.visibleTaskRows.length > 0 ? (
-            <View>
-              {output.visibleTaskRows.map((row) => (
-                <TaskRow key={row.id} row={row} />
-              ))}
-              {output.hiddenTaskCount > 0 && (
-                <Text className="text-center text-gray-500 text-base mt-2">
-                  + {output.hiddenTaskCount} {t.reports.moreTasksInReport}
+          <ScreenSection
+            title={t.reports.reportConfiguration}
+            subtitle="Set the report type and reporting window before generating a summary."
+          >
+            <View className="rounded-2xl border border-gray-200 bg-white p-4">
+              <View className="mb-4">
+                <Text className="mb-2 text-base font-medium text-gray-700">
+                  {t.reports.reportType}
                 </Text>
+                <View className="flex-row space-x-2">
+                  {output.reportTypeOptions
+                    .filter((option) => option.isVisible)
+                    .map((option) => (
+                      <Pressable
+                        key={option.id}
+                        onPress={() => actions.selectReportType(option.value)}
+                        className={cn(
+                          "flex-1 rounded-lg border px-3 py-2",
+                          option.isSelected
+                            ? "border-blue-300 bg-blue-50"
+                            : "border-gray-300 bg-gray-50",
+                        )}
+                      >
+                        <Text
+                          className={cn(
+                            "text-center font-medium",
+                            option.isSelected ? "text-blue-700" : "text-gray-700",
+                          )}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                </View>
+              </View>
+
+              <View>
+                <Text className="mb-2 text-base font-medium text-gray-700">
+                  {t.reports.dateRange}
+                </Text>
+                <View className="flex-row space-x-2">
+                  <Pressable
+                    onPress={actions.openFromDatePicker}
+                    className="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2"
+                  >
+                    <Text className="text-center text-gray-900">{output.dateRange.fromLabel}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={actions.openToDatePicker}
+                    className="flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2"
+                  >
+                    <Text className="text-center text-gray-900">{output.dateRange.toLabel}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </ScreenSection>
+
+          <ScreenSection
+            title={t.reports.statisticsOverview}
+            subtitle="Review the aggregate outcomes for the selected report settings."
+          >
+            <View className="rounded-2xl border border-gray-200 bg-white p-4">
+              <View className="flex-row flex-wrap -mr-3">
+                {output.statisticsCards.map((card) => (
+                  <StatCard key={card.id} card={card} />
+                ))}
+              </View>
+            </View>
+          </ScreenSection>
+
+          <ScreenSection
+            title={t.reports.taskPreview}
+            subtitle={`${output.totalVisibleTaskCount} ${t.tasks.tasksPlural} currently visible`}
+            className="mb-0"
+          >
+            <View className="rounded-2xl border border-gray-200 bg-white p-4">
+              {output.visibleTaskRows.length > 0 ? (
+                <View>
+                  {output.visibleTaskRows.map((row) => (
+                    <TaskRow key={row.id} row={row} />
+                  ))}
+                  {output.hiddenTaskCount > 0 && (
+                    <Text className="mt-2 text-center text-base text-gray-500">
+                      + {output.hiddenTaskCount} {t.reports.moreTasksInReport}
+                    </Text>
+                  )}
+                </View>
+              ) : (
+                <View className="items-center py-8">
+                  <Ionicons name="document-outline" size={48} color="#d1d5db" />
+                  <Text className="mt-2 text-gray-500">{t.reports.noTasksFound}</Text>
+                  <Text className="mt-1 text-center text-base text-gray-400">
+                    {t.reports.adjustDateRange}
+                  </Text>
+                </View>
               )}
             </View>
-          ) : (
-            <View className="py-8 items-center">
-              <Ionicons name="document-outline" size={48} color="#d1d5db" />
-              <Text className="text-gray-500 mt-2">{t.reports.noTasksFound}</Text>
-              <Text className="text-gray-400 text-base text-center mt-1">
-                {t.reports.adjustDateRange}
-              </Text>
-            </View>
-          )}
+          </ScreenSection>
         </View>
       </ScrollView>
 

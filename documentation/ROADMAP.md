@@ -43,18 +43,34 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 11 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
 | WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
 | WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |
+| WS-UX / M-UX-01 | Insite redesign implementation | Pipeline | M-UIA-03, M-DATA-02 | 14 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | M-DATA-02 | 14.1 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01B | Active-project workspace bootstrap restore | Closed | S-UX-01A | 14.2 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01C | Top-level shell and navigation IA alignment | Closed | S-UX-01B | 14.3 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01D | Activity-first home rollout | Closed | S-UX-01C | 14.4 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01E | Compact project task surface | Closed | S-UX-01D | 14.5 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01E2 | Activity/tasks correction | Closed | S-UX-01E | 14.6 | ../docs/superpowers/plans/2026-07-04-activity-tasks-correction-implementation.md |
+| WS-UX / M-UX-01 / S-UX-01F | Shell + camera redesign | Closed | S-UX-01E2 | 14.7 | ../docs/superpowers/plans/2026-07-04-shell-camera-redesign-implementation.md |
+| WS-UX / M-UX-01 / S-UX-01G | Task detail redesign | Closed | S-UX-01F | 14.8 | ../docs/superpowers/plans/2026-07-05-task-detail-redesign-implementation.md |
+| WS-UX / M-UX-01 / S-UX-01H | Batch-first capture review | Pipeline | S-UX-01G | 14.9 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
+| WS-UX / M-UX-01 / S-UX-01I | Migration hardening and regression closure | Pipeline | S-UX-01H | 14.9 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 
 ## Deferred Context
 
 These are intentionally outside the WS/M/S milestone inventory and current execution queue.
 
 - WS-SEC / M-SEC-02 remains intentionally deferred: rotate previously exposed credentials and decide later whether Git history rewriting is required beyond branch-tip cleanup.
+- Pending follow-on under `WS-SUPABASE / M-SUPABASE-01`: apply the authored `tasks` redesign metadata migration for `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags`; until the live schema is updated, task create and redesign-metadata edit flows use compatibility fallbacks and those fields do not persist reliably.
 - WS-FUTURE: MCP Hub architecture, AI task automation, and construction platform integrations.
 
 ## Governance
 
 - This file is the single source of truth for milestone inventory and execution order.
+- Canonical approved product UI/UX logic belongs in `../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md`, not in this roadmap ledger.
 - Planning documents under `docs/superpowers/` may describe slices or execution detail, but must not become competing roadmap inventories.
-- When a milestone is closed, update its `Status` to `Closed` and, if relevant, update its primary reference to the latest execution plan or canonical doc.
+- Before changing any milestone or slice status to `Closed`, explicitly assess whether the app must be relaunched to validate the completed work.
+- If relaunch is needed, relaunch the app, verify the relaunch succeeds, and treat that verification as part of slice wrap-up rather than an optional follow-up.
+- Default implementation mode is **subagent-driven execution**. Use inline execution only when the user explicitly asks for it or a specific task cannot be reasonably decomposed into reviewed sub-tasks.
+- When a milestone is closed, update its `Status` to `Closed` only after the required validation and any required relaunch verification are complete, and update its primary reference to the latest execution plan or canonical doc when relevant.
 - Historically closed milestones may reference `AGENTS.md` as a summary record; milestone-level execution artifacts may not exist for all historical work.
 - `WS-UIA / M-UIA-01` and `WS-UIA / M-UIA-02` govern contract stabilization, boundary cleanup, and parallel-work separation for presentation, adapter, and data-layer ownership; roadmap-aligned coordination rules must be reflected in the canonical UI architecture references rather than tracked only in ad hoc prompt notes.

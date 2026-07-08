@@ -132,9 +132,23 @@ export interface ContainerSkeletonContract {
   hasMediaPlaceholder: boolean;
 }
 
+export interface ContainerBodyMediaItemContract {
+  id: string;
+  uri: string;
+  accessibilityLabel?: string;
+}
+
+export interface ContainerBodyMediaContract {
+  mode: "hidden" | "collapsible" | "expanded";
+  collapsedLabel?: string;
+  items: ContainerBodyMediaItemContract[];
+}
+
 export interface ContainerBodyStateContract {
   empty?: ContainerEmptyStateContract;
   skeleton?: ContainerSkeletonContract;
+  media?: ContainerBodyMediaContract;
+  shouldRenderBody?: boolean;
 }
 
 export interface ContainerPrimitiveContract extends PrimitiveBaseContract {

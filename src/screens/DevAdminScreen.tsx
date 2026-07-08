@@ -11,7 +11,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import StandardHeader from "@/components/StandardHeader";
 import type {
   DevAdminEnvironmentItem,
@@ -151,7 +150,6 @@ export default function DevAdminScreen(props: DevAdminScreenProps) {
         title={output.title}
         showBackButton
         onBackPress={actions.handleNavigateBack}
-        rightElement={<ModernUiMarker />}
       />
 
       <ScrollView className="flex-1">

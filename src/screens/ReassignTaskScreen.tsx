@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
+  NativeSyntheticEvent,
   View,
   Text,
   ScrollView,
   Pressable,
   TextInput,
+  TextInputKeyPressEventData,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +14,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 import {
   useReassignTaskViewAdapter,
   type ReassignTaskScreenProps,
@@ -23,6 +31,44 @@ export default function ReassignTaskScreen({
 }: ReassignTaskScreenProps = {}) {
   const navigation = useNavigation<any>();
   const { output, actions } = useReassignTaskViewAdapter();
+  const searchInputRef = useRef<TextInput>(null);
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "search", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "search" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      searchInputRef.current?.blur?.();
+      return;
+    }
+
+    searchInputRef.current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "search", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "search" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleSearchKeyPress = useCallback(
+    (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus("search", getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -62,10 +108,16 @@ export default function ReassignTaskScreen({
         <View className="flex-row items-center bg-white border border-gray-300 rounded-lg px-4 py-3">
           <Ionicons name="search" size={20} color="#6b7280" />
           <TextInput
+            ref={searchInputRef}
             className="flex-1 ml-2 text-lg"
             placeholder="Search users..."
             value={output.searchQuery}
             onChangeText={actions.setSearchQuery}
+            returnKeyType="done"
+            onKeyPress={handleSearchKeyPress}
+            onSubmitEditing={() => {
+              searchInputRef.current?.blur();
+            }}
           />
         </View>
       </View>

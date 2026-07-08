@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
+  NativeSyntheticEvent,
   View,
   Text,
   ScrollView,
   Pressable,
   TextInput,
+  TextInputKeyPressEventData,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,14 +16,57 @@ import { useNavigation } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { cn } from "../utils/cn";
 import ModernScreenHeader from "../components/ModernScreenHeader";
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import { useTranslation } from "../utils/useTranslation";
 import { useUpdateProgressViewAdapter, UpdateProgressScreenProps } from "../ui/viewAdapters/useUpdateProgressViewAdapter";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 
 export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
   const navigation = useNavigation<any>();
   const t = useTranslation();
   const { output, actions, task } = useUpdateProgressViewAdapter(props);
+  const descriptionInputRef = useRef<TextInput>(null);
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "description", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "description" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      descriptionInputRef.current?.blur?.();
+      return;
+    }
+
+    descriptionInputRef.current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "description", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "description" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleDescriptionKeyPress = useCallback(
+    (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus("description", getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   if (!output.readiness.hasUsableData || !task) {
     return (
@@ -33,7 +78,6 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           onBackPress={() => navigation.goBack()}
           onNavigateToProfile={props.onNavigateToProfile}
           onNavigateToProjectPicker={props.onNavigateToProjectPicker}
-          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -55,7 +99,6 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
         onBackPress={() => navigation.goBack()}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
-        rightElement={<ModernUiMarker />}
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
@@ -164,6 +207,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
             {t.taskDetail.updateDescription}
           </Text>
           <TextInput
+            ref={descriptionInputRef}
             className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
             placeholder={t.taskDetail.updateDescriptionPlaceholder}
             value={output.form.description}
@@ -173,6 +217,12 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
             textAlignVertical="top"
             maxLength={500}
             style={{ height: 120 }}
+            returnKeyType="done"
+            onKeyPress={handleDescriptionKeyPress}
+            onSubmitEditing={() => {
+              descriptionInputRef.current?.blur();
+            }}
+            blurOnSubmit={false}
           />
         </View>
 

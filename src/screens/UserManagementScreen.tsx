@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   FlatList,
   Modal,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
   TextInput,
+  TextInputKeyPressEventData,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,6 +26,12 @@ import {
   type UserManagementViewAdapterProps,
 } from "../ui/viewAdapters/useUserManagementViewAdapter";
 import { cn } from "../utils/cn";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 
 type UserManagementScreenProps = UserManagementViewAdapterProps;
 
@@ -214,9 +222,64 @@ function UserCard({
 export default function UserManagementScreen(props: UserManagementScreenProps) {
   const { onNavigateBack } = props;
   const { output, actions } = useUserManagementViewAdapter(props);
+  const searchInputRef = useRef<TextInput>(null);
   const selectedRoleClasses = getProjectRoleClasses(output.selectedProjectRole);
   const ModalComponent = Modal || View;
   const RefreshControlComponent = RefreshControl;
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "search", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "search" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      searchInputRef.current?.blur?.();
+      return;
+    }
+
+    searchInputRef.current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "search", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "search" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleSearchKeyPress = useCallback(
+    (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus("search", getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
+  const renderUserCard = React.useCallback(
+    ({ item }: { item: UserManagementUserCard }) => (
+      <UserCard
+        card={item}
+        onAssign={actions.requestAssignUser}
+        onApprove={actions.requestApproveUser}
+        onReject={actions.requestRejectUser}
+        onRemoveAssignment={actions.requestRemoveAssignment}
+      />
+    ),
+    [
+      actions.requestApproveUser,
+      actions.requestAssignUser,
+      actions.requestRejectUser,
+      actions.requestRemoveAssignment,
+    ]
+  );
 
   if (!output.readiness.hasUsableData) {
     return null;
@@ -285,10 +348,16 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
           <View className="flex-1 flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
             <Ionicons name="search-outline" size={20} color="#6b7280" />
             <TextInput
+              ref={searchInputRef}
               className="flex-1 ml-2 text-gray-900"
               placeholder="Search users..."
               value={output.searchQuery}
               onChangeText={actions.setSearchQuery}
+              returnKeyType="done"
+              onKeyPress={handleSearchKeyPress}
+              onSubmitEditing={() => {
+                searchInputRef.current?.blur();
+              }}
             />
           </View>
           <Pressable
@@ -321,15 +390,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         }
         data={output.userCards}
         keyExtractor={(card) => card.id}
-        renderItem={({ item }) => (
-          <UserCard
-            card={item}
-            onAssign={actions.requestAssignUser}
-            onApprove={actions.requestApproveUser}
-            onReject={actions.requestRejectUser}
-            onRemoveAssignment={actions.requestRemoveAssignment}
-          />
-        )}
+        renderItem={renderUserCard}
         ListEmptyComponent={
           <View className="flex-1 items-center justify-center py-12">
             <View className="w-20 h-20 bg-gray-100 rounded-full items-center justify-center mb-4">

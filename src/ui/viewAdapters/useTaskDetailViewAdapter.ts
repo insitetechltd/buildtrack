@@ -5,16 +5,26 @@ import { useUserStore } from '../../state/userStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
+import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
+import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type {
+  TaskDetailActiveStageModel,
+  TaskDetailQuickActionRowModel,
   TaskDetailScreenViewAdapterOutput,
   TaskDetailBannerModel,
   TaskDetailActivityModel,
+  TaskDetailActivityThreadRow,
   TaskDetailAssigneeModel,
+  TaskDetailDelegationSummaryModel,
+  TaskDetailEvidenceSummaryModel,
+  TaskDetailInfoCardModel,
   TasksScreenRowItem,
   TaskDetailActionItem,
+  TaskDetailHeroModel,
   TaskDetailSectionModel,
+  TaskDetailSubtaskSummaryModel,
 } from '../contracts/viewAdapters';
-import type { Task, TaskStatus } from '../../types/buildtrack';
+import type { Task, TaskActivity, TaskStatus } from '../../types/buildtrack';
 import type { StatusSemanticToken } from '../contracts/primitives';
 
 export interface UseTaskDetailViewAdapterProps {
@@ -23,11 +33,322 @@ export interface UseTaskDetailViewAdapterProps {
 }
 
 function isPreAcceptanceTaskStatus(status: TaskStatus): boolean {
-  return status === 'new' || status === 'not_started';
+  return (
+    status === 'new' ||
+    status === 'not_started' ||
+    status === 'assigned' ||
+    status === 'received'
+  );
 }
 
 function isApprovedTaskStatus(status: TaskStatus): boolean {
   return status === 'approved' || status === 'completed' || status === 'done';
+}
+
+function isActiveWorkTaskStatus(status: TaskStatus): boolean {
+  return status === 'accepted' || status === 'in_progress' || status === 'wip' || status === 'rejected';
+}
+
+function getTaskTags(tags?: string[]): string[] {
+  return Array.isArray(tags) ? tags.filter(Boolean) : [];
+}
+
+function hasCriticalThisWeekTag(task: Pick<Task, 'tags'>): boolean {
+  return getTaskTags(task.tags).includes(CRITICAL_THIS_WEEK_TAG);
+}
+
+function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
+  const normalizedTags = getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
+
+  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
+}
+
+function humanizeToken(value: string | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getActivityNarrative(activity: TaskActivity): string | undefined {
+  const description = activity.description?.trim();
+  if (description) {
+    return description;
+  }
+
+  const dataDescription = (activity.data as { description?: string } | undefined)?.description?.trim();
+  return dataDescription || undefined;
+}
+
+interface TaskDetailHeadlineContext {
+  previousCompletionPercentage?: number;
+}
+
+function buildPhotoUpdateHeadline(photoCount: number): string {
+  if (photoCount <= 1) {
+    return 'Added photo update';
+  }
+
+  return `Added ${photoCount} photos`;
+}
+
+function hasMeaningfulProgressChange(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): boolean {
+  if (activity.activityType !== 'progress_update' || activity.completionPercentage === undefined) {
+    return false;
+  }
+
+  if (context?.previousCompletionPercentage !== undefined) {
+    return activity.completionPercentage !== context.previousCompletionPercentage;
+  }
+
+  return activity.completionPercentage > 0;
+}
+
+function buildTaskDetailEventLabel(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): string {
+  switch (activity.activityType) {
+    case 'progress_update': {
+      const photoCount = collectActivityPhotoUrls(activity).length;
+      const meaningfulProgressChange = hasMeaningfulProgressChange(activity, context);
+
+      if (!meaningfulProgressChange && photoCount > 0) {
+        return buildPhotoUpdateHeadline(photoCount);
+      }
+
+      return activity.completionPercentage !== undefined
+        ? `Updated progress to ${activity.completionPercentage}%`
+        : 'Updated progress';
+    }
+    case 'status_change':
+      return activity.status
+        ? `Changed status to ${humanizeToken(activity.status)}`
+        : 'Updated task status';
+    case 'assignment':
+      return 'Updated assignment';
+    case 'creation':
+      return 'Created task';
+    case 'cancellation':
+      return 'Cancelled task';
+    case 'review_submission':
+      return 'Submitted task for review';
+    case 'review_acceptance':
+      return 'Approved task completion';
+    case 'review_rejection':
+      return 'Rejected task completion';
+    case 'assigner_comment':
+      return 'Added assigner comment';
+    case 'delegation_added':
+      return 'Added delegation';
+    case 'delegation_removed':
+      return 'Removed delegation';
+    case 'photo_batch_attached':
+      return 'Added photo evidence';
+    case 'draft_completed':
+      return 'Completed draft update';
+    case 'metadata_edit':
+      return 'Updated task details';
+    default:
+      return humanizeToken(activity.activityType);
+  }
+}
+
+function buildTaskDetailHeadline(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): string {
+  const narrative = getActivityNarrative(activity);
+  const fallbackLabel = buildTaskDetailEventLabel(activity, context);
+
+  if (narrative && narrative.toLowerCase() !== fallbackLabel.toLowerCase()) {
+    return narrative;
+  }
+
+  return fallbackLabel;
+}
+
+function buildActivityHeadlineContextMap(
+  activities: TaskActivity[],
+): Map<string, TaskDetailHeadlineContext> {
+  const contextByActivityId = new Map<string, TaskDetailHeadlineContext>();
+  const latestOlderCompletionByTaskId = new Map<string, number>();
+
+  [...activities].reverse().forEach((activity) => {
+    const taskKey = activity.taskId || activity.id;
+
+    contextByActivityId.set(activity.id, {
+      previousCompletionPercentage: latestOlderCompletionByTaskId.get(taskKey),
+    });
+
+    if (activity.completionPercentage !== undefined) {
+      latestOlderCompletionByTaskId.set(taskKey, activity.completionPercentage);
+    }
+  });
+
+  return contextByActivityId;
+}
+
+function buildTaskDetailEventDetail(activity: TaskActivity): string | undefined {
+  const reason = (activity.data as { reason?: string } | undefined)?.reason?.trim();
+  if (reason) {
+    return `Reason: ${reason}`;
+  }
+
+  return undefined;
+}
+
+function buildTaskDetailTimestampLabel(
+  activity: TaskActivity,
+  dateFormatter: ReturnType<typeof useDateFormatter>,
+): string {
+  if (!activity.timestamp) {
+    return '';
+  }
+
+  return dateFormatter.formatDateTime(activity.timestamp);
+}
+
+function isPdfAssetUri(uri: string): boolean {
+  return /\.pdf(?:$|[?#])/i.test(uri);
+}
+
+function getActivityAssetUris(activity: TaskActivity): string[] {
+  const activityData = activity.data as { photos?: string[] } | undefined;
+  return Array.isArray(activityData?.photos) ? activityData.photos.filter(Boolean) : [];
+}
+
+function collectActivityPhotoUrls(activity: TaskActivity): string[] {
+  return getActivityAssetUris(activity).filter((uri) => !isPdfAssetUri(uri));
+}
+
+function collectActivityDocumentUri(activity: TaskActivity): string | undefined {
+  return getActivityAssetUris(activity).find((uri) => isPdfAssetUri(uri));
+}
+
+function collectTaskPhotoAttachments(task: Task): string[] {
+  return Array.isArray(task.attachments)
+    ? task.attachments.filter(Boolean).filter((uri) => !isPdfAssetUri(uri))
+    : [];
+}
+
+function collectTaskDocumentAttachment(task: Task): string | undefined {
+  return Array.isArray(task.attachments)
+    ? task.attachments.filter(Boolean).find((uri) => isPdfAssetUri(uri))
+    : undefined;
+}
+
+function getAttachmentFileName(uri: string | undefined): string | undefined {
+  if (!uri) {
+    return undefined;
+  }
+
+  const rawFileName = uri.split(/[?#]/)[0]?.split('/').pop();
+  if (!rawFileName) {
+    return undefined;
+  }
+
+  try {
+    return decodeURIComponent(rawFileName);
+  } catch {
+    return rawFileName;
+  }
+}
+
+function collectLatestTaskPhotoUrls(task: Task, activities: TaskActivity[]): string[] {
+  const orderedActivityPhotos = activities.flatMap((activity) => collectActivityPhotoUrls(activity));
+  const taskAttachments = collectTaskPhotoAttachments(task);
+
+  return [...orderedActivityPhotos, ...taskAttachments].slice(0, 3);
+}
+
+function collectTotalTaskPhotoCount(task: Task, activities: TaskActivity[]): number {
+  const activityPhotoCount = activities.reduce(
+    (total, activity) => total + collectActivityPhotoUrls(activity).length,
+    0,
+  );
+  const taskAttachmentCount = collectTaskPhotoAttachments(task).length;
+
+  return activityPhotoCount + taskAttachmentCount;
+}
+
+function buildTaskDetailActiveStageModel({
+  task,
+  orderedActivities,
+  dateFormatter,
+  getUserById,
+}: {
+  task: Task;
+  orderedActivities: TaskActivity[];
+  dateFormatter: ReturnType<typeof useDateFormatter>;
+  getUserById: (userId?: string) => { name?: string } | undefined;
+}): TaskDetailActiveStageModel {
+  const latestActivity = orderedActivities[0];
+  const activityHeadlineContextById = buildActivityHeadlineContextMap(orderedActivities);
+
+  if (latestActivity) {
+    const photos = collectActivityPhotoUrls(latestActivity);
+    const documentUri = collectActivityDocumentUri(latestActivity);
+    const stageSource = buildActiveStageModel({
+      id: latestActivity.id,
+      mode: photos.length > 0 ? "photo" : documentUri ? "pdf" : "text",
+      title: buildTaskDetailHeadline(
+        latestActivity,
+        activityHeadlineContextById.get(latestActivity.id),
+      ),
+      summary:
+        buildTaskDetailEventDetail(latestActivity) ||
+        latestActivity.description?.trim() ||
+        "No additional update details.",
+    });
+
+    return {
+      id: stageSource.id,
+      density: "standard",
+      structuralState: "stale",
+      stageMode: stageSource.stageMode,
+      title: stageSource.title,
+      summary: stageSource.summary,
+      actorLabel: getUserById(latestActivity.userId)?.name || "Unknown User",
+      timestampLabel: buildTaskDetailTimestampLabel(latestActivity, dateFormatter),
+      photos,
+      activePhotoIndex: photos.length > 0 ? 0 : undefined,
+      documentName: getAttachmentFileName(documentUri),
+      documentUri,
+    };
+  }
+
+  const photos = collectTaskPhotoAttachments(task);
+  const documentUri = collectTaskDocumentAttachment(task);
+  const stageSource = buildActiveStageModel({
+    id: "task-active-stage",
+    mode: photos.length > 0 ? "photo" : documentUri ? "pdf" : "text",
+    title: "Latest task entry",
+    summary: task.description?.trim() || "No additional update details.",
+  });
+
+  return {
+    id: stageSource.id,
+    density: "standard",
+    structuralState: "stale",
+    stageMode: stageSource.stageMode,
+    title: stageSource.title,
+    summary: stageSource.summary,
+    actorLabel: getUserById(task.assignedBy)?.name || "Unknown User",
+    timestampLabel: task.updatedAt
+      ? dateFormatter.formatDateTime(task.updatedAt)
+      : task.createdAt
+        ? dateFormatter.formatDateTime(task.createdAt)
+        : "",
+    photos,
+    activePhotoIndex: photos.length > 0 ? 0 : undefined,
+    documentName: getAttachmentFileName(documentUri),
+    documentUri,
+  };
 }
 
 export function useTaskDetailViewAdapter({
@@ -40,6 +361,7 @@ export function useTaskDetailViewAdapter({
     declineTask: (reason: string) => Promise<void>;
     submitForReview: () => Promise<void>;
     approveTask: () => Promise<void>;
+    toggleCriticalThisWeek: () => Promise<void>;
     cancelTask: () => Promise<void>;
     fetchTask: () => Promise<void>;
   };
@@ -47,7 +369,7 @@ export function useTaskDetailViewAdapter({
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, cancelTask } = useTaskStore();
+  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, cancelTask, updateTask } = useTaskStore();
   const { getUserById } = useUserStore();
 
   const foundTask = tasks.find((t) => t.id === taskId);
@@ -88,6 +410,57 @@ export function useTaskDetailViewAdapter({
           freshnessLabel: '',
         },
         header: { taskId: '', title: '', statusLabel: '', projectName: '', assigneeSummary: '' },
+        taskHero: {
+          id: 'task-hero',
+          density: 'standard',
+          structuralState: 'stale',
+          title: '',
+          statusLabel: '',
+          projectLabel: '',
+          completionLabel: '',
+          assignedByLabel: '',
+          assignedToLabel: '',
+        },
+        delegationSummary: {
+          id: 'delegation-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          assignedByLabel: '',
+          assignedToLabel: '',
+        },
+        infoCard: {
+          id: 'task-info-card',
+          density: 'standard',
+          structuralState: 'stale',
+          detailRows: [],
+        },
+        activeStage: {
+          id: 'task-active-stage',
+          density: 'standard',
+          structuralState: 'stale',
+          stageMode: 'no_photo',
+          title: '',
+          summary: '',
+          actorLabel: '',
+          timestampLabel: '',
+          photos: [],
+        },
+        evidenceSummary: {
+          id: 'evidence-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          latestPhotoUrls: [],
+          totalPhotoCount: 0,
+          emptyLabel: '',
+        },
+        activityThread: [],
+        subtaskSummary: {
+          id: 'subtask-summary',
+          density: 'standard',
+          structuralState: 'stale',
+          title: 'Subtasks',
+          totalCount: 0,
+        },
         detailSections: [],
         actionItems: [],
         scalarMetrics: { attachmentCount: 0, updateCount: 0, childTaskCount: 0, completionPercentage: 0 },
@@ -102,6 +475,7 @@ export function useTaskDetailViewAdapter({
         declineTask: async () => {},
         submitForReview: async () => {},
         approveTask: async () => {},
+        toggleCriticalThisWeek: async () => {},
         cancelTask: async () => {},
         fetchTask,
       },
@@ -111,25 +485,44 @@ export function useTaskDetailViewAdapter({
   const assignedTo = task.assignedTo || [];
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
+  const isCriticalThisWeek = hasCriticalThisWeekTag(task);
+  const isAwaitingAcceptance = isAssignedToMe && isPreAcceptanceTaskStatus(task.status);
+  const isReviewerApprovalState =
+    isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100;
+  const isContributorReviewState =
+    isAssignedToMe &&
+    !isTaskCreator &&
+    task.completionPercentage === 100 &&
+    task.status !== 'submitted_for_review' &&
+    task.status !== 'declined' &&
+    task.status !== 'cancelled' &&
+    !isApprovedTaskStatus(task.status) &&
+    !isPreAcceptanceTaskStatus(task.status);
+  const isActiveWorkState = isActiveWorkTaskStatus(task.status) && !isContributorReviewState;
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
       case 'new': return 'task_new';
+      case 'assigned': return 'task_new';
+      case 'received': return 'task_new';
       case 'not_started': return 'task_new';
       case 'accepted': return 'task_accepted';
       case 'in_progress': return 'task_in_progress';
+      case 'wip': return 'task_in_progress';
       case 'submitted_for_review': return 'task_submitted_for_review';
+      case 'reviewing': return 'task_submitted_for_review';
       case 'approved': return 'task_approved';
       case 'completed': return 'task_approved';
       case 'done': return 'task_approved';
-      case 'rejected': return 'task_rejected';
+      case 'rejected': return 'task_in_progress';
       case 'cancelled': return 'task_cancelled';
-      case 'declined': return 'task_rejected';
+      case 'declined': return 'task_submitted_for_review';
       default: return 'custom';
     }
   };
 
-  const getStatusLabel = (status: TaskStatus) => status?.replace(/_/g, ' ') || 'new';
+  const getStatusLabel = (status: TaskStatus) =>
+    status?.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()) || 'New';
 
   const banners: TaskDetailBannerModel[] = [];
 
@@ -246,11 +639,123 @@ export function useTaskDetailViewAdapter({
     priorityLabel: ct.priority,
     assigneeSummary: ct.assignedTo.map((id) => getUserById(id)?.name).filter(Boolean).join(', ') || 'Unassigned',
     projectName: ct.projectId || 'Unknown Project',
+    attachmentUris: ct.attachments ?? [],
     isOverdue:
       new Date(ct.dueDate) < new Date() &&
       !isApprovedTaskStatus(ct.status) &&
       ct.completionPercentage < 100,
   }));
+
+  const orderedActivities = [...(task.activities || [])].sort(
+    (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+  );
+
+  const primaryOwner = task.primaryAssigneeId
+    ? getUserById(task.primaryAssigneeId)
+    : assignees[0];
+
+  const delegationSummary: TaskDetailDelegationSummaryModel = {
+    id: 'delegation-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    assignedByLabel: assigners.map((assigner) => assigner.name).join(', ') || 'Unassigned',
+    assignedToLabel: assignees.map((assignee) => assignee.name).join(', ') || 'Unassigned',
+    primaryOwnerLabel: primaryOwner?.name,
+    teamSummaryLabel: assignees.length > 1 ? `${assignees.length} assignees` : undefined,
+  };
+
+  const detailRows = [
+    { id: 'row-due', label: t.taskDetail.due, value: dateFormatter.formatDateShort(task.dueDate) },
+    { id: 'row-category', label: 'Category', value: task.category || 'General' },
+  ];
+
+  const infoCard: TaskDetailInfoCardModel = {
+    id: 'task-info-card',
+    density: 'standard',
+    structuralState: 'stale',
+    descriptionLabel: task.description || '',
+    assignedByLabel: delegationSummary.assignedByLabel,
+    assignedToLabel: delegationSummary.assignedToLabel,
+    primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
+    detailRows: [],
+  };
+
+  const combinedActivities = [
+    ...(task.activities || []).map((activity) => ({
+      activity,
+      childTask: undefined as Task | undefined,
+    })),
+    ...childTasksData.flatMap((childTask) =>
+      (childTask.activities || []).map((activity) => ({
+        activity,
+        childTask,
+      })),
+    ),
+  ].sort(
+    (left, right) => new Date(right.activity.timestamp).getTime() - new Date(left.activity.timestamp).getTime(),
+  );
+  const activityHeadlineContextById = buildActivityHeadlineContextMap(
+    combinedActivities.map(({ activity }) => activity),
+  );
+
+  const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => ({
+    id: activity.id,
+    density: 'standard',
+    structuralState: 'stale',
+    actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
+    eventLabel: buildTaskDetailHeadline(activity, activityHeadlineContextById.get(activity.id)),
+    timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+    progressLabel:
+      activity.completionPercentage !== undefined
+        ? `${activity.completionPercentage}%`
+        : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
+    detailLabel: undefined,
+    photoUrls: collectActivityPhotoUrls(activity),
+    statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
+    subtaskBadgeLabel: childTask ? 'Subtask' : undefined,
+    subtaskTitleLabel: childTask?.title,
+  }));
+
+  const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
+  const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);
+  const activeStage = buildTaskDetailActiveStageModel({
+    task,
+    orderedActivities,
+    dateFormatter,
+    getUserById: (userId) => (userId ? getUserById(userId) : undefined),
+  });
+
+  const taskHero: TaskDetailHeroModel = {
+    id: 'task-hero',
+    density: 'standard',
+    structuralState: 'stale',
+    title: task.title,
+    statusLabel: getStatusLabel(task.status),
+    categoryLabel: humanizeToken(task.category || 'general'),
+    projectLabel: task.projectId || 'Unknown Project',
+    completionLabel: `${task.completionPercentage}% complete`,
+    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
+    nextStepLabel: undefined,
+    isCritical: isCriticalThisWeek,
+    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
+  };
+
+  const evidenceSummary: TaskDetailEvidenceSummaryModel = {
+    id: 'evidence-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    latestPhotoUrls: latestEvidencePhotoUrls,
+    totalPhotoCount: totalEvidencePhotoCount,
+    emptyLabel: 'No photo evidence yet.',
+  };
+
+  const subtaskSummary: TaskDetailSubtaskSummaryModel = {
+    id: 'subtask-summary',
+    density: 'standard',
+    structuralState: 'stale',
+    title: 'Subtasks',
+    totalCount: childTasks.length,
+  };
 
   const detailSections: TaskDetailSectionModel[] = [
     {
@@ -258,10 +763,7 @@ export function useTaskDetailViewAdapter({
       density: 'standard',
       structuralState: 'stale',
       title: 'Details',
-      rows: [
-        { id: 'row-due', label: t.taskDetail.due, value: dateFormatter.formatDateShort(task.dueDate) },
-        { id: 'row-category', label: 'Category', value: task.category || 'General' },
-      ],
+      rows: detailRows,
     },
     {
       id: 'section-description',
@@ -275,50 +777,144 @@ export function useTaskDetailViewAdapter({
   ];
 
   const actionItems: TaskDetailActionItem[] = [];
+  const addActionItem = ({
+    actionId,
+    label,
+    icon,
+  }: {
+    actionId: string;
+    label: string;
+    icon?: string;
+  }) => {
+    if (actionItems.some((item) => item.actionId === actionId)) {
+      return;
+    }
+
+    actionItems.push({
+      id: `action-${actionId}`,
+      actionId,
+      density: 'standard',
+      structuralState: 'stale',
+      label,
+      icon,
+      isDisabled: false,
+    });
+  };
 
   const wasReassigned = task.status === 'new' && isTaskCreator && (task.activities || []).some((a: any) => a.description?.toLowerCase().includes('reassigned'));
-  const canUpdateProgress = isAssignedToMe && !isTaskCreator && (task.status === 'accepted' || task.status === 'in_progress' || (task.status === 'rejected' && task.completionPercentage === 100));
   const canEditTask = isTaskCreator;
 
-  if (canEditTask && !(isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100)) {
-    actionItems.push({ id: 'action-edit', actionId: 'edit_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.editTaskDetails, icon: 'create-outline', isDisabled: false });
+  if (canEditTask && !isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'edit_task',
+      label: t.taskDetail.editTaskDetails,
+      icon: 'create-outline',
+    });
   }
 
-  if (isAssignedToMe && isPreAcceptanceTaskStatus(task.status)) {
-    actionItems.push({ id: 'action-accept', actionId: 'accept_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.accept, icon: 'checkmark-circle-outline', isDisabled: false });
-    actionItems.push({ id: 'action-decline', actionId: 'decline_task', density: 'standard', structuralState: 'stale', label: t.taskDetail.decline, icon: 'close-circle-outline', isDisabled: false });
-  } else if (isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100) {
-    actionItems.push({ id: 'action-approve', actionId: 'approve_task', density: 'standard', structuralState: 'stale', label: 'Approve', icon: 'checkmark-circle-outline', isDisabled: false });
-    actionItems.push({ id: 'action-reject', actionId: 'reject_task', density: 'standard', structuralState: 'stale', label: 'Reject', icon: 'close-circle-outline', isDisabled: false });
-  } else {
-    if (isTaskCreator && task.status === 'declined') {
-      actionItems.push({ id: 'action-reassign', actionId: 'reassign_task', density: 'standard', structuralState: 'stale', label: 'Reassign', icon: 'people-outline', isDisabled: false });
+  if (isAwaitingAcceptance) {
+    addActionItem({
+      actionId: 'accept_task',
+      label: t.taskDetail.accept,
+      icon: 'checkmark-circle-outline',
+    });
+    addActionItem({
+      actionId: 'decline_task',
+      label: t.taskDetail.decline,
+      icon: 'close-circle-outline',
+    });
+  }
+
+  if (isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'approve_task',
+      label: 'Approve',
+      icon: 'checkmark-circle-outline',
+    });
+    addActionItem({
+      actionId: 'reject_task',
+      label: 'Reject',
+      icon: 'close-circle-outline',
+    });
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+  }
+
+  if (isActiveWorkState || isContributorReviewState || isReviewerApprovalState) {
+    if (isAssignedToMe || isReviewerApprovalState) {
+      addActionItem({
+        actionId: 'update_progress',
+        label: 'Add Photos',
+        icon: 'camera-outline',
+      });
     }
-    if (isTaskCreator && wasReassigned) {
-      actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
-    }
-    if (canUpdateProgress) {
-      actionItems.push({ id: 'action-update', actionId: 'update_progress', density: 'standard', structuralState: 'stale', label: t.taskDetail.updateTask, icon: 'trending-up-outline', isDisabled: false });
-      actionItems.push({ id: 'action-photos', actionId: 'upload_photos', density: 'standard', structuralState: 'stale', label: t.taskDetail.photosUpdates, icon: 'camera-outline', isDisabled: false });
-    }
-    if (isTaskCreator && task.status !== 'declined' && !wasReassigned) {
-      actionItems.push({ id: 'action-comment', actionId: 'add_comment', density: 'standard', structuralState: 'stale', label: 'Add Comment', icon: 'chatbubble-outline', isDisabled: false });
+
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+
+    if (!isViewingSubTask && isActiveWorkState) {
+      addActionItem({
+        actionId: 'add_subtask',
+        label: 'Add Subtask',
+        icon: 'add-circle-outline',
+      });
     }
   }
 
-  if (
-    isAssignedToMe &&
-    !isTaskCreator &&
-    task.completionPercentage === 100 &&
-    task.status !== 'submitted_for_review' &&
-    !isApprovedTaskStatus(task.status)
-  ) {
-    actionItems.push({ id: 'action-submit-review', actionId: 'submit_review', density: 'standard', structuralState: 'stale', label: 'Completed - Review Submission', icon: 'send', isDisabled: false });
+  if (isContributorReviewState) {
+    addActionItem({
+      actionId: 'submit_review',
+      label: 'Submit for Review',
+      icon: 'send',
+    });
   }
 
-  const allTaskFiles = new Set<string>();
-  if (task.attachments) task.attachments.forEach(a => allTaskFiles.add(a));
-  activities.forEach(a => a.photos.forEach(p => allTaskFiles.add(p)));
+  if (isTaskCreator && task.status === 'declined') {
+    addActionItem({
+      actionId: 'reassign_task',
+      label: 'Reassign',
+      icon: 'people-outline',
+    });
+  }
+
+  if (isTaskCreator && wasReassigned) {
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+  }
+
+  const quickActionIds = isAwaitingAcceptance
+    ? ['accept_task', 'decline_task']
+    : isActiveWorkState || isContributorReviewState || isReviewerApprovalState
+      ? ['update_progress', 'add_comment']
+      : [];
+
+  const quickActions: TaskDetailQuickActionRowModel | undefined = quickActionIds.length
+    ? {
+        id: 'task-quick-actions',
+        density: 'standard',
+        structuralState: 'stale',
+        actions: quickActionIds
+          .map((actionId) => actionItems.find((action) => action.actionId === actionId))
+          .filter((action): action is TaskDetailActionItem => Boolean(action)),
+      }
+    : undefined;
+
+  if (isTaskCreator && task.status !== 'declined' && !wasReassigned && !isReviewerApprovalState) {
+    addActionItem({
+      actionId: 'add_comment',
+      label: 'Add Comment',
+      icon: 'chatbubble-outline',
+    });
+  }
 
   return {
     output: {
@@ -344,10 +940,18 @@ export function useTaskDetailViewAdapter({
         projectName: task.projectId || 'Unknown Project',
         assigneeSummary: assignees.map((a) => a.name).join(', ') || 'Unassigned',
       },
+      taskHero,
+      delegationSummary,
+      infoCard,
+      quickActions,
+      activeStage,
+      evidenceSummary,
+      activityThread,
+      subtaskSummary,
       detailSections,
       actionItems,
       scalarMetrics: {
-        attachmentCount: allTaskFiles.size,
+        attachmentCount: totalEvidencePhotoCount,
         updateCount: activities.length,
         childTaskCount: childTasks.length,
         completionPercentage: task.completionPercentage,
@@ -389,6 +993,12 @@ export function useTaskDetailViewAdapter({
         } else {
           await acceptTaskCompletion(task.id, user.id);
         }
+        await fetchTask();
+      },
+      toggleCriticalThisWeek: async () => {
+        await updateTask(task.id, {
+          tags: withCriticalThisWeekTag(task.tags, !isCriticalThisWeek),
+        } as Partial<Task>);
         await fetchTask();
       },
       cancelTask: async () => {

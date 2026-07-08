@@ -82,6 +82,34 @@ jest.mock("@/components/TaskCard", () => ({
   },
 }));
 
+jest.mock("@/components/taskDetail/TaskDetailHero", () => ({
+  __esModule: true,
+  default: function MockTaskDetailHero() {
+    return null;
+  },
+}));
+
+jest.mock("@/components/taskDetail/TaskDetailInfoCard", () => ({
+  __esModule: true,
+  default: function MockTaskDetailInfoCard() {
+    return null;
+  },
+}));
+
+jest.mock("@/components/taskDetail/TaskDetailQuickActions", () => ({
+  __esModule: true,
+  default: function MockTaskDetailQuickActions() {
+    return null;
+  },
+}));
+
+jest.mock("@/components/taskDetail/TaskActivityTimeline", () => ({
+  __esModule: true,
+  default: function MockTaskActivityTimeline() {
+    return null;
+  },
+}));
+
 jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
     getParent: () => ({
@@ -112,34 +140,13 @@ describe("ModernUiMarker", () => {
 
     useDashboardViewAdapter.mockReturnValue({
       output: {
-        projectSummaryItems: [
-          {
-            id: "project-summary-1",
-            projectId: "project-1",
-            title: "North Tower",
-            subtitle: "Package A",
-            statusToken: "project_active",
-            statusLabel: "Active",
-            openTaskCount: 1,
-            overdueTaskCount: 0,
-            density: "standard",
-            structuralState: "stable",
-          },
-        ],
-        scalarMetrics: {
-          inboxNewCount: 1,
-          inboxNewOverdueCount: 0,
-          inboxWipCount: 2,
-          inboxWipOverdueCount: 0,
-          inboxReviewingCount: 0,
-          inboxReviewingOverdueCount: 0,
-          outboxNewCount: 0,
-          outboxNewOverdueCount: 0,
-          outboxWipCount: 0,
-          outboxWipOverdueCount: 0,
-          outboxReviewingCount: 0,
-          outboxReviewingOverdueCount: 0,
-        },
+        activeProject: null,
+        projectSummaryCard: null,
+        queueDashboard: { groups: [] },
+        summaryPills: [],
+        draftItems: [],
+        activityItems: [],
+        taskShortcut: null,
       },
       visibility: {
         showCreateTaskFab: false,
@@ -157,24 +164,24 @@ describe("ModernUiMarker", () => {
         header: {
           title: "Task Details",
         },
-        banners: [],
-        detailSections: [],
-        assigners: [],
-        assignees: [],
-        activities: [],
-        childTasks: [],
         actionItems: [],
+        taskHero: null,
+        infoCard: null,
+        banners: [],
+        activityThread: { rows: [] },
+        quickActions: null,
       },
       actions: {
         acceptTask: jest.fn(),
         declineTask: jest.fn(),
         submitForReview: jest.fn(),
         approveTask: jest.fn(),
+        toggleCriticalThisWeek: jest.fn(),
       },
     });
   });
 
-  it("renders the shared marker in custom-header and StandardHeader-based modern screens", () => {
+  it("does not render the deprecated Modern UI marker on modern screens", () => {
     const dashboardScreen = render(
       <DashboardScreen
         onNavigateToTasks={jest.fn()}
@@ -190,7 +197,10 @@ describe("ModernUiMarker", () => {
       />,
     );
 
-    expect(dashboardScreen.getByText("Modern UI")).toBeTruthy();
-    expect(taskDetailScreen.getByText("Modern UI")).toBeTruthy();
+    expect(dashboardScreen.getByText("Recent Activity")).toBeTruthy();
+    expect(dashboardScreen.queryByText("Modern UI")).toBeNull();
+
+    expect(taskDetailScreen.getByText("Task Details")).toBeTruthy();
+    expect(taskDetailScreen.queryByText("Modern UI")).toBeNull();
   });
 });

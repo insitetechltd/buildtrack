@@ -1,9 +1,11 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   TextInput,
+  NativeSyntheticEvent,
+  TextInputKeyPressEventData,
   Pressable,
   Alert,
   KeyboardAvoidingView,
@@ -15,6 +17,12 @@ import { useAuthStore } from "../state/authStore";
 import { ProjectStatus, Project } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import { useDateFormatter } from "../utils/dateFormatter";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 
 interface ProjectFormProps {
   mode: "create" | "edit";
@@ -39,6 +47,15 @@ interface ProjectFormData {
   };
 }
 
+type ProjectFormFieldId =
+  | "clientName"
+  | "name"
+  | "description"
+  | "location"
+  | "clientEmail"
+  | "clientPhone"
+  | "submit";
+
 export default function ProjectForm({
   mode,
   project,
@@ -49,6 +66,12 @@ export default function ProjectForm({
 }: ProjectFormProps) {
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
+  const clientNameInputRef = useRef<TextInput>(null);
+  const projectNameInputRef = useRef<TextInput>(null);
+  const descriptionInputRef = useRef<TextInput>(null);
+  const locationInputRef = useRef<TextInput>(null);
+  const clientEmailInputRef = useRef<TextInput>(null);
+  const clientPhoneInputRef = useRef<TextInput>(null);
 
   const [formData, setFormData] = useState<ProjectFormData>({
     name: project?.name || "",
@@ -158,6 +181,68 @@ export default function ProjectForm({
     { label: "Completed", value: "completed" },
     { label: "Cancelled", value: "cancelled" },
   ];
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "clientName", isFocusable: true },
+        { fieldId: "name", isFocusable: true },
+        { fieldId: "description", isFocusable: true },
+        { fieldId: "location", isFocusable: true },
+        { fieldId: "clientEmail", isFocusable: true },
+        { fieldId: "clientPhone", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: ProjectFormFieldId | null) => {
+    if (!fieldId || fieldId === "submit") {
+      clientNameInputRef.current?.blur?.();
+      projectNameInputRef.current?.blur?.();
+      descriptionInputRef.current?.blur?.();
+      locationInputRef.current?.blur?.();
+      clientEmailInputRef.current?.blur?.();
+      clientPhoneInputRef.current?.blur?.();
+      return;
+    }
+
+    const focusTargetMap = {
+      clientName: clientNameInputRef,
+      name: projectNameInputRef,
+      description: descriptionInputRef,
+      location: locationInputRef,
+      clientEmail: clientEmailInputRef,
+      clientPhone: clientPhoneInputRef,
+    } satisfies Record<Exclude<ProjectFormFieldId, "submit">, React.RefObject<TextInput | null>>;
+
+    focusTargetMap[fieldId].current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (
+      activeFieldId: Exclude<ProjectFormFieldId, "submit">,
+      direction: "next" | "previous" = "next",
+    ) => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as ProjectFormFieldId | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleFieldKeyPress = useCallback(
+    (
+      activeFieldId: Exclude<ProjectFormFieldId, "submit">,
+      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
+    ) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus(activeFieldId, getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   return (
     <KeyboardAvoidingView
@@ -176,6 +261,7 @@ export default function ProjectForm({
                 Client <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
+                ref={clientNameInputRef}
                 className={cn(
                   "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
                   errors.clientName ? "border-red-300" : "border-gray-300"
@@ -184,6 +270,12 @@ export default function ProjectForm({
                 value={formData.clientInfo.name}
                 onChangeText={(text) => handleClientChange("name", text)}
                 maxLength={100}
+                returnKeyType="next"
+                onKeyPress={(event) => handleFieldKeyPress("clientName", event)}
+                onSubmitEditing={() => {
+                  moveFormFocus("clientName");
+                }}
+                blurOnSubmit={false}
               />
               {errors.clientName && (
                 <Text className="text-red-500 text-sm mt-1">{errors.clientName}</Text>
@@ -196,6 +288,7 @@ export default function ProjectForm({
                 Project Title <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
+                ref={projectNameInputRef}
                 className={cn(
                   "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
                   errors.name ? "border-red-300" : "border-gray-300"
@@ -204,6 +297,12 @@ export default function ProjectForm({
                 value={formData.name}
                 onChangeText={handleNameChange}
                 maxLength={100}
+                returnKeyType="next"
+                onKeyPress={(event) => handleFieldKeyPress("name", event)}
+                onSubmitEditing={() => {
+                  moveFormFocus("name");
+                }}
+                blurOnSubmit={false}
               />
               {errors.name && (
                 <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
@@ -216,6 +315,7 @@ export default function ProjectForm({
                 Description <Text className="text-red-500">*</Text>
               </Text>
               <TextInput
+                ref={descriptionInputRef}
                 className={cn(
                   "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[90px]",
                   errors.description ? "border-red-300" : "border-gray-300"
@@ -228,6 +328,12 @@ export default function ProjectForm({
                 textAlignVertical="top"
                 maxLength={500}
                 style={{ minHeight: 90 }}
+                returnKeyType="next"
+                onKeyPress={(event) => handleFieldKeyPress("description", event)}
+                onSubmitEditing={() => {
+                  moveFormFocus("description");
+                }}
+                blurOnSubmit={false}
               />
               {errors.description && (
                 <Text className="text-red-500 text-sm mt-1">{errors.description}</Text>
@@ -302,6 +408,7 @@ export default function ProjectForm({
           
           <View>
             <TextInput
+              ref={locationInputRef}
               className={cn(
                 "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[130px]",
                 errors.location ? "border-red-300" : "border-gray-300"
@@ -313,10 +420,59 @@ export default function ProjectForm({
               numberOfLines={5}
               textAlignVertical="top"
               style={{ minHeight: 130 }}
+              returnKeyType="next"
+              onKeyPress={(event) => handleFieldKeyPress("location", event)}
+              onSubmitEditing={() => {
+                moveFormFocus("location");
+              }}
+              blurOnSubmit={false}
             />
             {errors.location && (
               <Text className="text-red-500 text-sm mt-1">{errors.location}</Text>
             )}
+          </View>
+        </View>
+
+        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+          <Text className="text-2xl font-bold text-gray-900 mb-4">Client Contact</Text>
+
+          <View className="space-y-4">
+            <View>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Client Email</Text>
+              <TextInput
+                ref={clientEmailInputRef}
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
+                placeholder="Enter client email"
+                value={formData.clientInfo.email}
+                onChangeText={(text) => handleClientChange("email", text)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                onKeyPress={(event) => handleFieldKeyPress("clientEmail", event)}
+                onSubmitEditing={() => {
+                  moveFormFocus("clientEmail");
+                }}
+                blurOnSubmit={false}
+              />
+            </View>
+
+            <View>
+              <Text className="text-lg font-medium text-gray-700 mb-2">Client Phone</Text>
+              <TextInput
+                ref={clientPhoneInputRef}
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
+                placeholder="Enter client phone"
+                value={formData.clientInfo.phone}
+                onChangeText={(text) => handleClientChange("phone", text)}
+                keyboardType="phone-pad"
+                returnKeyType="done"
+                onKeyPress={(event) => handleFieldKeyPress("clientPhone", event)}
+                onSubmitEditing={() => {
+                  clientPhoneInputRef.current?.blur();
+                }}
+              />
+            </View>
           </View>
         </View>
 

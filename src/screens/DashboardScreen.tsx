@@ -1,15 +1,14 @@
-import React, { useMemo } from "react";
-import { FlatList, Pressable, Text, View } from "react-native";
+import React, { useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import ContainerCard from "@/components/primitives/container/ContainerCard";
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
-import { mapDashboardProjectToContainerCardProps } from "@/ui/mappers/dashboardMappers";
+import AppScreenHeader from "@/components/AppScreenHeader";
+import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
+import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
-import { useProjectFilterStore } from "@/state/projectFilterStore";
 
 interface DashboardScreenProps {
-  onNavigateToTasks: () => void;
+  onNavigateToTasks: (params?: TasksListParams) => void;
   onNavigateToCreateTask: () => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;
@@ -19,222 +18,183 @@ interface DashboardScreenProps {
 
 export default function DashboardScreen(props: DashboardScreenProps) {
   const { output, visibility } = useDashboardViewAdapter();
-  const projectFilterStore = useProjectFilterStore();
-  const {
-    inboxNewCount,
-    inboxNewOverdueCount,
-    inboxWipCount,
-    inboxWipOverdueCount,
-    inboxReviewingCount,
-    inboxReviewingOverdueCount,
-    outboxNewCount,
-    outboxNewOverdueCount,
-    outboxWipCount,
-    outboxWipOverdueCount,
-    outboxReviewingCount,
-    outboxReviewingOverdueCount,
-  } = output.scalarMetrics;
+  const [isDraftsExpanded, setIsDraftsExpanded] = useState(false);
 
-  const containerCards = useMemo(() => {
-    return output.projectSummaryItems.map(mapDashboardProjectToContainerCardProps);
-  }, [output.projectSummaryItems]);
-
-  const handleQuickGridPress = (section: "inbox" | "outbox" | "my_work", status: any, label: string) => {
-    projectFilterStore.setSectionFilter(section);
-    if (status) projectFilterStore.setStatusFilter(status);
-    projectFilterStore.setButtonLabel(label);
-    props.onNavigateToTasks();
-  };
-
-  const tasksForMeItems = [
-    {
-      testID: "dashboard-screen__metric_inbox_new",
-      title: "New Requests",
-      value: inboxNewCount,
-      containerClassName: "border-orange-200 bg-orange-50",
-      titleClassName: "text-orange-700",
-      valueClassName: "text-orange-900",
-      overdueCount: inboxNewOverdueCount,
-      overdueTestID: "dashboard-screen__metric_inbox_new_overdue",
-      overdueVariant: "badge" as const,
-      onPress: () => handleQuickGridPress("inbox", "new", "New Requests"),
-    },
-    {
-      testID: "dashboard-screen__metric_inbox_wip",
-      title: "Current Tasks",
-      value: inboxWipCount,
-      containerClassName: "border-blue-200 bg-blue-50",
-      titleClassName: "text-blue-700",
-      valueClassName: "text-blue-900",
-      overdueCount: inboxWipOverdueCount,
-      overdueTestID: "dashboard-screen__metric_inbox_wip_overdue",
-      overdueVariant: "text" as const,
-      onPress: () => handleQuickGridPress("inbox", "wip", "Current Tasks"),
-    },
-    {
-      testID: "dashboard-screen__metric_inbox_reviewing",
-      title: "Pending My Review",
-      value: inboxReviewingCount,
-      containerClassName: "border-purple-200 bg-purple-50",
-      titleClassName: "text-purple-700",
-      valueClassName: "text-purple-900",
-      overdueCount: inboxReviewingOverdueCount,
-      overdueTestID: "dashboard-screen__metric_inbox_reviewing_overdue",
-      overdueVariant: "badge" as const,
-      onPress: () => handleQuickGridPress("inbox", "reviewing", "Pending My Review"),
-    },
-  ];
-
-  const tasksFromMeItems = [
-    {
-      testID: "dashboard-screen__metric_outbox_new",
-      title: "Pending Acceptance",
-      value: outboxNewCount,
-      containerClassName: "border-orange-200 bg-orange-50",
-      titleClassName: "text-orange-700",
-      valueClassName: "text-orange-900",
-      overdueCount: outboxNewOverdueCount,
-      overdueTestID: "dashboard-screen__metric_outbox_new_overdue",
-      overdueVariant: "badge" as const,
-      onPress: () => handleQuickGridPress("outbox", "new", "Pending Acceptance"),
-    },
-    {
-      testID: "dashboard-screen__metric_outbox_wip",
-      title: "Team Proceeding",
-      value: outboxWipCount,
-      containerClassName: "border-blue-200 bg-blue-50",
-      titleClassName: "text-blue-700",
-      valueClassName: "text-blue-900",
-      overdueCount: outboxWipOverdueCount,
-      overdueTestID: "dashboard-screen__metric_outbox_wip_overdue",
-      overdueVariant: "text" as const,
-      onPress: () => handleQuickGridPress("outbox", "wip", "Team Proceeding"),
-    },
-    {
-      testID: "dashboard-screen__metric_outbox_reviewing",
-      title: "Pending Approval",
-      value: outboxReviewingCount,
-      containerClassName: "border-cyan-200 bg-cyan-50",
-      titleClassName: "text-cyan-700",
-      valueClassName: "text-cyan-900",
-      overdueCount: outboxReviewingOverdueCount,
-      overdueTestID: "dashboard-screen__metric_outbox_reviewing_overdue",
-      overdueVariant: "badge" as const,
-      onPress: () => handleQuickGridPress("outbox", "reviewing", "Pending Approval"),
-    },
-  ];
-
-  const renderGridCard = (item: any) => (
-    <Pressable
-      key={item.testID}
-      testID={item.testID}
-      onPress={item.onPress}
-      className={`flex-1 rounded-2xl border p-3 justify-between ${item.containerClassName}`}
+  return (
+    <SafeAreaView
+      testID="dashboard-screen__root"
+      edges={["left", "right", "bottom"]}
+      className="flex-1 bg-slate-50"
     >
-      <Text className={`text-[11px] font-semibold uppercase tracking-wide ${item.titleClassName}`}>
-        {item.title}
-      </Text>
-      <View className="mt-2">
-        <Text className={`text-2xl font-bold ${item.valueClassName}`}>{item.value}</Text>
-        {item.overdueCount > 0 ? (
-          item.overdueVariant === "badge" ? (
-            <View
-              testID={item.overdueTestID}
-              className="mt-2 self-start rounded-full bg-red-600 px-2 py-1"
-            >
-              <Text className="text-[11px] font-semibold text-white">
-                {item.overdueCount} Overdue
+      <View className="flex-1 bg-[#E7F4F8]">
+        <AppScreenHeader
+          title="Taskr"
+          titleNode={<BrandHeaderTitle subtitle="Site activity" />}
+          showProfileTrigger={visibility.showProfileShortcut}
+          onNavigateToProfile={props.onNavigateToProfile}
+          onNavigateToProjectPicker={visibility.showProjectPickerShortcut ? props.onNavigateToProjectPicker : undefined}
+          onNavigateToDeveloperSettings={
+            visibility.showDeveloperSettingsShortcut ? props.onNavigateToDeveloperSettings : undefined
+          }
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
+        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 5 }} className="flex-1 px-4">
+
+          {output.projectSummaryCard ? (
+            <View className="mb-5" testID="dashboard-screen__project_summary_section">
+              <Text className="text-[34px] leading-9 font-semibold text-[#0D2630]">
+                {output.projectSummaryCard.title}
+              </Text>
+              <Text className="mt-2 text-lg leading-6 text-[#577783]">
+                {[
+                  output.projectSummaryCard.todayLabel,
+                  output.projectSummaryCard.elapsedDayLabel,
+                  `${output.projectSummaryCard.weatherIconLabel} ${output.projectSummaryCard.weatherTemperatureLabel}`,
+                ].join(" · ")}
               </Text>
             </View>
           ) : (
-            <Text
-              testID={item.overdueTestID}
-              className="mt-2 text-[11px] font-medium text-amber-700"
-            >
-              {item.overdueCount} overdue
-            </Text>
-          )
-        ) : null}
-      </View>
-    </Pressable>
-  );
+            <View className="mb-4 rounded-3xl border border-dashed border-[#A8D3E0] bg-white px-4 py-4">
+              <Text className="text-lg leading-6 font-medium text-[#577783]">
+                Select a project to view the active project summary and queue overview.
+              </Text>
+            </View>
+          )}
 
-  return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="flex-1">
-        <View className="px-4 pt-3">
-          <View className="mb-3 flex-row items-center justify-between">
-            <Text className="text-xl font-semibold text-slate-900">Dashboard</Text>
-            <View className="flex-row items-center">
-              <ModernUiMarker />
-              {visibility.showProjectPickerShortcut && props.onNavigateToProjectPicker ? (
-                <Pressable
-                  testID="dashboard-screen__header_project_picker"
-                  onPress={() => props.onNavigateToProjectPicker?.(true)}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="business-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showProfileShortcut ? (
-                <Pressable
-                  testID="dashboard-screen__header_profile"
-                  onPress={props.onNavigateToProfile}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="person-circle-outline" size={22} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showDeveloperSettingsShortcut && props.onNavigateToDeveloperSettings ? (
-                <Pressable
-                  testID="dashboard-screen__header_developer_settings"
-                  onPress={props.onNavigateToDeveloperSettings}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="settings-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
+          {output.projectSummaryCard ? (
+            <View className="mb-5">
+              <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
+                This Week&apos;s Critical Dates
+              </Text>
+              {output.projectSummaryCard.criticalDates.length > 0 ? (
+                <View className="gap-3">
+                  {output.projectSummaryCard.criticalDates.map((item) => (
+                    <View
+                      key={item.id}
+                      className="flex-row items-start justify-between rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4"
+                    >
+                      <View className="mr-3 flex-1">
+                        <Text className="text-lg font-semibold text-[#0D2630]">{item.title}</Text>
+                        <Text className="mt-1 text-base leading-5 text-[#577783]">{item.subtitle}</Text>
+                      </View>
+                      <Text className="text-base font-semibold uppercase tracking-wide text-[#0A728F]">
+                        {item.dateLabel}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View className="rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4">
+                  <Text className="text-lg leading-6 text-[#577783]">
+                    No critical dates flagged for this week yet.
+                  </Text>
+                </View>
+              )}
             </View>
-          </View>
-          <View className="mb-4">
-            <Text className="mb-2 text-sm font-semibold text-slate-500 uppercase tracking-wider">Project Summary</Text>
-            <View className="h-48">
-              <FlatList
-                testID="dashboard-screen__list"
-                data={containerCards}
-                keyExtractor={(item) => item.primitiveId}
-                renderItem={({ item }) => (
-                  <View className="mb-3">
-                    <ContainerCard contract={item} />
+          ) : null}
+
+          {output.projectSummaryCard && output.queueDashboard ? (
+            <View className="mb-5" testID="dashboard-screen__queue_dashboard">
+              <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
+                Queue Overview
+              </Text>
+              <View className="gap-4">
+                {output.queueDashboard.groups.map((group) => (
+                  <View key={group.id}>
+                    <Text className="mb-2 text-base font-semibold uppercase tracking-wider text-[#497080]">
+                      {group.title}
+                    </Text>
+                    <View className="flex-row gap-2">
+                      {group.cells.map((cell) => (
+                        <Pressable
+                          key={cell.id}
+                          testID={`dashboard-screen__queue_cell_${cell.queue}_${cell.bucket}`}
+                          onPress={() =>
+                            props.onNavigateToTasks({
+                              launchQueue: cell.queue,
+                              launchBucket: cell.bucket,
+                              launchSource: "activity_dashboard",
+                            })
+                          }
+                          className="min-w-0 flex-1 rounded-2xl border border-[#C8E6EF] bg-white px-3 py-4"
+                        >
+                          <Text className="text-base font-semibold uppercase tracking-wide text-[#497080]">
+                            {cell.title}
+                          </Text>
+                          <Text className="mt-2 text-[30px] leading-8 font-semibold text-[#0D2630]">
+                            {cell.countLabel}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
                   </View>
-                )}
-              />
+                ))}
+              </View>
             </View>
-          </View>
-        </View>
-        <View className="flex-1 px-4">
+          ) : null}
+
           <View className="mb-4">
-            <Text className="mb-2 text-sm font-semibold text-slate-500 uppercase tracking-wider">Tasks For Me</Text>
-            <View testID="dashboard-screen__metric_grid_inbox" className="flex-row gap-2">
-              {tasksForMeItems.map(renderGridCard)}
+            <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
+              Recent Activity
+            </Text>
+            <View className="gap-3">
+              {output.activityItems.length > 0 ? (
+                output.activityItems.map((item) => (
+                  <ActivityStyleRowCard
+                    key={item.id}
+                    testID={`dashboard-screen__activity_${item.id}`}
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    metaLabel={item.timestampLabel}
+                    badgeLabel={item.statusLabel}
+                    imageUri={item.previewPhotoUri}
+                    onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                  />
+                ))
+              ) : (
+                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
+                  <Text className="text-lg leading-6 text-[#577783]">
+                    {output.activeProject
+                      ? "No recent activity for the current project yet."
+                      : "Select a project to view recent activity."}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
-          <View className="mb-4">
-            <Text className="mb-2 text-sm font-semibold text-slate-500 uppercase tracking-wider">Tasks From Me</Text>
-            <View testID="dashboard-screen__metric_grid_outbox" className="flex-row gap-2">
-              {tasksFromMeItems.map(renderGridCard)}
+
+          {output.draftItems.length > 0 ? (
+            <View className="mb-4">
+              <Pressable
+                testID="dashboard-screen__drafts_toggle"
+                onPress={() => setIsDraftsExpanded((current) => !current)}
+                className="mb-2 flex-row items-center justify-between"
+              >
+                <Text className="text-base font-semibold uppercase tracking-wider text-slate-500">
+                  Drafts In Progress
+                </Text>
+                <Text className="text-base font-semibold text-slate-500">
+                  {isDraftsExpanded ? "Hide" : "Show"}
+                </Text>
+              </Pressable>
+              {isDraftsExpanded ? (
+                <View className="gap-3" testID="dashboard-screen__drafts_list">
+                  {output.draftItems.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      testID={`dashboard-screen__draft_item_${item.taskId}`}
+                      onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                      className="rounded-2xl border border-slate-200 bg-white p-4"
+                    >
+                      <Text className="text-lg font-semibold text-slate-900">{item.title}</Text>
+                      <Text className="mt-1 text-base text-slate-500">{item.subtitle}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
             </View>
-          </View>
-        </View>
-        {visibility.showCreateTaskFab ? (
-          <Pressable
-            testID="dashboard-screen__fab_create_task"
-            onPress={props.onNavigateToCreateTask}
-            className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-orange-500 shadow-lg"
-          >
-            <Ionicons name="add" size={28} color="#ffffff" />
-          </Pressable>
-        ) : null}
+          ) : null}
+        </ScrollView>
       </View>
     </SafeAreaView>
   );

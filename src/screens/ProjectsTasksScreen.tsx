@@ -2,8 +2,8 @@ import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
-  ScrollView,
   FlatList,
+  ScrollView,
   Pressable,
   TextInput,
   Image,
@@ -636,7 +636,7 @@ export default function ProjectsTasksScreen({
         }}
         data={allTasks}
         keyExtractor={(task) =>
-          "isSubTask" in task && task.isSubTask
+          'isSubTask' in task && task.isSubTask
             ? `subtask-${task.id}`
             : `task-${task.id}`
         }

@@ -32,7 +32,7 @@ jest.mock("@/state/devToggleStore", () => ({
 
 jest.mock("@/state/taskStore.supabase", () => ({
   useTaskStore: () => ({
-    tasks: [{ id: "task-1" }],
+    tasks: [{ id: "8b55cb26-8af8-4f65-a4b5-5a8d0ff5a001" }],
     fetchTasks: mockFetchTasks,
   }),
 }));
@@ -88,7 +88,10 @@ describe("useDeveloperSettingsViewAdapter", () => {
 
   it("clears the Sprint 7 task cache key", async () => {
     const { result } = renderHook(() =>
-      useDeveloperSettingsViewAdapter({ onNavigateBack: jest.fn() }),
+      useDeveloperSettingsViewAdapter({
+        onNavigateBack: jest.fn(),
+        onOpenTaskDetailVerification: jest.fn(),
+      }),
     );
 
     result.current.actions.handleClearTaskCache();
@@ -106,7 +109,10 @@ describe("useDeveloperSettingsViewAdapter", () => {
 
   it("clears the Sprint 7 user cache key", async () => {
     const { result } = renderHook(() =>
-      useDeveloperSettingsViewAdapter({ onNavigateBack: jest.fn() }),
+      useDeveloperSettingsViewAdapter({
+        onNavigateBack: jest.fn(),
+        onOpenTaskDetailVerification: jest.fn(),
+      }),
     );
 
     result.current.actions.handleClearUserCache();
@@ -120,5 +126,33 @@ describe("useDeveloperSettingsViewAdapter", () => {
 
     expect(mockRemoveItem).toHaveBeenCalledWith("insite-users-supabase-v1");
     expect(mockFetchUsers).toHaveBeenCalled();
+  });
+
+  it("exposes a screen verification launcher and delegates launching through the adapter action", () => {
+    const onOpenTaskDetailVerification = jest.fn();
+    const { result } = renderHook(() =>
+      useDeveloperSettingsViewAdapter({
+        onNavigateBack: jest.fn(),
+        onOpenTaskDetailVerification,
+      } as any),
+    );
+
+    expect(
+      result.current.output.actionGroups.some(
+        (group) =>
+          group.title === "Screen Verification" &&
+          group.actions.some(
+            (action) => action.label === "Open Task Detail Verification",
+          ),
+      ),
+    ).toBe(true);
+
+    act(() => {
+      (result.current.actions as any).handleOpenTaskDetailVerification();
+    });
+
+    expect(onOpenTaskDetailVerification).toHaveBeenCalledWith(
+      "8b55cb26-8af8-4f65-a4b5-5a8d0ff5a001",
+    );
   });
 });

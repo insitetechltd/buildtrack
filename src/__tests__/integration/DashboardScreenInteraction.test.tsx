@@ -2,17 +2,34 @@ import React from "react";
 import { render, fireEvent } from "@testing-library/react-native";
 import DashboardScreen from "../../../src/screens/DashboardScreen";
 import { useDashboardViewAdapter } from "../../../src/ui/viewAdapters/useDashboardViewAdapter";
-import { useProjectFilterStore } from "../../../src/state/projectFilterStore";
 
 // Mock the view adapter
 jest.mock("../../../src/ui/viewAdapters/useDashboardViewAdapter");
-const mockUseDashboardViewAdapter = useDashboardViewAdapter as jest.Mock;
+jest.mock("../../../src/components/AppScreenHeader", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
 
-// Mock the filter store
-jest.mock("../../../src/state/projectFilterStore", () => ({
-  useProjectFilterStore: jest.fn(),
-}));
-const mockUseProjectFilterStore = useProjectFilterStore as unknown as jest.Mock;
+  return function MockAppScreenHeader({
+    title,
+    rightSlot,
+    className,
+  }: {
+    title: string;
+    rightSlot?: React.ReactNode;
+    className?: string;
+  }) {
+    return (
+      <View testID="app-screen-header__root" className={className}>
+        <Text>{title}</Text>
+        {rightSlot}
+        <Pressable testID="app-screen-header__profile-trigger">
+          <Text>Profile</Text>
+        </Pressable>
+      </View>
+    );
+  };
+});
+const mockUseDashboardViewAdapter = useDashboardViewAdapter as jest.Mock;
 
 // Mock child components that might complain about missing Context or Navigation
 jest.mock("../../../src/components/primitives/container/ContainerCard", () => {
@@ -22,36 +39,80 @@ jest.mock("../../../src/components/primitives/container/ContainerCard", () => {
 });
 
 describe("DashboardScreen Interactions", () => {
-  let mockSetSectionFilter: jest.Mock;
-  let mockSetStatusFilter: jest.Mock;
-  let mockSetButtonLabel: jest.Mock;
   let mockOnNavigateToTasks: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    mockSetSectionFilter = jest.fn();
-    mockSetStatusFilter = jest.fn();
-    mockSetButtonLabel = jest.fn();
     mockOnNavigateToTasks = jest.fn();
-
-    mockUseProjectFilterStore.mockReturnValue({
-      setSectionFilter: mockSetSectionFilter,
-      setStatusFilter: mockSetStatusFilter,
-      setButtonLabel: mockSetButtonLabel,
-    });
 
     mockUseDashboardViewAdapter.mockReturnValue({
       output: {
-        scalarMetrics: {
-          actionRequiredCount: 5,
-          actionRequiredOverdueCount: 1,
-          inProgressSentCount: 3,
-          inProgressSentOverdueCount: 0,
-          awaitingApprovalCount: 2,
-          awaitingApprovalOverdueCount: 2,
+        activeProject: {
+          id: "project-1",
+          title: "North Tower",
+          subtitle: "Site A",
         },
+        projectSummaryCard: {
+          title: "North Tower",
+          todayLabel: "Saturday · Jul 4",
+          elapsedDayLabel: "Day 185",
+          weatherIconLabel: "☁️",
+          weatherTemperatureLabel: "28°C",
+          criticalDates: [],
+        },
+        queueDashboard: {
+          groups: [
+            {
+              id: "group-my",
+              title: "My Queue",
+              cells: [
+                { id: "my-new", queue: "my_queue", bucket: "new", title: "New", countLabel: "5" },
+                { id: "my-wip", queue: "my_queue", bucket: "wip", title: "Doing", countLabel: "3" },
+                { id: "my-review", queue: "my_queue", bucket: "review", title: "Review", countLabel: "2" },
+              ],
+            },
+            {
+              id: "group-team",
+              title: "Team Queue",
+              cells: [
+                { id: "team-new", queue: "team_queue", bucket: "new", title: "New", countLabel: "4" },
+                { id: "team-wip", queue: "team_queue", bucket: "wip", title: "Doing", countLabel: "1" },
+                { id: "team-review", queue: "team_queue", bucket: "review", title: "Review", countLabel: "2" },
+              ],
+            },
+          ],
+        },
+        summaryPills: [],
+        draftItems: [],
+        activityItems: [],
+        taskShortcut: null,
         projectSummaryItems: [],
+        highlightedTaskItems: [],
+        quickActionItems: [],
+        scalarMetrics: {
+          openTaskCount: 0,
+          overdueTaskCount: 0,
+          projectCount: 1,
+          hasSelectedProject: true,
+          actionRequiredCount: 0,
+          inProgressSentCount: 0,
+          awaitingApprovalCount: 0,
+          actionRequiredOverdueCount: 0,
+          inProgressSentOverdueCount: 0,
+          awaitingApprovalOverdueCount: 0,
+          inboxNewCount: 0,
+          inboxNewOverdueCount: 0,
+          inboxWipCount: 0,
+          inboxWipOverdueCount: 0,
+          inboxReviewingCount: 0,
+          inboxReviewingOverdueCount: 0,
+          outboxNewCount: 0,
+          outboxNewOverdueCount: 0,
+          outboxWipCount: 0,
+          outboxWipOverdueCount: 0,
+          outboxReviewingCount: 0,
+          outboxReviewingOverdueCount: 0,
+        },
       },
       visibility: {
         showProjectPickerShortcut: true,
@@ -62,8 +123,8 @@ describe("DashboardScreen Interactions", () => {
     });
   });
 
-  it("navigates to Inbox tasks correctly", () => {
-    const { getByTestId } = render(
+  it("navigates to Tasks with the selected My Queue bucket", () => {
+    const { getByTestId, getByText, queryByText, queryByTestId } = render(
       <DashboardScreen
         onNavigateToTasks={mockOnNavigateToTasks}
         onNavigateToCreateTask={jest.fn()}
@@ -71,16 +132,24 @@ describe("DashboardScreen Interactions", () => {
       />
     );
 
-    const inboxNewBtn = getByTestId("dashboard-screen__metric_inbox_new");
-    fireEvent.press(inboxNewBtn);
+    expect(getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
+    expect(queryByText("Partly Cloudy")).toBeNull();
+    expect(queryByTestId("dashboard-screen__weather_tile")).toBeNull();
+    expect(getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(getByTestId("app-screen-header__root").props.className).toContain("pb-2");
+    expect(queryByTestId("dashboard-screen__header_profile")).toBeNull();
+    expect(queryByTestId("dashboard-screen__fab_open_camera")).toBeNull();
 
-    expect(mockSetSectionFilter).toHaveBeenCalledWith("inbox");
-    expect(mockSetStatusFilter).toHaveBeenCalledWith("new");
-    expect(mockSetButtonLabel).toHaveBeenCalledWith("New Requests");
-    expect(mockOnNavigateToTasks).toHaveBeenCalled();
+    fireEvent.press(getByTestId("dashboard-screen__queue_cell_my_queue_new"));
+
+    expect(mockOnNavigateToTasks).toHaveBeenCalledWith({
+      launchQueue: "my_queue",
+      launchBucket: "new",
+      launchSource: "activity_dashboard",
+    });
   });
 
-  it("navigates to Outbox tasks correctly", () => {
+  it("navigates to Tasks with the selected Team Queue bucket", () => {
     const { getByTestId } = render(
       <DashboardScreen
         onNavigateToTasks={mockOnNavigateToTasks}
@@ -89,12 +158,12 @@ describe("DashboardScreen Interactions", () => {
       />
     );
 
-    const outboxReviewingBtn = getByTestId("dashboard-screen__metric_outbox_reviewing");
-    fireEvent.press(outboxReviewingBtn);
+    fireEvent.press(getByTestId("dashboard-screen__queue_cell_team_queue_review"));
 
-    expect(mockSetSectionFilter).toHaveBeenCalledWith("outbox");
-    expect(mockSetStatusFilter).toHaveBeenCalledWith("reviewing");
-    expect(mockSetButtonLabel).toHaveBeenCalledWith("Pending Approval");
-    expect(mockOnNavigateToTasks).toHaveBeenCalled();
+    expect(mockOnNavigateToTasks).toHaveBeenCalledWith({
+      launchQueue: "team_queue",
+      launchBucket: "review",
+      launchSource: "activity_dashboard",
+    });
   });
 });

@@ -113,6 +113,81 @@ export function mapTaskRowToContainerCardProps(
   const flags = derivePrimitiveFlags(data.structuralState);
   const primitiveId = `tasks:row:${data.taskId}`;
   const status = mapTaskRowToStatusBadgeProps(data);
+  const orderedPhotoUris = [
+    data.primaryPhotoUri,
+    ...data.attachmentUris,
+  ].filter((value, index, collection): value is string => {
+    return Boolean(value) && collection.indexOf(value) === index;
+  });
+  const photoCount = orderedPhotoUris.length;
+  const subtitle = data.contextLabel ?? data.projectName;
+  const shouldRenderExpandedMedia =
+    photoCount > 0 && (data.isExpanded || data.photoDisplayMode === "photo_centric");
+  const photoCountLabel = data.photoCountLabel ?? `Photos (${photoCount})`;
+
+  if (data.cardPresentation === "thumbnail") {
+    const thumbnailUri = orderedPhotoUris[0];
+
+    return {
+      primitiveId,
+      family: "container",
+      density: data.density,
+      structuralState: data.structuralState,
+      indentationLevel: data.indentationLevel,
+      onPress: data.onPress,
+      accessibilityLabel: `Task ${data.title}`,
+      accessibilityHint: "Task summary card",
+      analyticsId: primitiveId,
+      testId: `container-card:${data.taskId}`,
+      ...flags,
+      chrome: {
+        title: data.title,
+        subtitle: data.statusLabel,
+        metadataRows: [
+          {
+            rowId: "task-card-status",
+            label: "Status",
+            value: data.statusLabel,
+            semanticToken: data.statusToken,
+          },
+          ...(data.contextLine
+            ? [
+              {
+                rowId: "task-card-context",
+                label: "Context",
+                value: data.contextLine,
+              },
+            ]
+            : []),
+        ],
+        actionSlots: [],
+      },
+      body: {
+        shouldRenderBody: false,
+        media: {
+          mode: "hidden",
+          items: thumbnailUri
+            ? [
+                {
+                  id: "thumbnail",
+                  uri: thumbnailUri,
+                  accessibilityLabel: `${data.title} thumbnail`,
+                },
+              ]
+            : [],
+        },
+        empty: {
+          title: "No task details",
+          message: "This task has no additional details available.",
+        },
+        skeleton: {
+          rowCount: 2,
+          metadataColumnCount: 2,
+          hasMediaPlaceholder: false,
+        },
+      },
+    };
+  }
 
   return {
     primitiveId,
@@ -128,7 +203,7 @@ export function mapTaskRowToContainerCardProps(
     ...flags,
     chrome: {
       title: data.title,
-      subtitle: data.projectName,
+      subtitle,
       metadataRows: [
         {
           rowId: "status",
@@ -141,6 +216,24 @@ export function mapTaskRowToContainerCardProps(
           label: "Priority",
           value: data.priorityLabel,
         },
+        ...(photoCount > 0
+          ? [
+              {
+                rowId: "photos",
+                label: "Photos",
+                value: photoCountLabel,
+              },
+            ]
+          : []),
+        ...(data.latestUpdateLabel
+          ? [
+              {
+                rowId: "latest-update",
+                label: "Updated",
+                value: data.latestUpdateLabel,
+              },
+            ]
+          : []),
         {
           rowId: "due",
           label: "Due",
@@ -155,6 +248,22 @@ export function mapTaskRowToContainerCardProps(
       actionSlots: [],
     },
     body: {
+      shouldRenderBody: photoCount > 0,
+      media:
+        photoCount > 0
+          ? {
+              mode: shouldRenderExpandedMedia ? "expanded" : "collapsible",
+              collapsedLabel: photoCountLabel,
+              items: orderedPhotoUris.map((uri, index) => ({
+                id: `photo-${index}`,
+                uri,
+                accessibilityLabel: `${data.title} attachment ${index + 1}`,
+              })),
+            }
+          : {
+              mode: "hidden",
+              items: [],
+            },
       empty: {
         title: "No task details",
         message: "This task has no additional details available.",

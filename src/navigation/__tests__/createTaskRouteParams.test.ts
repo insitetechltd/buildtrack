@@ -1,4 +1,5 @@
 import { buildCreateTaskPhotoReturnParams } from "../createTaskRouteParams";
+import type { RootTabParamList, TasksStackParamList } from "../navigationTypes";
 
 describe("buildCreateTaskPhotoReturnParams", () => {
   it("drops one-time clear-form flags when returning selected photos", () => {
@@ -25,6 +26,8 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentSubTaskId: "subtask-1",
       editTaskId: undefined,
       actionType: undefined,
+      cameraLaunchContext: undefined,
+      postCaptureDefault: undefined,
       selectedPhotos,
       uploadedPhotoUrls: undefined,
       clearForm: undefined,
@@ -48,10 +51,68 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentSubTaskId: undefined,
       editTaskId: "task-2",
       actionType: "edit",
+      cameraLaunchContext: undefined,
+      postCaptureDefault: undefined,
       selectedPhotos: undefined,
       uploadedPhotoUrls: ["https://example.com/photo-1.jpg"],
       clearForm: undefined,
       _timestamp: undefined,
     });
+  });
+
+  it("preserves global camera routing params when returning photos to create task", () => {
+    expect(
+      buildCreateTaskPhotoReturnParams({
+        routeParams: {
+          actionType: "photos",
+          cameraLaunchContext: "global",
+          postCaptureDefault: "create_task",
+        },
+        uploadedPhotoUrls: ["https://example.com/photo-2.jpg"],
+      }),
+    ).toEqual({
+      parentTaskId: undefined,
+      parentSubTaskId: undefined,
+      editTaskId: undefined,
+      actionType: "photos",
+      cameraLaunchContext: "global",
+      postCaptureDefault: "create_task",
+      selectedPhotos: undefined,
+      uploadedPhotoUrls: ["https://example.com/photo-2.jpg"],
+      clearForm: undefined,
+      _timestamp: undefined,
+    });
+  });
+});
+
+describe("TasksList route params", () => {
+  it("allows queue launch params when targeting TasksList through the Tasks tab", () => {
+    const params: TasksStackParamList["TasksList"] = {
+      launchQueue: "my_queue",
+      launchBucket: "wip",
+      launchSource: "activity_dashboard",
+      launchNonce: 123,
+    };
+
+    const tabParams: RootTabParamList["Tasks"] = {
+      screen: "TasksList",
+      params,
+    };
+
+    expect(tabParams).toEqual({
+      screen: "TasksList",
+      params: {
+        launchQueue: "my_queue",
+        launchBucket: "wip",
+        launchSource: "activity_dashboard",
+        launchNonce: 123,
+      },
+    });
+  });
+
+  it("still allows navigating to TasksList without launch params", () => {
+    const params: TasksStackParamList["TasksList"] = undefined;
+
+    expect(params).toBeUndefined();
   });
 });

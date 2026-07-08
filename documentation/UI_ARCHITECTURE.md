@@ -69,3 +69,4 @@ Avoid mixing unrelated ownership changes in the same change set:
 - UI/screen/layout work should not be bundled with store persistence changes unless required for the same behavior.
 - Navigation typing changes should not be bundled with feature behavior changes.
 - Performance refactors (e.g. list virtualization) should preserve existing behavior and avoid cross-layer rewrites.
+

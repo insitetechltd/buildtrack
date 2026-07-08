@@ -4,6 +4,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 
 export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
+export type TasksLaunchQueue = "my_queue" | "team_queue";
+export type TasksLaunchBucket = "new" | "wip" | "review" | "overdue";
+export type TasksLaunchSource = "activity_dashboard" | "tasks";
+export type TasksLaunchPreset = {
+  queue: TasksLaunchQueue;
+  bucket: TasksLaunchBucket;
+  source: TasksLaunchSource;
+};
 export type StatusFilter =
   | "new"
   | "accepted"
@@ -33,6 +41,9 @@ type SortUpdater = SortDirection | null | ((prev: SortDirection | null) => SortD
 
 interface ProjectFilterState {
   selectedProjectId: string | null;
+  workspaceReady: boolean;
+  workspaceReadyUserId: string | null;
+  tasksLaunchPreset: TasksLaunchPreset | null;
   sectionFilter: SectionFilter;
   statusFilter: StatusFilter;
   buttonLabel: string | null; // The label from the Dashboard button
@@ -44,6 +55,8 @@ interface ProjectFilterState {
   lastSelectedProjects: Record<string, string>; // userId -> projectId
   
   setSelectedProject: (projectId: string | null, userId?: string) => Promise<void>;
+  setTasksLaunchPreset: (preset: TasksLaunchPreset) => void;
+  clearTasksLaunchPreset: () => void;
   setSectionFilter: (section: SectionFilter) => void;
   clearSectionFilter: () => void;
   setStatusFilter: (status: StatusFilter) => void;
@@ -54,12 +67,19 @@ interface ProjectFilterState {
   setSortByDueDate: (updater: SortUpdater) => void;
   resetFilters: () => void;
   getLastSelectedProject: (userId: string) => Promise<string | null>;
+  initializeWorkspaceProject: (userId: string) => Promise<void>;
 }
 
 export const useProjectFilterStore = create<ProjectFilterState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      let workspaceBootstrapRequestId = 0;
+
+      return ({
       selectedProjectId: null,
+      workspaceReady: false,
+      workspaceReadyUserId: null,
+      tasksLaunchPreset: null,
       sectionFilter: "all",
       statusFilter: "all",
       buttonLabel: null,
@@ -123,6 +143,14 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
             }
           }
         }
+      },
+
+      setTasksLaunchPreset: (preset: TasksLaunchPreset) => {
+        set({ tasksLaunchPreset: preset });
+      },
+
+      clearTasksLaunchPreset: () => {
+        set({ tasksLaunchPreset: null });
       },
       
       setSectionFilter: (section: SectionFilter) => {
@@ -211,13 +239,16 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
                   },
                 }));
                 return dbProjectId;
-              } else if (localProjectId) {
-                // Database is null but local storage has a value
-                console.log(`⚠️ [getLastSelectedProject] Database is null, using local storage: ${localProjectId}`);
-                return localProjectId;
               } else {
-                // Both are null
-                console.log(`ℹ️ [getLastSelectedProject] No last selected project found (database: null, local: null)`);
+                // Database is authoritative when it returns a null value for this user
+                set(state => ({
+                  lastSelectedProjects: Object.fromEntries(
+                    Object.entries(state.lastSelectedProjects).filter(([key]) => key !== userId)
+                  ),
+                }));
+                console.log(
+                  `ℹ️ [getLastSelectedProject] No last selected project found in database for user ${userId}; clearing local fallback if present.`,
+                );
                 return null;
               }
             }
@@ -232,10 +263,52 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
         console.log(`📦 [getLastSelectedProject] Using local storage fallback: ${localValue || 'null'}`);
         return localValue;
       },
-    }),
+
+      initializeWorkspaceProject: async (userId: string) => {
+        const requestId = ++workspaceBootstrapRequestId;
+        set({ workspaceReady: false, workspaceReadyUserId: null });
+
+        try {
+          const restoredProjectId = await get().getLastSelectedProject(userId);
+
+          if (requestId !== workspaceBootstrapRequestId) {
+            return;
+          }
+
+          set({
+            selectedProjectId: restoredProjectId ?? null,
+            workspaceReady: true,
+            workspaceReadyUserId: userId,
+          });
+        } catch (error) {
+          console.warn("⚠️ [initializeWorkspaceProject] Failed to restore workspace project:", error);
+
+          if (requestId !== workspaceBootstrapRequestId) {
+            return;
+          }
+
+          set({
+            selectedProjectId: null,
+            workspaceReady: true,
+            workspaceReadyUserId: userId,
+          });
+        }
+      },
+    })},
     {
       name: "buildtrack-project-filter",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        selectedProjectId: state.selectedProjectId,
+        tasksLaunchPreset: state.tasksLaunchPreset,
+        sectionFilter: state.sectionFilter,
+        statusFilter: state.statusFilter,
+        buttonLabel: state.buttonLabel,
+        showSelfAssignedOnly: state.showSelfAssignedOnly,
+        sortByPriority: state.sortByPriority,
+        sortByDueDate: state.sortByDueDate,
+        lastSelectedProjects: state.lastSelectedProjects,
+      }),
     }
   )
 );

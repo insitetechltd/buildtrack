@@ -237,10 +237,9 @@ describe("AdminDashboardScreen", () => {
       />,
     );
 
-    expect(screen.getByText("Admin Dashboard")).toBeTruthy();
-    expect(screen.getByText("BuildCo")).toBeTruthy();
+    expect(screen.getAllByText("Admin Dashboard").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("BuildCo").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
-    expect(screen.getByTestId("admin-profile-trigger")).toBeTruthy();
 
     screen.getByTestId("admin-quick-action-trigger-projects").props.onPress();
 

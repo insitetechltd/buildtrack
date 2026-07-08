@@ -1,4 +1,4 @@
-import type { CreateTaskParams, SelectedPhoto } from "./navigationTypes";
+import type { CreateTaskParams } from "./navigationTypes";
 
 export function buildCreateTaskPhotoReturnParams({
   routeParams,
@@ -6,7 +6,7 @@ export function buildCreateTaskPhotoReturnParams({
   uploadedPhotoUrls,
 }: {
   routeParams?: CreateTaskParams;
-  selectedPhotos?: SelectedPhoto[];
+  selectedPhotos?: import("./navigationTypes").CreateTaskParams["selectedPhotos"];
   uploadedPhotoUrls?: string[];
 }): CreateTaskParams {
   return {
@@ -18,6 +18,8 @@ export function buildCreateTaskPhotoReturnParams({
     sourceTaskId: routeParams?.sourceTaskId,
     sourceSubTaskId: routeParams?.sourceSubTaskId,
     sourceScreen: routeParams?.sourceScreen,
+    cameraLaunchContext: routeParams?.cameraLaunchContext,
+    postCaptureDefault: routeParams?.postCaptureDefault,
     selectedPhotos,
     uploadedPhotoUrls,
     clearForm: undefined,

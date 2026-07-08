@@ -3,10 +3,11 @@ import DashboardScreen from "@/screens/DashboardScreen";
 import TasksScreen from "@/screens/TasksScreen";
 import LegacyDashboardScreen from "@/screens/legacy/LegacyDashboardScreen";
 import LegacyTasksScreen from "@/screens/legacy/LegacyTasksScreen";
+import type { TasksListParams } from "@/navigation/navigationTypes";
 import { useDevToggleStore } from "@/state/devToggleStore";
 
 interface DashboardRouteProps {
-  onNavigateToTasks: () => void;
+  onNavigateToTasks: (params?: TasksListParams) => void;
   onNavigateToCreateTask: () => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;

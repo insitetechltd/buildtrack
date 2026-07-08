@@ -1,5 +1,10 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { TaskActivity } from "@/types/buildtrack";
+import type {
+  TasksLaunchBucket,
+  TasksLaunchQueue,
+  TasksLaunchSource,
+} from "@/state/projectFilterStore";
 
 export type SelectedPhoto = {
   uri: string;
@@ -22,6 +27,12 @@ export type UpdateProgressParams = {
   sourceSubTaskId?: string;
 };
 
+export type CameraLaunchContext = "global" | "task_detail";
+
+export type CameraPostCaptureDefault =
+  | "create_task"
+  | "existing_task"
+  | "same_task_update";
 export type CreateTaskParams = {
   parentTaskId?: string;
   parentSubTaskId?: string;
@@ -33,6 +44,8 @@ export type CreateTaskParams = {
   sourceScreen?: "dashboard" | "tasks";
   selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
+  cameraLaunchContext?: CameraLaunchContext;
+  postCaptureDefault?: CameraPostCaptureDefault;
   clearForm?: boolean;
   _timestamp?: number;
 };
@@ -90,8 +103,17 @@ export type DashboardStackParamList = {
   PhotoAnnotation: PhotoAnnotationParams;
 };
 
+export type TasksListParams =
+  | {
+      launchQueue?: TasksLaunchQueue;
+      launchBucket?: TasksLaunchBucket;
+      launchSource?: TasksLaunchSource;
+      launchNonce?: number;
+    }
+  | undefined;
+
 export type TasksStackParamList = {
-  TasksList: undefined;
+  TasksList: TasksListParams;
   TaskDetail: TaskDetailParams;
   CreateTaskFromTask:
     | {
@@ -119,7 +141,6 @@ export type ProfileStackParamList = {
 export type ReportsStackParamList = {
   ReportsMain: undefined;
 };
-
 export type CreateTaskStackParamList = {
   CreateTaskMain: CreateTaskParams | undefined;
   PhotoSelection: PhotoSelectionParams;
@@ -138,9 +159,16 @@ export type AdminDashboardStackParamList = {
 
 export type RootTabParamList = {
   Dashboard: NavigatorScreenParams<DashboardStackParamList> | undefined;
+  Activity: NavigatorScreenParams<DashboardStackParamList> | undefined;
   Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
   CreateTask: NavigatorScreenParams<CreateTaskStackParamList> | undefined;
+  Camera: NavigatorScreenParams<CreateTaskStackParamList> | undefined;
   Reports: NavigatorScreenParams<ReportsStackParamList> | undefined;
   Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
   AdminDashboard: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
+};
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };

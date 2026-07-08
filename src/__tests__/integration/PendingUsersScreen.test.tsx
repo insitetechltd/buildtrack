@@ -50,8 +50,7 @@ jest.mock("@/components/StandardHeader", () => ({
 jest.mock("@/components/migration/ModernUiMarker", () => ({
   __esModule: true,
   default: function MockModernUiMarker() {
-    const { Text } = require("react-native");
-    return <Text>Modern UI</Text>;
+    return null;
   },
 }));
 
@@ -182,7 +181,6 @@ describe("PendingUsersScreen", () => {
     expect(screen.getByText("Pending Approvals")).toBeTruthy();
     expect(screen.getByText("1 user waiting")).toBeTruthy();
     expect(screen.getByText("Pending Person")).toBeTruthy();
-    expect(screen.getByText("Modern UI")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Approve"));
 

@@ -10,7 +10,6 @@ import {
   type DeveloperSettingsScenarioPresetAction,
   type DeveloperSettingsStatisticItem,
 } from "../ui/contracts/viewAdapters";
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import StandardHeader from "../components/StandardHeader";
 import { useThemeStore } from "../state/themeStore";
 import { cn } from "../utils/cn";
@@ -30,6 +29,7 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
   }
 
   const actionHandlers: Record<DeveloperSettingsActionId, () => void> = {
+    "open-task-detail-verification": actions.handleOpenTaskDetailVerification,
     "force-sync-all": actions.handleForceSyncAll,
     "clear-task-cache": actions.handleClearTaskCache,
     "clear-project-cache": actions.handleClearProjectCache,
@@ -51,7 +51,6 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
         title={output.title}
         onBackPress={actions.handleNavigateBack}
         showBackButton
-        rightElement={<ModernUiMarker />}
       />
 
       <ScrollView className="flex-1">

@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
+  NativeSyntheticEvent,
   View,
   Text,
   ScrollView,
   Pressable,
   TextInput,
+  TextInputKeyPressEventData,
   Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,6 +15,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import {
+  createFormNavigationRegistry,
+  getNextFocusableFieldId,
+  getPreviousFocusableFieldId,
+  getTabNavigationDirection,
+} from "../utils/formNavigation";
 import {
   useAddCommentViewAdapter,
   type AddCommentScreenProps,
@@ -24,6 +32,44 @@ export default function AddCommentScreen({
 }: AddCommentScreenProps = {}) {
   const navigation = useNavigation<any>();
   const { output, actions } = useAddCommentViewAdapter();
+  const commentInputRef = useRef<TextInput>(null);
+  const formNavigationRegistry = useMemo(
+    () =>
+      createFormNavigationRegistry([
+        { fieldId: "comment", isFocusable: true },
+        { fieldId: "submit", isFocusable: true },
+      ]),
+    [],
+  );
+  const focusFormField = useCallback((fieldId: "comment" | "submit" | null) => {
+    if (!fieldId || fieldId === "submit") {
+      commentInputRef.current?.blur?.();
+      return;
+    }
+
+    commentInputRef.current?.focus?.();
+  }, []);
+  const moveFormFocus = useCallback(
+    (activeFieldId: "comment", direction: "next" | "previous" = "next") => {
+      const targetFieldId =
+        direction === "previous"
+          ? getPreviousFocusableFieldId(formNavigationRegistry, activeFieldId)
+          : getNextFocusableFieldId(formNavigationRegistry, activeFieldId);
+
+      focusFormField((targetFieldId as "comment" | "submit" | null) ?? null);
+    },
+    [focusFormField, formNavigationRegistry],
+  );
+  const handleCommentKeyPress = useCallback(
+    (event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      if (event.nativeEvent.key !== "Tab") {
+        return;
+      }
+
+      moveFormFocus("comment", getTabNavigationDirection(event));
+    },
+    [moveFormFocus],
+  );
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -106,12 +152,19 @@ export default function AddCommentScreen({
             Comment <Text className="text-red-500">*</Text>
           </Text>
           <TextInput
+            ref={commentInputRef}
             className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
             placeholder="Add your comment here..."
             value={output.commentForm.description}
             onChangeText={actions.setCommentDescription}
             multiline
             textAlignVertical="top"
+            returnKeyType="done"
+            onKeyPress={handleCommentKeyPress}
+            onSubmitEditing={() => {
+              commentInputRef.current?.blur();
+            }}
+            blurOnSubmit={false}
           />
         </View>
       </ScrollView>

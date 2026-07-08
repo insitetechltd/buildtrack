@@ -4,7 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import StandardHeader from "../components/StandardHeader";
 import type { PendingUsersScreenCard } from "../ui/contracts/viewAdapters";
 import {
@@ -83,7 +82,6 @@ export default function PendingUsersScreen(props: PendingUsersScreenProps) {
         subtitle={output.subtitle}
         showBackButton={true}
         onBackPress={onNavigateBack}
-        rightElement={<ModernUiMarker />}
       />
 
       <FlatList

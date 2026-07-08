@@ -9,6 +9,7 @@ import { useProjectFilterStore } from '../../state/projectFilterStore';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
+import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type { CreateTaskScreenViewAdapterOutput, CreateTaskFormModel } from '../contracts/viewAdapters';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
@@ -37,6 +38,18 @@ function requiresEditReasonForStatus(status?: TaskStatus): boolean {
   return status === 'accepted' || status === 'in_progress' || status === 'submitted_for_review';
 }
 
+function hasCriticalThisWeekTag(tags?: string[]): boolean {
+  return Array.isArray(tags) && tags.includes(CRITICAL_THIS_WEEK_TAG);
+}
+
+function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
+  const normalizedTags = Array.isArray(tags)
+    ? tags.filter((tag) => Boolean(tag) && tag !== CRITICAL_THIS_WEEK_TAG)
+    : [];
+
+  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
+}
+
 export function useCreateTaskViewAdapter({
   editTaskId,
   parentTaskId,
@@ -59,6 +72,7 @@ export function useCreateTaskViewAdapter({
     priority: 'medium',
     category: 'general',
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    criticalThisWeek: false,
     assignedTo: [],
     attachments: [],
     projectId: '',
@@ -174,6 +188,7 @@ export function useCreateTaskViewAdapter({
         priority: 'medium',
         category: 'general',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        criticalThisWeek: false,
         assignedTo: [],
         attachments: [],
         projectId: '',
@@ -379,6 +394,7 @@ export function useCreateTaskViewAdapter({
         priority: editTask.priority || 'medium',
         category: editTask.category || 'general',
         dueDate: new Date(editTask.dueDate),
+        criticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         assignedTo: editTask.assignedTo || [],
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
@@ -402,6 +418,8 @@ export function useCreateTaskViewAdapter({
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
+      const tags = withCriticalThisWeekTag(editTask?.tags, formData.criticalThisWeek);
+
       // Basic submit logic extracted from screen
       if (editTaskId) {
         await updateTask(editTaskId, {
@@ -415,6 +433,7 @@ export function useCreateTaskViewAdapter({
           dueDate: formData.dueDate.toISOString(),
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
+          tags,
           _editReason: options?.editReason,
         } as Partial<any>);
       } else if (parentTaskId) {
@@ -430,6 +449,7 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
+          tags,
         });
       } else {
         await createTask({
@@ -444,6 +464,7 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
+          tags,
         });
       }
       await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
@@ -456,36 +477,31 @@ export function useCreateTaskViewAdapter({
     }
   };
 
-  const hasCachedFrame = allAssignableUsers.length > 0 || userProjects.length > 0;
-  const isInitialLoading = isLoadingUsers && !hasCachedFrame;
-  const isBackgroundRefreshing = isLoadingUsers && hasCachedFrame;
-
-  const continuity = {
-    isInitialLoading,
-    isBackgroundRefreshing,
-    hasCachedFrame,
-    shouldRenderSkeletonShell: isInitialLoading,
-    shouldRenderEmptyState: false,
-    freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
-  };
-
-  const readiness = {
-    hasInitialFrame: true,
-    hasUsableData: true,
-    isBackgroundRefreshing,
-    isNavigationTransitionActive: false,
-  };
+  const hasUsableData = Boolean(user);
+  const isInitialLoading = !hasUsableData;
 
   const output: CreateTaskScreenViewAdapterOutput = {
     screenId: "CreateTaskScreen",
-    readiness,
-    continuity,
+    readiness: {
+      hasInitialFrame: true,
+      hasUsableData,
+      isBackgroundRefreshing: false,
+      isNavigationTransitionActive: false,
+    },
+    continuity: {
+      isInitialLoading,
+      isBackgroundRefreshing: false,
+      hasCachedFrame: hasUsableData,
+      shouldRenderSkeletonShell: isInitialLoading,
+      shouldRenderEmptyState: !hasUsableData,
+      freshnessLabel: hasUsableData ? (isSubmitting ? "Submitting" : "Ready") : "Unavailable",
+    },
+    context,
     activity: {
       isSubmitting,
       isLoadingUsers,
       isUploading,
     },
-    context,
     formData,
     errors,
     pickers,

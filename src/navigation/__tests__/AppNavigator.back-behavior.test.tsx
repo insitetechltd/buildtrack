@@ -2,6 +2,7 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 jest.mock("@react-navigation/native", () => ({
+  getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 
@@ -44,16 +45,17 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
                     style: undefined,
                   })
                 : null;
-
-            if (typeof options.tabBarButton === "function" && customButton == null) {
-              return null;
-            }
+            const isHiddenTab =
+              typeof options.tabBarButton === "function" && customButton == null;
 
             return React.createElement(
               View,
               { key: tabScreen.props.name },
-              React.createElement(Text, { testID: "mock-tab-label" }, label),
-              customButton,
+              React.createElement(Text, { testID: "mock-tab-route" }, tabScreen.props.name),
+              isHiddenTab
+                ? null
+                : React.createElement(Text, { testID: "mock-tab-label" }, label),
+              isHiddenTab ? null : customButton,
             );
           }),
         ),
@@ -63,10 +65,59 @@ jest.mock("@react-navigation/bottom-tabs", () => ({
 }));
 
 jest.mock("@react-navigation/native-stack", () => ({
-  createNativeStackNavigator: () => ({
-    Navigator: ({ children }: { children: React.ReactNode }) => children,
-    Screen: () => null,
-  }),
+  createNativeStackNavigator: () => {
+    const React = require("react");
+    const { View } = require("react-native");
+
+    return {
+      Navigator: ({ children }: { children: React.ReactNode }) => {
+        const screens = React.Children.toArray(children).filter(React.isValidElement);
+        const firstScreen = screens[0] as
+          | React.ReactElement<{
+              component?: React.ComponentType<unknown>;
+              name: string;
+            }>
+          | undefined;
+
+        if (!firstScreen?.props.component) {
+          return null;
+        }
+
+        const Component = firstScreen.props.component;
+
+        return React.createElement(
+          View,
+          { testID: "mock-stack-navigator" },
+          React.createElement(Component, {
+            navigation: {
+              addListener: () => jest.fn(),
+              canGoBack: () => false,
+              getParent: () => undefined,
+              getState: () => ({
+                index: 0,
+                routeNames: screens.map((screen) =>
+                  React.isValidElement(screen)
+                    ? (screen as React.ReactElement<{ name: string }>).props.name
+                    : undefined,
+                ),
+                routes: [{ key: firstScreen.props.name }],
+              }),
+              goBack: jest.fn(),
+              navigate: jest.fn(),
+              pop: jest.fn(),
+              setParams: jest.fn(),
+            },
+            route: {
+              key: firstScreen.props.name,
+              name: firstScreen.props.name,
+              params: undefined,
+            },
+          }),
+        );
+      },
+      Screen: () => null,
+    };
+  },
 }));
 
 jest.mock("../uiModeRoutes", () => ({
@@ -154,9 +205,12 @@ describe("AppNavigator back helpers", () => {
     mockProjectFilterState.workspaceReadyUserId = "user-1";
   });
 
-  it("shows Activity, Camera, and Tasks in the worker bottom bar and hides Profile from the tab bar", () => {
+  it("registers the worker bottom shell as Activity, Camera, and Tasks only", () => {
     const screen = render(<AppNavigator />);
 
+    expect(
+      screen.getAllByTestId("mock-tab-route").map((node) => node.props.children),
+    ).toEqual(["Activity", "Camera", "Tasks"]);
     expect(
       screen.getAllByTestId("mock-tab-label").map((node) => node.props.children),
     ).toEqual(["Activity", "Camera", "Tasks"]);
@@ -167,6 +221,29 @@ describe("AppNavigator back helpers", () => {
     const screen = render(<AppNavigator />);
 
     expect(screen.getByTestId("root-tab__camera_button")).toBeTruthy();
+  });
+
+  it("renders the worker camera tab with a dedicated custom icon surface", () => {
+    const screen = render(<AppNavigator />);
+
+    expect(screen.getByTestId("root-tab__camera_icon_surface")).toBeTruthy();
+    expect(screen.getByTestId("root-tab__camera_icon")).toBeTruthy();
+  });
+
+  it("renders the worker camera tab with the expected red circular center treatment", () => {
+    const screen = render(<AppNavigator />);
+
+    expect(screen.getByTestId("root-tab__camera_button")).toHaveStyle({
+      backgroundColor: "#dc2626",
+      borderRadius: 32,
+      height: 64,
+      width: 64,
+    });
+    expect(screen.getByTestId("root-tab__camera_slot")).toHaveStyle({
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+    });
   });
 
   it("pops the dashboard task-detail screen from the current stack when stack history exists", () => {

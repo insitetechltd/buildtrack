@@ -13,6 +13,10 @@ jest.mock("@/state/taskStore.supabase", () => ({
   useTaskStore: jest.fn(),
 }));
 
+jest.mock("@/state/userStore.supabase", () => ({
+  useUserStore: jest.fn(),
+}));
+
 jest.mock("@/state/projectFilterStore", () => ({
   useProjectFilterStore: jest.fn(),
 }));
@@ -38,6 +42,7 @@ describe("useDashboardViewAdapter", () => {
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
     const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useUserStore } = require("@/state/userStore.supabase");
 
     useAuthStore.mockReturnValue({
       user: {
@@ -56,6 +61,18 @@ describe("useDashboardViewAdapter", () => {
       selectedProjectId: visibleProjects[0]?.id ?? null,
       }),
     );
+
+    useUserStore.mockReturnValue({
+      getUserById: jest.fn((id: string) => {
+        const usersById: Record<string, { name: string }> = {
+          "user-1": { name: "Jake M." },
+          "user-2": { name: "Casey R." },
+          "user-3": { name: "Morgan T." },
+        };
+
+        return usersById[id];
+      }),
+    });
   }
 
   it("computes dashboard responsibility token counts and overdue distributions per project", () => {
@@ -372,6 +389,13 @@ describe("useDashboardViewAdapter", () => {
             title: "Review",
             countLabel: "0",
           },
+          {
+            id: "dashboard-queue:my_queue:overdue",
+            queue: "my_queue",
+            bucket: "overdue",
+            title: "Overdue",
+            countLabel: "0",
+          },
         ],
       },
       {
@@ -397,6 +421,191 @@ describe("useDashboardViewAdapter", () => {
             queue: "team_queue",
             bucket: "review",
             title: "Review",
+            countLabel: "1",
+          },
+          {
+            id: "dashboard-queue:team_queue:overdue",
+            queue: "team_queue",
+            bucket: "overdue",
+            title: "Overdue",
+            countLabel: "0",
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("builds four queue-overview cells per group on Activity and moves overdue work into the overdue bucket", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+        startDate: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-my-new",
+          projectId: "project-1",
+          title: "Review concrete delivery",
+          description: "",
+          priority: "high",
+          dueDate: "2026-07-06T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "new",
+          completionPercentage: 0,
+        },
+        {
+          id: "task-my-wip",
+          projectId: "project-1",
+          title: "Coordinate crane access",
+          description: "",
+          priority: "medium",
+          dueDate: "2026-07-07T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+          completionPercentage: 35,
+        },
+        {
+          id: "task-my-review",
+          projectId: "project-1",
+          title: "Sign off handrail package",
+          description: "",
+          priority: "medium",
+          dueDate: "2026-07-07T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "submitted_for_review",
+          completionPercentage: 100,
+        },
+        {
+          id: "task-my-overdue",
+          projectId: "project-1",
+          title: "Overdue site walk",
+          description: "",
+          priority: "critical",
+          dueDate: "2026-07-03T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "new",
+          completionPercentage: 0,
+        },
+        {
+          id: "task-team-overdue",
+          projectId: "project-1",
+          title: "Overdue team review",
+          description: "",
+          priority: "critical",
+          dueDate: "2026-07-03T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-3"],
+          assignedBy: "user-1",
+          createdAt: "2026-07-01T00:00:00.000Z",
+          updates: [],
+          status: "submitted_for_review",
+          completionPercentage: 100,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.queueDashboard?.groups[0]?.cells.map((cell) => cell.title)).toEqual([
+      "New",
+      "Doing",
+      "Review",
+      "Overdue",
+    ]);
+    expect(result.current.output.queueDashboard?.groups).toEqual([
+      {
+        id: "dashboard-queue:my_queue",
+        title: "My Queue",
+        cells: [
+          {
+            id: "dashboard-queue:my_queue:new",
+            queue: "my_queue",
+            bucket: "new",
+            title: "New",
+            countLabel: "1",
+          },
+          {
+            id: "dashboard-queue:my_queue:wip",
+            queue: "my_queue",
+            bucket: "wip",
+            title: "Doing",
+            countLabel: "1",
+          },
+          {
+            id: "dashboard-queue:my_queue:review",
+            queue: "my_queue",
+            bucket: "review",
+            title: "Review",
+            countLabel: "1",
+          },
+          {
+            id: "dashboard-queue:my_queue:overdue",
+            queue: "my_queue",
+            bucket: "overdue",
+            title: "Overdue",
+            countLabel: "1",
+          },
+        ],
+      },
+      {
+        id: "dashboard-queue:team_queue",
+        title: "Team Queue",
+        cells: [
+          {
+            id: "dashboard-queue:team_queue:new",
+            queue: "team_queue",
+            bucket: "new",
+            title: "New",
+            countLabel: "0",
+          },
+          {
+            id: "dashboard-queue:team_queue:wip",
+            queue: "team_queue",
+            bucket: "wip",
+            title: "Doing",
+            countLabel: "0",
+          },
+          {
+            id: "dashboard-queue:team_queue:review",
+            queue: "team_queue",
+            bucket: "review",
+            title: "Review",
+            countLabel: "0",
+          },
+          {
+            id: "dashboard-queue:team_queue:overdue",
+            queue: "team_queue",
+            bucket: "overdue",
+            title: "Overdue",
             countLabel: "1",
           },
         ],
@@ -633,7 +842,7 @@ describe("useDashboardViewAdapter", () => {
     });
   });
 
-  it("returns only recent activity items for the active project", () => {
+  it("builds recent activity rows with actor/action, task title, date, and preview photo", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -654,52 +863,73 @@ describe("useDashboardViewAdapter", () => {
     useTaskStore.mockReturnValue({
       tasks: [
         {
-          id: "task-1",
+          id: "task-activity-1",
           projectId: "project-1",
-          title: "Concrete pour",
+          title: "Structural steel inspection — Level 12",
           description: "",
           priority: "high",
           dueDate: "2099-01-01T00:00:00.000Z",
           category: "general",
-          attachments: ["https://example.com/photo-1.jpg"],
+          attachments: [],
           assignedTo: ["user-1"],
           assignedBy: "user-2",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
+          createdAt: "2026-06-01T00:00:00.000Z",
+          updates: [],
+          activities: [
             {
-              id: "update-1",
-              description: "Pour completed for section A",
-              photos: ["https://example.com/photo-1.jpg"],
-              completionPercentage: 65,
-              status: "in_progress",
-              timestamp: "2026-07-04T08:00:00.000Z",
+              id: "activity-1",
+              taskId: "task-activity-1",
               userId: "user-1",
+              activityType: "progress_update",
+              timestamp: "2026-07-04T07:00:00.000Z",
+              data: {
+                description: "",
+                photos: [
+                  "https://example.com/steel-inspection-photo.jpg",
+                  "https://example.com/steel-inspection-photo-2.jpg",
+                ],
+                completionPercentage: 0,
+                status: "in_progress",
+              },
+              description: "",
+              completionPercentage: 0,
+              status: "in_progress",
+              createdAt: "2026-07-04T07:00:00.000Z",
             },
           ],
           status: "in_progress",
-          completionPercentage: 65,
+          completionPercentage: 0,
         },
         {
-          id: "task-2",
-          projectId: "project-2",
-          title: "Other project item",
+          id: "task-old-activity",
+          projectId: "project-1",
+          title: "Older activity should be hidden",
           description: "",
           priority: "medium",
           dueDate: "2099-01-01T00:00:00.000Z",
           category: "general",
           attachments: [],
           assignedTo: ["user-1"],
-          assignedBy: "user-3",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
+          assignedBy: "user-2",
+          createdAt: "2026-06-20T00:00:00.000Z",
+          updates: [],
+          activities: [
             {
-              id: "update-2",
-              description: "Should be hidden",
-              photos: [],
+              id: "activity-older-than-7-days",
+              taskId: "task-old-activity",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: "2026-06-26T08:55:00.000Z",
+              data: {
+                description: "Older work",
+                photos: [],
+                completionPercentage: 20,
+                status: "in_progress",
+              },
+              description: "Older work",
               completionPercentage: 20,
               status: "in_progress",
-              timestamp: "2026-07-04T07:00:00.000Z",
-              userId: "user-3",
+              createdAt: "2026-06-26T08:55:00.000Z",
             },
           ],
           status: "in_progress",
@@ -710,13 +940,17 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.activityItems.map((item: any) => item.taskId)).toEqual([
-      "task-1",
-    ]);
+    expect(result.current.output.activityItems).toHaveLength(1);
     expect(result.current.output.activityItems[0]).toMatchObject({
-      title: "Concrete pour",
-      subtitle: "Pour completed for section A",
+      id: "activity-1",
+      taskId: "task-activity-1",
+      actorLabel: "Jake M.",
+      actionLabel: "Added 2 photos",
+      title: "Structural steel inspection — Level 12",
+      timestampLabel: "2 hours ago",
+      previewPhotoUri: "https://example.com/steel-inspection-photo.jpg",
     });
+    expect(result.current.output.draftItems).toEqual([]);
   });
 
   it("does not invent an active project when the workspace has no selected project", () => {
@@ -883,7 +1117,7 @@ describe("useDashboardViewAdapter", () => {
     ]);
   });
 
-  it("builds draft items from current task state without duplicating historical in-progress updates", () => {
+  it("builds richer action text from update data for compact dashboard activity rows", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -916,7 +1150,7 @@ describe("useDashboardViewAdapter", () => {
               photos: [],
               completionPercentage: 20,
               status: "in_progress",
-              timestamp: "2026-07-04T08:00:00.000Z",
+              timestamp: "2026-07-04T07:00:00.000Z",
               userId: "user-1",
             },
             {
@@ -963,14 +1197,187 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.draftItems).toHaveLength(1);
-    expect(result.current.output.draftItems[0]).toMatchObject({
+    expect(result.current.output.activityItems[0]).toMatchObject({
       taskId: "task-current",
-      subtitle: "Continuing pour",
+      timestampLabel: "just now",
+      actionLabel: "Continuing pour",
+      subtitle: "just now · Continuing pour",
+    });
+    expect(result.current.output.draftItems).toEqual([]);
+  });
+
+  it("uses a photo-oriented label instead of unchanged progress wording for photo-only updates", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-photo-only",
+          projectId: "project-1",
+          title: "Photo-only Task",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [
+            {
+              id: "activity-photo-only",
+              description: "",
+              photos: [
+                "https://example.com/photo-1.jpg",
+                "https://example.com/photo-2.jpg",
+              ],
+              completionPercentage: 0,
+              status: "in_progress",
+              timestamp: "2026-07-04T07:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 0,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(
+      result.current.output.activityItems.find((item: any) => item.id === "activity-photo-only"),
+    ).toMatchObject({
+      actionLabel: "Added 2 photos",
+      subtitle: "2 hours ago · Added 2 photos",
     });
   });
 
-  it("sorts draft items by newest relevant update first", () => {
+  it("keeps progress wording only when the update represents a meaningful progress change", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-progress-change",
+          projectId: "project-1",
+          title: "Progress Change Task",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [
+            {
+              id: "activity-progress-old",
+              description: "",
+              photos: [],
+              completionPercentage: 10,
+              status: "in_progress",
+              timestamp: "2026-07-04T07:00:00.000Z",
+              userId: "user-1",
+            },
+            {
+              id: "activity-progress-change",
+              description: "",
+              photos: [],
+              completionPercentage: 40,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 40,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(
+      result.current.output.activityItems.find((item: any) => item.id === "activity-progress-change"),
+    ).toMatchObject({
+      actionLabel: "Updated progress to 40%",
+      subtitle: "1 hour ago · Updated progress to 40%",
+    });
+  });
+
+  it("keeps review-related wording meaningful even when a raw description is present", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-review-submitted",
+          projectId: "project-1",
+          title: "Inspection package",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [
+            {
+              id: "activity-review-submitted",
+              description: "Ready for your sign-off",
+              photos: [],
+              completionPercentage: 100,
+              status: "submitted_for_review",
+              timestamp: "2026-07-04T06:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "submitted_for_review",
+          completionPercentage: 100,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(
+      result.current.output.activityItems.find((item: any) => item.id === "activity-review-submitted"),
+    ).toMatchObject({
+      actionLabel: "Submitted task for review",
+      subtitle: "3 hours ago · Submitted task for review",
+    });
+  });
+
+  it("drops activity older than 7 days from the dashboard feed", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -987,7 +1394,7 @@ describe("useDashboardViewAdapter", () => {
         {
           id: "task-older",
           projectId: "project-1",
-          title: "Older draft",
+          title: "Older task activity",
           description: "",
           priority: "high",
           dueDate: "2099-01-01T00:00:00.000Z",
@@ -996,15 +1403,24 @@ describe("useDashboardViewAdapter", () => {
           assignedTo: ["user-1"],
           assignedBy: "user-2",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
+          updates: [],
+          activities: [
             {
-              id: "update-older",
-              description: "Older in-progress update",
-              photos: [],
+              id: "activity-older-than-7-days",
+              taskId: "task-older",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: "2026-06-26T09:00:00.000Z",
+              data: {
+                description: "Old update",
+                photos: [],
+                completionPercentage: 20,
+                status: "in_progress",
+              },
+              description: "Old update",
               completionPercentage: 20,
               status: "in_progress",
-              timestamp: "2026-07-04T08:00:00.000Z",
-              userId: "user-1",
+              createdAt: "2026-06-26T09:00:00.000Z",
             },
           ],
           status: "in_progress",
@@ -1013,7 +1429,7 @@ describe("useDashboardViewAdapter", () => {
         {
           id: "task-newer",
           projectId: "project-1",
-          title: "Newer draft",
+          title: "Newer task activity",
           description: "",
           priority: "high",
           dueDate: "2099-01-01T00:00:00.000Z",
@@ -1022,15 +1438,24 @@ describe("useDashboardViewAdapter", () => {
           assignedTo: ["user-1"],
           assignedBy: "user-2",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
+          updates: [],
+          activities: [
             {
-              id: "update-newer",
-              description: "Newest in-progress update",
-              photos: [],
+              id: "activity-within-7-days",
+              taskId: "task-newer",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: "2026-07-02T09:00:00.000Z",
+              data: {
+                description: "New update",
+                photos: [],
+                completionPercentage: 80,
+                status: "in_progress",
+              },
+              description: "New update",
               completionPercentage: 80,
               status: "in_progress",
-              timestamp: "2026-07-04T09:00:00.000Z",
-              userId: "user-1",
+              createdAt: "2026-07-02T09:00:00.000Z",
             },
           ],
           status: "in_progress",
@@ -1041,9 +1466,12 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.draftItems.map((item: any) => item.title)).toEqual([
-      "Newer draft",
-      "Older draft",
+    expect(
+      result.current.output.activityItems.some((item: any) => item.id === "activity-older-than-7-days"),
+    ).toBe(false);
+    expect(result.current.output.activityItems.map((item: any) => item.id)).toEqual([
+      "activity-within-7-days",
     ]);
+    expect(result.current.output.draftItems).toEqual([]);
   });
 });

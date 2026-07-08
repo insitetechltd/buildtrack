@@ -11,7 +11,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
@@ -175,7 +174,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             undefined,
             undefined,
             props.taskId,
-            'update',
+            'photos',
             props.subTaskId,
           );
         }
@@ -186,7 +185,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             undefined,
             undefined,
             props.taskId,
-            'update',
+            'photos',
             props.subTaskId,
           );
         }
@@ -208,7 +207,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         action.actionId !== "upload_photos",
     ),
   );
-  const scrollRegionBottomPadding = 76 + insets.bottom + 16;
+  const hasQuickActions = Boolean(output.quickActions?.actions?.length);
+  const scrollRegionBottomPadding = 16;
 
   if (!output.readiness.hasUsableData) {
     return (
@@ -217,7 +217,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           title="Loading..." 
           showBackButton 
           onBackPress={props.onNavigateBack}
-          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center">
           <Text>Loading task details...</Text>
@@ -236,7 +235,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         onBackPress={props.onNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
-        rightElement={<ModernUiMarker />}
       />
 
       <View className="flex-1">
@@ -256,13 +254,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             showsVerticalScrollIndicator={false}
           >
             {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
-
-            {output.quickActions ? (
-              <TaskDetailQuickActions
-                model={output.quickActions}
-                onPress={handleActionPress}
-              />
-            ) : null}
 
             {/* Banners */}
             {output.banners.map(banner => (
@@ -339,6 +330,20 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             ) : null}
           </ScrollView>
         </View>
+
+        {hasQuickActions ? (
+          <View
+            testID="task-detail__bottom_action_bar"
+            className="border-t border-gray-200 bg-gray-50 px-4 pt-3"
+            style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+          >
+            <TaskDetailQuickActions
+              model={output.quickActions!}
+              onPress={handleActionPress}
+              containerClassName="mx-0 mt-0"
+            />
+          </View>
+        ) : null}
       </View>
 
     </SafeAreaView>

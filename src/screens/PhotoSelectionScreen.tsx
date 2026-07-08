@@ -12,7 +12,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import { cn } from "../utils/cn";
 import type { SelectedPhoto } from "../utils/usePhotoSelection";
 import { usePhotoSelectionViewAdapter } from "../ui/viewAdapters/usePhotoSelectionViewAdapter";
@@ -79,7 +78,6 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
           Select Photos ({photos.length})
         </Text>
         
-        <ModernUiMarker />
       </View>
 
       {/* Enlarged Photo View */}

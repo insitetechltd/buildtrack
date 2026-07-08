@@ -789,6 +789,154 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
+  it("uses a photo-update headline for legacy photo-only updates without a meaningful progress change", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-photo-only",
+          title: "Photo-only Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Capture site conditions.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "activity-photo-only",
+              taskId: "task-photo-only",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampLatest,
+              data: {
+                photos: ["https://example.com/photo-only-update.jpg"],
+                completionPercentage: 0,
+                status: "in_progress",
+              },
+              completionPercentage: 0,
+              status: "in_progress",
+              createdAt: activityTimestampLatest,
+            },
+          ],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-photo-only",
+      }),
+    );
+
+    expect(result.current.output.activityThread[0]).toMatchObject({
+      actorLabel: "User user-1",
+      eventLabel: "Added photo update",
+      progressLabel: "0%",
+      detailLabel: undefined,
+      photoUrls: ["https://example.com/photo-only-update.jpg"],
+    });
+  });
+
+  it("keeps a progress headline when the update actually changes progress", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-progress-change",
+          title: "Progress Change Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Advance the install.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "activity-progress-new",
+              taskId: "task-progress-change",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampLatest,
+              data: {
+                completionPercentage: 40,
+                status: "in_progress",
+              },
+              completionPercentage: 40,
+              status: "in_progress",
+              createdAt: activityTimestampLatest,
+            },
+            {
+              id: "activity-progress-old",
+              taskId: "task-progress-change",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampOlder,
+              data: {
+                completionPercentage: 10,
+                status: "in_progress",
+              },
+              completionPercentage: 10,
+              status: "in_progress",
+              createdAt: activityTimestampOlder,
+            },
+          ],
+          completionPercentage: 40,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-progress-change",
+      }),
+    );
+
+    expect(result.current.output.activityThread[0]).toMatchObject({
+      actorLabel: "User user-1",
+      eventLabel: "Updated progress to 40%",
+      progressLabel: "40%",
+      detailLabel: undefined,
+    });
+  });
+
   it("falls back to the task completion percentage when an activity does not include one", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 

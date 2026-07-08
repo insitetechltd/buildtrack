@@ -60,6 +60,7 @@ This document is the single canonical milestone inventory for the repository's W
 These are intentionally outside the WS/M/S milestone inventory and current execution queue.
 
 - WS-SEC / M-SEC-02 remains intentionally deferred: rotate previously exposed credentials and decide later whether Git history rewriting is required beyond branch-tip cleanup.
+- Pending follow-on under `WS-SUPABASE / M-SUPABASE-01`: apply the authored `tasks` redesign metadata migration for `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags`; until the live schema is updated, task create and redesign-metadata edit flows use compatibility fallbacks and those fields do not persist reliably.
 - WS-FUTURE: MCP Hub architecture, AI task automation, and construction platform integrations.
 
 ## Governance

@@ -81,12 +81,50 @@ function getActivityNarrative(activity: TaskActivity): string | undefined {
   return dataDescription || undefined;
 }
 
-function buildTaskDetailEventLabel(activity: TaskActivity): string {
+interface TaskDetailHeadlineContext {
+  previousCompletionPercentage?: number;
+}
+
+function buildPhotoUpdateHeadline(photoCount: number): string {
+  if (photoCount <= 1) {
+    return 'Added photo update';
+  }
+
+  return `Added ${photoCount} photos`;
+}
+
+function hasMeaningfulProgressChange(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): boolean {
+  if (activity.activityType !== 'progress_update' || activity.completionPercentage === undefined) {
+    return false;
+  }
+
+  if (context?.previousCompletionPercentage !== undefined) {
+    return activity.completionPercentage !== context.previousCompletionPercentage;
+  }
+
+  return activity.completionPercentage > 0;
+}
+
+function buildTaskDetailEventLabel(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): string {
   switch (activity.activityType) {
-    case 'progress_update':
+    case 'progress_update': {
+      const photoCount = collectActivityPhotoUrls(activity).length;
+      const meaningfulProgressChange = hasMeaningfulProgressChange(activity, context);
+
+      if (!meaningfulProgressChange && photoCount > 0) {
+        return buildPhotoUpdateHeadline(photoCount);
+      }
+
       return activity.completionPercentage !== undefined
         ? `Updated progress to ${activity.completionPercentage}%`
         : 'Updated progress';
+    }
     case 'status_change':
       return activity.status
         ? `Changed status to ${humanizeToken(activity.status)}`
@@ -120,15 +158,39 @@ function buildTaskDetailEventLabel(activity: TaskActivity): string {
   }
 }
 
-function buildTaskDetailHeadline(activity: TaskActivity): string {
+function buildTaskDetailHeadline(
+  activity: TaskActivity,
+  context?: TaskDetailHeadlineContext,
+): string {
   const narrative = getActivityNarrative(activity);
-  const fallbackLabel = buildTaskDetailEventLabel(activity);
+  const fallbackLabel = buildTaskDetailEventLabel(activity, context);
 
   if (narrative && narrative.toLowerCase() !== fallbackLabel.toLowerCase()) {
     return narrative;
   }
 
   return fallbackLabel;
+}
+
+function buildActivityHeadlineContextMap(
+  activities: TaskActivity[],
+): Map<string, TaskDetailHeadlineContext> {
+  const contextByActivityId = new Map<string, TaskDetailHeadlineContext>();
+  const latestOlderCompletionByTaskId = new Map<string, number>();
+
+  [...activities].reverse().forEach((activity) => {
+    const taskKey = activity.taskId || activity.id;
+
+    contextByActivityId.set(activity.id, {
+      previousCompletionPercentage: latestOlderCompletionByTaskId.get(taskKey),
+    });
+
+    if (activity.completionPercentage !== undefined) {
+      latestOlderCompletionByTaskId.set(taskKey, activity.completionPercentage);
+    }
+  });
+
+  return contextByActivityId;
 }
 
 function buildTaskDetailEventDetail(activity: TaskActivity): string | undefined {
@@ -226,6 +288,7 @@ function buildTaskDetailActiveStageModel({
   getUserById: (userId?: string) => { name?: string } | undefined;
 }): TaskDetailActiveStageModel {
   const latestActivity = orderedActivities[0];
+  const activityHeadlineContextById = buildActivityHeadlineContextMap(orderedActivities);
 
   if (latestActivity) {
     const photos = collectActivityPhotoUrls(latestActivity);
@@ -233,7 +296,10 @@ function buildTaskDetailActiveStageModel({
     const stageSource = buildActiveStageModel({
       id: latestActivity.id,
       mode: photos.length > 0 ? "photo" : documentUri ? "pdf" : "text",
-      title: buildTaskDetailEventLabel(latestActivity),
+      title: buildTaskDetailHeadline(
+        latestActivity,
+        activityHeadlineContextById.get(latestActivity.id),
+      ),
       summary:
         buildTaskDetailEventDetail(latestActivity) ||
         latestActivity.description?.trim() ||
@@ -628,19 +694,22 @@ export function useTaskDetailViewAdapter({
   ].sort(
     (left, right) => new Date(right.activity.timestamp).getTime() - new Date(left.activity.timestamp).getTime(),
   );
+  const activityHeadlineContextById = buildActivityHeadlineContextMap(
+    combinedActivities.map(({ activity }) => activity),
+  );
 
   const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => ({
     id: activity.id,
     density: 'standard',
     structuralState: 'stale',
     actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
-    eventLabel: buildTaskDetailHeadline(activity),
+    eventLabel: buildTaskDetailHeadline(activity, activityHeadlineContextById.get(activity.id)),
     timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
     progressLabel:
       activity.completionPercentage !== undefined
         ? `${activity.completionPercentage}%`
         : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
-    detailLabel: buildTaskDetailEventDetail(activity),
+    detailLabel: undefined,
     photoUrls: collectActivityPhotoUrls(activity),
     statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
     subtaskBadgeLabel: childTask ? 'Subtask' : undefined,
@@ -774,11 +843,11 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (isActiveWorkState || isContributorReviewState) {
-    if (isAssignedToMe) {
+  if (isActiveWorkState || isContributorReviewState || isReviewerApprovalState) {
+    if (isAssignedToMe || isReviewerApprovalState) {
       addActionItem({
         actionId: 'update_progress',
-        label: t.taskDetail.updateTask || 'Update Progress',
+        label: 'Add Photos',
         icon: 'camera-outline',
       });
     }
@@ -824,15 +893,9 @@ export function useTaskDetailViewAdapter({
 
   const quickActionIds = isAwaitingAcceptance
     ? ['accept_task', 'decline_task']
-    : isReviewerApprovalState
-      ? ['approve_task', 'reject_task', 'add_comment']
-      : isContributorReviewState
-        ? ['submit_review', 'add_comment', 'update_progress']
-        : isActiveWorkState
-          ? isViewingSubTask
-            ? ['update_progress', 'add_comment']
-            : ['update_progress', 'add_comment', 'add_subtask']
-          : [];
+    : isActiveWorkState || isContributorReviewState || isReviewerApprovalState
+      ? ['update_progress', 'add_comment']
+      : [];
 
   const quickActions: TaskDetailQuickActionRowModel | undefined = quickActionIds.length
     ? {

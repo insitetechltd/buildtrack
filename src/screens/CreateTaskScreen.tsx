@@ -44,7 +44,6 @@ import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import ScreenSection from "../components/ui/ScreenSection";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
@@ -141,22 +140,62 @@ export default function CreateTaskScreen({
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
-  const effectiveActionType = (actionType === 'photos' ? 'update' : actionType) || (editTaskId ? 'edit' : undefined);
+  const effectiveActionType = actionType || (editTaskId ? "edit" : undefined);
 
-  if (effectiveActionType && effectiveActionType !== 'edit' && editTaskId) {
-    return <TaskActionScreen 
-      actionType={effectiveActionType} 
-      taskId={editTaskId} 
-      updateTargetSubTaskId={updateTargetSubTaskId}
-      onNavigateBack={onNavigateBack}
-      selectedPhotos={selectedPhotosProp}
-      uploadedPhotoUrls={uploadedPhotoUrls}
-      onClearDraftPayloads={onClearDraftPayloads}
-      onNavigateToProfile={onNavigateToProfile}
-      onNavigateToProjectPicker={onNavigateToProjectPicker}
-    />;
+  if (effectiveActionType && effectiveActionType !== "edit" && editTaskId) {
+    return (
+      <TaskActionScreen
+        actionType={effectiveActionType}
+        taskId={editTaskId}
+        updateTargetSubTaskId={updateTargetSubTaskId}
+        onNavigateBack={onNavigateBack}
+        selectedPhotos={selectedPhotosProp}
+        uploadedPhotoUrls={uploadedPhotoUrls}
+        onClearDraftPayloads={onClearDraftPayloads}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+      />
+    );
   }
 
+  return (
+    <CreateTaskEditorScreen
+      onNavigateBack={onNavigateBack}
+      parentTaskId={parentTaskId}
+      parentSubTaskId={parentSubTaskId}
+      editTaskId={editTaskId}
+      actionType={effectiveActionType}
+      cameraLaunchContext={cameraLaunchContext}
+      postCaptureDefault={postCaptureDefault}
+      updateTargetSubTaskId={updateTargetSubTaskId}
+      uploadedPhotoUrls={uploadedPhotoUrls}
+      selectedPhotos={selectedPhotosProp}
+      onClearDraftPayloads={onClearDraftPayloads}
+      clearForm={clearForm}
+      clearFormTimestamp={clearFormTimestamp}
+      onNavigateToProfile={onNavigateToProfile}
+      onNavigateToProjectPicker={onNavigateToProjectPicker}
+    />
+  );
+}
+
+function CreateTaskEditorScreen({
+  onNavigateBack,
+  parentTaskId,
+  parentSubTaskId,
+  editTaskId,
+  actionType,
+  cameraLaunchContext,
+  postCaptureDefault,
+  updateTargetSubTaskId,
+  uploadedPhotoUrls,
+  selectedPhotos: selectedPhotosProp,
+  onClearDraftPayloads,
+  clearForm,
+  clearFormTimestamp,
+  onNavigateToProfile,
+  onNavigateToProjectPicker
+}: CreateTaskScreenProps) {
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
@@ -404,7 +443,6 @@ export default function CreateTaskScreen({
           title={t.tasks.createTask}
           showBackButton={true}
           onBackPress={onNavigateBack}
-          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center px-6">
           <Text>{t.createTask.adminCannotCreateTasks}</Text>
@@ -424,7 +462,6 @@ export default function CreateTaskScreen({
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
-        rightElement={<ModernUiMarker />}
       />
 
       {/* Parent Task Info Banner */}
@@ -1611,11 +1648,14 @@ function TaskActionScreen({
     : task;
   const initialSelectedPhotoUris = (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri);
   const initialIncomingPhotos = Array.from(new Set([...initialSelectedPhotoUris, ...(uploadedPhotoUrls || [])]));
+  const isSharedUpdateComposerMode = actionType === 'update' || actionType === 'photos' || actionType === 'comment';
+  const isPhotoFirstEntry = actionType === 'photos';
+  const isCommentFirstEntry = actionType === 'comment';
   
   // Update form state
   const [updateForm, setUpdateForm] = useState({
     description: "",
-    photos: actionType === 'comment' ? [] as string[] : initialIncomingPhotos,
+    photos: initialIncomingPhotos,
     completionPercentage: targetTask?.completionPercentage || 0,
     status: (targetTask?.status || "in_progress") as TaskStatus,
   });
@@ -1623,13 +1663,7 @@ function TaskActionScreen({
   const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
   const [draftSelectedPhotos, setDraftSelectedPhotos] = useState<SelectedPhoto[]>(selectedPhotos || []);
   const [shouldIgnoreIncomingDraftPayloads, setShouldIgnoreIncomingDraftPayloads] = useState(false);
-
-  // Comment form state
-  const [commentForm, setCommentForm] = useState({
-    description: "",
-    photos: actionType === 'comment' ? initialIncomingPhotos : [] as string[],
-  });
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const hasAutoOpenedPhotoSelectionRef = useRef(false);
   const selectedPhotoUris = useMemo(
     () => draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
     [draftSelectedPhotos],
@@ -1655,14 +1689,14 @@ function TaskActionScreen({
 
   // Initialize form when task loads
   useEffect(() => {
-    if (targetTask && actionType === 'update') {
+    if (targetTask && isSharedUpdateComposerMode) {
       setUpdateForm(prev => ({
         ...prev,
         completionPercentage: targetTask.completionPercentage || 0,
         status: (targetTask.status || "in_progress") as TaskStatus,
       }));
     }
-  }, [targetTask, actionType]);
+  }, [isSharedUpdateComposerMode, targetTask]);
 
   // Fetch task on mount
   useEffect(() => {
@@ -1707,19 +1741,11 @@ function TaskActionScreen({
       return;
     }
 
-    if (actionType === 'comment') {
-      setCommentForm((prev) => ({
-        ...prev,
-        photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
-      }));
-      return;
-    }
-
     setUpdateForm((prev) => ({
       ...prev,
       photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
     }));
-  }, [actionType, selectedPhotoUris, shouldIgnoreIncomingDraftPayloads, uploadedPhotoUrls]);
+  }, [selectedPhotoUris, shouldIgnoreIncomingDraftPayloads, uploadedPhotoUrls]);
 
   useEffect(() => {
     if (shouldIgnoreIncomingDraftPayloads) {
@@ -1743,6 +1769,27 @@ function TaskActionScreen({
       return merged;
     });
   }, [selectedPhotos, shouldIgnoreIncomingDraftPayloads]);
+
+  useEffect(() => {
+    if (!isPhotoFirstEntry) {
+      return;
+    }
+
+    if (!user || !task || !targetTask) {
+      return;
+    }
+
+    if (hasAutoOpenedPhotoSelectionRef.current) {
+      return;
+    }
+
+    if (initialIncomingPhotos.length > 0 || draftSelectedPhotos.length > 0 || updateForm.photos.length > 0) {
+      return;
+    }
+
+    hasAutoOpenedPhotoSelectionRef.current = true;
+    handleAddPhotos();
+  }, [draftSelectedPhotos.length, initialIncomingPhotos.length, isPhotoFirstEntry, updateForm.photos.length]);
 
   const handleAddPhotos = async () => {
     if (!user || !task || !targetTask) return;
@@ -1873,7 +1920,7 @@ function TaskActionScreen({
   };
 
   const handleAttemptNavigateBack = () => {
-    if (actionType !== "update" || !hasDirtyUpdateDraft) {
+    if (!isSharedUpdateComposerMode || !hasDirtyUpdateDraft) {
       onNavigateBack();
       return;
     }
@@ -1894,34 +1941,6 @@ function TaskActionScreen({
         },
       ],
     );
-  };
-
-  const handleSubmitComment = async () => {
-    if (!commentForm.description.trim()) {
-      Alert.alert("Error", "Please provide a comment");
-      return;
-    }
-
-    if (!user || !task) return;
-
-    setIsSubmittingComment(true);
-
-    try {
-      await addAssignerComment(updateTargetSubTaskId || task.id, {
-        description: commentForm.description,
-        photos: commentForm.photos,
-        userId: user.id,
-      });
-
-      await fetchTaskById(task.id);
-      Alert.alert("Success", "Comment added successfully");
-      onNavigateBack();
-    } catch (error: any) {
-      console.error('Error adding comment:', error);
-      Alert.alert("Error", error.message || "Failed to add comment");
-    } finally {
-      setIsSubmittingComment(false);
-    }
   };
 
   const handleReassignTask = async (selectedUserIds: string[]) => {
@@ -1963,7 +1982,6 @@ function TaskActionScreen({
             onBackPress={onNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
           />
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#3b82f6" />
@@ -1975,19 +1993,36 @@ function TaskActionScreen({
   }
 
   // Render based on action type
-  if (actionType === 'update') {
+  if (isSharedUpdateComposerMode) {
     return (
       <View className="flex-1 bg-gray-50">
         <SafeAreaView edges={['top']} className="flex-1">
           <ModernScreenHeader
-            title={t.taskDetail.progressUpdate}
+            title={actionType === 'photos' ? 'Add Photos' : actionType === 'comment' ? 'Add Comment' : t.taskDetail.progressUpdate}
             showBackButton={true}
             onBackPress={handleAttemptNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
           />
           <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Description */}
+            <View className="mb-6">
+              <Text className="text-xl font-semibold text-gray-900 mb-3">
+                {t.taskDetail.updateDescription}
+              </Text>
+              <TextInput
+                autoFocus={isCommentFirstEntry}
+                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
+                placeholder={t.taskDetail.updateDescriptionPlaceholder}
+                value={updateForm.description}
+                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                style={{ height: 120 }}
+              />
+            </View>
+
             {/* Photos Section */}
             <View className="mb-6">
               <Text className="text-xl font-semibold text-gray-900 mb-3">
@@ -2037,23 +2072,6 @@ function TaskActionScreen({
                   <Ionicons name="checkmark-circle" size={20} color="#10b981" />
                 )}
               </Pressable>
-            </View>
-
-            {/* Description */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.updateDescription}
-              </Text>
-              <TextInput
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-                placeholder={t.taskDetail.updateDescriptionPlaceholder}
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                style={{ height: 120 }}
-              />
             </View>
 
             {/* Completion Percentage */}
@@ -2112,110 +2130,6 @@ function TaskActionScreen({
     );
   }
 
-  if (actionType === 'comment') {
-    return (
-      <View className="flex-1 bg-gray-50">
-        <SafeAreaView edges={['top']} className="flex-1">
-          <ModernScreenHeader
-            title="Add Comment"
-            showBackButton={true}
-            onBackPress={onNavigateBack}
-            onNavigateToProfile={onNavigateToProfile}
-            onNavigateToProjectPicker={onNavigateToProjectPicker}
-            rightElement={<ModernUiMarker />}
-          />
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Photos Section */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Photos (Optional)
-              </Text>
-              
-              {commentForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {commentForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => {
-                            setCommentForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_: any, i: number) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              <Pressable
-                onPress={handleAddPhotos}
-                className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
-              >
-                <Ionicons name="camera-outline" size={24} color="#6b7280" />
-                <Text className="text-gray-600 ml-2 font-medium">
-                  Add Photos
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Comment Text */}
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                Comment
-              </Text>
-              <TextInput
-                className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
-                placeholder="Add your comment here..."
-                value={commentForm.description}
-                onChangeText={(text) => setCommentForm(prev => ({ ...prev, description: text }))}
-                multiline
-                textAlignVertical="top"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 8
-            }}
-          >
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitComment}
-                disabled={isSubmittingComment || !commentForm.description.trim()}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  (isSubmittingComment || !commentForm.description.trim()) ? "bg-gray-300" : "bg-indigo-600"
-                )}
-              >
-                <Ionicons name="send-outline" size={18} color="white" />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmittingComment ? t.common.loading : "Post"}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
   if (actionType === 'reassign') {
     return (
       <View className="flex-1 bg-transparent">
@@ -2239,7 +2153,6 @@ function TaskActionScreen({
           onBackPress={onNavigateBack}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
-          rightElement={<ModernUiMarker />}
         />
         <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
           <View className="mb-6">
@@ -2300,15 +2213,16 @@ function TaskActionScreen({
         >
           <SafeAreaView edges={['bottom']}>
             <Pressable
-              onPress={() => {
-                Alert.alert("Success", "Photos added. You can now submit an update with these photos.");
-                onNavigateBack();
-              }}
-              className="w-full rounded-xl py-3 px-4 flex-row items-center justify-center bg-blue-600"
+              onPress={handleSubmitUpdate}
+              disabled={isSubmitting}
+              className={cn(
+                "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
+                isSubmitting ? "bg-gray-300" : "bg-blue-600"
+              )}
             >
               <Ionicons name="checkmark-circle-outline" size={18} color="white" />
               <Text className="text-white font-semibold text-base ml-2">
-                Done
+                {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
               </Text>
             </Pressable>
           </SafeAreaView>

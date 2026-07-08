@@ -159,6 +159,10 @@ export type RootTabParamList = {
   Activity: NavigatorScreenParams<DashboardStackParamList> | undefined;
   Tasks: NavigatorScreenParams<TasksStackParamList> | undefined;
   Camera: NavigatorScreenParams<CreateTaskStackParamList> | undefined;
-  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
   AdminDashboard: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
+};
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<RootTabParamList> | undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };

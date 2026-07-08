@@ -15,12 +15,14 @@ const BACK_BUTTON_CLASS_NAME = "mr-3 h-10 w-10 items-center justify-center round
 
 export interface AppScreenHeaderProps {
   title: string;
+  titleNode?: React.ReactNode;
   subtitle?: string;
   showBackButton?: boolean;
   showProfileTrigger?: boolean;
   onBackPress?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToDeveloperSettings?: () => void;
   rightSlot?: React.ReactNode;
   className?: string;
   onProfilePress?: () => void;
@@ -28,12 +30,14 @@ export interface AppScreenHeaderProps {
 
 export default function AppScreenHeader({
   title,
+  titleNode,
   subtitle,
   showBackButton = false,
   showProfileTrigger = true,
   onBackPress,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onNavigateToDeveloperSettings,
   rightSlot,
   className,
   onProfilePress,
@@ -42,7 +46,7 @@ export default function AppScreenHeader({
   const insets = useSafeAreaInsets();
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
 
-  const topPadding = insets.top > 0 ? insets.top + 8 : 16;
+  const topPadding = insets.top > 0 ? insets.top + 4 : 12;
   const profileInitial = useMemo(() => {
     const firstCharacter = user?.name?.trim()?.charAt(0);
     return firstCharacter ? firstCharacter.toUpperCase() : "?";
@@ -60,7 +64,7 @@ export default function AppScreenHeader({
   return (
     <View
       testID="app-screen-header__root"
-      className={cn("border-b border-gray-200 bg-white px-4 pb-4", className)}
+      className={cn("border-b border-[#0B6A84] bg-[#08576E] px-4 pb-3", className)}
       style={{ paddingTop: topPadding }}
     >
       <View className="flex-row items-center">
@@ -68,18 +72,30 @@ export default function AppScreenHeader({
           <Pressable
             testID={BACK_BUTTON_TEST_ID}
             onPress={onBackPress}
-            className={BACK_BUTTON_CLASS_NAME}
+            className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
             accessibilityRole="button"
             accessibilityLabel={BACK_BUTTON_ACCESSIBILITY_LABEL}
           >
-            <Ionicons testID={BACK_ICON_TEST_ID} name={BACK_ICON_NAME} size={20} color="#111827" />
+            <Ionicons testID={BACK_ICON_TEST_ID} name={BACK_ICON_NAME} size={20} color="#F8FCFF" />
           </Pressable>
         ) : null}
 
         <View className="flex-1">
-          <Text className="text-2xl font-semibold text-gray-900">{title}</Text>
+          {titleNode ? (
+            <View>{titleNode}</View>
+          ) : (
+            <Text
+              className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              adjustsFontSizeToFit
+              minimumFontScale={0.9}
+            >
+              {title}
+            </Text>
+          )}
           {subtitle ? (
-            <Text className="mt-0.5 text-sm text-gray-500" numberOfLines={1}>
+            <Text className="mt-0.5 text-base leading-5 text-[#B9D9E4]" numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}
@@ -91,9 +107,9 @@ export default function AppScreenHeader({
             <Pressable
               testID="app-screen-header__profile-trigger"
               onPress={handleProfilePress}
-              className={cn("h-9 w-9 items-center justify-center rounded-full bg-blue-600", rightSlot && "ml-2")}
+              className={cn("h-10 w-10 items-center justify-center rounded-full bg-[#12A8E0]", rightSlot && "ml-2")}
               accessibilityRole="button"
-              accessibilityLabel="Open profile menu"
+              accessibilityLabel="Open workspace menu"
             >
               <Text className="text-base font-bold text-white">{profileInitial}</Text>
             </Pressable>
@@ -107,6 +123,7 @@ export default function AppScreenHeader({
           onClose={() => setIsProfileMenuVisible(false)}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
+          onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
         />
       ) : null}
     </View>

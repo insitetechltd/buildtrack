@@ -53,6 +53,8 @@ The approved direction is now:
 - lower-frequency actions remain in a separate lower `Other actions` area
 - thread photos should preserve the full image in-card without cropping top or bottom
 - the lead photo should visually occupy the full available card width rather than appearing as a smaller centered image inside a second inset container
+- thread cards should not render a secondary `detailLabel` line
+- photo-only updates must not fall back to unchanged progress copy such as `Updated progress to 0%`
 - tapping any thread photo opens a full-screen viewer
 - full-screen photo viewer supports left/right swiping through all photos for that same thread entry
 - photo-update form must still reset fully after submit so reopening starts fresh
@@ -271,7 +273,7 @@ Inside the card:
 - one visible action-first headline describing the concrete action or detail
 - one large lead photo at the top when photos exist
 - a small thumbnail strip when more than one photo exists
-- optional secondary supporting line below the media only when there is still additional useful context after promoting the action/detail
+- no secondary supporting `detailLabel` line
 
 The card should not repeat the metadata row inside the body.
 
@@ -285,12 +287,15 @@ Approved behavior:
 - remove the generic status-change headline from the card body
 - use the event label only as a fallback when no better action/detail text exists
 - keep the current status visible via the metadata-rail status badge instead of repeating it in the body copy
+- when an update only adds photos and does not meaningfully change progress, use a photo-update headline rather than unchanged progress wording
+- unchanged snapshot values such as `0%` must not masquerade as the action that occurred
 
 #### Reasoning
 
 - the action taken is usually more useful than a generic status-change summary
 - the status is already represented elsewhere and does not need a second prominent line
 - removing the generic status-change line makes the cards feel tighter and less repetitive
+- a separate detail subline weakens scannability once the primary headline has already been promoted
 
 #### Parent-task entry
 
@@ -306,7 +311,7 @@ Approved behavior:
 
 - no fake evidence placeholder
 - no large empty photo block
-- just the compact thread card with the action-first headline and optional supporting line if still useful
+- just the compact thread card with the action-first headline only
 
 #### Document/PDF entry
 
@@ -323,6 +328,9 @@ Approved behavior:
 - preserve the full image within the in-thread card using fit/contain-style behavior rather than aggressive crop/cover behavior
 - remove the extra visual inset effect that makes the photo feel boxed inside a smaller inner frame
 - the photo surface should align to the content width of the thread card so it reads as the primary asset, not as a thumbnail enlarged inside padding
+- replace the fixed-height lead photo with aspect-ratio-based sizing so portrait photos grow taller instead of being trapped inside a short box
+- the thumbnail strip must render outside the clipped lead-photo shell so additional photos remain visible
+- the lead-photo shell must contain only the primary image and not any secondary gallery controls
 
 #### Full-screen viewer
 
@@ -333,6 +341,7 @@ Approved behavior:
 - the viewer should not jump across different thread entries
 - include a clear close affordance or tap-to-dismiss behavior
 - reuse the app’s existing swipeable photo-viewer pattern rather than introducing a second gallery interaction model
+- show a small visible gallery index such as `2 / 3` in full-screen mode when more than one photo exists
 
 #### Reasoning
 
@@ -340,6 +349,8 @@ Approved behavior:
 - cropping top or bottom can hide critical evidence
 - full-screen mode should behave like a lightweight gallery, not a static single-image modal
 - if the lead photo does not own the card width, it loses visual priority and weakens the photo-first storytelling goal
+- a short fixed-height `contain` frame still looks boxed for portrait images, so width ownership requires aspect-ratio-aware rendering instead of only removing gutters
+- multi-photo navigation is only trustworthy if the thumbnails stay visible on-card and the full-screen viewer exposes which image in the set is currently active
 
 ### 11. Bottom Navigation Balance
 

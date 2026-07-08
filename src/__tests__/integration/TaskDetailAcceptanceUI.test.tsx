@@ -320,6 +320,283 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(childTestIds).toEqual(["task-detail__info_card", "task-detail__quick-actions"]);
   });
 
+  it("renders accept_task and decline_task in the bottom quick-action set before acceptance", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "action-accept",
+              actionId: "accept_task",
+              label: "Accept",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "action-decline",
+              actionId: "decline_task",
+              label: "Decline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        actionItems: [
+          {
+            id: "action-accept",
+            actionId: "accept_task",
+            label: "Accept",
+            icon: "checkmark-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-decline",
+            actionId: "decline_task",
+            label: "Decline",
+            icon: "close-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-action-accept_task")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-action-decline_task")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__quick-action-approve_task")).toBeNull();
+    expect(screen.queryByTestId("task-detail__quick-action-reject_task")).toBeNull();
+  });
+
+  it("keeps update_progress and add_comment in the bottom quick-action set through review", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "action-update",
+              actionId: "update_progress",
+              label: "Add Photos",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "action-comment",
+              actionId: "add_comment",
+              label: "Add Comment",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        actionItems: [
+          {
+            id: "action-update",
+            actionId: "update_progress",
+            label: "Add Photos",
+            icon: "camera-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-approve",
+            actionId: "approve_task",
+            label: "Approve",
+            icon: "checkmark-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-reject",
+            actionId: "reject_task",
+            label: "Reject",
+            icon: "close-circle-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-detail__quick-action-update_progress")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-action-add_comment")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__quick-action-approve_task")).toBeNull();
+    expect(screen.queryByTestId("task-detail__quick-action-reject_task")).toBeNull();
+  });
+
+  it("routes Add Photos through the photo-first shared composer entry", () => {
+    const onNavigateToCreateTask = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "action-update",
+              actionId: "update_progress",
+              label: "Add Photos",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "action-comment",
+              actionId: "add_comment",
+              label: "Add Comment",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        actionItems: [
+          {
+            id: "action-update",
+            actionId: "update_progress",
+            label: "Add Photos",
+            icon: "camera-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        subTaskId="subtask-1"
+        onNavigateBack={jest.fn()}
+        onNavigateToCreateTask={onNavigateToCreateTask}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("task-detail__quick-action-update_progress"));
+
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      "task-1",
+      "photos",
+      "subtask-1",
+    );
+  });
+
+  it("keeps Add Comment routed to the comment-first shared composer entry", () => {
+    const onNavigateToCreateTask = jest.fn();
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "action-update",
+              actionId: "update_progress",
+              label: "Add Photos",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "action-comment",
+              actionId: "add_comment",
+              label: "Add Comment",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+        actionItems: [
+          {
+            id: "action-update",
+            actionId: "update_progress",
+            label: "Add Photos",
+            icon: "camera-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "action-comment",
+            actionId: "add_comment",
+            label: "Add Comment",
+            icon: "chatbubble-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(
+      <TaskDetailScreen
+        taskId="task-1"
+        subTaskId="subtask-1"
+        onNavigateBack={jest.fn()}
+        onNavigateToCreateTask={onNavigateToCreateTask}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("task-detail__quick-action-add_comment"));
+
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      "task-1",
+      "comment",
+      "subtask-1",
+    );
+  });
+
   it("renders task detail as a work-thread surface with hero, info card, and unified thread but no evidence or separate subtasks card", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
@@ -339,7 +616,7 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(screen.getByText("Subtask")).toBeTruthy();
     expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
-    expect(screen.getByText("Marked 100% complete")).toBeTruthy();
+    expect(screen.getByText("Submitted task for review")).toBeTruthy();
   });
 
   it("renders a small critical flag in the hero and no standalone critical section", () => {
@@ -381,10 +658,11 @@ describe("TaskDetailScreen acceptance UI", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__thumbnail-strip-activity-1")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__active_stage_photo_featured")).toBeNull();
   });
 
-  it("renders subtask context in the work thread and opens the full-photo viewer on tap", () => {
+  it("renders subtask context in the work thread and opens the full-photo viewer with gallery position on tap", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Subtask")).toBeTruthy();
@@ -396,6 +674,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
       uri: "https://example.com/activity-photo.jpg",
     });
+    expect(screen.getByText("1 / 2")).toBeTruthy();
   });
 
   it("does not render the top project-label string in the compact hero", () => {

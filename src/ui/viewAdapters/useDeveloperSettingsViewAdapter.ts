@@ -25,15 +25,18 @@ import {
   loadScenarioCPreset,
   switchSprint7RuntimeSandboxActor,
 } from "@/test-utils/sprint7RuntimeSandbox";
+import { isUuidLike } from "@/navigation/screenVerification";
 
 export interface DeveloperSettingsViewAdapterProps {
   onNavigateBack: () => void;
+  onOpenTaskDetailVerification: (taskId?: string) => void;
 }
 
 export interface DeveloperSettingsViewAdapterHookResult {
   output: DeveloperSettingsScreenViewAdapterOutput;
   actions: {
     handleNavigateBack: () => void;
+    handleOpenTaskDetailVerification: () => void;
     handleToggleUiMode: () => void;
     handleForceSyncAll: () => void;
     handleClearTaskCache: () => void;
@@ -71,7 +74,7 @@ function createActionItem(
 export function useDeveloperSettingsViewAdapter(
   props: DeveloperSettingsViewAdapterProps,
 ): DeveloperSettingsViewAdapterHookResult {
-  const { onNavigateBack } = props;
+  const { onNavigateBack, onOpenTaskDetailVerification } = props;
   const { user, logout } = useAuthStore();
   const { uiModernizationMode, toggleUiMode } = useDevToggleStore();
   const taskStore = useTaskStore();
@@ -88,6 +91,20 @@ export function useDeveloperSettingsViewAdapter(
   const handleNavigateBack = useCallback(() => {
     onNavigateBack();
   }, [onNavigateBack]);
+
+  const verificationTaskId = taskStore.tasks.find((task) => isUuidLike(task.id))?.id;
+
+  const handleOpenTaskDetailVerification = useCallback(() => {
+    if (!verificationTaskId) {
+      Alert.alert(
+        "No Verification Task Available",
+        "No live task with a valid UUID is currently loaded for screen verification.",
+      );
+      return;
+    }
+
+    onOpenTaskDetailVerification(verificationTaskId);
+  }, [onOpenTaskDetailVerification, verificationTaskId]);
 
   const handleToggleUiMode = useCallback(() => {
     toggleUiMode();
@@ -422,6 +439,20 @@ export function useDeveloperSettingsViewAdapter(
       },
       actionGroups: [
         {
+          id: "screen-verification",
+          title: "Screen Verification",
+          actions: [
+            createActionItem(
+              "open-task-detail-verification",
+              "Open Task Detail Verification",
+              "Open the canonical Task Detail verification route",
+              "open-outline",
+              "purple",
+              !verificationTaskId,
+            ),
+          ],
+        },
+        {
           id: "sync-actions",
           title: "Sync Actions",
           actions: [
@@ -558,6 +589,7 @@ export function useDeveloperSettingsViewAdapter(
     output,
     actions: {
       handleNavigateBack,
+      handleOpenTaskDetailVerification,
       handleToggleUiMode,
       handleForceSyncAll,
       handleClearTaskCache,

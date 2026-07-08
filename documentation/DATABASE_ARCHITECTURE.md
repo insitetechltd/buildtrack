@@ -237,7 +237,7 @@ Purpose:
 
 - unified task and subtask storage using a self-referential tree model
 
-Key runtime fields reflected in code and bootstrap SQL:
+Key runtime fields reflected in code and at least part of the checked-in schema surface:
 
 - `id`
 - `project_id`
@@ -255,8 +255,13 @@ Key runtime fields reflected in code and bootstrap SQL:
 - `status`
 - `completion_percentage`
 - `assigned_to`
+- `primary_assignee_id`
+- `delegated_user_ids`
 - `assigned_by`
 - `original_assigned_by`
+- `container_id`
+- `sub_container_id`
+- `tags`
 - `attachments`
 - `accepted`
 - `accepted_by`
@@ -282,6 +287,7 @@ Important notes:
 - the task model is unified: top-level tasks and nested tasks share the same table
 - the runtime still carries some legacy compatibility fields while the unified model settles
 - soft-delete and archival behavior are modeled in the main table
+- the redesign metadata fields `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags` are part of the intended runtime model, but live-environment rollout may lag; the repository now carries `ADD_TASK_REDESIGN_METADATA_MIGRATION.sql` to close that drift, and app-side compatibility fallbacks currently avoid hard failures while those fields remain non-persistent on stale schemas
 
 Relationships:
 

@@ -12,12 +12,14 @@ jest.mock("../../../src/components/AppScreenHeader", () => {
   return function MockAppScreenHeader({
     title,
     rightSlot,
+    className,
   }: {
     title: string;
     rightSlot?: React.ReactNode;
+    className?: string;
   }) {
     return (
-      <View testID="app-screen-header__root">
+      <View testID="app-screen-header__root" className={className}>
         <Text>{title}</Text>
         {rightSlot}
         <Pressable testID="app-screen-header__profile-trigger">
@@ -134,7 +136,9 @@ describe("DashboardScreen Interactions", () => {
     expect(queryByText("Partly Cloudy")).toBeNull();
     expect(queryByTestId("dashboard-screen__weather_tile")).toBeNull();
     expect(getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(getByTestId("app-screen-header__root").props.className).toContain("pb-2");
     expect(queryByTestId("dashboard-screen__header_profile")).toBeNull();
+    expect(queryByTestId("dashboard-screen__fab_open_camera")).toBeNull();
 
     fireEvent.press(getByTestId("dashboard-screen__queue_cell_my_queue_new"));
 

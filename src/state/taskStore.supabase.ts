@@ -46,6 +46,97 @@ export interface TaskDerivedState {
 
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
+const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
+  "primary_assignee_id",
+  "delegated_user_ids",
+  "container_id",
+  "sub_container_id",
+  "tags",
+] as const;
+const DEFERRED_TASK_RUNTIME_FIELDS = [
+  "primaryAssigneeId",
+  "delegatedUserIds",
+  "containerId",
+  "subContainerId",
+  "tags",
+] as const;
+
+function buildSupabaseTaskInsertPayload(
+  taskData: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">,
+  initialStatus: TaskStatus,
+  isCreatorAssigned: boolean
+) {
+  return {
+    project_id: taskData.projectId,
+    title: taskData.title,
+    description: taskData.description,
+    task_reference: taskData.taskReference || null,
+    billing_status: taskData.billingStatus || "non_billable",
+    priority: taskData.priority,
+    category: taskData.category,
+    due_date: taskData.dueDate,
+    current_status: initialStatus,
+    completion_percentage: 0,
+    assigned_to: taskData.assignedTo,
+    primary_assignee_id: taskData.primaryAssigneeId || null,
+    delegated_user_ids: taskData.delegatedUserIds || null,
+    assigned_by: taskData.assignedBy,
+    container_id: taskData.containerId || null,
+    sub_container_id: taskData.subContainerId || null,
+    tags: taskData.tags || [],
+    attachments: taskData.attachments || [],
+    accepted: isCreatorAssigned ? true : false,
+    accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
+    accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
+  };
+}
+
+function stripDeferredTaskSchemaFields<T extends Record<string, unknown>>(
+  payload: T
+) {
+  const compatibilityPayload = { ...payload };
+
+  DEFERRED_TASK_CREATE_SCHEMA_FIELDS.forEach((fieldName) => {
+    delete compatibilityPayload[fieldName];
+  });
+
+  return compatibilityPayload;
+}
+
+function stripDeferredTaskRuntimeFields<T extends Record<string, unknown>>(
+  payload: T
+) {
+  const compatibilityPayload = { ...payload };
+
+  DEFERRED_TASK_RUNTIME_FIELDS.forEach((fieldName) => {
+    delete compatibilityPayload[fieldName];
+  });
+
+  return compatibilityPayload;
+}
+
+function getDeferredTaskSchemaField(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const errorCode = "code" in error ? String((error as { code?: unknown }).code || "") : "";
+  if (errorCode !== "PGRST204") {
+    return null;
+  }
+
+  const errorMessage = "message" in error
+    ? String((error as { message?: unknown }).message || "")
+    : "";
+  const errorDetails = "details" in error
+    ? String((error as { details?: unknown }).details || "")
+    : "";
+  const errorText = `${errorMessage} ${errorDetails}`;
+
+  return (
+    DEFERRED_TASK_CREATE_SCHEMA_FIELDS.find((fieldName) => errorText.includes(fieldName)) || null
+  );
+}
 
 function createActivityFromLegacyUpdate(taskId: string, update: TaskUpdate): TaskActivity {
   return {
@@ -1260,34 +1351,30 @@ export const useTaskStore = create<TaskStore>()(
           // For self-assigned tasks, set status to "in_progress" immediately (auto-accepted)
           const initialStatus = isCreatorAssigned ? 'in_progress' : 'new';
           
-          const { data, error } = await supabase
+          const fullInsertPayload = buildSupabaseTaskInsertPayload(
+            taskData,
+            initialStatus,
+            isCreatorAssigned
+          );
+          let { data, error } = await supabase
             .from('tasks')
-            .insert({
-              project_id: taskData.projectId,
-              title: taskData.title,
-              description: taskData.description,
-              task_reference: taskData.taskReference || null,
-              billing_status: taskData.billingStatus || "non_billable",
-              priority: taskData.priority,
-              category: taskData.category,
-              due_date: taskData.dueDate,
-              current_status: initialStatus,
-              completion_percentage: 0,
-              assigned_to: taskData.assignedTo,
-              primary_assignee_id: taskData.primaryAssigneeId || null,
-              delegated_user_ids: taskData.delegatedUserIds || null,
-              assigned_by: taskData.assignedBy,
-              container_id: taskData.containerId || null,
-              sub_container_id: taskData.subContainerId || null,
-              tags: taskData.tags || [],
-              attachments: taskData.attachments || [],
-              // Auto-accept if creator is assigned to the task
-              accepted: isCreatorAssigned ? true : false,
-              accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
-              accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
-            })
+            .insert(fullInsertPayload)
             .select()
             .single();
+
+          const deferredField = getDeferredTaskSchemaField(error);
+          if (deferredField) {
+            console.warn(
+              '⚠️ [createTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.',
+              { deferredField }
+            );
+
+            ({ data, error } = await supabase
+              .from('tasks')
+              .insert(stripDeferredTaskSchemaFields(fullInsertPayload))
+              .select()
+              .single());
+          }
 
           if (error) {
             console.error('❌ [createTask] Database error:', error);
@@ -1573,6 +1660,7 @@ export const useTaskStore = create<TaskStore>()(
           const updateData: any = {};
           // Remove internal fields that shouldn't be saved
           const { _editReason, ...cleanUpdates } = updates as any;
+          const compatibilityCleanUpdates = stripDeferredTaskRuntimeFields(cleanUpdates);
           
           if (cleanUpdates.title) updateData.title = cleanUpdates.title;
           if (cleanUpdates.description) updateData.description = cleanUpdates.description;
@@ -1621,25 +1709,67 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.lastEditedAt) updateData.last_edited_at = cleanUpdates.lastEditedAt;
 
           // Send update to backend
-          const { error } = await supabase
+          let usedDeferredSchemaCompatibility = false;
+          let skippedCompatibilityOnlyUpdate = false;
+          let { error } = await supabase
             .from('tasks')
             .update(updateData)
             .eq('id', id);
+
+          const deferredField = getDeferredTaskSchemaField(error);
+          if (deferredField) {
+            usedDeferredSchemaCompatibility = true;
+            console.warn(
+              '⚠️ [updateTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.',
+              { deferredField }
+            );
+
+            const compatibilityUpdateData = stripDeferredTaskSchemaFields(updateData);
+            if (Object.keys(compatibilityUpdateData).length === 0) {
+              skippedCompatibilityOnlyUpdate = true;
+              error = null;
+            } else {
+              ({ error } = await supabase
+                .from('tasks')
+                .update(compatibilityUpdateData)
+                .eq('id', id));
+            }
+
+            if (currentTask) {
+              set(state => ({
+                tasks: state.tasks.map(task =>
+                  task.id === id
+                    ? normalizeTaskActivityCompatibility({
+                        ...currentTask,
+                        ...compatibilityCleanUpdates,
+                        updatedAt: new Date().toISOString(),
+                      })
+                    : task
+                ),
+              }));
+            }
+          }
 
           if (error) throw error;
 
           // Success - backend confirmed the update
           console.log(`✅ [Optimistic Update] Backend confirmed update for task ${id}`);
-          invalidateResourceKeys([
-            buildResourceKey("tasks", "all"),
-            currentTask?.projectId ? buildResourceKey("tasks", "project", currentTask.projectId) : "",
-            ...((updates.assignedTo || currentTask?.assignedTo || []).map((userId) => buildResourceKey("tasks", "user", String(userId)))),
-            currentTask?.assignedBy ? buildResourceKey("tasks", "assignedBy", currentTask.assignedBy) : "",
-            buildResourceKey("task", id),
-          ]);
+          if (!skippedCompatibilityOnlyUpdate) {
+            invalidateResourceKeys([
+              buildResourceKey("tasks", "all"),
+              currentTask?.projectId ? buildResourceKey("tasks", "project", currentTask.projectId) : "",
+              ...((updates.assignedTo || currentTask?.assignedTo || []).map((userId) => buildResourceKey("tasks", "user", String(userId)))),
+              currentTask?.assignedBy ? buildResourceKey("tasks", "assignedBy", currentTask.assignedBy) : "",
+              buildResourceKey("task", id),
+            ]);
+          }
           
           // Mark as not loading immediately to restore UI responsiveness
           set({ isLoading: false });
+
+          if (skippedCompatibilityOnlyUpdate) {
+            return;
+          }
           
           // ============================================================================
           // ACTIVITY LOGGING - Always logs activities regardless of acceptance status

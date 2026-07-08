@@ -1,5 +1,9 @@
 import React, { useEffect } from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import {
+  NavigationContainer,
+  getFocusedRouteNameFromRoute,
+  type LinkingOptions,
+} from "@react-navigation/native";
 import {
   createBottomTabNavigator,
   type BottomTabBarButtonProps,
@@ -14,11 +18,13 @@ import { Ionicons } from "@expo/vector-icons";
 import {
   View,
   ActivityIndicator,
+  Alert,
   Text,
   StyleSheet,
   Pressable,
   type StyleProp,
   type ViewStyle,
+  Linking,
 } from "react-native";
 import { useAuthStore } from "../state/authStore";
 import { useProjectFilterStore } from "../state/projectFilterStore";
@@ -57,6 +63,10 @@ import {
 } from "./photoShortcutRoutes";
 import { buildCreateTaskPhotoReturnParams } from "./createTaskRouteParams";
 import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
+import {
+  buildTaskDetailVerificationUrl,
+  TASK_DETAIL_VERIFICATION_PATH,
+} from "./screenVerification";
 import type {
   AdminDashboardStackParamList,
   CreateTaskParams,
@@ -80,6 +90,49 @@ const TasksStackNavigator = createNativeStackNavigator<TasksStackParamList>();
 const ProfileStackNavigator = createNativeStackNavigator<ProfileStackParamList>();
 const CreateTaskStackNavigator = createNativeStackNavigator<CreateTaskStackParamList>();
 const AdminDashboardStackNavigator = createNativeStackNavigator<AdminDashboardStackParamList>();
+
+const ROOT_TAB_BAR_STYLE: ViewStyle = {
+  height: 76,
+  overflow: "visible",
+  paddingTop: 8,
+  paddingBottom: 10,
+  borderTopColor: "#e5e7eb",
+  backgroundColor: "#ffffff",
+};
+
+export function shouldHideTabBarOnTaskDetailRoute(routeName?: string) {
+  return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
+}
+
+function buildRootTabBarStyleForRoute(routeName?: string): ViewStyle {
+  if (!shouldHideTabBarOnTaskDetailRoute(routeName)) {
+    return ROOT_TAB_BAR_STYLE;
+  }
+
+  return {
+    ...ROOT_TAB_BAR_STYLE,
+    display: "none",
+  };
+}
+
+export const appLinking: LinkingOptions<RootStackParamList> = {
+  prefixes: ["taskr://"],
+  config: {
+    screens: {
+      MainTabs: {
+        screens: {
+          Tasks: {
+            screens: {
+              TaskDetail: {
+                path: TASK_DETAIL_VERIFICATION_PATH,
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
 
 type RouteStateLike = {
   index?: number;
@@ -1146,6 +1199,17 @@ function DeveloperSettingsScreenWrapper({
   return (
     <DeveloperSettingsScreen
       onNavigateBack={() => navigation.goBack()}
+      onOpenTaskDetailVerification={(taskId?: string) => {
+        if (!taskId) {
+          Alert.alert(
+            "No Verification Task Available",
+            "No live task with a valid UUID is currently loaded for screen verification.",
+          );
+          return;
+        }
+
+        void Linking.openURL(buildTaskDetailVerificationUrl(taskId));
+      }}
     />
   );
 }
@@ -1470,14 +1534,7 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: "#2563eb",
         tabBarInactiveTintColor: "#6b7280",
-        tabBarStyle: {
-          height: 76,
-          overflow: "visible",
-          paddingTop: 8,
-          paddingBottom: 10,
-          borderTopColor: "#e5e7eb",
-          backgroundColor: "#ffffff",
-        },
+        tabBarStyle: ROOT_TAB_BAR_STYLE,
         tabBarItemStyle: {
           alignItems: "center",
           justifyContent: "center",
@@ -1499,7 +1556,7 @@ function MainTabs() {
         <Tab.Screen
           name="Activity"
           component={DashboardStack}
-          options={{
+          options={({ route }) => ({
             tabBarLabel: "Activity",
             tabBarButton: (props) => (
               <RootTabButton {...props} testID="root-tab__activity" />
@@ -1509,7 +1566,8 @@ function MainTabs() {
             ),
             tabBarBadge: badgeCount,
             tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
-          }}
+            tabBarStyle: buildRootTabBarStyleForRoute(getFocusedRouteNameFromRoute(route)),
+          })}
         />
       )}
       {isAdmin(user) ? (
@@ -1568,7 +1626,7 @@ function MainTabs() {
         <Tab.Screen
           name="Tasks"
           component={TasksStack}
-          options={{
+          options={({ route }) => ({
             tabBarLabel: "Tasks",
             tabBarButton: (props) => (
               <RootTabButton {...props} testID="root-tab__tasks" />
@@ -1576,7 +1634,8 @@ function MainTabs() {
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="list-outline" size={size} color={color} />
             ),
-          }}
+            tabBarStyle: buildRootTabBarStyleForRoute(getFocusedRouteNameFromRoute(route)),
+          })}
         />
       )}
     </Tab.Navigator>
@@ -1641,7 +1700,7 @@ export default function AppNavigator() {
 
   return (
     <WorkspaceBootstrapGate>
-      <NavigationContainer>
+      <NavigationContainer linking={appLinking}>
         <DataRefreshManager />
         <NetworkSyncManager />
         <RealtimeSyncManager />

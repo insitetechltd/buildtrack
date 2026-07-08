@@ -3,6 +3,7 @@ import { Text } from "react-native";
 import { render, waitFor } from "@testing-library/react-native";
 
 jest.mock("@react-navigation/native", () => ({
+  getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 

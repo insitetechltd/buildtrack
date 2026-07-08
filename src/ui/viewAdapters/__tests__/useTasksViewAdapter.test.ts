@@ -46,7 +46,7 @@ describe("useTasksViewAdapter", () => {
   function setupBaseMocks(
     sectionFilter: "my_tasks" | "inbox" | "outbox" | "my_work" | "all" = "all",
     statusFilter: string = "all",
-    tasksLaunchPreset: { queue: "my_queue" | "team_queue"; bucket: "new" | "wip" | "review"; source: "activity_dashboard" | "tasks" } | null = null,
+    tasksLaunchPreset: { queue: "my_queue" | "team_queue"; bucket: "new" | "wip" | "review" | "overdue"; source: "activity_dashboard" | "tasks" } | null = null,
   ) {
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
@@ -114,7 +114,7 @@ describe("useTasksViewAdapter", () => {
     const { result } = renderHook(() => useTasksViewAdapter());
     expect(result.current.output.queuePanels[0].title).toBe("My Queue");
     expect(result.current.output.queuePanels[0].isExpanded).toBe(true);
-    expect(result.current.output.queuePanels[0].buckets).toHaveLength(3);
+    expect(result.current.output.queuePanels[0].buckets).toHaveLength(4);
     expect(result.current.output.queuePanels[0].buckets[0].isOpen).toBe(true);
     expect(result.current.output.queuePanels[1].title).toBe("Team Queue");
     expect(result.current.output.queuePanels[1].presentation).toBe("preview");
@@ -153,6 +153,7 @@ describe("useTasksViewAdapter", () => {
       true,
       false,
       false,
+      false,
     ]);
 
     act(() => {
@@ -162,6 +163,7 @@ describe("useTasksViewAdapter", () => {
     expect(result.current.output.queuePanels[0].buckets.map((bucket) => bucket.isOpen)).toEqual([
       false,
       true,
+      false,
       false,
     ]);
     expect(result.current.output.queuePanels[0].buckets[1].rows[0].taskId).toBe("task-wip");
@@ -241,6 +243,163 @@ describe("useTasksViewAdapter", () => {
       false,
       false,
       true,
+      false,
     ]);
+  });
+
+  it("splits overdue tasks out of New, Doing, and Review into a dedicated Overdue bucket", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-my-new",
+          title: "My New Task",
+          status: "new",
+          dueDate: "2099-07-10T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-04T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-my-wip",
+          title: "My Wip Task",
+          status: "in_progress",
+          dueDate: "2099-07-11T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-03T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-my-review",
+          title: "My Review Task",
+          status: "submitted_for_review",
+          dueDate: "2099-07-12T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-02T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-my-overdue-new",
+          title: "My Overdue New Task",
+          status: "new",
+          dueDate: "2020-07-10T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-05T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-my-overdue-review",
+          title: "My Overdue Review Task",
+          status: "submitted_for_review",
+          dueDate: "2020-07-11T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          updatedAt: "2026-07-06T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-team-overdue-wip",
+          title: "Team Overdue Wip Task",
+          status: "in_progress",
+          dueDate: "2020-07-12T00:00:00.000Z",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          updatedAt: "2026-07-01T10:00:00.000Z",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() =>
+      useTasksViewAdapter({
+        onNavigateToTaskDetail: jest.fn(),
+      }),
+    );
+
+    const myQueue = result.current.output.queuePanels.find((panel) => panel.queue === "my_queue");
+    const teamQueue = result.current.output.queuePanels.find((panel) => panel.queue === "team_queue");
+    const myOverdueBucket = myQueue?.buckets.find((bucket) => bucket.bucket === "overdue");
+    const teamOverdueBucket = teamQueue?.buckets.find((bucket) => bucket.bucket === "overdue");
+
+    expect(myQueue?.buckets.map((bucket) => `${bucket.title}:${bucket.taskCountLabel}`)).toEqual([
+      "New:1",
+      "Doing:1",
+      "Review:1",
+      "Overdue:2",
+    ]);
+    expect(myOverdueBucket?.rows.map((row) => row.taskId)).toEqual([
+      "task-my-overdue-review",
+      "task-my-overdue-new",
+    ]);
+    expect(teamQueue?.buckets.map((bucket) => `${bucket.title}:${bucket.taskCountLabel}`)).toEqual([
+      "New:0",
+      "Doing:0",
+      "Review:0",
+      "Overdue:1",
+    ]);
+    expect(teamOverdueBucket?.rows.map((row) => row.taskId)).toEqual(["task-team-overdue-wip"]);
+  });
+
+  it("builds compact task-card rows with location first and description as the fallback third line", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks("all", "all", {
+      queue: "my_queue",
+      bucket: "new",
+      source: "tasks",
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-thumbnail",
+          title: "Structural steel inspection — Level 12",
+          status: "submitted_for_review",
+          dueDate: "2099-07-10T00:00:00.000Z",
+          attachments: ["https://example.com/task-photo.jpg"],
+          assignedTo: ["user-1"],
+          assignedBy: "user-3",
+          containerId: "Level 12",
+          subContainerId: "Grid B–C",
+          updatedAt: "2026-07-06T10:00:00.000Z",
+        }),
+        makeTask({
+          id: "task-description-fallback",
+          title: "North facade patching",
+          description: "Patch spalled concrete before paint inspection",
+          status: "new",
+          dueDate: "2099-07-11T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-3",
+          updatedAt: "2026-07-05T10:00:00.000Z",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() =>
+      useTasksViewAdapter({
+        onNavigateToTaskDetail: jest.fn(),
+      }),
+    );
+
+    const rowsById = Object.fromEntries(
+      result.current.output.queuePanels.flatMap((panel) =>
+        panel.buckets.flatMap((bucket) => bucket.rows.map((row) => [row.taskId, row] as const)),
+      ),
+    );
+
+    expect(rowsById["task-thumbnail"].cardPresentation).toBe("thumbnail");
+    expect(rowsById["task-thumbnail"].primaryPhotoUri).toBe("https://example.com/task-photo.jpg");
+    expect(rowsById["task-thumbnail"].supportingLine).toBeUndefined();
+    expect(rowsById["task-thumbnail"].contextLine).toBe("Level 12, Grid B–C");
+    expect(rowsById["task-thumbnail"].photoDisplayMode).toBe("photo_centric");
+    expect(rowsById["task-description-fallback"].contextLine).toBe(
+      "Patch spalled concrete before paint inspection",
+    );
   });
 });

@@ -16,7 +16,6 @@ import { useNavigation } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { cn } from "../utils/cn";
 import ModernScreenHeader from "../components/ModernScreenHeader";
-import ModernUiMarker from "../components/migration/ModernUiMarker";
 import { useTranslation } from "../utils/useTranslation";
 import { useUpdateProgressViewAdapter, UpdateProgressScreenProps } from "../ui/viewAdapters/useUpdateProgressViewAdapter";
 import {
@@ -79,7 +78,6 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           onBackPress={() => navigation.goBack()}
           onNavigateToProfile={props.onNavigateToProfile}
           onNavigateToProjectPicker={props.onNavigateToProjectPicker}
-          rightElement={<ModernUiMarker />}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-gray-500">Task not found</Text>
@@ -101,7 +99,6 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
         onBackPress={() => navigation.goBack()}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
-        rightElement={<ModernUiMarker />}
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>

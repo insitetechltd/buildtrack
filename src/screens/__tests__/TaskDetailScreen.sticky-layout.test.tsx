@@ -171,6 +171,44 @@ describe("TaskDetailScreen sticky layout", () => {
     fetchTask: jest.fn(),
   });
 
+  const findNodeByTestId = (
+    node: any,
+    testID: string,
+  ): any | null => {
+    if (!node) {
+      return null;
+    }
+
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        const match = findNodeByTestId(child, testID);
+        if (match) {
+          return match;
+        }
+      }
+      return null;
+    }
+
+    if (node?.props?.testID === testID) {
+      return node;
+    }
+
+    return findNodeByTestId(node?.children, testID);
+  };
+
+  const collectTestIds = (node: any): string[] => {
+    if (!node) {
+      return [];
+    }
+
+    if (Array.isArray(node)) {
+      return node.flatMap((child) => collectTestIds(child));
+    }
+
+    const ownTestId = typeof node?.props?.testID === "string" ? [node.props.testID] : [];
+    return ownTestId.concat(collectTestIds(node?.children));
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -237,6 +275,49 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+  });
+
+  it("anchors the quick actions in a bottom action bar outside the scroll region", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        quickActions: {
+          id: "task-quick-actions",
+          density: "standard",
+          structuralState: "ready",
+          actions: [
+            {
+              id: "quick-action-accept",
+              actionId: "accept_task",
+              label: "Accept",
+              icon: "checkmark-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+            {
+              id: "quick-action-decline",
+              actionId: "decline_task",
+              label: "Reject",
+              icon: "close-circle-outline",
+              isDisabled: false,
+              density: "standard",
+              structuralState: "ready",
+            },
+          ],
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const tree = screen.toJSON();
+    const scrollRegionNode = findNodeByTestId(tree, "task-detail__scroll_region");
+    const bottomBarNode = findNodeByTestId(tree, "task-detail__bottom_action_bar");
+
+    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(bottomBarNode).toBeTruthy();
+    expect(collectTestIds(bottomBarNode)).toContain("task-detail__quick-actions");
+    expect(collectTestIds(scrollRegionNode)).not.toContain("task-detail__quick-actions");
   });
 
   it("does not render separate subtasks or detail cards once info is merged into the new layout", () => {

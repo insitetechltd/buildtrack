@@ -12,12 +12,14 @@ jest.mock("@/components/AppScreenHeader", () => {
   return function MockAppScreenHeader({
     title,
     rightSlot,
+    className,
   }: {
     title: string;
     rightSlot?: React.ReactNode;
+    className?: string;
   }) {
     return (
-      <View testID="app-screen-header__root">
+      <View testID="app-screen-header__root" className={className}>
         <Text>{title}</Text>
         {rightSlot}
         <Pressable testID="app-screen-header__profile-trigger">
@@ -133,11 +135,13 @@ describe("Activity home integration", () => {
     expect(screen.getByText("Today · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-2");
     expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
     expect(screen.getByText("Queue Overview")).toBeTruthy();
     expect(screen.getByText("My Queue")).toBeTruthy();
     expect(screen.getByText("Team Queue")).toBeTruthy();
     expect(screen.getByText("Concrete pour")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__fab_open_camera")).toBeNull();
 
     fireEvent.press(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new"));
     expect(onNavigateToTasks).toHaveBeenCalledWith({
@@ -148,9 +152,7 @@ describe("Activity home integration", () => {
 
     fireEvent.press(screen.getByTestId("dashboard-screen__header_project_picker"));
     expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
-
-    fireEvent.press(screen.getByTestId("dashboard-screen__fab_open_camera"));
-    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
 
   it("shows a selection prompt when no active project is set", () => {

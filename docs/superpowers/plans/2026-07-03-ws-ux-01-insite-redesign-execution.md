@@ -9,6 +9,8 @@
 - Slice wrap-up must include an explicit relaunch assessment before the slice can be marked `Closed`.
 - If the completed work requires an app relaunch to validate the live state, relaunch the app, verify the relaunch succeeds, and record that verification in the slice closure evidence.
 - Do not mark a slice `Closed` until required validation and any required relaunch verification are complete.
+- Screen verification routes must use a deep-linkable canonical destination path that resolves to the real production screen, not a preview-only surface.
+- Internal QA or Developer Settings launchers must open the same `taskr://` verification URL that external verification runs use, so manual checks and automated checks exercise the same route contract.
 
 ## Milestone Goal
 
@@ -331,6 +333,98 @@ Closure evidence:
     - Expo dev-client server restarted cleanly on `http://localhost:8081`
     - installed app relaunched successfully on both booted iOS simulators
     - refreshed simulator screenshots confirmed the category chip in the hero and improved bottom-nav centering
+- dashboard compact-activity redesign applied on 2026-07-06:
+  - compacted dashboard `Recent Activity` rows to two lines: task title and `timestamp · action`
+  - removed dashboard activity status badges and extra timestamp-only rows
+  - limited dashboard activity to the last 7 days
+  - removed `Drafts In Progress` from the dashboard
+  - added a collapsed `Drafts` section at the bottom of the `Tasks` screen, shown only when drafts exist
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/screens/__tests__/DashboardScreen.test.tsx src/screens/__tests__/TasksScreen.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- dashboard activity and queue refinement applied on 2026-07-06:
+  - replaced generic dashboard summary fallback copy with shared meaningful action labels
+  - stopped photo-only dashboard entries from rendering unchanged progress wording such as `Updated progress to 0%`
+  - added an `Overdue` bucket to both `My Queue` and `Team Queue`
+  - removed overdue items from the `New`, `Doing`, and `Review` bucket counts and aggregated them into the dedicated urgency lane
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/screens/__tests__/DashboardScreen.test.tsx src/screens/__tests__/TasksScreen.test.tsx src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts --runInBand`
+    - `npx tsc --noEmit`
+- activity and tasks queue alignment applied on 2026-07-06:
+  - aligned Activity queue overview to the same four-bucket model as Tasks
+  - ensured all four queue buckets fit within one visible row on both Activity and Tasks
+  - removed horizontal bucket scrolling from Tasks
+  - preserved tap-through from Activity queue cells into the matching Tasks queue and bucket, including `Overdue`
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/screens/__tests__/DashboardScreen.test.tsx src/screens/__tests__/TasksScreen.test.tsx src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts --runInBand`
+    - `npx tsc --noEmit`
+- task-card redesign applied on 2026-07-06:
+  - redesigned Tasks list cards into a stable left-thumbnail layout
+  - promoted the task title and urgency-first supporting line over dense metadata rows
+  - kept card height stable with a quiet placeholder surface when no photo exists
+  - preserved task tap-through behavior while scoping the new presentation to the Tasks list card path only
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/components/primitives/container/__tests__/ContainerCard.test.tsx src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/screens/__tests__/DashboardScreen.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- reference visual adoption applied on 2026-07-07:
+  - redesigned `Recent Activity` rows into thumbnail + actor/action + task title + date
+  - upgraded Tasks cards to a larger-thumbnail, status/location-focused composition
+  - reworked Task Detail entries into actor/time-first event cards with dominant photos
+  - preserved the stronger existing workflow logic, including meaningful activity labels, queue rules, overdue handling, draft placement, and gallery behavior
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useDashboardViewAdapter.test.ts src/screens/__tests__/DashboardScreen.test.tsx src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/components/primitives/container/__tests__/ContainerCard.test.tsx src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- task-detail two-button action bar applied on 2026-07-07:
+  - replaced the variable Task Detail quick-action cluster with a fixed two-button bottom row
+  - pre-acceptance tasks now show `Accept` and `Reject`
+  - accepted and review-state tasks now show `Add Photos` and `Add Comment`
+  - preserved the existing Task Detail navigator structure and underlying action handlers
+  - validation passed:
+    - `npx jest src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- correction pass applied on 2026-07-07 to fully match the approved objective:
+  - compacted the Tasks list card to a shorter shell with a full-height media rail
+  - reordered the right-side task-card content to title, state badge, then location or description
+  - moved Task Detail quick actions out of the scroll content into a true bottom action bar
+  - hid the standard bottom tab bar on `TaskDetail` and `TaskDetailFromDashboard` routes
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/components/primitives/container/__tests__/ContainerCard.test.tsx src/screens/__tests__/TaskDetailScreen.sticky-layout.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/navigation/__tests__/AppNavigator.bottom-tabs.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- tasks regression cleanup applied on 2026-07-07:
+  - removed the top `Ownership Queues` summary section from the Tasks screen
+  - bounded the task-card shell height so the card no longer renders excessively tall
+  - kept the existing queue, overdue, drafts, and navigation behavior intact
+  - validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTasksViewAdapter.test.ts src/screens/__tests__/TasksScreen.test.tsx src/components/primitives/container/__tests__/ContainerCard.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- task-detail camera-entry refinement applied on 2026-07-07:
+  - changed the post-acceptance left bottom action from a generic update shortcut to a camera-first `Add Photos` entry
+  - preserved the same two-button state model and existing task/subtask update association
+  - kept Task Detail layout, tab hiding, Add Comment, Accept/Reject, and gallery behavior intact
+  - validation passed:
+    - `npx jest src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- task-detail shared-composer refinement applied on 2026-07-07:
+  - unified `Add Photos` and `Add Comment` into one shared task update composer
+  - kept `Add Photos` routed as the photo-first shared-composer entry and pinned that intent in Task Detail acceptance coverage
+  - kept `Add Comment` routed as the comment-first shared-composer entry and pinned that intent in Task Detail acceptance coverage
+  - validation passed:
+    - `npx jest src/__tests__/integration/CreateTaskScreen.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx src/components/taskDetail/__tests__/TaskDetailQuickActions.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- thread-photo correction pass applied on 2026-07-06:
+  - stopped rendering secondary thread-card subcopy so work-thread cards stay headline-first
+  - corrected legacy photo-only progress updates to map to photo-update headlines instead of unchanged `Updated progress to 0%` copy
+  - preserved progress headlines only when the update reflects a real completion change, while still keeping richer narrative descriptions when present
+  - replaced the fixed lead-photo height with aspect-ratio-aware rendering so portrait images can grow taller while keeping full card width and `contain`
+  - correction validation passed:
+    - `npx jest src/ui/viewAdapters/__tests__/useTaskDetailViewAdapter.test.ts src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/__tests__/integration/TaskDetailScreen.header.test.tsx --runInBand`
+    - `npx tsc --noEmit`
+- gallery-navigation correction applied on 2026-07-06:
+  - moved the thumbnail strip outside the clipped aspect-ratio lead-photo shell so multi-photo thread entries keep their thumbnail navigation visible
+  - kept full-screen navigation scoped to the tapped entry and added an in-view gallery position label for multi-photo galleries
+  - correction validation passed:
+    - `npx jest src/components/taskDetail/__tests__/TaskActivityTimeline.test.tsx src/__tests__/integration/TaskDetailAcceptanceUI.test.tsx --runInBand`
+    - `npx tsc --noEmit`
 
 ### WS-UX / M-UX-01 / S-UX-01H — Batch-first capture review
 

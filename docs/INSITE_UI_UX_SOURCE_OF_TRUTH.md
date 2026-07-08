@@ -1,7 +1,7 @@
 # Insite UI/UX Source Of Truth
 
 **Status:** Canonical design reference  
-**Last updated:** 2026-07-04  
+**Last updated:** 2026-07-06  
 **Purpose:** Centralized UI/UX / product-design source of truth for the Insite redesign. This document aggregates the current approved design direction from earlier specs, gap analysis, execution slices, and the latest design discussions.
 
 ## Canonical Use
@@ -251,7 +251,6 @@ Approved top-down order:
 1. active-project summary card
 2. dense queue dashboard grid
 3. recent activity / updates
-4. supporting lower-priority content such as drafts
 
 ## Active-Project Summary Card
 
@@ -327,9 +326,10 @@ It should **not** expand a task list inline on `Activity`.
 
 This means:
 
-- drafts should be visually demoted
 - recency and urgency should be more visible
 - the page should feel like “what needs attention now”
+
+Drafts do **not** belong on `Activity` in the current approved direction. They belong under `Tasks` as lower-priority execution-support content.
 
 ## Tasks Page — Approved Design
 
@@ -343,6 +343,7 @@ It should optimize for:
 - compact scanning
 - quick task selection
 - deeper visual review when needed
+- supporting lower-priority execution content such as drafts
 
 ## Queue Model
 
@@ -393,27 +394,23 @@ This bucket-first model is preferred over a mixed single list because it preserv
 
 ### Collapsed/default row
 
-Tasks should appear as **2-line compact rows** by default.
+Tasks should appear as **compact scannable summary cards/rows** by default.
 
 Expected content:
 
-- line 1: task title
-- line 2: compact metadata such as category, latest update time, assignee, due date, or project label
+- task title
+- compact key metadata such as status, priority, due date, assignee, latest update time, or project label
 - optional compact signal for photos / attachments
 
-The collapsed state should be optimized for fast vertical scanning.
+The default state should be optimized for fast vertical scanning while still exposing enough metadata to support field decisions without opening every task.
 
-### Expanded row/card
+### Task open behavior
 
-Tapping a task row expands it into a richer card.
+Tapping a task row/card should open `Task Detail` directly.
 
-The expanded card must be:
+Inline row expansion is **not** part of the current approved interaction model.
 
-- **photo-centric**
-- centered on the **latest task photos**
-- still readable as a task record with metadata, but with photos as the main visual priority
-
-This corrects the earlier under-implementation where the tasks surface did not match the intended mockup behavior.
+Deeper visual review, evidence chronology, delegation context, and subtask context belong in `Task Detail`, not as an in-place expanded state inside `Tasks`.
 
 ## Global Search And Filter Model
 
@@ -432,7 +429,7 @@ Normal Tasks mode is:
 At the top of `Tasks`:
 
 - one global search bar
-- one filter button
+- lightweight contextual controls for project scoping and reset as needed
 
 ### Search behavior
 
@@ -450,7 +447,9 @@ Clearing search returns the screen to the normal queue layout.
 
 ### Filter behavior
 
-The filter button should open a modal or bottom-sheet filter panel.
+Filtering does **not** require a dedicated modal or bottom-sheet entry point in the current approved direction.
+
+Project scoping, queue context, bucket context, and reset affordances may be exposed through lightweight in-screen controls rather than a separate filter sheet.
 
 Filters may include:
 
@@ -460,6 +459,17 @@ Filters may include:
 - status
 - overdue
 - critical-date flagged
+
+## Drafts Placement
+
+Drafts belong on `Tasks`, not on `Activity`.
+
+Approved behavior:
+
+- drafts are lower-priority supporting execution content
+- drafts should be visually demoted relative to active queue work
+- drafts may appear as a dedicated supporting section on `Tasks`
+- drafts should not compete with `Activity` triage content
 
 ## Relationship Between Activity And Tasks
 
@@ -472,6 +482,41 @@ Or phrased another way:
 
 - `Activity` is action-based / triage-based
 - `Tasks` is goal-based / worklist-based
+
+## Task Detail — Approved Model
+
+## Role
+
+`Task Detail` is the focused work-thread view for a single task.
+
+Its job is to:
+
+- show the task’s current state clearly
+- preserve delegation and ownership context
+- keep evidence and updates readable in chronological context
+- support follow-up actions without fragmenting the screen into too many competing modules
+
+## Structure
+
+The approved direction is a **unified visual work-thread** rather than a dense stack of separate summary cards.
+
+This means:
+
+- task context is introduced through the top-level hero and info surfaces
+- activity history remains the primary storytelling structure
+- photos/evidence appear inline with the relevant updates and chronology
+- delegation context is visible within the task context surfaces, not required as a separate pinned summary card
+- subtask context remains visible and drillable, but does not require a separate always-on dedicated card
+
+## Non-goals
+
+The current approved direction does **not** require:
+
+- a separate pinned delegation summary surface
+- a separate pinned evidence/photo summary strip
+- a separate always-on subtasks card above the work thread
+
+Those patterns were explored earlier but are superseded by the unified task-detail direction.
 
 ## Camera — Approved Model
 
@@ -540,7 +585,7 @@ Critical dates should be created via a **lightweight task-level flag**.
 
 ### Primary entry point
 
-From the expanded task card:
+From `Task Detail`:
 
 - `Mark Critical`
 - or `Add to This Week`
@@ -567,9 +612,9 @@ This section distinguishes approved design from current shipped/implemented slic
 ### Implemented so far
 
 - active-project workspace bootstrap restore
-- top-level shell alignment to `Activity / Tasks / Camera / Profile`
+- top-level shell alignment to `Activity / Camera / Tasks` with profile in the header area
 - project-scoped `Recent Activity` home
-- a compact task surface slice has been implemented, but it does **not** fully match the corrected approved queue design
+- a compact task surface slice has been implemented and now reflects the latest approved direct-open `Tasks` model
 
 ### Correction now governs future work
 
@@ -583,9 +628,9 @@ Specifically, the approved target is now:
 - bucket-first queues on `Tasks`
 - `My Queue / Team Queue`
 - `Team Queue` lighter preview row on `Tasks`
-- compact 2-line task rows
-- photo-centric task expansion
+- compact direct-open task summary cards/rows
 - global all-task search/filter mode
+- drafts as lower-priority supporting content on `Tasks`, not `Activity`
 
 ### Current implemented correction state
 
@@ -610,10 +655,10 @@ The following approved design decisions are now implemented in `WS-UX / M-UX-01 
 The following approved design decisions are now implemented in `WS-UX / M-UX-01 / S-UX-01G`:
 
 - task detail is presented as a visual work-thread surface rather than a dense generic section stack
-- delegation context is promoted into a dedicated summary surface
-- evidence context is promoted into a dedicated photo/evidence summary surface
+- delegation context remains visible within the unified task context rather than a separate dedicated summary surface
+- evidence remains part of the task’s visual work thread rather than a separate pinned photo/evidence surface
 - activity history is reframed as a clearer work thread with stronger event labeling and media grouping
-- subtask context remains visible and drillable inside the redesigned task-detail surface
+- subtask context remains visible and drillable inside the redesigned task-detail surface without requiring a separate always-on summary card
 
 ## Non-Goals In This Correction Stage
 

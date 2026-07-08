@@ -11,7 +11,6 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import {
   usePhotoViewerViewAdapter,
   type PhotoViewerViewAdapterProps,
@@ -70,7 +69,6 @@ export default function PhotoViewerScreen({
         </Pressable>
 
         <View className="flex-row items-center gap-2">
-          <ModernUiMarker />
           {output.photoCountLabel ? (
             <View className="bg-gray-100 px-3 py-1.5 rounded-full">
               <Text className="text-gray-700 text-sm font-medium">{output.photoCountLabel}</Text>

@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { Pressable, Text, View, SectionList, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import AppScreenHeader from "@/components/AppScreenHeader";
 import ContainerCard from "@/components/primitives/container/ContainerCard";
-import ModernUiMarker from "@/components/migration/ModernUiMarker";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps, mapTaskRowToContainerCardProps } from "@/ui/mappers/tasksMappers";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
@@ -22,85 +22,43 @@ export default function TasksScreen(props: TasksScreenProps) {
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
+  const hasQueueContent = output.queuePanels.some((panel) => panel.buckets.some((bucket) => bucket.rows.length > 0));
+  const shouldRenderDraftsSection = !output.isSearchMode && Boolean(output.draftsSection);
+  const shouldRenderMainScroll = hasQueueContent || shouldRenderDraftsSection;
 
   const searchContract = useMemo(() => {
     return mapTaskInputToTextFieldProps(searchInput);
   }, [searchInput]);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50">
-      <View className="flex-1">
+    <SafeAreaView className="flex-1 bg-[#E7F4F8]">
+      <View className="flex-1 bg-[#E7F4F8]">
+        <AppScreenHeader
+          title="Tasks"
+          showBackButton={Boolean(props.onNavigateBack)}
+          onBackPress={props.onNavigateBack}
+          showProfileTrigger={visibility.showProfileShortcut}
+          onNavigateToProfile={props.onNavigateToProfile}
+          onNavigateToProjectPicker={visibility.showProjectPickerShortcut ? props.onNavigateToProjectPicker : undefined}
+          onNavigateToDeveloperSettings={
+            visibility.showDeveloperSettingsShortcut ? props.onNavigateToDeveloperSettings : undefined
+          }
+          className="border-b-0 bg-[#08576E] pb-2"
+          rightSlot={
+            visibility.showResetFiltersShortcut ? (
+              <Pressable
+                testID="tasks-screen__header_reset_filters"
+                onPress={actions.resetFilters}
+                className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
+              >
+                <Ionicons name="refresh-outline" size={20} color="#F8FCFF" />
+              </Pressable>
+            ) : null
+          }
+        />
         <View className="px-4 pt-3">
-          <View className="mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              {props.onNavigateBack ? (
-                <Pressable
-                  testID="tasks-screen__header_back"
-                  onPress={props.onNavigateBack}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="chevron-back" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              <Text className="ml-2 text-xl font-semibold text-slate-900">Tasks</Text>
-            </View>
-            <View className="flex-row items-center">
-              <ModernUiMarker />
-              {visibility.showResetFiltersShortcut ? (
-                <Pressable
-                  testID="tasks-screen__header_reset_filters"
-                  onPress={actions.resetFilters}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="refresh-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showProjectPickerShortcut && props.onNavigateToProjectPicker ? (
-                <Pressable
-                  testID="tasks-screen__header_project_picker"
-                  onPress={() => props.onNavigateToProjectPicker?.(true)}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="business-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showProfileShortcut && props.onNavigateToProfile ? (
-                <Pressable
-                  testID="tasks-screen__header_profile"
-                  onPress={props.onNavigateToProfile}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="person-circle-outline" size={22} color="#0f172a" />
-                </Pressable>
-              ) : null}
-              {visibility.showDeveloperSettingsShortcut && props.onNavigateToDeveloperSettings ? (
-                <Pressable
-                  testID="tasks-screen__header_developer_settings"
-                  onPress={props.onNavigateToDeveloperSettings}
-                  className="ml-2 h-10 w-10 items-center justify-center rounded-full bg-white"
-                >
-                  <Ionicons name="settings-outline" size={20} color="#0f172a" />
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
           <View className="mb-3">
             <TextField contract={searchContract} onChangeText={setSearchQuery} />
-          </View>
-          <View className="mb-3 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3">
-            <View>
-              <Text className="text-xs uppercase tracking-wide text-slate-500">
-                {output.filterSummary.sectionFilterLabel}
-              </Text>
-              <Text className="mt-1 text-sm text-slate-600">
-                {output.filterSummary.statusFilterLabel} · {output.filterSummary.sortLabel}
-              </Text>
-            </View>
-            <View className="rounded-full bg-slate-100 px-3 py-1">
-              <Text className="text-xs font-medium text-slate-700">
-                {output.scalarMetrics.totalVisibleTaskCount} visible
-              </Text>
-            </View>
           </View>
         </View>
         {output.isSearchMode ? (
@@ -115,35 +73,36 @@ export default function TasksScreen(props: TasksScreenProps) {
             ]}
             keyExtractor={(item) => item.taskId}
             renderSectionHeader={({ section }) => (
-              <View className="mb-3 rounded-3xl bg-white px-4 py-4">
-                <Text className="text-base font-semibold text-slate-900">{section.title}</Text>
-                <Text className="mt-1 text-sm text-slate-500">
+              <View className="mb-3 rounded-3xl border border-[#C8E6EF] bg-white px-4 py-4">
+                <Text className="text-lg font-semibold text-[#0D2630]">{section.title}</Text>
+                <Text className="mt-1 text-base leading-6 text-[#577783]">
                   {output.searchResults.length} {output.searchResults.length === 1 ? "result" : "results"}
                 </Text>
               </View>
             )}
             renderItem={({ item }) => (
               <View className="mb-3">
-                <ContainerCard contract={mapTaskRowToContainerCardProps(item)} />
+                <ContainerCard contract={mapTaskRowToContainerCardProps({ ...item, density: "standard" })} />
               </View>
             )}
             stickySectionHeadersEnabled={false}
             ListEmptyComponent={
               <View
                 testID="tasks-screen__empty_state"
-                className="rounded-3xl bg-white px-4 py-5"
+                className="rounded-3xl border border-[#C8E6EF] bg-white px-4 py-5"
               >
-                <Text className="text-base font-semibold text-slate-900">No matching tasks</Text>
-                <Text className="mt-1 text-sm text-slate-500">
+                <Text className="text-lg font-semibold text-[#0D2630]">No matching tasks</Text>
+                <Text className="mt-1 text-base leading-6 text-[#577783]">
                   Try a different title, project, or task keyword.
                 </Text>
               </View>
             }
             ListFooterComponent={<View className="h-24" />}
           />
-        ) : output.queuePanels.some((panel) => panel.buckets.some((bucket) => bucket.rows.length > 0)) ? (
+        ) : shouldRenderMainScroll ? (
           <ScrollView testID="tasks-screen__queues" className="flex-1 px-4" showsVerticalScrollIndicator={false}>
-            {output.queuePanels.map((panel) => {
+            {hasQueueContent
+              ? output.queuePanels.map((panel) => {
               const openBucket = panel.buckets.find((bucket) => bucket.isOpen) ?? panel.buckets[0];
               const shouldRenderRows = panel.isExpanded && openBucket?.rows.length > 0;
 
@@ -152,9 +111,9 @@ export default function TasksScreen(props: TasksScreenProps) {
                   key={panel.id}
                   testID={`tasks-screen__queue_panel_${panel.queue}`}
                   className={cn(
-                    "mb-4 rounded-3xl px-4 py-4",
+                    "mb-4 rounded-3xl border px-4 py-4",
                     panel.presentation === "primary" || panel.isExpanded
-                      ? "bg-white"
+                      ? "border-[#C8E6EF] bg-white"
                       : "border border-slate-200 bg-slate-100",
                   )}
                 >
@@ -164,20 +123,19 @@ export default function TasksScreen(props: TasksScreenProps) {
                     className="flex-row items-center justify-between"
                   >
                     <View className="flex-1 pr-3">
-                      <Text className="text-lg font-semibold text-slate-900">{panel.title}</Text>
-                      <Text className="mt-1 text-sm text-slate-500">{panel.totalCountLabel}</Text>
+                      <Text className="text-xl font-semibold text-[#0D2630]">{panel.title}</Text>
+                      <Text className="mt-1 text-base leading-6 text-[#577783]">{panel.totalCountLabel}</Text>
                     </View>
                     <Ionicons
                       name={panel.isExpanded ? "chevron-up" : "chevron-down"}
                       size={18}
-                      color="#475569"
+                      color="#497080"
                     />
                   </Pressable>
 
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    className="mt-4"
+                  <View
+                    testID={`tasks-screen__queue_bucket_row_${panel.queue}`}
+                    className="mt-4 flex-row gap-2"
                   >
                     {panel.buckets.map((bucket) => (
                       <Pressable
@@ -185,26 +143,36 @@ export default function TasksScreen(props: TasksScreenProps) {
                         testID={`tasks-screen__queue_bucket_${panel.queue}_${bucket.bucket}`}
                         onPress={() => actions.openBucket(panel.queue, bucket.bucket)}
                         className={cn(
-                          "mr-2 rounded-full border px-4 py-2",
-                          bucket.isOpen && panel.isExpanded
-                            ? "border-slate-900 bg-slate-900"
-                            : "border-slate-200 bg-slate-50",
+                          "min-w-0 flex-1 rounded-2xl border px-2 py-3",
+                          bucket.bucket === "overdue" && bucket.isOpen && panel.isExpanded
+                            ? "border-rose-200 bg-rose-600"
+                            : bucket.bucket === "overdue"
+                              ? "border-rose-200 bg-rose-50"
+                              : bucket.isOpen && panel.isExpanded
+                                ? "border-[#0A728F] bg-[#0A728F]"
+                                : "border-[#C8E6EF] bg-[#F8FCFF]",
                         )}
                       >
                         <Text
                           className={cn(
-                            "text-sm font-medium",
-                            bucket.isOpen && panel.isExpanded ? "text-white" : "text-slate-700",
+                            "text-base font-medium",
+                            bucket.bucket === "overdue" && bucket.isOpen && panel.isExpanded
+                              ? "text-white"
+                              : bucket.bucket === "overdue"
+                                ? "text-rose-700"
+                                : bucket.isOpen && panel.isExpanded
+                                  ? "text-white"
+                                  : "text-[#355968]",
                           )}
                         >
                           {bucket.title} · {bucket.taskCountLabel}
                         </Text>
                       </Pressable>
                     ))}
-                  </ScrollView>
+                  </View>
 
                   {panel.presentation === "preview" && !panel.isExpanded ? (
-                    <Text className="mt-3 text-sm text-slate-500">
+                    <Text className="mt-3 text-base leading-6 text-[#577783]">
                       Open Team Queue to review its active bucket list.
                     </Text>
                   ) : null}
@@ -216,33 +184,65 @@ export default function TasksScreen(props: TasksScreenProps) {
                     >
                       {openBucket.rows.map((row) => (
                         <View key={row.taskId} className="mb-3">
-                          <ContainerCard contract={mapTaskRowToContainerCardProps(row)} />
+                          <ContainerCard contract={mapTaskRowToContainerCardProps({ ...row, density: "standard" })} />
                         </View>
                       ))}
                     </View>
                   ) : panel.isExpanded ? (
                     <View
                       testID={`tasks-screen__queue_bucket_list_${panel.queue}_${openBucket.bucket}`}
-                      className="mt-4 rounded-2xl bg-slate-50 px-4 py-4"
+                      className="mt-4 rounded-2xl bg-[#F8FCFF] px-4 py-4"
                     >
-                      <Text className="text-sm font-medium text-slate-700">
+                      <Text className="text-base font-medium text-[#355968]">
                         No tasks in {panel.title} {openBucket.title.toLowerCase()}.
                       </Text>
                     </View>
                   ) : null}
                 </View>
               );
-            })}
+              })
+              : null}
+            {output.draftsSection ? (
+              <View
+                testID="tasks-screen__drafts_section"
+                className="mb-6 rounded-3xl border border-[#C8E6EF] bg-white px-4 py-4"
+              >
+                <Pressable
+                  testID="tasks-screen__drafts_toggle"
+                  onPress={actions.toggleDraftsSection}
+                  className="flex-row items-center justify-between"
+                >
+                  <Text className="text-lg font-semibold text-[#0D2630]">
+                    {output.draftsSection.title} · {output.draftsSection.countLabel}
+                  </Text>
+                  <Ionicons
+                    name={output.draftsSection.isExpanded ? "chevron-up" : "chevron-down"}
+                    size={18}
+                    color="#497080"
+                  />
+                </Pressable>
+
+                {output.draftsSection.isExpanded ? (
+                  <View className="mt-4">
+                    {output.draftsSection.rows.map((row) => (
+                      <View key={row.taskId} className="mb-3">
+                        <ContainerCard contract={mapTaskRowToContainerCardProps({ ...row, density: "standard" })} />
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
             <View className="h-24" />
           </ScrollView>
         ) : (
           <View className="flex-1 px-4">
             <View
               testID="tasks-screen__empty_state"
-              className="rounded-3xl bg-white px-4 py-5"
+              className="rounded-3xl border border-[#C8E6EF] bg-white px-4 py-5"
             >
-              <Text className="text-base font-semibold text-slate-900">No Tasks</Text>
-              <Text className="mt-1 text-sm text-slate-500">
+              <Text className="text-lg font-semibold text-[#0D2630]">No Tasks</Text>
+              <Text className="mt-1 text-base leading-6 text-[#577783]">
                 There are no active tasks in the current workspace yet.
               </Text>
             </View>
@@ -252,7 +252,7 @@ export default function TasksScreen(props: TasksScreenProps) {
           <Pressable
             testID="tasks-screen__fab_create_task"
             onPress={props.onNavigateToCreateTask}
-            className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-orange-500 shadow-lg"
+            className="absolute bottom-6 right-6 h-14 w-14 items-center justify-center rounded-full bg-[#0A728F] shadow-lg"
           >
             <Ionicons name="add" size={28} color="#ffffff" />
           </Pressable>

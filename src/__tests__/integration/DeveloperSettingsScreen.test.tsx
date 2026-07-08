@@ -138,6 +138,7 @@ jest.mock("react-native-safe-area-context", () => ({
 
 describe("DeveloperSettingsScreen", () => {
   const mockHandleForceSyncAll = jest.fn();
+  const mockHandleOpenTaskDetailVerification = jest.fn();
   const mockHandleToggleUiMode = jest.fn();
   const mockHandleScenarioPreset = jest.fn();
 
@@ -200,6 +201,21 @@ describe("DeveloperSettingsScreen", () => {
             ],
           },
           {
+            id: "screen-verification",
+            title: "Screen Verification",
+            actions: [
+              {
+                id: "open-task-detail-verification",
+                actionId: "open-task-detail-verification",
+                label: "Open Task Detail Verification",
+                description: "Open the canonical Task Detail verification route",
+                icon: "open-outline",
+                color: "purple",
+                isDisabled: false,
+              },
+            ],
+          },
+          {
             id: "debug",
             title: "Debug Tools",
             actions: [
@@ -232,6 +248,7 @@ describe("DeveloperSettingsScreen", () => {
       actions: {
         handleNavigateBack: jest.fn(),
         handleForceSyncAll: mockHandleForceSyncAll,
+        handleOpenTaskDetailVerification: mockHandleOpenTaskDetailVerification,
         handleClearTaskCache: jest.fn(),
         handleClearProjectCache: jest.fn(),
         handleClearUserCache: jest.fn(),
@@ -246,15 +263,24 @@ describe("DeveloperSettingsScreen", () => {
   });
 
   it("renders adapter-driven developer sections and delegates force sync through the adapter", () => {
-    const screen = render(<DeveloperSettingsScreen onNavigateBack={jest.fn()} />);
+    const screen = render(
+      <DeveloperSettingsScreen
+        onNavigateBack={jest.fn()}
+        onOpenTaskDetailVerification={jest.fn()}
+      />,
+    );
 
     expect(screen.getByText("Developer Settings")).toBeTruthy();
     expect(screen.getByText("Sync Actions")).toBeTruthy();
+    expect(screen.getByText("Screen Verification")).toBeTruthy();
     expect(screen.getByText("Debug Tools")).toBeTruthy();
     expect(screen.getByText("Modern UI")).toBeTruthy();
+    expect(screen.getByText("Open Task Detail Verification")).toBeTruthy();
 
     fireEvent.press(screen.getByText(/force sync all/i));
+    fireEvent.press(screen.getByText(/open task detail verification/i));
 
     expect(mockHandleForceSyncAll).toHaveBeenCalled();
+    expect(mockHandleOpenTaskDetailVerification).toHaveBeenCalled();
   });
 });

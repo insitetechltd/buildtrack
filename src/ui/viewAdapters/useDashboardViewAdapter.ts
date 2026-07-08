@@ -3,7 +3,8 @@ import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
-import { isAdmin, type Project } from "@/types/buildtrack";
+import { useUserStore } from "@/state/userStore.supabase";
+import { isAdmin, type Project, type Task, type TaskActivity, type TaskUpdate } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import type {
   DashboardActivityItem,
@@ -60,6 +61,318 @@ function formatCalendarLabel(date: Date): string {
 
 function formatStatusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+const SEVEN_DAYS_IN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function formatRelativeTimestamp(timestamp?: string, now = Date.now()): string {
+  if (!timestamp) {
+    return "just now";
+  }
+
+  const parsedTimestamp = new Date(timestamp).getTime();
+  if (!Number.isFinite(parsedTimestamp)) {
+    return "just now";
+  }
+
+  const diffInMilliseconds = Math.max(0, now - parsedTimestamp);
+  const diffInMinutes = Math.floor(diffInMilliseconds / (1000 * 60));
+
+  if (diffInMinutes < 1) {
+    return "just now";
+  }
+
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes === 1 ? "" : "s"} ago`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours === 1 ? "" : "s"} ago`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} day${diffInDays === 1 ? "" : "s"} ago`;
+}
+
+function isWithinLastSevenDays(timestamp?: string, now = Date.now()): boolean {
+  if (!timestamp) {
+    return false;
+  }
+
+  const parsedTimestamp = new Date(timestamp).getTime();
+  if (!Number.isFinite(parsedTimestamp)) {
+    return false;
+  }
+
+  const diffInMilliseconds = now - parsedTimestamp;
+  return diffInMilliseconds >= 0 && diffInMilliseconds <= SEVEN_DAYS_IN_MS;
+}
+
+interface DashboardActionLabelContext {
+  previousCompletionPercentage?: number;
+}
+
+function getActivityNarrative(activity: TaskActivity): string | undefined {
+  const description = activity.description?.trim();
+  if (description) {
+    return description;
+  }
+
+  const dataDescription = (activity.data as { description?: string } | undefined)?.description?.trim();
+  return dataDescription || undefined;
+}
+
+function getUpdateNarrative(update: TaskUpdate): string | undefined {
+  const description = update.description?.trim();
+  return description || undefined;
+}
+
+function buildPhotoUpdateHeadline(photoCount: number): string {
+  if (photoCount <= 1) {
+    return "Added photo update";
+  }
+
+  return `Added ${photoCount} photos`;
+}
+
+function collectSummaryPhotoUrls(activityLike: TaskActivity | TaskUpdate): string[] {
+  if ("activityType" in activityLike) {
+    const photos = (activityLike.data as { photos?: string[] } | undefined)?.photos;
+    return Array.isArray(photos) ? photos.filter(Boolean) : [];
+  }
+
+  return Array.isArray(activityLike.photos) ? activityLike.photos.filter(Boolean) : [];
+}
+
+function hasMeaningfulActivityProgressChange(
+  activity: TaskActivity,
+  context?: DashboardActionLabelContext,
+): boolean {
+  if (activity.activityType !== "progress_update" || activity.completionPercentage === undefined) {
+    return false;
+  }
+
+  if (context?.previousCompletionPercentage !== undefined) {
+    return activity.completionPercentage !== context.previousCompletionPercentage;
+  }
+
+  return activity.completionPercentage > 0;
+}
+
+function hasMeaningfulUpdateProgressChange(
+  update: TaskUpdate,
+  context?: DashboardActionLabelContext,
+): boolean {
+  if (update.completionPercentage === undefined) {
+    return false;
+  }
+
+  if (context?.previousCompletionPercentage !== undefined) {
+    return update.completionPercentage !== context.previousCompletionPercentage;
+  }
+
+  return update.completionPercentage > 0;
+}
+
+function buildDashboardFallbackActionLabelFromActivity(
+  activity: TaskActivity,
+  context?: DashboardActionLabelContext,
+): string {
+  switch (activity.activityType) {
+    case "progress_update": {
+      const photoCount = collectSummaryPhotoUrls(activity).length;
+      const meaningfulProgressChange = hasMeaningfulActivityProgressChange(activity, context);
+
+      if (photoCount > 0 && !meaningfulProgressChange) {
+        return buildPhotoUpdateHeadline(photoCount);
+      }
+
+      return activity.completionPercentage !== undefined
+        ? `Updated progress to ${activity.completionPercentage}%`
+        : "Updated progress";
+    }
+    case "status_change": {
+      const nextStatus =
+        activity.status ??
+        ("toStatus" in activity.data ? activity.data.toStatus : undefined);
+      return nextStatus ? `Changed status to ${formatStatusLabel(nextStatus)}` : "Updated task status";
+    }
+    case "assignment":
+      return "Updated assignment";
+    case "creation":
+      return "Created task";
+    case "cancellation":
+      return "Cancelled task";
+    case "review_submission":
+      return "Submitted task for review";
+    case "review_acceptance":
+      return "Approved task completion";
+    case "review_rejection":
+      return "Rejected task completion";
+    case "assigner_comment":
+      return "Added assigner comment";
+    case "delegation_added":
+      return "Added delegation";
+    case "delegation_removed":
+      return "Removed delegation";
+    case "photo_batch_attached":
+      return "Added photo evidence";
+    case "draft_completed":
+      return "Completed draft update";
+    case "metadata_edit":
+      return "Updated task details";
+    default:
+      return formatStatusLabel(activity.activityType);
+  }
+}
+
+function buildDashboardActionLabelFromActivity(
+  activity: TaskActivity,
+  context?: DashboardActionLabelContext,
+): string {
+  const fallbackLabel = buildDashboardFallbackActionLabelFromActivity(activity, context);
+  const narrative = getActivityNarrative(activity);
+  const photoCount = collectSummaryPhotoUrls(activity).length;
+  const meaningfulProgressChange = hasMeaningfulActivityProgressChange(activity, context);
+
+  if (activity.activityType === "progress_update" && photoCount > 0 && !meaningfulProgressChange) {
+    return fallbackLabel;
+  }
+
+  if (
+    activity.activityType === "progress_update" &&
+    narrative &&
+    narrative.toLowerCase() !== fallbackLabel.toLowerCase()
+  ) {
+    return narrative;
+  }
+
+  return fallbackLabel;
+}
+
+function buildDashboardFallbackActionLabelFromUpdate(
+  update: TaskUpdate,
+  context?: DashboardActionLabelContext,
+): string {
+  if (update.status === "submitted_for_review" || update.status === "reviewing") {
+    return "Submitted task for review";
+  }
+
+  if (update.status === "approved" || update.status === "completed" || update.status === "done") {
+    return "Approved task completion";
+  }
+
+  if (update.status === "rejected") {
+    return "Rejected task completion";
+  }
+
+  const photoCount = collectSummaryPhotoUrls(update).length;
+  const meaningfulProgressChange = hasMeaningfulUpdateProgressChange(update, context);
+
+  if (photoCount > 0 && !meaningfulProgressChange) {
+    return buildPhotoUpdateHeadline(photoCount);
+  }
+
+  if (meaningfulProgressChange && update.completionPercentage !== undefined) {
+    return `Updated progress to ${update.completionPercentage}%`;
+  }
+
+  return "Updated progress";
+}
+
+function buildDashboardActionLabelFromUpdate(
+  update: TaskUpdate,
+  context?: DashboardActionLabelContext,
+): string {
+  const fallbackLabel = buildDashboardFallbackActionLabelFromUpdate(update, context);
+  const narrative = getUpdateNarrative(update);
+
+  if (
+    (update.status === "submitted_for_review" || update.status === "reviewing") &&
+    fallbackLabel === "Submitted task for review"
+  ) {
+    return fallbackLabel;
+  }
+
+  if (
+    (update.status === "approved" || update.status === "completed" || update.status === "done") &&
+    fallbackLabel === "Approved task completion"
+  ) {
+    return fallbackLabel;
+  }
+
+  if (update.status === "rejected" && fallbackLabel === "Rejected task completion") {
+    return fallbackLabel;
+  }
+
+  if (narrative && narrative.toLowerCase() !== fallbackLabel.toLowerCase()) {
+    return narrative;
+  }
+
+  return fallbackLabel;
+}
+
+function buildActionLabelContextMap<
+  T extends {
+    id: string;
+    timestamp?: string;
+    completionPercentage?: number;
+  },
+>(items: T[]): Map<string, DashboardActionLabelContext> {
+  const contextById = new Map<string, DashboardActionLabelContext>();
+  let previousCompletionPercentage: number | undefined;
+
+  [...items]
+    .sort((left, right) => new Date(left.timestamp ?? 0).getTime() - new Date(right.timestamp ?? 0).getTime())
+    .forEach((item) => {
+      contextById.set(item.id, {
+        previousCompletionPercentage,
+      });
+
+      if (item.completionPercentage !== undefined) {
+        previousCompletionPercentage = item.completionPercentage;
+      }
+    });
+
+  return contextById;
+}
+
+function buildDashboardFallbackActionLabel(task: Task): string {
+  if (task.status === "submitted_for_review" || task.status === "reviewing") {
+    return "Submitted task for review";
+  }
+
+  if (task.status === "approved" || task.status === "completed" || task.status === "done") {
+    return "Approved task completion";
+  }
+
+  if (task.status === "rejected") {
+    return "Rejected task completion";
+  }
+
+  if (
+    (task.status === "in_progress" || task.status === "accepted" || task.status === "wip") &&
+    task.completionPercentage > 0
+  ) {
+    return `Updated progress to ${task.completionPercentage}%`;
+  }
+
+  return "Created task";
+}
+
+function resolveDashboardActivityActorLabel(
+  activityLike: Pick<TaskActivity | TaskUpdate, "userId">,
+  getUserById: (userId: string) => { name?: string } | undefined,
+): string | undefined {
+  return getUserById(activityLike.userId)?.name;
+}
+
+function resolveDashboardActivityPreviewPhoto(
+  activityLike: TaskActivity | TaskUpdate,
+  task: Task,
+): string | undefined {
+  return collectSummaryPhotoUrls(activityLike)[0] || task.attachments?.[0];
 }
 
 function formatElapsedDayLabel(startDate?: string): string {
@@ -135,6 +448,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   const projectStore = useProjectStoreWithInit();
   const taskStore = useTaskStore();
+  const { getUserById } = useUserStore();
   const currentUserId = user?.id ?? "";
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
@@ -317,97 +631,88 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     );
     const mappedActivityItems: DashboardActivityItem[] = activeProjectTasks
       .flatMap((task) => {
+        const activities = Array.isArray(task.activities) ? task.activities : [];
         const updates = Array.isArray(task.updates) ? task.updates : [];
 
-        if (updates.length === 0) {
-          return [
-            {
-              id: `activity-task:${task.id}`,
-              taskId: task.id,
-              title: task.title,
-              subtitle: task.description || resolvedActiveProject?.name || "Active project task",
-              timestampLabel: "Task activity",
-              statusLabel: task.status.replace(/_/g, " "),
-              previewPhotoUri: task.attachments?.[0],
-              density: "standard" as const,
-              structuralState,
-              sortTimestamp: task.createdAt,
-            },
-          ];
+        if (activities.length > 0) {
+          const actionLabelContextById = buildActionLabelContextMap(activities);
+
+          return activities.map((activity) => ({
+            id: activity.id,
+            taskId: task.id,
+            title: task.title,
+            actorLabel: resolveDashboardActivityActorLabel(activity, getUserById),
+            actionLabel: buildDashboardActionLabelFromActivity(
+              activity,
+              actionLabelContextById.get(activity.id),
+            ),
+            previewPhotoUri: resolveDashboardActivityPreviewPhoto(activity, task),
+            sortTimestamp: activity.timestamp,
+          }));
         }
 
-        return updates.map((update) => ({
-          id: update.id,
-          taskId: task.id,
-          title: task.title,
-          subtitle: update.description,
-          timestampLabel: new Date(update.timestamp).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }),
-          statusLabel: update.status.replace(/_/g, " "),
-          previewPhotoUri: update.photos?.[0] || task.attachments?.[0],
-          density: "standard" as const,
-          structuralState,
-          sortTimestamp: update.timestamp,
-        }));
+        if (updates.length > 0) {
+          const actionLabelContextById = buildActionLabelContextMap(updates);
+
+          return updates.map((update) => ({
+            id: update.id,
+            taskId: task.id,
+            title: task.title,
+            actorLabel: resolveDashboardActivityActorLabel(update, getUserById),
+            actionLabel: buildDashboardActionLabelFromUpdate(
+              update,
+              actionLabelContextById.get(update.id),
+            ),
+            previewPhotoUri: resolveDashboardActivityPreviewPhoto(update, task),
+            sortTimestamp: update.timestamp,
+          }));
+        }
+
+        return [
+          {
+            id: `activity-task:${task.id}`,
+            taskId: task.id,
+            title: task.title,
+            actorLabel: task.assignedBy ? getUserById(task.assignedBy)?.name : undefined,
+            actionLabel: buildDashboardFallbackActionLabel(task),
+            previewPhotoUri: task.attachments?.[0],
+            sortTimestamp: task.createdAt,
+          },
+        ];
       })
+      .filter((item) => isWithinLastSevenDays(item.sortTimestamp))
       .sort(
         (left, right) =>
-          new Date((right as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime() -
-          new Date((left as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime(),
+          new Date((right as { sortTimestamp: string }).sortTimestamp).getTime() -
+          new Date((left as { sortTimestamp: string }).sortTimestamp).getTime(),
       )
-      .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
-
-    const mappedDraftItems: DashboardActivityItem[] = activeProjectTasks
-      .filter((task) => task.status === "in_progress" || task.status === "accepted")
-      .map((task) => {
-        const updates = Array.isArray(task.updates) ? task.updates : [];
-        const latestUpdate = [...updates].sort(
-          (left, right) =>
-            new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
-        )[0];
+      .map(({ sortTimestamp, ...item }) => {
+        const timestampLabel = formatRelativeTimestamp(sortTimestamp);
+        const actionLabel = item.actionLabel;
 
         return {
-          id: `draft:${task.id}`,
-          taskId: task.id,
-          title: task.title,
-          subtitle:
-            latestUpdate?.description || task.description || resolvedActiveProject?.name || "In progress",
-          timestampLabel: latestUpdate
-            ? new Date(latestUpdate.timestamp).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })
-            : "In progress",
-          statusLabel: task.status.replace(/_/g, " "),
-          previewPhotoUri: latestUpdate?.photos?.[0] || task.attachments?.[0],
-          density: "standard",
+          ...item,
+          subtitle: `${timestampLabel} · ${actionLabel}`,
+          timestampLabel,
+          density: "standard" as const,
           structuralState,
-          sortTimestamp: latestUpdate?.timestamp || task.createdAt,
         };
-      })
-      .sort(
-        (left, right) =>
-          new Date((right as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime() -
-          new Date((left as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime(),
-      )
-      .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
+      });
+
+    const mappedDraftItems: DashboardActivityItem[] = [];
 
     const queueCounts = {
       my_queue: {
         new: 0,
         wip: 0,
         review: 0,
+        overdue: 0,
       },
       team_queue: {
         new: 0,
         wip: 0,
         review: 0,
+        overdue: 0,
       },
     };
 
@@ -416,13 +721,14 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         return;
       }
 
-      const bucket = getQueueBucket(task.status);
+      const isAssignedToMe = (task.assignedTo ?? []).includes(currentUserId);
+      const isAssignedByMe = task.assignedBy === currentUserId;
+      const overdue = isTaskOverdue(task);
+      const bucket = overdue ? "overdue" : getQueueBucket(task.status);
+
       if (!bucket) {
         return;
       }
-
-      const isAssignedToMe = (task.assignedTo ?? []).includes(currentUserId);
-      const isAssignedByMe = task.assignedBy === currentUserId;
 
       if (isAssignedToMe) {
         queueCounts.my_queue[bucket] += 1;
@@ -500,6 +806,13 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               title: "Review",
               countLabel: String(queueCounts.my_queue.review),
             },
+            {
+              id: "dashboard-queue:my_queue:overdue",
+              queue: "my_queue" as const,
+              bucket: "overdue" as const,
+              title: "Overdue",
+              countLabel: String(queueCounts.my_queue.overdue),
+            },
           ],
         },
         {
@@ -526,6 +839,13 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               bucket: "review" as const,
               title: "Review",
               countLabel: String(queueCounts.team_queue.review),
+            },
+            {
+              id: "dashboard-queue:team_queue:overdue",
+              queue: "team_queue" as const,
+              bucket: "overdue" as const,
+              title: "Overdue",
+              countLabel: String(queueCounts.team_queue.overdue),
             },
           ],
         },
@@ -592,7 +912,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
     };
-  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, tasks]);
+  }, [currentUserId, getUserById, isLoadingProjects, projects, selectedProjectId, tasks]);
 
   const readiness = useMemo(() => {
     return {

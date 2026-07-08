@@ -17,6 +17,28 @@ interface TaskActivityTimelineProps {
 }
 
 const Modal = RNModal || View;
+const DEFAULT_LEAD_PHOTO_ASPECT_RATIO = 4 / 3;
+
+function resolveLeadPhotoAspectRatio(
+  activity: TaskDetailActivityThreadRow,
+  photoAspectRatios: Record<string, number>,
+): number {
+  if (
+    typeof activity.photoAspectRatio === "number" &&
+    Number.isFinite(activity.photoAspectRatio) &&
+    activity.photoAspectRatio > 0
+  ) {
+    return activity.photoAspectRatio;
+  }
+
+  const measuredAspectRatio = photoAspectRatios[activity.id];
+
+  if (!measuredAspectRatio || !Number.isFinite(measuredAspectRatio) || measuredAspectRatio <= 0) {
+    return DEFAULT_LEAD_PHOTO_ASPECT_RATIO;
+  }
+
+  return measuredAspectRatio;
+}
 
 function normalizeActivityRow(
   activity: TaskDetailActivityModel | TaskDetailActivityThreadRow,
@@ -29,6 +51,7 @@ function normalizeActivityRow(
       timestampLabel: activity.timestampLabel || "Unknown time",
       progressLabel: activity.progressLabel || "—",
       photoUrls: Array.isArray(activity.photoUrls) ? activity.photoUrls : [],
+      photoAspectRatio: activity.photoAspectRatio,
     };
   }
 
@@ -47,6 +70,7 @@ function normalizeActivityRow(
       activity.completionPercentage !== undefined ? `${activity.completionPercentage}%` : "—",
     detailLabel: activity.reason,
     photoUrls: Array.isArray(activity.photos) ? activity.photos : [],
+    photoAspectRatio: undefined,
     statusLabel: activity.statusLabel,
   };
 }
@@ -63,6 +87,7 @@ export default function TaskActivityTimeline({
     photos: string[];
     index: number;
   }>();
+  const [leadPhotoAspectRatios, setLeadPhotoAspectRatios] = React.useState<Record<string, number>>({});
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -94,6 +119,76 @@ export default function TaskActivityTimeline({
       onVisibleEntryChange?.(resolvedTopEntryId);
     }
   }, [onVisibleEntryChange, resolvedTopEntryId]);
+
+  useEffect(() => {
+    if (process.env.JEST_WORKER_ID) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const applyAspectRatio = (activityId: string, width: number, height: number) => {
+      if (isCancelled || width <= 0 || height <= 0) {
+        return;
+      }
+
+      const aspectRatio = width / height;
+
+      setLeadPhotoAspectRatios((current) => {
+        if (current[activityId] === aspectRatio) {
+          return current;
+        }
+
+        return {
+          ...current,
+          [activityId]: aspectRatio,
+        };
+      });
+    };
+
+    normalizedActivities.forEach((activity) => {
+      const leadPhotoUri = activity.photoUrls[0];
+
+      if (!leadPhotoUri) {
+        return;
+      }
+
+      try {
+        const maybePromise = Image.getSize(
+          leadPhotoUri,
+          (width, height) => {
+            applyAspectRatio(activity.id, width, height);
+          },
+          () => {
+            // Keep the default aspect ratio when image dimensions are unavailable.
+          },
+        ) as Promise<{ width: number; height: number } | [number, number]> | void;
+
+        if (maybePromise && typeof (maybePromise as Promise<unknown>).then === "function") {
+          void (maybePromise as Promise<{ width: number; height: number } | [number, number]>)
+            .then((result) => {
+              if (Array.isArray(result)) {
+                applyAspectRatio(activity.id, result[0], result[1]);
+                return;
+              }
+
+              if (result && typeof result === "object") {
+                applyAspectRatio(activity.id, result.width, result.height);
+              }
+            })
+            .catch(() => {
+              // Keep the default aspect ratio when image dimensions are unavailable.
+            });
+        }
+      } catch {
+        // Keep the default aspect ratio when image dimensions are unavailable.
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [normalizedActivities]);
 
   const openGallery = React.useCallback((photos: string[], index: number) => {
     setSelectedGallery({
@@ -161,27 +256,42 @@ export default function TaskActivityTimeline({
               </View>
 
               <View className="flex-1">
-                <View
-                  testID={`task-activity-timeline__rail-metadata-${activity.id}`}
-                  className="mb-2 flex-row flex-wrap items-center gap-x-3 gap-y-1"
-                >
-                  <Text className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    {activity.timestampLabel}
-                  </Text>
-                  <Text className="text-base font-medium text-slate-700">
-                    {activity.actorLabel}
-                  </Text>
-                  <Text className="text-base font-semibold text-slate-900">
-                    {activity.progressLabel}
-                  </Text>
-                  {activity.statusLabel ? (
-                    <Text className="rounded-full bg-slate-200 px-2.5 py-1 text-sm font-semibold text-slate-700">
-                      {activity.statusLabel}
-                    </Text>
-                  ) : null}
-                </View>
-
                 <View className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <View
+                    testID={`task-activity-timeline__entry-header-${activity.id}`}
+                    className="mb-3 flex-row items-center justify-between gap-3"
+                  >
+                    <View className="min-w-0 flex-1 flex-row items-center">
+                      <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-slate-900">
+                        <Text className="text-sm font-semibold text-white">
+                          {activity.actorLabel.trim().slice(0, 1).toUpperCase() || "?"}
+                        </Text>
+                      </View>
+                      <View className="min-w-0 flex-1">
+                        <Text className="text-base font-semibold text-slate-900" numberOfLines={1}>
+                          {activity.actorLabel}
+                        </Text>
+                        <View
+                          testID={`task-activity-timeline__rail-metadata-${activity.id}`}
+                          className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1"
+                        >
+                          <Text className="text-sm font-medium text-slate-500">
+                            {activity.progressLabel}
+                          </Text>
+                          {activity.statusLabel ? (
+                            <Text className="rounded-full bg-slate-200 px-2.5 py-1 text-sm font-semibold text-slate-700">
+                              {activity.statusLabel}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    </View>
+
+                    <Text className="shrink text-sm font-medium text-slate-400">
+                      {activity.timestampLabel}
+                    </Text>
+                  </View>
+
                   {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
                     <View className="mb-3 flex-row flex-wrap items-center gap-2">
                       {activity.subtaskBadgeLabel ? (
@@ -199,33 +309,38 @@ export default function TaskActivityTimeline({
                     </View>
                   ) : null}
 
-                  <Text className="mb-3 text-lg font-semibold text-slate-900">
-                    {activity.eventLabel}
-                  </Text>
-
                   {activity.photoUrls.length > 0 ? (
-                    <View
-                      testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
-                      className={activity.detailLabel ? "-mx-4 mb-3" : "-mx-4"}
-                    >
-                      <Pressable
-                        testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
-                        accessibilityRole="button"
-                        onPress={() => openGallery(activity.photoUrls, 0)}
+                    <View>
+                      <View
+                        testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
+                        className="-mx-4 overflow-hidden bg-slate-200"
+                        style={{
+                          aspectRatio: resolveLeadPhotoAspectRatio(
+                            activity,
+                            leadPhotoAspectRatios,
+                          ),
+                        }}
                       >
-                        <Image
-                          testID={`task-activity-timeline__lead-photo-${activity.id}`}
-                          accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                          source={{ uri: activity.photoUrls[0] }}
-                          resizeMode="contain"
-                          className="h-44 w-full bg-slate-200"
-                        />
-                      </Pressable>
+                        <Pressable
+                          testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
+                          accessibilityRole="button"
+                          className="h-full w-full"
+                          onPress={() => openGallery(activity.photoUrls, 0)}
+                        >
+                          <Image
+                            testID={`task-activity-timeline__lead-photo-${activity.id}`}
+                            accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
+                            source={{ uri: activity.photoUrls[0] }}
+                            resizeMode="contain"
+                            className="h-full w-full bg-slate-200"
+                          />
+                        </Pressable>
+                      </View>
 
                       {activity.photoUrls.length > 1 ? (
                         <View
                           testID={`task-activity-timeline__thumbnail-strip-${activity.id}`}
-                          className="mt-2 flex-row flex-wrap gap-2"
+                          className="mt-2 flex-row flex-wrap gap-2 px-4"
                         >
                           {activity.photoUrls.slice(1).map((photoUri, photoIndex) => (
                             <Pressable
@@ -248,14 +363,14 @@ export default function TaskActivityTimeline({
                     </View>
                   ) : null}
 
-                  {activity.detailLabel ? (
-                    <Text
-                      testID="task-activity-timeline__detail-label"
-                      className="text-base leading-6 text-slate-600"
-                    >
-                      {activity.detailLabel}
-                    </Text>
-                  ) : null}
+                  <Text
+                    testID={`task-activity-timeline__description-${activity.id}`}
+                    className={activity.photoUrls.length > 0
+                      ? "mt-4 text-base leading-7 text-slate-700"
+                      : "text-base leading-7 text-slate-700"}
+                  >
+                    {activity.eventLabel}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -301,6 +416,14 @@ export default function TaskActivityTimeline({
                 resizeMode="contain"
                 className="h-full w-full"
               />
+
+              {selectedGallery.photos.length > 1 ? (
+                <View className="absolute bottom-10 rounded-full bg-black/45 px-3 py-1.5">
+                  <Text className="text-sm font-semibold text-white">
+                    {selectedGallery.index + 1} / {selectedGallery.photos.length}
+                  </Text>
+                </View>
+              ) : null}
 
               {selectedGallery.index < selectedGallery.photos.length - 1 ? (
                 <Pressable

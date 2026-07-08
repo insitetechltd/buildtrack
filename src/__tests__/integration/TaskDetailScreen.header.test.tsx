@@ -182,7 +182,7 @@ describe("TaskDetailScreen header regression", () => {
     jest.clearAllMocks();
   });
 
-  it("renders the loading header title and marker while data is unavailable", () => {
+  it("renders the loading header title and workspace menu trigger while data is unavailable", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: {
         readiness: {
@@ -195,7 +195,7 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Loading...")).toBeTruthy();
-    expect(screen.getByText("Modern UI")).toBeTruthy();
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 
   it("renders the loaded header title and calls the provided back callback", () => {
@@ -209,7 +209,7 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
 
     expect(screen.getByText("Task Details")).toBeTruthy();
-    expect(screen.getByText("Modern UI")).toBeTruthy();
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
 
@@ -508,7 +508,8 @@ describe("TaskDetailScreen header regression", () => {
     expect(activityThread).toBeTruthy();
     expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
     expect(within(activityThread).getByText("Work thread")).toBeTruthy();
-    expect(within(activityThread).getByText("Marked 100% complete")).toBeTruthy();
+    expect(within(activityThread).getByText("Submitted task for review")).toBeTruthy();
+    expect(within(activityThread).queryByText("Marked 100% complete")).toBeNull();
     expect(within(activityThread).getByText("Jul 5, 09:30")).toBeTruthy();
     expect(within(activityThread).getByText("Sam")).toBeTruthy();
     expect(within(activityThread).getByText("100%")).toBeTruthy();

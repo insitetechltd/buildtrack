@@ -2,6 +2,7 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 jest.mock("@react-navigation/native", () => ({
+  getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 
@@ -178,7 +179,10 @@ jest.mock("../../screens/AddCommentScreen", () => "AddCommentScreen");
 jest.mock("../../screens/RejectTaskScreen", () => "RejectTaskScreen");
 jest.mock("../../screens/ReassignTaskScreen", () => "ReassignTaskScreen");
 
-const { default: AppNavigator } = require("../AppNavigator");
+const {
+  default: AppNavigator,
+  shouldHideTabBarOnTaskDetailRoute,
+} = require("../AppNavigator");
 
 describe("AppNavigator bottom-tab spacing", () => {
   beforeEach(() => {
@@ -212,5 +216,12 @@ describe("AppNavigator bottom-tab spacing", () => {
       height: 64,
       width: 64,
     });
+  });
+
+  it("hides the root tab bar only on Task Detail routes", () => {
+    expect(shouldHideTabBarOnTaskDetailRoute("TaskDetail")).toBe(true);
+    expect(shouldHideTabBarOnTaskDetailRoute("TaskDetailFromDashboard")).toBe(true);
+    expect(shouldHideTabBarOnTaskDetailRoute("TasksList")).toBe(false);
+    expect(shouldHideTabBarOnTaskDetailRoute(undefined)).toBe(false);
   });
 });

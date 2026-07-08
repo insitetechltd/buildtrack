@@ -122,7 +122,7 @@ describe("UpdateProgressScreen header regression", () => {
     const screen = render(<UpdateProgressScreen />);
 
     expect(screen.getByText("Progress Update")).toBeTruthy();
-    expect(screen.getByText("Modern UI")).toBeTruthy();
+    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
 

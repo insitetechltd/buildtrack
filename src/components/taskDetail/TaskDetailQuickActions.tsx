@@ -7,22 +7,20 @@ import { cn } from "@/utils/cn";
 interface TaskDetailQuickActionsProps {
   model: TaskDetailQuickActionRowModel;
   onPress: (actionId: string) => void;
+  containerClassName?: string;
 }
 
 export default function TaskDetailQuickActions({
   model,
   onPress,
+  containerClassName,
 }: TaskDetailQuickActionsProps) {
   return (
     <View
       testID="task-detail__quick-actions"
-      className="mx-4 mt-4 rounded-2xl border border-gray-200 bg-white p-3"
+      className={cn("mx-4 mt-4", containerClassName)}
     >
-      <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
-        Quick Actions
-      </Text>
-
-      <View className="flex-row flex-wrap gap-2">
+      <View testID="task-detail__quick-actions-row" className="flex-row gap-3">
         {model.actions.map((action) => (
           <Pressable
             key={action.id}
@@ -32,11 +30,13 @@ export default function TaskDetailQuickActions({
             disabled={action.isDisabled}
             onPress={() => onPress(action.actionId)}
             className={cn(
-              "rounded-full border border-gray-300 bg-white px-4 py-3",
+              "min-w-0 flex-1 rounded-2xl bg-slate-900 px-4 py-4",
               action.isDisabled && "opacity-50",
             )}
           >
-            <Text className="text-lg font-medium text-gray-700">{action.label}</Text>
+            <Text className="text-center text-base font-semibold text-white">
+              {action.label}
+            </Text>
           </Pressable>
         ))}
       </View>

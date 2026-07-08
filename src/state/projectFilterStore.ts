@@ -5,7 +5,7 @@ import { supabase } from "../api/supabase";
 
 export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
 export type TasksLaunchQueue = "my_queue" | "team_queue";
-export type TasksLaunchBucket = "new" | "wip" | "review";
+export type TasksLaunchBucket = "new" | "wip" | "review" | "overdue";
 export type TasksLaunchSource = "activity_dashboard" | "tasks";
 export type TasksLaunchPreset = {
   queue: TasksLaunchQueue;

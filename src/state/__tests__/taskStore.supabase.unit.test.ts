@@ -162,10 +162,27 @@ describe('taskStore.supabase unit tests', () => {
     expect(mockFrom).toHaveBeenCalledTimes(4);
   });
 
-  it('creates a task in the Supabase-backed store and logs a creation activity', async () => {
+  it('retries task creation without deferred redesign schema fields when Supabase is behind', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const taskRow = createTaskRow();
     const creationActivity = createTaskActivityRow();
-    const taskInsertSingle = jest.fn().mockResolvedValue({ data: taskRow, error: null });
+    const taskInsertSingle = jest
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          code: 'PGRST204',
+          message: "Could not find the 'container_id' column of 'tasks' in the schema cache",
+          details: null,
+          hint: null,
+        },
+      })
+      .mockResolvedValueOnce({ data: taskRow, error: null });
+    const taskInsert = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: taskInsertSingle,
+      }),
+    });
     const activityInsertSingle = jest.fn().mockResolvedValue({ data: creationActivity, error: null });
     const activityInsert = jest.fn().mockReturnValue({
       select: jest.fn().mockReturnValue({
@@ -176,11 +193,7 @@ describe('taskStore.supabase unit tests', () => {
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
         return {
-          insert: jest.fn().mockReturnValue({
-            select: jest.fn().mockReturnValue({
-              single: taskInsertSingle,
-            }),
-          }),
+          insert: taskInsert,
         };
       }
 
@@ -217,6 +230,11 @@ describe('taskStore.supabase unit tests', () => {
         projectId: 'project-123',
         assignedTo: [workerId],
         assignedBy: managerId,
+        primaryAssigneeId: workerId,
+        delegatedUserIds: ['worker-789'],
+        containerId: 'container-123',
+        subContainerId: 'sub-container-456',
+        tags: ['critical_this_week'],
         dueDate: '2026-06-30T00:00:00.000Z',
         attachments: [],
       });
@@ -225,6 +243,27 @@ describe('taskStore.supabase unit tests', () => {
     expect(createdTaskId).toBe('task-123');
     expect(result.current.tasks).toHaveLength(1);
     expect(result.current.tasks[0].activities).toHaveLength(1);
+    expect(taskInsert).toHaveBeenCalledTimes(2);
+    const firstInsertedTaskPayload = taskInsert.mock.calls[0]?.[0];
+    expect(firstInsertedTaskPayload).toEqual(
+      expect.objectContaining({
+        primary_assignee_id: workerId,
+        delegated_user_ids: ['worker-789'],
+        container_id: 'container-123',
+        sub_container_id: 'sub-container-456',
+        tags: ['critical_this_week'],
+      })
+    );
+    const fallbackInsertedTaskPayload = taskInsert.mock.calls[1]?.[0];
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'primary_assignee_id')).toBe(
+      false
+    );
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'delegated_user_ids')).toBe(
+      false
+    );
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'container_id')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'sub_container_id')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'tags')).toBe(false);
     expect(activityInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         task_id: 'task-123',
@@ -232,6 +271,7 @@ describe('taskStore.supabase unit tests', () => {
         status: 'new',
       })
     );
+    consoleWarnSpy.mockRestore();
   });
 
   it('prevents assignee changes after a task has been accepted or started', async () => {
@@ -327,6 +367,141 @@ describe('taskStore.supabase unit tests', () => {
         accepted_at: null,
       }),
     );
+  });
+
+  it('rolls back redesign-only metadata updates when stale Supabase schema rejects them', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const updateEqMock = jest.fn().mockResolvedValue({
+      error: {
+        code: 'PGRST204',
+        message: "Could not find the 'tags' column of 'tasks' in the schema cache",
+        details: null,
+        hint: null,
+      },
+    });
+    const updateMock = jest.fn().mockReturnValue({
+      eq: updateEqMock,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          update: updateMock,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    resetTaskStore();
+    useTaskStore.setState((state) => ({
+      ...state,
+      tasks: [
+        createTaskState({
+          tags: [],
+        } as any),
+      ],
+      trackTaskEdit: jest.fn().mockResolvedValue(undefined),
+      notifyTaskEdit: jest.fn().mockResolvedValue(undefined),
+    }));
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await expect(
+        result.current.updateTask('task-123', {
+          tags: ['critical_this_week'],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(updateMock).toHaveBeenCalledWith({
+      tags: ['critical_this_week'],
+    });
+    expect(result.current.tasks[0]).toMatchObject({
+      tags: [],
+    });
+    expect(result.current.error).toBeNull();
+
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('persists compatible task edits and drops deferred redesign metadata when schema is behind', async () => {
+    const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const updateEqMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        error: {
+          code: 'PGRST204',
+          message: "Could not find the 'tags' column of 'tasks' in the schema cache",
+          details: null,
+          hint: null,
+        },
+      })
+      .mockResolvedValueOnce({ error: null });
+    const updateMock = jest.fn().mockReturnValue({
+      eq: updateEqMock,
+    });
+    const mockTrackTaskEdit = jest.fn().mockResolvedValue(undefined);
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          update: updateMock,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    resetTaskStore();
+    useTaskStore.setState((state) => ({
+      ...state,
+      tasks: [
+        createTaskState({
+          title: 'Install HVAC System',
+          tags: [],
+        } as any),
+      ],
+      trackTaskEdit: mockTrackTaskEdit,
+      notifyTaskEdit: jest.fn().mockResolvedValue(undefined),
+    }));
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await expect(
+        result.current.updateTask('task-123', {
+          title: 'Install HVAC Phase 2',
+          tags: ['critical_this_week'],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    expect(updateMock).toHaveBeenCalledTimes(2);
+    expect(updateMock.mock.calls[0]?.[0]).toEqual({
+      title: 'Install HVAC Phase 2',
+      tags: ['critical_this_week'],
+    });
+    expect(updateMock.mock.calls[1]?.[0]).toEqual({
+      title: 'Install HVAC Phase 2',
+    });
+    expect(result.current.tasks[0]).toMatchObject({
+      title: 'Install HVAC Phase 2',
+      tags: [],
+    });
+    expect(mockTrackTaskEdit).toHaveBeenCalled();
+
+    consoleWarnSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
   });
 
   it('declines flat subtasks without requiring a nested children tree', async () => {

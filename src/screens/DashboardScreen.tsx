@@ -38,7 +38,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           }
           className="border-b-0 bg-[#08576E] pb-2"
         />
-        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 5 }} className="flex-1 px-4">
+        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 15 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
             <View className="mb-5" testID="dashboard-screen__project_summary_section">

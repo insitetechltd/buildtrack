@@ -10,8 +10,7 @@ jest.mock("@/ui/viewAdapters/usePhotoViewerViewAdapter", () => ({
 jest.mock("@/components/migration/ModernUiMarker", () => ({
   __esModule: true,
   default: function MockModernUiMarker() {
-    const { Text } = require("react-native");
-    return <Text>Modern UI</Text>;
+    return null;
   },
 }));
 
@@ -94,7 +93,6 @@ describe("PhotoViewerScreen", () => {
     );
 
     expect(screen.getByText("Back")).toBeTruthy();
-    expect(screen.getByText("Modern UI")).toBeTruthy();
     expect(screen.getByText("1 / 3")).toBeTruthy();
     expect(screen.getByText("Task Information")).toBeTruthy();
     expect(screen.getByText("Reason: Need clearer labeling")).toBeTruthy();

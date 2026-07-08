@@ -59,6 +59,7 @@ exit 0
       env: {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
+        VALIDATE_LOCAL_STRICT_DIRTY_TREE: "0",
       },
       encoding: "utf8",
     });
@@ -115,6 +116,7 @@ exit 0
       env: {
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
+        VALIDATE_LOCAL_STRICT_DIRTY_TREE: "0",
       },
       encoding: "utf8",
     });
@@ -175,6 +177,7 @@ exit 0
         ...process.env,
         PATH: `${binDir}:${process.env.PATH}`,
         VALIDATE_LOCAL_RUN_SIMULATION: "1",
+        VALIDATE_LOCAL_STRICT_DIRTY_TREE: "0",
       },
       encoding: "utf8",
     });

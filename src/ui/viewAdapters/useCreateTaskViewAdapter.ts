@@ -9,7 +9,6 @@ import { useProjectFilterStore } from '../../state/projectFilterStore';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
-import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
 import type { CreateTaskScreenViewAdapterOutput, CreateTaskFormModel } from '../contracts/viewAdapters';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
@@ -37,17 +36,19 @@ function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
 function requiresEditReasonForStatus(status?: TaskStatus): boolean {
   return status === 'accepted' || status === 'in_progress' || status === 'submitted_for_review';
 }
-
-function hasCriticalThisWeekTag(tags?: string[]): boolean {
-  return Array.isArray(tags) && tags.includes(CRITICAL_THIS_WEEK_TAG);
-}
-
-function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
-  const normalizedTags = Array.isArray(tags)
-    ? tags.filter((tag) => Boolean(tag) && tag !== CRITICAL_THIS_WEEK_TAG)
-    : [];
-
-  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
+function createDefaultFormData(selectedProjectId?: string | null): CreateTaskFormModel {
+  return {
+    title: '',
+    description: '',
+    taskReference: '',
+    billingStatus: 'non_billable',
+    priority: 'medium',
+    category: 'general',
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    assignedTo: [],
+    attachments: [],
+    projectId: selectedProjectId ?? '',
+  };
 }
 
 export function useCreateTaskViewAdapter({
@@ -64,19 +65,7 @@ export function useCreateTaskViewAdapter({
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   
-  const [formData, setFormData] = useState<CreateTaskFormModel>({
-    title: '',
-    description: '',
-    taskReference: '',
-    billingStatus: 'non_billable',
-    priority: 'medium',
-    category: 'general',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    criticalThisWeek: false,
-    assignedTo: [],
-    attachments: [],
-    projectId: '',
-  });
+  const [formData, setFormData] = useState<CreateTaskFormModel>(() => createDefaultFormData(selectedProjectId));
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,6 +129,7 @@ export function useCreateTaskViewAdapter({
 
         const parsedDraft = JSON.parse(storedDraft) as Partial<CreateTaskFormModel> & {
           dueDate?: string;
+          criticalThisWeek?: boolean;
         };
 
         if (cancelled) {
@@ -159,11 +149,16 @@ export function useCreateTaskViewAdapter({
             return previous;
           }
 
-          const nextDueDate = parsedDraft.dueDate ? new Date(parsedDraft.dueDate) : previous.dueDate;
+          const {
+            dueDate: storedDueDate,
+            criticalThisWeek: _legacyCriticalThisWeek,
+            ...persistedFields
+          } = parsedDraft;
+          const nextDueDate = storedDueDate ? new Date(storedDueDate) : previous.dueDate;
 
           return {
             ...previous,
-            ...parsedDraft,
+            ...persistedFields,
             dueDate: nextDueDate,
           };
         });
@@ -180,21 +175,9 @@ export function useCreateTaskViewAdapter({
   useEffect(() => {
     if (clearForm) {
       AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
-      setFormData({
-        title: '',
-        description: '',
-        taskReference: '',
-        billingStatus: 'non_billable',
-        priority: 'medium',
-        category: 'general',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        criticalThisWeek: false,
-        assignedTo: [],
-        attachments: [],
-        projectId: '',
-      });
+      setFormData(createDefaultFormData(selectedProjectId));
     }
-  }, [clearForm]);
+  }, [clearForm, selectedProjectId]);
 
   useEffect(() => {
     if (persistDraftTimeoutRef.current) {
@@ -394,7 +377,6 @@ export function useCreateTaskViewAdapter({
         priority: editTask.priority || 'medium',
         category: editTask.category || 'general',
         dueDate: new Date(editTask.dueDate),
-        criticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         assignedTo: editTask.assignedTo || [],
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
@@ -418,11 +400,9 @@ export function useCreateTaskViewAdapter({
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
-      const tags = withCriticalThisWeekTag(editTask?.tags, formData.criticalThisWeek);
-
       // Basic submit logic extracted from screen
       if (editTaskId) {
-        await updateTask(editTaskId, {
+        const updatePayload: Partial<any> = {
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -433,9 +413,14 @@ export function useCreateTaskViewAdapter({
           dueDate: formData.dueDate.toISOString(),
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
-          tags,
           _editReason: options?.editReason,
-        } as Partial<any>);
+        };
+
+        if (Array.isArray(editTask?.tags)) {
+          updatePayload.tags = editTask.tags.filter(Boolean);
+        }
+
+        await updateTask(editTaskId, updatePayload);
       } else if (parentTaskId) {
         await createSubTask(parentTaskId, {
           title: formData.title,
@@ -449,7 +434,6 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
-          tags,
         });
       } else {
         await createTask({
@@ -464,7 +448,6 @@ export function useCreateTaskViewAdapter({
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
-          tags,
         });
       }
       await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);

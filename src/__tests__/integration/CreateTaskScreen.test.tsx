@@ -375,28 +375,15 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Attachments')).toBeTruthy();
   });
 
-  it('renders the critical-dates toggle and persists the flag as a task tag on create', async () => {
+  it('does not render the legacy critical-dates checkbox in create mode', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
       </NavigationContainer>
     );
 
-    expect(screen.getByText('Show in This Week’s Critical Dates')).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId('create-task__toggle_critical_this_week'));
-    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Critical pour inspection');
-    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Surface this in the weekly critical dates list');
-    fireEvent.press(screen.getByText('Create Task'));
-
-    await waitFor(() => {
-      expect(mockCreateTask).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Critical pour inspection',
-          tags: ['critical_this_week'],
-        }),
-      );
-    });
+    expect(screen.queryByText('Show in This Week’s Critical Dates')).toBeNull();
+    expect(screen.queryByTestId('create-task__toggle_critical_this_week')).toBeNull();
   });
 
   it('advances through the create-task text fields in order and treats the submit action as the final target', () => {

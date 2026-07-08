@@ -870,31 +870,6 @@ function CreateTaskEditorScreen({
                 </View>
               </View>
             )}
-
-            <Pressable
-              testID="create-task__toggle_critical_this_week"
-              accessibilityRole="button"
-              accessibilityState={{ selected: formData.criticalThisWeek }}
-              onPress={() => updateField('criticalThisWeek', !formData.criticalThisWeek)}
-              className={cn(
-                "border rounded-lg px-4 py-3 bg-white flex-row items-center justify-between",
-                formData.criticalThisWeek ? "border-amber-300 bg-amber-50" : "border-gray-300",
-              )}
-            >
-              <View className="mr-3 flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Show in This Week’s Critical Dates
-                </Text>
-                <Text className="mt-1 text-sm text-gray-500">
-                  Highlight this task in the weekly critical dates list.
-                </Text>
-              </View>
-              <Ionicons
-                name={formData.criticalThisWeek ? "checkmark-circle" : "ellipse-outline"}
-                size={22}
-                color={formData.criticalThisWeek ? "#b45309" : "#6b7280"}
-              />
-            </Pressable>
           </ScreenSection>
 
           <ScreenSection title="More Details" subtitle="Optional context for downstream work">

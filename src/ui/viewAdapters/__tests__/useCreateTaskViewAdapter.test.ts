@@ -291,6 +291,7 @@ describe("useCreateTaskViewAdapter", () => {
         assignedBy: "user-1",
       }),
     );
+    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("tags");
 
     mockUseTaskStore.mockReturnValue({
       tasks: [

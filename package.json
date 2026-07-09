@@ -34,7 +34,8 @@
     "setup-auth": "tsx scripts/setup-login-users.ts",
     "setup-auth:cleanup": "tsx scripts/setup-login-users.ts cleanup",
     "setup-auth:legacy": "node scripts/automated-setup.js",
-    "reset-passwords": "node scripts/reset-passwords.js"
+    "reset-passwords": "node scripts/reset-passwords.js",
+    "eas-build-post-install": "node ./scripts/eas/eas-build-post-install.js"
   },
   "expo": {
     "install": {

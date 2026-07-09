@@ -15,7 +15,7 @@ echo ""
 # To change version: ./build-local.sh ios production false true
 PLATFORM="${1:-ios}"
 PROFILE="${2:-production-local}"
-SKIP_INCREMENT="${3:-false}"  # Allow skipping increment if already done
+SKIP_INCREMENT="${3:-true}"  # Default: EAS remote build number auto-increments
 CHANGE_VERSION="${4:-false}"  # Set to true to prompt for version change
 
 echo "📋 Configuration:"
@@ -123,10 +123,24 @@ FINAL_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json 
 echo "Building: Version $FINAL_VERSION (Build $FINAL_BUILD)"
 echo ""
 
-# Run the build
-# --local: Build on local machine
-# --non-interactive: No prompts
-# Note: EAS auto-increment is DISABLED - we manually increment above
+PROJECT_ROOT="$(pwd)"
+if [[ "$PROJECT_ROOT" == *" "* ]]; then
+  echo "❌ Error: Project path contains spaces:"
+  echo "   $PROJECT_ROOT"
+  echo "   Move the repo to a no-space path, e.g. /Volumes/KooDrive/InsiteApp"
+  exit 1
+fi
+LOCAL_BUILD_WORKDIR_BASE="${EAS_LOCAL_BUILD_WORKINGDIR:-"$PROJECT_ROOT/.eas/local-build"}"
+LOCAL_BUILD_WORKDIR="$LOCAL_BUILD_WORKDIR_BASE/run-$(date +%s)"
+LOCAL_BUILD_ARTIFACTS_DIR="${EAS_LOCAL_BUILD_ARTIFACTS_DIR:-"$PROJECT_ROOT/.eas/artifacts"}"
+
+mkdir -p "$LOCAL_BUILD_WORKDIR"
+mkdir -p "$LOCAL_BUILD_ARTIFACTS_DIR"
+
+export EAS_LOCAL_BUILD_WORKINGDIR="$LOCAL_BUILD_WORKDIR"
+export EAS_LOCAL_BUILD_ARTIFACTS_DIR="$LOCAL_BUILD_ARTIFACTS_DIR"
+export EAS_LOCAL_BUILD_SKIP_CLEANUP="${EAS_LOCAL_BUILD_SKIP_CLEANUP:-1}"
+
 npx eas build --platform "$PLATFORM" --profile "$PROFILE" --local --non-interactive
 
 echo ""
@@ -139,4 +153,3 @@ echo "  ├─ Display: $FINAL_VERSION ($FINAL_BUILD)"
 echo "  ├─ Platform: $PLATFORM"
 echo "  └─ Profile: $PROFILE"
 echo ""
-

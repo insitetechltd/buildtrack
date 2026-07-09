@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Task</title>
+    <style id="theme-vars">
+      :root {
+        --background: #eef1f5;
+        --foreground: #0f172a;
+        --card: rgba(255, 255, 255, 0.86);
+        --card-foreground: #0f172a;
+        --primary: #1877f2;
+        --primary-foreground: #ffffff;
+        --secondary: #f6f8fb;
+        --secondary-foreground: #475569;
+        --muted: #edf2f7;
+        --muted-foreground: #64748b;
+        --border: rgba(148, 163, 184, 0.22);
+        --input: rgba(255, 255, 255, 0.82);
+        --ring: rgba(24, 119, 242, 0.18);
+        --surface: var(--card);
+        --surface-muted: var(--secondary);
+        --text: var(--foreground);
+        --text-secondary: var(--secondary-foreground);
+        --text-tertiary: var(--muted-foreground);
+        --line: var(--border);
+        --shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+        --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.05);
+        --blue: var(--primary);
+        --blue-soft: rgba(24, 119, 242, 0.12);
+        --green: #138a62;
+        --amber: #b7791f;
+        --radius-xl: 16px;
+        --radius-lg: 12px;
+        --radius-md: 8px;
+        --phone-width: 390px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at top, rgba(24, 119, 242, 0.1), transparent 28%),
+          linear-gradient(180deg, #f7f9fc 0%, #edf1f5 100%);
+        color: var(--text);
+        font-family: Inter, "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        padding: 24px 0;
+      }
+
+      .mobile-shell {
+        width: min(var(--phone-width), calc(100vw - 24px));
+        margin: 0 auto;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 249, 252, 0.98));
+        border-radius: 36px;
+        box-shadow: 0 28px 70px rgba(15, 23, 42, 0.14);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        overflow: hidden;
+        min-height: calc(100vh - 48px);
+        position: relative;
+      }
+
+      .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 22px 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      .screen {
+        padding: 10px 18px 126px;
+      }
+
+      .header,
+      .split-row,
+      .context-header,
+      .inline-group {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .header {
+        margin-bottom: 20px;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+      }
+
+      .title {
+        margin: 0;
+        font-size: 30px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .subtitle,
+      .small,
+      .helper-copy,
+      .support-copy {
+        margin: 8px 0 0;
+        font-size: 14px;
+        line-height: 1.45;
+        color: var(--text-secondary);
+      }
+
+      .icon-button,
+      .ghost-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(255, 255, 255, 0.84);
+        box-shadow: var(--shadow-soft);
+        color: var(--text);
+        font-weight: 700;
+        text-decoration: none;
+        flex: 0 0 auto;
+      }
+
+      .card,
+      .hero-card,
+      .context-card,
+      .detail-card,
+      .prompt-card,
+      .sticky-actions {
+        background: var(--surface);
+        backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.72);
+        box-shadow: var(--shadow);
+        border-radius: var(--radius-xl);
+      }
+
+      .hero-card,
+      .context-card,
+      .detail-card,
+      .prompt-card {
+        padding: 16px;
+      }
+
+      .section {
+        margin-top: 18px;
+      }
+
+      .section-heading {
+        margin: 0 0 12px;
+        font-size: 17px;
+        letter-spacing: -0.02em;
+      }
+
+      .badge,
+      .pill,
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .badge {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .pill {
+        background: var(--surface-muted);
+        color: var(--text-secondary);
+      }
+
+      .chip {
+        background: rgba(255, 255, 255, 0.76);
+        color: var(--text-secondary);
+        border: 1px solid var(--line);
+      }
+
+      .context-card {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .context-card::after {
+        content: "";
+        position: absolute;
+        inset: auto -24px -32px auto;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(24, 119, 242, 0.14), transparent 65%);
+        pointer-events: none;
+      }
+
+      .project-title {
+        margin: 4px 0 2px;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+      }
+
+      .context-grid,
+      .quick-grid,
+      .detail-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .context-grid,
+      .quick-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .meta-tile,
+      .quick-tile,
+      .mini-tile {
+        background: rgba(246, 248, 251, 0.96);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 12px;
+      }
+
+      .quick-tile {
+        text-decoration: none;
+        color: inherit;
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .quick-tile.primary {
+        background: linear-gradient(180deg, rgba(24, 119, 242, 0.14), rgba(255, 255, 255, 0.92));
+        border-color: rgba(24, 119, 242, 0.24);
+      }
+
+      .meta-label {
+        display: block;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+      }
+
+      .meta-value {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .helper-strip {
+        margin-top: 12px;
+        background: rgba(24, 119, 242, 0.08);
+        color: var(--blue);
+        border-radius: 18px;
+        padding: 12px 14px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .prompt-card {
+        padding: 18px;
+      }
+
+      .prompt-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .prompt-title {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+      }
+
+      .input-hero,
+      .textarea {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.82);
+        padding: 16px;
+        font: inherit;
+        color: var(--text);
+      }
+
+      .input-hero {
+        min-height: 148px;
+        resize: none;
+        font-size: 20px;
+        line-height: 1.35;
+        letter-spacing: -0.02em;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.36);
+      }
+
+      .textarea {
+        min-height: 96px;
+        resize: none;
+      }
+
+      .support-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .subtle-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+
+      .chip.action {
+        padding: 10px 12px;
+        font-weight: 700;
+      }
+
+      .detail-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .detail-title {
+        margin: 0;
+        font-size: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .media-placeholder {
+        min-height: 104px;
+        border-radius: 20px;
+        border: 1px dashed rgba(24, 119, 242, 0.25);
+        background:
+          linear-gradient(135deg, rgba(24, 119, 242, 0.12), rgba(255, 255, 255, 0.72)),
+          rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: flex-end;
+        padding: 14px;
+      }
+
+      .checklist-preview {
+        display: grid;
+        gap: 8px;
+      }
+
+      .checklist-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--blue);
+        flex: 0 0 auto;
+      }
+
+      .dot.green {
+        background: var(--green);
+      }
+
+      .dot.amber {
+        background: var(--amber);
+      }
+
+      .button,
+      .secondary-button {
+        border-radius: 18px;
+        padding: 14px 16px;
+        text-decoration: none;
+        font-weight: 700;
+        text-align: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .button {
+        background: var(--blue);
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(24, 119, 242, 0.24);
+      }
+
+      .secondary-button {
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .sticky-actions {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .action-row {
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 10px;
+      }
+
+      .action-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-align: center;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-foreground: var(--card-foreground);
+  }
+  @layer base {
+    body { background: var(--card-background); color: var(--card-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="mobile-shell">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>Taskr</span>
+        <span>5G</span>
+      </div>
+
+      <main class="screen">
+        <header class="header">
+          <div>
+            <div class="eyebrow">Fast field capture</div>
+            <h1 class="title">Create Task</h1>
+            <p class="subtitle">
+              A faster way to log site work without losing the project context, trade, or handoff details that matter.
+            </p>
+          </div>
+          <a class="icon-button" href="all-tasks.html" aria-label="Back to tasks">‹</a>
+        </header>
+
+        <section class="context-card">
+          <div class="context-header">
+            <div>
+              <span class="badge">Selected project</span>
+              <h2 class="project-title">Tower B Facade Upgrade</h2>
+              <p class="small">North Elevation · Scaffold access open until 4:30 PM today</p>
+            </div>
+            <span class="pill">Live site</span>
+          </div>
+          <div class="section context-grid">
+            <div class="meta-tile">
+              <span class="meta-label">Area</span>
+              <span class="meta-value">Gridline N4 · Level 12</span>
+            </div>
+            <div class="meta-tile">
+              <span class="meta-label">Suggested assignee</span>
+              <span class="meta-value">Michelle Chan</span>
+            </div>
+            <div class="meta-tile">
+              <span class="meta-label">Trade</span>
+              <span class="meta-value">Facade / Sealant</span>
+            </div>
+            <div class="meta-tile">
+              <span class="meta-label">Shift note</span>
+              <span class="meta-value">Morning QA walk in progress</span>
+            </div>
+          </div>
+          <div class="helper-strip">Add the essentials now. Photos and extra detail can follow.</div>
+        </section>
+
+        <section class="section prompt-card">
+          <div class="prompt-label">
+            <div>
+              <span class="meta-label">Primary input</span>
+              <h2 class="prompt-title">What needs to happen?</h2>
+            </div>
+            <span class="badge">Fast entry</span>
+          </div>
+          <textarea class="input-hero" aria-label="Task summary">Inspect and reseal the open joint beside panel 12-N-04 before scaffold is released.</textarea>
+          <div class="support-row">
+            <span>Use plain site language. The task title will be built from this first.</span>
+            <span>76/140</span>
+          </div>
+          <div class="subtle-actions">
+            <span class="chip action">Use voice note</span>
+            <span class="chip action">Paste from walk list</span>
+            <span class="chip action">Recent wording</span>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="split-row">
+            <h2 class="section-heading">Set the essentials</h2>
+            <span class="small">Only the fields you need up front</span>
+          </div>
+          <div class="quick-grid">
+            <a class="quick-tile primary" href="#">
+              <span class="meta-label">Priority</span>
+              <span class="meta-value">High · Hold scaffold release</span>
+              <p class="support-copy">Impacting access and follow-on inspection.</p>
+            </a>
+            <a class="quick-tile" href="#">
+              <span class="meta-label">Due timing</span>
+              <span class="meta-value">Today · Before 3:30 PM</span>
+              <p class="support-copy">Matches the current access window.</p>
+            </a>
+            <a class="quick-tile" href="#">
+              <span class="meta-label">Assign to</span>
+              <span class="meta-value">Michelle Chan</span>
+              <p class="support-copy">Field lead already on the north elevation.</p>
+            </a>
+            <a class="quick-tile" href="#">
+              <span class="meta-label">Category / trade</span>
+              <span class="meta-value">Defect · Facade / Sealant</span>
+              <p class="support-copy">Keeps routing clear for review and reporting.</p>
+            </a>
+          </div>
+        </section>
+
+        <section class="section detail-grid">
+          <article class="detail-card">
+            <div class="detail-header">
+              <div>
+                <h3 class="detail-title">Notes / details</h3>
+                <p class="small">Optional context stays available but visually secondary.</p>
+              </div>
+              <span class="pill">Optional</span>
+            </div>
+            <textarea class="textarea" aria-label="Additional task details">Sealant line opened up near the lower corner. Check backing rod condition, complete rework, then add a close-up photo for sign-off.</textarea>
+          </article>
+
+          <article class="detail-card">
+            <div class="detail-header">
+              <div>
+                <h3 class="detail-title">Evidence / photos</h3>
+                <p class="small">Capture can be added now or after the task is live.</p>
+              </div>
+              <span class="pill">2 quick actions</span>
+            </div>
+            <div class="media-placeholder">
+              <span class="helper-copy">Photo placeholder · Add site photo, markup, or reference sketch</span>
+            </div>
+          </article>
+
+          <article class="detail-card">
+            <div class="detail-header">
+              <div>
+                <h3 class="detail-title">Checklist / subtasks</h3>
+                <p class="small">Preview the likely next steps without turning this into a long form.</p>
+              </div>
+              <span class="pill">Optional</span>
+            </div>
+            <div class="checklist-preview">
+              <div class="checklist-row">
+                <span class="dot"></span>
+                <span>Inspect joint and confirm full extent of opening</span>
+              </div>
+              <div class="checklist-row">
+                <span class="dot green"></span>
+                <span>Complete reseal and verify backing rod condition</span>
+              </div>
+              <div class="checklist-row">
+                <span class="dot amber"></span>
+                <span>Add close-up evidence before scaffold release</span>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <div class="sticky-actions">
+        <div class="action-row">
+          <a class="button" href="all-tasks.html">Create task</a>
+          <a class="secondary-button" href="all-tasks.html">Save draft</a>
+        </div>
+        <div class="action-hint">Fast capture first. Routing, photos, and follow-up detail can be refined after creation.</div>
+      </div>
+    </div>
+  </body>
+</html>

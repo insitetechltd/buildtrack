@@ -44,6 +44,8 @@ eas-keystores/
 # Machine-local artifacts
 .tmp/
 .xcode-derived-data/
+.eas/local-build/
+.eas/artifacts/
 .cursor/debug.log
 
 .worktrees/

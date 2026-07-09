@@ -34,7 +34,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.buildtrack.app.local",
-      "buildNumber": "137",
+      "buildNumber": "142",
       "icon": "./assets/icon-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

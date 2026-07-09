@@ -45,6 +45,22 @@
       }
     },
     {
+      "id": "page-create-task-fast-input",
+      "title": "Create Task - Fast Input",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1783485200000,
+      "canvasData": {
+        "x": 0,
+        "y": 1537,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/create-task-fast-input.html",
+        "interactions": []
+      }
+    },
+    {
       "id": "page-task-detail",
       "title": "Task Detail",
       "type": "page",

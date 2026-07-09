@@ -30,13 +30,13 @@ export default function TasksScreen(props: TasksScreenProps) {
   }, [searchInput]);
 
   const selectedQueueLabel =
-    output.filterControls?.queue.options.find((option) => option.isSelected)?.label ?? "All 0";
+    output.filterControls?.queue?.options.find((option) => option.isSelected)?.label ?? "All 0";
   const selectedBucketLabel =
-    output.filterControls?.bucket.options.find((option) => option.isSelected)?.label ?? "All 0";
+    output.filterControls?.bucket?.options.find((option) => option.isSelected)?.label ?? "All 0";
   const selectedSortLabel =
-    output.filterControls?.sort.options.find((option) => option.isSelected)?.label ?? "Modified date";
+    output.filterControls?.sort?.options.find((option) => option.isSelected)?.label ?? "Modified date";
   const selectedSortDirectionLabel =
-    output.filterControls?.sortDirection.options.find((option) => option.isSelected)?.label ??
+    output.filterControls?.sortDirection?.options.find((option) => option.isSelected)?.label ??
     "Latest first";
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
 

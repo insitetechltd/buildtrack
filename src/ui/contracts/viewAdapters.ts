@@ -162,6 +162,10 @@ export type TasksQueueId = "my_queue" | "team_queue";
 
 export type TasksQueueBucketId = "new" | "wip" | "review" | "overdue";
 
+export type TasksSortField = "created_at" | "due_date" | "modified_at";
+
+export type TasksSortDirection = "asc" | "desc";
+
 export interface TasksQueueBucket {
   id: string;
   title: string;
@@ -188,20 +192,28 @@ export interface TasksDraftsSection {
   rows: TasksScreenRowItem[];
 }
 
-export interface TasksFilterOption {
+export interface TasksFilterOptionModel<TValue extends string> {
   id: string;
-  value: "all" | TasksQueueId | "new" | "wip" | "review";
+  value: TValue;
   label: string;
   count: number;
   isSelected: boolean;
 }
 
-export interface TasksFilterControl {
-  id: "queue" | "bucket";
+export interface TasksFilterControlModel<TValue extends string> {
+  id: string;
   label: string;
-  selectedValue: string;
-  options: TasksFilterOption[];
+  selectedValue: TValue;
+  options: TasksFilterOptionModel<TValue>[];
 }
+
+export type TasksFilterOption = TasksFilterOptionModel<
+  "all" | TasksQueueId | "new" | "wip" | "review" | "overdue"
+>;
+
+export type TasksFilterControl = TasksFilterControlModel<
+  "all" | TasksQueueId | "new" | "wip" | "review" | "overdue"
+>;
 
 export const CRITICAL_THIS_WEEK_TAG = "critical_this_week";
 
@@ -249,8 +261,10 @@ export interface TasksScreenViewAdapterOutput {
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
   filterControls?: {
-    queue: TasksFilterControl;
-    bucket: TasksFilterControl;
+    queue: TasksFilterControlModel<"all" | TasksQueueId>;
+    bucket: TasksFilterControlModel<"all" | "new" | "wip" | "review" | "overdue">;
+    sort: TasksFilterControlModel<TasksSortField>;
+    sortDirection: TasksFilterControlModel<TasksSortDirection>;
   };
   isSearchMode: boolean;
   queuePanels: TasksQueuePanel[];

@@ -576,6 +576,7 @@ export interface Task {
   dueDate: string;
   category: TaskCategory;
   attachments: string[];
+  locationOnSite?: string;
   location?: {
     address?: string;
     latitude?: number;

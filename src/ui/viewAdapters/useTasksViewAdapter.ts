@@ -9,6 +9,8 @@ import { getFileUrl } from "@/api/fileUploadService";
 import type {
   TasksQueueBucketId,
   TasksQueueId,
+  TasksSortDirection,
+  TasksSortField,
   TasksScreenRowItem,
   TasksScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
@@ -200,13 +202,6 @@ function formatLatestUpdateLabel(task: Task): string | undefined {
   return timestamp.slice(0, 10);
 }
 
-function compareTasksByLatestMeaningfulUpdate(left: Task, right: Task): number {
-  const rightTimestamp = getLatestMeaningfulTimestamp(right);
-  const leftTimestamp = getLatestMeaningfulTimestamp(left);
-
-  return rightTimestamp.localeCompare(leftTimestamp);
-}
-
 function getPriorityRank(priority: Priority): number {
   switch (priority) {
     case "critical":
@@ -243,6 +238,56 @@ function compareTasksForSearchFirstList(left: Task, right: Task): number {
   }
 
   return getStatusFlowRank(left.status) - getStatusFlowRank(right.status);
+}
+
+function getComparableTimestamp(value?: string): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getSortTimestamp(task: Task, field: TasksSortField): number | null {
+  if (field === "created_at") {
+    return getComparableTimestamp(task.createdAt);
+  }
+
+  if (field === "due_date") {
+    return getComparableTimestamp(task.dueDate);
+  }
+
+  return getComparableTimestamp(getLatestMeaningfulTimestamp(task));
+}
+
+function compareTasksBySortField(
+  left: Task,
+  right: Task,
+  field: TasksSortField,
+  direction: TasksSortDirection,
+): number {
+  const leftTimestamp = getSortTimestamp(left, field);
+  const rightTimestamp = getSortTimestamp(right, field);
+
+  if (leftTimestamp === null && rightTimestamp === null) {
+    return compareTasksForSearchFirstList(left, right);
+  }
+
+  if (leftTimestamp === null) {
+    return 1;
+  }
+
+  if (rightTimestamp === null) {
+    return -1;
+  }
+
+  const delta = direction === "asc" ? leftTimestamp - rightTimestamp : rightTimestamp - leftTimestamp;
+  if (delta !== 0) {
+    return delta;
+  }
+
+  return compareTasksForSearchFirstList(left, right);
 }
 
 function resolveQueueForTask(task: Task, currentUserId: string): TasksQueueId | null {
@@ -319,15 +364,6 @@ function deriveInitialQueueFromLegacyFilters(
   return { queue: "my_queue", bucket };
 }
 
-function sortTaskTree(nodes: Task[]): Task[] {
-  return [...nodes]
-    .sort(compareTasksByLatestMeaningfulUpdate)
-    .map((node) => ({
-      ...node,
-      children: Array.isArray(node.children) ? sortTaskTree(node.children) : [],
-    }));
-}
-
 export interface TasksViewAdapterProps {
   onNavigateToTaskDetail?: (taskId: string) => void;
 }
@@ -348,6 +384,8 @@ export interface TasksViewAdapterHookResult {
     resetFilters: () => void;
     selectQueue: (queue: "all" | TasksQueueId) => void;
     selectBucket: (bucket: "all" | "new" | "wip" | "review" | "overdue") => void;
+    selectSortField: (field: TasksSortField) => void;
+    selectSortDirection: (direction: TasksSortDirection) => void;
     toggleTaskExpansion: (taskId: string) => void;
   };
 }
@@ -379,6 +417,8 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const [selectedBucket, setSelectedBucket] = useState<"all" | "new" | "wip" | "review" | "overdue">(
     initialFilterSelection.bucket,
   );
+  const [selectedSortField, setSelectedSortField] = useState<TasksSortField>("modified_at");
+  const [selectedSortDirection, setSelectedSortDirection] = useState<TasksSortDirection>("desc");
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -439,22 +479,35 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       return resolveBucketForTask(task) === selectedBucket;
     });
 
-    const visibleTasks = bucketScopedTasks
+    const filteredTasks = bucketScopedTasks
       .filter((task) => {
         const projectName = projectStore.getProjectById(task.projectId)?.name ?? "Project";
         return matchesSearchQuery(task, projectName, normalizedSearchQuery);
-      })
-      .sort(compareTasksForSearchFirstList);
+      });
 
-    const sortedTree = sortTaskTree(taskStore.buildTaskTree(visibleTasks)).sort(compareTasksForSearchFirstList);
-    const flatTasks: Array<{ task: Task; level: number }> = [];
-    const flattenNode = (node: Task, level = 0) => {
-      flatTasks.push({ task: node, level });
-      node.children?.forEach((child) => flattenNode(child, level + 1));
+    const sortedVisibleTasks = [...filteredTasks].sort((left, right) =>
+      compareTasksBySortField(left, right, selectedSortField, selectedSortDirection),
+    );
+    const visibleTasksById = new Map(sortedVisibleTasks.map((task) => [task.id, task]));
+    const getIndentationLevel = (task: Task): number => {
+      let level = 0;
+      let currentParentId = task.parentTaskId;
+
+      while (currentParentId) {
+        const parentTask = visibleTasksById.get(currentParentId);
+        if (!parentTask) {
+          break;
+        }
+
+        level += 1;
+        currentParentId = parentTask.parentTaskId;
+      }
+
+      return level;
     };
-    sortedTree.forEach((node) => flattenNode(node));
 
-    const taskRowItems = flatTasks.map<TasksScreenRowItem>(({ task, level }) => {
+    const taskRowItems = sortedVisibleTasks.map<TasksScreenRowItem>((task) => {
+      const level = getIndentationLevel(task);
       const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);
@@ -570,6 +623,55 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
             },
           ],
         },
+        sort: {
+          id: "sort",
+          label: "Sort by",
+          selectedValue: selectedSortField,
+          options: [
+            {
+              id: "sort:created_at",
+              value: "created_at" as const,
+              label: "Creation date",
+              count: sortedVisibleTasks.length,
+              isSelected: selectedSortField === "created_at",
+            },
+            {
+              id: "sort:due_date",
+              value: "due_date" as const,
+              label: "Due date",
+              count: sortedVisibleTasks.length,
+              isSelected: selectedSortField === "due_date",
+            },
+            {
+              id: "sort:modified_at",
+              value: "modified_at" as const,
+              label: "Modified date",
+              count: sortedVisibleTasks.length,
+              isSelected: selectedSortField === "modified_at",
+            },
+          ],
+        },
+        sortDirection: {
+          id: "sortDirection",
+          label: "Order",
+          selectedValue: selectedSortDirection,
+          options: [
+            {
+              id: "sort-direction:asc",
+              value: "asc" as const,
+              label: "Earliest first",
+              count: sortedVisibleTasks.length,
+              isSelected: selectedSortDirection === "asc",
+            },
+            {
+              id: "sort-direction:desc",
+              value: "desc" as const,
+              label: "Latest first",
+              count: sortedVisibleTasks.length,
+              isSelected: selectedSortDirection === "desc",
+            },
+          ],
+        },
       },
       searchResults: normalizedSearchQuery.length > 0 ? taskRowItems : [],
       taskRowItems,
@@ -597,6 +699,8 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     projectStore,
     props,
     selectedBucket,
+    selectedSortDirection,
+    selectedSortField,
     selectedProjectId,
     selectedQueue,
     tasks,
@@ -620,7 +724,9 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       selectedProjectId,
       sectionFilterLabel: "Search-first list",
       statusFilterLabel: selectedProjectId ? "Project scoped" : "All projects",
-      sortLabel: "Priority first",
+      sortLabel: `${filterControls.sort.options.find((option) => option.isSelected)?.label ?? "Modified date"} · ${
+        filterControls.sortDirection.options.find((option) => option.isSelected)?.label ?? "Latest first"
+      }`,
     },
     filterControls,
     isSearchMode: false,
@@ -636,7 +742,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     label: "Search",
     value: searchQuery,
     placeholder: "Search tasks",
-    density: "standard",
+    density: "expanded",
     structuralState,
   };
 
@@ -655,6 +761,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
 
   const selectBucket = (bucket: "all" | "new" | "wip" | "review" | "overdue") => {
     setSelectedBucket(bucket);
+  };
+
+  const selectSortField = (field: TasksSortField) => {
+    setSelectedSortField(field);
+  };
+
+  const selectSortDirection = (direction: TasksSortDirection) => {
+    setSelectedSortDirection(direction);
   };
 
   const toggleTaskExpansion = (taskId: string) => {
@@ -681,6 +795,8 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       resetFilters,
       selectQueue,
       selectBucket,
+      selectSortField,
+      selectSortDirection,
       toggleTaskExpansion,
     },
   };

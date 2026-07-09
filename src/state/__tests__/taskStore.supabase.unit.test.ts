@@ -164,7 +164,9 @@ describe('taskStore.supabase unit tests', () => {
 
   it('retries task creation without deferred redesign schema fields when Supabase is behind', async () => {
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const taskRow = createTaskRow();
+    const taskRow = createTaskRow({
+      location_on_site: 'Level 3 - South Core',
+    });
     const creationActivity = createTaskActivityRow();
     const taskInsertSingle = jest
       .fn()
@@ -235,6 +237,7 @@ describe('taskStore.supabase unit tests', () => {
         containerId: 'container-123',
         subContainerId: 'sub-container-456',
         tags: ['critical_this_week'],
+        locationOnSite: 'Level 3 - South Core',
         dueDate: '2026-06-30T00:00:00.000Z',
         attachments: [],
       });
@@ -252,6 +255,7 @@ describe('taskStore.supabase unit tests', () => {
         container_id: 'container-123',
         sub_container_id: 'sub-container-456',
         tags: ['critical_this_week'],
+        location_on_site: 'Level 3 - South Core',
       })
     );
     const fallbackInsertedTaskPayload = taskInsert.mock.calls[1]?.[0];
@@ -264,6 +268,7 @@ describe('taskStore.supabase unit tests', () => {
     expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'container_id')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'sub_container_id')).toBe(false);
     expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'tags')).toBe(false);
+    expect(Object.prototype.hasOwnProperty.call(fallbackInsertedTaskPayload, 'location_on_site')).toBe(false);
     expect(activityInsert).toHaveBeenCalledWith(
       expect.objectContaining({
         task_id: 'task-123',
@@ -481,6 +486,7 @@ describe('taskStore.supabase unit tests', () => {
         result.current.updateTask('task-123', {
           title: 'Install HVAC Phase 2',
           tags: ['critical_this_week'],
+          locationOnSite: 'Roof plant room',
         })
       ).resolves.toBeUndefined();
     });
@@ -489,6 +495,7 @@ describe('taskStore.supabase unit tests', () => {
     expect(updateMock.mock.calls[0]?.[0]).toEqual({
       title: 'Install HVAC Phase 2',
       tags: ['critical_this_week'],
+      location_on_site: 'Roof plant room',
     });
     expect(updateMock.mock.calls[1]?.[0]).toEqual({
       title: 'Install HVAC Phase 2',
@@ -818,6 +825,7 @@ describe('taskStore.supabase unit tests', () => {
       assigned_by: 9001,
       current_status: 'in_progress',
       completion_percentage: 65,
+      location_on_site: 'Lift lobby',
     });
     const activityRow = createTaskActivityRow({
       task_id: 'subtask-123',
@@ -863,6 +871,7 @@ describe('taskStore.supabase unit tests', () => {
       assignedBy: '9001',
       status: 'in_progress',
       completionPercentage: 65,
+      locationOnSite: 'Lift lobby',
     });
     expect(fetchedTask?.updates).toEqual([
       expect.objectContaining({
@@ -878,6 +887,7 @@ describe('taskStore.supabase unit tests', () => {
       rootTaskId: 'root-task-123',
       assignedTo: ['42', workerId],
       assignedBy: '9001',
+      locationOnSite: 'Lift lobby',
     });
     expect(result.current.taskFetchTimestamps['subtask-123']).toEqual(expect.any(Number));
   });

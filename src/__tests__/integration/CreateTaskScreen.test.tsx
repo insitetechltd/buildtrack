@@ -48,6 +48,7 @@ const mockAddSubTaskUpdate = jest.fn();
 const mockAddAssignerComment = jest.fn();
 const mockUploadFileWithVerification = jest.fn();
 let mockSelectedProjectId: string | null = null;
+let mockIsAdmin = false;
 
 // Mock dependencies
 jest.mock('../../state/authStore', () => ({
@@ -100,7 +101,15 @@ jest.mock('../../state/projectFilterStore', () => ({
 
 jest.mock('../../utils/useTranslation', () => ({
   useTranslation: () => ({
-    tasks: { createTask: 'Create Task', title: 'Title', description: 'Description' },
+    tasks: {
+      createTask: 'Create Task',
+      title: 'Title',
+      description: 'Description',
+      priority: 'Priority',
+      dueDate: 'Due Date',
+      category: 'Category',
+      assignTo: 'Assign To',
+    },
     userManagement: { pending: 'Pending' },
     createTask: { 
       textInput: 'Input', 
@@ -111,8 +120,23 @@ jest.mock('../../utils/useTranslation', () => ({
       createSubTask: 'Create Sub-Task',
       nestedSubTask: 'Nested Sub-Task',
       createNewTask: 'Create New Task',
+      headerCreateSubtitle: 'Field workflow',
+      headerEditSubtitle: 'Task editor localized',
       createTaskButton: 'Create Task',
       updateTaskButton: 'Update Task',
+      taskBasicsTitle: 'Task Basics',
+      taskBasicsSubtitle: 'Start with the essentials',
+      scheduleTitle: 'Schedule',
+      scheduleSubtitle: 'Set the target date',
+      moreDetailsTitle: 'More Details',
+      moreDetailsSubtitle: 'Optional context for downstream work',
+      locationOnSite: 'Location on Site',
+      selectLocationOnSite: 'Select a location on site',
+      addNewLocation: 'Add new location',
+      addNewLocationPlaceholder: 'Enter a new location on site',
+      saveNewLocation: 'Save location',
+      changeLocation: 'Change location',
+      selectLocationOnSiteFirstProject: 'Select a project to add a location on site',
       creating: 'Creating...',
       updating: 'Updating...',
       attachments: 'Attachments',
@@ -122,7 +146,8 @@ jest.mock('../../utils/useTranslation', () => ({
       usersSelected: () => 'Users Selected',
        selectUsersToAssign: 'Select Users',
        doneSelected: () => 'Done',
-       assigneesLocked: 'Assignees cannot be changed (task accepted)'
+       assigneesLocked: 'Assignees cannot be changed (task accepted)',
+       adminCannotCreateTasks: 'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.'
      },
       taskDetail: {
         editReasonTitle: 'Edit Reason',
@@ -141,6 +166,15 @@ jest.mock('../../utils/useTranslation', () => ({
       common: { done: 'Done', selected: 'Selected', save: 'Save', cancel: 'Cancel' }
   })
 }));
+
+jest.mock('../../types/buildtrack', () => {
+  const actual = jest.requireActual('../../types/buildtrack');
+
+  return {
+    ...actual,
+    isAdmin: () => mockIsAdmin,
+  };
+});
 
 jest.mock('../../utils/dateFormatter', () => ({
   useDateFormatter: () => ({
@@ -229,6 +263,7 @@ jest.mock('../../utils/environmentDetector', () => ({
 
 describe('CreateTaskScreen Integration', () => {
   beforeEach(() => {
+    mockIsAdmin = false;
     mockUseTaskStore.mockReturnValue({
       tasks: [],
       createTask: jest.fn(),
@@ -291,6 +326,17 @@ describe('CreateTaskScreen Integration', () => {
     fireEvent.press(getByTestId('app-screen-header__back'));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the branded create-task header subtitle from translations', () => {
+    const { getByText, queryByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(getByText('Field workflow')).toBeTruthy();
+    expect(queryByText('Create task')).toBeNull();
   });
 
   it('renders the update action header title and workspace menu trigger and wires the visible back button', () => {
@@ -369,31 +415,93 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(screen.getByText('Task Basics')).toBeTruthy();
-    expect(screen.getByText('Assignment')).toBeTruthy();
+    expect(screen.getByText(/Assign To/)).toBeTruthy();
+    expect(screen.getByText('Location on Site')).toBeTruthy();
+    expect(screen.queryByText('Assignment')).toBeNull();
     expect(screen.getByText('Schedule')).toBeTruthy();
     expect(screen.getByText('More Details')).toBeTruthy();
     expect(screen.getByText('Attachments')).toBeTruthy();
   });
 
-  it('renders the critical-dates toggle and persists the flag as a task tag on create', async () => {
+  it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
       </NavigationContainer>
     );
 
-    expect(screen.getByText('Show in This Week’s Critical Dates')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.getByTestId('createTask-submit-focus-target')).toBeTruthy();
+  });
 
-    fireEvent.press(screen.getByTestId('create-task__toggle_critical_this_week'));
-    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Critical pour inspection');
-    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Surface this in the weekly critical dates list');
+  it('keeps the branded create-task shell styling while preserving the inline submit flow', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
+    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
+  });
+
+  it('keeps the branded shell visible when admins are blocked from creating tasks', () => {
+    mockIsAdmin = true;
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
+    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.',
+      ),
+    ).toBeTruthy();
+  });
+
+  it('surfaces project-scoped location options with an add-new path', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__location-picker-trigger'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Add new location')).toBeTruthy();
+    });
+  });
+
+  it('submits a trimmed custom location-on-site value through the create-task flow', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__location-picker-trigger'));
+    fireEvent.press(screen.getByTestId('create-task__location-option-add-new'));
+    fireEvent.changeText(screen.getByTestId('create-task__location-input'), '  Level 9 Rooftop  ');
+    fireEvent.press(screen.getByTestId('create-task__location-save'));
+
+    fireEvent.changeText(screen.getByTestId('createTask-title'), 'Install guard rails');
+    fireEvent.changeText(screen.getByTestId('createTask-description'), 'Complete level 2 edge protection');
     fireEvent.press(screen.getByText('Create Task'));
 
     await waitFor(() => {
       expect(mockCreateTask).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Critical pour inspection',
-          tags: ['critical_this_week'],
+          title: 'Install guard rails',
+          description: 'Complete level 2 edge protection',
+          locationOnSite: 'Level 9 Rooftop',
         }),
       );
     });
@@ -1411,6 +1519,8 @@ describe('CreateTaskScreen Integration', () => {
         }),
       );
     });
+
+    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty('tags');
 
     expect(onNavigateBack).toHaveBeenCalled();
   });

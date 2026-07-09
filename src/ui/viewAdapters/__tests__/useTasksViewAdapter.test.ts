@@ -77,7 +77,7 @@ describe("useTasksViewAdapter", () => {
     });
   }
 
-  it("builds dropdown filters with All states, dynamic counts, and ordered visible rows", () => {
+  it("builds dropdown filters with All states, dynamic counts, and modified-date sort defaults", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks();
@@ -124,10 +124,12 @@ describe("useTasksViewAdapter", () => {
     expect(
       (result.current.output as any).filterControls.bucket.options.map((option: any) => option.label),
     ).toEqual(["All 3", "New 1", "Doing 1", "Review 1"]);
+    expect((result.current.output as any).filterControls.sort.selectedValue).toBe("modified_at");
+    expect((result.current.output as any).filterControls.sortDirection.selectedValue).toBe("desc");
     expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
-      "task-critical-review",
       "task-high-new",
       "task-high-wip",
+      "task-critical-review",
     ]);
   });
 
@@ -307,5 +309,277 @@ describe("useTasksViewAdapter", () => {
     expect(result.current.output.taskRowItems[0].primaryPhotoUri).toBe(
       "https://cdn.example.com/company-123/tasks/task-photo/photo-1.jpg",
     );
+  });
+
+  it("sorts visible rows by created date in ascending and descending order", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-created-middle",
+          title: "Created middle",
+          createdAt: "2026-07-02T10:00:00.000Z",
+          updatedAt: "2026-07-05T10:00:00.000Z",
+          dueDate: "2026-07-12T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-created-early",
+          title: "Created early",
+          createdAt: "2026-07-01T10:00:00.000Z",
+          updatedAt: "2026-07-06T10:00:00.000Z",
+          dueDate: "2026-07-11T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-created-late",
+          title: "Created late",
+          createdAt: "2026-07-03T10:00:00.000Z",
+          updatedAt: "2026-07-04T10:00:00.000Z",
+          dueDate: "2026-07-13T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    act(() => {
+      (result.current.actions as any).selectSortField("created_at");
+      (result.current.actions as any).selectSortDirection("asc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-created-early",
+      "task-created-middle",
+      "task-created-late",
+    ]);
+
+    act(() => {
+      (result.current.actions as any).selectSortDirection("desc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-created-late",
+      "task-created-middle",
+      "task-created-early",
+    ]);
+  });
+
+  it("sorts filtered rows by due date and keeps missing timestamps at the end", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-due-late",
+          title: "Due later",
+          status: "new",
+          dueDate: "2026-07-20T00:00:00.000Z",
+          createdAt: "2026-07-01T10:00:00.000Z",
+          updatedAt: "2026-07-04T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-due-missing",
+          title: "Due missing",
+          status: "new",
+          dueDate: undefined,
+          createdAt: "2026-07-02T10:00:00.000Z",
+          updatedAt: "2026-07-05T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-due-early",
+          title: "Due early",
+          status: "new",
+          dueDate: "2026-07-10T00:00:00.000Z",
+          createdAt: "2026-07-03T10:00:00.000Z",
+          updatedAt: "2026-07-06T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-team-review",
+          title: "Review item",
+          status: "submitted_for_review",
+          dueDate: "2026-07-08T00:00:00.000Z",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    act(() => {
+      result.current.actions.selectQueue("my_queue");
+      result.current.actions.selectBucket("new");
+      (result.current.actions as any).selectSortField("due_date");
+      (result.current.actions as any).selectSortDirection("asc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-due-early",
+      "task-due-late",
+      "task-due-missing",
+    ]);
+  });
+
+  it("sorts by modified date using the latest meaningful task timestamp", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-modified-old",
+          title: "Modified old",
+          createdAt: "2026-07-01T10:00:00.000Z",
+          updatedAt: "2026-07-02T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-modified-new",
+          title: "Modified new",
+          createdAt: "2026-07-01T10:00:00.000Z",
+          updatedAt: "2026-07-06T10:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    act(() => {
+      (result.current.actions as any).selectSortField("modified_at");
+      (result.current.actions as any).selectSortDirection("desc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-modified-new",
+      "task-modified-old",
+    ]);
+  });
+
+  it("sorts the full visible row set globally even when nested tasks are present", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-root-late",
+          title: "Root late",
+          status: "new",
+          dueDate: "2026-07-20T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-child-early",
+          parentTaskId: "task-root-late",
+          title: "Child early",
+          status: "new",
+          dueDate: "2026-07-05T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-root-middle",
+          title: "Root middle",
+          status: "new",
+          dueDate: "2026-07-10T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => {
+        const taskMap = new Map(tasks.map((task) => [task.id, { ...task, children: [] }]));
+        const rootTasks: any[] = [];
+
+        tasks.forEach((task: any) => {
+          const current = taskMap.get(task.id);
+
+          if (!task.parentTaskId) {
+            rootTasks.push(current);
+            return;
+          }
+
+          const parent = taskMap.get(task.parentTaskId);
+
+          if (parent) {
+            parent.children.push(current);
+            return;
+          }
+
+          rootTasks.push(current);
+        });
+
+        return rootTasks;
+      },
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    act(() => {
+      result.current.actions.selectQueue("my_queue");
+      result.current.actions.selectBucket("new");
+      result.current.actions.selectSortField("due_date");
+      result.current.actions.selectSortDirection("asc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-child-early",
+      "task-root-middle",
+      "task-root-late",
+    ]);
+    expect(
+      result.current.output.taskRowItems.find((row) => row.taskId === "task-child-early")?.indentationLevel,
+    ).toBe(1);
+  });
+
+  it("raises the Tasks search field density by one step", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-search-density",
+          title: "Search density check",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.searchInput.density).toBe("expanded");
   });
 });

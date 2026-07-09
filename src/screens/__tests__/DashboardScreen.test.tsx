@@ -247,6 +247,9 @@ describe("DashboardScreen", () => {
     expect(screen.queryByTestId("dashboard-screen__header_profile")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__header_project_picker")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__header_developer_settings")).toBeNull();
+    const { ScrollView } = require("react-native");
+    const scrollView = screen.UNSAFE_getByType(ScrollView);
+    expect(scrollView.props.contentContainerStyle).toMatchObject({ paddingTop: 15 });
 
     fireEvent.press(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new"));
     expect(onNavigateToTasks).toHaveBeenCalledWith({

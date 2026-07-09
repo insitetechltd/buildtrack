@@ -40,7 +40,6 @@ import { useUserPreferencesStore } from "../state/userPreferencesStore";
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from "../types/buildtrack";
 import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
-import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import ScreenSection from "../components/ui/ScreenSection";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
@@ -227,7 +226,7 @@ function CreateTaskEditorScreen({
     clearForm
   });
 
-  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, projects, modals } = output;
+  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, locationPicker, projects, modals } = output;
   const {
     updateField,
     togglePicker,
@@ -271,6 +270,8 @@ function CreateTaskEditorScreen({
 
   const showUserPicker = pickers.showUserPicker;
   const setShowUserPicker = (val: boolean) => togglePicker('showUserPicker', val);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [isEnteringCustomLocation, setIsEnteringCustomLocation] = useState(false);
 
   const selectedUsers = assigneePicker.selectedUserIds;
   const formNavigationRegistry = useMemo(
@@ -392,6 +393,9 @@ function CreateTaskEditorScreen({
   const handleCancel = () => onNavigateBack();
   const handleClearForm = () => {};
   const saveFormDataToStorage = async () => {};
+  const headerSubtitle = editTaskId
+    ? t.createTask.headerEditSubtitle
+    : t.createTask.headerCreateSubtitle;
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
@@ -437,32 +441,49 @@ function CreateTaskEditorScreen({
   if (!user) return null;
   if (isAdmin(user)) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-        <ModernScreenHeader 
-          title={t.tasks.createTask}
+      <SafeAreaView
+        testID="create-task__root"
+        edges={['bottom', 'left', 'right']}
+        className="flex-1 bg-[#E7F4F8]"
+      >
+        <StatusBar style="light" />
+        <View testID="create-task__header" className="bg-[#08576E]">
+          <ModernScreenHeader
+            title={context.headerTitle}
+            subtitle={headerSubtitle}
           showBackButton={true}
           onBackPress={onNavigateBack}
-        />
+            onNavigateToProfile={onNavigateToProfile}
+            onNavigateToProjectPicker={onNavigateToProjectPicker}
+            className="border-b-0 bg-[#08576E] pb-2"
+          />
+        </View>
         <View className="flex-1 items-center justify-center px-6">
-          <Text>{t.createTask.adminCannotCreateTasks}</Text>
+          <Text className="text-center text-base text-gray-700">{t.createTask.adminCannotCreateTasks}</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
-      
-      {/* Standard Header */}
-      <ModernScreenHeader 
-        title={context.headerTitle}
-        showBackButton={true}
-        onBackPress={onNavigateBack}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
-      />
+    <SafeAreaView
+      testID="create-task__root"
+      edges={['bottom', 'left', 'right']}
+      className="flex-1 bg-[#E7F4F8]"
+    >
+      <StatusBar style="light" />
+
+      <View testID="create-task__header" className="bg-[#08576E]">
+        <ModernScreenHeader
+          title={context.headerTitle}
+          subtitle={headerSubtitle}
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+          onNavigateToProfile={onNavigateToProfile}
+          onNavigateToProjectPicker={onNavigateToProjectPicker}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
+      </View>
 
       {/* Parent Task Info Banner */}
       {context.parentBanner && (
@@ -487,7 +508,7 @@ function CreateTaskEditorScreen({
           ref={scrollViewRef}
           className="flex-1 py-4"
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 32 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -649,7 +670,28 @@ function CreateTaskEditorScreen({
             </View>
           ) : null}
 
-          <ScreenSection title="Task Basics" subtitle="Start with the essentials">
+          <ScreenSection title={t.createTask.taskBasicsTitle} subtitle={t.createTask.taskBasicsSubtitle}>
+            <InputField label={t.createTask.project} error={errors.projectId}>
+              <View
+                className={cn(
+                  "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
+                  errors.projectId ? "border-red-300" : "border-gray-300"
+                )}
+              >
+                <Text
+                  className={cn(
+                    "flex-1 text-lg",
+                    context.activeProjectId ? "text-gray-900" : "text-gray-500"
+                  )}
+                >
+                  {context.activeProjectId
+                    ? projects.availableProjects.find((project) => project.id === context.activeProjectId)?.name
+                    : t.createTask.selectProject}
+                </Text>
+                <Ionicons name="lock-closed" size={16} color="#9ca3af" />
+              </View>
+            </InputField>
+
             <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
                 testID="createTask-title"
@@ -729,28 +771,57 @@ function CreateTaskEditorScreen({
                 })}
               </View>
             </InputField>
-          </ScreenSection>
 
-          <ScreenSection title="Assignment" subtitle="Confirm the project and assignees">
-            <InputField label={t.createTask.project} error={errors.projectId}>
-              <View
+            <InputField label={t.createTask.locationOnSite}>
+              <Pressable
+                testID="create-task__location-picker-trigger"
+                onPress={() => setShowLocationPicker(true)}
+                disabled={!locationPicker.projectId}
                 className={cn(
-                  "border rounded-lg px-3 py-3 bg-gray-100 flex-row items-center justify-between",
-                  errors.projectId ? "border-red-300" : "border-gray-300"
+                  "border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
+                  !locationPicker.projectId && "bg-gray-100 opacity-60",
                 )}
               >
                 <Text
                   className={cn(
                     "flex-1 text-lg",
-                    context.activeProjectId ? "text-gray-900" : "text-gray-500"
+                    formData.locationOnSite ? "text-gray-900" : "text-gray-500",
                   )}
                 >
-                  {context.activeProjectId
-                    ? projects.availableProjects.find((project) => project.id === context.activeProjectId)?.name
-                    : t.createTask.selectProject}
+                  {formData.locationOnSite || t.createTask.selectLocationOnSite}
                 </Text>
-                <Ionicons name="lock-closed" size={16} color="#9ca3af" />
-              </View>
+                <Ionicons name="chevron-down" size={20} color="#6b7280" />
+              </Pressable>
+              {!locationPicker.projectId ? (
+                <Text className="mt-2 text-sm text-gray-500">
+                  {t.createTask.selectLocationOnSiteFirstProject}
+                </Text>
+              ) : null}
+              {isEnteringCustomLocation ? (
+                <View className="mt-3 gap-3">
+                  <TextInput
+                    testID="create-task__location-input"
+                    className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
+                    placeholder={t.createTask.addNewLocationPlaceholder}
+                    value={formData.locationOnSite}
+                    onChangeText={(value) => updateField("locationOnSite", value)}
+                  />
+                  <Pressable
+                    testID="create-task__location-save"
+                    onPress={() => {
+                      if (formData.locationOnSite.trim()) {
+                        updateField("locationOnSite", formData.locationOnSite.trim());
+                        setIsEnteringCustomLocation(false);
+                      }
+                    }}
+                    className="items-center justify-center rounded-xl border border-gray-300 bg-white py-3"
+                  >
+                    <Text className="text-base font-semibold text-gray-700">
+                      {t.createTask.saveNewLocation}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </InputField>
 
             <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
@@ -821,7 +892,7 @@ function CreateTaskEditorScreen({
             )}
           </ScreenSection>
 
-          <ScreenSection title="Schedule" subtitle="Set the target date">
+          <ScreenSection title={t.createTask.scheduleTitle} subtitle={t.createTask.scheduleSubtitle}>
             <InputField label={t.tasks.dueDate} error={errors.dueDate}>
               <Pressable
                 onPress={async () => {
@@ -870,34 +941,9 @@ function CreateTaskEditorScreen({
                 </View>
               </View>
             )}
-
-            <Pressable
-              testID="create-task__toggle_critical_this_week"
-              accessibilityRole="button"
-              accessibilityState={{ selected: formData.criticalThisWeek }}
-              onPress={() => updateField('criticalThisWeek', !formData.criticalThisWeek)}
-              className={cn(
-                "border rounded-lg px-4 py-3 bg-white flex-row items-center justify-between",
-                formData.criticalThisWeek ? "border-amber-300 bg-amber-50" : "border-gray-300",
-              )}
-            >
-              <View className="mr-3 flex-1">
-                <Text className="text-base font-semibold text-gray-900">
-                  Show in This Week’s Critical Dates
-                </Text>
-                <Text className="mt-1 text-sm text-gray-500">
-                  Highlight this task in the weekly critical dates list.
-                </Text>
-              </View>
-              <Ionicons
-                name={formData.criticalThisWeek ? "checkmark-circle" : "ellipse-outline"}
-                size={22}
-                color={formData.criticalThisWeek ? "#b45309" : "#6b7280"}
-              />
-            </Pressable>
           </ScreenSection>
 
-          <ScreenSection title="More Details" subtitle="Optional context for downstream work">
+          <ScreenSection title={t.createTask.moreDetailsTitle} subtitle={t.createTask.moreDetailsSubtitle}>
             <InputField label={t.createTask.taskReference} required={false}>
               <TextInput
                 testID="createTask-taskReference"
@@ -957,22 +1003,37 @@ function CreateTaskEditorScreen({
             onRemoveAttachment={removeAttachment}
             onAddPhotos={handleAddPhotos}
           />
+
+          <View
+            testID="create-task__submit-inline"
+            className="px-4 pt-4"
+          >
+            <View
+              testID="createTask-submit-focus-target"
+              accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
+            >
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleSubmit}
+                disabled={
+                  isSubmitting ||
+                  (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
+                }
+                className={cn(
+                  "items-center justify-center rounded-xl bg-blue-600 py-3",
+                  (isSubmitting ||
+                    (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")) &&
+                    "opacity-50",
+                )}
+              >
+                <Text className="text-base font-semibold text-white">
+                  {editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <View
-        testID="createTask-submit-focus-target"
-        accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
-      >
-        <PrimaryActionBar
-          primaryLabel={editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
-          onPrimaryPress={handleSubmit}
-          isPrimaryDisabled={
-            isSubmitting ||
-            (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
-          }
-        />
-      </View>
 
       {/* Priority Picker Modal */}
       <Modal
@@ -1066,6 +1127,73 @@ function CreateTaskEditorScreen({
                     name={priority === "critical" ? "alert-circle" : priority === "high" ? "arrow-up-circle" : priority === "medium" ? "remove-circle" : "arrow-down-circle"} 
                     size={24} 
                     color={colors.icon} 
+                  />
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        visible={showLocationPicker}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLocationPicker(false)}
+      >
+        <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+          <StatusBar style="dark" />
+
+          <ModalHandle />
+
+          <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
+            <Pressable
+              onPress={() => setShowLocationPicker(false)}
+              className="mr-4 w-10 h-10 items-center justify-center"
+            >
+              <Ionicons name="close" size={24} color="#374151" />
+            </Pressable>
+            <Text className="text-xl font-semibold text-gray-900 flex-1">
+              {t.createTask.locationOnSite}
+            </Text>
+          </View>
+
+          <ScrollView className="flex-1 px-6 py-4">
+            {locationPicker.options.map((option) => {
+              const isSelected = !option.isAddNew && formData.locationOnSite === option.value;
+
+              return (
+                <Pressable
+                  key={option.id}
+                  testID={option.isAddNew ? "create-task__location-option-add-new" : undefined}
+                  onPress={() => {
+                    if (option.isAddNew) {
+                      setShowLocationPicker(false);
+                      setIsEnteringCustomLocation(true);
+                      return;
+                    }
+
+                    updateField("locationOnSite", option.value);
+                    setIsEnteringCustomLocation(false);
+                    setShowLocationPicker(false);
+                  }}
+                  className={cn(
+                    "bg-white border rounded-lg px-4 py-4 mb-3 flex-row items-center",
+                    isSelected ? "border-blue-500 bg-blue-50" : "border-gray-300"
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      "text-lg font-medium flex-1",
+                      isSelected ? "text-blue-900" : "text-gray-900"
+                    )}
+                  >
+                    {option.label}
+                  </Text>
+                  <Ionicons
+                    name={option.isAddNew ? "add-circle-outline" : isSelected ? "checkmark-circle" : "location-outline"}
+                    size={22}
+                    color={option.isAddNew ? "#2563eb" : isSelected ? "#2563eb" : "#6b7280"}
                   />
                 </Pressable>
               );

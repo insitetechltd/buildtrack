@@ -9,6 +9,10 @@ interface ActivityStyleRowCardProps {
   metaLabel: string;
   badgeLabel: string;
   imageUri?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
+  metaClassName?: string;
+  badgeClassName?: string;
   onPress?: () => void;
 }
 
@@ -19,6 +23,10 @@ export default function ActivityStyleRowCard({
   metaLabel,
   badgeLabel,
   imageUri,
+  titleClassName,
+  subtitleClassName,
+  metaClassName,
+  badgeClassName,
   onPress,
 }: ActivityStyleRowCardProps) {
   const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
@@ -63,21 +71,33 @@ export default function ActivityStyleRowCard({
         <View className="min-w-0 flex-1 justify-center p-4">
           <View className="flex-row items-start justify-between">
             <View className="mr-4 flex-1">
-              <Text className="text-base font-semibold text-slate-900" numberOfLines={2}>
+              <Text
+                className={titleClassName ?? "text-base font-semibold text-slate-900"}
+                numberOfLines={2}
+              >
                 {title}
               </Text>
-              <Text className="mt-1 text-sm text-slate-500" numberOfLines={2}>
+              <Text
+                className={subtitleClassName ?? "mt-1 text-sm text-slate-500"}
+                numberOfLines={2}
+              >
                 {subtitle}
               </Text>
             </View>
             <Text
-              className="max-w-[96px] text-right text-xs font-medium uppercase tracking-wide text-slate-400"
+              className={
+                badgeClassName ??
+                "max-w-[96px] text-right text-xs font-medium uppercase tracking-wide text-slate-400"
+              }
               numberOfLines={2}
             >
               {badgeLabel}
             </Text>
           </View>
-          <Text className="mt-3 text-xs font-medium text-slate-400" numberOfLines={1}>
+          <Text
+            className={metaClassName ?? "mt-3 text-xs font-medium text-slate-400"}
+            numberOfLines={1}
+          >
             {metaLabel}
           </Text>
         </View>

@@ -251,6 +251,7 @@ Key runtime fields reflected in code and at least part of the checked-in schema 
 - `priority`
 - `category`
 - `due_date`
+- `location_on_site`
 - `current_status`
 - `status`
 - `completion_percentage`
@@ -287,7 +288,10 @@ Important notes:
 - the task model is unified: top-level tasks and nested tasks share the same table
 - the runtime still carries some legacy compatibility fields while the unified model settles
 - soft-delete and archival behavior are modeled in the main table
+- `location_on_site` is the dedicated task-level field for the Create Task "Location on Site" flow and is intentionally separate from `projects.location`
+- Create Task derives project-scoped location suggestions from existing `tasks.location_on_site` values in the active project, then appends an explicit `Add new location` affordance in the view adapter
 - the redesign metadata fields `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags` are part of the intended runtime model, but live-environment rollout may lag; the repository now carries `ADD_TASK_REDESIGN_METADATA_MIGRATION.sql` to close that drift, and app-side compatibility fallbacks currently avoid hard failures while those fields remain non-persistent on stale schemas
+- the repository now also carries `ADD_TASK_ON_SITE_LOCATION_MIGRATION.sql`; task creation currently treats `location_on_site` as a deferred schema field so older environments can still create tasks by retrying without that column when Supabase schema cache is behind
 
 Relationships:
 
@@ -392,6 +396,15 @@ The current task model uses a self-referential table strategy:
 - `root_task_id` anchors a whole task tree
 - `nesting_level` helps with tree rendering and traversal
 
+### Task-level on-site location history
+
+The create-task flow now treats on-site location as task metadata instead of project metadata:
+
+- `tasks.location_on_site` stores the task-specific label chosen during create and edit flows
+- `projects.location` remains the broader project address/location field and must not be repurposed as task on-site location storage
+- project-scoped suggestion history is reconstructed from prior tasks in the same project that already have `location_on_site` populated
+- this keeps the persistence model local to the task domain without introducing a separate global locations table
+
 ### Unified activity log
 
 The intended current audit model is:
@@ -467,6 +480,7 @@ These help explain the current model or migration history:
 - `TASK_ACTIVITIES_UNIFICATION_MIGRATION.sql`
 - `TASK_STATUS_UNIFIED_MIGRATION.sql`
 - `TASK_EDIT_HISTORY_MIGRATION.sql`
+- `ADD_TASK_ON_SITE_LOCATION_MIGRATION.sql`
 
 ### Non-canonical one-off artifacts
 
@@ -492,6 +506,10 @@ The `roles` table exists, but runtime authorization still mainly depends on norm
 ### Task-schema transition
 
 The runtime has moved toward unified `task_activities`, but older migration files still describe intermediate states and legacy tables.
+
+### Create-task location field rollout
+
+The runtime expects `tasks.location_on_site`, but some Supabase environments may briefly lag the checked-in migration. Current create-task writes therefore include a compatibility retry path so task creation can proceed while stale schema caches catch up.
 
 ## Canonical References
 

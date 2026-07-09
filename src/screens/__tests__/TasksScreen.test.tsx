@@ -12,14 +12,23 @@ jest.mock("@/components/AppScreenHeader", () => {
     titleNode,
     rightSlot,
     className,
+    showBackButton,
+    onBackPress,
   }: {
     title: string;
     titleNode?: React.ReactNode;
     rightSlot?: React.ReactNode;
     className?: string;
+    showBackButton?: boolean;
+    onBackPress?: () => void;
   }) {
     return (
       <View testID="app-screen-header__root" className={className}>
+        {showBackButton ? (
+          <Pressable testID="app-screen-header__back-trigger" onPress={onBackPress}>
+            <Text>Back</Text>
+          </Pressable>
+        ) : null}
         {titleNode ? titleNode : <Text>{title}</Text>}
         {rightSlot}
         <Pressable testID="app-screen-header__profile-trigger">
@@ -101,6 +110,10 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
     ];
     const [selectedQueue, setSelectedQueue] = React.useState<"all" | "my_queue" | "team_queue">("all");
     const [selectedBucket, setSelectedBucket] = React.useState<"all" | "new" | "wip" | "review">("all");
+    const [selectedSortField, setSelectedSortField] = React.useState<
+      "created_at" | "due_date" | "modified_at"
+    >("modified_at");
+    const [selectedSortDirection, setSelectedSortDirection] = React.useState<"asc" | "desc">("desc");
     const normalizedQuery = searchQuery.trim().toLowerCase();
     const queueFilteredRows =
       selectedQueue === "all" ? allRows : allRows.filter((row) => row.queue === selectedQueue);
@@ -165,6 +178,45 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         isSelected: selectedBucket === "review",
       },
     ];
+    const sortOptions = [
+      {
+        id: "sort:created_at",
+        value: "created_at",
+        label: "Creation date",
+        count: visibleRows.length,
+        isSelected: selectedSortField === "created_at",
+      },
+      {
+        id: "sort:due_date",
+        value: "due_date",
+        label: "Due date",
+        count: visibleRows.length,
+        isSelected: selectedSortField === "due_date",
+      },
+      {
+        id: "sort:modified_at",
+        value: "modified_at",
+        label: "Modified date",
+        count: visibleRows.length,
+        isSelected: selectedSortField === "modified_at",
+      },
+    ];
+    const sortDirectionOptions = [
+      {
+        id: "sortDirection:asc",
+        value: "asc",
+        label: "Earliest first",
+        count: visibleRows.length,
+        isSelected: selectedSortDirection === "asc",
+      },
+      {
+        id: "sortDirection:desc",
+        value: "desc",
+        label: "Latest first",
+        count: visibleRows.length,
+        isSelected: selectedSortDirection === "desc",
+      },
+    ];
     const baseOutput: TasksScreenViewAdapterOutput = {
       screenId: "TasksScreen",
       readiness: {
@@ -212,6 +264,18 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         selectedValue: selectedBucket,
         options: bucketOptions,
       },
+      sort: {
+        id: "sort",
+        label: "Sort by",
+        selectedValue: selectedSortField,
+        options: sortOptions,
+      },
+      sortDirection: {
+        id: "sortDirection",
+        label: "Order",
+        selectedValue: selectedSortDirection,
+        options: sortDirectionOptions,
+      },
     };
 
     if (overrideOutput) {
@@ -249,6 +313,12 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
           },
           selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
             setSelectedBucket(bucket);
+          },
+          selectSortField: (field: "created_at" | "due_date" | "modified_at") => {
+            setSelectedSortField(field);
+          },
+          selectSortDirection: (direction: "asc" | "desc") => {
+            setSelectedSortDirection(direction);
           },
           toggleTaskExpansion: jest.fn(),
         },
@@ -289,6 +359,12 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
           setSelectedBucket(bucket);
         },
+        selectSortField: (field: "created_at" | "due_date" | "modified_at") => {
+          setSelectedSortField(field);
+        },
+        selectSortDirection: (direction: "asc" | "desc") => {
+          setSelectedSortDirection(direction);
+        },
         toggleTaskExpansion: jest.fn(),
       },
     };
@@ -308,7 +384,7 @@ describe("TasksScreen", () => {
     mockedModule.__setTasksScreenOverride(null);
   });
 
-  it("renders dropdown filters, a single visible list, and preserves existing shortcuts", () => {
+  it("renders queue, bucket, sort, and direction controls without a back button", () => {
     const onNavigateToCreateTask = jest.fn();
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
@@ -327,6 +403,12 @@ describe("TasksScreen", () => {
 
     expect(screen.getByTestId("tasks-screen__filter_queue")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__filter_bucket")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__filter_sort")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__filter_sort_direction")).toBeTruthy();
+    expect(screen.queryByTestId("app-screen-header__back-trigger")).toBeNull();
+    expect(screen.getByText("Sort by")).toBeTruthy();
+    expect(screen.getByText("Modified date")).toBeTruthy();
+    expect(screen.getByText("Latest first")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
     const searchRightSlot = screen.getByTestId("text-field:tasks-search__right-slot");
     expect(within(searchRightSlot).getByTestId("tasks-screen__search_count")).toBeTruthy();
@@ -352,6 +434,29 @@ describe("TasksScreen", () => {
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
     expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
+  });
+
+  it("opens sort controls and applies the one-step font increase across the screen", () => {
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("tasks-screen__filter_sort"));
+
+    expect(screen.getByText("Creation date")).toBeTruthy();
+    expect(screen.getByText("Due date")).toBeTruthy();
+    expect(screen.getAllByText("Modified date").length).toBeGreaterThan(0);
+
+    const searchCount = screen.getByTestId("tasks-screen__search_count");
+
+    expect(within(searchCount).getByText("3").props.className).toContain("text-base");
+    expect(screen.getByText("Queue").props.className).toContain("text-base");
+    expect(screen.getByText("Bucket").props.className).toContain("text-base");
+    expect(screen.getByText("Sort by").props.className).toContain("text-base");
+    expect(screen.getByText("Install guardrails").props.className).toContain("text-xl");
   });
 
   it("updates the visible list when queue and bucket filters change", () => {
@@ -424,6 +529,22 @@ describe("TasksScreen", () => {
 
     expect(screen.getByTestId("tasks-screen__empty_state")).toBeTruthy();
     expect(screen.getByText("No matching tasks")).toBeTruthy();
+  });
+
+  it("matches the Activity header safe-area treatment and keeps a tighter static control gap", () => {
+    const { SafeAreaView } = require("react-native-safe-area-context");
+
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    const safeArea = screen.UNSAFE_getByType(SafeAreaView);
+
+    expect(safeArea.props.edges).toEqual(["left", "right", "bottom"]);
+    expect(screen.getByTestId("tasks-screen__search_wrapper").props.className).toContain("mb-1");
   });
 
   it("renders the Tasks list rows through the shared activity-style shell", () => {

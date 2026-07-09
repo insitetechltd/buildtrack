@@ -52,6 +52,7 @@ const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
   "container_id",
   "sub_container_id",
   "tags",
+  "location_on_site",
 ] as const;
 const DEFERRED_TASK_RUNTIME_FIELDS = [
   "primaryAssigneeId",
@@ -59,6 +60,7 @@ const DEFERRED_TASK_RUNTIME_FIELDS = [
   "containerId",
   "subContainerId",
   "tags",
+  "locationOnSite",
 ] as const;
 
 function buildSupabaseTaskInsertPayload(
@@ -84,6 +86,7 @@ function buildSupabaseTaskInsertPayload(
     container_id: taskData.containerId || null,
     sub_container_id: taskData.subContainerId || null,
     tags: taskData.tags || [],
+    location_on_site: taskData.locationOnSite || null,
     attachments: taskData.attachments || [],
     accepted: isCreatorAssigned ? true : false,
     accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
@@ -747,6 +750,7 @@ export const useTaskStore = create<TaskStore>()(
                   containerId: task.container_id ? String(task.container_id) : undefined,
                   subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                   tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
+                  locationOnSite: task.location_on_site || undefined,
                   location: task.location,
                   attachments: task.attachments || [],
                   starredByUsers: task.starred_by_users || [],
@@ -939,6 +943,7 @@ export const useTaskStore = create<TaskStore>()(
                 containerId: task.container_id ? String(task.container_id) : undefined,
                 subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
+                locationOnSite: task.location_on_site || undefined,
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -1100,6 +1105,7 @@ export const useTaskStore = create<TaskStore>()(
                 containerId: task.container_id ? String(task.container_id) : undefined,
                 subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
                 tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
+                locationOnSite: task.location_on_site || undefined,
                 location: task.location,
                 attachments: task.attachments || [],
                 starredByUsers: task.starred_by_users || [],
@@ -1266,6 +1272,7 @@ export const useTaskStore = create<TaskStore>()(
             containerId: taskData.container_id ? String(taskData.container_id) : undefined,
             subContainerId: taskData.sub_container_id ? String(taskData.sub_container_id) : undefined,
             tags: Array.isArray(taskData.tags) ? taskData.tags.map((tag: unknown) => String(tag)) : [],
+            locationOnSite: taskData.location_on_site || undefined,
             location: taskData.location,
             attachments: taskData.attachments || [],
             // Legacy fields for backward compatibility (derived from status)
@@ -1513,6 +1520,7 @@ export const useTaskStore = create<TaskStore>()(
             containerId: data.container_id ? String(data.container_id) : undefined,
             subContainerId: data.sub_container_id ? String(data.sub_container_id) : undefined,
             tags: Array.isArray(data.tags) ? data.tags.map((tag: unknown) => String(tag)) : [],
+            locationOnSite: data.location_on_site || undefined,
             location: data.location,
             attachments: data.attachments || [],
             // Legacy fields for backward compatibility (derived from status)
@@ -1675,6 +1683,7 @@ export const useTaskStore = create<TaskStore>()(
           if ('containerId' in cleanUpdates) updateData.container_id = cleanUpdates.containerId || null;
           if ('subContainerId' in cleanUpdates) updateData.sub_container_id = cleanUpdates.subContainerId || null;
           if ('tags' in cleanUpdates) updateData.tags = cleanUpdates.tags || [];
+          if ('locationOnSite' in cleanUpdates) updateData.location_on_site = cleanUpdates.locationOnSite || null;
           if (cleanUpdates.attachments) updateData.attachments = cleanUpdates.attachments;
           // Legacy accepted field - map to status if needed
           if ('accepted' in cleanUpdates && cleanUpdates.accepted === true && !cleanUpdates.status) {
@@ -3125,6 +3134,7 @@ export const useTaskStore = create<TaskStore>()(
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
+              locationOnSite: data.location_on_site || undefined,
               location: data.location,
               attachments: data.attachments || [],
               accepted: Boolean(data.accepted),
@@ -3343,6 +3353,7 @@ export const useTaskStore = create<TaskStore>()(
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
+              locationOnSite: data.location_on_site || undefined,
               location: data.location,
               attachments: data.attachments || [],
               accepted: Boolean(data.accepted),

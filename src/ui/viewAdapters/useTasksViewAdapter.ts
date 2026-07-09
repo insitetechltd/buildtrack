@@ -364,18 +364,6 @@ function deriveInitialQueueFromLegacyFilters(
   return { queue: "my_queue", bucket };
 }
 
-function sortTaskTree(
-  nodes: Task[],
-  compareFn: (left: Task, right: Task) => number,
-): Task[] {
-  return [...nodes]
-    .sort(compareFn)
-    .map((node) => ({
-      ...node,
-      children: Array.isArray(node.children) ? sortTaskTree(node.children, compareFn) : [],
-    }));
-}
-
 export interface TasksViewAdapterProps {
   onNavigateToTaskDetail?: (taskId: string) => void;
 }
@@ -500,18 +488,26 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     const sortedVisibleTasks = [...filteredTasks].sort((left, right) =>
       compareTasksBySortField(left, right, selectedSortField, selectedSortDirection),
     );
+    const visibleTasksById = new Map(sortedVisibleTasks.map((task) => [task.id, task]));
+    const getIndentationLevel = (task: Task): number => {
+      let level = 0;
+      let currentParentId = task.parentTaskId;
 
-    const sortVisibleTaskNodes = (left: Task, right: Task) =>
-      compareTasksBySortField(left, right, selectedSortField, selectedSortDirection);
-    const sortedTree = sortTaskTree(taskStore.buildTaskTree(sortedVisibleTasks), sortVisibleTaskNodes);
-    const flatTasks: Array<{ task: Task; level: number }> = [];
-    const flattenNode = (node: Task, level = 0) => {
-      flatTasks.push({ task: node, level });
-      node.children?.forEach((child) => flattenNode(child, level + 1));
+      while (currentParentId) {
+        const parentTask = visibleTasksById.get(currentParentId);
+        if (!parentTask) {
+          break;
+        }
+
+        level += 1;
+        currentParentId = parentTask.parentTaskId;
+      }
+
+      return level;
     };
-    sortedTree.forEach((node) => flattenNode(node));
 
-    const taskRowItems = flatTasks.map<TasksScreenRowItem>(({ task, level }) => {
+    const taskRowItems = sortedVisibleTasks.map<TasksScreenRowItem>((task) => {
+      const level = getIndentationLevel(task);
       const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);
@@ -746,7 +742,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     label: "Search",
     value: searchQuery,
     placeholder: "Search tasks",
-    density: "standard",
+    density: "expanded",
     structuralState,
   };
 

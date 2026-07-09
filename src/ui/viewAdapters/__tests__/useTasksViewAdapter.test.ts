@@ -480,4 +480,106 @@ describe("useTasksViewAdapter", () => {
       "task-modified-old",
     ]);
   });
+
+  it("sorts the full visible row set globally even when nested tasks are present", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-root-late",
+          title: "Root late",
+          status: "new",
+          dueDate: "2026-07-20T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-child-early",
+          parentTaskId: "task-root-late",
+          title: "Child early",
+          status: "new",
+          dueDate: "2026-07-05T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-root-middle",
+          title: "Root middle",
+          status: "new",
+          dueDate: "2026-07-10T00:00:00.000Z",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => {
+        const taskMap = new Map(tasks.map((task) => [task.id, { ...task, children: [] }]));
+        const rootTasks: any[] = [];
+
+        tasks.forEach((task: any) => {
+          const current = taskMap.get(task.id);
+
+          if (!task.parentTaskId) {
+            rootTasks.push(current);
+            return;
+          }
+
+          const parent = taskMap.get(task.parentTaskId);
+
+          if (parent) {
+            parent.children.push(current);
+            return;
+          }
+
+          rootTasks.push(current);
+        });
+
+        return rootTasks;
+      },
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    act(() => {
+      result.current.actions.selectQueue("my_queue");
+      result.current.actions.selectBucket("new");
+      result.current.actions.selectSortField("due_date");
+      result.current.actions.selectSortDirection("asc");
+    });
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual([
+      "task-child-early",
+      "task-root-middle",
+      "task-root-late",
+    ]);
+    expect(
+      result.current.output.taskRowItems.find((row) => row.taskId === "task-child-early")?.indentationLevel,
+    ).toBe(1);
+  });
+
+  it("raises the Tasks search field density by one step", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-search-density",
+          title: "Search density check",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+      ],
+      isLoading: false,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.searchInput.density).toBe("expanded");
+  });
 });

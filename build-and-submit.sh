@@ -13,11 +13,20 @@ echo ""
 # Default values
 PLATFORM="${1:-ios}"
 PROFILE="${2:-production}"
+CONFIRM="${3:-false}"
 
 echo "📋 Configuration:"
 echo "  Platform: $PLATFORM"
 echo "  Profile: $PROFILE"
 echo ""
+
+PROJECT_ROOT="$(pwd)"
+if [[ "$PROJECT_ROOT" == *" "* ]]; then
+    echo "❌ Error: Project path contains spaces:"
+    echo "   $PROJECT_ROOT"
+    echo "   Move the repo to a no-space path, e.g. /Volumes/KooDrive/InsiteApp"
+    exit 1
+fi
 
 # Determine which build-local script to use
 
@@ -52,10 +61,11 @@ echo "✅ Build completed successfully!"
 echo ""
 
 # Locate the freshly built IPA
-LATEST_IPA=$(ls -t build-*.ipa 2>/dev/null | head -1 || true)
+ARTIFACT_DIR="${EAS_LOCAL_BUILD_ARTIFACTS_DIR:-"$PROJECT_ROOT/.eas/artifacts"}"
+LATEST_IPA=$(ls -t "$ARTIFACT_DIR"/*.ipa 2>/dev/null | head -1 || true)
 if [ -z "$LATEST_IPA" ]; then
-    echo "❌ Could not find the generated IPA (build-*.ipa)."
-    echo "   Make sure the local build finished and produced an IPA in the project root."
+    echo "❌ Could not find the generated IPA in: $ARTIFACT_DIR"
+    echo "   Make sure the local build finished and wrote an IPA into the artifacts directory."
     exit 1
 fi
 
@@ -72,14 +82,14 @@ APP_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | 
 echo "Built: Version $APP_VERSION (Build $APP_BUILD)"
 echo ""
 
-# Confirm submission
-read -p "Submit this build to App Store Connect? (Y/n): " CONFIRM_SUBMIT
-
-if [[ "$CONFIRM_SUBMIT" =~ ^[Nn]$ ]]; then
-    echo ""
-    echo "⏹️  Submission cancelled by user"
-    echo "   Build is ready but not submitted"
-    exit 0
+if [ "$CONFIRM" = "true" ]; then
+    read -p "Submit this build to App Store Connect? (Y/n): " CONFIRM_SUBMIT
+    if [[ "$CONFIRM_SUBMIT" =~ ^[Nn]$ ]]; then
+        echo ""
+        echo "⏹️  Submission cancelled by user"
+        echo "   Build is ready but not submitted"
+        exit 0
+    fi
 fi
 
 echo ""
@@ -90,15 +100,8 @@ echo "=========================================================="
 echo "Uploading build to App Store Connect for TestFlight distribution..."
 echo ""
 
-# Run submission with the local IPA and capture output
-SUBMIT_OUTPUT=$(npx eas submit --platform "$PLATFORM" --path "$LATEST_IPA" --profile "$PROFILE" --non-interactive 2>&1)
-SUBMIT_EXIT_CODE=$?
-
-# Display the output
-echo "$SUBMIT_OUTPUT"
-
-# Check if submission succeeded
-if [ $SUBMIT_EXIT_CODE -ne 0 ]; then
+npx eas submit --platform "$PLATFORM" --path "$LATEST_IPA" --profile "$PROFILE" --non-interactive
+if [ $? -ne 0 ]; then
     echo ""
     echo "❌ Submission to App Store Connect failed."
     echo ""
@@ -112,15 +115,6 @@ if [ $SUBMIT_EXIT_CODE -ne 0 ]; then
     echo "   - Verify App Store Connect: https://appstoreconnect.apple.com"
     echo "   - Check build number in App Store Connect matches: $APP_BUILD"
     exit 1
-fi
-
-# Check if submission was actually successful
-if echo "$SUBMIT_OUTPUT" | grep -q "Successfully uploaded"; then
-    echo ""
-    echo "✅ Successfully submitted to TestFlight!"
-elif echo "$SUBMIT_OUTPUT" | grep -q "Submission complete"; then
-    echo ""
-    echo "✅ Submission to TestFlight complete!"
 fi
 
 echo ""
@@ -159,4 +153,3 @@ echo "════════════════════════�
 echo "Version $APP_VERSION (Build $APP_BUILD) submitted successfully!"
 echo "═══════════════════════════════════════════════════════"
 echo ""
-

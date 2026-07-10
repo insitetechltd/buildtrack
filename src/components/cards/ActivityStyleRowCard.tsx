@@ -84,7 +84,7 @@ export default function ActivityStyleRowCard({
               testID={`${testID}:title-pressable`}
               onPress={(event) => {
                 event?.stopPropagation?.();
-                setIsTitleExpanded(true);
+                setIsTitleExpanded((current) => !current);
               }}
             >
               <Text

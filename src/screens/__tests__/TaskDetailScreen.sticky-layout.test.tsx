@@ -237,7 +237,7 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(workThreadScroll).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__outer-header-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__content_split-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-1")).toBeTruthy();
     expect(workThreadScroll.props.scrollEnabled).not.toBe(false);
     expect(workThreadScroll.props.stickyHeaderIndices).toBeUndefined();
     expect(workThreadScroll.props.contentContainerStyle).toEqual(

@@ -275,7 +275,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           <View testID="task-detail__header_title_block">
             <Pressable
               testID="task-detail__header_title_pressable"
-              onPress={() => setIsHeaderTitleExpanded(true)}
+              onPress={() => setIsHeaderTitleExpanded((current) => !current)}
             >
               <Text
                 testID="task-detail__header_title_text"

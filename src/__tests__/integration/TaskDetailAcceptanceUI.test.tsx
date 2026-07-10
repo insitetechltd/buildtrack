@@ -617,7 +617,8 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__metadata_line_1-activity-1")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__metadata_line_2-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__description-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-1")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
     expect(screen.getByText("Subtask")).toBeTruthy();
@@ -670,8 +671,9 @@ describe("TaskDetailScreen acceptance UI", () => {
   it("keeps photo storytelling inside the work thread instead of a pinned evidence surface", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
-    expect(screen.getByText("Added 2 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo_caption-activity-1")).toBeNull();
+    expect(screen.queryByText("Added 2 photos")).toBeNull();
     expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
     expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-1")).toBeNull();
@@ -738,8 +740,9 @@ describe("TaskDetailScreen acceptance UI", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-activity-timeline__entry-created-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_caption-created-1")).toBeTruthy();
-    expect(screen.getByText("Added 3 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-created-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo_caption-created-1")).toBeNull();
+    expect(screen.queryByText("Added 3 photos")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__photo_caption-progress-1")).toBeNull();
   });
 

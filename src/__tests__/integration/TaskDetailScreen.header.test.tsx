@@ -224,7 +224,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
 
-  it("expands the task detail header title inline when the title text is pressed", () => {
+  it("toggles the task detail header title inline when the title text is pressed", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         header: {
@@ -243,6 +243,10 @@ describe("TaskDetailScreen header regression", () => {
     fireEvent.press(headerTitle);
 
     expect(screen.getByTestId("task-detail__header_title_text").props.numberOfLines).toBeUndefined();
+
+    fireEvent.press(screen.getByTestId("task-detail__header_title_text"));
+
+    expect(screen.getByTestId("task-detail__header_title_text").props.numberOfLines).toBe(1);
   });
 
   it("keeps quick actions inside the bounded scroll region between the info card and lower actions", () => {

@@ -53,7 +53,7 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.queryByTestId("shared-card:task-2:thumbnail-image")).toBeNull();
   });
 
-  it("expands the title inline without triggering the row press when the title text is pressed", () => {
+  it("toggles the title inline without triggering the row press when the title text is pressed", () => {
     const onPress = jest.fn();
     const screen = render(
       <ActivityStyleRowCard
@@ -74,6 +74,11 @@ describe("ActivityStyleRowCard", () => {
     fireEvent.press(title);
 
     expect(screen.getByTestId("shared-card:task-expand:title").props.numberOfLines).toBeUndefined();
+    expect(onPress).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("shared-card:task-expand:title"));
+
+    expect(screen.getByTestId("shared-card:task-expand:title").props.numberOfLines).toBe(2);
     expect(onPress).not.toHaveBeenCalled();
   });
 

@@ -24,10 +24,10 @@ This slice is presentation-only. It should not change task data, navigation targ
   - they should align off the timeline dot / rail
   - timestamp should sit on the right in that same outer row
 - No shared rounded wrapper should encapsulate both the photo block and the information below it.
-- When photos exist, the photo should take materially larger real estate on the right.
+- When photos exist, the event headline should sit above the photo and the photo should take the full available width below it.
 - Additional photos should be represented as a swipeable gallery rather than only as small thumbnails.
 - Creation photos only should appear on the first `Created by` thread event.
-- The photo count label should sit above the photo, not beside it.
+- Remove the photo count label entirely.
 - Photo interaction should be swipe-first rather than arrow-first.
 - Entry metadata should be reorganized into two lines:
   - line 1: actor name left, status badge right
@@ -190,9 +190,9 @@ The no-photo state should remain compact and easy to scan.
 When photos exist:
 
 - keep the outer actor row unchanged
-- use an asymmetric content split below
-- allow the photo area to take materially larger real estate on the right
-- place supporting narrative to the left
+- place the event headline above the photo
+- let the photo take the full available width below the headline
+- place supporting narrative below the photo when present
 
 This creates a clear shift into a photo-centric presentation without changing the meaning of the entry.
 
@@ -200,18 +200,18 @@ This creates a clear shift into a photo-centric presentation without changing th
 
 Approved visual direction:
 
-- right-heavy photo layout
+- stacked photo-first layout
 
 Structure:
 
-- left side: narrative text
-- right side: dominant lead photo
+- top: event headline
+- middle: dominant full-width lead photo
+- bottom: supporting narrative text when present
 - additional photos represented as a swipeable gallery sequence
-- photo-count caption directly above the photo block
 
 The lead photo should:
 
-- be significantly larger than the current supporting-thumbnail feel
+- take the full available entry width under the headline
 - read as the primary visual
 - indicate that more photos are available via swipe affordance or carousel cues
 
@@ -221,21 +221,9 @@ The additional photos should:
 - not rely only on small static thumbnail stacks
 - not require the user to depend on small arrow controls as the primary interaction
 
-### Photo Count Caption
-
-The photo count label should not consume its own text column beside the image.
-
-Approved direction:
-
-- render the count as a compact caption directly above the photo block
-- example: `Added 2 photos`
-- keep it visually attached to the photo, not the narrative column
-
-This reduces wasted horizontal space and reinforces that the photo area is the primary content.
-
 ### Text Block
 
-The supporting text block should sit beside or below the photo according to the approved right-heavy composition.
+The supporting text block should sit below the full-width photo when present.
 
 Its purpose is to communicate:
 
@@ -285,7 +273,7 @@ Expected direction:
 - preserve ordering, gallery open behavior, and timeline identity
 - reorganize the entry structure around:
   - outer actor row
-  - open photo/text composition
+  - open photo-first stacked composition
 - support swipe-first photo browsing inside the entry when multiple photos exist
 - attach creation-time photos to the first `Created by` event only
 
@@ -308,8 +296,7 @@ Update targeted tests to assert:
 - actor name and timestamp render in the outer row
 - first metadata line renders actor name left and status badge right
 - second metadata line renders timestamp left and completion percent right
-- photo-bearing entries render the dominant right-side image treatment
-- photo-count caption renders above the photo block
+- photo-bearing entries render the event headline above a full-width photo
 - additional-photo affordance remains present for multi-photo entries
 - swipe interaction changes photos directly within the entry
 - no shared wrapper encloses both the photo and the text block together
@@ -343,8 +330,8 @@ Update targeted tests to assert:
 - Timestamp appears on the right of the outer actor row.
 - First metadata line shows actor name left and status badge right.
 - Second metadata line shows timestamp left and completion percent right.
-- Photo-bearing entries use a right-heavy photo-centric layout.
-- The photo count label appears above the photo, not beside it.
+- Photo-bearing entries place the event headline above a full-width photo.
+- No photo-count caption is shown.
 - Additional photos are represented as swipeable gallery content with swipe as the primary interaction.
 - Creation-time photos appear on the first `Created by` event only.
 - No shared wrapper encloses both the photo block and the information below it.

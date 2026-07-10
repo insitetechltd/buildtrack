@@ -6,6 +6,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useProjectStoreWithCompanyInit } from '../../state/projectStore.supabase';
 import { useUserStoreWithInit } from '../../state/userStore.supabase';
 import { useProjectFilterStore } from '../../state/projectFilterStore';
+import { uploadFileWithVerification } from '../../api/fileUploadService';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
@@ -30,6 +31,15 @@ const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
 const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
+
+function isSelectedPhotoAttachment(attachment: unknown): attachment is SelectedPhoto {
+  return Boolean(
+    attachment &&
+      typeof attachment === 'object' &&
+      'uri' in (attachment as Record<string, unknown>) &&
+      'fileName' in (attachment as Record<string, unknown>)
+  );
+}
 
 function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
   return Boolean(
@@ -561,11 +571,58 @@ export function useCreateTaskViewAdapter({
     return true;
   };
 
+  const normalizeAttachmentsForSubmission = useCallback(async (
+    attachments: CreateTaskFormModel['attachments'],
+    entityId?: string,
+  ) => {
+    const durableAttachments = attachments.filter(
+      (attachment): attachment is string => typeof attachment === 'string',
+    );
+    const localPhotos = attachments.filter(isSelectedPhotoAttachment);
+
+    if (!entityId || localPhotos.length === 0 || !user?.companyId || !user?.id) {
+      return {
+        baseAttachments: durableAttachments,
+        uploadedAttachments: [] as string[],
+      };
+    }
+
+    const uploadedAttachments: string[] = [];
+
+    for (const photo of localPhotos) {
+      const result = await uploadFileWithVerification({
+        file: {
+          uri: photo.annotatedUri || photo.uri,
+          name: photo.fileName,
+          type: 'image/jpeg',
+        },
+        entityType: 'task',
+        entityId,
+        companyId: user.companyId,
+        userId: user.id,
+      });
+
+      if (!result.success || !result.file?.public_url) {
+        throw new Error(result.error || 'Photo upload failed');
+      }
+
+      uploadedAttachments.push(result.file.public_url);
+    }
+
+    return {
+      baseAttachments: durableAttachments,
+      uploadedAttachments,
+    };
+  }, [user?.companyId, user?.id]);
+
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
       const trimmedLocationOnSite = formData.locationOnSite.trim() || undefined;
+      const existingAttachmentUrls = formData.attachments.filter(
+        (attachment): attachment is string => typeof attachment === 'string',
+      );
 
       if (formData.projectId && trimmedLocationOnSite) {
         await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
@@ -573,6 +630,10 @@ export function useCreateTaskViewAdapter({
 
       // Basic submit logic extracted from screen
       if (editTaskId) {
+        const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
+          formData.attachments,
+          editTaskId,
+        );
         await updateTask(editTaskId, {
           title: formData.title,
           description: formData.description,
@@ -584,11 +645,11 @@ export function useCreateTaskViewAdapter({
           dueDate: formData.dueDate.toISOString(),
           locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
-          attachments: formData.attachments,
+          attachments: [...baseAttachments, ...uploadedAttachments],
           _editReason: options?.editReason,
         } as Partial<any>);
       } else if (parentTaskId) {
-        await createSubTask(parentTaskId, {
+        const createdSubTaskId = await createSubTask(parentTaskId, {
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -600,10 +661,19 @@ export function useCreateTaskViewAdapter({
           locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
-          attachments: formData.attachments,
+          attachments: existingAttachmentUrls,
         });
+        const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
+          formData.attachments,
+          createdSubTaskId,
+        );
+        if (uploadedAttachments.length > 0) {
+          await updateTask(createdSubTaskId, {
+            attachments: [...baseAttachments, ...uploadedAttachments],
+          } as Partial<any>);
+        }
       } else {
-        await createTask({
+        const createdTaskId = await createTask({
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
@@ -615,8 +685,17 @@ export function useCreateTaskViewAdapter({
           locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
-          attachments: formData.attachments,
+          attachments: existingAttachmentUrls,
         });
+        const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
+          formData.attachments,
+          createdTaskId,
+        );
+        if (uploadedAttachments.length > 0) {
+          await updateTask(createdTaskId, {
+            attachments: [...baseAttachments, ...uploadedAttachments],
+          } as Partial<any>);
+        }
       }
       await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
       return true;

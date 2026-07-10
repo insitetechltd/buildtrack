@@ -8,6 +8,7 @@ const mockUpdateTask = jest.fn();
 const mockFetchTaskById = jest.fn();
 const mockFetchProjectLocations = jest.fn();
 const mockEnsureProjectLocation = jest.fn();
+const mockUploadFileWithVerification = jest.fn();
 const mockGetAllUsers = jest.fn();
 const mockGetProjectsByUser = jest.fn();
 const mockGetProjectUserAssignments = jest.fn();
@@ -45,6 +46,10 @@ jest.mock("../../../state/projectFilterStore", () => ({
     const state = mockUseProjectFilterStore();
     return selector ? selector(state) : state;
   },
+}));
+
+jest.mock("../../../api/fileUploadService", () => ({
+  uploadFileWithVerification: (...args: unknown[]) => mockUploadFileWithVerification(...args),
 }));
 
 jest.mock("../../../utils/useFileUpload", () => ({
@@ -94,6 +99,12 @@ describe("useCreateTaskViewAdapter", () => {
     mockCreateTask.mockResolvedValue("task-1");
     mockCreateSubTask.mockResolvedValue("subtask-1");
     mockUpdateTask.mockResolvedValue(undefined);
+    mockUploadFileWithVerification.mockResolvedValue({
+      success: true,
+      file: {
+        public_url: "https://cdn.example.com/company-1/tasks/task-1/uploaded-photo.jpg",
+      },
+    });
     mockFetchTaskById.mockResolvedValue(undefined);
     mockFetchProjectLocations.mockResolvedValue([]);
     mockEnsureProjectLocation.mockResolvedValue(undefined);
@@ -571,6 +582,54 @@ describe("useCreateTaskViewAdapter", () => {
         title: "Task without site location",
         projectId: "project-1",
         locationOnSite: undefined,
+      }),
+    );
+  });
+
+  it("uploads local photo attachments after task creation and patches the task with durable URLs", async () => {
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({}),
+    );
+
+    act(() => {
+      result.current.actions.updateField("title", "Photo task");
+      result.current.actions.updateField("description", "Install tagged item");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
+      result.current.actions.updateField("attachments", [
+        {
+          uri: "file:///draft-photo.jpg",
+          fileName: "draft-photo.jpg",
+          isAnnotated: false,
+        },
+      ]);
+    });
+
+    await act(async () => {
+      await result.current.actions.submit();
+    });
+
+    expect(mockCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachments: [],
+      }),
+    );
+    expect(mockUploadFileWithVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: "task",
+        entityId: "task-1",
+        companyId: "company-1",
+        userId: "user-1",
+        file: expect.objectContaining({
+          uri: "file:///draft-photo.jpg",
+          name: "draft-photo.jpg",
+        }),
+      }),
+    );
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        attachments: ["https://cdn.example.com/company-1/tasks/task-1/uploaded-photo.jpg"],
       }),
     );
   });

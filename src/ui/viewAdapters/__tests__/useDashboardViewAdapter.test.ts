@@ -897,6 +897,98 @@ describe("useDashboardViewAdapter", () => {
     );
   });
 
+  it("extracts preview-photo URIs from object-shaped task attachments on activity cards", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [
+            {
+              uri: "file:///activity-photo-object.jpg",
+              fileName: "activity-photo-object.jpg",
+              isAnnotated: false,
+            },
+          ],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-04T08:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+          completionPercentage: 65,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
+      "file:///activity-photo-object.jpg",
+    );
+  });
+
+  it("extracts preview-photo URIs from JSON-stringified attachment blobs on activity cards", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [
+            JSON.stringify({
+              uri: "file:///activity-photo-stringified.jpg",
+              fileName: "activity-photo-stringified.jpg",
+              isAnnotated: false,
+            }),
+          ],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-04T08:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+          completionPercentage: 65,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
+      "file:///activity-photo-stringified.jpg",
+    );
+  });
+
   it("excludes declined and archived tasks from activity-home counts", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 

@@ -4,6 +4,7 @@ import { useAuthStore } from '../../state/authStore';
 import { useUserStore } from '../../state/userStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
+import { getFileUrl } from '../../api/fileUploadService';
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
 import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
 import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
@@ -217,9 +218,59 @@ function isPdfAssetUri(uri: string): boolean {
   return /\.pdf(?:$|[?#])/i.test(uri);
 }
 
+function resolveAssetUri(value: unknown): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (typeof value === 'object') {
+    const attachment = value as {
+      uri?: string;
+      annotatedUri?: string;
+      public_url?: string;
+      publicUrl?: string;
+      storage_path?: string;
+      storagePath?: string;
+    };
+
+    return (
+      resolveAssetUri(attachment.public_url) ??
+      resolveAssetUri(attachment.publicUrl) ??
+      resolveAssetUri(attachment.annotatedUri) ??
+      resolveAssetUri(attachment.uri) ??
+      resolveAssetUri(attachment.storage_path) ??
+      resolveAssetUri(attachment.storagePath)
+    );
+  }
+
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmedValue = value.trim();
+  if (
+    (trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) ||
+    (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'))
+  ) {
+    try {
+      return resolveAssetUri(JSON.parse(trimmedValue));
+    } catch {
+      // Fall through to storage-path resolution for non-JSON strings.
+    }
+  }
+
+  if (/^(https?:|file:|content:|data:|asset:)/i.test(value)) {
+    return value;
+  }
+
+  return getFileUrl(value) ?? undefined;
+}
+
 function getActivityAssetUris(activity: TaskActivity): string[] {
-  const activityData = activity.data as { photos?: string[] } | undefined;
-  return Array.isArray(activityData?.photos) ? activityData.photos.filter(Boolean) : [];
+  const activityData = activity.data as { photos?: unknown[] } | undefined;
+  return Array.isArray(activityData?.photos)
+    ? activityData.photos.map(resolveAssetUri).filter((uri): uri is string => Boolean(uri))
+    : [];
 }
 
 function collectActivityPhotoUrls(activity: TaskActivity): string[] {
@@ -232,7 +283,10 @@ function collectActivityDocumentUri(activity: TaskActivity): string | undefined 
 
 function collectTaskPhotoAttachments(task: Task): string[] {
   return Array.isArray(task.attachments)
-    ? task.attachments.filter(Boolean).filter((uri) => !isPdfAssetUri(uri))
+    ? task.attachments
+        .map(resolveAssetUri)
+        .filter((uri): uri is string => Boolean(uri))
+        .filter((uri) => !isPdfAssetUri(uri))
     : [];
 }
 
@@ -246,7 +300,10 @@ function isCreationActivity(activity: TaskActivity): boolean {
 
 function collectTaskDocumentAttachment(task: Task): string | undefined {
   return Array.isArray(task.attachments)
-    ? task.attachments.filter(Boolean).find((uri) => isPdfAssetUri(uri))
+    ? task.attachments
+        .map(resolveAssetUri)
+        .filter((uri): uri is string => Boolean(uri))
+        .find((uri) => isPdfAssetUri(uri))
     : undefined;
 }
 

@@ -148,8 +148,39 @@ function resolveImageUri(uri?: string | null): string | undefined {
     return undefined;
   }
 
+  if (typeof uri === "object") {
+    const attachment = uri as {
+      uri?: string;
+      annotatedUri?: string;
+      public_url?: string;
+      publicUrl?: string;
+      storage_path?: string;
+      storagePath?: string;
+    };
+    return (
+      resolveImageUri(attachment.public_url) ??
+      resolveImageUri(attachment.publicUrl) ??
+      resolveImageUri(attachment.annotatedUri) ??
+      resolveImageUri(attachment.uri) ??
+      resolveImageUri(attachment.storage_path) ??
+      resolveImageUri(attachment.storagePath)
+    );
+  }
+
   if (/^(https?:|file:|content:|data:|asset:)/i.test(uri)) {
     return uri;
+  }
+
+  const trimmedUri = uri.trim();
+  if (
+    (trimmedUri.startsWith("{") && trimmedUri.endsWith("}")) ||
+    (trimmedUri.startsWith("[") && trimmedUri.endsWith("]"))
+  ) {
+    try {
+      return resolveImageUri(JSON.parse(trimmedUri));
+    } catch {
+      // Fall through to storage-path resolution for non-JSON strings.
+    }
   }
 
   return getFileUrl(uri) ?? undefined;

@@ -22,6 +22,10 @@ jest.mock("@/utils/useTranslation", () => ({
   useTranslation: jest.fn(),
 }));
 
+jest.mock("@/api/fileUploadService", () => ({
+  getFileUrl: jest.fn((value: string) => `https://cdn.example.com/${value}`),
+}));
+
 describe("useTaskDetailViewAdapter", () => {
   const mockUpdateTask = jest.fn();
   const dueDate = "2026-10-10T08:00:00.000Z";
@@ -820,6 +824,144 @@ describe("useTaskDetailViewAdapter", () => {
         expect.objectContaining({
           id: "progress-1",
           photoUrls: ["https://example.com/progress-photo-1.jpg"],
+        }),
+      ]),
+    );
+  });
+
+  it("normalizes object-shaped creation attachments into renderable photo URLs", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-object-attachments",
+          title: "Object Attachment Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Render attachment objects safely.",
+          attachments: [
+            {
+              uri: "file:///create-photo-object.jpg",
+              fileName: "create-photo-object.jpg",
+              isAnnotated: false,
+            },
+          ],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "created-object-1",
+              taskId: "task-object-attachments",
+              userId: "manager-1",
+              activityType: "creation",
+              timestamp: activityTimestampOlder,
+              description: "Task created.",
+              createdAt: activityTimestampOlder,
+            },
+          ],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-object-attachments",
+      }),
+    );
+
+    expect(result.current.output.activityThread).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "created-object-1",
+          photoUrls: ["file:///create-photo-object.jpg"],
+        }),
+      ]),
+    );
+  });
+
+  it("normalizes JSON-stringified creation attachments into renderable photo URLs", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-stringified-attachments",
+          title: "Stringified Attachment Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Render serialized attachment payloads safely.",
+          attachments: [
+            JSON.stringify({
+              uri: "file:///create-photo-stringified.jpg",
+              fileName: "create-photo-stringified.jpg",
+              isAnnotated: false,
+            }),
+          ],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "created-stringified-1",
+              taskId: "task-stringified-attachments",
+              userId: "manager-1",
+              activityType: "creation",
+              timestamp: activityTimestampOlder,
+              description: "Task created.",
+              createdAt: activityTimestampOlder,
+            },
+          ],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-stringified-attachments",
+      }),
+    );
+
+    expect(result.current.output.activityThread).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "created-stringified-1",
+          photoUrls: ["file:///create-photo-stringified.jpg"],
         }),
       ]),
     );

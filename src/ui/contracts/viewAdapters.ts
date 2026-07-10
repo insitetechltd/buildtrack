@@ -341,6 +341,7 @@ export interface TaskDetailInfoCardRow {
 
 export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   descriptionLabel?: string;
+  siteLocationLabel?: string;
   assignedByLabel?: string;
   assignedToLabel?: string;
   primaryOwnerLabel?: string;

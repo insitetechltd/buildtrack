@@ -34,6 +34,7 @@ export default function ActivityStyleRowCard({
   onPress,
 }: ActivityStyleRowCardProps) {
   const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   useEffect(() => {
     setHasUsableImage(Boolean(imageUri));
@@ -79,12 +80,21 @@ export default function ActivityStyleRowCard({
         </View>
         <View className="min-w-0 flex-1 justify-center p-4">
           <View className="min-w-0">
-            <Text
-              className={titleClassName ?? "text-base font-semibold text-slate-900"}
-              numberOfLines={2}
+            <Pressable
+              testID={`${testID}:title-pressable`}
+              onPress={(event) => {
+                event?.stopPropagation?.();
+                setIsTitleExpanded(true);
+              }}
             >
-              {title}
-            </Text>
+              <Text
+                testID={`${testID}:title`}
+                className={titleClassName ?? "text-base font-semibold text-slate-900"}
+                numberOfLines={isTitleExpanded ? undefined : 2}
+              >
+                {title}
+              </Text>
+            </Pressable>
             <Text
               className={subtitleClassName ?? "mt-1 text-sm text-slate-500"}
               numberOfLines={2}

@@ -110,6 +110,7 @@ describe("TaskDetailScreen header regression", () => {
       density: "standard",
       structuralState: "ready",
       descriptionLabel: "Confirm supplier lead times before final delivery.",
+      siteLocationLabel: "Level 9 Rooftop",
       assignedByLabel: "Casey",
       assignedToLabel: "Sam",
       primaryOwnerLabel: "Sam",
@@ -198,7 +199,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 
-  it("renders the loaded header title and calls the provided back callback", () => {
+  it("renders the loaded header title, badge row, and calls the provided back callback", () => {
     const onNavigateBack = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -208,14 +209,40 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
 
-    expect(screen.getByText("Task Details")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__header_title_block")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
+    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
+    expect(screen.getByText("Interior")).toBeTruthy();
+    expect(screen.getByText("In Progress")).toBeTruthy();
+    expect(screen.getByText("50% complete")).toBeTruthy();
+    expect(screen.getByText("Due Jul 10, 2026")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
 
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
+  });
+
+  it("expands the task detail header title inline when the title text is pressed", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        header: {
+          title:
+            "A very long task detail title that should expand inline when the header title text is pressed",
+        },
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+    const headerTitle = screen.getByTestId("task-detail__header_title_text");
+
+    expect(headerTitle.props.numberOfLines).toBe(1);
+
+    fireEvent.press(headerTitle);
+
+    expect(screen.getByTestId("task-detail__header_title_text").props.numberOfLines).toBeUndefined();
   });
 
   it("keeps quick actions inside the bounded scroll region between the info card and lower actions", () => {
@@ -451,8 +478,10 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
-    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByText("Details")).toBeNull();
+    expect(screen.getByText("Site: Level 9 Rooftop")).toBeTruthy();
+    expect(screen.getByText("By: Casey")).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
     expect(screen.queryByText("Subtasks")).toBeNull();
@@ -509,10 +538,10 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
     expect(within(activityThread).getByText("Work thread")).toBeTruthy();
     expect(within(activityThread).getByText("Submitted task for review")).toBeTruthy();
-    expect(within(activityThread).queryByText("Marked 100% complete")).toBeNull();
+    expect(within(activityThread).getByText("Marked 100% complete")).toBeTruthy();
     expect(within(activityThread).getByText("Jul 5, 09:30")).toBeTruthy();
     expect(within(activityThread).getByText("Sam")).toBeTruthy();
-    expect(within(activityThread).getByText("100%")).toBeTruthy();
+    expect(within(activityThread).getByText("100% complete")).toBeTruthy();
     expect(screen.queryByText("No photos for this update")).toBeNull();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
   });

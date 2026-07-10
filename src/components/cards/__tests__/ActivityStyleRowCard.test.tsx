@@ -53,6 +53,30 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.queryByTestId("shared-card:task-2:thumbnail-image")).toBeNull();
   });
 
+  it("expands the title inline without triggering the row press when the title text is pressed", () => {
+    const onPress = jest.fn();
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-expand"
+        title="A very long task title that should expand inline when pressed from inside the row card"
+        subtitle="North Tower"
+        metaLabel="Jul 8 at 9:15 AM"
+        badgeLabel="Review"
+        imageUri={undefined}
+        onPress={onPress}
+      />,
+    );
+
+    const title = screen.getByTestId("shared-card:task-expand:title");
+
+    expect(title.props.numberOfLines).toBe(2);
+
+    fireEvent.press(title);
+
+    expect(screen.getByTestId("shared-card:task-expand:title").props.numberOfLines).toBeUndefined();
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
   it("renders a labeled floating top-left badge when provided", () => {
     const screen = render(
       <ActivityStyleRowCard

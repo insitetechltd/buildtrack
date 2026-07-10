@@ -65,10 +65,16 @@ jest.mock("../../components/ProfileMenu", () => ({
 
 jest.mock("../../components/ModernScreenHeader", () => ({
   __esModule: true,
-  default: ({ title }: { title: string }) => {
+  default: ({
+    title,
+    titleNode,
+  }: {
+    title: string;
+    titleNode?: React.ReactNode;
+  }) => {
     const ReactNative = require("react-native");
-    const MockText = ReactNative.Text;
-    return <MockText>{title}</MockText>;
+    const { Text, View } = ReactNative;
+    return <View>{titleNode ? titleNode : <Text>{title}</Text>}</View>;
   },
 }));
 
@@ -120,6 +126,7 @@ describe("TaskDetailScreen acceptance UI", () => {
       density: "standard",
       structuralState: "ready",
       descriptionLabel: "Confirm supplier lead times before final delivery.",
+      siteLocationLabel: "Level 9 Rooftop",
       assignedByLabel: "Casey",
       assignedToLabel: "Sam, Alex",
       primaryOwnerLabel: "Sam",
@@ -225,7 +232,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders one scrolling info card containing only description and delegation", () => {
+  it("renders one scrolling info card as Task Details with compact metadata chips", () => {
     const screen = render(
       <TaskDetailInfoCard
         model={{
@@ -233,6 +240,7 @@ describe("TaskDetailScreen acceptance UI", () => {
           density: "standard",
           structuralState: "ready",
           descriptionLabel: "Confirm supplier lead times before final delivery.",
+          siteLocationLabel: "Level 9 Rooftop",
           assignedByLabel: "Casey",
           assignedToLabel: "Sam, Alex",
           primaryOwnerLabel: "Sam",
@@ -242,17 +250,15 @@ describe("TaskDetailScreen acceptance UI", () => {
     );
 
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
-    expect(screen.getByText("Description")).toBeTruthy();
-    expect(screen.getByText("Delegation")).toBeTruthy();
-    expect(screen.queryByText("Details")).toBeNull();
+    expect(screen.getByText("Task Details")).toBeTruthy();
     expect(screen.getByText("Confirm supplier lead times before final delivery.")).toBeTruthy();
-    expect(screen.getByText("Assigned by")).toBeTruthy();
-    expect(screen.getByText("Assigned to")).toBeTruthy();
-    expect(screen.getByText("Casey")).toBeTruthy();
-    expect(screen.getByText("Sam, Alex")).toBeTruthy();
+    expect(screen.getByText("Site: Level 9 Rooftop")).toBeTruthy();
+    expect(screen.getByText("By: Casey")).toBeTruthy();
+    expect(screen.getByText("To: Sam, Alex")).toBeTruthy();
+    expect(screen.getByText("Owner: Sam")).toBeTruthy();
   });
 
-  it("uses larger readable sizes for hero and info-card secondary text", () => {
+  it("uses larger readable sizes for hero and compact Task Details chip text", () => {
     const { taskHero, infoCard } = createAdapterOutput();
 
     const hero = render(<TaskDetailHero model={taskHero} />);
@@ -263,14 +269,16 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(hero.getByText("50% complete").props.className).toContain("text-base");
     expect(hero.getByText("Due Jul 10, 2026").props.className).toContain("text-base");
 
-    expect(infoCardScreen.getByText("Description").props.className).toContain("text-base");
+    expect(infoCardScreen.getByTestId("task-detail__info_card").props.className).toContain("p-[14px]");
+    expect(infoCardScreen.getByText("Task Details").props.className).toContain("text-base");
     expect(infoCardScreen.getByText("Confirm supplier lead times before final delivery.").props.className).toContain(
       "text-lg",
     );
-    expect(infoCardScreen.getByText("Delegation").props.className).toContain("text-base");
-    expect(infoCardScreen.getByText("Assigned by").props.className).toContain("text-base");
-    expect(infoCardScreen.getByText("Casey").props.className).toContain("text-lg");
-    expect(infoCardScreen.queryByText("Details")).toBeNull();
+    expect(infoCardScreen.getByTestId("task-detail__detail_chips").props.className).toContain("mt-3");
+    expect(infoCardScreen.getByTestId("task-detail__detail_chips").props.className).toContain("gap-1.5");
+    expect(infoCardScreen.getByText("Site: Level 9 Rooftop").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("By: Casey").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("To: Sam, Alex").props.className).toContain("text-sm");
   });
 
   it("keeps quick actions below the info card in the task-detail content stack", () => {
@@ -597,15 +605,20 @@ describe("TaskDetailScreen acceptance UI", () => {
     );
   });
 
-  it("renders task detail as a work-thread surface with hero, info card, and unified thread but no evidence or separate subtasks card", () => {
+  it("renders task detail as a work-thread surface with header badges, one Task Details card, and no hero", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__hero")).toBeNull();
+    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_1-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_2-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
     expect(screen.getByText("Subtask")).toBeTruthy();
     expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
@@ -619,7 +632,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByText("Submitted task for review")).toBeTruthy();
   });
 
-  it("renders a small critical flag in the hero and no standalone critical section", () => {
+  it("renders the critical badge inside the header badge row and no standalone critical section", () => {
     const baseOutput = createAdapterOutput();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -635,7 +648,7 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__hero_critical_flag")).toBeTruthy();
+    expect(screen.getByText("Critical this week")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
   });
 
@@ -657,24 +670,77 @@ describe("TaskDetailScreen acceptance UI", () => {
   it("keeps photo storytelling inside the work thread instead of a pinned evidence surface", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-1")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__thumbnail-strip-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
+    expect(screen.getByText("Added 2 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-1")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-1")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_stage_photo_featured")).toBeNull();
   });
 
-  it("renders subtask context in the work thread and opens the full-photo viewer with gallery position on tap", () => {
+  it("renders subtask context in the work thread and opens the full-photo viewer from the swiped gallery photo", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Subtask")).toBeTruthy();
     expect(screen.getByText("Inspect ceiling grid")).toBeTruthy();
 
+    fireEvent(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1"), "momentumScrollEnd", {
+      nativeEvent: {
+        contentOffset: { x: 320, y: 0 },
+        layoutMeasurement: { width: 320, height: 240 },
+      },
+    });
     fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-1"));
 
     expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
-      uri: "https://example.com/activity-photo.jpg",
+      uri: "https://example.com/activity-photo-2.jpg",
     });
-    expect(screen.getByText("1 / 2")).toBeTruthy();
+    expect(screen.getByText("2 / 2")).toBeTruthy();
+  });
+
+  it("anchors creation-time photos to the created event only in the rendered thread contract", () => {
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        activityThread: [
+          {
+            id: "created-1",
+            actorLabel: "Casey",
+            eventLabel: "Created task",
+            timestampLabel: "Jul 1, 08:00",
+            progressLabel: "0%",
+            detailLabel: "Created the task with initial site photos.",
+            photoUrls: [
+              "https://example.com/create-photo-1.jpg",
+              "https://example.com/create-photo-2.jpg",
+              "https://example.com/create-photo-3.jpg",
+            ],
+            density: "standard",
+            structuralState: "ready",
+          },
+          {
+            id: "progress-1",
+            actorLabel: "Sam",
+            eventLabel: "Updated progress to 40%",
+            timestampLabel: "Jul 2, 09:30",
+            progressLabel: "40%",
+            detailLabel: "Added the first progress update.",
+            photoUrls: [],
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: createAdapterActions(),
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("task-activity-timeline__entry-created-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_caption-created-1")).toBeTruthy();
+    expect(screen.getByText("Added 3 photos")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo_caption-progress-1")).toBeNull();
   });
 
   it("does not render the top project-label string in the compact hero", () => {
@@ -692,7 +758,7 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Replace ceiling tiles")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__header_title_block")).toBeTruthy();
     expect(screen.queryByText("Hero Project Label")).toBeNull();
   });
 

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo } from "react";
-import { Image, Modal as RNModal, Pressable, Text, View } from "react-native";
+import { Image, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
+import { cn } from "@/utils/cn";
 import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
@@ -87,6 +88,7 @@ export default function TaskActivityTimeline({
     photos: string[];
     index: number;
   }>();
+  const [galleryIndices, setGalleryIndices] = React.useState<Record<string, number>>({});
   const [leadPhotoAspectRatios, setLeadPhotoAspectRatios] = React.useState<Record<string, number>>({});
   const normalizedActivities = useMemo(
     () => {
@@ -238,6 +240,15 @@ export default function TaskActivityTimeline({
         {normalizedActivities.map((activity, index) => {
           const isLastActivity = index === normalizedActivities.length - 1;
           const isActiveEntry = (activeEntryId ?? resolvedTopEntryId) === activity.id;
+          const hasPhotos = activity.photoUrls.length > 0;
+          const currentPhotoIndex = Math.min(
+            galleryIndices[activity.id] ?? 0,
+            Math.max(activity.photoUrls.length - 1, 0),
+          );
+          const currentPhotoUri =
+            activity.photoUrls[currentPhotoIndex] ?? activity.photoUrls[0];
+          const progressCompleteLabel =
+            activity.progressLabel === "—" ? activity.progressLabel : `${activity.progressLabel} complete`;
 
           return (
             <View
@@ -255,65 +266,105 @@ export default function TaskActivityTimeline({
                 {!isLastActivity ? <View className="mt-2 w-0.5 flex-1 bg-blue-100" /> : null}
               </View>
 
-              <View className="flex-1">
-                <View className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <View className="min-w-0 flex-1 pb-1">
+                <View
+                  testID={`task-activity-timeline__outer-header-${activity.id}`}
+                  className="mb-3 gap-2"
+                >
                   <View
-                    testID={`task-activity-timeline__entry-header-${activity.id}`}
-                    className="mb-3 flex-row items-center justify-between gap-3"
+                    testID={`task-activity-timeline__metadata_line_1-${activity.id}`}
+                    className="flex-row items-center justify-between gap-3"
                   >
-                    <View className="min-w-0 flex-1 flex-row items-center">
-                      <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-slate-900">
-                        <Text className="text-sm font-semibold text-white">
-                          {activity.actorLabel.trim().slice(0, 1).toUpperCase() || "?"}
-                        </Text>
-                      </View>
-                      <View className="min-w-0 flex-1">
-                        <Text className="text-base font-semibold text-slate-900" numberOfLines={1}>
+                    <View className="min-w-0 flex-1">
+                      <View
+                        testID={`task-activity-timeline__actor-row-${activity.id}`}
+                        className="min-w-0 flex-row items-center"
+                      >
+                        <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-slate-900">
+                          <Text className="text-sm font-semibold text-white">
+                            {activity.actorLabel.trim().slice(0, 1).toUpperCase() || "?"}
+                          </Text>
+                        </View>
+                        <Text className="min-w-0 flex-1 text-base font-semibold text-slate-900" numberOfLines={1}>
                           {activity.actorLabel}
                         </Text>
-                        <View
-                          testID={`task-activity-timeline__rail-metadata-${activity.id}`}
-                          className="mt-1 flex-row flex-wrap items-center gap-x-2 gap-y-1"
-                        >
-                          <Text className="text-sm font-medium text-slate-500">
-                            {activity.progressLabel}
-                          </Text>
-                          {activity.statusLabel ? (
-                            <Text className="rounded-full bg-slate-200 px-2.5 py-1 text-sm font-semibold text-slate-700">
-                              {activity.statusLabel}
+                      </View>
+                    </View>
+                    {activity.statusLabel ? (
+                      <View className="rounded-full bg-slate-200 px-2.5 py-1">
+                        <Text className="text-sm font-semibold text-slate-700">
+                          {activity.statusLabel}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View
+                    testID={`task-activity-timeline__metadata_line_2-${activity.id}`}
+                    className="flex-row items-center justify-between gap-3"
+                  >
+                    <Text
+                      testID={`task-activity-timeline__timestamp-${activity.id}`}
+                      className="min-w-0 flex-1 text-sm font-medium text-slate-400"
+                    >
+                      {activity.timestampLabel}
+                    </Text>
+                    <Text className="text-sm font-semibold text-slate-500">
+                      {progressCompleteLabel}
+                    </Text>
+                  </View>
+                </View>
+
+                {hasPhotos ? (
+                  <View
+                    testID={`task-activity-timeline__content_split-${activity.id}`}
+                    className="flex-row items-start gap-4"
+                  >
+                    <View className="min-w-0 flex-[0.95] pt-1">
+                      {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
+                        <View className="mb-3 flex-row flex-wrap items-center gap-2">
+                          {activity.subtaskBadgeLabel ? (
+                            <View className="rounded-full bg-blue-50 px-2 py-1">
+                              <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                                {activity.subtaskBadgeLabel}
+                              </Text>
+                            </View>
+                          ) : null}
+                          {activity.subtaskTitleLabel ? (
+                            <Text className="text-base font-medium text-slate-700">
+                              {activity.subtaskTitleLabel}
                             </Text>
                           ) : null}
                         </View>
-                      </View>
-                    </View>
-
-                    <Text className="shrink text-sm font-medium text-slate-400">
-                      {activity.timestampLabel}
-                    </Text>
-                  </View>
-
-                  {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
-                    <View className="mb-3 flex-row flex-wrap items-center gap-2">
-                      {activity.subtaskBadgeLabel ? (
-                        <View className="rounded-full bg-blue-50 px-2 py-1">
-                          <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
-                            {activity.subtaskBadgeLabel}
-                          </Text>
-                        </View>
                       ) : null}
-                      {activity.subtaskTitleLabel ? (
-                        <Text className="text-base font-medium text-slate-700">
-                          {activity.subtaskTitleLabel}
+
+                      <Text
+                        testID={`task-activity-timeline__description-${activity.id}`}
+                        className="text-base font-semibold text-slate-900"
+                      >
+                        {activity.eventLabel}
+                      </Text>
+                      {activity.detailLabel ? (
+                        <Text className="mt-2 text-sm leading-6 text-slate-600">
+                          {activity.detailLabel}
                         </Text>
                       ) : null}
                     </View>
-                  ) : null}
 
-                  {activity.photoUrls.length > 0 ? (
-                    <View>
+                    <View
+                      testID={`task-activity-timeline__photo_column-${activity.id}`}
+                      className="flex-[1.45]"
+                    >
+                      <Text
+                        testID={`task-activity-timeline__photo_caption-${activity.id}`}
+                        className="mb-2 text-base font-semibold text-slate-900"
+                      >
+                        {activity.photoUrls.length === 1
+                          ? "Added 1 photo"
+                          : `Added ${activity.photoUrls.length} photos`}
+                      </Text>
                       <View
                         testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
-                        className="-mx-4 overflow-hidden bg-slate-200"
+                        className="overflow-hidden rounded-3xl bg-slate-200"
                         style={{
                           aspectRatio: resolveLeadPhotoAspectRatio(
                             activity,
@@ -325,53 +376,100 @@ export default function TaskActivityTimeline({
                           testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
                           accessibilityRole="button"
                           className="h-full w-full"
-                          onPress={() => openGallery(activity.photoUrls, 0)}
+                          onPress={() => openGallery(activity.photoUrls, currentPhotoIndex)}
                         >
-                          <Image
-                            testID={`task-activity-timeline__lead-photo-${activity.id}`}
-                            accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                            source={{ uri: activity.photoUrls[0] }}
-                            resizeMode="contain"
-                            className="h-full w-full bg-slate-200"
-                          />
+                          <ScrollView
+                            testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            onMomentumScrollEnd={(event) => {
+                              const nextIndex = Math.round(
+                                event.nativeEvent.contentOffset.x /
+                                  Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+                              );
+                              setGalleryIndices((current) => ({
+                                ...current,
+                                [activity.id]: Math.min(
+                                  Math.max(nextIndex, 0),
+                                  activity.photoUrls.length - 1,
+                                ),
+                              }));
+                            }}
+                            className="h-full w-full"
+                          >
+                            {activity.photoUrls.map((photoUri, photoIndex) => (
+                              <View
+                                key={`${activity.id}:photo:${photoIndex}`}
+                                className="h-full w-full"
+                              >
+                                <Image
+                                  testID={
+                                    photoIndex === currentPhotoIndex
+                                      ? `task-activity-timeline__lead-photo-${activity.id}`
+                                      : undefined
+                                  }
+                                  accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
+                                  source={{ uri: photoUri }}
+                                  resizeMode="contain"
+                                  className="h-full w-full bg-slate-200"
+                                />
+                              </View>
+                            ))}
+                          </ScrollView>
                         </Pressable>
                       </View>
 
                       {activity.photoUrls.length > 1 ? (
                         <View
-                          testID={`task-activity-timeline__thumbnail-strip-${activity.id}`}
-                          className="mt-2 flex-row flex-wrap gap-2 px-4"
+                          testID={`task-activity-timeline__gallery_pager-${activity.id}`}
+                          className="mt-3 flex-row items-center justify-center gap-1.5"
                         >
-                          {activity.photoUrls.slice(1).map((photoUri, photoIndex) => (
-                            <Pressable
-                              key={`${activity.id}-thumb-${photoIndex + 1}`}
-                              testID={`task-activity-timeline__thumb-photo-pressable-${activity.id}-${photoIndex + 1}`}
-                              accessibilityRole="button"
-                              onPress={() => openGallery(activity.photoUrls, photoIndex + 1)}
-                            >
-                              <Image
-                                testID={`task-activity-timeline__thumb-photo-${activity.id}-${photoIndex + 1}`}
-                                accessibilityLabel={`Thumbnail photo ${photoIndex + 2} for ${activity.eventLabel}`}
-                                source={{ uri: photoUri }}
-                                resizeMode="cover"
-                                className="h-14 w-14 rounded-2xl bg-slate-200"
-                              />
-                            </Pressable>
+                          {activity.photoUrls.map((_, photoIndex) => (
+                            <View
+                              key={`${activity.id}:dot:${photoIndex}`}
+                              className={cn(
+                                "h-2 rounded-full",
+                                photoIndex === currentPhotoIndex ? "w-5 bg-[#08576E]" : "w-2 bg-slate-300",
+                              )}
+                            />
                           ))}
                         </View>
                       ) : null}
                     </View>
-                  ) : null}
+                  </View>
+                ) : (
+                  <View className="pt-1">
+                    {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
+                      <View className="mb-3 flex-row flex-wrap items-center gap-2">
+                        {activity.subtaskBadgeLabel ? (
+                          <View className="rounded-full bg-blue-50 px-2 py-1">
+                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                              {activity.subtaskBadgeLabel}
+                            </Text>
+                          </View>
+                        ) : null}
+                        {activity.subtaskTitleLabel ? (
+                          <Text className="text-base font-medium text-slate-700">
+                            {activity.subtaskTitleLabel}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
 
-                  <Text
-                    testID={`task-activity-timeline__description-${activity.id}`}
-                    className={activity.photoUrls.length > 0
-                      ? "mt-4 text-base leading-7 text-slate-700"
-                      : "text-base leading-7 text-slate-700"}
-                  >
-                    {activity.eventLabel}
-                  </Text>
-                </View>
+                    <Text
+                      testID={`task-activity-timeline__description-${activity.id}`}
+                      className="text-base font-semibold text-slate-900"
+                    >
+                      {activity.eventLabel}
+                    </Text>
+                    {activity.detailLabel ? (
+                      <Text className="mt-2 text-sm leading-6 text-slate-600">
+                        {activity.detailLabel}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
               </View>
             </View>
           );

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thread Card Structure V4</title>
+    <style>
+      :root {
+        --bg: #eef3f5;
+        --surface: #ffffff;
+        --border: #d9e2ea;
+        --text: #18212f;
+        --muted: #718096;
+        --teal: #08576e;
+        --teal-soft: #e6f4f7;
+        --navy: #0b1730;
+        --chip: #eef2f7;
+        --blue: #2563eb;
+        --shadow: 0 18px 42px rgba(15, 23, 42, 0.09);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--text);
+        background: linear-gradient(180deg, #f7fafb 0%, var(--bg) 100%);
+      }
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 32px 24px 64px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+      .subtitle {
+        margin: 10px 0 0;
+        max-width: 880px;
+        font-size: 16px;
+        color: var(--muted);
+      }
+      .panel {
+        margin-top: 28px;
+        border-radius: 28px;
+        border: 1px solid rgba(217,226,234,0.9);
+        background: rgba(255,255,255,0.62);
+        backdrop-filter: blur(10px);
+        padding: 18px;
+      }
+      .panel h2 {
+        margin: 0;
+        font-size: 20px;
+      }
+      .panel p {
+        margin: 8px 0 14px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .tag {
+        display: inline-block;
+        margin-top: 6px;
+        border-radius: 999px;
+        padding: 5px 10px;
+        background: var(--teal-soft);
+        color: var(--teal);
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .mockup {
+        margin-top: 14px;
+        border-radius: 24px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+      .mockup-header {
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        background: #fcfdff;
+      }
+      .thread-shell {
+        background: #f8fafc;
+        padding: 16px 14px;
+      }
+      .entry {
+        display: grid;
+        grid-template-columns: 14px 1fr;
+        column-gap: 12px;
+        align-items: start;
+      }
+      .rail {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100%;
+      }
+      .rail-dot {
+        margin-top: 12px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--blue);
+        border: 2px solid #dbeafe;
+      }
+      .entry-content {
+        min-width: 0;
+      }
+      .outer-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 14px;
+      }
+      .actor {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        flex: 1;
+      }
+      .avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 999px;
+        background: var(--navy);
+        color: white;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 700;
+      }
+      .actor-name {
+        font-size: 15px;
+        font-weight: 700;
+        color: #111827;
+      }
+      .actor-meta {
+        margin-top: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .meta-chip {
+        border-radius: 999px;
+        padding: 4px 8px;
+        background: var(--chip);
+        font-size: 12px;
+        font-weight: 700;
+        color: #4a5568;
+      }
+      .timestamp {
+        font-size: 12px;
+        line-height: 1.35;
+        font-weight: 600;
+        color: #94a3b8;
+        text-align: right;
+        padding-top: 2px;
+      }
+      .content-split {
+        display: grid;
+        grid-template-columns: minmax(180px, 0.9fr) minmax(260px, 1.5fr);
+        gap: 18px;
+        align-items: start;
+      }
+      .text-block {
+        padding-top: 6px;
+      }
+      .headline {
+        font-size: 16px;
+        line-height: 1.35;
+        font-weight: 600;
+        color: #1f2937;
+      }
+      .subline {
+        margin-top: 8px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: #4b5563;
+      }
+      .carousel-shell {
+        position: relative;
+      }
+      .photo {
+        aspect-ratio: 16 / 11;
+        border-radius: 20px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #d7e3ea, #b7c6d1);
+        border: 1px solid rgba(148,163,184,0.24);
+      }
+      .peek {
+        position: absolute;
+        top: 16px;
+        right: -10px;
+        width: 64px;
+        height: calc(100% - 32px);
+        border-radius: 16px;
+        background: linear-gradient(135deg, #d7e3ea, #b7c6d1);
+        border: 1px solid rgba(148,163,184,0.18);
+        opacity: 0.55;
+      }
+      .carousel-ui {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .dots {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #cbd5e1;
+      }
+      .dot.active {
+        width: 20px;
+        background: var(--teal);
+      }
+      .swipe-hint {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      .compare {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(280px, 1fr));
+        gap: 18px;
+      }
+      .mini {
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.82);
+        padding: 14px;
+      }
+      .mini h3 {
+        margin: 0;
+        font-size: 15px;
+      }
+      .mini p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .legend {
+        margin-top: 22px;
+        border-radius: 22px;
+        border: 1px solid var(--border);
+        background: rgba(255,255,255,0.72);
+        padding: 16px 18px;
+      }
+      .legend h3 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+      .legend ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+      @media (max-width: 920px) {
+        .content-split,
+        .compare {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>Thread Card Structure V4</h1>
+      <p class="subtitle">
+        Revised to push the photo block much larger on the right and treat additional photos as a swipeable sequence.
+        The actor row remains outside, and the entry reads like an open editorial timeline rather than a contained card.
+      </p>
+
+      <section class="panel">
+        <h2>Right-Heavy Photo Layout</h2>
+        <p>The photo takes priority when available. The first image dominates the right side, with swipe cues for the rest of the photo set.</p>
+        <div class="tag">Recommended photo-first thread direction</div>
+
+        <div class="mockup">
+          <div class="mockup-header">Thread entry with large right photo + swipeable gallery</div>
+          <div class="thread-shell">
+            <div class="entry">
+              <div class="rail">
+                <div class="rail-dot"></div>
+              </div>
+              <div class="entry-content">
+                <div class="outer-header">
+                  <div class="actor">
+                    <div class="avatar">H</div>
+                    <div>
+                      <div class="actor-name">Herman</div>
+                      <div class="actor-meta">
+                        <span class="meta-chip">40%</span>
+                        <span class="meta-chip">Doing</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="timestamp">Jul 11, 2026<br>4:12 PM</div>
+                </div>
+
+                <div class="content-split">
+                  <div class="text-block">
+                    <div class="headline">Ceiling grid installed in the main corridor</div>
+                    <div class="subline">
+                      The lead image becomes the dominant visual on the right. The narrative stays to the left so the
+                      photo can occupy materially more real estate without being boxed into a small card.
+                    </div>
+                  </div>
+
+                  <div class="carousel-shell">
+                    <div class="photo"></div>
+                    <div class="peek"></div>
+                    <div class="carousel-ui">
+                      <div class="dots">
+                        <div class="dot active"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                      </div>
+                      <div class="swipe-hint">Swipe photos</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="compare">
+          <div class="mini">
+            <h3>No Photo State</h3>
+            <p>Keep the same outer actor row, but collapse back to a text-led open layout with no photo column.</p>
+          </div>
+          <div class="mini">
+            <h3>Photo State</h3>
+            <p>Only entries with photos switch to the asymmetric right-heavy composition, making the gallery feel meaningfully special.</p>
+          </div>
+        </div>
+
+        <div class="legend">
+          <h3>Structure Summary</h3>
+          <ul>
+            <li>Avatar and actor name remain outside the content area aligned off the timeline rail.</li>
+            <li>Timestamp remains on the right in the outer header row.</li>
+            <li>The lead photo gets a larger right-side footprint than in the prior mockup.</li>
+            <li>Additional photos are represented as a swipeable carousel rather than small stacked thumbnails.</li>
+            <li>The layout remains open, without a wrapper encapsulating both image and text together.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

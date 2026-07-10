@@ -11,7 +11,6 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
-import TaskDetailHero from "@/components/taskDetail/TaskDetailHero";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
@@ -116,12 +115,39 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
   };
 }
 
+function HeaderBadge({
+  label,
+  critical = false,
+}: {
+  label: string;
+  critical?: boolean;
+}) {
+  return (
+    <View
+      className={cn(
+        "rounded-full px-3 py-1.5",
+        critical ? "bg-amber-100" : "bg-white/10",
+      )}
+    >
+      <Text
+        className={cn(
+          "text-base font-medium",
+          critical ? "text-amber-900" : "text-white",
+        )}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const insets = useSafeAreaInsets();
   const { output, actions } = useTaskDetailViewAdapter({
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
+  const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = React.useState(false);
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -225,12 +251,56 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     );
   }
 
+  const headerBadges = [
+    output.taskHero.isCritical && output.taskHero.criticalLabel
+      ? { id: "critical", label: output.taskHero.criticalLabel, critical: true }
+      : null,
+    output.taskHero.categoryLabel
+      ? { id: "category", label: output.taskHero.categoryLabel }
+      : null,
+    { id: "status", label: output.taskHero.statusLabel },
+    { id: "completion", label: output.taskHero.completionLabel },
+    output.taskHero.dueDateLabel
+      ? { id: "due", label: `Due ${output.taskHero.dueDateLabel}` }
+      : null,
+  ].filter((badge): badge is { id: string; label: string; critical?: boolean } => Boolean(badge));
+
   return (
     <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       <ModernScreenHeader 
         title={output.header.title || "Task Details"}
+        titleNode={(
+          <View testID="task-detail__header_title_block">
+            <Pressable
+              testID="task-detail__header_title_pressable"
+              onPress={() => setIsHeaderTitleExpanded(true)}
+            >
+              <Text
+                testID="task-detail__header_title_text"
+                className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
+                numberOfLines={isHeaderTitleExpanded ? undefined : 1}
+                ellipsizeMode="tail"
+                adjustsFontSizeToFit={!isHeaderTitleExpanded}
+                minimumFontScale={isHeaderTitleExpanded ? undefined : 0.9}
+              >
+                {output.header.title || "Task Details"}
+              </Text>
+            </Pressable>
+            {headerBadges.length > 0 ? (
+              <View testID="task-detail__header_badges" className="mt-3 flex-row flex-wrap gap-2">
+                {headerBadges.map((badge) => (
+                  <HeaderBadge
+                    key={badge.id}
+                    label={badge.label}
+                    critical={badge.critical}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
+        )}
         showBackButton={true}
         onBackPress={props.onNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
@@ -238,10 +308,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       />
 
       <View className="flex-1">
-        <View testID="task-detail__hero_shell">
-          <TaskDetailHero model={output.taskHero} />
-        </View>
-
         <View testID="task-detail__scroll_region" className="flex-1">
           <ScrollView
             testID="task-detail__workthread_scroll"

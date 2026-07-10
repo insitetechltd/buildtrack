@@ -49,19 +49,19 @@ describe("TaskActivityTimeline", () => {
     getSizeSpy.mockRestore();
   });
 
-  it("renders the actor and timestamp in a top metadata row above the dominant event photo", () => {
+  it("renders two metadata lines with actor and status above timestamp and progress", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
             id: "activity-1",
-            actorLabel: "Jake M.",
-            eventLabel: "Initial site condition — grid B marked off, awaiting structural sign-off.",
-            timestampLabel: "Jul 1, 10:24 AM",
-            progressLabel: "0%",
+            actorLabel: "Herman",
+            eventLabel: "Ceiling grid installed",
+            timestampLabel: "Jul 11, 2026 4:12 PM",
+            progressLabel: "40%",
+            statusLabel: "Doing",
             photoUrls: [
               "https://example.com/photo-1.jpg",
-              "https://example.com/photo-2.jpg",
             ],
             density: "standard",
             structuralState: "ready",
@@ -70,23 +70,30 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    expect(screen.getByTestId("task-activity-timeline__entry-header-activity-1")).toBeTruthy();
-    expect(screen.getByText("Jake M.")).toBeTruthy();
-    expect(screen.getByText("Jul 1, 10:24 AM")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_1-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_2-activity-1")).toBeTruthy();
+    expect(screen.getByText("Herman")).toBeTruthy();
+    expect(screen.getByText("Doing")).toBeTruthy();
+    expect(screen.getByText("Jul 11, 2026 4:12 PM")).toBeTruthy();
+    expect(screen.getByText("40% complete")).toBeTruthy();
   });
 
-  it("places the event description below the dominant photo area", () => {
+  it("renders a caption above the photos and exposes a swipe surface without arrow controls", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
           {
             id: "activity-1",
-            actorLabel: "Jake M.",
-            eventLabel: "Initial site condition — grid B marked off, awaiting structural sign-off.",
-            timestampLabel: "Jul 1, 10:24 AM",
-            progressLabel: "0%",
-            photoUrls: ["https://example.com/photo-1.jpg"],
+            actorLabel: "Herman",
+            eventLabel: "Ceiling grid installed",
+            timestampLabel: "Jul 11, 2026 4:12 PM",
+            progressLabel: "40%",
+            statusLabel: "Doing",
+            photoUrls: [
+              "https://example.com/photo-1.jpg",
+              "https://example.com/photo-2.jpg",
+              "https://example.com/photo-3.jpg",
+            ],
             density: "standard",
             structuralState: "ready",
           },
@@ -94,7 +101,12 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    expect(screen.getByTestId("task-activity-timeline__description-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
+    expect(screen.getByText("Added 3 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-1")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-1")).toBeNull();
   });
 
   it("shows the lead photo in an aspect-ratio-aware shell at full usable card width with contain fit behavior", async () => {
@@ -132,7 +144,7 @@ describe("TaskActivityTimeline", () => {
       "contain",
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className).toContain(
-      "-mx-4",
+      "rounded-3xl",
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.className).not.toContain(
       "h-44",
@@ -142,13 +154,18 @@ describe("TaskActivityTimeline", () => {
         aspectRatio: 0.75,
       });
     });
-    expect(screen.getByTestId("task-activity-timeline__thumb-photo-activity-2-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-2")).toBeTruthy();
+    expect(screen.getByText("Added 2 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-2")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-2")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-2")).toBeNull();
+    expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-2")).toBeNull();
     expect(
       getDirectChildTestIds(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2")),
     ).toEqual(["task-activity-timeline__lead-photo-pressable-activity-2"]);
   });
 
-  it("opens the full-screen photo viewer on the selected image, keeps navigation within the same entry, and shows the gallery index", () => {
+  it("updates the in-entry gallery from swipe gestures and opens the full-screen viewer on the selected photo", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
@@ -173,34 +190,43 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    fireEvent.press(screen.getByTestId("task-activity-timeline__thumb-photo-pressable-activity-2-1"));
+    fireEvent(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-2"), "momentumScrollEnd", {
+      nativeEvent: {
+        contentOffset: { x: 320, y: 0 },
+        layoutMeasurement: { width: 320, height: 240 },
+      },
+    });
+
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.source).toEqual({
+      uri: "https://example.com/photo-2.jpg",
+    });
+    expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-2")).toBeTruthy();
+
+    fireEvent(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-2"), "momentumScrollEnd", {
+      nativeEvent: {
+        contentOffset: { x: 640, y: 0 },
+        layoutMeasurement: { width: 320, height: 240 },
+      },
+    });
+
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.source).toEqual({
+      uri: "https://example.com/photo-3.jpg",
+    });
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
 
     expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
-      uri: "https://example.com/photo-2.jpg",
-    });
-    expect(screen.getByText("2 / 3")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_previous"));
-
-    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
-      uri: "https://example.com/photo-1.jpg",
-    });
-    expect(screen.getByText("1 / 3")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_next"));
-
-    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
-      uri: "https://example.com/photo-2.jpg",
-    });
-    expect(screen.getByText("2 / 3")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_next"));
-
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
       uri: "https://example.com/photo-3.jpg",
     });
     expect(screen.getByText("3 / 3")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__photo_viewer_previous"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
+      uri: "https://example.com/photo-2.jpg",
+    });
+    expect(screen.getByText("2 / 3")).toBeTruthy();
   });
 
   it("keeps legacy activities compatible, sorts them newest first, and derives progress labels", () => {
@@ -247,12 +273,12 @@ describe("TaskActivityTimeline", () => {
 
     expect(screen.getByText("Submitted for review")).toBeTruthy();
     expect(screen.getByText("Accepted the task")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__entry-header-activity-newer")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__entry-header-activity-older")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_1-activity-newer")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__metadata_line_1-activity-older")).toBeTruthy();
     expect(screen.getByText("Alex")).toBeTruthy();
     expect(screen.getByText("Sam")).toBeTruthy();
-    expect(screen.getByText("100%")).toBeTruthy();
-    expect(screen.getByText("10%")).toBeTruthy();
+    expect(screen.getByText("100% complete")).toBeTruthy();
+    expect(screen.getByText("10% complete")).toBeTruthy();
     expect(screen.getAllByText(/2026/).length).toBeGreaterThan(0);
   });
 

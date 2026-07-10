@@ -37,10 +37,16 @@ jest.mock("../../components/ProfileMenu", () => ({
 
 jest.mock("../../components/ModernScreenHeader", () => ({
   __esModule: true,
-  default: ({ title }: { title: string }) => {
+  default: ({
+    title,
+    titleNode,
+  }: {
+    title: string;
+    titleNode?: React.ReactNode;
+  }) => {
     const ReactNative = require("react-native");
-    const MockText = ReactNative.Text;
-    return <MockText>{title}</MockText>;
+    const { Text, View } = ReactNative;
+    return <View>{titleNode ? titleNode : <Text>{title}</Text>}</View>;
   },
 }));
 
@@ -217,18 +223,21 @@ describe("TaskDetailScreen sticky layout", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders the hero outside the bounded scroll region so thread content never scrolls behind it", () => {
+  it("keeps the screen bounded without rendering a separate hero above the scroll region", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const workThreadScroll = screen.getByTestId("task-detail__workthread_scroll");
 
-    expect(screen.getByTestId("task-detail__hero_shell")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__hero")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
+    expect(screen.queryByTestId("task-detail__hero")).toBeNull();
+    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(workThreadScroll).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__outer-header-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__content_split-activity-1")).toBeTruthy();
     expect(workThreadScroll.props.scrollEnabled).not.toBe(false);
     expect(workThreadScroll.props.stickyHeaderIndices).toBeUndefined();
     expect(workThreadScroll.props.contentContainerStyle).toEqual(
@@ -351,7 +360,7 @@ describe("TaskDetailScreen sticky layout", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Description")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
     expect(screen.queryByText("Delegation details")).toBeNull();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();

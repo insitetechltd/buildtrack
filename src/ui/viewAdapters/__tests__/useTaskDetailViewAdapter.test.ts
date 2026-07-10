@@ -733,6 +733,98 @@ describe("useTaskDetailViewAdapter", () => {
     });
   });
 
+  it("anchors task-level creation photos to the first created event only", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-created-photos",
+          title: "Creation Photos Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          dueDate,
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Track creation-time photos in the thread.",
+          attachments: [
+            "https://example.com/create-photo-1.jpg",
+            "https://example.com/create-photo-2.jpg",
+            "https://example.com/create-photo-3.jpg",
+          ],
+          tags: [],
+          updates: [],
+          activities: [
+            {
+              id: "created-1",
+              taskId: "task-created-photos",
+              userId: "manager-1",
+              activityType: "creation",
+              timestamp: activityTimestampOlder,
+              description: "Task created.",
+              createdAt: activityTimestampOlder,
+            },
+            {
+              id: "progress-1",
+              taskId: "task-created-photos",
+              userId: "user-1",
+              activityType: "progress_update",
+              timestamp: activityTimestampLatest,
+              data: {
+                description: "Added progress photos from site.",
+                photos: ["https://example.com/progress-photo-1.jpg"],
+                completionPercentage: 35,
+                status: "in_progress",
+              },
+              description: "Added progress photos from site.",
+              completionPercentage: 35,
+              status: "in_progress",
+              createdAt: activityTimestampLatest,
+            },
+          ],
+          completionPercentage: 35,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-created-photos",
+      }),
+    );
+
+    expect(result.current.output.activityThread).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "created-1",
+          photoUrls: [
+            "https://example.com/create-photo-1.jpg",
+            "https://example.com/create-photo-2.jpg",
+            "https://example.com/create-photo-3.jpg",
+          ],
+        }),
+        expect.objectContaining({
+          id: "progress-1",
+          photoUrls: ["https://example.com/progress-photo-1.jpg"],
+        }),
+      ]),
+    );
+  });
+
   it("marks child-task activity rows with lightweight subtask context inside the main activity thread", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({

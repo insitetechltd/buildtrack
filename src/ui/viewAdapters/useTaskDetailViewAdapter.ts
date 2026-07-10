@@ -236,6 +236,14 @@ function collectTaskPhotoAttachments(task: Task): string[] {
     : [];
 }
 
+function collectCreationPhotoUrls(task: Task): string[] {
+  return collectTaskPhotoAttachments(task);
+}
+
+function isCreationActivity(activity: TaskActivity): boolean {
+  return activity.activityType === 'creation';
+}
+
 function collectTaskDocumentAttachment(task: Task): string | undefined {
   return Array.isArray(task.attachments)
     ? task.attachments.filter(Boolean).find((uri) => isPdfAssetUri(uri))
@@ -674,6 +682,7 @@ export function useTaskDetailViewAdapter({
     density: 'standard',
     structuralState: 'stale',
     descriptionLabel: task.description || '',
+    siteLocationLabel: task.locationOnSite || '',
     assignedByLabel: delegationSummary.assignedByLabel,
     assignedToLabel: delegationSummary.assignedToLabel,
     primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
@@ -698,23 +707,40 @@ export function useTaskDetailViewAdapter({
     combinedActivities.map(({ activity }) => activity),
   );
 
-  const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => ({
-    id: activity.id,
-    density: 'standard',
-    structuralState: 'stale',
-    actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
-    eventLabel: buildTaskDetailHeadline(activity, activityHeadlineContextById.get(activity.id)),
-    timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
-    progressLabel:
-      activity.completionPercentage !== undefined
-        ? `${activity.completionPercentage}%`
-        : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
-    detailLabel: undefined,
-    photoUrls: collectActivityPhotoUrls(activity),
-    statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
-    subtaskBadgeLabel: childTask ? 'Subtask' : undefined,
-    subtaskTitleLabel: childTask?.title,
-  }));
+  const creationPhotoUrls = collectCreationPhotoUrls(task);
+  let hasAssignedCreationPhotos = false;
+
+  const activityThread: TaskDetailActivityThreadRow[] = combinedActivities.map(({ activity, childTask }) => {
+    const intrinsicPhotoUrls = collectActivityPhotoUrls(activity);
+    const photoUrls =
+      !hasAssignedCreationPhotos &&
+      !childTask &&
+      isCreationActivity(activity) &&
+      creationPhotoUrls.length > 0
+        ? (() => {
+            hasAssignedCreationPhotos = true;
+            return creationPhotoUrls;
+          })()
+        : intrinsicPhotoUrls;
+
+    return {
+      id: activity.id,
+      density: 'standard',
+      structuralState: 'stale',
+      actorLabel: getUserById(activity.userId)?.name || 'Unknown User',
+      eventLabel: buildTaskDetailHeadline(activity, activityHeadlineContextById.get(activity.id)),
+      timestampLabel: buildTaskDetailTimestampLabel(activity, dateFormatter),
+      progressLabel:
+        activity.completionPercentage !== undefined
+          ? `${activity.completionPercentage}%`
+          : `${childTask?.completionPercentage ?? task.completionPercentage}%`,
+      detailLabel: undefined,
+      photoUrls,
+      statusLabel: activity.status ? getStatusLabel(activity.status) : undefined,
+      subtaskBadgeLabel: childTask ? 'Subtask' : undefined,
+      subtaskTitleLabel: childTask?.title,
+    };
+  });
 
   const totalEvidencePhotoCount = collectTotalTaskPhotoCount(task, orderedActivities);
   const latestEvidencePhotoUrls = collectLatestTaskPhotoUrls(task, orderedActivities);

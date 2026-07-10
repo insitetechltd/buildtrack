@@ -1,7 +1,26 @@
 import React from "react";
+import { Text, TextInput, View } from "react-native";
 import { fireEvent, render, within } from "@testing-library/react-native";
+
 import TasksScreen from "../TasksScreen";
-import type { TasksScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
+import type {
+  TasksActiveFilterChipModel,
+  TasksOverdueWindowValue,
+  TasksQueueFilterValue,
+  TasksScreenViewAdapterOutput,
+  TasksStatusFilterValue,
+} from "@/ui/contracts/viewAdapters";
+
+jest.mock("@expo/vector-icons", () => {
+  const React = require("react");
+  const { Text } = require("react-native");
+
+  return {
+    Ionicons: ({ name, testID }: { name: string; testID?: string }) => (
+      <Text testID={testID ?? `icon:${name}`}>{name}</Text>
+    ),
+  };
+});
 
 jest.mock("@/components/AppScreenHeader", () => {
   const React = require("react");
@@ -39,184 +58,210 @@ jest.mock("@/components/AppScreenHeader", () => {
   };
 });
 
+jest.mock("@/components/primitives/input/TextField", () => {
+  return function MockTextField({ contract, onChangeText, rightSlot }: any) {
+    const { View, Text, TextInput } = require("react-native");
+    const testId = contract?.testId ?? `text-field:${contract?.id}`;
+
+    return (
+      <View testID={testId}>
+        {contract?.label ? <Text>{contract.label}</Text> : null}
+        <Text testID={`${testId}__density`}>{contract?.density}</Text>
+        <TextInput
+          testID={`${testId}__input`}
+          value={contract?.value}
+          placeholder={contract?.placeholder}
+          onChangeText={onChangeText}
+        />
+        {rightSlot ? <View testID={`${testId}__right-slot`}>{rightSlot}</View> : null}
+      </View>
+    );
+  };
+});
+
+jest.mock("react-native-modal", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+
+  return function MockModal({ children, isVisible }: any) {
+    if (!isVisible) {
+      return null;
+    }
+
+    return <View testID="mock-modal">{children}</View>;
+  };
+});
+
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
   let overrideOutput: Partial<TasksScreenViewAdapterOutput> | null = null;
+
+  const DEFAULT_FILTERS = {
+    queue: "all_queues" as TasksQueueFilterValue,
+    status: "any_status" as TasksStatusFilterValue,
+    overdueWindow: "show_all" as TasksOverdueWindowValue,
+  };
+
   const makeRow = (overrides: Record<string, unknown>) => ({
     id: "row-1",
     taskId: "task-1",
     title: "Install guardrails",
-    statusToken: "task_in_progress",
-    statusLabel: "In progress",
-    responsibilityToken: "OTHER_OPEN",
+    cardPresentation: "thumbnail",
+    statusToken: "task_new" as any,
+    statusLabel: "New",
+    responsibilityToken: "OTHER_OPEN" as any,
     priorityLabel: "High",
-    dueDateLabel: "Tomorrow",
+    dueDateLabel: "2026-07-10",
     assigneeSummary: "Sam",
     projectName: "North Tower",
     isOverdue: false,
     attachmentUris: [],
-    density: "standard",
+    density: "compact",
     structuralState: "stale",
+    queue: "my_queue",
+    queueLabel: "My Queue",
+    bucket: "new",
+    bucketLabel: "New",
+    contextLabel: "North Tower",
+    contextLine: "Level 12, Grid B-C",
+    latestUpdateAt: "2026-07-04T12:00:00.000Z",
+    latestUpdateLabel: "Due: 2026-07-10",
     ...overrides,
   });
 
+  const getQueueLabel = (value: TasksQueueFilterValue) => {
+    switch (value) {
+      case "inbox":
+        return "Inbox";
+      case "outbox":
+        return "Outbox";
+      case "archived":
+        return "Archived";
+      case "all_queues":
+      default:
+        return "All queues";
+    }
+  };
+
+  const getStatusLabel = (value: TasksStatusFilterValue) => {
+    switch (value) {
+      case "new":
+        return "New";
+      case "doing":
+        return "Doing";
+      case "review":
+        return "Review";
+      case "overdue":
+        return "Overdue";
+      case "any_status":
+      default:
+        return "Any status";
+    }
+  };
+
+  const getOverdueWindowLabel = (value: TasksOverdueWindowValue) => {
+    switch (value) {
+      case "three_active":
+        return "3 active";
+      case "one_week":
+        return "1 week";
+      case "one_month":
+        return "1 month";
+      case "show_all":
+      default:
+        return "Show all";
+    }
+  };
+
+  const buildActiveFilterChips = (filters: typeof DEFAULT_FILTERS): TasksActiveFilterChipModel[] => {
+    const chips: TasksActiveFilterChipModel[] = [];
+
+    if (filters.queue !== "all_queues") {
+      chips.push({ id: "queue", label: `Queue: ${getQueueLabel(filters.queue)}` });
+    }
+
+    if (filters.status !== "any_status") {
+      chips.push({ id: "status", label: `Status: ${getStatusLabel(filters.status)}` });
+    }
+
+    if (filters.overdueWindow !== "show_all") {
+      chips.push({
+        id: "overdueWindow",
+        label: `Overdue: ${getOverdueWindowLabel(filters.overdueWindow)}`,
+      });
+    }
+
+    return chips;
+  };
+
   const useTasksViewAdapter = () => {
     const [searchQuery, setSearchQuery] = React.useState("");
+    const [isFiltersSheetOpen, setIsFiltersSheetOpen] = React.useState(false);
+    const [stagedFilters, setStagedFilters] = React.useState(DEFAULT_FILTERS);
+    const [appliedFilters, setAppliedFilters] = React.useState(DEFAULT_FILTERS);
+
     const allRows = [
       makeRow({
-        id: "row-1",
         taskId: "task-1",
         title: "Install guardrails",
-        cardPresentation: "thumbnail",
-        statusToken: "task_new",
-        statusLabel: "New",
         queue: "my_queue",
         queueLabel: "My Queue",
         bucket: "new",
         bucketLabel: "New",
-        contextLabel: "North Tower",
-        contextLine: "Level 12, Grid B–C",
-        primaryPhotoUri: "https://example.com/task-photo.jpg",
-        latestUpdateAt: "2026-07-04T12:00:00.000Z",
+        statusLabel: "New",
       }),
       makeRow({
         id: "row-2",
         taskId: "task-2",
         title: "Verify anchor points",
-        statusToken: "task_in_progress",
-        statusLabel: "In progress",
         queue: "my_queue",
         queueLabel: "My Queue",
         bucket: "wip",
         bucketLabel: "Doing",
-        contextLabel: "North Tower",
-        latestUpdateAt: "2026-07-04T11:00:00.000Z",
+        statusToken: "task_in_progress" as any,
+        statusLabel: "Doing",
+        latestUpdateLabel: "Due: 2026-07-05",
         indentationLevel: 1,
+        isOverdue: true,
       }),
       makeRow({
         id: "row-3",
         taskId: "task-3",
         title: "Team review package",
-        statusToken: "task_submitted_for_review",
-        statusLabel: "Submitted for review",
         queue: "team_queue",
         queueLabel: "Team Queue",
         bucket: "review",
         bucketLabel: "Review",
-        contextLabel: "Team Queue · Review · North Tower",
+        statusToken: "task_submitted_for_review" as any,
+        statusLabel: "Review",
         contextLine: "Team Queue · Review · North Tower",
-        latestUpdateAt: "2026-07-04T10:00:00.000Z",
+        latestUpdateLabel: "Due: 2026-07-01",
+        isOverdue: true,
       }),
     ];
-    const [selectedQueue, setSelectedQueue] = React.useState<"all" | "my_queue" | "team_queue">("all");
-    const [selectedBucket, setSelectedBucket] = React.useState<"all" | "new" | "wip" | "review">("all");
-    const [selectedSortField, setSelectedSortField] = React.useState<
-      "created_at" | "due_date" | "modified_at"
-    >("modified_at");
-    const [selectedSortDirection, setSelectedSortDirection] = React.useState<"asc" | "desc">("desc");
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-    const queueFilteredRows =
-      selectedQueue === "all" ? allRows : allRows.filter((row) => row.queue === selectedQueue);
-    const visibleRows = queueFilteredRows.filter((row) => {
-      if (selectedBucket === "all") {
-        return true;
-      }
 
-      return row.bucket === selectedBucket;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const filteredRows = allRows.filter((row) => {
+      const matchesSearch =
+        normalizedQuery.length === 0 || row.title.toLowerCase().includes(normalizedQuery);
+      const matchesQueue =
+        appliedFilters.queue === "all_queues" ||
+        (appliedFilters.queue === "inbox" && row.queue === "my_queue") ||
+        (appliedFilters.queue === "outbox" && row.queue === "team_queue") ||
+        appliedFilters.queue === "archived";
+      const matchesStatus =
+        appliedFilters.status === "any_status" ||
+        (appliedFilters.status === "new" && row.bucket === "new") ||
+        (appliedFilters.status === "doing" && row.bucket === "wip") ||
+        (appliedFilters.status === "review" && row.bucket === "review") ||
+        (appliedFilters.status === "overdue" && row.isOverdue);
+      const matchesOverdueWindow =
+        appliedFilters.overdueWindow === "show_all" ? true : row.isOverdue;
+
+      return matchesSearch && matchesQueue && matchesStatus && matchesOverdueWindow;
     });
-    const taskRowItems = visibleRows.filter((row) => row.title.toLowerCase().includes(normalizedQuery));
-    const queueOptions = [
-      {
-        id: "queue:all",
-        value: "all",
-        label: `All ${allRows.length}`,
-        count: allRows.length,
-        isSelected: selectedQueue === "all",
-      },
-      {
-        id: "queue:my_queue",
-        value: "my_queue",
-        label: `My Queue ${allRows.filter((row) => row.queue === "my_queue").length}`,
-        count: allRows.filter((row) => row.queue === "my_queue").length,
-        isSelected: selectedQueue === "my_queue",
-      },
-      {
-        id: "queue:team_queue",
-        value: "team_queue",
-        label: `Team Queue ${allRows.filter((row) => row.queue === "team_queue").length}`,
-        count: allRows.filter((row) => row.queue === "team_queue").length,
-        isSelected: selectedQueue === "team_queue",
-      },
-    ];
-    const bucketOptions = [
-      {
-        id: "bucket:all",
-        value: "all",
-        label: `All ${queueFilteredRows.length}`,
-        count: queueFilteredRows.length,
-        isSelected: selectedBucket === "all",
-      },
-      {
-        id: "bucket:new",
-        value: "new",
-        label: `New ${queueFilteredRows.filter((row) => row.bucket === "new").length}`,
-        count: queueFilteredRows.filter((row) => row.bucket === "new").length,
-        isSelected: selectedBucket === "new",
-      },
-      {
-        id: "bucket:wip",
-        value: "wip",
-        label: `Doing ${queueFilteredRows.filter((row) => row.bucket === "wip").length}`,
-        count: queueFilteredRows.filter((row) => row.bucket === "wip").length,
-        isSelected: selectedBucket === "wip",
-      },
-      {
-        id: "bucket:review",
-        value: "review",
-        label: `Review ${queueFilteredRows.filter((row) => row.bucket === "review").length}`,
-        count: queueFilteredRows.filter((row) => row.bucket === "review").length,
-        isSelected: selectedBucket === "review",
-      },
-    ];
-    const sortOptions = [
-      {
-        id: "sort:created_at",
-        value: "created_at",
-        label: "Creation date",
-        count: visibleRows.length,
-        isSelected: selectedSortField === "created_at",
-      },
-      {
-        id: "sort:due_date",
-        value: "due_date",
-        label: "Due date",
-        count: visibleRows.length,
-        isSelected: selectedSortField === "due_date",
-      },
-      {
-        id: "sort:modified_at",
-        value: "modified_at",
-        label: "Modified date",
-        count: visibleRows.length,
-        isSelected: selectedSortField === "modified_at",
-      },
-    ];
-    const sortDirectionOptions = [
-      {
-        id: "sortDirection:asc",
-        value: "asc",
-        label: "Earliest first",
-        count: visibleRows.length,
-        isSelected: selectedSortDirection === "asc",
-      },
-      {
-        id: "sortDirection:desc",
-        value: "desc",
-        label: "Latest first",
-        count: visibleRows.length,
-        isSelected: selectedSortDirection === "desc",
-      },
-    ];
+
+    const activeFilterChips = buildActiveFilterChips(appliedFilters);
     const baseOutput: TasksScreenViewAdapterOutput = {
       screenId: "TasksScreen",
       readiness: {
@@ -237,98 +282,73 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         selectedProjectId: null,
         sectionFilterLabel: "Search-first list",
         statusFilterLabel: "All projects",
-        sortLabel: "Priority first",
+        sortLabel: "Due date · Earliest first",
       },
-      isSearchMode: false,
+      filterButton: {
+        label: "Filters",
+        isActive: activeFilterChips.length > 0,
+        activeCount: activeFilterChips.length,
+      },
+      filterSheet: {
+        isOpen: isFiltersSheetOpen,
+        stagedQueue: stagedFilters.queue,
+        stagedStatus: stagedFilters.status,
+        stagedOverdueWindow: stagedFilters.overdueWindow,
+      },
+      activeFilterChips,
+      resultSummaryLabel: `${filteredRows.length} task${filteredRows.length === 1 ? "" : "s"}`,
+      filterControls: {
+        mode: {
+          id: "mode",
+          label: "Mode",
+          selectedValue: appliedFilters.status === "overdue" ? "overdue" : "all",
+          options: [
+            { id: "mode:all", value: "all", label: "All", count: 3, isSelected: appliedFilters.status !== "overdue" },
+            { id: "mode:overdue", value: "overdue", label: "Overdue", count: 2, isSelected: appliedFilters.status === "overdue" },
+          ],
+        },
+        queue: {
+          id: "queue",
+          label: "Queue",
+          selectedValue: appliedFilters.queue === "outbox" ? "team_queue" : "my_queue",
+          options: [
+            { id: "queue:my_queue", value: "my_queue", label: "Inbox", count: 2, isSelected: appliedFilters.queue === "inbox" },
+            { id: "queue:team_queue", value: "team_queue", label: "Outbox", count: 1, isSelected: appliedFilters.queue === "outbox" },
+          ],
+        },
+        status: {
+          id: "status",
+          label: "Status",
+          selectedValue:
+            appliedFilters.status === "doing"
+              ? "wip"
+              : appliedFilters.status === "review"
+                ? "review"
+                : "new",
+          options: [
+            { id: "status:new", value: "new", label: "New", count: 1, isSelected: appliedFilters.status === "new" },
+            { id: "status:wip", value: "wip", label: "Doing", count: 1, isSelected: appliedFilters.status === "doing" },
+            { id: "status:review", value: "review", label: "Review", count: 1, isSelected: appliedFilters.status === "review" },
+          ],
+        },
+      },
+      isSearchMode: normalizedQuery.length > 0,
       queuePanels: [],
-      searchResults: [],
+      searchResults: normalizedQuery.length > 0 ? filteredRows : [],
       expandedTaskIds: [],
-      taskRowItems,
+      taskRowItems: filteredRows,
       scalarMetrics: {
-        totalVisibleTaskCount: taskRowItems.length,
-        overdueVisibleTaskCount: 0,
+        totalVisibleTaskCount: filteredRows.length,
+        overdueVisibleTaskCount: filteredRows.filter((row) => row.isOverdue).length,
         selectedProjectTaskCount: allRows.length,
-        hasActiveFilters: false,
-      },
-    } as TasksScreenViewAdapterOutput;
-    (baseOutput as any).filterControls = {
-      queue: {
-        id: "queue",
-        label: "Queue",
-        selectedValue: selectedQueue,
-        options: queueOptions,
-      },
-      bucket: {
-        id: "bucket",
-        label: "Bucket",
-        selectedValue: selectedBucket,
-        options: bucketOptions,
-      },
-      sort: {
-        id: "sort",
-        label: "Sort by",
-        selectedValue: selectedSortField,
-        options: sortOptions,
-      },
-      sortDirection: {
-        id: "sortDirection",
-        label: "Order",
-        selectedValue: selectedSortDirection,
-        options: sortDirectionOptions,
+        hasActiveFilters: normalizedQuery.length > 0 || activeFilterChips.length > 0,
       },
     };
 
-    if (overrideOutput) {
-      return {
-        output: {
-          ...baseOutput,
-          ...overrideOutput,
-        },
-        searchQuery,
-        setSearchQuery,
-        searchInput: {
-          id: "tasks-search",
-          label: "Search",
-          value: searchQuery,
-          placeholder: "Search tasks",
-          density: "standard",
-          structuralState: "stale",
-        },
-        visibility: {
-          showCreateTaskFab: true,
-          showProfileShortcut: true,
-          showProjectPickerShortcut: true,
-          showDeveloperSettingsShortcut: true,
-          showResetFiltersShortcut: true,
-        },
-        actions: {
-          resetFilters: () => {
-            setSearchQuery("");
-            setSelectedQueue("all");
-            setSelectedBucket("all");
-          },
-          selectQueue: (queue: "all" | "my_queue" | "team_queue") => {
-            setSelectedQueue(queue);
-            setSelectedBucket("all");
-          },
-          selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
-            setSelectedBucket(bucket);
-          },
-          selectSortField: (field: "created_at" | "due_date" | "modified_at") => {
-            setSelectedSortField(field);
-          },
-          selectSortDirection: (direction: "asc" | "desc") => {
-            setSelectedSortDirection(direction);
-          },
-          toggleTaskExpansion: jest.fn(),
-        },
-      };
-    }
+    const mergedOutput = overrideOutput ? { ...baseOutput, ...overrideOutput } : baseOutput;
 
     return {
-      output: {
-        ...baseOutput,
-      },
+      output: mergedOutput,
       searchQuery,
       setSearchQuery,
       searchInput: {
@@ -336,7 +356,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         label: "Search",
         value: searchQuery,
         placeholder: "Search tasks",
-        density: "standard",
+        density: "compact",
         structuralState: "stale",
       },
       visibility: {
@@ -349,22 +369,41 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
       actions: {
         resetFilters: () => {
           setSearchQuery("");
-          setSelectedQueue("all");
-          setSelectedBucket("all");
+          setIsFiltersSheetOpen(false);
+          setStagedFilters(DEFAULT_FILTERS);
+          setAppliedFilters(DEFAULT_FILTERS);
         },
-        selectQueue: (queue: "all" | "my_queue" | "team_queue") => {
-          setSelectedQueue(queue);
-          setSelectedBucket("all");
+        openFiltersSheet: () => {
+          setStagedFilters(appliedFilters);
+          setIsFiltersSheetOpen(true);
         },
-        selectBucket: (bucket: "all" | "new" | "wip" | "review") => {
-          setSelectedBucket(bucket);
+        closeFiltersSheet: () => setIsFiltersSheetOpen(false),
+        stageQueueFilter: (value: TasksQueueFilterValue) =>
+          setStagedFilters((current) => ({ ...current, queue: value })),
+        stageStatusFilter: (value: TasksStatusFilterValue) =>
+          setStagedFilters((current) => ({ ...current, status: value })),
+        stageOverdueWindowFilter: (value: TasksOverdueWindowValue) =>
+          setStagedFilters((current) => ({ ...current, overdueWindow: value })),
+        applyStagedFilters: () => {
+          setAppliedFilters(stagedFilters);
+          setIsFiltersSheetOpen(false);
         },
-        selectSortField: (field: "created_at" | "due_date" | "modified_at") => {
-          setSelectedSortField(field);
+        resetStagedFilters: () => setStagedFilters(DEFAULT_FILTERS),
+        removeAppliedFilterChip: (chipId: TasksActiveFilterChipModel["id"]) => {
+          const resetValue =
+            chipId === "queue"
+              ? { queue: "all_queues" as TasksQueueFilterValue }
+              : chipId === "status"
+                ? { status: "any_status" as TasksStatusFilterValue }
+                : { overdueWindow: "show_all" as TasksOverdueWindowValue };
+
+          setAppliedFilters((current) => ({ ...current, ...resetValue }));
+          setStagedFilters((current) => ({ ...current, ...resetValue }));
         },
-        selectSortDirection: (direction: "asc" | "desc") => {
-          setSelectedSortDirection(direction);
-        },
+        cycleQueue: jest.fn(),
+        cycleStatus: jest.fn(),
+        selectAllMode: jest.fn(),
+        selectOverdueOnly: jest.fn(),
         toggleTaskExpansion: jest.fn(),
       },
     };
@@ -384,131 +423,97 @@ describe("TasksScreen", () => {
     mockedModule.__setTasksScreenOverride(null);
   });
 
-  it("renders queue, bucket, sort, and direction controls without a back button", () => {
-    const onNavigateToCreateTask = jest.fn();
-    const onNavigateToProfile = jest.fn();
-    const onNavigateToProjectPicker = jest.fn();
-    const onNavigateToDeveloperSettings = jest.fn();
-
+  it("renders the Search + Filters row on the off-white body and hides chips by default", () => {
     const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={onNavigateToCreateTask}
-        onNavigateBack={jest.fn()}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
-        onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
-      />,
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    expect(screen.getByTestId("tasks-screen__filter_queue")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__filter_bucket")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__filter_sort")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__filter_sort_direction")).toBeTruthy();
-    expect(screen.queryByTestId("app-screen-header__back-trigger")).toBeNull();
-    expect(screen.getByText("Sort by")).toBeTruthy();
-    expect(screen.getByText("Modified date")).toBeTruthy();
-    expect(screen.getByText("Latest first")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
-    const searchRightSlot = screen.getByTestId("text-field:tasks-search__right-slot");
-    expect(within(searchRightSlot).getByTestId("tasks-screen__search_count")).toBeTruthy();
-    expect(within(searchRightSlot).getByText("3")).toBeTruthy();
-    expect(screen.queryByText("Search-first list")).toBeNull();
-    expect(screen.getByTestId("app-screen-header__root").props.className).toContain("bg-[#08576E]");
-    expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-1")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
-    expect(screen.queryByTestId("container-card:task-1")).toBeNull();
-    expect(screen.queryByTestId("tasks-screen__queues")).toBeNull();
-    expect(screen.queryByTestId("tasks-screen__header_profile")).toBeNull();
-    expect(screen.queryByTestId("tasks-screen__header_project_picker")).toBeNull();
-    expect(screen.queryByTestId("tasks-screen__header_developer_settings")).toBeNull();
-    expect(screen.getByTestId("brand-header-title")).toBeTruthy();
-    expect(screen.getByText("TASKR")).toBeTruthy();
-    expect(screen.getByText("Tasks")).toBeTruthy();
-    expect(screen.queryByTestId("tasks-screen__fab_create_task")).toBeNull();
-
-    expect(onNavigateToProfile).not.toHaveBeenCalled();
-    expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
-    expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
-    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-slate-50");
+    expect(screen.getByTestId("tasks-screen__filters_button")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__filter_all")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__active_filter_chips")).toBeNull();
+    expect(within(screen.getByTestId("text-field:tasks-search__right-slot")).getByText("3")).toBeTruthy();
+    expect(screen.getByTestId("text-field:tasks-search__density").children.join("")).toBe("compact");
+    expect(screen.getByTestId("tasks-screen__search_count").props.className).toContain("font-mono");
   });
 
-  it("opens sort controls and applies the one-step font increase across the screen", () => {
+  it("opens the filters sheet, applies staged filters, and removes an active chip immediately", () => {
     const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    fireEvent.press(screen.getByTestId("tasks-screen__filter_sort"));
+    fireEvent.press(screen.getByTestId("tasks-screen__filters_button"));
+    expect(screen.getByTestId("tasks-filters-sheet")).toBeTruthy();
 
-    expect(screen.getByText("Creation date")).toBeTruthy();
-    expect(screen.getByText("Due date")).toBeTruthy();
-    expect(screen.getAllByText("Modified date").length).toBeGreaterThan(0);
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__queue_outbox"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__status_review"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__apply"));
 
-    const searchCount = screen.getByTestId("tasks-screen__search_count");
+    expect(screen.getByTestId("tasks-screen__active_filter_chips")).toBeTruthy();
+    expect(screen.getByText("Queue: Outbox")).toBeTruthy();
+    expect(screen.getByText("Status: Review")).toBeTruthy();
+    expect(within(screen.getByTestId("tasks-screen__filters_badge")).getByText("2")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__chip_remove_queue").props.className).toContain("bg-[#07111E]");
 
-    expect(within(searchCount).getByText("3").props.className).toContain("text-base");
-    expect(screen.getByText("Queue").props.className).toContain("text-base");
-    expect(screen.getByText("Bucket").props.className).toContain("text-base");
-    expect(screen.getByText("Sort by").props.className).toContain("text-base");
-    expect(screen.getByText("Install guardrails").props.className).toContain("text-xl");
+    fireEvent.press(screen.getByTestId("tasks-screen__chip_remove_queue"));
+    expect(screen.queryByText("Queue: Outbox")).toBeNull();
+    expect(screen.getByText("Status: Review")).toBeTruthy();
+    expect(within(screen.getByTestId("tasks-screen__filters_badge")).getByText("1")).toBeTruthy();
   });
 
-  it("updates the visible list when queue and bucket filters change", () => {
+  it("renders the overdue window chip label with the approved copy", () => {
     const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    fireEvent.press(screen.getByTestId("tasks-screen__filter_queue"));
-    expect(screen.getByText("Team Queue 1")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tasks-screen__filters_button"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__overdue_window_three_active"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__apply"));
 
-    fireEvent.press(screen.getByText("Team Queue 1"));
-    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
-    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
-
-    fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
-    fireEvent.press(screen.getByText("Review 1"));
-    expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("tasks-screen__filter_queue"));
-    fireEvent.press(screen.getByText("My Queue 2"));
-    fireEvent.press(screen.getByTestId("tasks-screen__filter_bucket"));
-    fireEvent.press(screen.getByText("Doing 1"));
-    expect(screen.getByTestId("tasks-screen__row_task-2")).toBeTruthy();
-    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
-    expect(screen.queryByTestId("tasks-screen__row_task-3")).toBeNull();
+    expect(screen.getByText("Overdue: 3 active")).toBeTruthy();
   });
 
-  it("keeps search visible and applies it on top of the selected filters", () => {
+  it("keeps search independent from the filters badge, resets filters, and preserves row tap-through navigation", () => {
+    const onNavigateToTaskDetail = jest.fn();
     const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
+      <TasksScreen onNavigateToTaskDetail={onNavigateToTaskDetail} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    const input = screen.getByTestId("text-field:tasks-search__input");
-    fireEvent.changeText(input, "team");
-
+    fireEvent.changeText(screen.getByTestId("text-field:tasks-search__input"), "team");
     expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
-    expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__filters_badge")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("tasks-screen__filters_button"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__status_review"));
+    fireEvent.press(screen.getByTestId("tasks-filters-sheet__apply"));
+    expect(within(screen.getByTestId("tasks-screen__filters_badge")).getByText("1")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("tasks-screen__header_reset_filters"));
-    expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__filters_badge")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-2"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-2");
+    expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
+  });
+
+  it("renders the floating Overdue badge instead of the old dot marker on overdue task cards", () => {
+    const screen = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
+    );
+
+    expect(screen.getByTestId("tasks-screen__row_task-2:overdue-badge")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-3:overdue-badge")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-2:overdue-dot")).toBeNull();
+    expect(screen.queryByTestId("tasks-screen__row_task-3:overdue-dot")).toBeNull();
   });
 
   it("renders the search-first empty state when no tasks match", () => {
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
     mockedModule.__setTasksScreenOverride({
-      queuePanels: [],
       searchResults: [],
       expandedTaskIds: [],
       taskRowItems: [],
@@ -521,59 +526,10 @@ describe("TasksScreen", () => {
     });
 
     const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
     expect(screen.getByTestId("tasks-screen__empty_state")).toBeTruthy();
     expect(screen.getByText("No matching tasks")).toBeTruthy();
-  });
-
-  it("matches the Activity header safe-area treatment and keeps a tighter static control gap", () => {
-    const { SafeAreaView } = require("react-native-safe-area-context");
-
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    const safeArea = screen.UNSAFE_getByType(SafeAreaView);
-
-    expect(safeArea.props.edges).toEqual(["left", "right", "bottom"]);
-    expect(screen.getByTestId("tasks-screen__search_wrapper").props.className).toContain("mb-1");
-  });
-
-  it("renders the Tasks list rows through the shared activity-style shell", () => {
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-1:thumbnail-image")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-2:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("tasks-screen__row_task-2:no-photo-icon")).toBeTruthy();
-  });
-
-  it("preserves nested-task indentation in the shared row path and keeps row tap-through navigation", () => {
-    const onNavigateToTaskDetail = jest.fn();
-    const screen = render(
-      <TasksScreen
-        onNavigateToTaskDetail={onNavigateToTaskDetail}
-        onNavigateToCreateTask={jest.fn()}
-      />,
-    );
-
-    expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
-
-    fireEvent.press(screen.getByTestId("tasks-screen__row_task-2"));
-
-    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-2");
   });
 });

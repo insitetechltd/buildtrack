@@ -13,6 +13,8 @@ interface ActivityStyleRowCardProps {
   subtitleClassName?: string;
   metaClassName?: string;
   badgeClassName?: string;
+  topLeftMarker?: React.ReactNode;
+  badgeVariant?: "plain" | "pill";
   onPress?: () => void;
 }
 
@@ -27,6 +29,8 @@ export default function ActivityStyleRowCard({
   subtitleClassName,
   metaClassName,
   badgeClassName,
+  topLeftMarker,
+  badgeVariant = "plain",
   onPress,
 }: ActivityStyleRowCardProps) {
   const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
@@ -41,6 +45,11 @@ export default function ActivityStyleRowCard({
       onPress={onPress}
       className="overflow-hidden rounded-2xl bg-white"
     >
+      {topLeftMarker ? (
+        <View testID={`${testID}:top-left-marker`} className="absolute left-3 top-3 z-10">
+          {topLeftMarker}
+        </View>
+      ) : null}
       <View className="h-24 flex-row">
         <View
           testID={`${testID}:thumbnail`}
@@ -69,37 +78,45 @@ export default function ActivityStyleRowCard({
           )}
         </View>
         <View className="min-w-0 flex-1 justify-center p-4">
-          <View className="flex-row items-start justify-between">
-            <View className="mr-4 flex-1">
-              <Text
-                className={titleClassName ?? "text-base font-semibold text-slate-900"}
-                numberOfLines={2}
-              >
-                {title}
-              </Text>
-              <Text
-                className={subtitleClassName ?? "mt-1 text-sm text-slate-500"}
-                numberOfLines={2}
-              >
-                {subtitle}
-              </Text>
-            </View>
+          <View className="min-w-0">
             <Text
-              className={
-                badgeClassName ??
-                "max-w-[96px] text-right text-xs font-medium uppercase tracking-wide text-slate-400"
-              }
+              className={titleClassName ?? "text-base font-semibold text-slate-900"}
               numberOfLines={2}
             >
-              {badgeLabel}
+              {title}
+            </Text>
+            <Text
+              className={subtitleClassName ?? "mt-1 text-sm text-slate-500"}
+              numberOfLines={2}
+            >
+              {subtitle}
             </Text>
           </View>
-          <Text
-            className={metaClassName ?? "mt-3 text-xs font-medium text-slate-400"}
-            numberOfLines={1}
+          <View
+            testID={`${testID}:bottom-row`}
+            className="mt-3 flex-row items-center justify-between gap-3"
           >
-            {metaLabel}
-          </Text>
+            <Text
+              className={metaClassName ?? "flex-1 text-xs font-medium text-slate-400"}
+              numberOfLines={1}
+            >
+              {metaLabel}
+            </Text>
+            <View
+              testID={`${testID}:${badgeVariant === "pill" ? "badge-pill" : "badge-plain"}`}
+              className={badgeVariant === "pill" ? "rounded-full bg-slate-100 px-2.5 py-1" : ""}
+            >
+              <Text
+                className={
+                  badgeClassName ??
+                  "max-w-[96px] text-right text-xs font-medium uppercase tracking-wide text-slate-400"
+                }
+                numberOfLines={1}
+              >
+                {badgeLabel}
+              </Text>
+            </View>
+          </View>
         </View>
       </View>
     </Pressable>

@@ -355,6 +355,7 @@ export function buildTaskDerivedState(
 
 interface TaskStore {
   tasks: Task[];
+  archivedTasks: Task[];
   taskReadStatuses: TaskReadStatus[];
   tasksById: Record<string, Task>;
   taskPreviewById: Record<string, TaskPreview>;
@@ -384,6 +385,7 @@ interface TaskStore {
   
   // Fetching
   fetchTasks: (forceRefresh?: boolean) => Promise<void>;
+  fetchArchivedTasks: (forceRefresh?: boolean) => Promise<void>;
   fetchTasksByProject: (projectId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTasksByUser: (userId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
@@ -473,6 +475,7 @@ export const useTaskStore = create<TaskStore>()(
   persist(
     (set, get) => ({
       tasks: [],
+      archivedTasks: [],
       taskReadStatuses: [],
       tasksById: {},
       taskPreviewById: {},
@@ -841,6 +844,134 @@ export const useTaskStore = create<TaskStore>()(
         } catch (error: any) {
           console.error('Error fetching tasks:', error);
           get().completeTaskQueryError(resourceKey, error.message, hasCachedData);
+        }
+      },
+
+      fetchArchivedTasks: async (_forceRefresh: boolean = false) => {
+        if (!supabase) {
+          console.error('Supabase not configured, no archived data available');
+          set({ archivedTasks: [], isLoading: false, error: 'Supabase not configured' });
+          return;
+        }
+
+        set({ isLoading: true, error: null });
+        try {
+          const supabaseClient = supabase;
+          const { data: archivedTasksData, error: tasksError } = await supabaseClient
+            .from('tasks')
+            .select('*')
+            .is('cancelled_at', null)
+            .not('archived_at', 'is', null)
+            .is('deleted_at', null)
+            .order('archived_at', { ascending: false });
+
+          if (tasksError) throw tasksError;
+
+          const { data: taskActivitiesData, error: taskActivitiesError } = await supabaseClient
+            .from('task_activities')
+            .select('*')
+            .order('timestamp', { ascending: true });
+
+          if (taskActivitiesError) throw taskActivitiesError;
+
+          const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
+          (taskActivitiesData || []).forEach((activity: any) => {
+            const taskId = activity.task_id;
+            if (!activitiesByTaskId[taskId]) {
+              activitiesByTaskId[taskId] = [];
+            }
+            activitiesByTaskId[taskId].push({
+              id: activity.id,
+              taskId: activity.task_id,
+              userId: activity.user_id,
+              activityType: activity.activity_type as ActivityType,
+              timestamp: activity.timestamp,
+              data: activity.data,
+              description: activity.description || '',
+              completionPercentage: activity.completion_percentage,
+              status: activity.status as TaskStatus | undefined,
+              notificationsSent: activity.notifications_sent || false,
+              notifiedAt: activity.notified_at,
+              createdAt: activity.created_at,
+            });
+          });
+
+          const transformedArchivedTasks = (archivedTasksData || []).map((task) => {
+            const normalizedAssignedTo = Array.isArray(task.assigned_to)
+              ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
+              : [];
+            const normalizedAssignedBy = task.assigned_by ? String(task.assigned_by) : '';
+
+            return normalizeTaskActivityCompatibility({
+              id: task.id,
+              projectId: task.project_id,
+              parentTaskId: task.parent_task_id,
+              nestingLevel: task.nesting_level,
+              rootTaskId: task.root_task_id,
+              title: task.title,
+              description: task.description,
+              taskReference: task.task_reference || undefined,
+              billingStatus: (task.billing_status || "non_billable") as BillingStatus,
+              priority: task.priority,
+              category: task.category,
+              dueDate: task.due_date,
+              status: (task.current_status || 'new') as TaskStatus,
+              completionPercentage: task.completion_percentage,
+              assignedTo: normalizedAssignedTo,
+              primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
+              delegatedUserIds: Array.isArray(task.delegated_user_ids)
+                ? task.delegated_user_ids.map((userId: unknown) => String(userId))
+                : undefined,
+              assignedBy: normalizedAssignedBy,
+              containerId: task.container_id ? String(task.container_id) : undefined,
+              subContainerId: task.sub_container_id ? String(task.sub_container_id) : undefined,
+              tags: Array.isArray(task.tags) ? task.tags.map((tag: unknown) => String(tag)) : [],
+              locationOnSite: task.location_on_site || undefined,
+              location: task.location,
+              attachments: task.attachments || [],
+              starredByUsers: task.starred_by_users || [],
+              acceptedBy: task.accepted_by || undefined,
+              acceptedAt: task.accepted_at || undefined,
+              declinedReason: task.decline_reason || undefined,
+              reviewedBy: task.reviewed_by || undefined,
+              reviewedAt: task.reviewed_at || undefined,
+              cancelledAt: task.cancelled_at || undefined,
+              cancelledBy: task.cancelled_by || undefined,
+              deletedAt: task.deleted_at || undefined,
+              deletedBy: task.deleted_by || undefined,
+              archivedAt: task.archived_at || undefined,
+              archivedBy: task.archived_by || undefined,
+              createdAt: task.created_at,
+              updatedAt: task.updated_at,
+              activities: activitiesByTaskId[task.id] || [],
+              updates: (activitiesByTaskId[task.id] || [])
+                .filter((activity: TaskActivity) =>
+                  activity.activityType === 'progress_update' || activity.activityType === 'status_change'
+                )
+                .map((activity: TaskActivity) => ({
+                  id: activity.id,
+                  description: activity.description,
+                  photos: (activity.data as any)?.photos || [],
+                  completionPercentage: activity.completionPercentage || 0,
+                  status: activity.status || 'not_started' as TaskStatus,
+                  timestamp: activity.timestamp,
+                  userId: activity.userId,
+                })),
+            });
+          });
+
+          set({
+            archivedTasks: transformedArchivedTasks,
+            isLoading: false,
+            error: null,
+          });
+        } catch (error: any) {
+          console.error('Error fetching archived tasks:', error);
+          set({
+            archivedTasks: [],
+            error: error.message,
+            isLoading: false,
+          });
         }
       },
 
@@ -4019,6 +4150,7 @@ export const useTaskStore = create<TaskStore>()(
           ...currentState,
           ...persisted,
           tasks: normalizePersistedTasks(persisted.tasks as Task[] | undefined),
+          archivedTasks: normalizePersistedTasks(persisted.archivedTasks as Task[] | undefined),
           taskReadStatuses: Array.isArray(persisted.taskReadStatuses)
             ? persisted.taskReadStatuses
             : currentState.taskReadStatuses,
@@ -4029,6 +4161,7 @@ export const useTaskStore = create<TaskStore>()(
       },
       partialize: (state) => ({
         tasks: state.tasks,
+        archivedTasks: state.archivedTasks,
         taskReadStatuses: state.taskReadStatuses,
         allTasksFetchTimestamp: state.allTasksFetchTimestamp,
         taskQueryMeta: Object.fromEntries(

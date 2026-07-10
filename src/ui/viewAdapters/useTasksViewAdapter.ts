@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
@@ -7,15 +7,38 @@ import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buil
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { getFileUrl } from "@/api/fileUploadService";
 import type {
+  TasksActiveFilterChipModel,
+  TasksOverdueWindowValue,
   TasksQueueBucketId,
+  TasksQueueFilterValue,
   TasksQueueId,
   TasksSortDirection,
   TasksSortField,
+  TasksStatusFilterValue,
   TasksScreenRowItem,
   TasksScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
 import type { StatusSemanticToken } from "@/ui/contracts/primitives";
 import type { TasksSearchInputData } from "@/ui/mappers/tasksMappers";
+
+type AppliedTasksFilters = {
+  queue: TasksQueueFilterValue;
+  status: TasksStatusFilterValue;
+  overdueWindow: TasksOverdueWindowValue;
+};
+
+type StagedFiltersUpdater =
+  | AppliedTasksFilters
+  | ((current: AppliedTasksFilters) => AppliedTasksFilters);
+
+const DEFAULT_FILTERS: AppliedTasksFilters = {
+  queue: "all_queues",
+  status: "any_status",
+  overdueWindow: "show_all",
+};
+
+const LEGACY_QUEUE_CYCLE: TasksQueueFilterValue[] = ["inbox", "outbox"];
+const LEGACY_STATUS_CYCLE: TasksStatusFilterValue[] = ["new", "doing", "review"];
 
 function formatTaskStatusLabel(status: TaskStatus): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -192,14 +215,40 @@ function getLatestMeaningfulTimestamp(task: Task): string {
   return timestamps.sort((left, right) => right.localeCompare(left))[0] ?? "";
 }
 
-function formatLatestUpdateLabel(task: Task): string | undefined {
-  const timestamp = getLatestMeaningfulTimestamp(task);
-
+function formatTaskDateLabel(prefix: string, timestamp?: string): string | undefined {
   if (!timestamp) {
     return undefined;
   }
 
-  return timestamp.slice(0, 10);
+  return `${prefix}: ${timestamp.slice(0, 10)}`;
+}
+
+function buildSortAwareDateLabel(task: Task, field: TasksSortField): string | undefined {
+  const modifiedAt = getLatestMeaningfulTimestamp(task) || undefined;
+  const createdAt = task.createdAt || undefined;
+  const dueDate = task.dueDate || undefined;
+
+  if (field === "due_date") {
+    return (
+      formatTaskDateLabel("Due", dueDate) ??
+      formatTaskDateLabel("Modified", modifiedAt) ??
+      formatTaskDateLabel("Created on", createdAt)
+    );
+  }
+
+  if (field === "modified_at") {
+    return (
+      formatTaskDateLabel("Modified", modifiedAt) ??
+      formatTaskDateLabel("Created on", createdAt) ??
+      formatTaskDateLabel("Due", dueDate)
+    );
+  }
+
+  return (
+    formatTaskDateLabel("Created on", createdAt) ??
+    formatTaskDateLabel("Modified", modifiedAt) ??
+    formatTaskDateLabel("Due", dueDate)
+  );
 }
 
 function getPriorityRank(priority: Priority): number {
@@ -238,6 +287,16 @@ function compareTasksForSearchFirstList(left: Task, right: Task): number {
   }
 
   return getStatusFlowRank(left.status) - getStatusFlowRank(right.status);
+}
+
+function getNextCycleValue<TValue extends string>(cycle: TValue[], current: TValue): TValue {
+  const currentIndex = cycle.indexOf(current);
+
+  if (currentIndex === -1) {
+    return cycle[0];
+  }
+
+  return cycle[(currentIndex + 1) % cycle.length];
 }
 
 function getComparableTimestamp(value?: string): number | null {
@@ -341,27 +400,146 @@ function matchesSearchQuery(task: Task, projectName: string, normalizedQuery: st
   return haystack.includes(normalizedQuery);
 }
 
-function deriveInitialQueueFromLegacyFilters(
-  sectionFilter: string,
-  statusFilter: string,
-): { queue: TasksQueueId; bucket: TasksQueueBucketId } {
-  const isReviewQueueFilter = statusFilter === "reviewing" || statusFilter === "reviewing-overdue";
-  const bucket: TasksQueueBucketId =
-    statusFilter === "wip" || statusFilter === "wip-overdue"
-      ? "wip"
-      : isReviewQueueFilter
-        ? "review"
-        : "new";
+function getQueueFilterLabel(queue: TasksQueueFilterValue): string {
+  switch (queue) {
+    case "inbox":
+      return "Inbox";
+    case "outbox":
+      return "Outbox";
+    case "archived":
+      return "Archived";
+    case "all_queues":
+    default:
+      return "All queues";
+  }
+}
 
-  if (sectionFilter === "outbox") {
-    return { queue: "team_queue", bucket };
+function getStatusFilterLabel(status: TasksStatusFilterValue): string {
+  switch (status) {
+    case "new":
+      return "New";
+    case "doing":
+      return "Doing";
+    case "review":
+      return "Review";
+    case "overdue":
+      return "Overdue";
+    case "any_status":
+    default:
+      return "Any status";
+  }
+}
+
+function getOverdueWindowLabel(value: TasksOverdueWindowValue): string {
+  switch (value) {
+    case "three_active":
+      return "3 active";
+    case "one_week":
+      return "1 week";
+    case "one_month":
+      return "1 month";
+    case "show_all":
+    default:
+      return "Show all";
+  }
+}
+
+function getFiltersFromLaunchPreset(
+  bucket?: "new" | "wip" | "review" | "overdue",
+  queue?: TasksQueueId,
+): AppliedTasksFilters {
+  if (!bucket || !queue) {
+    return DEFAULT_FILTERS;
   }
 
-  if (sectionFilter === "inbox" && isReviewQueueFilter) {
-    return { queue: "team_queue", bucket: "review" };
+  let status: TasksStatusFilterValue = "any_status";
+  if (bucket === "wip") {
+    status = "doing";
+  } else if (bucket === "review") {
+    status = "review";
+  } else if (bucket === "overdue") {
+    status = "overdue";
+  } else if (bucket === "new") {
+    status = "new";
   }
 
-  return { queue: "my_queue", bucket };
+  return {
+    queue: queue === "team_queue" ? "outbox" : "inbox",
+    status,
+    overdueWindow: "show_all",
+  };
+}
+
+function isWithinOverdueWindow(task: Task, overdueWindow: TasksOverdueWindowValue): boolean {
+  if (overdueWindow === "show_all") {
+    return true;
+  }
+
+  if (!isTaskOverdue(task) || !task.dueDate) {
+    return false;
+  }
+
+  const dueDate = new Date(task.dueDate).getTime();
+  const now = Date.now();
+  if (!Number.isFinite(dueDate) || dueDate > now) {
+    return false;
+  }
+
+  const daysOverdue = (now - dueDate) / (1000 * 60 * 60 * 24);
+  switch (overdueWindow) {
+    case "three_active":
+      return daysOverdue <= 3;
+    case "one_week":
+      return daysOverdue <= 7;
+    case "one_month":
+      return daysOverdue <= 30;
+    case "show_all":
+    default:
+      return true;
+  }
+}
+
+function buildActiveFilterChips(filters: AppliedTasksFilters): TasksActiveFilterChipModel[] {
+  const chips: TasksActiveFilterChipModel[] = [];
+
+  if (filters.queue !== "all_queues") {
+    chips.push({
+      id: "queue",
+      label: `Queue: ${getQueueFilterLabel(filters.queue)}`,
+    });
+  }
+
+  if (filters.status !== "any_status") {
+    chips.push({
+      id: "status",
+      label: `Status: ${getStatusFilterLabel(filters.status)}`,
+    });
+  }
+
+  if (filters.overdueWindow !== "show_all") {
+    chips.push({
+      id: "overdueWindow",
+      label: `Overdue: ${getOverdueWindowLabel(filters.overdueWindow)}`,
+    });
+  }
+
+  return chips;
+}
+
+function getLegacyQueueValue(queue: TasksQueueFilterValue): TasksQueueId {
+  return queue === "outbox" ? "team_queue" : "my_queue";
+}
+
+function getLegacyStatusValue(status: TasksStatusFilterValue): "new" | "wip" | "review" {
+  if (status === "doing") {
+    return "wip";
+  }
+
+  if (status === "review") {
+    return "review";
+  }
+
+  return "new";
 }
 
 export interface TasksViewAdapterProps {
@@ -382,10 +560,20 @@ export interface TasksViewAdapterHookResult {
   };
   actions: {
     resetFilters: () => void;
-    selectQueue: (queue: "all" | TasksQueueId) => void;
-    selectBucket: (bucket: "all" | "new" | "wip" | "review" | "overdue") => void;
-    selectSortField: (field: TasksSortField) => void;
-    selectSortDirection: (direction: TasksSortDirection) => void;
+    openFiltersSheet: () => void;
+    closeFiltersSheet: () => void;
+    stageQueueFilter: (value: TasksQueueFilterValue) => void;
+    stageStatusFilter: (value: TasksStatusFilterValue) => void;
+    stageOverdueWindowFilter: (value: TasksOverdueWindowValue) => void;
+    applyStagedFilters: () => void;
+    resetStagedFilters: () => void;
+    removeAppliedFilterChip: (
+      chipId: TasksActiveFilterChipModel["id"],
+    ) => void;
+    cycleQueue: () => void;
+    cycleStatus: () => void;
+    selectAllMode: () => void;
+    selectOverdueOnly: () => void;
     toggleTaskExpansion: (taskId: string) => void;
   };
 }
@@ -396,30 +584,26 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const projectStore = useProjectStoreWithInit();
   const projectFilterStore = useProjectFilterStore();
   const currentUserId = user?.id ?? "";
-  const initialFilterSelection = useMemo(() => {
-    if (projectFilterStore.tasksLaunchPreset) {
-      return {
-        queue: projectFilterStore.tasksLaunchPreset.queue,
-        bucket: projectFilterStore.tasksLaunchPreset.bucket,
-      };
-    }
-
-    return {
-      queue: "all" as const,
-      bucket: "all" as const,
-    };
-  }, [projectFilterStore.tasksLaunchPreset]);
+  const launchPresetFilters = useMemo(
+    () =>
+      getFiltersFromLaunchPreset(
+        projectFilterStore.tasksLaunchPreset?.bucket,
+        projectFilterStore.tasksLaunchPreset?.queue,
+      ),
+    [projectFilterStore.tasksLaunchPreset?.bucket, projectFilterStore.tasksLaunchPreset?.queue],
+  );
   const tasks = taskStore.tasks ?? [];
+  const archivedTasks = taskStore.archivedTasks ?? [];
+  const fetchArchivedTasks = taskStore.fetchArchivedTasks;
   const isLoadingTasks = Boolean(taskStore.isLoading);
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedQueue, setSelectedQueue] = useState<"all" | TasksQueueId>(initialFilterSelection.queue);
-  const [selectedBucket, setSelectedBucket] = useState<"all" | "new" | "wip" | "review" | "overdue">(
-    initialFilterSelection.bucket,
-  );
-  const [selectedSortField, setSelectedSortField] = useState<TasksSortField>("modified_at");
-  const [selectedSortDirection, setSelectedSortDirection] = useState<TasksSortDirection>("desc");
+  const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<AppliedTasksFilters>(launchPresetFilters);
+  const [stagedFilters, setStagedFilters] = useState<AppliedTasksFilters>(launchPresetFilters);
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
+  const stagedFiltersRef = useRef<AppliedTasksFilters>(launchPresetFilters);
+  const archivedFetchRequestedRef = useRef(false);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const tasksLaunchPreset = projectFilterStore.tasksLaunchPreset;
@@ -430,20 +614,76 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       return;
     }
 
-    setSelectedQueue(tasksLaunchPreset.queue);
-    setSelectedBucket(tasksLaunchPreset.bucket);
+    const nextFilters = getFiltersFromLaunchPreset(tasksLaunchPreset.bucket, tasksLaunchPreset.queue);
+    stagedFiltersRef.current = nextFilters;
+    setAppliedFilters(nextFilters);
+    setStagedFilters(nextFilters);
     clearTasksLaunchPreset?.();
   }, [clearTasksLaunchPreset, tasksLaunchPreset]);
 
+  useEffect(() => {
+    const needsArchivedTasks =
+      appliedFilters.queue === "archived" || stagedFilters.queue === "archived";
+
+    if (!needsArchivedTasks) {
+      archivedFetchRequestedRef.current = false;
+      return;
+    }
+
+    if (archivedTasks.length > 0) {
+      archivedFetchRequestedRef.current = false;
+      return;
+    }
+
+    if (typeof fetchArchivedTasks !== "function" || archivedFetchRequestedRef.current) {
+      return;
+    }
+
+    archivedFetchRequestedRef.current = true;
+    void fetchArchivedTasks();
+  }, [appliedFilters.queue, archivedTasks.length, fetchArchivedTasks, stagedFilters.queue]);
+
+  const syncAppliedAndStagedFilters = (nextFilters: AppliedTasksFilters) => {
+    stagedFiltersRef.current = nextFilters;
+    setAppliedFilters(nextFilters);
+    setStagedFilters(nextFilters);
+  };
+
+  const updateAppliedFilters = (
+    updater: (current: AppliedTasksFilters) => AppliedTasksFilters,
+  ) => {
+    setAppliedFilters((current) => {
+      const next = updater(current);
+      stagedFiltersRef.current = next;
+      setStagedFilters(next);
+      return next;
+    });
+  };
+
+  const updateStagedFilters = (updater: StagedFiltersUpdater) => {
+    const next =
+      typeof updater === "function"
+        ? (updater as (current: AppliedTasksFilters) => AppliedTasksFilters)(stagedFiltersRef.current)
+        : updater;
+    stagedFiltersRef.current = next;
+    setStagedFilters(next);
+  };
+
   const {
+    activeFilterChips,
+    filterButton,
     filterControls,
+    filterSheet,
+    resultSummaryLabel,
     searchResults,
     taskRowItems,
     scalarMetrics,
     continuity,
     structuralState,
   } = useMemo(() => {
-    const hasTasks = tasks.length > 0;
+    const activeTasks = tasks.filter((task) => !task.archivedAt);
+    const allKnownTasks = [...activeTasks, ...archivedTasks];
+    const hasTasks = allKnownTasks.length > 0;
     const isInitialLoading = isLoadingTasks && !hasTasks;
     const isBackgroundRefreshing = isLoadingTasks && hasTasks;
     const structuralState: TasksSearchInputData["structuralState"] = isInitialLoading
@@ -452,13 +692,47 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         ? "stale"
         : "empty";
 
-    const candidateTasks = tasks.filter((task) => {
+    const candidateTasks = allKnownTasks.filter((task) => {
       if (selectedProjectId && task.projectId !== selectedProjectId) {
         return false;
       }
 
-      return Boolean(resolveQueueForTask(task, currentUserId) && resolveBucketForTask(task));
+      return Boolean(resolveQueueForTask(task, currentUserId));
     });
+
+    const visibleQueueTasks = candidateTasks.filter((task) => {
+      switch (appliedFilters.queue) {
+        case "inbox":
+          return !task.archivedAt && resolveQueueForTask(task, currentUserId) === "my_queue";
+        case "outbox":
+          return !task.archivedAt && resolveQueueForTask(task, currentUserId) === "team_queue";
+        case "archived":
+          return Boolean(task.archivedAt);
+        case "all_queues":
+        default:
+          return !task.archivedAt;
+      }
+    });
+
+    const statusScopedTasks = visibleQueueTasks.filter((task) => {
+      switch (appliedFilters.status) {
+        case "new":
+          return matchesNewStatusFilter(task.status);
+        case "doing":
+          return matchesWipStatusFilter(task.status);
+        case "review":
+          return matchesReviewingStatusFilter(task.status);
+        case "overdue":
+          return isTaskOverdue(task);
+        case "any_status":
+        default:
+          return true;
+      }
+    });
+
+    const overdueWindowScopedTasks = statusScopedTasks.filter((task) =>
+      isWithinOverdueWindow(task, appliedFilters.overdueWindow),
+    );
 
     const myQueueTasks = candidateTasks.filter(
       (task) => resolveQueueForTask(task, currentUserId) === "my_queue",
@@ -466,28 +740,17 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     const teamQueueTasks = candidateTasks.filter(
       (task) => resolveQueueForTask(task, currentUserId) === "team_queue",
     );
-    const queueScopedTasks =
-      selectedQueue === "all"
-        ? candidateTasks
-        : candidateTasks.filter((task) => resolveQueueForTask(task, currentUserId) === selectedQueue);
 
-    const bucketScopedTasks = queueScopedTasks.filter((task) => {
-      if (selectedBucket === "all") {
-        return true;
-      }
-
-      return resolveBucketForTask(task) === selectedBucket;
+    const searchScopedTasks = overdueWindowScopedTasks.filter((task) => {
+      const projectName = projectStore.getProjectById(task.projectId)?.name ?? "Project";
+      return matchesSearchQuery(task, projectName, normalizedSearchQuery);
     });
 
-    const filteredTasks = bucketScopedTasks
-      .filter((task) => {
-        const projectName = projectStore.getProjectById(task.projectId)?.name ?? "Project";
-        return matchesSearchQuery(task, projectName, normalizedSearchQuery);
-      });
-
-    const sortedVisibleTasks = [...filteredTasks].sort((left, right) =>
-      compareTasksBySortField(left, right, selectedSortField, selectedSortDirection),
-    );
+    const sortedVisibleTasks = [...searchScopedTasks].sort((left, right) => {
+      const leftDue = left.dueDate ?? "9999-12-31T00:00:00.000Z";
+      const rightDue = right.dueDate ?? "9999-12-31T00:00:00.000Z";
+      return leftDue.localeCompare(rightDue);
+    });
     const visibleTasksById = new Map(sortedVisibleTasks.map((task) => [task.id, task]));
     const getIndentationLevel = (task: Task): number => {
       let level = 0;
@@ -512,7 +775,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);
       const projectName = project?.name ?? "Project";
-      const latestUpdateLabel = formatLatestUpdateLabel(task);
+      const latestUpdateLabel = buildSortAwareDateLabel(task, "due_date");
       const photoUris = collectTaskPhotoUris(task);
       const searchProvenanceLine = `${getQueueTitle(queue)} · ${getBucketTitle(bucket)} · ${projectName}`;
       const contextLine =
@@ -550,136 +813,117 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     });
 
     const bucketCounts = {
-      all: queueScopedTasks.length,
-      new: queueScopedTasks.filter((task) => resolveBucketForTask(task) === "new").length,
-      wip: queueScopedTasks.filter((task) => resolveBucketForTask(task) === "wip").length,
-      review: queueScopedTasks.filter((task) => resolveBucketForTask(task) === "review").length,
+      new: candidateTasks.filter((task) => matchesNewStatusFilter(task.status)).length,
+      wip: candidateTasks.filter((task) => matchesWipStatusFilter(task.status)).length,
+      review: candidateTasks.filter((task) => matchesReviewingStatusFilter(task.status)).length,
     };
 
+    const activeFilterChips = buildActiveFilterChips(appliedFilters);
+    const activeBottomSheetFilterCount = activeFilterChips.length;
     const overdueVisibleTaskCount = taskRowItems.filter((row) => row.isOverdue).length;
 
     return {
+      activeFilterChips,
+      filterButton: {
+        label: "Filters" as const,
+        isActive: activeBottomSheetFilterCount > 0,
+        activeCount: activeBottomSheetFilterCount,
+      },
+      filterSheet: {
+        isOpen: isFiltersSheetOpen,
+        stagedQueue: stagedFilters.queue,
+        stagedStatus: stagedFilters.status,
+        stagedOverdueWindow: stagedFilters.overdueWindow,
+      },
       filterControls: {
+        mode: {
+          id: "mode" as const,
+          label: "Mode",
+          selectedValue:
+            appliedFilters.status === "overdue" || appliedFilters.overdueWindow !== "show_all"
+              ? "overdue"
+              : "all",
+          options: [
+            {
+              id: "mode:all",
+              value: "all" as const,
+              label: "All",
+              count: candidateTasks.filter((task) => !task.archivedAt).length,
+              isSelected:
+                appliedFilters.status !== "overdue" && appliedFilters.overdueWindow === "show_all",
+            },
+            {
+              id: "mode:overdue",
+              value: "overdue" as const,
+              label: "Overdue",
+              count: candidateTasks.filter((task) => isTaskOverdue(task)).length,
+              isSelected:
+                appliedFilters.status === "overdue" || appliedFilters.overdueWindow !== "show_all",
+            },
+          ],
+        },
         queue: {
           id: "queue" as const,
           label: "Queue",
-          selectedValue: selectedQueue,
+          selectedValue: getLegacyQueueValue(appliedFilters.queue),
           options: [
-            {
-              id: "queue:all",
-              value: "all" as const,
-              label: `All ${candidateTasks.length}`,
-              count: candidateTasks.length,
-              isSelected: selectedQueue === "all",
-            },
             {
               id: "queue:my_queue",
               value: "my_queue" as const,
-              label: `My Queue ${myQueueTasks.length}`,
+              label: "Inbox",
               count: myQueueTasks.length,
-              isSelected: selectedQueue === "my_queue",
+              isSelected: appliedFilters.queue === "inbox",
             },
             {
               id: "queue:team_queue",
               value: "team_queue" as const,
-              label: `Team Queue ${teamQueueTasks.length}`,
+              label: "Outbox",
               count: teamQueueTasks.length,
-              isSelected: selectedQueue === "team_queue",
+              isSelected: appliedFilters.queue === "outbox",
             },
           ],
         },
-        bucket: {
-          id: "bucket" as const,
-          label: "Bucket",
-          selectedValue: selectedBucket,
+        status: {
+          id: "status" as const,
+          label: "Status",
+          selectedValue: getLegacyStatusValue(appliedFilters.status),
           options: [
             {
-              id: "bucket:all",
-              value: "all" as const,
-              label: `All ${bucketCounts.all}`,
-              count: bucketCounts.all,
-              isSelected: selectedBucket === "all",
-            },
-            {
-              id: "bucket:new",
+              id: "status:new",
               value: "new" as const,
-              label: `New ${bucketCounts.new}`,
+              label: "New",
               count: bucketCounts.new,
-              isSelected: selectedBucket === "new",
+              isSelected: appliedFilters.status === "new",
             },
             {
-              id: "bucket:wip",
+              id: "status:wip",
               value: "wip" as const,
-              label: `Doing ${bucketCounts.wip}`,
+              label: "Doing",
               count: bucketCounts.wip,
-              isSelected: selectedBucket === "wip",
+              isSelected: appliedFilters.status === "doing",
             },
             {
-              id: "bucket:review",
+              id: "status:review",
               value: "review" as const,
-              label: `Review ${bucketCounts.review}`,
+              label: "Review",
               count: bucketCounts.review,
-              isSelected: selectedBucket === "review",
+              isSelected: appliedFilters.status === "review",
             },
           ],
         },
-        sort: {
-          id: "sort",
-          label: "Sort by",
-          selectedValue: selectedSortField,
-          options: [
-            {
-              id: "sort:created_at",
-              value: "created_at" as const,
-              label: "Creation date",
-              count: sortedVisibleTasks.length,
-              isSelected: selectedSortField === "created_at",
-            },
-            {
-              id: "sort:due_date",
-              value: "due_date" as const,
-              label: "Due date",
-              count: sortedVisibleTasks.length,
-              isSelected: selectedSortField === "due_date",
-            },
-            {
-              id: "sort:modified_at",
-              value: "modified_at" as const,
-              label: "Modified date",
-              count: sortedVisibleTasks.length,
-              isSelected: selectedSortField === "modified_at",
-            },
-          ],
-        },
-        sortDirection: {
-          id: "sortDirection",
-          label: "Order",
-          selectedValue: selectedSortDirection,
-          options: [
-            {
-              id: "sort-direction:asc",
-              value: "asc" as const,
-              label: "Earliest first",
-              count: sortedVisibleTasks.length,
-              isSelected: selectedSortDirection === "asc",
-            },
-            {
-              id: "sort-direction:desc",
-              value: "desc" as const,
-              label: "Latest first",
-              count: sortedVisibleTasks.length,
-              isSelected: selectedSortDirection === "desc",
-            },
-          ],
-        },
-      },
+      } as any,
+      resultSummaryLabel: `${taskRowItems.length} task${taskRowItems.length === 1 ? "" : "s"}`,
       searchResults: normalizedSearchQuery.length > 0 ? taskRowItems : [],
       taskRowItems,
       scalarMetrics: {
         totalVisibleTaskCount: taskRowItems.length,
         overdueVisibleTaskCount,
         selectedProjectTaskCount: candidateTasks.length,
-        hasActiveFilters: Boolean(selectedProjectId || selectedQueue !== "all" || selectedBucket !== "all"),
+        hasActiveFilters: Boolean(
+          selectedProjectId ||
+            normalizedSearchQuery.length > 0 ||
+            activeBottomSheetFilterCount > 0,
+        ),
       },
       continuity: {
         isInitialLoading,
@@ -694,17 +938,16 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   }, [
     currentUserId,
     expandedTaskIds,
+    appliedFilters,
+    archivedTasks,
+    isFiltersSheetOpen,
     isLoadingTasks,
     normalizedSearchQuery,
     projectStore,
     props,
-    selectedBucket,
-    selectedSortDirection,
-    selectedSortField,
     selectedProjectId,
-    selectedQueue,
+    stagedFilters,
     tasks,
-    taskStore,
   ]);
 
   const readiness = useMemo(() => {
@@ -724,12 +967,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       selectedProjectId,
       sectionFilterLabel: "Search-first list",
       statusFilterLabel: selectedProjectId ? "Project scoped" : "All projects",
-      sortLabel: `${filterControls.sort.options.find((option) => option.isSelected)?.label ?? "Modified date"} · ${
-        filterControls.sortDirection.options.find((option) => option.isSelected)?.label ?? "Latest first"
-      }`,
+      sortLabel: "Due date · Earliest first",
     },
+    filterButton,
+    filterSheet,
+    activeFilterChips,
+    resultSummaryLabel,
     filterControls,
-    isSearchMode: false,
+    isSearchMode: normalizedSearchQuery.length > 0,
     queuePanels: [],
     searchResults,
     expandedTaskIds,
@@ -748,27 +993,85 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
 
   const resetFilters = () => {
     setSearchQuery("");
-    setSelectedQueue("all");
-    setSelectedBucket("all");
+    setIsFiltersSheetOpen(false);
+    syncAppliedAndStagedFilters(DEFAULT_FILTERS);
     setExpandedTaskIds([]);
     projectFilterStore.resetFilters();
   };
 
-  const selectQueue = (queue: "all" | TasksQueueId) => {
-    setSelectedQueue(queue);
-    setSelectedBucket("all");
+  const openFiltersSheet = () => {
+    updateStagedFilters(appliedFilters);
+    setIsFiltersSheetOpen(true);
   };
 
-  const selectBucket = (bucket: "all" | "new" | "wip" | "review" | "overdue") => {
-    setSelectedBucket(bucket);
+  const closeFiltersSheet = () => {
+    setIsFiltersSheetOpen(false);
   };
 
-  const selectSortField = (field: TasksSortField) => {
-    setSelectedSortField(field);
+  const stageQueueFilter = (value: TasksQueueFilterValue) => {
+    updateStagedFilters((current) => ({ ...current, queue: value }));
   };
 
-  const selectSortDirection = (direction: TasksSortDirection) => {
-    setSelectedSortDirection(direction);
+  const stageStatusFilter = (value: TasksStatusFilterValue) => {
+    updateStagedFilters((current) => ({ ...current, status: value }));
+  };
+
+  const stageOverdueWindowFilter = (value: TasksOverdueWindowValue) => {
+    updateStagedFilters((current) => ({ ...current, overdueWindow: value }));
+  };
+
+  const applyStagedFilters = () => {
+    setAppliedFilters(stagedFiltersRef.current);
+    setIsFiltersSheetOpen(false);
+  };
+
+  const resetStagedFilters = () => {
+    updateStagedFilters(DEFAULT_FILTERS);
+  };
+
+  const removeAppliedFilterChip = (chipId: TasksActiveFilterChipModel["id"]) => {
+    updateAppliedFilters((current) => ({
+      ...current,
+      [chipId]:
+        chipId === "queue"
+          ? "all_queues"
+          : chipId === "status"
+            ? "any_status"
+            : "show_all",
+    }));
+  };
+
+  const cycleQueue = () => {
+    updateAppliedFilters((current) => ({
+      ...current,
+      queue: getNextCycleValue(
+        LEGACY_QUEUE_CYCLE,
+        current.queue === "outbox" ? "outbox" : "inbox",
+      ),
+    }));
+  };
+
+  const cycleStatus = () => {
+    updateAppliedFilters((current) => ({
+      ...current,
+      status: getNextCycleValue(
+        LEGACY_STATUS_CYCLE,
+        current.status === "doing" || current.status === "review" ? current.status : "new",
+      ),
+    }));
+  };
+
+  const selectAllMode = () => {
+    updateAppliedFilters(() => ({
+      ...DEFAULT_FILTERS,
+    }));
+  };
+
+  const selectOverdueOnly = () => {
+    updateAppliedFilters((current) => ({
+      ...current,
+      status: "overdue",
+    }));
   };
 
   const toggleTaskExpansion = (taskId: string) => {
@@ -793,10 +1096,18 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     },
     actions: {
       resetFilters,
-      selectQueue,
-      selectBucket,
-      selectSortField,
-      selectSortDirection,
+      openFiltersSheet,
+      closeFiltersSheet,
+      stageQueueFilter,
+      stageStatusFilter,
+      stageOverdueWindowFilter,
+      applyStagedFilters,
+      resetStagedFilters,
+      removeAppliedFilterChip,
+      cycleQueue,
+      cycleStatus,
+      selectAllMode,
+      selectOverdueOnly,
       toggleTaskExpansion,
     },
   };

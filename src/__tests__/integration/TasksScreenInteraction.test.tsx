@@ -1,35 +1,63 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, within } from "@testing-library/react-native";
+
 import TasksScreen from "../../../src/screens/TasksScreen";
 import { useTasksViewAdapter } from "../../../src/ui/viewAdapters/useTasksViewAdapter";
 
-// Mock the view adapter
 jest.mock("../../../src/ui/viewAdapters/useTasksViewAdapter");
 const mockUseTasksViewAdapter = useTasksViewAdapter as jest.Mock;
 
-// Mock child components
-jest.mock("../../../src/components/primitives/container/ContainerCard", () => {
-  return function MockContainerCard() {
-    return <></>;
+jest.mock("react-native-modal", () => {
+  return function MockModal({ children, isVisible }: any) {
+    const { View } = require("react-native");
+
+    if (!isVisible) {
+      return null;
+    }
+
+    return <View testID="mock-modal">{children}</View>;
   };
 });
+
 jest.mock("../../../src/components/primitives/input/TextField", () => {
-  return function MockTextField() {
-    return <></>;
+  return function MockTextField({ contract, rightSlot }: any) {
+    const { View, Text } = require("react-native");
+    const resolvedTestId = contract?.testId ?? `text-field:${contract?.id}`;
+    const placeholder = contract?.placeholder;
+
+    return (
+      <View testID={resolvedTestId}>
+        {contract?.label ? <Text>{contract.label}</Text> : null}
+        {placeholder ? <Text>{placeholder}</Text> : null}
+        {rightSlot ? <View testID={`${resolvedTestId}__right-slot`}>{rightSlot}</View> : null}
+      </View>
+    );
   };
 });
 
 describe("TasksScreen Interactions", () => {
-  let mockSelectQueue: jest.Mock;
-  let mockSelectBucket: jest.Mock;
   let mockResetFilters: jest.Mock;
+  let mockOpenFiltersSheet: jest.Mock;
+  let mockCloseFiltersSheet: jest.Mock;
+  let mockStageQueueFilter: jest.Mock;
+  let mockStageStatusFilter: jest.Mock;
+  let mockStageOverdueWindowFilter: jest.Mock;
+  let mockApplyStagedFilters: jest.Mock;
+  let mockResetStagedFilters: jest.Mock;
+  let mockRemoveAppliedFilterChip: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockSelectQueue = jest.fn();
-    mockSelectBucket = jest.fn();
     mockResetFilters = jest.fn();
+    mockOpenFiltersSheet = jest.fn();
+    mockCloseFiltersSheet = jest.fn();
+    mockStageQueueFilter = jest.fn();
+    mockStageStatusFilter = jest.fn();
+    mockStageOverdueWindowFilter = jest.fn();
+    mockApplyStagedFilters = jest.fn();
+    mockResetStagedFilters = jest.fn();
+    mockRemoveAppliedFilterChip = jest.fn();
 
     mockUseTasksViewAdapter.mockReturnValue({
       output: {
@@ -52,31 +80,23 @@ describe("TasksScreen Interactions", () => {
           selectedProjectId: null,
           sectionFilterLabel: "Search-first list",
           statusFilterLabel: "All projects",
-          sortLabel: "Priority first",
+          sortLabel: "Due date · Earliest first",
         },
-        filterControls: {
-          queue: {
-            id: "queue",
-            label: "Queue",
-            selectedValue: "all",
-            options: [
-              { id: "queue:all", value: "all", label: "All 2", count: 2, isSelected: true },
-              { id: "queue:my_queue", value: "my_queue", label: "My Queue 1", count: 1, isSelected: false },
-              { id: "queue:team_queue", value: "team_queue", label: "Team Queue 1", count: 1, isSelected: false },
-            ],
-          },
-          bucket: {
-            id: "bucket",
-            label: "Bucket",
-            selectedValue: "all",
-            options: [
-              { id: "bucket:all", value: "all", label: "All 2", count: 2, isSelected: true },
-              { id: "bucket:new", value: "new", label: "New 1", count: 1, isSelected: false },
-              { id: "bucket:wip", value: "wip", label: "Doing 0", count: 0, isSelected: false },
-              { id: "bucket:review", value: "review", label: "Review 1", count: 1, isSelected: false },
-            ],
-          },
+        filterButton: {
+          label: "Filters",
+          isActive: true,
+          activeCount: 2,
         },
+        filterSheet: {
+          isOpen: false,
+          stagedQueue: "outbox",
+          stagedStatus: "review",
+          stagedOverdueWindow: "show_all",
+        },
+        activeFilterChips: [
+          { id: "queue", label: "Queue: Outbox" },
+          { id: "status", label: "Status: Review" },
+        ],
         isSearchMode: false,
         queuePanels: [],
         searchResults: [],
@@ -97,12 +117,12 @@ describe("TasksScreen Interactions", () => {
             isOverdue: false,
             attachmentUris: [],
             queue: "my_queue",
-            queueLabel: "My Queue",
+            queueLabel: "Mine",
             bucket: "new",
             bucketLabel: "New",
             contextLabel: "North Tower",
             latestUpdateAt: "2026-07-04T09:00:00.000Z",
-            latestUpdateLabel: "2026-07-04",
+            latestUpdateLabel: "Due: 2026-07-05",
             isExpanded: false,
             density: "compact",
             structuralState: "stale",
@@ -133,28 +153,42 @@ describe("TasksScreen Interactions", () => {
       },
       actions: {
         resetFilters: mockResetFilters,
-        selectQueue: mockSelectQueue,
-        selectBucket: mockSelectBucket,
+        openFiltersSheet: mockOpenFiltersSheet,
+        closeFiltersSheet: mockCloseFiltersSheet,
+        stageQueueFilter: mockStageQueueFilter,
+        stageStatusFilter: mockStageStatusFilter,
+        stageOverdueWindowFilter: mockStageOverdueWindowFilter,
+        applyStagedFilters: mockApplyStagedFilters,
+        resetStagedFilters: mockResetStagedFilters,
+        removeAppliedFilterChip: mockRemoveAppliedFilterChip,
         toggleTaskExpansion: jest.fn(),
       },
     });
   });
 
-  it("wires search-first filter presses through the screen", () => {
-    const { getByTestId } = render(
-      <TasksScreen
-        onNavigateToTaskDetail={jest.fn()}
-        onNavigateToCreateTask={jest.fn()}
-      />
+  it("wires the filters button and chip removal through the Search + Filters contract", () => {
+    const { getByTestId, getByText, queryByText, queryByTestId } = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    fireEvent.press(getByTestId("tasks-screen__filter_queue"));
-    fireEvent.press(getByTestId("tasks-screen__filter_bucket"));
+    expect(getByTestId("text-field:tasks-search")).toBeTruthy();
+    expect(within(getByTestId("text-field:tasks-search__right-slot")).getByText("1")).toBeTruthy();
+    expect(getByTestId("tasks-screen__filters_button")).toBeTruthy();
+    expect(getByText("Queue: Outbox")).toBeTruthy();
+    expect(getByText("Status: Review")).toBeTruthy();
+    expect(queryByTestId("tasks-screen__filter_all")).toBeNull();
+    expect(queryByTestId("tasks-screen__filter_overdue")).toBeNull();
+
+    fireEvent.press(getByTestId("tasks-screen__filters_button"));
+    fireEvent.press(getByTestId("tasks-screen__chip_remove_queue"));
     fireEvent.press(getByTestId("tasks-screen__header_reset_filters"));
 
     expect(getByTestId("tasks-screen__task_list")).toBeTruthy();
+    expect(mockOpenFiltersSheet).toHaveBeenCalledTimes(1);
+    expect(mockRemoveAppliedFilterChip).toHaveBeenCalledWith("queue");
     expect(mockResetFilters).toHaveBeenCalledTimes(1);
-    expect(mockSelectQueue).not.toHaveBeenCalled();
-    expect(mockSelectBucket).not.toHaveBeenCalled();
+    expect(queryByText("Mine")).toBeNull();
+    expect(queryByText("Bucket")).toBeNull();
+    expect(queryByText("Sort by")).toBeNull();
   });
 });

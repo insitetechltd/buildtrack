@@ -1,4 +1,5 @@
 import React from "react";
+import { Text, View } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import ActivityStyleRowCard from "../ActivityStyleRowCard";
@@ -50,5 +51,48 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:task-2:thumbnail-placeholder")).toBeTruthy();
     expect(screen.getByTestId("shared-card:task-2:no-photo-icon")).toBeTruthy();
     expect(screen.queryByTestId("shared-card:task-2:thumbnail-image")).toBeNull();
+  });
+
+  it("renders a labeled floating top-left badge when provided", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-overdue"
+        title="Overdue inspection"
+        subtitle="North Tower"
+        metaLabel="Due: 2026-07-01"
+        badgeLabel="Review"
+        imageUri={undefined}
+        badgeVariant="pill"
+        topLeftMarker={
+          <View
+            testID="shared-card:task-overdue:overdue-badge"
+            className="rounded-full bg-red-500 px-2.5 py-1"
+          >
+            <Text className="text-xs font-semibold text-white">Overdue</Text>
+          </View>
+        }
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:task-overdue:top-left-marker")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-overdue:overdue-badge")).toBeTruthy();
+    expect(screen.getByText("Overdue")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-overdue:badge-pill")).toBeTruthy();
+  });
+
+  it("does not render the top-left marker when none is provided", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:task-4"
+        title="Concrete inspection"
+        subtitle="North Tower"
+        metaLabel="Modified: 2026-07-12"
+        badgeLabel="Review"
+        imageUri={undefined}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("shared-card:task-4:top-left-marker")).toBeNull();
   });
 });

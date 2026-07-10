@@ -97,6 +97,7 @@ const createTaskState = (overrides: Partial<Task> = {}): Task => ({
 const resetTaskStore = () => {
   useTaskStore.setState({
     tasks: [],
+    archivedTasks: [],
     taskReadStatuses: [],
     isLoading: false,
     error: null,
@@ -160,6 +161,62 @@ describe('taskStore.supabase unit tests', () => {
     });
 
     expect(mockFrom).toHaveBeenCalledTimes(4);
+  });
+
+  it('fetches archived tasks into archivedTasks without merging them into the active task list', async () => {
+    const archivedTaskRow = createTaskRow({
+      id: 'task-archived-1',
+      title: 'Archived HVAC Task',
+      archived_at: '2026-07-01T12:00:00.000Z',
+      archived_by: managerId,
+    });
+    const archivedActivityRow = createTaskActivityRow({
+      id: 'activity-archived-1',
+      task_id: 'task-archived-1',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          not: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [archivedTaskRow], error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [archivedActivityRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    expect(result.current.archivedTasks).toEqual([]);
+
+    await act(async () => {
+      await result.current.fetchArchivedTasks();
+    });
+
+    await waitFor(() => {
+      expect(result.current.archivedTasks).toHaveLength(1);
+    });
+
+    expect(result.current.archivedTasks[0]).toMatchObject({
+      id: 'task-archived-1',
+      title: 'Archived HVAC Task',
+      archivedAt: '2026-07-01T12:00:00.000Z',
+      archivedBy: managerId,
+      assignedTo: [workerId],
+      assignedBy: managerId,
+      activities: [expect.objectContaining({ id: 'activity-archived-1' })],
+    });
+    expect(result.current.tasks).toEqual([]);
   });
 
   it('retries task creation without deferred redesign schema fields when Supabase is behind', async () => {

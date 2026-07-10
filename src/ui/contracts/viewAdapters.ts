@@ -158,6 +158,30 @@ export interface TasksFilterSummary {
   sortLabel: string;
 }
 
+export type TasksQueueFilterValue = "all_queues" | "inbox" | "outbox" | "archived";
+
+export type TasksStatusFilterValue = "any_status" | "new" | "doing" | "review" | "overdue";
+
+export type TasksOverdueWindowValue = "show_all" | "three_active" | "one_week" | "one_month";
+
+export interface TasksActiveFilterChipModel {
+  id: "queue" | "status" | "overdueWindow";
+  label: string;
+}
+
+export interface TasksFilterButtonModel {
+  label: "Filters";
+  isActive: boolean;
+  activeCount: number;
+}
+
+export interface TasksFiltersSheetModel {
+  isOpen: boolean;
+  stagedQueue: TasksQueueFilterValue;
+  stagedStatus: TasksStatusFilterValue;
+  stagedOverdueWindow: TasksOverdueWindowValue;
+}
+
 export type TasksQueueId = "my_queue" | "team_queue";
 
 export type TasksQueueBucketId = "new" | "wip" | "review" | "overdue";
@@ -260,11 +284,14 @@ export interface TasksScreenViewAdapterOutput {
   readiness: NavigationScreenReadiness;
   continuity: ScreenContinuityContract;
   filterSummary: TasksFilterSummary;
+  filterButton: TasksFilterButtonModel;
+  filterSheet: TasksFiltersSheetModel;
+  activeFilterChips: TasksActiveFilterChipModel[];
+  resultSummaryLabel?: string;
   filterControls?: {
-    queue: TasksFilterControlModel<"all" | TasksQueueId>;
-    bucket: TasksFilterControlModel<"all" | "new" | "wip" | "review" | "overdue">;
-    sort: TasksFilterControlModel<TasksSortField>;
-    sortDirection: TasksFilterControlModel<TasksSortDirection>;
+    mode: TasksFilterControlModel<"all" | "overdue">;
+    queue: TasksFilterControlModel<TasksQueueId>;
+    status: TasksFilterControlModel<"new" | "wip" | "review">;
   };
   isSearchMode: boolean;
   queuePanels: TasksQueuePanel[];

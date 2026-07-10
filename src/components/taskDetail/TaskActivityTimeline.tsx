@@ -368,6 +368,7 @@ export default function TaskActivityTimeline({
                         horizontal
                         pagingEnabled
                         showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ height: '100%' }}
                         onMomentumScrollEnd={(event) => {
                           const nextIndex = Math.round(
                             event.nativeEvent.contentOffset.x /
@@ -393,7 +394,7 @@ export default function TaskActivityTimeline({
                             }
                             accessibilityRole="button"
                             className="h-full"
-                            style={{ width: containerWidths[activity.id] || "100%" }}
+                            style={{ width: containerWidths[activity.id] || Dimensions.get('window').width - 48 }}
                             onPress={() => openGallery(activity.photoUrls, photoIndex)}
                           >
                             <Image
@@ -509,6 +510,7 @@ export default function TaskActivityTimeline({
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ height: '100%' }}
                 contentOffset={{ x: Dimensions.get("window").width * selectedGallery.index, y: 0 }}
                 onMomentumScrollEnd={(event) => {
                   const nextIndex = Math.round(

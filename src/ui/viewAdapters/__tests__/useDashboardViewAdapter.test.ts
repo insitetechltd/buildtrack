@@ -343,6 +343,7 @@ describe("useDashboardViewAdapter", () => {
     expect(result.current.output.projectSummaryCard?.criticalDates).toEqual([
       {
         id: "critical-date:task-team-review",
+        taskId: "task-team-review",
         dateLabel: "Jul 5",
         title: "Approve facade mockup",
         subtitle: "Submitted For Review · Critical",

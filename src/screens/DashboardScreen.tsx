@@ -64,13 +64,15 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           {output.projectSummaryCard ? (
             <View className="mb-5">
               <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-                This Week&apos;s Critical Dates
+                This Week&apos;s Critical Tasks
               </Text>
               {output.projectSummaryCard.criticalDates.length > 0 ? (
                 <View className="gap-3">
                   {output.projectSummaryCard.criticalDates.map((item) => (
-                    <View
+                    <Pressable
                       key={item.id}
+                      testID={`dashboard-screen__critical_task_${item.id}`}
+                      onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
                       className="flex-row items-start justify-between rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4"
                     >
                       <View className="mr-3 flex-1">
@@ -80,13 +82,13 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                       <Text className="text-base font-semibold uppercase tracking-wide text-[#0A728F]">
                         {item.dateLabel}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               ) : (
                 <View className="rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4">
                   <Text className="text-lg leading-6 text-[#577783]">
-                    No critical dates flagged for this week yet.
+                    No critical tasks flagged for this week yet.
                   </Text>
                 </View>
               )}

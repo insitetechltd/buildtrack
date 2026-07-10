@@ -552,6 +552,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       .slice(0, 3)
       .map(({ task, dateLabel }) => ({
         id: `critical-date:${task.id}`,
+        taskId: task.id,
         dateLabel,
         title: task.title,
         subtitle: buildCriticalDateSubtitle(task),

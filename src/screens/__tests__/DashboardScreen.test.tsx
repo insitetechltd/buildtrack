@@ -69,6 +69,7 @@ describe("DashboardScreen", () => {
         criticalDates: [
           {
             id: "critical-date-1",
+            taskId: "task-critical-1",
             dateLabel: "Jul 7",
             title: "Concrete inspection",
             subtitle: "Submitted For Review · Critical",
@@ -233,7 +234,7 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("bg-[#08576E]");
     expect(screen.getByTestId("dashboard-screen__queue_cell_my_queue_new")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__queue_cell_team_queue_wip")).toBeTruthy();
-    expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
+    expect(screen.getByText("This Week's Critical Tasks")).toBeTruthy();
     expect(screen.getByText("Saturday · Jul 4 · Day 185 · ☁️ 28°C")).toBeTruthy();
     expect(screen.queryByText("Active Project")).toBeNull();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
@@ -260,6 +261,9 @@ describe("DashboardScreen", () => {
 
     fireEvent.press(screen.getByTestId("dashboard-screen__activity_activity-1"));
     expect(screen.getByText("Photo-backed activity")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__critical_task_critical-date-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-critical-1");
 
     fireEvent.press(screen.getByTestId("dashboard-screen__drafts_toggle"));
     fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));

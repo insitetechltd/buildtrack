@@ -66,6 +66,7 @@ describe("Activity home integration", () => {
           criticalDates: [
             {
               id: "critical-date-1",
+              taskId: "task-critical-1",
               dateLabel: "Jul 7",
               title: "Concrete inspection",
               subtitle: "Submitted For Review · Critical",
@@ -136,7 +137,7 @@ describe("Activity home integration", () => {
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__root").props.className).toContain("pb-2");
-    expect(screen.getByText("This Week's Critical Dates")).toBeTruthy();
+    expect(screen.getByText("This Week's Critical Tasks")).toBeTruthy();
     expect(screen.getByText("Queue Overview")).toBeTruthy();
     expect(screen.getByText("My Queue")).toBeTruthy();
     expect(screen.getByText("Team Queue")).toBeTruthy();

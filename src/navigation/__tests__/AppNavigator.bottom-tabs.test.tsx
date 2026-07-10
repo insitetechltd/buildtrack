@@ -195,12 +195,12 @@ describe("AppNavigator bottom-tab spacing", () => {
     mockProjectFilterState.workspaceReadyUserId = "user-1";
   });
 
-  it("uses equal visual slot sizing for Activity, Camera, and Tasks tabs", () => {
+  it("keeps side tabs tighter than the full-width center camera slot", () => {
     const screen = render(<AppNavigator />);
 
-    expect(screen.getByTestId("root-tab__activity")).toHaveStyle({ flex: 1 });
+    expect(screen.getByTestId("root-tab__activity")).toHaveStyle({ flexGrow: 0 });
     expect(screen.getByTestId("root-tab__camera")).toHaveStyle({ flex: 1 });
-    expect(screen.getByTestId("root-tab__tasks")).toHaveStyle({ flex: 1 });
+    expect(screen.getByTestId("root-tab__tasks")).toHaveStyle({ flexGrow: 0 });
   });
 
   it("keeps the camera affordance centered inside a full-width middle slot", () => {

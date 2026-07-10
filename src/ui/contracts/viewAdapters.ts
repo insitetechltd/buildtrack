@@ -73,6 +73,7 @@ export interface DashboardProjectSummaryCard {
   weatherTemperatureLabel: string;
   criticalDates: Array<{
     id: string;
+    taskId: string;
     dateLabel: string;
     title: string;
     subtitle: string;
@@ -1394,4 +1395,3 @@ export interface CreateTaskScreenViewAdapterOutput {
   clearSuggestion: () => void;
   clearDraftPayloads?: () => Promise<void>;
 }
-

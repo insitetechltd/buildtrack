@@ -476,18 +476,28 @@ function RootTabButton({
   onPress,
   style,
   testID,
-}: BottomTabBarButtonProps & { testID: string }) {
+  alignTowardsCamera,
+}: BottomTabBarButtonProps & {
+  testID: string;
+  alignTowardsCamera: "left" | "right";
+}) {
   const tabButtonStyle = style as StyleProp<ViewStyle>;
 
   return (
-    <View pointerEvents="box-none" style={styles.rootTabSlot} testID={testID}>
+    <View pointerEvents="box-none" style={styles.rootTabSideSlot} testID={testID}>
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         onLongPress={onLongPress}
         onPress={onPress}
-        style={[tabButtonStyle, styles.rootTabButton]}
+        style={[
+          tabButtonStyle,
+          styles.rootTabButton,
+          alignTowardsCamera === "right"
+            ? styles.rootTabButtonTowardCameraRight
+            : styles.rootTabButtonTowardCameraLeft,
+        ]}
       >
         {children}
       </Pressable>
@@ -1641,7 +1651,11 @@ function MainTabs() {
           options={({ route }) => ({
             tabBarLabel: "Activity",
             tabBarButton: (props) => (
-              <RootTabButton {...props} testID="root-tab__activity" />
+              <RootTabButton
+                {...props}
+                testID="root-tab__activity"
+                alignTowardsCamera="right"
+              />
             ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="sparkles-outline" size={size} color={color} />
@@ -1715,7 +1729,11 @@ function MainTabs() {
           options={({ route }) => ({
             tabBarLabel: "Tasks",
             tabBarButton: (props) => (
-              <RootTabButton {...props} testID="root-tab__tasks" />
+              <RootTabButton
+                {...props}
+                testID="root-tab__tasks"
+                alignTowardsCamera="left"
+              />
             ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="list-outline" size={size} color={color} />
@@ -1814,11 +1832,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
+  rootTabSideSlot: {
+    alignItems: "center",
+    flexGrow: 0,
+    flexShrink: 1,
+    justifyContent: "center",
+    minWidth: 72,
+  },
   rootTabButton: {
     alignItems: "center",
-    alignSelf: "stretch",
-    flex: 1,
     justifyContent: "center",
+    minWidth: 56,
+    paddingHorizontal: 6,
+  },
+  rootTabButtonTowardCameraLeft: {
+    alignSelf: "flex-start",
+  },
+  rootTabButtonTowardCameraRight: {
+    alignSelf: "flex-end",
   },
   centerCameraTabButtonSlot: {
     alignItems: "center",

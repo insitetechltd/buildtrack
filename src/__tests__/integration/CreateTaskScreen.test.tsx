@@ -1313,7 +1313,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('navigates back immediately from create mode after a photo return without showing a discard prompt', async () => {
+  it('prompts before leaving create mode after a photo return', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const onNavigateBack = jest.fn();
 
@@ -1338,8 +1338,8 @@ describe('CreateTaskScreen Integration', () => {
 
     fireEvent.press(getByTestId('app-screen-header__back'));
 
-    expect(onNavigateBack).toHaveBeenCalledTimes(1);
-    expect(alertSpy).not.toHaveBeenCalled();
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 

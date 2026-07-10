@@ -1389,4 +1389,9 @@ export interface CreateTaskScreenViewAdapterOutput {
     lastSuggestion: TaskSuggestion | null;
     error: string | null;
   };
+  generateSuggestionFromText: () => Promise<void>;
+  suggestTaskFromText: () => Promise<void>;
+  clearSuggestion: () => void;
+  clearDraftPayloads?: () => Promise<void>;
 }
+

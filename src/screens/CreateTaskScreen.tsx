@@ -392,9 +392,38 @@ function CreateTaskEditorScreen({
 
   const asyncStoragePhotoCount = 0;
 
-  const handleCancel = () => onNavigateBack();
-  const handleClearForm = () => {};
-  const saveFormDataToStorage = async () => {};
+  const handleCancel = () => {
+    // If the form has any user-entered data, prompt before discarding
+    const hasData =
+      Boolean(formData.title.trim()) ||
+      Boolean(formData.description.trim()) ||
+      formData.attachments.length > 0;
+
+    if (hasData) {
+      Alert.alert(
+        "Discard Task?",
+        "You have unsaved changes. Are you sure you want to discard them?",
+        [
+          {
+            text: "Keep Editing",
+            style: "cancel",
+          },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              actions.clearDraftPayloads?.();
+              onNavigateBack();
+            },
+          },
+        ],
+      );
+    } else {
+      actions.clearDraftPayloads?.();
+      onNavigateBack();
+    }
+  };
+
   const headerSubtitle = editTaskId
     ? t.createTask.headerEditSubtitle
     : t.createTask.headerCreateSubtitle;
@@ -454,7 +483,7 @@ function CreateTaskEditorScreen({
             title={context.headerTitle}
             subtitle={headerSubtitle}
           showBackButton={true}
-          onBackPress={onNavigateBack}
+          onBackPress={handleCancel}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
             className="border-b-0 bg-[#08576E] pb-2"
@@ -480,7 +509,7 @@ function CreateTaskEditorScreen({
           title={context.headerTitle}
           subtitle={headerSubtitle}
           showBackButton={true}
-          onBackPress={onNavigateBack}
+          onBackPress={handleCancel}
           onNavigateToProfile={onNavigateToProfile}
           onNavigateToProjectPicker={onNavigateToProjectPicker}
           className="border-b-0 bg-[#08576E] pb-2"

@@ -683,9 +683,36 @@ export function useCreateTaskViewAdapter({
     }
   };
 
+  const clearDraftPayloads = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        "draftCreateTask",
+        "createTask_camera_return_photos",
+        "createTask_camera_return_context",
+        "createTask_camera_return_timestamp",
+      ]);
+      setFormData({
+        title: '',
+        description: '',
+        taskReference: '',
+        billingStatus: 'non_billable',
+        priority: 'medium',
+        category: 'general',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        locationOnSite: '',
+        assignedTo: [],
+        attachments: [],
+        projectId: '',
+      });
+    } catch (e) {
+      console.error("Failed to clear task drafts", e);
+    }
+  }, []);
+
   return {
     output,
     actions: {
+      clearDraftPayloads,
       updateField,
       togglePicker,
       submit,

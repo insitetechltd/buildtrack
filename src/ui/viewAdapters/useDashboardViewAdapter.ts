@@ -155,6 +155,21 @@ function resolveImageUri(uri?: string | null): string | undefined {
   return getFileUrl(uri) ?? undefined;
 }
 
+function collectTaskPhotoUris(task: Task): string[] {
+  const activityPhotos =
+    task.activities?.flatMap((activity) => {
+      const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+      return Array.isArray(photos) ? photos : [];
+    }) ?? [];
+  const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+
+  return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos]
+    .map(resolveImageUri)
+    .filter(
+    (value, index, collection): value is string => Boolean(value) && collection.indexOf(value) === index,
+  );
+}
+
 const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
 
 export interface DashboardViewAdapterHookResult {
@@ -366,7 +381,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               subtitle: task.description || resolvedActiveProject?.name || "Active project task",
               timestampLabel: "Task activity",
               statusLabel: task.status.replace(/_/g, " "),
-              previewPhotoUri: resolveImageUri(task.attachments?.[0]),
+              previewPhotoUri: collectTaskPhotoUris(task)[0],
               density: "standard" as const,
               structuralState,
               sortTimestamp: task.createdAt,
@@ -386,7 +401,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             minute: "2-digit",
           }),
           statusLabel: update.status.replace(/_/g, " "),
-          previewPhotoUri: resolveImageUri(update.photos?.[0] || task.attachments?.[0]),
+          previewPhotoUri: resolveImageUri(update.photos?.[0]) || collectTaskPhotoUris(task)[0],
           density: "standard" as const,
           structuralState,
           sortTimestamp: update.timestamp,
@@ -429,7 +444,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               })
             : "In progress",
           statusLabel: task.status.replace(/_/g, " "),
-          previewPhotoUri: resolveImageUri(latestUpdate?.photos?.[0] || task.attachments?.[0]),
+          previewPhotoUri: resolveImageUri(latestUpdate?.photos?.[0]) || collectTaskPhotoUris(task)[0],
           density: "standard",
           structuralState,
           sortTimestamp: latestUpdate?.timestamp || task.createdAt,

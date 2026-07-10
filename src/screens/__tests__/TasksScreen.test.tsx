@@ -429,6 +429,8 @@ describe("TasksScreen", () => {
     );
 
     expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-slate-50");
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pt-1");
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pb-1");
     expect(screen.getByTestId("tasks-screen__filters_button")).toBeTruthy();
     expect(screen.queryByTestId("tasks-screen__filter_all")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__active_filter_chips")).toBeNull();
@@ -456,6 +458,11 @@ describe("TasksScreen", () => {
     expect(screen.getByTestId("tasks-screen__row_task-3")).toBeTruthy();
     expect(screen.queryByTestId("tasks-screen__row_task-1")).toBeNull();
     expect(screen.getByTestId("tasks-screen__chip_remove_queue").props.className).toContain("bg-[#07111E]");
+    expect(screen.getByTestId("tasks-screen__active_filter_chips").props.className).toContain("mt-1");
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pb-4");
+    expect(screen.getByTestId("tasks-screen__chip_remove_queue").props.className).toContain("px-3.5");
+    expect(screen.getByTestId("tasks-screen__chip_remove_queue").props.className).toContain("py-2");
+    expect(screen.getByText("Queue: Outbox").props.className).toContain("text-[12.5px]");
 
     fireEvent.press(screen.getByTestId("tasks-screen__chip_remove_queue"));
     expect(screen.queryByText("Queue: Outbox")).toBeNull();
@@ -507,6 +514,9 @@ describe("TasksScreen", () => {
 
     expect(screen.getByTestId("tasks-screen__row_task-2:overdue-badge")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__row_task-3:overdue-badge")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-2:overdue-badge").props.className).toContain("px-3");
+    expect(screen.getByTestId("tasks-screen__row_task-2:overdue-badge").props.className).toContain("py-1.5");
+    expect(screen.getAllByText("Overdue")[0].props.className).toContain("text-sm");
     expect(screen.queryByTestId("tasks-screen__row_task-2:overdue-dot")).toBeNull();
     expect(screen.queryByTestId("tasks-screen__row_task-3:overdue-dot")).toBeNull();
   });

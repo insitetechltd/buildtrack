@@ -127,6 +127,13 @@ Approved qualities:
 - visually compatible with the off-white body background
 - compact enough to wrap to multiple lines if needed
 
+Approved typography and padding adjustment for the active chips row:
+
+- increase chip label text by one size step from the prior approved baseline
+- increase the `✕` affordance text size proportionally so it does not feel undersized beside the chip label
+- increase chip horizontal and vertical padding slightly to preserve visual balance after the text-size increase
+- keep the chips visually compact even after the size increase; this is a refinement, not a density reset
+
 ### Chip Removal Behavior
 
 Tapping the `✕` on a chip:
@@ -144,6 +151,16 @@ When filters are active, the list may show a summary such as:
 - `Showing 3 of 7 tasks`
 
 This is optional in implementation polish, but if rendered it should appear below the active chips and before the task list in a low-emphasis style consistent with the current screen.
+
+## Task List Row Badge Refinement
+
+### Overdue Badge
+
+For overdue tasks rendered in the Tasks screen list:
+
+- increase the `Overdue` badge text by one size step from the prior approved baseline
+- increase badge horizontal and vertical padding slightly to maintain proportion after the text-size increase
+- preserve the current overdue semantic treatment and badge placement; this change affects typography and padding only
 
 ## Bottom Sheet
 
@@ -327,6 +344,8 @@ Update or add screen tests to verify:
 - the search query does not increase the filters badge count
 - active chips render below the search row with a `4pt` gap when filters are applied
 - the search section keeps `8pt` bottom padding before the task list begins
+- active chip text is one size step larger than the prior baseline and chip padding grows slightly to match
+- overdue task badges use the larger approved text size and slightly increased padding
 - tapping chip `✕` removes that filter immediately and updates the visible list
 - the bottom sheet opens from the filters button
 - `Reset all` clears staged selections without closing the sheet
@@ -360,6 +379,8 @@ Add or update adapter tests to verify:
 - The search/filter section sits on the existing off-white body background
 - The section does not repeat the `Tasks` title below the header
 - The search/filter section uses `8pt` top padding, `4pt` search-to-chips spacing, and `8pt` bottom padding before the list
+- Active chips use text that is one size step larger than the prior baseline, with slightly increased padding to match
+- Overdue task badges use text that is one size step larger than the prior baseline, with slightly increased padding to match
 - The filters button shows a badge only when bottom-sheet filters are active
 - Search text does not count toward the filters badge
 - Active filters render as removable chips below the search row

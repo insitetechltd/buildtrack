@@ -16,6 +16,7 @@ interface TextFieldProps {
   contract: InputPrimitiveContract;
   className?: string;
   rightSlot?: React.ReactNode;
+  collapseEmptyChrome?: boolean;
   onChangeText: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
@@ -34,6 +35,7 @@ export default function TextField({
   contract,
   className,
   rightSlot,
+  collapseEmptyChrome = false,
   onChangeText,
   onFocus,
   onBlur,
@@ -49,24 +51,33 @@ export default function TextField({
   const isReadOnly = contract.interaction.isReadOnly;
   const isLoading = structuralState === "loading";
   const editable = !(isDisabled || isReadOnly || isLoading);
+  const hasLabel = contract.label.trim().length > 0;
+  const hasAffixes = Boolean(contract.content.prefixText || contract.content.suffixText);
+  const shouldRenderLabel = !collapseEmptyChrome || hasLabel;
+  const shouldRenderAffixRow = !collapseEmptyChrome || hasAffixes;
+  const shouldRenderHelperSlot = !collapseEmptyChrome || helperText.length > 0;
 
   return (
     <View
       testID={resolvedTestId}
       className={cn("w-full", densityClasses.field, stateClasses.field, className)}
     >
-      <InputLabel
-        label={contract.label}
-        density={contract.density}
-        isRequired={contract.interaction.isRequired}
-        className={stateClasses.label}
-      />
+      {shouldRenderLabel ? (
+        <InputLabel
+          label={contract.label}
+          density={contract.density}
+          isRequired={contract.interaction.isRequired}
+          className={stateClasses.label}
+        />
+      ) : null}
 
-      <InputAffixRow
-        density={contract.density}
-        prefixText={contract.content.prefixText}
-        suffixText={contract.content.suffixText}
-      />
+      {shouldRenderAffixRow ? (
+        <InputAffixRow
+          density={contract.density}
+          prefixText={contract.content.prefixText}
+          suffixText={contract.content.suffixText}
+        />
+      ) : null}
 
       <View
         testID={`${resolvedTestId}__input-container`}
@@ -99,16 +110,18 @@ export default function TextField({
         </View>
       </View>
 
-      <View
-        testID={`${resolvedTestId}__helper-slot`}
-        className={cn(densityClasses.helperSlot)}
-      >
-        <InputHelperText
-          density={contract.density}
-          text={helperText}
-          className={cn(validationClasses.helperText)}
-        />
-      </View>
+      {shouldRenderHelperSlot ? (
+        <View
+          testID={`${resolvedTestId}__helper-slot`}
+          className={cn(densityClasses.helperSlot)}
+        >
+          <InputHelperText
+            density={contract.density}
+            text={helperText}
+            className={cn(validationClasses.helperText)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }

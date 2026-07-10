@@ -114,11 +114,18 @@ export default function TasksScreen(props: TasksScreenProps) {
             ) : null
           }
         />
-        <View testID="tasks-screen__search_section" className="bg-slate-50 px-4 pt-4">
+        <View
+          testID="tasks-screen__search_section"
+          className={cn(
+            "bg-slate-50 px-4 pt-1",
+            output.activeFilterChips.length > 0 ? "pb-4" : "pb-1",
+          )}
+        >
           <View className="flex-row items-center gap-3">
             <View testID="tasks-screen__search_wrapper" className="flex-1">
               <TextField
                 contract={searchContract}
+                collapseEmptyChrome={true}
                 onChangeText={setSearchQuery}
                 rightSlot={
                   <Text
@@ -167,7 +174,7 @@ export default function TasksScreen(props: TasksScreenProps) {
             </Pressable>
           </View>
           {output.activeFilterChips.length > 0 ? (
-            <View testID="tasks-screen__active_filter_chips" className="mt-[10px] flex-row flex-wrap gap-2">
+            <View testID="tasks-screen__active_filter_chips" className="mt-1 flex-row flex-wrap gap-2">
               {output.activeFilterChips.map((chip) => {
                 const chipClasses = getActiveChipClasses(chip.id, chip.label);
 
@@ -177,12 +184,12 @@ export default function TasksScreen(props: TasksScreenProps) {
                     testID={`tasks-screen__chip_remove_${chip.id}`}
                     onPress={() => actions.removeAppliedFilterChip(chip.id)}
                     className={cn(
-                      "flex-row items-center gap-2 rounded-full border px-3 py-1.5",
+                      "flex-row items-center gap-2 rounded-full border px-3.5 py-2",
                       chipClasses.container,
                     )}
                   >
-                    <Text className={cn("text-[11.5px] font-semibold", chipClasses.text)}>{chip.label}</Text>
-                    <Text className={cn("text-[11px] font-bold", chipClasses.dismiss)}>X</Text>
+                    <Text className={cn("text-[12.5px] font-semibold", chipClasses.text)}>{chip.label}</Text>
+                    <Text className={cn("text-[12px] font-bold", chipClasses.dismiss)}>X</Text>
                   </Pressable>
                 );
               })}
@@ -220,9 +227,9 @@ export default function TasksScreen(props: TasksScreenProps) {
                     row.isOverdue ? (
                       <View
                         testID={`tasks-screen__row_${row.taskId}:overdue-badge`}
-                        className="rounded-full bg-red-500 px-2.5 py-1"
+                        className="rounded-full bg-red-500 px-3 py-1.5"
                       >
-                        <Text className="text-xs font-semibold text-white">Overdue</Text>
+                        <Text className="text-sm font-semibold text-white">Overdue</Text>
                       </View>
                     ) : undefined
                   }

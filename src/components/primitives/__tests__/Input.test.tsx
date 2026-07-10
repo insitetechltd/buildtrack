@@ -100,6 +100,32 @@ describe("Input primitives", () => {
     expect(view.getByTestId("text-field__helper-slot").props.className).toContain("min-h-5");
   });
 
+  it("can collapse empty label, affix, and helper chrome for compact search-style fields", () => {
+    const minimalContract: InputPrimitiveContract = {
+      ...baseContract,
+      density: "compact",
+      label: "",
+      helperText: undefined,
+      validation: {
+        status: "none",
+        severity: "none",
+      },
+      content: {
+        value: "",
+        placeholder: "Search tasks",
+      },
+    };
+
+    const view = render(
+      <TextField contract={minimalContract} onChangeText={jest.fn()} collapseEmptyChrome={true} />,
+    );
+
+    expect(view.queryByTestId("text-field__helper-slot")).toBeNull();
+    expect(view.queryByText("Title")).toBeNull();
+    expect(view.queryByText("#")).toBeNull();
+    expect(view.queryByText("REQ")).toBeNull();
+  });
+
   it("renders disabled and read-only states distinctly while keeping the control non-editable", () => {
     const disabledContract: InputPrimitiveContract = {
       ...baseContract,
@@ -147,4 +173,3 @@ describe("Input primitives", () => {
     );
   });
 });
-

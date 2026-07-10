@@ -62,6 +62,14 @@ Render two controls side by side:
 
 The row should preserve the current screen gutter and compact top-of-list density.
 
+Approved spacing around this section:
+
+- top padding from the header into the search section: `8pt`
+- gap from the search/filter row to the active chips row: `4pt`
+- bottom padding under the active chips row before the task list begins: `8pt`
+
+If the active chips row is hidden, the search section should still keep the approved top spacing and bottom spacing without leaving extra phantom vertical gaps.
+
 ### Search Field
 
 The search field should visually align with the current screen body treatment rather than a separate frosted-on-teal presentation.
@@ -107,7 +115,7 @@ If no bottom-sheet filters are active:
 
 ### Position
 
-The chips row appears below the search/filter row with a `10px` top margin.
+The chips row appears below the search/filter row with a `4pt` top margin.
 
 ### Appearance
 
@@ -312,11 +320,13 @@ Update or add screen tests to verify:
 - the four-button filter strip no longer renders
 - the search row renders as `Search + Filters`
 - the section sits on the off-white body treatment
+- the search section uses `8pt` top padding below the header
 - the filters button shows no badge in the default state
 - the active chips row is hidden when no bottom-sheet filters are active
 - the filters button badge count reflects active bottom-sheet filters only
 - the search query does not increase the filters badge count
-- active chips render below the search row when filters are applied
+- active chips render below the search row with a `4pt` gap when filters are applied
+- the search section keeps `8pt` bottom padding before the task list begins
 - tapping chip `✕` removes that filter immediately and updates the visible list
 - the bottom sheet opens from the filters button
 - `Reset all` clears staged selections without closing the sheet
@@ -349,6 +359,7 @@ Add or update adapter tests to verify:
 - The top control area is a compact `Search + Filters` row
 - The search/filter section sits on the existing off-white body background
 - The section does not repeat the `Tasks` title below the header
+- The search/filter section uses `8pt` top padding, `4pt` search-to-chips spacing, and `8pt` bottom padding before the list
 - The filters button shows a badge only when bottom-sheet filters are active
 - Search text does not count toward the filters badge
 - Active filters render as removable chips below the search row

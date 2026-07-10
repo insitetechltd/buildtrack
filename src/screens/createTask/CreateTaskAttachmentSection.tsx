@@ -18,6 +18,7 @@ interface CreateTaskAttachmentSectionProps {
   asyncStoragePhotoCount?: number;
   onRemoveAttachment: (index: number) => void;
   onAddPhotos: () => void;
+  embedded?: boolean;
 }
 
 export default function CreateTaskAttachmentSection({
@@ -25,16 +26,20 @@ export default function CreateTaskAttachmentSection({
   asyncStoragePhotoCount = 0,
   onRemoveAttachment,
   onAddPhotos,
+  embedded = false,
 }: CreateTaskAttachmentSectionProps) {
   const t = useTranslation();
   const attachmentCount = attachments.length + asyncStoragePhotoCount;
 
   return (
-    <View className="mx-4 mb-6 rounded-2xl border border-gray-200 bg-white p-4">
-      <View className="mb-3">
+    <View
+      testID="create-task__attachments_section"
+      className={embedded ? "pb-2" : "mx-4 mb-6 rounded-2xl border border-gray-200 bg-white p-4"}
+    >
+      <View className="mb-4">
         <View className="flex-row items-center justify-between">
           <Text className="text-lg font-semibold text-gray-900">
-            {t.createTask.attachments}
+            Add photos / files
           </Text>
           {attachmentCount > 0 ? (
             <Text className="text-xs font-medium text-gray-500">
@@ -42,9 +47,6 @@ export default function CreateTaskAttachmentSection({
             </Text>
           ) : null}
         </View>
-        <Text className="mt-1 text-sm text-gray-500">
-          Add photos before submitting the task.
-        </Text>
       </View>
 
       {attachments.length > 0 ? (
@@ -86,23 +88,22 @@ export default function CreateTaskAttachmentSection({
         </ScrollView>
       ) : null}
 
-      <Pressable
-        testID="createTask-add-photos"
-        onPress={onAddPhotos}
-        className="flex-row items-center justify-between rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-3"
-      >
-        <View className="flex-row items-center flex-1">
-          <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
-          <Text className="text-gray-600 font-medium ml-2 text-sm">
-            {attachments.length === 0
-              ? t.createTask.tapToAddFiles
-              : t.createTask.filesAdded(attachments.length)}
-          </Text>
-        </View>
-        {attachments.length > 0 && (
-          <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-        )}
-      </Pressable>
+      <View testID="create-task__attachments_cta">
+        <Pressable
+          testID="createTask-add-photos"
+          accessibilityLabel="Add attachments"
+          accessibilityRole="button"
+          onPress={onAddPhotos}
+          className="items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-slate-50 px-5 py-5"
+        >
+          <View
+            testID="create-task__attachments_cta_plus_icon"
+            className="h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#08576E]/15 bg-white"
+          >
+            <Ionicons name="add" size={30} color="#08576E" />
+          </View>
+        </Pressable>
+      </View>
     </View>
   );
 }

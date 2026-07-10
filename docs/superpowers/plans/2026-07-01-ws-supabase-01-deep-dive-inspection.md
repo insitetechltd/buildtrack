@@ -73,6 +73,15 @@ Add an explicit discovery and inspection workstream for the live Supabase-backed
 - safe read-oriented database checks where credentials and environment policy allow
 - no secret leakage into docs, commits, or logs
 
+## Audit Connection Path
+
+- use the pooler-based PostgreSQL connection documented in `SUPABASE_SQL_ACCESS.md`
+- prefer `/opt/homebrew/opt/libpq/bin/psql` in this workspace because `libpq` is installed there
+- keep the database password in a local secret source such as `~/.pgpass`; do not commit it or paste it into repo docs
+- use `WS_SUPABASE_01_READONLY_AUDIT.sql` for repeatable read-only inspection passes
+- use the direct `db.<project-ref>.supabase.co:5432` host only if the environment can actually route to it; in the current workspace, the pooler host is the reliable path
+- if live inspection confirms schema drift, record it explicitly and author follow-on migrations instead of silently assuming the repo schema is already applied
+
 ## Notes
 
 - This is intentionally an inspection-first milestone.

@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import {
+  CommonActions,
   NavigationContainer,
   getFocusedRouteNameFromRoute,
   type LinkingOptions,
@@ -61,7 +62,10 @@ import {
   resolveTaskDetailCameraTabParams,
   shouldReturnToCreateTaskShortcut,
 } from "./photoShortcutRoutes";
-import { buildCreateTaskPhotoReturnParams } from "./createTaskRouteParams";
+import {
+  buildCreateTaskPhotoReturnParams,
+  resolveCreateTaskEntryParams,
+} from "./createTaskRouteParams";
 import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
 import {
   buildTaskDetailVerificationUrl,
@@ -104,8 +108,20 @@ export function shouldHideTabBarOnTaskDetailRoute(routeName?: string) {
   return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
 }
 
-function buildRootTabBarStyleForRoute(routeName?: string): ViewStyle {
-  if (!shouldHideTabBarOnTaskDetailRoute(routeName)) {
+export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
+  return routeName === "CreateTaskMain";
+}
+
+function buildRootTabBarStyleForRoute(
+  routeName?: string,
+  initialRouteName?: string,
+): ViewStyle {
+  const resolvedRouteName = routeName ?? initialRouteName;
+  const shouldHideTabBar =
+    shouldHideTabBarOnTaskDetailRoute(resolvedRouteName) ||
+    shouldHideTabBarOnCreateTaskRoute(resolvedRouteName);
+
+  if (!shouldHideTabBar) {
     return ROOT_TAB_BAR_STYLE;
   }
 
@@ -340,6 +356,46 @@ function navigateToCreateTaskRoute(
     screen: "CreateTaskMain",
     params,
   });
+}
+
+export function returnToCreateTaskRoute(
+  navigation: CreateTaskRouteNavigation,
+  params: CreateTaskParams,
+) {
+  const navigationState = navigation.getState?.();
+  const currentRouteNames = navigationState?.routeNames || [];
+  const currentRoutes = navigationState?.routes || [];
+  const currentIndex =
+    typeof navigationState?.index === "number"
+      ? navigationState.index
+      : currentRoutes.length - 1;
+  const previousRoute = currentIndex > 0 ? currentRoutes[currentIndex - 1] : undefined;
+  const previousRouteName =
+    (previousRoute as { name?: string } | undefined)?.name ||
+    currentRouteNames[currentIndex - 1];
+  const previousRouteKey = (previousRoute as { key?: string } | undefined)?.key;
+  const canReturnToExistingCreateTask =
+    navigation.canGoBack?.() &&
+    (previousRouteName === "CreateTask" || previousRouteName === "CreateTaskMain");
+
+  if (!canReturnToExistingCreateTask) {
+    navigateToCreateTaskRoute(navigation, params);
+    return;
+  }
+
+  navigation.goBack();
+
+  setTimeout(() => {
+    if (previousRouteKey && navigation.dispatch) {
+      navigation.dispatch({
+        ...CommonActions.setParams(params),
+        source: previousRouteKey,
+      });
+      return;
+    }
+
+    navigation.setParams?.(params);
+  }, 150);
 }
 
 export function handleDashboardTaskDetailBack(
@@ -931,7 +987,7 @@ function PhotoSelectionScreenWrapper({
         selectedPhotos: normalizedPhotos,
       });
 
-      navigateToCreateTaskRoute(navigation, navParams);
+      returnToCreateTaskRoute(navigation, navParams);
     } else if (returnScreen === 'UpdateProgress') {
       if (shouldReturnToCreateTaskShortcut({ returnScreen, actionType })) {
         navigation.goBack();
@@ -1272,7 +1328,8 @@ function CreateTaskMainScreen({
     });
   };
 
-  const params = (route.params || {}) as CreateTaskParams;
+  const rawParams = (route.params || {}) as CreateTaskParams;
+  const params = resolveCreateTaskEntryParams(rawParams);
   const parentTaskId = params.parentTaskId;
   const parentSubTaskId = params.parentSubTaskId;
   const editTaskId = params.editTaskId;
@@ -1288,6 +1345,31 @@ function CreateTaskMainScreen({
   const uploadedPhotoUrlsFromParams = params.uploadedPhotoUrls; // Uploaded URLs returned from PhotoSelectionScreen
   const clearForm = params.clearForm; // Flag to clear form when "Create New Task" is pressed
   const clearFormTimestamp = params._timestamp; // Timestamp to track when clearForm was set
+
+  React.useEffect(() => {
+    if (!clearForm) {
+      return;
+    }
+
+    setSelectedPhotosState(undefined);
+    setUploadedPhotoUrlsState(undefined);
+    navigation.setParams({
+      parentTaskId: undefined,
+      parentSubTaskId: undefined,
+      editTaskId: undefined,
+      actionType: undefined,
+      updateTargetSubTaskId: undefined,
+      sourceTaskId: undefined,
+      sourceSubTaskId: undefined,
+      sourceScreen: undefined,
+      cameraLaunchContext: undefined,
+      postCaptureDefault: undefined,
+      selectedPhotos: undefined,
+      uploadedPhotoUrls: undefined,
+      clearForm: undefined,
+      _timestamp: undefined,
+    });
+  }, [clearForm, navigation]);
   
   // Update state when params change
   React.useEffect(() => {
@@ -1602,7 +1684,7 @@ function MainTabs() {
               navigation.navigate("Camera", taskDetailCameraParams);
             },
           })}
-          options={{
+          options={({ route }) => ({
             tabBarLabel: "Camera",
             tabBarActiveTintColor: "#ffffff",
             tabBarInactiveTintColor: "#ffffff",
@@ -1619,7 +1701,11 @@ function MainTabs() {
                 }
               />
             ),
-          }}
+            tabBarStyle: buildRootTabBarStyleForRoute(
+              getFocusedRouteNameFromRoute(route),
+              "CreateTaskMain",
+            ),
+          })}
         />
       )}
       {!isAdmin(user) && (

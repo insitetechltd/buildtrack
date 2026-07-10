@@ -219,6 +219,135 @@ describe('taskStore.supabase unit tests', () => {
     expect(result.current.tasks).toEqual([]);
   });
 
+  it('fetches shared project locations from project_locations', async () => {
+    const orderMock = jest.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'location-1',
+          project_id: 'project-123',
+          label: 'Level 1 Lobby',
+          created_by: managerId,
+          created_at: baseTimestamp,
+          updated_at: baseTimestamp,
+        },
+        {
+          id: 'location-2',
+          project_id: 'project-123',
+          label: 'Roof plant room',
+          created_by: managerId,
+          created_at: baseTimestamp,
+          updated_at: baseTimestamp,
+        },
+      ],
+      error: null,
+    });
+    const eqMock = jest.fn().mockReturnValue({
+      order: orderMock,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'project_locations') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: eqMock,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let locations: Awaited<ReturnType<typeof result.current.fetchProjectLocations>> = [];
+    await act(async () => {
+      locations = await result.current.fetchProjectLocations('project-123');
+    });
+
+    expect(eqMock).toHaveBeenCalledWith('project_id', 'project-123');
+    expect(orderMock).toHaveBeenCalledWith('label', { ascending: true });
+    expect(locations).toEqual([
+      {
+        id: 'location-1',
+        projectId: 'project-123',
+        label: 'Level 1 Lobby',
+        createdBy: managerId,
+        createdAt: baseTimestamp,
+        updatedAt: baseTimestamp,
+      },
+      {
+        id: 'location-2',
+        projectId: 'project-123',
+        label: 'Roof plant room',
+        createdBy: managerId,
+        createdAt: baseTimestamp,
+        updatedAt: baseTimestamp,
+      },
+    ]);
+  });
+
+  it('creates a shared project location only when the optional label is non-empty and not already present', async () => {
+    const existingLocations = [
+      {
+        id: 'location-1',
+        project_id: 'project-123',
+        label: 'Roof plant room',
+        created_by: managerId,
+        created_at: baseTimestamp,
+        updated_at: baseTimestamp,
+      },
+    ];
+    const fetchOrderMock = jest.fn().mockResolvedValue({
+      data: existingLocations,
+      error: null,
+    });
+    const fetchEqMock = jest.fn().mockReturnValue({
+      order: fetchOrderMock,
+    });
+    const insertSingleMock = jest.fn().mockResolvedValue({
+      data: {
+        id: 'location-2',
+        project_id: 'project-123',
+        label: 'Level 2 riser',
+        created_by: managerId,
+        created_at: baseTimestamp,
+        updated_at: baseTimestamp,
+      },
+      error: null,
+    });
+    const insertMock = jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        single: insertSingleMock,
+      }),
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'project_locations') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: fetchEqMock,
+          insert: insertMock,
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.ensureProjectLocation('project-123', '  Roof plant room  ', managerId);
+      await result.current.ensureProjectLocation('project-123', '   ', managerId);
+      await result.current.ensureProjectLocation('project-123', '  Level   2   riser  ', managerId);
+    });
+
+    expect(insertMock).toHaveBeenCalledTimes(1);
+    expect(insertMock).toHaveBeenCalledWith({
+      project_id: 'project-123',
+      label: 'Level 2 riser',
+      created_by: managerId,
+    });
+  });
+
   it('retries task creation without deferred redesign schema fields when Supabase is behind', async () => {
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const taskRow = createTaskRow({

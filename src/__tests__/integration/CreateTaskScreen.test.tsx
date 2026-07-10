@@ -30,7 +30,7 @@ React.createElement = function (type, ...args) {
   return originalCreateElement(type, ...args);
 };
 
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import CreateTaskScreen from '../../screens/CreateTaskScreen';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -47,6 +47,8 @@ const mockAddTaskUpdate = jest.fn();
 const mockAddSubTaskUpdate = jest.fn();
 const mockAddAssignerComment = jest.fn();
 const mockUploadFileWithVerification = jest.fn();
+const mockFetchProjectLocations = jest.fn();
+const mockEnsureProjectLocation = jest.fn();
 let mockSelectedProjectId: string | null = null;
 let mockIsAdmin = false;
 
@@ -264,12 +266,37 @@ jest.mock('../../utils/environmentDetector', () => ({
 describe('CreateTaskScreen Integration', () => {
   beforeEach(() => {
     mockIsAdmin = false;
+    mockShowPhotoSelectionDialog.mockReset();
+    mockNavigate.mockReset();
+    mockAddTaskUpdate.mockReset();
+    mockAddSubTaskUpdate.mockReset();
+    mockAddAssignerComment.mockReset();
+    mockUploadFileWithVerification.mockReset();
+    mockFetchProjectLocations.mockReset();
+    mockEnsureProjectLocation.mockReset();
+    mockNavigationDispatch.mockReset();
+    mockNavigationAddListener.mockReset();
+    mockNavigationAddListener.mockReturnValue(jest.fn(() => jest.fn()));
+    let persistedProjectLocations: string[] = [];
     mockUseTaskStore.mockReturnValue({
       tasks: [],
       createTask: jest.fn(),
       createSubTask: jest.fn(),
       updateTask: jest.fn(),
       fetchTaskById: jest.fn(),
+      fetchProjectLocations: mockFetchProjectLocations.mockImplementation(async () =>
+        persistedProjectLocations.map((label, index) => ({
+          id: `location-${index + 1}`,
+          projectId: 'project-1',
+          label,
+        })),
+      ),
+      ensureProjectLocation: mockEnsureProjectLocation.mockImplementation(async (_projectId, label) => {
+        const normalizedLabel = String(label).replace(/\s+/g, ' ').trim();
+        if (normalizedLabel && !persistedProjectLocations.includes(normalizedLabel)) {
+          persistedProjectLocations = [...persistedProjectLocations, normalizedLabel];
+        }
+      }),
       addTaskUpdate: mockAddTaskUpdate,
       addSubTaskUpdate: mockAddSubTaskUpdate,
       addAssignerComment: mockAddAssignerComment,
@@ -286,15 +313,6 @@ describe('CreateTaskScreen Integration', () => {
     ]);
     mockGetProjectUserAssignments.mockReturnValue([]);
     mockFetchProjectUserAssignments.mockResolvedValue(undefined);
-    mockShowPhotoSelectionDialog.mockReset();
-    mockNavigate.mockReset();
-    mockAddTaskUpdate.mockReset();
-    mockAddSubTaskUpdate.mockReset();
-    mockAddAssignerComment.mockReset();
-    mockUploadFileWithVerification.mockReset();
-    mockNavigationDispatch.mockReset();
-    mockNavigationAddListener.mockReset();
-    mockNavigationAddListener.mockReturnValue(jest.fn(() => jest.fn()));
   });
 
   it('renders correctly with adapter bindings', () => {
@@ -407,20 +425,40 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Loading task...')).toBeNull();
   });
 
-  it('renders the create task form as grouped workflow sections', () => {
+  it('renders the create task form as one continuous sheet with simplified section chrome', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
       </NavigationContainer>
     );
 
-    expect(screen.getByText('Task Basics')).toBeTruthy();
+    const renderedTree = JSON.stringify(screen.toJSON());
+    expect(screen.getByTestId('create-task__continuous_form')).toBeTruthy();
+    expect(renderedTree.indexOf('create-task__attachments_section')).toBeGreaterThan(-1);
+    expect(renderedTree.indexOf('create-task__attachments_section')).toBeLessThan(
+      renderedTree.indexOf('createTask-title'),
+    );
+    expect(screen.queryByText('Task Basics')).toBeNull();
     expect(screen.getByText(/Assign To/)).toBeTruthy();
     expect(screen.getByText('Location on Site')).toBeTruthy();
+    expect(screen.queryByText('Project')).toBeNull();
     expect(screen.queryByText('Assignment')).toBeNull();
-    expect(screen.getByText('Schedule')).toBeTruthy();
-    expect(screen.getByText('More Details')).toBeTruthy();
-    expect(screen.getByText('Attachments')).toBeTruthy();
+    expect(screen.queryByText('Schedule')).toBeNull();
+    expect(screen.queryByText('More Details')).toBeNull();
+    expect(screen.queryByText('Attachments')).toBeNull();
+    expect(screen.getByText('Add photos / files')).toBeTruthy();
+  });
+
+  it('renders a top attachment CTA with a single larger plus icon inside the continuous form', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
+    expect(screen.getByTestId('create-task__attachments_cta_plus_icon').props.className).toContain('border-2');
+    expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 
   it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
@@ -478,9 +516,10 @@ describe('CreateTaskScreen Integration', () => {
     await waitFor(() => {
       expect(screen.getByText('Add new location')).toBeTruthy();
     });
+    expect(screen.getAllByText('Add new location')[0]).toBeTruthy();
   });
 
-  it('submits a trimmed custom location-on-site value through the create-task flow', async () => {
+  it('creates a new location inside the modal, selects it for the task, and returns to the form', async () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -488,9 +527,33 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     fireEvent.press(screen.getByTestId('create-task__location-picker-trigger'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('create-task__location-option-add-new')).toBeTruthy();
+    });
+
     fireEvent.press(screen.getByTestId('create-task__location-option-add-new'));
+
+    expect(screen.getByTestId('create-task__location-input')).toBeTruthy();
+    expect(screen.getByTestId('create-task__location-save')).toBeTruthy();
+    expect(screen.queryByTestId('create-task__location-picker-trigger')).toBeTruthy();
+
     fireEvent.changeText(screen.getByTestId('create-task__location-input'), '  Level 9 Rooftop  ');
     fireEvent.press(screen.getByTestId('create-task__location-save'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('create-task__location-input')).toBeNull();
+    });
+    expect(mockEnsureProjectLocation).toHaveBeenCalledWith('project-1', 'Level 9 Rooftop', 'test-user');
+    const locationTrigger = screen.getByTestId('create-task__location-picker-trigger');
+    expect(locationTrigger).toBeTruthy();
+    expect(within(locationTrigger).getByText('Level 9 Rooftop')).toBeTruthy();
+
+    fireEvent.press(locationTrigger);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Level 9 Rooftop').length).toBeGreaterThanOrEqual(2);
+    });
 
     fireEvent.changeText(screen.getByTestId('createTask-title'), 'Install guard rails');
     fireEvent.changeText(screen.getByTestId('createTask-description'), 'Complete level 2 edge protection');
@@ -1224,6 +1287,90 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(alertSpy).toHaveBeenCalled();
     expect(onNavigateBack).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('navigates back immediately from create mode after a photo return without showing a discard prompt', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const onNavigateBack = jest.fn();
+
+    const { getByTestId, getAllByText } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          selectedPhotos={[
+            {
+              uri: 'file:///create-task-photo.jpg',
+              fileName: 'create-task-photo.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    await waitFor(() => {
+      expect(getAllByText('1 file(s) added').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.press(getByTestId('app-screen-header__back'));
+
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    expect(alertSpy).not.toHaveBeenCalled();
+    alertSpy.mockRestore();
+  });
+
+  it('navigates back immediately from the shared update composer when no draft changes exist', async () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
+    const onNavigateBack = jest.fn();
+
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: [],
+          status: 'in_progress',
+          completionPercentage: 25,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: mockAddTaskUpdate,
+      addSubTaskUpdate: mockAddSubTaskUpdate,
+      addAssignerComment: mockAddAssignerComment,
+    });
+
+    const { getByTestId } = render(
+      <NavigationContainer>
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          editTaskId="task-1"
+          actionType="update"
+        />
+      </NavigationContainer>
+    );
+
+    await waitFor(() => {
+      expect(getByTestId('app-screen-header__back')).toBeTruthy();
+    });
+
+    fireEvent.press(getByTestId('app-screen-header__back'));
+
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 

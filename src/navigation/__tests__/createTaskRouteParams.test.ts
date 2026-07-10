@@ -1,4 +1,7 @@
-import { buildCreateTaskPhotoReturnParams } from "../createTaskRouteParams";
+import {
+  buildCreateTaskPhotoReturnParams,
+  resolveCreateTaskEntryParams,
+} from "../createTaskRouteParams";
 import type { RootTabParamList, TasksStackParamList } from "../navigationTypes";
 
 describe("buildCreateTaskPhotoReturnParams", () => {
@@ -81,6 +84,70 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       uploadedPhotoUrls: ["https://example.com/photo-2.jpg"],
       clearForm: undefined,
       _timestamp: undefined,
+    });
+  });
+});
+
+describe("resolveCreateTaskEntryParams", () => {
+  it("strips stale task-action params when a fresh create-task reset is requested", () => {
+    expect(
+      resolveCreateTaskEntryParams({
+        editTaskId: "task-1",
+        actionType: "photos",
+        updateTargetSubTaskId: "subtask-1",
+        sourceScreen: "tasks",
+        sourceTaskId: "task-1",
+        sourceSubTaskId: "subtask-1",
+        cameraLaunchContext: "task_detail",
+        postCaptureDefault: "same_task_update",
+        selectedPhotos: [
+          {
+            uri: "file:///photo-1.jpg",
+            fileName: "photo-1.jpg",
+            isAnnotated: false,
+          },
+        ],
+        uploadedPhotoUrls: ["https://example.com/photo-1.jpg"],
+        clearForm: true,
+        _timestamp: 12345,
+      }),
+    ).toEqual({
+      parentTaskId: undefined,
+      parentSubTaskId: undefined,
+      editTaskId: undefined,
+      actionType: undefined,
+      updateTargetSubTaskId: undefined,
+      sourceTaskId: undefined,
+      sourceSubTaskId: undefined,
+      sourceScreen: undefined,
+      cameraLaunchContext: undefined,
+      postCaptureDefault: undefined,
+      selectedPhotos: undefined,
+      uploadedPhotoUrls: undefined,
+      clearForm: true,
+      _timestamp: 12345,
+    });
+  });
+
+  it("leaves ordinary create-task photo return params untouched when no reset is requested", () => {
+    expect(
+      resolveCreateTaskEntryParams({
+        selectedPhotos: [
+          {
+            uri: "file:///photo-2.jpg",
+            fileName: "photo-2.jpg",
+            isAnnotated: false,
+          },
+        ],
+      }),
+    ).toEqual({
+      selectedPhotos: [
+        {
+          uri: "file:///photo-2.jpg",
+          fileName: "photo-2.jpg",
+          isAnnotated: false,
+        },
+      ],
     });
   });
 });

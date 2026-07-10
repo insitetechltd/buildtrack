@@ -23,10 +23,13 @@ export interface UseCreateTaskViewAdapterProps {
   parentTaskId?: string;
   parentSubTaskId?: string;
   clearForm?: boolean;
+  clearFormTimestamp?: number;
 }
 
 const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
+const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
+const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
 
 function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
   return Boolean(
@@ -43,19 +46,14 @@ function requiresEditReasonForStatus(status?: TaskStatus): boolean {
 }
 
 function getProjectScopedLocationOptions(
-  tasks: Array<{ projectId?: string; locationOnSite?: string }>,
-  projectId: string,
+  locationLabels: string[],
   addNewLabel: string,
   currentLocationOnSite?: string,
 ) {
   const normalizedOptions = new Set<string>();
 
-  tasks.forEach((task) => {
-    if (task.projectId !== projectId) {
-      return;
-    }
-
-    const normalizedLocation = task.locationOnSite?.trim();
+  locationLabels.forEach((locationLabel) => {
+    const normalizedLocation = locationLabel.trim();
     if (normalizedLocation) {
       normalizedOptions.add(normalizedLocation);
     }
@@ -66,31 +64,67 @@ function getProjectScopedLocationOptions(
     normalizedOptions.add(normalizedCurrentLocation);
   }
 
-  const options: CreateTaskLocationOptionModel[] = Array.from(normalizedOptions).map((locationValue) => ({
-    id: `location-option-${locationValue}`,
-    label: locationValue,
-    value: locationValue,
-  }));
-
-  options.push({
+  const options: CreateTaskLocationOptionModel[] = [{
     id: 'location-option-add-new',
     label: addNewLabel,
     value: ADD_NEW_LOCATION_OPTION_VALUE,
     isAddNew: true,
-  });
+  }];
+
+  options.push(...Array.from(normalizedOptions).map((locationValue) => ({
+    id: `location-option-${locationValue}`,
+    label: locationValue,
+    value: locationValue,
+  })));
 
   return options;
+}
+
+function areLocationLabelListsEqual(currentLabels: string[], nextLabels: string[]) {
+  if (currentLabels.length !== nextLabels.length) {
+    return false;
+  }
+
+  return currentLabels.every((label, index) => label === nextLabels[index]);
+}
+
+function appendUniqueLocationLabel(currentLabels: string[], nextLabel: string) {
+  const normalizedNextLabel = nextLabel.trim();
+  if (!normalizedNextLabel) {
+    return currentLabels;
+  }
+
+  const normalizedNextLabelKey = normalizedNextLabel.toLocaleLowerCase();
+  const hasMatch = currentLabels.some(
+    (label) => label.trim().toLocaleLowerCase() === normalizedNextLabelKey,
+  );
+
+  if (hasMatch) {
+    return currentLabels;
+  }
+
+  return [...currentLabels, normalizedNextLabel];
 }
 
 export function useCreateTaskViewAdapter({
   editTaskId,
   parentTaskId,
   parentSubTaskId,
-  clearForm
+  clearForm,
+  clearFormTimestamp,
 }: UseCreateTaskViewAdapterProps) {
   const { user } = useAuthStore();
   const t = useTranslation();
-  const { tasks, fetchTaskById, createTask, createSubTask, updateTask } = useTaskStore();
+  const taskStore = useTaskStore();
+  const {
+    tasks,
+    fetchTaskById,
+    createTask,
+    createSubTask,
+    updateTask,
+    fetchProjectLocations = NOOP_FETCH_PROJECT_LOCATIONS,
+    ensureProjectLocation = NOOP_ENSURE_PROJECT_LOCATION,
+  } = taskStore;
   const { getAllUsers } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
@@ -139,6 +173,8 @@ export function useCreateTaskViewAdapter({
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
   const [editReason, setEditReason] = useState('');
+  const [projectLocationLabels, setProjectLocationLabels] = useState<string[]>([]);
+  const handledClearFormRequestRef = useRef<string | null>(null);
 
   // 1. AsyncStorage Persistence Logic
   const persistDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -209,24 +245,35 @@ export function useCreateTaskViewAdapter({
     };
   }, [clearForm, editTaskId]);
 
+  const clearFormRequestKey = clearForm
+    ? String(clearFormTimestamp ?? "__legacy_clear_form__")
+    : null;
+
   useEffect(() => {
-    if (clearForm) {
-      AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
-      setFormData({
-        title: '',
-        description: '',
-        taskReference: '',
-        billingStatus: 'non_billable',
-        priority: 'medium',
-        category: 'general',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        locationOnSite: '',
-        assignedTo: [],
-        attachments: [],
-        projectId: '',
-      });
+    if (!clearFormRequestKey) {
+      return;
     }
-  }, [clearForm]);
+
+    if (handledClearFormRequestRef.current === clearFormRequestKey) {
+      return;
+    }
+
+    handledClearFormRequestRef.current = clearFormRequestKey;
+    AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
+    setFormData({
+      title: '',
+      description: '',
+      taskReference: '',
+      billingStatus: 'non_billable',
+      priority: 'medium',
+      category: 'general',
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      locationOnSite: '',
+      assignedTo: [],
+      attachments: [],
+      projectId: '',
+    });
+  }, [clearFormRequestKey]);
 
   useEffect(() => {
     if (persistDraftTimeoutRef.current) {
@@ -446,21 +493,84 @@ export function useCreateTaskViewAdapter({
     }
   }, [activeProjectId, fetchProjectUserAssignments]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!activeProjectId) {
+      setProjectLocationLabels((currentLabels) => (
+        currentLabels.length === 0 ? currentLabels : []
+      ));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const locations = await fetchProjectLocations(activeProjectId);
+        if (cancelled) {
+          return;
+        }
+
+        const nextLabels = locations
+          .map((location) => location.label?.trim())
+          .filter((locationLabel): locationLabel is string => Boolean(locationLabel));
+
+        setProjectLocationLabels((currentLabels) => (
+          areLocationLabelListsEqual(currentLabels, nextLabels) ? currentLabels : nextLabels
+        ));
+      } catch (error) {
+        console.error('Failed to fetch project locations', error);
+        if (!cancelled) {
+          setProjectLocationLabels((currentLabels) => (
+            currentLabels.length === 0 ? currentLabels : []
+          ));
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectId, fetchProjectLocations]);
+
   const locationOptions = useMemo(
     () =>
       getProjectScopedLocationOptions(
-        tasks,
-        activeProjectId,
+        projectLocationLabels,
         t.createTask.addNewLocation,
         formData.locationOnSite,
       ),
-    [activeProjectId, formData.locationOnSite, t.createTask.addNewLocation, tasks]
+    [formData.locationOnSite, projectLocationLabels, t.createTask.addNewLocation]
   );
+
+  const saveLocationOnSiteSelection = async (locationLabel: string) => {
+    const trimmedLocationOnSite = locationLabel.trim();
+    if (!trimmedLocationOnSite) {
+      return false;
+    }
+
+    updateField("locationOnSite", trimmedLocationOnSite);
+    setProjectLocationLabels((currentLabels) => appendUniqueLocationLabel(currentLabels, trimmedLocationOnSite));
+
+    if (!formData.projectId) {
+      return true;
+    }
+
+    await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
+    return true;
+  };
 
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
+      const trimmedLocationOnSite = formData.locationOnSite.trim() || undefined;
+
+      if (formData.projectId && trimmedLocationOnSite) {
+        await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
+      }
+
       // Basic submit logic extracted from screen
       if (editTaskId) {
         await updateTask(editTaskId, {
@@ -472,7 +582,7 @@ export function useCreateTaskViewAdapter({
           category: formData.category as TaskCategory,
           billingStatus: formData.billingStatus as BillingStatus,
           dueDate: formData.dueDate.toISOString(),
-          locationOnSite: formData.locationOnSite.trim() || undefined,
+          locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
           attachments: formData.attachments,
           _editReason: options?.editReason,
@@ -487,7 +597,7 @@ export function useCreateTaskViewAdapter({
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
-          locationOnSite: formData.locationOnSite.trim() || undefined,
+          locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
@@ -502,7 +612,7 @@ export function useCreateTaskViewAdapter({
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
-          locationOnSite: formData.locationOnSite.trim() || undefined,
+          locationOnSite: trimmedLocationOnSite,
           assignedTo: formData.assignedTo,
           assignedBy: user?.id || '',
           attachments: formData.attachments,
@@ -583,6 +693,7 @@ export function useCreateTaskViewAdapter({
       toggleUserSelection,
       removeAttachment,
       setTextInput,
+      saveLocationOnSiteSelection,
       setShowSuggestionPreview,
       setAcceptedFields,
       setShowEditReasonModal,

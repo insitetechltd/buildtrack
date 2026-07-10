@@ -181,6 +181,7 @@ jest.mock("../../screens/ReassignTaskScreen", () => "ReassignTaskScreen");
 
 const {
   default: AppNavigator,
+  shouldHideTabBarOnCreateTaskRoute,
   shouldHideTabBarOnTaskDetailRoute,
 } = require("../AppNavigator");
 
@@ -223,5 +224,12 @@ describe("AppNavigator bottom-tab spacing", () => {
     expect(shouldHideTabBarOnTaskDetailRoute("TaskDetailFromDashboard")).toBe(true);
     expect(shouldHideTabBarOnTaskDetailRoute("TasksList")).toBe(false);
     expect(shouldHideTabBarOnTaskDetailRoute(undefined)).toBe(false);
+  });
+
+  it("hides the root tab bar only on the main Create Task route inside the camera stack", () => {
+    expect(shouldHideTabBarOnCreateTaskRoute("CreateTaskMain")).toBe(true);
+    expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(false);
+    expect(shouldHideTabBarOnCreateTaskRoute("PhotoViewer")).toBe(false);
+    expect(shouldHideTabBarOnCreateTaskRoute(undefined)).toBe(false);
   });
 });

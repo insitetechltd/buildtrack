@@ -2,6 +2,12 @@ import React from "react";
 import { render } from "@testing-library/react-native";
 
 jest.mock("@react-navigation/native", () => ({
+  CommonActions: {
+    setParams: (params: Record<string, unknown>) => ({
+      type: "SET_PARAMS",
+      payload: { params },
+    }),
+  },
   getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -103,6 +109,7 @@ jest.mock("@react-navigation/native-stack", () => ({
                 routes: [{ key: firstScreen.props.name }],
               }),
               goBack: jest.fn(),
+              dispatch: jest.fn(),
               navigate: jest.fn(),
               pop: jest.fn(),
               setParams: jest.fn(),
@@ -193,6 +200,7 @@ const {
   default: AppNavigator,
   handleDashboardTaskDetailBack,
   handleTasksTaskDetailBack,
+  returnToCreateTaskRoute,
 } = require("../AppNavigator");
 
 describe("AppNavigator back helpers", () => {
@@ -203,6 +211,10 @@ describe("AppNavigator back helpers", () => {
     mockAuthState.user = { id: "user-1", role: "worker" };
     mockProjectFilterState.workspaceReady = true;
     mockProjectFilterState.workspaceReadyUserId = "user-1";
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("registers the worker bottom shell as Activity, Camera, and Tasks only", () => {
@@ -317,6 +329,80 @@ describe("AppNavigator back helpers", () => {
     expect(goBack).not.toHaveBeenCalled();
     expect(navigate).toHaveBeenCalledWith("TasksList");
   });
+
+  it("returns photo-selection results to the existing create-task route by popping and dispatching params to that route", () => {
+    jest.useFakeTimers();
+    const goBack = jest.fn();
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    const setParams = jest.fn();
+
+    returnToCreateTaskRoute(
+      {
+        canGoBack: () => true,
+        getState: () => ({
+          index: 1,
+          routeNames: ["CreateTaskMain", "PhotoSelection"],
+          routes: [
+            { key: "CreateTaskMain-1", name: "CreateTaskMain" },
+            { key: "PhotoSelection-1", name: "PhotoSelection" },
+          ],
+        }),
+        dispatch,
+        goBack,
+        navigate,
+        setParams,
+      } as any,
+      { selectedPhotos: [{ uri: "file:///photo.jpg", fileName: "photo.jpg", isAnnotated: false }] },
+    );
+
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
+    expect(setParams).not.toHaveBeenCalled();
+
+    jest.runAllTimers();
+
+    expect(dispatch).toHaveBeenCalledWith({
+      type: "SET_PARAMS",
+      payload: {
+        params: {
+          selectedPhotos: [{ uri: "file:///photo.jpg", fileName: "photo.jpg", isAnnotated: false }],
+        },
+      },
+      source: "CreateTaskMain-1",
+    });
+    expect(setParams).not.toHaveBeenCalled();
+  });
+
+  it("falls back to create-task navigation when no existing create-task route can be popped", () => {
+    const goBack = jest.fn();
+    const navigate = jest.fn();
+    const setParams = jest.fn();
+
+    returnToCreateTaskRoute(
+      {
+        canGoBack: () => false,
+        getState: () => ({
+          index: 0,
+          routeNames: ["CreateTaskMain", "PhotoSelection"],
+          routes: [{ key: "CreateTaskMain" }, { key: "PhotoSelection" }],
+        }),
+        goBack,
+        navigate,
+        setParams,
+      } as any,
+      { clearForm: true, _timestamp: 123 },
+    );
+
+    expect(goBack).not.toHaveBeenCalled();
+    expect(setParams).not.toHaveBeenCalled();
+    expect(navigate).toHaveBeenCalledWith("CreateTaskMain", {
+      clearForm: true,
+      _timestamp: 123,
+    });
+  });
+
 
   it("pops when the navigator reports back history even if state inspection looks root-like", () => {
     const pop = jest.fn();

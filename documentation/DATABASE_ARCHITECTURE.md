@@ -289,7 +289,8 @@ Important notes:
 - the runtime still carries some legacy compatibility fields while the unified model settles
 - soft-delete and archival behavior are modeled in the main table
 - `location_on_site` is the dedicated task-level field for the Create Task "Location on Site" flow and is intentionally separate from `projects.location`
-- Create Task derives project-scoped location suggestions from existing `tasks.location_on_site` values in the active project, then appends an explicit `Add new location` affordance in the view adapter
+- the current app runtime still derives project-scoped location suggestions from existing `tasks.location_on_site` values in the active project, then appends an explicit `Add new location` affordance in the view adapter
+- `WS-SUPABASE / M-SUPABASE-01` has now confirmed that task-history-derived suggestions do not satisfy the product requirement for a shared project-scoped location directory; the approved follow-on is `ADD_PROJECT_LOCATIONS_MIGRATION.sql`
 - the redesign metadata fields `primary_assignee_id`, `delegated_user_ids`, `container_id`, `sub_container_id`, and `tags` are part of the intended runtime model, but live-environment rollout may lag; the repository now carries `ADD_TASK_REDESIGN_METADATA_MIGRATION.sql` to close that drift, and app-side compatibility fallbacks currently avoid hard failures while those fields remain non-persistent on stale schemas
 - the repository now also carries `ADD_TASK_ON_SITE_LOCATION_MIGRATION.sql`; task creation currently treats `location_on_site` as a deferred schema field so older environments can still create tasks by retrying without that column when Supabase schema cache is behind
 
@@ -402,8 +403,10 @@ The create-task flow now treats on-site location as task metadata instead of pro
 
 - `tasks.location_on_site` stores the task-specific label chosen during create and edit flows
 - `projects.location` remains the broader project address/location field and must not be repurposed as task on-site location storage
-- project-scoped suggestion history is reconstructed from prior tasks in the same project that already have `location_on_site` populated
-- this keeps the persistence model local to the task domain without introducing a separate global locations table
+- the current runtime reconstructs suggestion history from prior tasks in the same project that already have `location_on_site` populated
+- the product requirement is stricter than that runtime shortcut: location choices must be shared across all users on the project even before a new task is created
+- the target persistence model is therefore `public.project_locations`, with `tasks.location_on_site` remaining the per-task snapshot field
+- `ADD_PROJECT_LOCATIONS_MIGRATION.sql` is the follow-on migration that creates the shared directory and backfills it from task data where possible
 
 ### Unified activity log
 
@@ -509,7 +512,7 @@ The runtime has moved toward unified `task_activities`, but older migration file
 
 ### Create-task location field rollout
 
-The runtime expects `tasks.location_on_site`, but some Supabase environments may briefly lag the checked-in migration. Current create-task writes therefore include a compatibility retry path so task creation can proceed while stale schema caches catch up.
+The runtime expects `tasks.location_on_site`, but live Supabase inspection has confirmed that some environments still lag the checked-in migrations and may also be missing `public.project_locations`. Current create-task writes therefore include a compatibility retry path so task creation can proceed while stale schema caches catch up, and the shared project location directory remains a pending schema rollout until `ADD_PROJECT_LOCATIONS_MIGRATION.sql` is applied.
 
 ## Canonical References
 

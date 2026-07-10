@@ -44,6 +44,15 @@ export interface TaskDerivedState {
   queryTaskIds: Record<string, string[]>;
 }
 
+export interface ProjectLocationRecord {
+  id: string;
+  projectId: string;
+  label: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
 const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
@@ -263,6 +272,14 @@ function createTaskPreview(task: Task): TaskPreview {
   };
 }
 
+function normalizeProjectLocationLabel(label: string | undefined | null) {
+  if (!label) {
+    return "";
+  }
+
+  return label.replace(/\s+/g, " ").trim();
+}
+
 function deriveTaskIdsForQuery(
   resourceKey: string,
   allTaskIds: string[],
@@ -389,10 +406,12 @@ interface TaskStore {
   fetchTasksByProject: (projectId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTasksByUser: (userId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
+  fetchProjectLocations: (projectId: string) => Promise<ProjectLocationRecord[]>;
   
   // Task management
   createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  ensureProjectLocation: (projectId: string, label: string, createdBy?: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>; // Legacy method - kept for backward compatibility
   deleteTaskById: (taskId: string, userId: string) => Promise<void>; // Soft delete task (only assigner can delete, maintains audit trail)
   cancelTask: (taskId: string, userId: string) => Promise<void>; // Cancel task (only creator can cancel)
@@ -1450,6 +1469,32 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
+      fetchProjectLocations: async (projectId: string) => {
+        if (!supabase || !projectId) {
+          return [];
+        }
+
+        const { data, error } = await supabase
+          .from('project_locations')
+          .select('id, project_id, label, created_by, created_at, updated_at')
+          .eq('project_id', projectId)
+          .order('label', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching project locations:', error);
+          throw error;
+        }
+
+        return (data || []).map((location: any) => ({
+          id: String(location.id),
+          projectId: String(location.project_id),
+          label: String(location.label || ''),
+          createdBy: location.created_by ? String(location.created_by) : undefined,
+          createdAt: location.created_at || undefined,
+          updatedAt: location.updated_at || undefined,
+        }));
+      },
+
       // CREATE task in Supabase
       createTask: async (taskData) => {
         if (!supabase) {
@@ -1701,6 +1746,45 @@ export const useTaskStore = create<TaskStore>()(
           });
           throw error;
         }
+      },
+
+      ensureProjectLocation: async (projectId: string, label: string, createdBy?: string) => {
+        const normalizedLabel = normalizeProjectLocationLabel(label);
+
+        if (!projectId || !normalizedLabel || !supabase) {
+          return;
+        }
+
+        const existingLocations = await get().fetchProjectLocations(projectId);
+        const normalizedTarget = normalizedLabel.toLocaleLowerCase();
+        const alreadyExists = existingLocations.some((location) => (
+          normalizeProjectLocationLabel(location.label).toLocaleLowerCase() === normalizedTarget
+        ));
+
+        if (alreadyExists) {
+          return;
+        }
+
+        const { error } = await supabase
+          .from('project_locations')
+          .insert({
+            project_id: projectId,
+            label: normalizedLabel,
+            created_by: createdBy || null,
+          })
+          .select()
+          .single();
+
+        if (!error) {
+          return;
+        }
+
+        if (String((error as { code?: unknown }).code || '') === '23505') {
+          return;
+        }
+
+        console.error('Error ensuring project location:', error);
+        throw error;
       },
 
       // UPDATE task in Supabase

@@ -1,5 +1,30 @@
 import type { CreateTaskParams } from "./navigationTypes";
 
+export function resolveCreateTaskEntryParams(
+  routeParams?: CreateTaskParams,
+): CreateTaskParams {
+  if (!routeParams?.clearForm) {
+    return routeParams ?? {};
+  }
+
+  return {
+    parentTaskId: undefined,
+    parentSubTaskId: undefined,
+    editTaskId: undefined,
+    actionType: undefined,
+    updateTargetSubTaskId: undefined,
+    sourceTaskId: undefined,
+    sourceSubTaskId: undefined,
+    sourceScreen: undefined,
+    cameraLaunchContext: undefined,
+    postCaptureDefault: undefined,
+    selectedPhotos: undefined,
+    uploadedPhotoUrls: undefined,
+    clearForm: true,
+    _timestamp: routeParams._timestamp,
+  };
+}
+
 export function buildCreateTaskPhotoReturnParams({
   routeParams,
   selectedPhotos,

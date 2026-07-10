@@ -3,6 +3,40 @@
 ## Overview
 To run SQL queries directly against your Supabase database, you have several options. Each requires different credentials and access levels.
 
+## Current InsiteApp Audit Path
+
+For `WS-SUPABASE / M-SUPABASE-01`, the canonical CLI audit route is the Supabase pooler connection, not the direct `db.<project-ref>.supabase.co:5432` host. In this workspace, the direct host can fail because of IPv6 routing, while the pooler host on port `6543` is reachable.
+
+Use these non-secret connection parameters for local audit setup:
+
+- Host: `aws-1-ap-south-1.pooler.supabase.com`
+- Port: `6543`
+- Database: `postgres`
+- Username format: `postgres.<PROJECT_REF>`
+- `psql` binary in this workspace: `/opt/homebrew/opt/libpq/bin/psql`
+
+Keep the password out of the repository, committed docs, and shell history. Prefer a local secret source such as `~/.pgpass` or a one-off terminal export that is not checked in.
+
+Example `~/.pgpass` entry format:
+
+```text
+aws-1-ap-south-1.pooler.supabase.com:6543:postgres:postgres.<PROJECT_REF>:<DATABASE_PASSWORD>
+```
+
+Example read-only audit run:
+
+```bash
+chmod 600 ~/.pgpass
+/opt/homebrew/opt/libpq/bin/psql -w \
+  -h aws-1-ap-south-1.pooler.supabase.com \
+  -p 6543 \
+  -d postgres \
+  -U postgres.<PROJECT_REF> \
+  -f WS_SUPABASE_01_READONLY_AUDIT.sql
+```
+
+Use `ADD_PROJECT_LOCATIONS_MIGRATION.sql` for the shared on-site location rollout and `WS_SUPABASE_01_READONLY_AUDIT.sql` for repeatable read-only inspection.
+
 ## Option 1: Supabase Dashboard SQL Editor (Recommended - Easiest)
 
 ### What You Need:
@@ -239,4 +273,3 @@ This requires no additional setup and gives you full access.
 - `check_sam_tasks.sql`: SQL queries for checking Sam's tasks
 - `SAM_TASKS_CHECK.md`: Documentation for the queries
 - `src/api/supabase.ts`: Supabase client configuration
-

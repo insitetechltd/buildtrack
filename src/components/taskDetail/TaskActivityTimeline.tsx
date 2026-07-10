@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { Image, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
+import { Dimensions, Image, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import { cn } from "@/utils/cn";
@@ -89,6 +89,7 @@ export default function TaskActivityTimeline({
     index: number;
   }>();
   const [galleryIndices, setGalleryIndices] = React.useState<Record<string, number>>({});
+  const [containerWidths, setContainerWidths] = React.useState<Record<string, number>>({});
   const [leadPhotoAspectRatios, setLeadPhotoAspectRatios] = React.useState<Record<string, number>>({});
   const normalizedActivities = useMemo(
     () => {
@@ -316,127 +317,123 @@ export default function TaskActivityTimeline({
 
                 {hasPhotos ? (
                   <View
-                    testID={`task-activity-timeline__content_split-${activity.id}`}
-                    className="flex-row items-start gap-4"
+                    testID={`task-activity-timeline__photo_stack-${activity.id}`}
+                    className="pt-1"
                   >
-                    <View className="min-w-0 flex-[0.95] pt-1">
-                      {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
-                        <View className="mb-3 flex-row flex-wrap items-center gap-2">
-                          {activity.subtaskBadgeLabel ? (
-                            <View className="rounded-full bg-blue-50 px-2 py-1">
-                              <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
-                                {activity.subtaskBadgeLabel}
-                              </Text>
-                            </View>
-                          ) : null}
-                          {activity.subtaskTitleLabel ? (
-                            <Text className="text-base font-medium text-slate-700">
-                              {activity.subtaskTitleLabel}
+                    {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
+                      <View className="mb-3 flex-row flex-wrap items-center gap-2">
+                        {activity.subtaskBadgeLabel ? (
+                          <View className="rounded-full bg-blue-50 px-2 py-1">
+                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                              {activity.subtaskBadgeLabel}
                             </Text>
-                          ) : null}
-                        </View>
-                      ) : null}
+                          </View>
+                        ) : null}
+                        {activity.subtaskTitleLabel ? (
+                          <Text className="text-base font-medium text-slate-700">
+                            {activity.subtaskTitleLabel}
+                          </Text>
+                        ) : null}
+                      </View>
+                    ) : null}
 
-                      <Text
-                        testID={`task-activity-timeline__description-${activity.id}`}
-                        className="text-base font-semibold text-slate-900"
-                      >
-                        {activity.eventLabel}
-                      </Text>
-                      {activity.detailLabel ? (
-                        <Text className="mt-2 text-sm leading-6 text-slate-600">
-                          {activity.detailLabel}
-                        </Text>
-                      ) : null}
-                    </View>
+                    <Text
+                      testID={`task-activity-timeline__description-${activity.id}`}
+                      className="text-base font-semibold text-slate-900"
+                    >
+                      {activity.eventLabel}
+                    </Text>
 
                     <View
-                      testID={`task-activity-timeline__photo_column-${activity.id}`}
-                      className="flex-[1.45]"
+                      testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
+                      className="mt-3 overflow-hidden rounded-3xl bg-slate-200"
+                      style={{
+                        aspectRatio: resolveLeadPhotoAspectRatio(
+                          activity,
+                          leadPhotoAspectRatios,
+                        ),
+                      }}
+                      onLayout={(event) => {
+                        const width = event.nativeEvent.layout.width;
+                        if (width && width !== containerWidths[activity.id]) {
+                          setContainerWidths((current) => ({
+                            ...current,
+                            [activity.id]: width,
+                          }));
+                        }
+                      }}
                     >
-                      <Text
-                        testID={`task-activity-timeline__photo_caption-${activity.id}`}
-                        className="mb-2 text-base font-semibold text-slate-900"
-                      >
-                        {activity.photoUrls.length === 1
-                          ? "Added 1 photo"
-                          : `Added ${activity.photoUrls.length} photos`}
-                      </Text>
-                      <View
-                        testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
-                        className="overflow-hidden rounded-3xl bg-slate-200"
-                        style={{
-                          aspectRatio: resolveLeadPhotoAspectRatio(
-                            activity,
-                            leadPhotoAspectRatios,
-                          ),
+                      <ScrollView
+                        testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onMomentumScrollEnd={(event) => {
+                          const nextIndex = Math.round(
+                            event.nativeEvent.contentOffset.x /
+                              Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+                          );
+                          setGalleryIndices((current) => ({
+                            ...current,
+                            [activity.id]: Math.min(
+                              Math.max(nextIndex, 0),
+                              activity.photoUrls.length - 1,
+                            ),
+                          }));
                         }}
+                        className="h-full w-full"
                       >
-                        <Pressable
-                          testID={`task-activity-timeline__lead-photo-pressable-${activity.id}`}
-                          accessibilityRole="button"
-                          className="h-full w-full"
-                          onPress={() => openGallery(activity.photoUrls, currentPhotoIndex)}
-                        >
-                          <ScrollView
-                            testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
-                            horizontal
-                            pagingEnabled
-                            showsHorizontalScrollIndicator={false}
-                            onMomentumScrollEnd={(event) => {
-                              const nextIndex = Math.round(
-                                event.nativeEvent.contentOffset.x /
-                                  Math.max(event.nativeEvent.layoutMeasurement.width, 1),
-                              );
-                              setGalleryIndices((current) => ({
-                                ...current,
-                                [activity.id]: Math.min(
-                                  Math.max(nextIndex, 0),
-                                  activity.photoUrls.length - 1,
-                                ),
-                              }));
-                            }}
-                            className="h-full w-full"
+                        {activity.photoUrls.map((photoUri, photoIndex) => (
+                          <Pressable
+                            key={`${activity.id}:photo:${photoIndex}`}
+                            testID={
+                              photoIndex === currentPhotoIndex
+                                ? `task-activity-timeline__lead-photo-pressable-${activity.id}`
+                                : undefined
+                            }
+                            accessibilityRole="button"
+                            className="h-full"
+                            style={{ width: containerWidths[activity.id] || "100%" }}
+                            onPress={() => openGallery(activity.photoUrls, photoIndex)}
                           >
-                            {activity.photoUrls.map((photoUri, photoIndex) => (
-                              <View
-                                key={`${activity.id}:photo:${photoIndex}`}
-                                className="h-full w-full"
-                              >
-                                <Image
-                                  testID={
-                                    photoIndex === currentPhotoIndex
-                                      ? `task-activity-timeline__lead-photo-${activity.id}`
-                                      : undefined
-                                  }
-                                  accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                                  source={{ uri: photoUri }}
-                                  resizeMode="contain"
-                                  className="h-full w-full bg-slate-200"
-                                />
-                              </View>
-                            ))}
-                          </ScrollView>
-                        </Pressable>
-                      </View>
-
-                      {activity.photoUrls.length > 1 ? (
-                        <View
-                          testID={`task-activity-timeline__gallery_pager-${activity.id}`}
-                          className="mt-3 flex-row items-center justify-center gap-1.5"
-                        >
-                          {activity.photoUrls.map((_, photoIndex) => (
-                            <View
-                              key={`${activity.id}:dot:${photoIndex}`}
-                              className={cn(
-                                "h-2 rounded-full",
-                                photoIndex === currentPhotoIndex ? "w-5 bg-[#08576E]" : "w-2 bg-slate-300",
-                              )}
+                            <Image
+                              testID={
+                                photoIndex === currentPhotoIndex
+                                  ? `task-activity-timeline__lead-photo-${activity.id}`
+                                  : undefined
+                              }
+                              accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
+                              source={{ uri: photoUri }}
+                              resizeMode="contain"
+                              className="h-full w-full bg-slate-200"
                             />
-                          ))}
-                        </View>
-                      ) : null}
+                          </Pressable>
+                        ))}
+                      </ScrollView>
                     </View>
+
+                    {activity.photoUrls.length > 1 ? (
+                      <View
+                        testID={`task-activity-timeline__gallery_pager-${activity.id}`}
+                        className="mt-3 flex-row items-center justify-center gap-1.5"
+                      >
+                        {activity.photoUrls.map((_, photoIndex) => (
+                          <View
+                            key={`${activity.id}:dot:${photoIndex}`}
+                            className={cn(
+                              "h-2 rounded-full",
+                              photoIndex === currentPhotoIndex ? "w-5 bg-[#08576E]" : "w-2 bg-slate-300",
+                            )}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+
+                    {activity.detailLabel ? (
+                      <Text className="mt-3 text-sm leading-6 text-slate-600">
+                        {activity.detailLabel}
+                      </Text>
+                    ) : null}
                   </View>
                 ) : (
                   <View className="pt-1">
@@ -484,7 +481,7 @@ export default function TaskActivityTimeline({
       >
         <View
           testID="task-activity-timeline__photo_viewer"
-          className="flex-1 items-center justify-center bg-black/90 px-4"
+          className="flex-1 items-center justify-center bg-black/90"
         >
           <Pressable
             testID="task-activity-timeline__photo_viewer_close"
@@ -508,15 +505,43 @@ export default function TaskActivityTimeline({
                 </Pressable>
               ) : null}
 
-              <Image
-                testID="task-activity-timeline__photo_viewer_image"
-                source={{ uri: selectedGallery.photos[selectedGallery.index] }}
-                resizeMode="contain"
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                contentOffset={{ x: Dimensions.get("window").width * selectedGallery.index, y: 0 }}
+                onMomentumScrollEnd={(event) => {
+                  const nextIndex = Math.round(
+                    event.nativeEvent.contentOffset.x /
+                      Math.max(event.nativeEvent.layoutMeasurement.width, 1),
+                  );
+                  setSelectedGallery((current) =>
+                    current ? { ...current, index: nextIndex } : current,
+                  );
+                }}
                 className="h-full w-full"
-              />
+              >
+                {selectedGallery.photos.map((photoUri, index) => (
+                  <View
+                    key={`modal-photo-${index}`}
+                    style={{ width: Dimensions.get("window").width, height: "100%" }}
+                  >
+                    <Image
+                      testID={
+                        index === selectedGallery.index
+                          ? "task-activity-timeline__photo_viewer_image"
+                          : undefined
+                      }
+                      source={{ uri: photoUri }}
+                      resizeMode="contain"
+                      className="h-full w-full"
+                    />
+                  </View>
+                ))}
+              </ScrollView>
 
               {selectedGallery.photos.length > 1 ? (
-                <View className="absolute bottom-10 rounded-full bg-black/45 px-3 py-1.5">
+                <View className="absolute bottom-10 z-10 rounded-full bg-black/45 px-3 py-1.5">
                   <Text className="text-sm font-semibold text-white">
                     {selectedGallery.index + 1} / {selectedGallery.photos.length}
                   </Text>

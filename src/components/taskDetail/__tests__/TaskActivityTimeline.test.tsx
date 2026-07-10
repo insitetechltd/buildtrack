@@ -78,7 +78,7 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByText("40% complete")).toBeTruthy();
   });
 
-  it("renders a caption above the photos and exposes a swipe surface without arrow controls", () => {
+  it("renders the event headline above a full-width swipe surface without any photo-count caption", () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
@@ -101,15 +101,18 @@ describe("TaskActivityTimeline", () => {
       />,
     );
 
-    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-1")).toBeTruthy();
-    expect(screen.getByText("Added 3 photos")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__description-activity-1")).toBeTruthy();
+    expect(screen.getByText("Ceiling grid installed")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-1")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-1")).toBeTruthy();
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-1")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo_caption-activity-1")).toBeNull();
+    expect(screen.queryByText("Added 3 photos")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-1")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-1")).toBeNull();
   });
 
-  it("shows the lead photo in an aspect-ratio-aware shell at full usable card width with contain fit behavior", async () => {
+  it("shows the lead photo below the headline in an aspect-ratio-aware full-width shell with contain fit behavior", async () => {
     getSizeSpy.mockImplementation((_uri: string, onSuccess: (width: number, height: number) => void) => {
       onSuccess(900, 1200);
     });
@@ -146,6 +149,7 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className).toContain(
       "rounded-3xl",
     );
+    expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-2")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.className).not.toContain(
       "h-44",
     );
@@ -154,15 +158,15 @@ describe("TaskActivityTimeline", () => {
         aspectRatio: 0.75,
       });
     });
-    expect(screen.getByTestId("task-activity-timeline__photo_caption-activity-2")).toBeTruthy();
-    expect(screen.getByText("Added 2 photos")).toBeTruthy();
+    expect(screen.queryByTestId("task-activity-timeline__photo_caption-activity-2")).toBeNull();
+    expect(screen.queryByText("Added 2 photos")).toBeNull();
     expect(screen.getByTestId("task-activity-timeline__photo_swipe_surface-activity-2")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-2")).toBeTruthy();
     expect(screen.queryByTestId("task-activity-timeline__gallery_previous-activity-2")).toBeNull();
     expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-2")).toBeNull();
     expect(
       getDirectChildTestIds(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2")),
-    ).toEqual(["task-activity-timeline__lead-photo-pressable-activity-2"]);
+    ).toEqual(["task-activity-timeline__photo_swipe_surface-activity-2"]);
   });
 
   it("updates the in-entry gallery from swipe gestures and opens the full-screen viewer on the selected photo", () => {

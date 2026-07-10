@@ -52,6 +52,15 @@ export default function CreateTaskAttachmentSection({
       {attachments.length > 0 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
           <View className="flex-row">
+            <Pressable
+              testID="createTask-add-photos"
+              accessibilityLabel="Add attachments"
+              accessibilityRole="button"
+              onPress={onAddPhotos}
+              className="mr-3 h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-slate-50"
+            >
+              <Ionicons name="add" size={30} color="#08576E" />
+            </Pressable>
             {attachments.map((attachment, index) => {
               const photoUri =
                 typeof attachment === "string" ? attachment : (attachment.annotatedUri || attachment.uri);
@@ -86,24 +95,25 @@ export default function CreateTaskAttachmentSection({
             })}
           </View>
         </ScrollView>
-      ) : null}
-
-      <View testID="create-task__attachments_cta">
-        <Pressable
-          testID="createTask-add-photos"
-          accessibilityLabel="Add attachments"
-          accessibilityRole="button"
-          onPress={onAddPhotos}
-          className="items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-slate-50 px-5 py-5"
-        >
-          <View
-            testID="create-task__attachments_cta_plus_icon"
-            className="h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#08576E]/15 bg-white"
+      ) : (
+        <View testID="create-task__attachments_cta">
+          <Pressable
+            testID="createTask-add-photos"
+            accessibilityLabel="Add attachments"
+            accessibilityRole="button"
+            onPress={onAddPhotos}
+            className="items-center justify-center rounded-2xl border-2 border-dashed border-gray-300 bg-slate-50 px-5 py-5"
           >
-            <Ionicons name="add" size={30} color="#08576E" />
-          </View>
-        </Pressable>
-      </View>
+            <View
+              testID="create-task__attachments_cta_plus_icon"
+              className="h-14 w-14 items-center justify-center rounded-2xl border-2 border-[#08576E]/15 bg-white"
+            >
+              <Ionicons name="add" size={30} color="#08576E" />
+            </View>
+          </Pressable>
+        </View>
+      )}
+
     </View>
   );
 }

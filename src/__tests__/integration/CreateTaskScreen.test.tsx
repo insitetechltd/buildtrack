@@ -461,6 +461,29 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 
+  it('renders an inline thumbnail-sized CTA when photos are already attached', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen 
+          onNavigateBack={jest.fn()} 
+          selectedPhotos={[
+            {
+              uri: 'file:///photo-1.jpg',
+              fileName: 'photo-1.jpg',
+              isAnnotated: false,
+            },
+          ]}
+        />
+      </NavigationContainer>
+    );
+
+    const inlineCta = screen.getByTestId('createTask-add-photos');
+    expect(inlineCta.props.className).toContain('w-24');
+    expect(inlineCta.props.className).toContain('h-24');
+    expect(inlineCta.props.className).not.toContain('py-5');
+    expect(screen.queryByTestId('create-task__attachments_cta_plus_icon')).toBeNull();
+  });
+
   it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
     const screen = render(
       <NavigationContainer>

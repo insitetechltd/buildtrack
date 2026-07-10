@@ -484,20 +484,25 @@ function RootTabButton({
   const tabButtonStyle = style as StyleProp<ViewStyle>;
 
   return (
-    <View pointerEvents="box-none" style={styles.rootTabSideSlot} testID={testID}>
+    <View
+      pointerEvents="box-none"
+      style={[
+        tabButtonStyle,
+        styles.rootTabSideSlot,
+        alignTowardsCamera === "right"
+          ? styles.rootTabSideSlotTowardCameraRight
+          : styles.rootTabSideSlotTowardCameraLeft,
+      ]}
+      testID={testID}
+    >
       <Pressable
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         onLongPress={onLongPress}
         onPress={onPress}
-        style={[
-          tabButtonStyle,
-          styles.rootTabButton,
-          alignTowardsCamera === "right"
-            ? styles.rootTabButtonTowardCameraRight
-            : styles.rootTabButtonTowardCameraLeft,
-        ]}
+        testID={`${testID}_pressable`}
+        style={styles.rootTabButton}
       >
         {children}
       </Pressable>
@@ -1833,23 +1838,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rootTabSideSlot: {
-    alignItems: "center",
-    flexGrow: 0,
-    flexShrink: 1,
+    flex: 1,
+    width: "100%",
     justifyContent: "center",
-    minWidth: 72,
+  },
+  rootTabSideSlotTowardCameraLeft: {
+    alignItems: "flex-start",
+    transform: [{ translateX: 6 }],
+  },
+  rootTabSideSlotTowardCameraRight: {
+    alignItems: "flex-end",
+    transform: [{ translateX: -6 }],
   },
   rootTabButton: {
     alignItems: "center",
+    alignSelf: "stretch",
+    flex: 1,
     justifyContent: "center",
     minWidth: 56,
     paddingHorizontal: 6,
-  },
-  rootTabButtonTowardCameraLeft: {
-    alignSelf: "flex-start",
-  },
-  rootTabButtonTowardCameraRight: {
-    alignSelf: "flex-end",
   },
   centerCameraTabButtonSlot: {
     alignItems: "center",

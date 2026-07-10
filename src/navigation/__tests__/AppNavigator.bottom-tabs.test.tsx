@@ -1,5 +1,5 @@
-import React from "react";
 import { render } from "@testing-library/react-native";
+import React from "react";
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
@@ -195,17 +195,39 @@ describe("AppNavigator bottom-tab spacing", () => {
     mockProjectFilterState.workspaceReadyUserId = "user-1";
   });
 
-  it("keeps side tabs tighter than the full-width center camera slot", () => {
+  it("stretches side tab slots and aligns them inward toward the camera", () => {
     const screen = render(<AppNavigator />);
 
-    expect(screen.getByTestId("root-tab__activity")).toHaveStyle({ flexGrow: 0 });
-    expect(screen.getByTestId("root-tab__camera")).toHaveStyle({ flex: 1 });
-    expect(screen.getByTestId("root-tab__tasks")).toHaveStyle({ flexGrow: 0 });
+    expect(screen.getByTestId("root-tab__activity")).toHaveStyle({
+      flex: 1,
+      width: "100%",
+      alignItems: "flex-end",
+      transform: [{ translateX: -6 }],
+    });
+    expect(screen.getByTestId("root-tab__tasks")).toHaveStyle({
+      flex: 1,
+      width: "100%",
+      alignItems: "flex-start",
+      transform: [{ translateX: 6 }],
+    });
+    expect(screen.getByTestId("root-tab__activity_pressable")).toHaveStyle({
+      alignSelf: "stretch",
+      flex: 1,
+    });
+    expect(screen.getByTestId("root-tab__tasks_pressable")).toHaveStyle({
+      alignSelf: "stretch",
+      flex: 1,
+    });
   });
 
-  it("keeps the camera affordance centered inside a full-width middle slot", () => {
+  it("keeps the camera affordance on the original centered vertical track", () => {
     const screen = render(<AppNavigator />);
 
+    expect(screen.getByTestId("root-tab__camera")).toHaveStyle({
+      alignItems: "center",
+      flex: 1,
+      justifyContent: "center",
+    });
     expect(screen.getByTestId("root-tab__camera_slot")).toHaveStyle({
       alignItems: "center",
       alignSelf: "stretch",
@@ -215,8 +237,12 @@ describe("AppNavigator bottom-tab spacing", () => {
     expect(screen.getByTestId("root-tab__camera_button")).toHaveStyle({
       alignSelf: "center",
       height: 64,
+      top: -16,
       width: 64,
     });
+    expect(React.Children.toArray(screen.getByTestId("root-tab__camera_slot").props.children)).toHaveLength(
+      1,
+    );
   });
 
   it("hides the root tab bar only on Task Detail routes", () => {

@@ -37,18 +37,6 @@ const threadRows = [
 ];
 
 describe("TaskActivityTimeline", () => {
-  const getSizeSpy = jest.spyOn(require("react-native").Image, "getSize");
-
-  beforeEach(() => {
-    getSizeSpy.mockImplementation((_uri: string, onSuccess: (width: number, height: number) => void) => {
-      onSuccess(1200, 900);
-    });
-  });
-
-  afterAll(() => {
-    getSizeSpy.mockRestore();
-  });
-
   it("renders two metadata lines with actor and status above timestamp and progress", () => {
     const screen = render(
       <TaskActivityTimeline
@@ -112,11 +100,7 @@ describe("TaskActivityTimeline", () => {
     expect(screen.queryByTestId("task-activity-timeline__gallery_next-activity-1")).toBeNull();
   });
 
-  it("shows the lead photo below the headline in an aspect-ratio-aware full-width shell with contain fit behavior", async () => {
-    getSizeSpy.mockImplementation((_uri: string, onSuccess: (width: number, height: number) => void) => {
-      onSuccess(900, 1200);
-    });
-
+  it("shows the lead photo below the headline in a square shell with cover fit while keeping the modal viewer unchanged", async () => {
     const screen = render(
       <TaskActivityTimeline
         thread={[
@@ -144,7 +128,7 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByText("Subtask")).toBeTruthy();
     expect(screen.getByText("Install ceiling grid")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.resizeMode).toBe(
-      "contain",
+      "cover",
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className).toContain(
       "rounded-3xl",
@@ -155,7 +139,7 @@ describe("TaskActivityTimeline", () => {
     );
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.style).toMatchObject({
-        aspectRatio: 0.75,
+        aspectRatio: 1,
       });
     });
     expect(screen.queryByTestId("task-activity-timeline__photo_caption-activity-2")).toBeNull();
@@ -167,6 +151,12 @@ describe("TaskActivityTimeline", () => {
     expect(
       getDirectChildTestIds(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2")),
     ).toEqual(["task-activity-timeline__photo_swipe_surface-activity-2"]);
+
+    fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
+
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.resizeMode).toBe(
+      "contain",
+    );
   });
 
   it("updates the in-entry gallery from swipe gestures and opens the full-screen viewer on the selected photo", () => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import { Dimensions, Image, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
@@ -18,28 +18,6 @@ interface TaskActivityTimelineProps {
 }
 
 const Modal = RNModal || View;
-const DEFAULT_LEAD_PHOTO_ASPECT_RATIO = 4 / 3;
-
-function resolveLeadPhotoAspectRatio(
-  activity: TaskDetailActivityThreadRow,
-  photoAspectRatios: Record<string, number>,
-): number {
-  if (
-    typeof activity.photoAspectRatio === "number" &&
-    Number.isFinite(activity.photoAspectRatio) &&
-    activity.photoAspectRatio > 0
-  ) {
-    return activity.photoAspectRatio;
-  }
-
-  const measuredAspectRatio = photoAspectRatios[activity.id];
-
-  if (!measuredAspectRatio || !Number.isFinite(measuredAspectRatio) || measuredAspectRatio <= 0) {
-    return DEFAULT_LEAD_PHOTO_ASPECT_RATIO;
-  }
-
-  return measuredAspectRatio;
-}
 
 function normalizeActivityRow(
   activity: TaskDetailActivityModel | TaskDetailActivityThreadRow,
@@ -90,7 +68,6 @@ export default function TaskActivityTimeline({
   }>();
   const [galleryIndices, setGalleryIndices] = React.useState<Record<string, number>>({});
   const [containerWidths, setContainerWidths] = React.useState<Record<string, number>>({});
-  const [leadPhotoAspectRatios, setLeadPhotoAspectRatios] = React.useState<Record<string, number>>({});
   const normalizedActivities = useMemo(
     () => {
       if (thread.length > 0) {
@@ -117,81 +94,11 @@ export default function TaskActivityTimeline({
     [normalizedActivities],
   );
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (resolvedTopEntryId) {
       onVisibleEntryChange?.(resolvedTopEntryId);
     }
   }, [onVisibleEntryChange, resolvedTopEntryId]);
-
-  useEffect(() => {
-    if (process.env.JEST_WORKER_ID) {
-      return;
-    }
-
-    let isCancelled = false;
-
-    const applyAspectRatio = (activityId: string, width: number, height: number) => {
-      if (isCancelled || width <= 0 || height <= 0) {
-        return;
-      }
-
-      const aspectRatio = width / height;
-
-      setLeadPhotoAspectRatios((current) => {
-        if (current[activityId] === aspectRatio) {
-          return current;
-        }
-
-        return {
-          ...current,
-          [activityId]: aspectRatio,
-        };
-      });
-    };
-
-    normalizedActivities.forEach((activity) => {
-      const leadPhotoUri = activity.photoUrls[0];
-
-      if (!leadPhotoUri) {
-        return;
-      }
-
-      try {
-        const maybePromise = Image.getSize(
-          leadPhotoUri,
-          (width, height) => {
-            applyAspectRatio(activity.id, width, height);
-          },
-          () => {
-            // Keep the default aspect ratio when image dimensions are unavailable.
-          },
-        ) as Promise<{ width: number; height: number } | [number, number]> | void;
-
-        if (maybePromise && typeof (maybePromise as Promise<unknown>).then === "function") {
-          void (maybePromise as Promise<{ width: number; height: number } | [number, number]>)
-            .then((result) => {
-              if (Array.isArray(result)) {
-                applyAspectRatio(activity.id, result[0], result[1]);
-                return;
-              }
-
-              if (result && typeof result === "object") {
-                applyAspectRatio(activity.id, result.width, result.height);
-              }
-            })
-            .catch(() => {
-              // Keep the default aspect ratio when image dimensions are unavailable.
-            });
-        }
-      } catch {
-        // Keep the default aspect ratio when image dimensions are unavailable.
-      }
-    });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [normalizedActivities]);
 
   const openGallery = React.useCallback((photos: string[], index: number) => {
     setSelectedGallery({
@@ -347,12 +254,7 @@ export default function TaskActivityTimeline({
                     <View
                       testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
                       className="mt-3 overflow-hidden rounded-3xl bg-slate-200"
-                      style={{
-                        aspectRatio: resolveLeadPhotoAspectRatio(
-                          activity,
-                          leadPhotoAspectRatios,
-                        ),
-                      }}
+                      style={{ aspectRatio: 1 }}
                       onLayout={(event) => {
                         const width = event.nativeEvent.layout.width;
                         if (width && width !== containerWidths[activity.id]) {
@@ -405,7 +307,7 @@ export default function TaskActivityTimeline({
                               }
                               accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
                               source={{ uri: photoUri }}
-                              resizeMode="contain"
+                              resizeMode="cover"
                               className="h-full w-full bg-slate-200"
                             />
                           </Pressable>

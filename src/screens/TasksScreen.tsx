@@ -120,7 +120,9 @@ export default function TasksScreen(props: TasksScreenProps) {
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
-  const [swipeLockedTaskIds, setSwipeLockedTaskIds] = useState<Record<string, true>>({});
+  const [swipeBlockedTaskIds, setSwipeBlockedTaskIds] = useState<
+    Record<string, "active" | "dismissed">
+  >({});
 
   const searchContract = useMemo(() => {
     const contract = mapTaskInputToTextFieldProps(searchInput);
@@ -169,35 +171,48 @@ export default function TasksScreen(props: TasksScreenProps) {
     );
   };
 
-  const setTaskSwipeLocked = useCallback((taskId: string, isLocked: boolean) => {
-    setSwipeLockedTaskIds((current) => {
-      const isCurrentlyLocked = Boolean(current[taskId]);
-      if (isCurrentlyLocked === isLocked) {
-        return current;
-      }
+  const setTaskSwipeBlockState = useCallback(
+    (taskId: string, nextState?: "active" | "dismissed") => {
+      setSwipeBlockedTaskIds((current) => {
+        const currentState = current[taskId];
+        if (currentState === nextState) {
+          return current;
+        }
 
-      if (isLocked) {
-        return {
-          ...current,
-          [taskId]: true,
-        };
-      }
+        if (nextState) {
+          return {
+            ...current,
+            [taskId]: nextState,
+          };
+        }
 
-      const next = { ...current };
-      delete next[taskId];
-      return next;
-    });
-  }, []);
+        const next = { ...current };
+        delete next[taskId];
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleRowPress = useCallback(
     (taskId: string, onPress?: () => void) => {
-      if (!onPress || swipeLockedTaskIds[taskId]) {
+      if (!onPress) {
+        return;
+      }
+
+      const swipeBlockState = swipeBlockedTaskIds[taskId];
+      if (swipeBlockState === "active") {
+        return;
+      }
+
+      if (swipeBlockState === "dismissed") {
+        setTaskSwipeBlockState(taskId, undefined);
         return;
       }
 
       onPress();
     },
-    [swipeLockedTaskIds],
+    [setTaskSwipeBlockState, swipeBlockedTaskIds],
   );
 
   return (
@@ -329,10 +344,10 @@ export default function TasksScreen(props: TasksScreenProps) {
                   enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
                   overshootLeft={false}
                   overshootRight={false}
-                  onSwipeableOpenStartDrag={() => setTaskSwipeLocked(row.taskId, true)}
-                  onSwipeableCloseStartDrag={() => setTaskSwipeLocked(row.taskId, true)}
-                  onSwipeableWillOpen={() => setTaskSwipeLocked(row.taskId, true)}
-                  onSwipeableClose={() => setTaskSwipeLocked(row.taskId, false)}
+                  onSwipeableOpenStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
+                  onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
+                  onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}
+                  onSwipeableClose={() => setTaskSwipeBlockState(row.taskId, "dismissed")}
                   renderLeftActions={
                     row.canShowArchiveAction
                       ? () => (

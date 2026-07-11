@@ -689,7 +689,7 @@ describe("TasksScreen", () => {
     alertSpy.mockRestore();
   });
 
-  it("does not open task details while a row swipe interaction is active", () => {
+  it("does not open task details while a row swipe interaction is active or immediately after dismissing the tray", () => {
     const onNavigateToTaskDetail = jest.fn();
     const screen = render(
       <TasksScreen
@@ -710,6 +710,9 @@ describe("TasksScreen", () => {
     expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(1);
 
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:swipeable__close"));
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(1);
+
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
     expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(2);
   });

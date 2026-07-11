@@ -220,6 +220,7 @@ describe("useTaskDetailViewAdapter", () => {
       submitSubTaskForReview: jest.fn(),
       acceptSubTask: jest.fn(),
       declineSubTask: jest.fn(),
+      archiveTask: jest.fn(),
       cancelTask: jest.fn(),
       updateTask: mockUpdateTask,
     });
@@ -296,6 +297,7 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
   });
+
 
   it("does not mark legacy completed child tasks as overdue", () => {
     const { result } = renderHook(() =>

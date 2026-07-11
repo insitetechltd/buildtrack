@@ -3,7 +3,7 @@ import DashboardScreen from "@/screens/DashboardScreen";
 import TasksScreen from "@/screens/TasksScreen";
 import LegacyDashboardScreen from "@/screens/legacy/LegacyDashboardScreen";
 import LegacyTasksScreen from "@/screens/legacy/LegacyTasksScreen";
-import type { TasksListParams } from "@/navigation/navigationTypes";
+import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDevToggleStore } from "@/state/devToggleStore";
 
 interface DashboardRouteProps {
@@ -17,7 +17,7 @@ interface DashboardRouteProps {
 
 interface TasksRouteProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;

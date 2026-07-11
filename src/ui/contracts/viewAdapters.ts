@@ -270,6 +270,8 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   primaryPhotoUri?: string;
   photoCountLabel?: string;
   photoDisplayMode?: "standard" | "photo_centric";
+  canShowTaskUpdateAction?: boolean;
+  canShowArchiveAction?: boolean;
   onPress?: () => void;
 }
 

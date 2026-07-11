@@ -25,6 +25,7 @@ import {
   Pressable,
   type StyleProp,
   type ViewStyle,
+  Dimensions,
   Linking,
 } from "react-native";
 import { useAuthStore } from "../state/authStore";
@@ -103,6 +104,11 @@ const ROOT_TAB_BAR_STYLE: ViewStyle = {
   borderTopColor: "#e5e7eb",
   backgroundColor: "#ffffff",
 };
+
+// Bottom-tab geometry is intentionally tuned and should only change with
+// matching test updates plus simulator verification.
+const ROOT_TAB_CAMERA_TOP_OFFSET = -16;
+const ROOT_TAB_SIDE_CENTER_OFFSET = Dimensions.get("window").width / 12;
 
 export function shouldHideTabBarOnTaskDetailRoute(routeName?: string) {
   return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
@@ -598,16 +604,24 @@ function DashboardMainScreen({
             : undefined,
         )
       }
-      onNavigateToCreateTask={() => {
+      onNavigateToCreateTask={(params) => {
         navigateToRootTabScreen(navigation, "Camera", {
           screen: "CreateTaskMain",
           params: {
-            parentTaskId: undefined,
-            parentSubTaskId: undefined,
-            editTaskId: undefined,
-            actionType: undefined,
-            clearForm: true, // Flag to clear form when "Create New Task" is pressed
-            _timestamp: Date.now(), // Force navigation by adding unique param
+            parentTaskId: params?.parentTaskId,
+            parentSubTaskId: params?.parentSubTaskId,
+            editTaskId: params?.editTaskId,
+            actionType: params?.actionType,
+            updateTargetSubTaskId: params?.updateTargetSubTaskId,
+            sourceTaskId: params?.sourceTaskId,
+            sourceSubTaskId: params?.sourceSubTaskId,
+            sourceScreen: params?.sourceScreen,
+            selectedPhotos: params?.selectedPhotos,
+            uploadedPhotoUrls: params?.uploadedPhotoUrls,
+            cameraLaunchContext: params?.cameraLaunchContext,
+            postCaptureDefault: params?.postCaptureDefault,
+            clearForm: params?.clearForm ?? true,
+            _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
       }}
@@ -755,16 +769,24 @@ function ProjectsTasksListScreen({
       onNavigateToTaskDetail={(taskId: string, subTaskId?: string) => {
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
-      onNavigateToCreateTask={() => {
+      onNavigateToCreateTask={(params) => {
         navigateToRootTabScreen(navigation, "Camera", {
           screen: "CreateTaskMain",
           params: {
-            parentTaskId: undefined,
-            parentSubTaskId: undefined,
-            editTaskId: undefined,
-            actionType: undefined,
-            clearForm: true, // Flag to clear form when "Create New Task" is pressed
-            _timestamp: Date.now(), // Force navigation by adding unique param
+            parentTaskId: params?.parentTaskId,
+            parentSubTaskId: params?.parentSubTaskId,
+            editTaskId: params?.editTaskId,
+            actionType: params?.actionType,
+            updateTargetSubTaskId: params?.updateTargetSubTaskId,
+            sourceTaskId: params?.sourceTaskId,
+            sourceSubTaskId: params?.sourceSubTaskId,
+            sourceScreen: params?.sourceScreen,
+            selectedPhotos: params?.selectedPhotos,
+            uploadedPhotoUrls: params?.uploadedPhotoUrls,
+            cameraLaunchContext: params?.cameraLaunchContext,
+            postCaptureDefault: params?.postCaptureDefault,
+            clearForm: params?.clearForm ?? true,
+            _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
       }}
@@ -1839,16 +1861,16 @@ const styles = StyleSheet.create({
   },
   rootTabSideSlot: {
     flex: 1,
-    width: "100%",
     justifyContent: "center",
+    width: "100%",
   },
   rootTabSideSlotTowardCameraLeft: {
-    alignItems: "flex-start",
-    transform: [{ translateX: 6 }],
+    alignItems: "center",
+    transform: [{ translateX: -ROOT_TAB_SIDE_CENTER_OFFSET }],
   },
   rootTabSideSlotTowardCameraRight: {
-    alignItems: "flex-end",
-    transform: [{ translateX: -6 }],
+    alignItems: "center",
+    transform: [{ translateX: ROOT_TAB_SIDE_CENTER_OFFSET }],
   },
   rootTabButton: {
     alignItems: "center",
@@ -1879,7 +1901,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
     shadowRadius: 14,
-    top: -16,
+    top: ROOT_TAB_CAMERA_TOP_OFFSET,
     width: 64,
   },
   centerCameraTabButtonFocused: {

@@ -1,5 +1,6 @@
 import { render } from "@testing-library/react-native";
 import React from "react";
+import { Dimensions } from "react-native";
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
@@ -195,20 +196,21 @@ describe("AppNavigator bottom-tab spacing", () => {
     mockProjectFilterState.workspaceReadyUserId = "user-1";
   });
 
-  it("stretches side tab slots and aligns them inward toward the camera", () => {
+  it("shifts side tab centers to the quarter-width positions", () => {
     const screen = render(<AppNavigator />);
+    const sideCenterOffset = Dimensions.get("window").width / 12;
 
     expect(screen.getByTestId("root-tab__activity")).toHaveStyle({
       flex: 1,
       width: "100%",
-      alignItems: "flex-end",
-      transform: [{ translateX: -6 }],
+      alignItems: "center",
+      transform: [{ translateX: sideCenterOffset }],
     });
     expect(screen.getByTestId("root-tab__tasks")).toHaveStyle({
       flex: 1,
       width: "100%",
-      alignItems: "flex-start",
-      transform: [{ translateX: 6 }],
+      alignItems: "center",
+      transform: [{ translateX: -sideCenterOffset }],
     });
     expect(screen.getByTestId("root-tab__activity_pressable")).toHaveStyle({
       alignSelf: "stretch",

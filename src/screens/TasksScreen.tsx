@@ -1,23 +1,69 @@
-import React, { useMemo } from "react";
-import { Pressable, Text, View, ScrollView } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Alert, Pressable, Text, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Swipeable } from "react-native-gesture-handler";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import TasksFiltersBottomSheet from "@/components/tasks/TasksFiltersBottomSheet";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
+import type { CreateTaskParams } from "@/navigation/navigationTypes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
 import { cn } from "@/utils/cn";
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
   onNavigateToDeveloperSettings?: () => void;
+}
+
+function SwipeActionButton({
+  testID,
+  icon,
+  align,
+  onPress,
+  tone = "default",
+}: {
+  testID: string;
+  icon: string;
+  align: "left" | "right";
+  onPress: () => void;
+  tone?: "default" | "destructive";
+}) {
+  const iconOffset = align === "left" ? -5 : 5;
+
+  return (
+    <View
+      testID={`${testID}-wrapper`}
+      className={cn(
+        "w-[60px] justify-center",
+        align === "left" ? "items-start" : "items-end",
+      )}
+    >
+      <Pressable
+        testID={testID}
+        onPress={onPress}
+        className={cn(
+          "h-24 w-[72px] items-center justify-center rounded-2xl",
+          tone === "destructive" ? "bg-[#B42318]" : "bg-[#08576E]",
+        )}
+      >
+        <View
+          testID={`${testID}-icon-offset`}
+          style={{
+            transform: [{ translateX: iconOffset }],
+          }}
+        >
+          <Ionicons testID={`${testID}-icon`} name={icon as any} size={33} color="#FFFFFF" />
+        </View>
+      </Pressable>
+    </View>
+  );
 }
 
 function getActiveChipClasses(chipId: "queue" | "status" | "overdueWindow", chipLabel: string) {
@@ -74,6 +120,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
+  const [swipeLockedTaskIds, setSwipeLockedTaskIds] = useState<Record<string, true>>({});
 
   const searchContract = useMemo(() => {
     const contract = mapTaskInputToTextFieldProps(searchInput);
@@ -86,6 +133,72 @@ export default function TasksScreen(props: TasksScreenProps) {
   }, [searchInput]);
 
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
+
+  const handleTaskUpdatePress = (taskId: string) => {
+    props.onNavigateToCreateTask({
+      editTaskId: taskId,
+      actionType: "update",
+      sourceScreen: "tasks",
+      clearForm: true,
+      _timestamp: Date.now(),
+    });
+  };
+
+  const handleArchivePress = (taskId: string) => {
+    Alert.alert(
+      "Archive task?",
+      "This task will move to the Archived queue.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Archive",
+          style: "destructive",
+          onPress: () => {
+            void actions.archiveTask(taskId).catch((error) => {
+              Alert.alert(
+                "Unable to archive task",
+                error instanceof Error ? error.message : "Please try again.",
+              );
+            });
+          },
+        },
+      ],
+    );
+  };
+
+  const setTaskSwipeLocked = useCallback((taskId: string, isLocked: boolean) => {
+    setSwipeLockedTaskIds((current) => {
+      const isCurrentlyLocked = Boolean(current[taskId]);
+      if (isCurrentlyLocked === isLocked) {
+        return current;
+      }
+
+      if (isLocked) {
+        return {
+          ...current,
+          [taskId]: true,
+        };
+      }
+
+      const next = { ...current };
+      delete next[taskId];
+      return next;
+    });
+  }, []);
+
+  const handleRowPress = useCallback(
+    (taskId: string, onPress?: () => void) => {
+      if (!onPress || swipeLockedTaskIds[taskId]) {
+        return;
+      }
+
+      onPress();
+    },
+    [swipeLockedTaskIds],
+  );
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50" edges={["left", "right", "bottom"]}>
@@ -211,30 +324,66 @@ export default function TasksScreen(props: TasksScreenProps) {
                   row.indentationLevel === 1 ? "ml-6" : row.indentationLevel === 2 ? "ml-10" : "",
                 )}
               >
-                <ActivityStyleRowCard
-                  testID={`tasks-screen__row_${row.taskId}`}
-                  title={row.title}
-                  subtitle={row.contextLine ?? row.projectName}
-                  metaLabel={row.latestUpdateLabel ?? "Task activity"}
-                  badgeLabel={row.statusLabel}
-                  imageUri={row.primaryPhotoUri}
-                  titleClassName="text-base font-semibold text-slate-900"
-                  subtitleClassName="mt-1 text-sm text-slate-500"
-                  metaClassName="text-sm font-medium text-slate-400"
-                  badgeClassName="text-sm font-medium uppercase tracking-wide text-slate-600"
-                  badgeVariant="pill"
-                  topLeftMarker={
-                    row.isOverdue ? (
-                      <View
-                        testID={`tasks-screen__row_${row.taskId}:overdue-badge`}
-                        className="rounded-full bg-red-500 px-3 py-1.5"
-                      >
-                        <Text className="text-sm font-semibold text-white">Overdue</Text>
-                      </View>
-                    ) : undefined
+                <Swipeable
+                  testID={`tasks-screen__row_${row.taskId}:swipeable`}
+                  enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
+                  overshootLeft={false}
+                  overshootRight={false}
+                  onSwipeableOpenStartDrag={() => setTaskSwipeLocked(row.taskId, true)}
+                  onSwipeableCloseStartDrag={() => setTaskSwipeLocked(row.taskId, true)}
+                  onSwipeableWillOpen={() => setTaskSwipeLocked(row.taskId, true)}
+                  onSwipeableClose={() => setTaskSwipeLocked(row.taskId, false)}
+                  renderLeftActions={
+                    row.canShowArchiveAction
+                      ? () => (
+                          <SwipeActionButton
+                            testID={`tasks-screen__row_${row.taskId}:archive-action`}
+                            icon="archive-outline"
+                            align="left"
+                            tone="destructive"
+                            onPress={() => handleArchivePress(row.taskId)}
+                          />
+                        )
+                      : undefined
                   }
-                  onPress={() => props.onNavigateToTaskDetail(row.taskId)}
-                />
+                  renderRightActions={
+                    row.canShowTaskUpdateAction
+                      ? () => (
+                          <SwipeActionButton
+                            testID={`tasks-screen__row_${row.taskId}:update-action`}
+                            icon="camera-outline"
+                            align="right"
+                            onPress={() => handleTaskUpdatePress(row.taskId)}
+                          />
+                        )
+                      : undefined
+                  }
+                >
+                  <ActivityStyleRowCard
+                    testID={`tasks-screen__row_${row.taskId}`}
+                    title={row.title}
+                    subtitle={row.contextLine ?? row.projectName}
+                    metaLabel={row.latestUpdateLabel ?? "Task activity"}
+                    badgeLabel={row.statusLabel}
+                    imageUri={row.primaryPhotoUri}
+                    titleClassName="text-base font-semibold text-slate-900"
+                    subtitleClassName="mt-1 text-sm text-slate-500"
+                    metaClassName="text-sm font-medium text-slate-400"
+                    badgeClassName="text-sm font-medium uppercase tracking-wide text-slate-600"
+                    badgeVariant="pill"
+                    topLeftMarker={
+                      row.isOverdue ? (
+                        <View
+                          testID={`tasks-screen__row_${row.taskId}:overdue-badge`}
+                          className="rounded-full bg-red-500 px-3 py-1.5"
+                        >
+                          <Text className="text-sm font-semibold text-white">Overdue</Text>
+                        </View>
+                      ) : undefined
+                    }
+                    onPress={row.onPress ? () => handleRowPress(row.taskId, row.onPress) : undefined}
+                  />
+                </Swipeable>
               </View>
             ))
           ) : (

@@ -1,5 +1,6 @@
 import React from "react";
-import { render } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { fireEvent, render } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
@@ -173,6 +174,7 @@ describe("TaskDetailScreen sticky layout", () => {
     submitForReview: jest.fn(),
     approveTask: jest.fn(),
     toggleCriticalThisWeek: jest.fn(),
+    archiveTask: jest.fn(),
     cancelTask: jest.fn(),
     fetchTask: jest.fn(),
   });
@@ -284,6 +286,46 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+  });
+
+  it("shows archive in other actions and runs the archive flow after confirmation", async () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+    const archiveTask = jest.fn().mockResolvedValue(undefined);
+    const onNavigateBack = jest.fn();
+
+    mockUseTaskDetailViewAdapter.mockReturnValue({
+      output: createAdapterOutput({
+        actionItems: [
+          {
+            id: "secondary-action-archive",
+            actionId: "archive_task",
+            label: "Archive",
+            icon: "archive-outline",
+            isDisabled: false,
+            density: "standard",
+            structuralState: "ready",
+          },
+        ],
+      }),
+      actions: {
+        ...createAdapterActions(),
+        archiveTask,
+      },
+    } as ReturnType<typeof useTaskDetailViewAdapter>);
+
+    const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
+
+    fireEvent.press(screen.getByText("Archive"));
+    expect(alertSpy).toHaveBeenCalled();
+
+    const alertButtons = alertSpy.mock.calls[0]?.[2] ?? [];
+    const archiveButton = alertButtons.find((button: any) => button.text === "Archive");
+
+    await archiveButton?.onPress?.();
+
+    expect(archiveTask).toHaveBeenCalledTimes(1);
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    alertSpy.mockRestore();
   });
 
   it("anchors the quick actions in a bottom action bar outside the scroll region", () => {

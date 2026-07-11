@@ -2337,9 +2337,9 @@ export const useTaskStore = create<TaskStore>()(
             throw new Error('Task not found');
           }
 
-          // Check if task is approved (completed and approved)
-          if (task.status !== 'approved') {
-            throw new Error('Task must be completed and approved before it can be archived');
+          // Cancelled tasks are already terminal and do not need a separate archive transition.
+          if (task.status === 'cancelled') {
+            throw new Error('Cancelled tasks cannot be archived');
           }
 
           // Check if user is assigner or assignee

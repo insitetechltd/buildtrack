@@ -427,6 +427,7 @@ export function useTaskDetailViewAdapter({
     submitForReview: () => Promise<void>;
     approveTask: () => Promise<void>;
     toggleCriticalThisWeek: () => Promise<void>;
+    archiveTask: () => Promise<void>;
     cancelTask: () => Promise<void>;
     fetchTask: () => Promise<void>;
   };
@@ -434,7 +435,7 @@ export function useTaskDetailViewAdapter({
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, cancelTask, updateTask } = useTaskStore();
+  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask } = useTaskStore();
   const { getUserById } = useUserStore();
 
   const foundTask = tasks.find((t) => t.id === taskId);
@@ -541,6 +542,7 @@ export function useTaskDetailViewAdapter({
         submitForReview: async () => {},
         approveTask: async () => {},
         toggleCriticalThisWeek: async () => {},
+        archiveTask: async () => {},
         cancelTask: async () => {},
         fetchTask,
       },
@@ -564,6 +566,11 @@ export function useTaskDetailViewAdapter({
     !isApprovedTaskStatus(task.status) &&
     !isPreAcceptanceTaskStatus(task.status);
   const isActiveWorkState = isActiveWorkTaskStatus(task.status) && !isContributorReviewState;
+  const canArchiveTask =
+    !isViewingSubTask &&
+    !task.archivedAt &&
+    task.status !== 'cancelled' &&
+    (isAssignedToMe || isTaskCreator);
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
     switch (status) {
@@ -974,6 +981,14 @@ export function useTaskDetailViewAdapter({
     });
   }
 
+  if (canArchiveTask) {
+    addActionItem({
+      actionId: 'archive_task',
+      label: 'Archive',
+      icon: 'archive-outline',
+    });
+  }
+
   const quickActionIds = isAwaitingAcceptance
     ? ['accept_task', 'decline_task']
     : isActiveWorkState || isContributorReviewState || isReviewerApprovalState
@@ -1083,6 +1098,9 @@ export function useTaskDetailViewAdapter({
           tags: withCriticalThisWeekTag(task.tags, !isCriticalThisWeek),
         } as Partial<Task>);
         await fetchTask();
+      },
+      archiveTask: async () => {
+        await archiveTask(task.id, user.id);
       },
       cancelTask: async () => {
         await cancelTask(task.id, user.id);

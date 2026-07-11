@@ -168,6 +168,35 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       case 'toggle_critical_this_week':
         actions.toggleCriticalThisWeek();
         break;
+      case 'archive_task':
+        Alert.alert(
+          "Archive task?",
+          "This task will move to the Archived queue.",
+          [
+            {
+              text: "Cancel",
+              style: "cancel",
+            },
+            {
+              text: "Archive",
+              style: "destructive",
+              onPress: () => {
+                void actions
+                  .archiveTask()
+                  .then(() => {
+                    props.onNavigateBack?.();
+                  })
+                  .catch((error) => {
+                    Alert.alert(
+                      "Unable to archive task",
+                      error instanceof Error ? error.message : "Please try again.",
+                    );
+                  });
+              },
+            },
+          ],
+        );
+        break;
       case 'reject_task':
         if (props.onNavigateToRejectTask) {
           props.onNavigateToRejectTask(props.taskId, props.subTaskId);

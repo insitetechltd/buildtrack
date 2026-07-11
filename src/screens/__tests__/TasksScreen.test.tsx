@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, TextInput, View } from "react-native";
+import { Alert, Text, TextInput, View } from "react-native";
 import { fireEvent, render, within } from "@testing-library/react-native";
 
 import TasksScreen from "../TasksScreen";
@@ -92,9 +92,73 @@ jest.mock("react-native-modal", () => {
   };
 });
 
+jest.mock("react-native-gesture-handler", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return {
+    Swipeable: ({
+      children,
+      renderLeftActions,
+      renderRightActions,
+      overshootLeft,
+      overshootRight,
+      onSwipeableOpenStartDrag,
+      onSwipeableWillOpen,
+      onSwipeableCloseStartDrag,
+      onSwipeableClose,
+      testID,
+    }: {
+      children: React.ReactNode;
+      renderLeftActions?: () => React.ReactNode;
+      renderRightActions?: () => React.ReactNode;
+      overshootLeft?: boolean;
+      overshootRight?: boolean;
+      onSwipeableOpenStartDrag?: (direction: "left" | "right") => void;
+      onSwipeableWillOpen?: (direction: "left" | "right") => void;
+      onSwipeableCloseStartDrag?: (direction: "left" | "right") => void;
+      onSwipeableClose?: (direction: "left" | "right") => void;
+      testID?: string;
+    }) => (
+      <View testID={testID ?? "mock-swipeable"}>
+        <Text testID={`${testID ?? "mock-swipeable"}__overshoot-left`}>
+          {String(overshootLeft ?? "")}
+        </Text>
+        <Text testID={`${testID ?? "mock-swipeable"}__overshoot-right`}>
+          {String(overshootRight ?? "")}
+        </Text>
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__open-start`}
+          onPress={() => onSwipeableOpenStartDrag?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__will-open`}
+          onPress={() => onSwipeableWillOpen?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__close-start`}
+          onPress={() => onSwipeableCloseStartDrag?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__close`}
+          onPress={() => onSwipeableClose?.("right")}
+        />
+        {renderLeftActions ? (
+          <View testID={`${testID ?? "mock-swipeable"}__left-actions`}>{renderLeftActions()}</View>
+        ) : null}
+        {children}
+        {renderRightActions ? (
+          <View testID={`${testID ?? "mock-swipeable"}__right-actions`}>{renderRightActions()}</View>
+        ) : null}
+      </View>
+    ),
+  };
+});
+
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
   let overrideOutput: Partial<TasksScreenViewAdapterOutput> | null = null;
+  let latestActions: Record<string, unknown> | null = null;
 
   const DEFAULT_FILTERS = {
     queue: "all_queues" as TasksQueueFilterValue,
@@ -194,7 +258,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
     return chips;
   };
 
-  const useTasksViewAdapter = () => {
+  const useTasksViewAdapter = (props?: { onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void }) => {
     const [searchQuery, setSearchQuery] = React.useState("");
     const [isFiltersSheetOpen, setIsFiltersSheetOpen] = React.useState(false);
     const [stagedFilters, setStagedFilters] = React.useState(DEFAULT_FILTERS);
@@ -347,8 +411,62 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
 
     const mergedOutput = overrideOutput ? { ...baseOutput, ...overrideOutput } : baseOutput;
 
+    latestActions = {
+      resetFilters: () => {
+        setSearchQuery("");
+        setIsFiltersSheetOpen(false);
+        setStagedFilters(DEFAULT_FILTERS);
+        setAppliedFilters(DEFAULT_FILTERS);
+      },
+      openFiltersSheet: () => {
+        setStagedFilters(appliedFilters);
+        setIsFiltersSheetOpen(true);
+      },
+      closeFiltersSheet: () => setIsFiltersSheetOpen(false),
+      stageQueueFilter: (value: TasksQueueFilterValue) =>
+        setStagedFilters((current) => ({ ...current, queue: value })),
+      stageStatusFilter: (value: TasksStatusFilterValue) =>
+        setStagedFilters((current) => ({ ...current, status: value })),
+      stageOverdueWindowFilter: (value: TasksOverdueWindowValue) =>
+        setStagedFilters((current) => ({ ...current, overdueWindow: value })),
+      applyStagedFilters: () => {
+        setAppliedFilters(stagedFilters);
+        setIsFiltersSheetOpen(false);
+      },
+      resetStagedFilters: () => setStagedFilters(DEFAULT_FILTERS),
+      removeAppliedFilterChip: (chipId: TasksActiveFilterChipModel["id"]) => {
+        const resetValue =
+          chipId === "queue"
+            ? { queue: "all_queues" as TasksQueueFilterValue }
+            : chipId === "status"
+              ? { status: "any_status" as TasksStatusFilterValue }
+              : { overdueWindow: "show_all" as TasksOverdueWindowValue };
+
+        setAppliedFilters((current) => ({ ...current, ...resetValue }));
+        setStagedFilters((current) => ({ ...current, ...resetValue }));
+      },
+      cycleQueue: jest.fn(),
+      cycleStatus: jest.fn(),
+      selectAllMode: jest.fn(),
+      selectOverdueOnly: jest.fn(),
+      toggleTaskExpansion: jest.fn(),
+      archiveTask: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const outputWithNavigation = {
+      ...mergedOutput,
+      searchResults: (mergedOutput.searchResults ?? []).map((row) => ({
+        ...row,
+        onPress: row.onPress ?? (props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(row.taskId) : undefined),
+      })),
+      taskRowItems: (mergedOutput.taskRowItems ?? []).map((row) => ({
+        ...row,
+        onPress: row.onPress ?? (props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(row.taskId) : undefined),
+      })),
+    };
+
     return {
-      output: mergedOutput,
+      output: outputWithNavigation,
       searchQuery,
       setSearchQuery,
       searchInput: {
@@ -366,46 +484,7 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
         showDeveloperSettingsShortcut: true,
         showResetFiltersShortcut: true,
       },
-      actions: {
-        resetFilters: () => {
-          setSearchQuery("");
-          setIsFiltersSheetOpen(false);
-          setStagedFilters(DEFAULT_FILTERS);
-          setAppliedFilters(DEFAULT_FILTERS);
-        },
-        openFiltersSheet: () => {
-          setStagedFilters(appliedFilters);
-          setIsFiltersSheetOpen(true);
-        },
-        closeFiltersSheet: () => setIsFiltersSheetOpen(false),
-        stageQueueFilter: (value: TasksQueueFilterValue) =>
-          setStagedFilters((current) => ({ ...current, queue: value })),
-        stageStatusFilter: (value: TasksStatusFilterValue) =>
-          setStagedFilters((current) => ({ ...current, status: value })),
-        stageOverdueWindowFilter: (value: TasksOverdueWindowValue) =>
-          setStagedFilters((current) => ({ ...current, overdueWindow: value })),
-        applyStagedFilters: () => {
-          setAppliedFilters(stagedFilters);
-          setIsFiltersSheetOpen(false);
-        },
-        resetStagedFilters: () => setStagedFilters(DEFAULT_FILTERS),
-        removeAppliedFilterChip: (chipId: TasksActiveFilterChipModel["id"]) => {
-          const resetValue =
-            chipId === "queue"
-              ? { queue: "all_queues" as TasksQueueFilterValue }
-              : chipId === "status"
-                ? { status: "any_status" as TasksStatusFilterValue }
-                : { overdueWindow: "show_all" as TasksOverdueWindowValue };
-
-          setAppliedFilters((current) => ({ ...current, ...resetValue }));
-          setStagedFilters((current) => ({ ...current, ...resetValue }));
-        },
-        cycleQueue: jest.fn(),
-        cycleStatus: jest.fn(),
-        selectAllMode: jest.fn(),
-        selectOverdueOnly: jest.fn(),
-        toggleTaskExpansion: jest.fn(),
-      },
+      actions: latestActions,
     };
   };
 
@@ -413,7 +492,9 @@ jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
     overrideOutput = value;
   };
 
-  return { useTasksViewAdapter, __setTasksScreenOverride };
+  const __getTasksScreenActions = () => latestActions;
+
+  return { useTasksViewAdapter, __setTasksScreenOverride, __getTasksScreenActions };
 });
 
 describe("TasksScreen", () => {
@@ -505,6 +586,132 @@ describe("TasksScreen", () => {
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-2"));
     expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-2");
     expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
+  });
+
+  it("shows archive on right swipe, update on left swipe, and renders icon-only row actions", () => {
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+    const onNavigateToCreateTask = jest.fn();
+    const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
+
+    mockedModule.__setTasksScreenOverride({
+      taskRowItems: [
+        {
+          id: "row-1",
+          taskId: "task-1",
+          title: "Install guardrails",
+          cardPresentation: "thumbnail",
+          statusToken: "task_new",
+          statusLabel: "New",
+          responsibilityToken: "OTHER_OPEN",
+          priorityLabel: "High",
+          assigneeSummary: "Sam",
+          projectName: "North Tower",
+          isOverdue: false,
+          attachmentUris: [],
+          density: "compact",
+          structuralState: "stale",
+          contextLine: "North Tower",
+          latestUpdateLabel: "Due: 2026-07-10",
+          canShowTaskUpdateAction: true,
+          canShowArchiveAction: true,
+        } as any,
+      ],
+      scalarMetrics: {
+        totalVisibleTaskCount: 1,
+        overdueVisibleTaskCount: 0,
+        selectedProjectTaskCount: 1,
+        hasActiveFilters: false,
+      },
+      resultSummaryLabel: "1 task",
+    });
+
+    const screen = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={onNavigateToCreateTask} />,
+    );
+
+    expect(
+      within(screen.getByTestId("tasks-screen__row_task-1:swipeable__left-actions")).getByTestId(
+        "tasks-screen__row_task-1:archive-action",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(screen.getByTestId("tasks-screen__row_task-1:swipeable__right-actions")).getByTestId(
+        "tasks-screen__row_task-1:update-action",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("Task Update")).toBeNull();
+    expect(screen.queryByText("Archive")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action-icon")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__row_task-1:update-action-icon")).toBeTruthy();
+    expect(
+      screen.getByTestId("tasks-screen__row_task-1:swipeable__overshoot-left").children.join(""),
+    ).toBe("false");
+    expect(
+      screen.getByTestId("tasks-screen__row_task-1:swipeable__overshoot-right").children.join(""),
+    ).toBe("false");
+    expect(
+      screen.getByTestId("tasks-screen__row_task-1:archive-action-wrapper").props.className,
+    ).toContain("w-[60px]");
+    expect(
+      screen.getByTestId("tasks-screen__row_task-1:update-action-wrapper").props.className,
+    ).toContain("w-[60px]");
+    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action").props.className).toContain(
+      "w-[72px]",
+    );
+    expect(screen.getByTestId("tasks-screen__row_task-1:update-action").props.className).toContain(
+      "w-[72px]",
+    );
+    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action-icon-offset")).toHaveStyle({
+      transform: [{ translateX: -5 }],
+    });
+    expect(screen.getByTestId("tasks-screen__row_task-1:update-action-icon-offset")).toHaveStyle({
+      transform: [{ translateX: 5 }],
+    });
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:update-action"));
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "update",
+        editTaskId: "task-1",
+        sourceScreen: "tasks",
+      }),
+    );
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:archive-action"));
+    expect(alertSpy).toHaveBeenCalled();
+
+    const actions = mockedModule.__getTasksScreenActions();
+    const alertButtons = alertSpy.mock.calls[0]?.[2] ?? [];
+    const archiveButton = alertButtons.find((button: any) => button.text === "Archive");
+    archiveButton?.onPress?.();
+
+    expect(actions.archiveTask).toHaveBeenCalledWith("task-1");
+    alertSpy.mockRestore();
+  });
+
+  it("does not open task details while a row swipe interaction is active", () => {
+    const onNavigateToTaskDetail = jest.fn();
+    const screen = render(
+      <TasksScreen
+        onNavigateToTaskDetail={onNavigateToTaskDetail}
+        onNavigateToCreateTask={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-1");
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:swipeable__open-start"));
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:swipeable__will-open"));
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:swipeable__close"));
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1"));
+    expect(onNavigateToTaskDetail).toHaveBeenCalledTimes(2);
   });
 
   it("renders the floating Overdue badge instead of the old dot marker on overdue task cards", () => {

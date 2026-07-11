@@ -290,4 +290,70 @@ describe("useTasksViewAdapter", () => {
       expect(fetchArchivedTasks).toHaveBeenCalledTimes(1);
     });
   });
+
+  it("surfaces swipe actions for top-level task rows and archives through the adapter action", async () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const archiveTask = jest.fn().mockResolvedValue(undefined);
+    const fetchArchivedTasks = jest.fn().mockResolvedValue(undefined);
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-in-progress",
+          title: "Install guardrails",
+          status: "in_progress",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-approved",
+          title: "Close out punch list",
+          status: "approved",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-child",
+          title: "Nested closeout note",
+          status: "approved",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          parentTaskId: "task-approved",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks,
+      archiveTask,
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    const inProgressRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-in-progress");
+    const approvedRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-approved");
+    const childRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-child");
+
+    expect(inProgressRow).toMatchObject({
+      canShowTaskUpdateAction: true,
+      canShowArchiveAction: true,
+    });
+    expect(approvedRow).toMatchObject({
+      canShowTaskUpdateAction: true,
+      canShowArchiveAction: true,
+    });
+    expect(childRow).toMatchObject({
+      canShowTaskUpdateAction: false,
+      canShowArchiveAction: false,
+    });
+
+    await act(async () => {
+      await result.current.actions.archiveTask("task-approved");
+    });
+
+    expect(archiveTask).toHaveBeenCalledWith("task-approved", "user-1");
+    expect(fetchArchivedTasks).toHaveBeenCalledTimes(1);
+  });
 });

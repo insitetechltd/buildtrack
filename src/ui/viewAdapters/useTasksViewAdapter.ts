@@ -575,6 +575,7 @@ export interface TasksViewAdapterHookResult {
     selectAllMode: () => void;
     selectOverdueOnly: () => void;
     toggleTaskExpansion: (taskId: string) => void;
+    archiveTask: (taskId: string) => Promise<void>;
   };
 }
 
@@ -595,6 +596,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const tasks = taskStore.tasks ?? [];
   const archivedTasks = taskStore.archivedTasks ?? [];
   const fetchArchivedTasks = taskStore.fetchArchivedTasks;
+  const archiveTaskInStore = taskStore.archiveTask;
   const isLoadingTasks = Boolean(taskStore.isLoading);
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
@@ -771,6 +773,12 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
 
     const taskRowItems = sortedVisibleTasks.map<TasksScreenRowItem>((task) => {
       const level = getIndentationLevel(task);
+      const isTopLevelTask = !task.parentTaskId;
+      const isArchivedTask = Boolean(task.archivedAt);
+      const canShowTaskUpdateAction =
+        isTopLevelTask && !isArchivedTask && task.status !== "cancelled";
+      const canShowArchiveAction =
+        isTopLevelTask && !isArchivedTask && task.status !== "cancelled";
       const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);
@@ -785,7 +793,10 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         id: `tasks-row:${queue}:${bucket}:${task.id}`,
         taskId: task.id,
         title: task.title,
-        onPress: props?.onNavigateToTaskDetail ? () => props.onNavigateToTaskDetail?.(task.id) : undefined,
+        onPress:
+          !task.archivedAt && props?.onNavigateToTaskDetail
+            ? () => props.onNavigateToTaskDetail?.(task.id)
+            : undefined,
         cardPresentation: "thumbnail",
         statusToken: mapTaskStatusToToken(task.status),
         statusLabel: formatTaskStatusLabel(task.status),
@@ -807,6 +818,8 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         latestUpdateAt: getLatestMeaningfulTimestamp(task),
         latestUpdateLabel,
         isExpanded: expandedTaskIds.includes(task.id),
+        canShowTaskUpdateAction,
+        canShowArchiveAction,
         density: "compact",
         structuralState,
       };
@@ -1082,6 +1095,15 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     );
   };
 
+  const archiveTask = async (taskId: string) => {
+    if (!currentUserId) {
+      return;
+    }
+
+    await archiveTaskInStore(taskId, currentUserId);
+    await fetchArchivedTasks();
+  };
+
   return {
     output,
     searchQuery,
@@ -1109,6 +1131,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       selectAllMode,
       selectOverdueOnly,
       toggleTaskExpansion,
+      archiveTask,
     },
   };
 }

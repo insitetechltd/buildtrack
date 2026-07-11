@@ -449,6 +449,50 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Add photos / files')).toBeTruthy();
   });
 
+  it('uses a shared field stack spacing rule instead of per-field bottom margins', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByTestId('create-task__field-stack').props.className).toContain('gap-4');
+    expect(
+      screen
+        .getAllByTestId('create-task__input-field')
+        .every((field) => !(field.props.className || '').includes('mb-4'))
+    ).toBe(true);
+  });
+
+  it('opens and closes the due date picker from the flattened form trigger', async () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.queryByTestId('DateTimePicker')).toBeNull();
+
+    fireEvent.press(screen.getByTestId('create-task__due-date-trigger'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('DateTimePicker')).toBeTruthy();
+    });
+
+    fireEvent(
+      screen.getByTestId('DateTimePicker'),
+      'onChange',
+      { type: 'set' },
+      new Date('2099-02-01T00:00:00.000Z')
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__due-date-done'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('DateTimePicker')).toBeNull();
+    });
+  });
+
   it('renders a top attachment CTA with a single larger plus icon inside the continuous form', () => {
     const screen = render(
       <NavigationContainer>

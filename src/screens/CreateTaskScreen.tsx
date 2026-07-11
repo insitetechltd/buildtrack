@@ -110,13 +110,13 @@ const InputField = ({
   error?: string; 
   children: React.ReactNode;
 }) => (
-  <View className="mb-4">
-    <Text className="text-base font-semibold text-gray-700 mb-2">
+  <View testID="create-task__input-field">
+    <Text className="mb-2 text-base font-semibold text-gray-700">
       {label} {required && <Text className="text-red-500">*</Text>}
     </Text>
     {children}
     {error && (
-      <Text className="text-red-500 text-sm mt-1">{error}</Text>
+      <Text className="mt-1 text-sm text-red-500">{error}</Text>
     )}
   </View>
 );
@@ -713,7 +713,10 @@ function CreateTaskEditorScreen({
               embedded
             />
 
-            <View className="border-t border-gray-100 pt-4">
+            <View
+              testID="create-task__field-stack"
+              className="border-t border-gray-100 pt-4 gap-4"
+            >
               <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
                 testID="createTask-title"
@@ -867,7 +870,7 @@ function CreateTaskEditorScreen({
               </InputField>
 
               {selectedUsers.length > 0 && (
-                <View className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                <View className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <Text className="mb-2 text-sm font-medium text-gray-700">{t.createTask.selectedUsers}</Text>
                   <View className="flex-row flex-wrap">
                     {selectedUsers.map((userId) => {
@@ -893,11 +896,11 @@ function CreateTaskEditorScreen({
               )}
             </View>
 
-            <View className="border-t border-gray-100 pt-4">
+            <View className="border-t border-gray-100 pt-4 gap-4">
               <InputField label={t.tasks.dueDate} error={errors.dueDate}>
               <Pressable
-                onPress={async () => {
-                  await saveFormDataToStorage();
+                testID="create-task__due-date-trigger"
+                onPress={() => {
                   setShowDatePicker(!showDatePicker);
                 }}
                 className={cn(
@@ -917,7 +920,7 @@ function CreateTaskEditorScreen({
               </InputField>
 
               {showDatePicker && (
-                <View className="bg-white border-2 border-blue-600 rounded-lg mb-4 overflow-hidden">
+                <View className="bg-white border-2 border-blue-600 rounded-lg overflow-hidden">
                   <DateTimePicker
                     value={formData.dueDate}
                     mode="date"
@@ -934,6 +937,7 @@ function CreateTaskEditorScreen({
                   />
                   <View className="flex-row justify-end p-3 border-t border-gray-200">
                     <Pressable
+                      testID="create-task__due-date-done"
                       onPress={() => setShowDatePicker(false)}
                       className="bg-blue-600 px-6 py-2 rounded-lg"
                     >
@@ -982,8 +986,7 @@ function CreateTaskEditorScreen({
 
               <InputField label={t.tasks.category}>
                 <Pressable
-                  onPress={async () => {
-                    await saveFormDataToStorage();
+                  onPress={() => {
                     setShowCategoryPicker(true);
                   }}
                   className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
@@ -998,7 +1001,7 @@ function CreateTaskEditorScreen({
 
             <View
               testID="create-task__submit-inline"
-              className="pt-2"
+              className="pt-4"
             >
               <View
                 testID="createTask-submit-focus-target"

@@ -30,7 +30,7 @@ React.createElement = function (type, ...args) {
   return originalCreateElement(type, ...args);
 };
 
-import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import CreateTaskScreen from '../../screens/CreateTaskScreen';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -194,7 +194,8 @@ jest.mock('../../utils/usePhotoSelection', () => ({
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(),
   getItem: jest.fn(),
-  removeItem: jest.fn()
+  removeItem: jest.fn(),
+  multiRemove: jest.fn(),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -263,6 +264,26 @@ jest.mock('../../utils/environmentDetector', () => ({
   getEnvironmentStyles: () => ({}),
 }));
 
+async function renderCreateTaskScreen(
+  props: React.ComponentProps<typeof CreateTaskScreen> = {},
+) {
+  const screen = render(
+    <NavigationContainer>
+      <CreateTaskScreen onNavigateBack={jest.fn()} {...props} />
+    </NavigationContainer>
+  );
+
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+
+  return screen;
+}
+
 describe('CreateTaskScreen Integration', () => {
   beforeEach(() => {
     mockIsAdmin = false;
@@ -315,43 +336,40 @@ describe('CreateTaskScreen Integration', () => {
     mockFetchProjectUserAssignments.mockResolvedValue(undefined);
   });
 
-  it('renders correctly with adapter bindings', () => {
-    console.log('CreateTaskScreen is:', CreateTaskScreen);
-    console.log('NavigationContainer is:', NavigationContainer);
-    const { getByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
-    
+  it('renders correctly with adapter bindings without act warnings', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const { getByTestId } = await renderCreateTaskScreen();
+
     // The screen should mount and show the title input
     expect(getByTestId('createTask-title')).toBeTruthy();
     expect(getByTestId('createTask-description')).toBeTruthy();
+
+    const actWarnings = consoleErrorSpy.mock.calls.filter(([message]) =>
+      String(message).includes('not wrapped in act'),
+    );
+    expect(actWarnings).toHaveLength(0);
+    consoleErrorSpy.mockRestore();
   });
 
-  it('renders the create-mode header title and workspace menu trigger and wires the visible back button', () => {
+  it('renders the create-mode header title and workspace menu trigger and wires the visible back button', async () => {
     const onNavigateBack = jest.fn();
 
-    const { getByText, getByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} />
-      </NavigationContainer>
-    );
+    const { getByText, getByTestId } = await renderCreateTaskScreen({ onNavigateBack });
 
     expect(getByText('Create New Task')).toBeTruthy();
     expect(getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
 
     fireEvent.press(getByTestId('app-screen-header__back'));
 
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
 
-  it('localizes the branded create-task header subtitle from translations', () => {
-    const { getByText, queryByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('localizes the branded create-task header subtitle from translations', async () => {
+    const { getByText, queryByText } = await renderCreateTaskScreen();
 
     expect(getByText('Field workflow')).toBeTruthy();
     expect(queryByText('Create task')).toBeNull();
@@ -425,12 +443,8 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Loading task...')).toBeNull();
   });
 
-  it('renders the create task form as one continuous sheet with simplified section chrome', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('renders the create task form as one continuous sheet with simplified section chrome', async () => {
+    const screen = await renderCreateTaskScreen();
 
     const renderedTree = JSON.stringify(screen.toJSON());
     expect(screen.getByTestId('create-task__continuous_form')).toBeTruthy();
@@ -449,12 +463,8 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Add photos / files')).toBeTruthy();
   });
 
-  it('uses a shared field stack spacing rule instead of per-field bottom margins', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('uses a shared field stack spacing rule instead of per-field bottom margins', async () => {
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.getByTestId('create-task__field-stack').props.className).toContain('gap-4');
     expect(
@@ -493,33 +503,24 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('renders a top attachment CTA with a single larger plus icon inside the continuous form', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('renders a top attachment CTA with a single larger plus icon inside the continuous form', async () => {
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
     expect(screen.getByTestId('create-task__attachments_cta_plus_icon').props.className).toContain('border-2');
     expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 
-  it('renders an inline thumbnail-sized CTA when photos are already attached', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen 
-          onNavigateBack={jest.fn()} 
-          selectedPhotos={[
-            {
-              uri: 'file:///photo-1.jpg',
-              fileName: 'photo-1.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+  it('renders an inline thumbnail-sized CTA when photos are already attached', async () => {
+    const screen = await renderCreateTaskScreen({
+      selectedPhotos: [
+        {
+          uri: 'file:///photo-1.jpg',
+          fileName: 'photo-1.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     const inlineCta = screen.getByTestId('createTask-add-photos');
     expect(inlineCta.props.className).toContain('w-24');
@@ -528,23 +529,15 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByTestId('create-task__attachments_cta_plus_icon')).toBeNull();
   });
 
-  it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('renders the submit action inline below attachments instead of using the old bottom action layer', async () => {
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
     expect(screen.getByTestId('createTask-submit-focus-target')).toBeTruthy();
   });
 
-  it('keeps the branded create-task shell styling while preserving the inline submit flow', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('keeps the branded create-task shell styling while preserving the inline submit flow', async () => {
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
     expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
@@ -552,14 +545,10 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
   });
 
-  it('keeps the branded shell visible when admins are blocked from creating tasks', () => {
+  it('keeps the branded shell visible when admins are blocked from creating tasks', async () => {
     mockIsAdmin = true;
 
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
     expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
@@ -637,12 +626,8 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('advances through the create-task text fields in order and treats the submit action as the final target', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('advances through the create-task text fields in order and treats the submit action as the final target', async () => {
+    const screen = await renderCreateTaskScreen();
 
     const title = screen.getByTestId('createTask-title');
     const description = screen.getByTestId('createTask-description');
@@ -704,22 +689,19 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByPlaceholderText, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="update"
-          selectedPhotos={[
-            {
-              uri: 'file:///progress-photo.jpg',
-              fileName: 'progress-photo.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+    const onNavigateBack = jest.fn();
+    const { getByPlaceholderText, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'update',
+      selectedPhotos: [
+        {
+          uri: 'file:///progress-photo.jpg',
+          fileName: 'progress-photo.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     mockUploadFileWithVerification.mockResolvedValue({
       success: true,
@@ -739,6 +721,10 @@ describe('CreateTaskScreen Integration', () => {
           photos: ['https://cdn.example.com/progress-photo.jpg'],
         }),
       );
+    });
+
+    await waitFor(() => {
+      expect(onNavigateBack).toHaveBeenCalled();
     });
   });
 
@@ -860,16 +846,13 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getAllByText, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="update"
-          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
-        />
-      </NavigationContainer>
-    );
+    const onNavigateBack = jest.fn();
+    const { getAllByText, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'update',
+      uploadedPhotoUrls: ['https://cdn.example.com/photo-update.jpg'],
+    });
 
     await waitFor(() => {
       expect(getByText('Submit Update')).toBeTruthy();
@@ -885,6 +868,10 @@ describe('CreateTaskScreen Integration', () => {
           photos: ['https://cdn.example.com/photo-update.jpg'],
         }),
       );
+    });
+
+    await waitFor(() => {
+      expect(onNavigateBack).toHaveBeenCalled();
     });
   });
 
@@ -1127,7 +1114,7 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('opens Add Comment in the shared composer without auto-opening photo selection and keeps the comment field ready', () => {
+  it('opens Add Comment in the shared composer without auto-opening photo selection and keeps the comment field ready', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1157,15 +1144,10 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="comment"
-        />
-      </NavigationContainer>
-    );
+    const screen = await renderCreateTaskScreen({
+      editTaskId: 'task-1',
+      actionType: 'comment',
+    });
 
     expect(mockShowPhotoSelectionDialog).not.toHaveBeenCalled();
     expect(screen.getByText('Update Description')).toBeTruthy();
@@ -1272,17 +1254,14 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="update"
-          {...({ updateTargetSubTaskId: 'subtask-1' } as any)}
-          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
-        />
-      </NavigationContainer>
-    );
+    const onNavigateBack = jest.fn();
+    const { getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'update',
+      updateTargetSubTaskId: 'subtask-1',
+      uploadedPhotoUrls: ['https://cdn.example.com/photo-update.jpg'],
+    } as any);
 
     await waitFor(() => {
       expect(getByText('Submit Update')).toBeTruthy();
@@ -1335,16 +1314,12 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={onNavigateBack}
-          editTaskId="task-1"
-          actionType="update"
-          uploadedPhotoUrls={['https://cdn.example.com/photo-update.jpg']}
-        />
-      </NavigationContainer>
-    );
+    const { getByTestId } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'update',
+      uploadedPhotoUrls: ['https://cdn.example.com/photo-update.jpg'],
+    });
 
     await waitFor(() => {
       expect(getByTestId('app-screen-header__back')).toBeTruthy();
@@ -1361,20 +1336,16 @@ describe('CreateTaskScreen Integration', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const onNavigateBack = jest.fn();
 
-    const { getByTestId, getAllByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={onNavigateBack}
-          selectedPhotos={[
-            {
-              uri: 'file:///create-task-photo.jpg',
-              fileName: 'create-task-photo.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+    const { getByTestId, getAllByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      selectedPhotos: [
+        {
+          uri: 'file:///create-task-photo.jpg',
+          fileName: 'create-task-photo.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     await waitFor(() => {
       expect(getAllByText('1 file(s) added').length).toBeGreaterThan(0);
@@ -1420,15 +1391,11 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={onNavigateBack}
-          editTaskId="task-1"
-          actionType="update"
-        />
-      </NavigationContainer>
-    );
+    const { getByTestId } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'update',
+    });
 
     await waitFor(() => {
       expect(getByTestId('app-screen-header__back')).toBeTruthy();
@@ -1471,16 +1438,13 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByPlaceholderText, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="comment"
-          uploadedPhotoUrls={['https://cdn.example.com/comment-photo.jpg']}
-        />
-      </NavigationContainer>
-    );
+    const onNavigateBack = jest.fn();
+    const { getByPlaceholderText, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'comment',
+      uploadedPhotoUrls: ['https://cdn.example.com/comment-photo.jpg'],
+    });
 
     fireEvent.changeText(getByPlaceholderText('Describe progress'), 'Please review this issue');
     fireEvent.press(getByText('Submit Update'));
@@ -1493,6 +1457,10 @@ describe('CreateTaskScreen Integration', () => {
           photos: ['https://cdn.example.com/comment-photo.jpg'],
         }),
       );
+    });
+
+    await waitFor(() => {
+      expect(onNavigateBack).toHaveBeenCalled();
     });
 
     expect(mockAddAssignerComment).not.toHaveBeenCalled();
@@ -1546,16 +1514,13 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: mockAddAssignerComment,
     });
 
-    const { getByPlaceholderText, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          editTaskId="task-1"
-          actionType="comment"
-          updateTargetSubTaskId="subtask-1"
-        />
-      </NavigationContainer>
-    );
+    const onNavigateBack = jest.fn();
+    const { getByPlaceholderText, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+      actionType: 'comment',
+      updateTargetSubTaskId: 'subtask-1',
+    });
 
     fireEvent.changeText(getByPlaceholderText('Describe progress'), 'Subtask note');
     fireEvent.press(getByText('Submit Update'));
@@ -1570,10 +1535,14 @@ describe('CreateTaskScreen Integration', () => {
       );
     });
 
+    await waitFor(() => {
+      expect(onNavigateBack).toHaveBeenCalled();
+    });
+
     expect(mockAddAssignerComment).not.toHaveBeenCalled();
   });
 
-  it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', () => {
+  it('locks assignee editing for submitted-for-review tasks using status without legacy accepted', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1602,16 +1571,12 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" />
-      </NavigationContainer>
-    );
+    const { getByText } = await renderCreateTaskScreen({ editTaskId: 'task-1' });
 
     expect(getByText('Assignees cannot be changed (task accepted)')).toBeTruthy();
   });
 
-  it('does not render assignee removal controls when assignees are locked', () => {
+  it('does not render assignee removal controls when assignees are locked', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1640,18 +1605,14 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getAllByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" />
-      </NavigationContainer>
-    );
+    const { getAllByTestId } = await renderCreateTaskScreen({ editTaskId: 'task-1' });
 
     expect(
       getAllByTestId('Ionicons').filter((icon) => icon.props.name === 'close-circle')
     ).toHaveLength(0);
   });
 
-  it('renders the parent banner for nested subtask creation', () => {
+  it('renders the parent banner for nested subtask creation', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1698,15 +1659,10 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          parentTaskId="task-parent"
-          parentSubTaskId="task-child"
-        />
-      </NavigationContainer>
-    );
+    const { getByText } = await renderCreateTaskScreen({
+      parentTaskId: 'task-parent',
+      parentSubTaskId: 'task-child',
+    });
 
     expect(getByText('Nested under:')).toBeTruthy();
     expect(getByText('Nested child')).toBeTruthy();
@@ -1715,11 +1671,7 @@ describe('CreateTaskScreen Integration', () => {
   it('submits create mode and navigates back after a valid task creation', async () => {
     const onNavigateBack = jest.fn();
 
-    const { getByTestId, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} />
-      </NavigationContainer>
-    );
+    const { getByTestId, getByText } = await renderCreateTaskScreen({ onNavigateBack });
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Install guard rails');
     fireEvent.changeText(getByTestId('createTask-description'), 'Complete level 2 edge protection');
@@ -1770,11 +1722,10 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getByTestId, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} editTaskId="task-1" />
-      </NavigationContainer>
-    );
+    const { getByTestId, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+    });
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Existing task updated');
     fireEvent.press(getByText('Update Task'));
@@ -1795,11 +1746,7 @@ describe('CreateTaskScreen Integration', () => {
     const onNavigateBack = jest.fn();
     mockCreateTask.mockClear();
 
-    const { getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} />
-      </NavigationContainer>
-    );
+    const { getByText } = await renderCreateTaskScreen({ onNavigateBack });
 
     fireEvent.press(getByText('Create Task'));
 
@@ -1842,11 +1789,10 @@ describe('CreateTaskScreen Integration', () => {
       addAssignerComment: jest.fn(),
     });
 
-    const { getByPlaceholderText, getByTestId, getByText } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} editTaskId="task-1" />
-      </NavigationContainer>
-    );
+    const { getByPlaceholderText, getByTestId, getByText } = await renderCreateTaskScreen({
+      onNavigateBack,
+      editTaskId: 'task-1',
+    });
 
     fireEvent.changeText(getByTestId('createTask-title'), 'Submitted task updated');
     fireEvent.press(getByText('Update Task'));
@@ -1876,11 +1822,7 @@ describe('CreateTaskScreen Integration', () => {
   it('opens the create-task photo selection flow from the attachment CTA', async () => {
     mockShowPhotoSelectionDialog.mockResolvedValue(undefined);
 
-    const { getByTestId } = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+    const { getByTestId } = await renderCreateTaskScreen();
 
     fireEvent.press(getByTestId('createTask-add-photos'));
 
@@ -1895,44 +1837,34 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('renders translated attachment state for pending selected photos', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          selectedPhotos={[
-            {
-              uri: 'file:///photo-1.jpg',
-              fileName: 'photo-1.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+  it('renders translated attachment state for pending selected photos', async () => {
+    const screen = await renderCreateTaskScreen({
+      selectedPhotos: [
+        {
+          uri: 'file:///photo-1.jpg',
+          fileName: 'photo-1.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     expect(screen.getByText('Pending')).toBeTruthy();
     expect(screen.getAllByText('1 file(s) added').length).toBeGreaterThan(0);
   });
 
-  it('shows the post-capture routing sheet when global camera capture returns with selected photos', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          actionType="photos"
-          cameraLaunchContext="global"
-          postCaptureDefault="create_task"
-          selectedPhotos={[
-            {
-              uri: 'file:///photo.jpg',
-              fileName: 'photo.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+  it('shows the post-capture routing sheet when global camera capture returns with selected photos', async () => {
+    const screen = await renderCreateTaskScreen({
+      actionType: 'photos',
+      cameraLaunchContext: 'global',
+      postCaptureDefault: 'create_task',
+      selectedPhotos: [
+        {
+          uri: 'file:///photo.jpg',
+          fileName: 'photo.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     expect(screen.getByTestId('create-task__post_capture_routing_sheet')).toBeTruthy();
     expect(screen.getByText('What should this photo become?')).toBeTruthy();
@@ -1940,34 +1872,25 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByTestId('create-task__routing_choice_existing')).toBeTruthy();
   });
 
-  it('does not show the post-capture routing sheet during normal create-task mode', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={jest.fn()} />
-      </NavigationContainer>
-    );
+  it('does not show the post-capture routing sheet during normal create-task mode', async () => {
+    const screen = await renderCreateTaskScreen();
 
     expect(screen.queryByTestId('create-task__post_capture_routing_sheet')).toBeNull();
     expect(screen.queryByText('What should this photo become?')).toBeNull();
   });
 
-  it('keeps the create-new-task route selected and active by default for the global camera path', () => {
-    const screen = render(
-      <NavigationContainer>
-        <CreateTaskScreen
-          onNavigateBack={jest.fn()}
-          actionType="photos"
-          cameraLaunchContext="global"
-          selectedPhotos={[
-            {
-              uri: 'file:///photo.jpg',
-              fileName: 'photo.jpg',
-              isAnnotated: false,
-            },
-          ]}
-        />
-      </NavigationContainer>
-    );
+  it('keeps the create-new-task route selected and active by default for the global camera path', async () => {
+    const screen = await renderCreateTaskScreen({
+      actionType: 'photos',
+      cameraLaunchContext: 'global',
+      selectedPhotos: [
+        {
+          uri: 'file:///photo.jpg',
+          fileName: 'photo.jpg',
+          isAnnotated: false,
+        },
+      ],
+    });
 
     expect(screen.getByTestId('create-task__routing_choice_create').props.accessibilityState?.selected).toBe(true);
     expect(screen.getByTestId('create-task__routing_choice_existing').props.accessibilityState?.selected).toBe(false);

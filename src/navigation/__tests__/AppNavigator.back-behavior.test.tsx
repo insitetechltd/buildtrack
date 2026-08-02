@@ -220,6 +220,7 @@ describe("AppNavigator back helpers", () => {
   it("registers the worker bottom shell as Activity, Camera, and Tasks only", () => {
     const screen = render(<AppNavigator />);
 
+    expect(screen.getByTestId("app-navigator__authenticated_shell")).toBeTruthy();
     expect(
       screen.getAllByTestId("mock-tab-route").map((node) => node.props.children),
     ).toEqual(["Activity", "Camera", "Tasks"]);

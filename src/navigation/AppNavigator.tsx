@@ -72,6 +72,7 @@ import {
   buildTaskDetailVerificationUrl,
   TASK_DETAIL_VERIFICATION_PATH,
 } from "./screenVerification";
+import { handleAutomationLaunchUrl } from "./screenAutomation";
 import type {
   AdminDashboardStackParamList,
   CreateTaskParams,
@@ -87,6 +88,7 @@ import type {
   TasksStackParamList,
   UpdateProgressParams,
 } from "./navigationTypes";
+import { initializeSprint7RuntimeSandbox } from "@/test-utils/sprint7RuntimeSandbox";
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const RootStackNavigator = createNativeStackNavigator<RootStackParamList>();
@@ -173,6 +175,12 @@ type ParentNavigationLike = {
   getState?: () => RouteStateLike;
   navigate?: (...args: unknown[]) => void;
 };
+type NavigationDispatchAction = Readonly<{
+  type: string;
+  payload?: object;
+  source?: string;
+  target?: string;
+}>;
 
 type ProjectPickerNavigation = {
   navigate:
@@ -187,8 +195,12 @@ type CreateTaskRouteNavigation = {
     | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
     | NativeStackNavigationProp<TasksStackParamList>["navigate"]
     | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
+  canGoBack?: () => boolean;
+  dispatch?: (action: NavigationDispatchAction) => void;
   getParent?: () => ParentNavigationLike | undefined;
   getState?: () => RouteStateLike;
+  goBack?: () => void;
+  setParams?: (params: Partial<CreateTaskParams>) => void;
 };
 
 type DashboardTaskDetailBackNavigation = Pick<
@@ -389,7 +401,7 @@ export function returnToCreateTaskRoute(
     return;
   }
 
-  navigation.goBack();
+  navigation.goBack?.();
 
   setTimeout(() => {
     if (previousRouteKey && navigation.dispatch) {
@@ -604,7 +616,7 @@ function DashboardMainScreen({
             : undefined,
         )
       }
-      onNavigateToCreateTask={(params) => {
+      onNavigateToCreateTask={(params?: CreateTaskParams) => {
         navigateToRootTabScreen(navigation, "Camera", {
           screen: "CreateTaskMain",
           params: {
@@ -1820,8 +1832,48 @@ export function WorkspaceBootstrapGate({
 
 export default function AppNavigator() {
   const { isAuthenticated, isLoading } = useAuthStore();
+  const [isAutomationBootstrapPending, setIsAutomationBootstrapPending] = React.useState(
+    () => !isAuthenticated,
+  );
 
-  if (isLoading) {
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const runAutomationUrl = async (url?: string | null) => {
+      await handleAutomationLaunchUrl(url, {
+        runSprint7Sandbox: async (actor) => {
+          if (typeof __DEV__ !== "undefined" && !__DEV__) {
+            return;
+          }
+
+          await initializeSprint7RuntimeSandbox({ activeActor: actor });
+        },
+      });
+    };
+
+    void (async () => {
+      try {
+        await runAutomationUrl(await Linking.getInitialURL());
+      } catch (error) {
+        console.error("Failed to bootstrap automation launch URL:", error);
+      } finally {
+        if (isMounted && !isAuthenticated) {
+          setIsAutomationBootstrapPending(false);
+        }
+      }
+    })();
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      void runAutomationUrl(url);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, []);
+
+  if (isLoading || (!isAuthenticated && isAutomationBootstrapPending)) {
     return <LoadingScreen />;
   }
 
@@ -1832,10 +1884,12 @@ export default function AppNavigator() {
   return (
     <WorkspaceBootstrapGate>
       <NavigationContainer linking={appLinking}>
-        <DataRefreshManager />
-        <NetworkSyncManager />
-        <RealtimeSyncManager />
-        <AppRootStack />
+        <View style={styles.authenticatedShell} testID="app-navigator__authenticated_shell">
+          <DataRefreshManager />
+          <NetworkSyncManager />
+          <RealtimeSyncManager />
+          <AppRootStack />
+        </View>
       </NavigationContainer>
     </WorkspaceBootstrapGate>
   );
@@ -1853,6 +1907,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: "#6b7280",
+  },
+  authenticatedShell: {
+    flex: 1,
   },
   rootTabSlot: {
     alignItems: "center",

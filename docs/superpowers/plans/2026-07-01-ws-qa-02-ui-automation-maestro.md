@@ -48,6 +48,25 @@ Follow-on slices can expand flow coverage to:
 - at least one successful smoke flow run against the simulator app
 - documentation aligned with the repo’s current build/run commands
 
+## Current Shipped Repo Alignment
+
+The current repository implementation exposes these local commands:
+
+- `npm run test:e2e:maestro:smoke`
+- `npm run test:e2e:maestro:critical`
+- `npm run test:e2e:journeys`
+- `npm run test:confidence`
+- `npm run validate:local:confidence`
+- `./scripts/dev-loop.sh --confidence-full`
+
+The shipped Maestro files are:
+
+- `maestro/flows/launch-smoke.yaml`
+- `maestro/flows/sprint7-open-developer-settings.yaml`
+- `maestro/flows/sprint7-initialize-sandbox.yaml`
+
+The canonical local runbook lives in `maestro/README.md`, and the broader confidence ladder is described in `TESTING_STRATEGY.md`.
+
 ## Notes
 
 - Local-first is intentional. CI integration should be planned only after the local flows and selectors are proven stable.

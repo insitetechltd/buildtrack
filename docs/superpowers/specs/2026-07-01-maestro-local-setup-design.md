@@ -12,9 +12,9 @@ Add a local-only Maestro automation scaffold for the existing Expo-managed iOS d
 - Add a small set of starter flows focused on current QA needs:
   - app launch smoke
   - Sprint 7 sandbox entry path
-  - two-user manual-QA helper entry points
+  - developer settings entry path
 - Add local helper scripts in `package.json` for common Maestro tasks.
-- Add one canonical local runbook under `documentation/`.
+- Add one canonical local runbook under `maestro/README.md`.
 - Reuse the existing dev-client simulator workflow already present in the repo.
 
 ### Out of Scope
@@ -85,18 +85,22 @@ This matches the requested local-only scope, preserves the current Expo-managed 
 - `maestro/flows/sprint7-open-developer-settings.yaml`
 - `maestro/flows/sprint7-initialize-sandbox.yaml`
 - `maestro/helpers/` for shared reusable steps if duplication appears
-- `documentation/MAESTRO_LOCAL_SETUP.md`
 
 ### Package Scripts
 
-Add local scripts such as:
+The shipped repo now uses:
 
-- `maestro:install`
-- `maestro:doctor`
-- `maestro:test`
-- `maestro:test:smoke`
+- `npm run test:e2e:maestro:smoke`
+- `npm run test:e2e:maestro:critical`
+- `npm run test:e2e:journeys`
+- `npm run test:confidence`
+- `npm run validate:local:confidence`
+- `./scripts/dev-loop.sh --confidence-full`
 
-These scripts should prefer shell-safe local commands and keep the invocation path explicit for macOS developers.
+Maestro installation remains a documented manual prerequisite:
+
+- `curl -Ls "https://get.maestro.mobile.dev" | bash`
+- `maestro doctor`
 
 ## Flow Design
 
@@ -153,7 +157,7 @@ Use the smallest relevant checks:
 - The repo contains a clear local Maestro scaffold.
 - A developer can install Maestro locally using the documented path.
 - At least one flow runs successfully against the installed iOS simulator app.
-- The setup is documented in one canonical runbook under `documentation/`.
+- The setup is documented in one canonical runbook under `maestro/README.md`.
 - No CI or unrelated app refactors are introduced.
 
 ## Follow-On Work

@@ -1,12 +1,13 @@
 # Testing Strategy
 
-This repository uses a 3-layer testing strategy designed to keep the developer loop fast while still protecting the highest-risk business workflows.
+This repository uses a hybrid confidence ladder designed to keep the developer loop fast while still protecting the highest-risk business workflows with targeted Jest, app-shell journey, and native simulator checks.
 
 ## Goals
 
 - keep local verification lightweight during feature work
 - gate pull requests with targeted regression coverage
 - run broader scheduled checks to detect coverage drift, stale mocks, and hidden regressions
+- provide a repeatable path from local correctness checks to release-confidence smoke validation
 - align task-flow testing with the production store in `src/state/taskStore.supabase.ts`
 
 ## Layer 1: Fast Unit Layer
@@ -27,28 +28,8 @@ Use this layer during the normal development loop and before commits.
 - `npm run test:projects`
 - `npm run test:uploads`
 - `npm run test:components`
-
-### Scope
-
-- auth store behavior
-- Supabase-backed task store unit and workflow coverage
-- project store behavior
-- upload and compression services
-- component rendering and interaction checks
-
-## Layer 2: Gated Regression
-
-Use this layer for pull requests, merges, and nightly business-flow protection.
-
-### Purpose
-
-- protect the core user-facing workflows
-- catch regressions that cross module boundaries
-- validate the most important task, upload, and UI flows together
-
-### Primary Script
-
 - `npm run test:regression`
+- `npm run validate:local`
 
 ### Script Contents
 
@@ -59,25 +40,100 @@ Use this layer for pull requests, merges, and nightly business-flow protection.
 - `npm run test:components`
 - `npm run test:integration`
 
+`validate:local` runs:
+
+- `npx tsc --noEmit`
+- `npm run test:regression`
+
 ### Scope
 
-- task creation and assignment flows
-- accept and decline flows
-- progress update flows
-- subtask flows
-- upload entry points
-- component behavior tied to core workflows
-- integration-style store workflows using mocked Supabase responses
+- auth store behavior
+- Supabase-backed task store unit and workflow coverage
+- project store behavior
+- upload and compression services
+- component rendering and interaction checks
 
-## Layer 3: Periodic Full Confidence
+## Layer 2: App-Shell Journeys
 
-Use this layer on nightly and weekly schedules.
+Use this layer when a change touches navigation, authenticated shell behavior, or cross-screen task journeys and you want more confidence than mocked regression coverage alone.
 
 ### Purpose
 
-- detect mock drift and stale assumptions
-- enforce the Jest coverage floor
-- expose failures outside the narrow PR path
+- exercise lightweight mounted-app and app-shell-adjacent paths inside Jest
+- catch selector, store-seeding, and route-contract regressions that unit tests can miss
+- provide a higher-confidence local gate before native simulator smoke
+
+### Primary Scripts
+
+- `npm run test:e2e:journeys`
+- `npm run test:confidence`
+- `npm run validate:local:confidence`
+
+### Script Contents
+
+`test:e2e:journeys` runs the app-shell journey suite in `src/__tests__/journeys`.
+
+`test:confidence` runs:
+
+- `npm run test:regression`
+- `npm run test:e2e:journeys`
+
+`validate:local:confidence` runs:
+
+- `npx tsc --noEmit`
+- `npm run test:regression`
+- `npm run test:e2e:journeys`
+
+### Scope
+
+- authenticated shell boot and root-tab availability
+- project switching and downstream refresh behavior
+- task-detail verification URL and route-contract safety
+- confidence checks that still run fully inside Jest without simulator dependencies
+
+## Layer 3: Native Simulator Smoke
+
+Use this layer when the change is user-visible and you need proof that the installed iOS dev client still behaves correctly under real taps on the simulator.
+
+### Purpose
+
+- catch native-shell and selector-level drift that Jest cannot see
+- validate the local dev-client + Metro + automation-bootstrap path end to end
+- provide a release-confidence smoke check for the highest-risk UI work
+
+### Primary Scripts
+
+- `npm run test:e2e:maestro:smoke`
+- `npm run test:e2e:maestro:critical`
+- `./scripts/dev-loop.sh --confidence-full`
+
+### Script Contents
+
+`test:e2e:maestro:smoke` runs:
+
+- `maestro test maestro/flows/launch-smoke.yaml`
+
+`test:e2e:maestro:critical` runs:
+
+- `maestro test maestro/flows`
+
+`./scripts/dev-loop.sh --confidence-full` runs the local validation loop with:
+
+- `npx tsc --noEmit`
+- `npm run test:regression`
+- `npm run test:e2e:journeys`
+- `npm run test:e2e:maestro:smoke`
+
+### Scope
+
+- launch smoke for the installed iOS dev client
+- dev-only Sprint 7 sandbox bootstrap from a cold simulator start
+- workspace menu to `Developer Settings`
+- Sprint 7 sandbox entry flow coverage through shipped Maestro files
+
+## Scheduled Audit Layer
+
+Use these broader Jest sweeps to watch for coverage drift and stale mocks outside the main local confidence path.
 
 ### Primary Scripts
 
@@ -86,7 +142,7 @@ Use this layer on nightly and weekly schedules.
 
 ### Coverage Floor
 
-The current Jest thresholds are defined in [jest.config.js](file:///Volumes/KooDrive/Insite%20App/jest.config.js):
+The current Jest thresholds are defined in `jest.config.js`:
 
 - lines: `70%`
 - statements: `70%`
@@ -107,6 +163,20 @@ The current Jest thresholds are defined in [jest.config.js](file:///Volumes/KooD
 ### Integration Coverage
 
 - Supabase workflow integration tests in `src/__tests__/integration/taskWorkflows.supabase.test.ts`
+
+### Journey Coverage
+
+- authenticated shell journey in `src/__tests__/journeys/authenticated-shell.journey.test.tsx`
+- project switching journey in `src/__tests__/journeys/project-switching.journey.test.tsx`
+- task-detail verification journey in `src/__tests__/journeys/task-detail-verification.journey.test.tsx`
+
+This layer is intentionally narrower than simulator E2E coverage. It is best treated as an app-shell-adjacent confidence tier, not full native end-to-end proof.
+
+### Native Smoke Coverage
+
+- Maestro launch smoke in `maestro/flows/launch-smoke.yaml`
+- Maestro developer settings entry in `maestro/flows/sprint7-open-developer-settings.yaml`
+- Maestro Sprint 7 sandbox initializer in `maestro/flows/sprint7-initialize-sandbox.yaml`
 
 ### Archived Coverage
 
@@ -178,12 +248,23 @@ Examples:
 - task logic: `npm run test:tasks`
 - upload flow: `npm run test:uploads`
 - component changes: `npm run test:components`
+- navigation or app-shell flow: `npm run test:e2e:journeys`
 
 ### Before opening a PR
 
 Run:
 
 - `npm run test:regression`
+
+### Before a high-risk UI handoff
+
+Run:
+
+- `npm run validate:local:confidence`
+
+If the change is simulator-sensitive, also run:
+
+- `./scripts/dev-loop.sh --confidence-full`
 
 ### Before a release or major merge
 
@@ -194,7 +275,7 @@ Run:
 
 ## Automation Architecture
 
-Map the 3 layers into CI so local developer discipline and scheduled validation reinforce each other.
+Map the local confidence ladder into CI and QA so regression protection, journey checks, and simulator smoke complement each other instead of competing.
 
 ### Feature Branch Pushes
 
@@ -213,12 +294,12 @@ Recommended CI behavior:
 
 This should be the main gate before merge because it balances speed with workflow protection.
 
-### Merge To Main
+### Local QA Confidence
 
-Recommended CI behavior:
+Recommended QA behavior:
 
-- run `npm run test:regression`
-- optionally also run `npm run test:coverage` if your CI budget allows it on every merge
+- run `npm run validate:local:confidence` for navigation-heavy or high-risk user-visible changes
+- add `./scripts/dev-loop.sh --confidence-full` when simulator-level evidence is required
 
 ### Nightly Schedule
 
@@ -242,7 +323,7 @@ This is the best place to watch for global coverage drift and stale mocks.
 
 ## Suggested CI Mapping
 
-If you implement this in GitHub Actions or an equivalent system, use this shape:
+If you expand the current GitHub Actions coverage later, use this shape:
 
 - `fast-unit.yml`
   - trigger: push
@@ -250,6 +331,12 @@ If you implement this in GitHub Actions or an equivalent system, use this shape:
 - `regression.yml`
   - trigger: pull_request and push to main
   - command: `npm run test:regression`
+- `journeys.yml`
+  - trigger: manual or risk-based pre-release runs
+  - command: `npm run validate:local:confidence`
+- `maestro-smoke.yml`
+  - trigger: manual or device/simulator-capable environments
+  - command: `./scripts/dev-loop.sh --confidence-full`
 - `full-confidence.yml`
   - trigger: nightly and weekly cron
   - commands:
@@ -261,4 +348,6 @@ If you implement this in GitHub Actions or an equivalent system, use this shape:
 - do not rely on archived legacy task-store tests for release confidence
 - keep regression coverage focused on the production Supabase-backed store
 - prefer targeted verification over freezing the environment with unnecessary full test runs
+- treat `test:confidence` as the highest-confidence Jest-only checkpoint
+- treat Maestro smoke as an opt-in native proof step that depends on local simulator setup
 - update the strategy when critical flows move to new production modules

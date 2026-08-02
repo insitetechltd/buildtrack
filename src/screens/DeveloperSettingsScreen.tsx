@@ -45,6 +45,7 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
       edges={["bottom", "left", "right"]}
       className={cn("flex-1", isDarkMode ? "bg-slate-900" : "bg-gray-50")}
     >
+      <View className="flex-1" testID="developer-settings__root">
       <StatusBar style={isDarkMode ? "light" : "dark"} />
 
       <StandardHeader
@@ -53,7 +54,7 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
         showBackButton
       />
 
-      <ScrollView className="flex-1">
+      <ScrollView className="flex-1" testID="developer-settings__scroll">
         <View className="px-4 py-6">
           <View
             className={cn(
@@ -83,7 +84,11 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
             </Text>
           </View>
 
-          <SectionCard title="📊 Local Data Statistics" isDarkMode={isDarkMode}>
+          <SectionCard
+            title="📊 Local Data Statistics"
+            isDarkMode={isDarkMode}
+            testID="developer-settings__section_statistics"
+          >
             <View className="space-y-3">
               {output.statistics.map((statistic) => (
                 <DataRow
@@ -95,7 +100,11 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
             </View>
           </SectionCard>
 
-          <SectionCard title="🧭 UI Mode" isDarkMode={isDarkMode}>
+          <SectionCard
+            title="🧭 UI Mode"
+            isDarkMode={isDarkMode}
+            testID="developer-settings__section_ui-mode"
+          >
             <Pressable
               onLongPress={actions.handleToggleUiMode}
               className={cn(
@@ -135,13 +144,19 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
           </SectionCard>
 
           {output.actionGroups.map((group) => (
-            <SectionCard key={group.id} title={group.title} isDarkMode={isDarkMode}>
+            <SectionCard
+              key={group.id}
+              title={group.title}
+              isDarkMode={isDarkMode}
+              testID={`developer-settings__section_${group.id}`}
+            >
               {group.actions.map((action) => (
                 <ActionButton
                   key={action.id}
                   action={action}
                   onPress={actionHandlers[action.actionId]}
                   isDarkMode={isDarkMode}
+                  testID={`developer-settings__action_${action.actionId}`}
                 />
               ))}
 
@@ -205,6 +220,7 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
           </View>
         </View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -214,11 +230,13 @@ interface SectionCardProps {
   title: string;
   isDarkMode: boolean;
   children: React.ReactNode;
+  testID?: string;
 }
 
-function SectionCard({ title, isDarkMode, children }: SectionCardProps) {
+function SectionCard({ title, isDarkMode, children, testID }: SectionCardProps) {
   return (
     <View
+      testID={testID}
       className={cn(
         "rounded-xl p-4 mb-6",
         isDarkMode ? "bg-slate-800 border border-slate-700" : "bg-white border border-gray-200",
@@ -273,9 +291,10 @@ interface ActionButtonProps {
   action: DeveloperSettingsActionItem;
   onPress: () => void;
   isDarkMode: boolean;
+  testID?: string;
 }
 
-function ActionButton({ action, onPress, isDarkMode }: ActionButtonProps) {
+function ActionButton({ action, onPress, isDarkMode, testID }: ActionButtonProps) {
   const colorMap: Record<
     DeveloperSettingsActionColor,
     {
@@ -327,6 +346,7 @@ function ActionButton({ action, onPress, isDarkMode }: ActionButtonProps) {
 
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       disabled={action.isDisabled}
       className={cn(

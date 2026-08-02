@@ -183,7 +183,7 @@ describe("TaskDetailScreen header regression", () => {
     jest.clearAllMocks();
   });
 
-  it("renders the loading header title and workspace menu trigger while data is unavailable", () => {
+  it("renders the loading header state while data is unavailable", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: {
         readiness: {
@@ -196,6 +196,7 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByText("Loading task details...")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 

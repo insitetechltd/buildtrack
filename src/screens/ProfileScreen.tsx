@@ -175,6 +175,7 @@ export default function ProfileScreen({
 
   return (
     <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+      <View className="flex-1" testID="profile-screen__root">
       <StatusBar style="dark" />
 
       <StandardHeader
@@ -185,8 +186,15 @@ export default function ProfileScreen({
         onNavigateToProjectPicker={onNavigateToProjectPicker}
       />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="mx-6 mt-4 rounded-xl border border-gray-200 bg-white">
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        testID="profile-screen__scroll"
+      >
+        <View
+          className="mx-6 mt-4 rounded-xl border border-gray-200 bg-white"
+          testID="profile-screen__profile_card"
+        >
           <View className="items-center py-6">
             <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-blue-600">
               <Text className="text-3xl font-bold text-white">{output.profileCard.initial}</Text>
@@ -201,13 +209,17 @@ export default function ProfileScreen({
         </View>
 
         {output.sections.map((section) => (
-          <View key={section.id} className="mt-6">
+          <View
+            key={section.id}
+            className="mt-6"
+            testID={`profile-screen__section_${section.id}`}
+          >
             <Text className="mb-2 px-6 text-xl font-semibold text-gray-900">{section.title}</Text>
             <View className="mx-6 rounded-xl border border-gray-200 bg-white">
               {section.items.map((item) => (
                 <MenuOption
                   key={item.id}
-                  testID={`profile-menu-${item.actionId}`}
+                  testID={`profile-screen__action_${item.actionId}`}
                   title={item.title}
                   icon={item.icon}
                   rightText={item.rightText}
@@ -423,6 +435,7 @@ export default function ProfileScreen({
         </Modal>
       ) : null}
 
+      </View>
     </SafeAreaView>
   );
 }

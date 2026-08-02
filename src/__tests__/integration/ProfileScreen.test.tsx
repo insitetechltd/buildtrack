@@ -232,11 +232,15 @@ describe("ProfileScreen", () => {
   it("renders profile content and delegates refresh through the profile adapter", () => {
     const screen = render(<ProfileScreen onNavigateBack={jest.fn()} />);
 
+    expect(screen.getByTestId("profile-screen__root")).toBeTruthy();
+    expect(screen.getByTestId("profile-screen__scroll")).toBeTruthy();
+    expect(screen.getByTestId("profile-screen__profile_card")).toBeTruthy();
+    expect(screen.getByTestId("profile-screen__section_settings")).toBeTruthy();
     expect(screen.getByText("Profile")).toBeTruthy();
     expect(screen.getByText("Settings")).toBeTruthy();
     expect(screen.getByText("Refresh Data")).toBeTruthy();
 
-    fireEvent.press(screen.getByText("Refresh Data"));
+    fireEvent.press(screen.getByTestId("profile-screen__action_refresh-data"));
 
     expect(mockHandleRefreshData).toHaveBeenCalledWith("refresh-data");
   });

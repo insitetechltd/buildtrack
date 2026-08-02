@@ -269,14 +269,19 @@ describe("DeveloperSettingsScreen", () => {
       />,
     );
 
+    expect(screen.getByTestId("developer-settings__root")).toBeTruthy();
+    expect(screen.getByTestId("developer-settings__scroll")).toBeTruthy();
+    expect(screen.getByTestId("developer-settings__section_sync")).toBeTruthy();
+    expect(screen.getByTestId("developer-settings__section_screen-verification")).toBeTruthy();
+    expect(screen.getByTestId("developer-settings__section_debug")).toBeTruthy();
     expect(screen.getByText("Developer Settings")).toBeTruthy();
     expect(screen.getByText("Sync Actions")).toBeTruthy();
     expect(screen.getByText("Screen Verification")).toBeTruthy();
     expect(screen.getByText("Debug Tools")).toBeTruthy();
     expect(screen.getByText("Open Task Detail Verification")).toBeTruthy();
 
-    fireEvent.press(screen.getByText(/force sync all/i));
-    fireEvent.press(screen.getByText(/open task detail verification/i));
+    fireEvent.press(screen.getByTestId("developer-settings__action_force-sync-all"));
+    fireEvent.press(screen.getByTestId("developer-settings__action_open-task-detail-verification"));
 
     expect(mockHandleForceSyncAll).toHaveBeenCalled();
     expect(mockHandleOpenTaskDetailVerification).toHaveBeenCalled();

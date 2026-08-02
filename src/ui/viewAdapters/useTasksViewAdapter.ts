@@ -470,6 +470,25 @@ function getFiltersFromLaunchPreset(
   };
 }
 
+function shouldKeepOverdueTaskWithinWindow(
+  dueDate: number,
+  overdueWindow: Exclude<TasksOverdueWindowValue, "show_all">,
+  now: number,
+): boolean {
+  const daysOverdue = (now - dueDate) / (1000 * 60 * 60 * 24);
+
+  switch (overdueWindow) {
+    case "three_active":
+      return daysOverdue <= 3;
+    case "one_week":
+      return daysOverdue <= 7;
+    case "one_month":
+      return daysOverdue <= 30;
+    default:
+      return true;
+  }
+}
+
 function isWithinOverdueWindow(task: Task, overdueWindow: TasksOverdueWindowValue): boolean {
   if (overdueWindow === "show_all") {
     return true;
@@ -485,18 +504,7 @@ function isWithinOverdueWindow(task: Task, overdueWindow: TasksOverdueWindowValu
     return false;
   }
 
-  const daysOverdue = (now - dueDate) / (1000 * 60 * 60 * 24);
-  switch (overdueWindow) {
-    case "three_active":
-      return daysOverdue <= 3;
-    case "one_week":
-      return daysOverdue <= 7;
-    case "one_month":
-      return daysOverdue <= 30;
-    case "show_all":
-    default:
-      return true;
-  }
+  return shouldKeepOverdueTaskWithinWindow(dueDate, overdueWindow, now);
 }
 
 function buildActiveFilterChips(filters: AppliedTasksFilters): TasksActiveFilterChipModel[] {

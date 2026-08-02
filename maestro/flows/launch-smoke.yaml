@@ -1,0 +1,25 @@
+appId: com.buildtrack.app.local
+---
+- openLink:
+    link: "exp+buildtrack://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- runFlow:
+    when:
+      visible: 'Open in “Taskr”?'
+    commands:
+      - tapOn: Open
+- runFlow:
+    when:
+      visible: "http://localhost:8081"
+    commands:
+      - tapOn: "http://localhost:8081"
+- openLink:
+    link: "taskr://automation/sprint7/tristan"
+- runFlow:
+    when:
+      visible: 'Open in “Taskr”?'
+    commands:
+      - tapOn: Open
+- assertVisible:
+    id: "dashboard-screen__root"
+- assertVisible:
+    id: "app-screen-header__profile-trigger"

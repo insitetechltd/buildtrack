@@ -169,7 +169,7 @@ export function useCreateTaskViewAdapter({
   });
 
   const {
-    suggestTaskFromText,
+    suggestTaskFromText: requestTaskSuggestionFromText,
     isLoading: isProcessing,
     error: llmError,
     lastSuggestion,
@@ -463,7 +463,7 @@ export function useCreateTaskViewAdapter({
       return null;
     }
 
-    const suggestion = await suggestTaskFromText(textInput.trim(), editTask || undefined);
+    const suggestion = await requestTaskSuggestionFromText(textInput.trim(), editTask || undefined);
     if (suggestion) {
       setShowSuggestionPreview(true);
       setAcceptedFields(new Set());
@@ -471,7 +471,7 @@ export function useCreateTaskViewAdapter({
     }
 
     return suggestion;
-  }, [editTask, suggestTaskFromText, textInput]);
+  }, [editTask, requestTaskSuggestionFromText, textInput]);
 
   useEffect(() => {
     if (editTask) {
@@ -759,7 +759,14 @@ export function useCreateTaskViewAdapter({
       isProcessing,
       lastSuggestion,
       error: llmError,
-    }
+    },
+    generateSuggestionFromText: async () => {
+      await generateSuggestionFromText();
+    },
+    suggestTaskFromText: async () => {
+      await generateSuggestionFromText();
+    },
+    clearSuggestion,
   };
 
   const clearDraftPayloads = useCallback(async () => {
@@ -809,7 +816,7 @@ export function useCreateTaskViewAdapter({
       toggleSuggestionField,
       dismissSuggestionPreview,
       generateSuggestionFromText,
-      suggestTaskFromText,
+      suggestTaskFromText: requestTaskSuggestionFromText,
       clearSuggestion
     }
   };

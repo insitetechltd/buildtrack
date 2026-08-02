@@ -1,0 +1,19 @@
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+- assertVisible:
+    id: "dashboard-screen__root"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- tapOn:
+    id: "profile-menu-developer_settings"
+- assertVisible:
+    id: "developer-settings__action_initialize-sprint7-sandbox"
+- tapOn:
+    id: "developer-settings__action_initialize-sprint7-sandbox"
+- tapOn: "Reset as Tristan"
+- assertVisible: "Sprint 7 Sandbox Ready"
+- tapOn: "OK"
+- assertVisible:
+    id: "developer-settings__preset_a"

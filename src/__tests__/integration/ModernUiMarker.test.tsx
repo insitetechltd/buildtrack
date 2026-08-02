@@ -200,7 +200,7 @@ describe("ModernUiMarker", () => {
     expect(dashboardScreen.getByText("Recent Activity")).toBeTruthy();
     expect(dashboardScreen.queryByText("Modern UI")).toBeNull();
 
-    expect(taskDetailScreen.getByText("Task Details")).toBeTruthy();
+    expect(taskDetailScreen.getByText("Loading task details...")).toBeTruthy();
     expect(taskDetailScreen.queryByText("Modern UI")).toBeNull();
   });
 });

@@ -265,13 +265,16 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const hasQuickActions = Boolean(output.quickActions?.actions?.length);
   const scrollRegionBottomPadding = 16;
 
-  if (!output.readiness.hasUsableData) {
+  if (!output.readiness.hasUsableData || !output.taskHero) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <ModernScreenHeader 
-          title="Loading..." 
-          showBackButton 
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+        <StatusBar style="dark" />
+        <ModernScreenHeader
+          title="Loading..."
+          showBackButton={true}
           onBackPress={props.onNavigateBack}
+          onNavigateToProfile={props.onNavigateToProfile}
+          onNavigateToProjectPicker={props.onNavigateToProjectPicker}
         />
         <View className="flex-1 items-center justify-center">
           <Text>Loading task details...</Text>

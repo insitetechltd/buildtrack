@@ -67,6 +67,54 @@ If implementation reveals hidden complexity:
 - return to `Planner`
 - propose options with tradeoffs
 
+### 6. Testing Mindset Starts Before Implementation
+
+Every development cycle must treat testing as part of delivery design, not as a final cleanup step.
+
+Before implementation begins:
+
+- read `TESTING_STRATEGY.md`
+- read `maestro/README.md` when the work is user-visible, simulator-sensitive, navigation-heavy, or runtime-interaction-sensitive
+- decide which Jest layer is the default development loop for the task
+- decide whether Maestro proof is required before the task can be considered done
+- define the smallest validation path that can prove correctness during implementation
+
+During implementation:
+
+- run the smallest relevant Jest checks early and repeatedly
+- add or update focused tests when they materially reduce regression risk
+- escalate to Maestro when real user interaction, simulator behavior, keyboard handling, modal behavior, navigation, permissions, or native surfaces are part of the change
+
+Before handoff:
+
+- state what was verified
+- state what still needs Maestro proof, if any
+- state any remaining gaps between logic confidence and runtime confidence
+
+## Mandatory Dev-Cycle Preflight
+
+At the beginning of every non-trivial development cycle, review these inputs before planning or coding:
+
+1. `AGENTS.md`
+2. project rules under `.trae/rules/`
+3. `TESTING_STRATEGY.md`
+4. `maestro/README.md` when the task can affect real user-visible runtime behavior
+
+This preflight is mandatory for:
+
+- feature work
+- bug fixes
+- refactors that touch behavior
+- test-suite expansion
+- user-visible flow changes
+
+The purpose of the preflight is to ensure the implementation plan already includes:
+
+- the right Jest development loop
+- the right regression gate
+- the right Maestro proof requirement, if applicable
+- the right acceptance and validation scope
+
 ## Standard Workflows
 
 ## Feature Workflow
@@ -79,6 +127,12 @@ If implementation reveals hidden complexity:
 6. `QA Validator`
 7. `Release Manager` when release readiness is needed
 
+Feature workflow planning must explicitly include:
+
+- target Jest checks for active development
+- required regression checks before handoff
+- required Maestro validation for user-visible or simulator-sensitive behavior
+
 ## Bug Fix Workflow
 
 1. `SOLO Orchestrator`
@@ -87,6 +141,11 @@ If implementation reveals hidden complexity:
 4. `Reviewer`
 5. `Test Engineer`
 6. `QA Validator` if user-visible behavior changed
+
+Bug-fix planning must explicitly state whether the issue is:
+
+- logic-only and Jest-sufficient, or
+- runtime-sensitive and requires Maestro proof
 
 ## Refactor Workflow
 
@@ -123,6 +182,7 @@ Every agent should use the following handoff structure:
 - Assumptions
 - Files touched or reviewed
 - What was done
+- Validation plan or validation performed
 - Risks or gaps
 - Recommended next agent
 
@@ -137,6 +197,8 @@ Must produce:
 - likely files
 - acceptance criteria
 - validation strategy
+- required Jest layer
+- required Maestro layer, if any
 
 ## Builder
 
@@ -145,6 +207,7 @@ Must produce:
 - files changed
 - change summary
 - validation performed
+- remaining validation required
 - unresolved risks
 
 ## Reviewer
@@ -163,6 +226,7 @@ Must produce:
 - commands or manual steps
 - results
 - gaps
+- explicit distinction between Jest confidence and Maestro/runtime confidence
 
 ## QA Validator
 

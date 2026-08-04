@@ -7,6 +7,21 @@ This repository uses a 3-layer testing strategy designed to keep the developer l
 - `TESTING_STRATEGY.md` is the canonical repository-wide testing strategy and confidence-ladder reference.
 - `maestro/README.md` is the canonical Maestro-specific runtime, operator, and troubleshooting runbook.
 
+## Dev-Cycle Rule
+
+At the start of every non-trivial development cycle:
+
+- read `TESTING_STRATEGY.md`
+- read `maestro/README.md` when the task can affect user-visible runtime behavior
+- choose the smallest relevant Jest layer before implementation starts
+- decide up front whether Maestro proof is required for done status
+
+Testing is not a final-stage activity. The expected mindset is:
+
+- Jest is the default development loop for fast, repeated confidence
+- Maestro is the runtime-proof layer for real interaction behavior
+- every plan should identify both the primary loop and the final proof requirement
+
 ## Goals
 
 - keep local verification lightweight during feature work

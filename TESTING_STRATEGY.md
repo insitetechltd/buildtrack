@@ -2,6 +2,11 @@
 
 This repository uses a 3-layer testing strategy designed to keep the developer loop fast while still protecting the highest-risk business workflows.
 
+## Canonical Testing Docs
+
+- `TESTING_STRATEGY.md` is the canonical repository-wide testing strategy and confidence-ladder reference.
+- `maestro/README.md` is the canonical Maestro-specific runtime, operator, and troubleshooting runbook.
+
 ## Goals
 
 - keep local verification lightweight during feature work

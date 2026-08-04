@@ -42,6 +42,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UIA / M-UIA-03 | P2 render performance hotspots | Closed | M-UIA-02 | 10 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md |
 | WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 11 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
 | WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
+| WS-QA / M-QA-03 | Automated confidence & end-to-end UX coverage | Pipeline | M-QA-02, S-UX-01I | 12.5 | ../docs/superpowers/plans/2026-08-01-ws-qa-03-automated-confidence-and-e2e-coverage.md; ../TESTING_STRATEGY.md |
 | WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |
 | WS-UX / M-UX-01 | Insite redesign implementation | Pipeline | M-UIA-03, M-DATA-02 | 14 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | M-DATA-02 | 14.1 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |

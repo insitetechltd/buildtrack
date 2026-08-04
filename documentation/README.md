@@ -25,6 +25,8 @@ For repository-wide orientation, read these in order:
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
 - [AGENTS.md](../AGENTS.md) - Repository-local agent inventory and workflow context
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
+- [TESTING_STRATEGY.md](../TESTING_STRATEGY.md) - Canonical repository testing strategy and confidence ladder
+- [maestro/README.md](../maestro/README.md) - Canonical Maestro-specific testing and runtime-alignment runbook
 - [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference
 - [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md) - Canonical Supabase, schema, and persistence architecture reference
 - [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md) - Canonical approved product UI/UX logic and target-state interaction model
@@ -41,6 +43,18 @@ For repository-wide orientation, read these in order:
 - [ICON_CONFIGURATION.md](./ICON_CONFIGURATION.md) - App icon and related configuration guidance
 - [VERSION_NUMBERS_EXPLAINED.md](./VERSION_NUMBERS_EXPLAINED.md) - Version and build-number reference
 - [APPLE_CREDENTIALS_CONFIG.md](./APPLE_CREDENTIALS_CONFIG.md) - Secure Apple credential setup guidance without account-specific values
+
+## Validation And Testing References
+
+- [TESTING_STRATEGY.md](../TESTING_STRATEGY.md) - Canonical repository testing strategy and layer definitions
+- [maestro/README.md](../maestro/README.md) - Canonical Maestro-specific runtime, operator, and troubleshooting runbook
+
+## Audit Docs
+
+- [audit/database/README.md](./audit/database/README.md) - Index for the Supabase database audit set
+- [audit/database/2026-07-12-supabase-technical-audit.md](./audit/database/2026-07-12-supabase-technical-audit.md) - Supabase technical audit with partial live verification
+- [audit/database/2026-07-12-supabase-remediation-plan.md](./audit/database/2026-07-12-supabase-remediation-plan.md) - Supabase remediation plan derived from the audit
+- [audit/database/SUPABASE_OPERATIONS_RUNBOOK.md](./audit/database/SUPABASE_OPERATIONS_RUNBOOK.md) - Secure Supabase audit and operations workflow with redacted credential placeholders
 
 ## Working Docs
 

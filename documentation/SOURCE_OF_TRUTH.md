@@ -305,6 +305,8 @@ When a document should stay active:
 
 - [TESTING_STRATEGY.md](file:///Volumes/KooDrive/Insite%20App/TESTING_STRATEGY.md)
   - testing strategy reference
+- [maestro/README.md](file:///Volumes/KooDrive/Insite%20App/maestro/README.md)
+  - canonical Maestro-specific testing and runtime-alignment runbook
 - [CI_WORKFLOWS.md](file:///Volumes/KooDrive/Insite%20App/CI_WORKFLOWS.md)
   - CI workflow reference
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)

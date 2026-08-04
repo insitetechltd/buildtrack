@@ -1,3 +1,7 @@
+-- DEPRECATED for NEW greenfield work.
+-- Prefer supabase/migrations/ (see supabase/README.md).
+-- This file remains the legacy OLD sandbox bootstrap for Jest scenarios A-F.
+--
 -- Minimal Supabase sandbox bootstrap for Jest simulation scenarios A-F.
 -- This is intentionally scoped to the runtime fields used by the app and tests.
 

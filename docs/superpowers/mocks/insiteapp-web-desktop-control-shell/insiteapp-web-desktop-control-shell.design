@@ -1,0 +1,74 @@
+{
+  "data": [
+    {
+      "id": "page-dashboard",
+      "title": "Portfolio Dashboard",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784208000000,
+      "canvasData": {
+        "x": 36,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dashboard.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-admin-control-shell",
+      "title": "Organization Administration",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784121600000,
+      "canvasData": {
+        "x": 492,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/admin-control-shell.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-projects",
+      "title": "Projects",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784211600000,
+      "canvasData": {
+        "x": 1228,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/projects.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-tasks",
+      "title": "Tasks",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1784215200000,
+      "canvasData": {
+        "x": 1836,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/tasks.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "desktop",
+    "projectName": "InsiteApp Web Desktop Control Shell",
+    "showEdge": false
+  }
+}

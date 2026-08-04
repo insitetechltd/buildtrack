@@ -1,0 +1,2246 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TASKR Dashboard</title>
+    <style id="theme-vars">
+:root {
+  --shell: #08576E;
+  --shell-strong: #0D6E87;
+  --shell-accent: #12A8E0;
+  --workspace: #E7F4F8;
+  --panel-tint: #F8FCFF;
+  --surface: #FFFFFF;
+  --surface-muted: #F4FAFC;
+  --line: #C8E2EA;
+  --line-strong: #B5D5DF;
+  --text: #07111E;
+  --text-strong: #0D2630;
+  --text-muted: #577783;
+  --text-soft: #497080;
+  --text-inverse: #F8FCFF;
+  --info: #2563EB;
+  --info-soft: #EFF6FF;
+  --success: #16A34A;
+  --success-soft: #ECFDF3;
+  --warning: #D97706;
+  --warning-soft: #FFF7ED;
+  --danger: #DC2626;
+  --danger-soft: #FEF2F2;
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --shadow-sm: 0 8px 24px rgba(8, 87, 110, 0.08);
+  --shadow-md: 0 20px 44px rgba(8, 87, 110, 0.10);
+  --sidebar-width: 272px;
+  --text-background: var(--workspace);
+  --text-foreground: var(--text);
+  --text-card: var(--surface);
+  --text-primary: var(--shell);
+  --text-border: var(--line);
+  --text-radius-sm: var(--radius-sm);
+  --text-radius-md: var(--radius-md);
+  --text-radius-lg: var(--radius-lg);
+  --insite-background: var(--workspace);
+  --insite-foreground: var(--text);
+  --insite-card: var(--surface);
+  --insite-primary: var(--shell);
+  --insite-border: var(--line);
+  --insite-muted: var(--surface-muted);
+  --insite-radius-sm: var(--radius-sm);
+  --insite-radius-md: var(--radius-md);
+  --insite-radius-lg: var(--radius-lg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: linear-gradient(180deg, #edf7fa 0%, #e7f4f8 100%);
+  color: var(--text);
+  font-family: Inter, "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+body {
+  padding: 20px;
+}
+
+.app-shell {
+  min-height: calc(100vh - 40px);
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  border-radius: 32px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  background: var(--workspace);
+}
+
+.sidebar {
+  background: linear-gradient(180deg, var(--shell) 0%, #06495c 100%);
+  color: var(--text-inverse);
+  padding: 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-mark {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.brand-copy h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-copy p {
+  margin: 6px 0 0;
+  color: #B9D9E4;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.workspace-badge {
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.workspace-badge .eyebrow,
+.section-label,
+.metric-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workspace-badge .eyebrow {
+  color: #B9D9E4;
+  margin-bottom: 8px;
+}
+
+.workspace-badge .value {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  color: #E7F4F8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.nav-item.active {
+  background: rgba(18, 168, 224, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(185, 217, 228, 0.16);
+}
+
+.nav-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #7FD7F3;
+  flex: 0 0 auto;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-foot p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #D6ECF2;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 22px 24px 18px;
+  background: rgba(248, 252, 255, 0.85);
+  border-bottom: 1px solid rgba(181, 213, 223, 0.7);
+  backdrop-filter: blur(16px);
+  position: relative;
+}
+
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.topbar-group.search-only {
+  width: 100%;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.context-card,
+.summary-card,
+.switcher,
+.search,
+.icon-chip,
+.profile-chip,
+.header-action {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.context-card,
+.summary-card,
+.switcher,
+.profile-chip,
+.header-action {
+  padding: 12px 14px;
+}
+
+.switcher strong,
+.profile-chip strong {
+  display: block;
+  font-size: 14px;
+  color: var(--text-strong);
+}
+
+.context-label,
+.summary-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.context-value,
+.summary-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.context-note,
+.summary-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.switcher span,
+.profile-chip span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 320px;
+  padding: 13px 16px;
+  color: var(--text-muted);
+}
+
+.icon-chip {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  color: var(--shell);
+}
+
+.profile-chip {
+  min-width: 168px;
+}
+
+.summary-card {
+  min-width: 128px;
+}
+
+.user-icon-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 0;
+  background: #12A8E0;
+  box-shadow: none;
+  display: grid;
+  place-items: center;
+  color: #FFFFFF;
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.user-avatar-initial {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
+  color: #FFFFFF;
+}
+
+.profile-menu-shell {
+  flex: 0 0 auto;
+}
+
+.profile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+
+.profile-menu-shell.open .profile-menu-overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.profile-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.profile-menu-panel {
+  position: absolute;
+  top: 64px;
+  right: 16px;
+  min-width: 240px;
+  overflow: hidden;
+  border-radius: 24px;
+  border: 1px solid #B9D9E4;
+  background: #F8FCFF;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+  transform: translateY(-4px);
+  transition: transform 160ms ease;
+  z-index: 41;
+}
+
+.profile-menu-shell.open .profile-menu-panel {
+  transform: translateY(0);
+}
+
+.profile-menu-user {
+  padding: 12px 16px;
+  border-bottom: 1px solid #D8EBF2;
+}
+
+.profile-menu-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #497080;
+}
+
+.profile-menu-role {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7FA7B4;
+}
+
+.profile-menu-list {
+  padding: 8px 0 10px;
+  display: grid;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  background: transparent;
+  color: #10222B;
+  text-align: left;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.profile-menu-item:hover {
+  background: #EAF6FB;
+}
+
+.profile-menu-item.danger {
+  color: #DC2626;
+}
+
+.profile-menu-item.danger:hover {
+  background: #FFF1F1;
+}
+
+.profile-menu-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  stroke: currentColor;
+}
+
+.page {
+  padding: 24px;
+  display: grid;
+  gap: 22px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  color: var(--text-strong);
+}
+
+.page-header p {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  max-width: 760px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-action.primary {
+  background: var(--shell);
+  color: var(--text-inverse);
+  border-color: transparent;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-card,
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.metric-card {
+  padding: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.metric-value {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--text-strong);
+}
+
+.metric-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.metric-card.info .metric-pill { background: var(--info-soft); color: var(--info); }
+.metric-card.success .metric-pill { background: var(--success-soft); color: var(--success); }
+.metric-card.warning .metric-pill { background: var(--warning-soft); color: var(--warning); }
+.metric-card.danger .metric-pill { background: var(--danger-soft); color: var(--danger); }
+
+.metric-pill,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.stack {
+  display: grid;
+  gap: 18px;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.panel-title {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.15;
+  color: var(--text-strong);
+}
+
+.panel-subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.project-list,
+.activity-list,
+.queue-list,
+.action-list {
+  display: grid;
+  gap: 12px;
+}
+
+.project-row,
+.activity-row,
+.queue-row,
+.action-row,
+.attention-row {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  border: 1px solid #D8EAF0;
+}
+
+.split {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.row-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.row-copy,
+.row-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.status-pill.info { background: var(--info-soft); color: var(--info); }
+.status-pill.success { background: var(--success-soft); color: var(--success); }
+.status-pill.warning { background: var(--warning-soft); color: var(--warning); }
+.status-pill.danger { background: var(--danger-soft); color: var(--danger); }
+
+.queue-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.registry-table,
+.tally-matrix,
+.tool-list {
+  display: grid;
+  gap: 12px;
+}
+
+.registry-head,
+.registry-row,
+.tally-header,
+.tally-row {
+  display: grid;
+  gap: 12px;
+}
+
+.registry-head,
+.registry-row {
+  grid-template-columns: minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(92px, 0.65fr) minmax(160px, 1fr) minmax(220px, 1.4fr);
+}
+
+.registry-head,
+.tally-header {
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.registry-row,
+.tally-row,
+.tool-row {
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--surface-muted);
+  border: 1px solid #D8EAF0;
+}
+
+.registry-cell {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.cell-strong {
+  font-size: 15px;
+  color: var(--text-strong);
+}
+
+.tally-pill-row,
+.tool-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tally-header,
+.tally-row {
+  grid-template-columns: minmax(200px, 1.6fr) repeat(5, minmax(68px, 0.7fr));
+  align-items: center;
+}
+
+.tally-row {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.tally-stat {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border: 1px solid var(--line);
+}
+
+.tally-stat-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  text-align: center;
+}
+
+.tally-stat-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-strong);
+  text-align: center;
+}
+
+.tool-row {
+  display: grid;
+  gap: 14px;
+}
+
+.tool-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #FFFFFF;
+  color: var(--shell);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.queue-count {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-strong);
+  letter-spacing: -0.04em;
+}
+
+.attention-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.attention-row {
+  background: #FFFFFF;
+}
+
+.attention-row.warning {
+  border-color: #FED7AA;
+  background: #FFF7ED;
+}
+
+.attention-row.danger {
+  border-color: #FECACA;
+  background: #FEF2F2;
+}
+
+.action-row {
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+}
+
+.action-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(8, 87, 110, 0.10);
+  display: grid;
+  place-items: center;
+  color: var(--shell);
+  font-weight: 800;
+}
+
+@media (max-width: 1280px) {
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-head,
+  .registry-row,
+  .tally-header,
+  .tally-row {
+    grid-template-columns: 1fr;
+  }
+
+  .registry-head,
+  .tally-header {
+    display: none;
+  }
+
+  .registry-row,
+  .tally-row {
+    gap: 10px;
+  }
+
+  .tally-row {
+    padding: 18px;
+  }
+
+  .tally-stat {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: stretch;
+    gap: 12px;
+  }
+
+  .tally-stat-value {
+    text-align: right;
+  }
+}
+
+@media (max-width: 920px) {
+  .page-header,
+  .topbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar-group.search-only {
+    flex-wrap: wrap;
+  }
+
+  .profile-menu-panel {
+    right: 16px;
+    left: 16px;
+    min-width: 0;
+  }
+
+  .search {
+    min-width: 0;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr;
+  }
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  @theme inline {
+    --color-background: var(--insite-background);
+    --color-foreground: var(--insite-foreground);
+    --color-card: var(--insite-card);
+    --color-primary: var(--insite-primary);
+    --color-muted: var(--insite-muted);
+    --color-border: var(--insite-border);
+    --radius-sm: var(--insite-radius-sm);
+    --radius-md: var(--insite-radius-md);
+    --radius-lg: var(--insite-radius-lg);
+  }
+  @layer base {
+    body { background: var(--insite-background); color: var(--insite-foreground); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style id="semantic-token-fallback">
+      .bg-background { background-color: var(--insite-background); }
+      .text-background { color: var(--insite-background); }
+      .border-background { border-color: var(--insite-background); }
+      .ring-background { --tw-ring-color: var(--insite-background); }
+      .bg-foreground { background-color: var(--insite-foreground); }
+      .text-foreground { color: var(--insite-foreground); }
+      .border-foreground { border-color: var(--insite-foreground); }
+      .ring-foreground { --tw-ring-color: var(--insite-foreground); }
+      .bg-card { background-color: var(--insite-card); }
+      .text-card { color: var(--insite-card); }
+      .border-card { border-color: var(--insite-card); }
+      .ring-card { --tw-ring-color: var(--insite-card); }
+      .bg-primary { background-color: var(--insite-primary); }
+      .text-primary { color: var(--insite-primary); }
+      .border-primary { border-color: var(--insite-primary); }
+      .ring-primary { --tw-ring-color: var(--insite-primary); }
+      .bg-muted { background-color: var(--insite-muted); }
+      .text-muted { color: var(--insite-muted); }
+      .border-muted { border-color: var(--insite-muted); }
+      .ring-muted { --tw-ring-color: var(--insite-muted); }
+      .bg-border { background-color: var(--insite-border); }
+      .text-border { color: var(--insite-border); }
+      .border-border { border-color: var(--insite-border); }
+      .ring-border { --tw-ring-color: var(--insite-border); }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+    </style>
+</head>
+  <body>
+    <style>
+      :root {
+        --shell: #08576e;
+        --shell-strong: #0d6e87;
+        --shell-accent: #12a8e0;
+        --workspace: #e7f4f8;
+        --workspace-soft: #eef7fa;
+        --surface: #ffffff;
+        --surface-muted: #f8fcff;
+        --line: #c8e2ea;
+        --line-strong: #b5d5df;
+        --text: #10222b;
+        --text-strong: #0d2630;
+        --text-muted: #577783;
+        --text-soft: #4f7887;
+        --text-inverse: #f8fcff;
+        --success: #168a56;
+        --success-soft: #e8f7ee;
+        --warning: #d97706;
+        --warning-soft: #fff4e6;
+        --danger: #dc3b3b;
+        --danger-soft: #fff0f0;
+        --info: #1676b5;
+        --info-soft: #edf7fd;
+        --radius-xl: 32px;
+        --radius-lg: 24px;
+        --radius-md: 18px;
+        --radius-sm: 14px;
+        --shadow-sm: 0 10px 24px rgba(8, 87, 110, 0.08);
+        --shadow-md: 0 26px 56px rgba(8, 87, 110, 0.12);
+        --sidebar-width: 272px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: linear-gradient(180deg, #edf7fa 0%, #e7f4f8 100%);
+        color: var(--text);
+        font-family: Inter, "SF Pro Display", "Segoe UI", sans-serif;
+      }
+
+      body {
+        padding: 20px;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      .app-shell {
+        min-height: calc(100vh - 40px);
+        display: grid;
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+        border-radius: 32px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+        background: var(--workspace);
+      }
+
+      .sidebar {
+        background: linear-gradient(180deg, var(--shell) 0%, #06495c 100%);
+        color: var(--text-inverse);
+        padding: 28px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 28px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 52px;
+        height: 52px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.14);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 20px;
+      }
+
+      .brand-copy h1 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.1;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .brand-copy p {
+        margin: 6px 0 0;
+        color: #b9d9e4;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+      }
+
+      .workspace-badge,
+      .sidebar-foot {
+        padding: 16px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+
+      .eyebrow,
+      .section-label,
+      .metric-label,
+      .stat-label,
+      .mini-label {
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .workspace-badge .eyebrow,
+      .sidebar-foot .eyebrow {
+        color: #b9d9e4;
+        margin-bottom: 8px;
+      }
+
+      .workspace-badge .value {
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .sidebar-nav {
+        display: grid;
+        gap: 8px;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        color: #e7f4f8;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .nav-item.active {
+        background: rgba(18, 168, 224, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(185, 217, 228, 0.16);
+      }
+
+      .nav-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #7fd7f3;
+        flex: 0 0 auto;
+      }
+
+      .sidebar-foot strong {
+        display: block;
+        font-size: 15px;
+        line-height: 1.35;
+      }
+
+      .sidebar-foot p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #d6ecf2;
+      }
+
+      .main {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(180deg, #deeff4 0%, var(--workspace) 180px);
+      }
+
+      .top-band {
+        background: linear-gradient(180deg, #117792 0%, #1590AF 100%);
+        color: var(--text-inverse);
+        padding: 18px 32px 48px;
+        position: relative;
+      }
+
+      .top-band-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+
+      .header-brand-mark {
+        width: 58px;
+        height: 58px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        display: grid;
+        place-items: center;
+      }
+
+      .header-brand-copy strong {
+        display: block;
+        font-size: 26px;
+        line-height: 1;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .header-brand-copy span {
+        display: block;
+        margin-top: 6px;
+        font-size: 13px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #D8EEF5;
+      }
+
+      .header-tools {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .search-chip {
+        width: min(360px, 42vw);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 13px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.12);
+        color: #ddf0f6;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      }
+
+      .search-chip svg,
+      .profile-menu-icon {
+        flex: 0 0 auto;
+      }
+
+      .search-chip span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .profile-menu-shell {
+        position: relative;
+      }
+
+      .avatar-button {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 0;
+        background: #12A8E0;
+        color: #ffffff;
+        font-weight: 800;
+        font-size: 16px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        box-shadow: none;
+      }
+
+      .profile-menu-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        z-index: 25;
+      }
+
+      .profile-menu-panel {
+        position: fixed;
+        top: 64px;
+        right: 16px;
+        min-width: 240px;
+        border-radius: 24px;
+        border: 1px solid #B9D9E4;
+        background: #f8fcff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        z-index: 26;
+      }
+
+      .profile-menu-user {
+        padding: 12px 16px;
+        border-bottom: 1px solid #d7eaf1;
+        background: transparent;
+      }
+
+      .profile-menu-user strong,
+      .profile-menu-user span {
+        display: block;
+      }
+
+      .profile-menu-user strong {
+        font-size: 14px;
+        font-weight: 500;
+        color: #497080;
+      }
+
+      .profile-menu-user span {
+        margin-top: 4px;
+        font-size: 12px;
+        color: #7FA7B4;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .profile-menu-list {
+        padding: 8px 0;
+        display: grid;
+      }
+
+      .profile-menu-item {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 0;
+        background: transparent;
+        color: #10222B;
+        text-align: left;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 500;
+      }
+
+      .profile-menu-item:hover {
+        background: #EAF6FB;
+      }
+
+      .profile-menu-item.danger {
+        color: var(--danger);
+      }
+
+      .profile-menu-item.danger:hover {
+        background: #FFF1F1;
+      }
+
+      .profile-menu-icon {
+        width: 20px;
+        height: 20px;
+        color: #0A556B;
+      }
+
+      .profile-menu-item.danger .profile-menu-icon {
+        color: #ef4444;
+      }
+
+      .page-scroll {
+        margin-top: 0;
+        padding: 18px 32px 32px;
+        display: grid;
+        gap: 22px;
+        overflow-y: auto;
+      }
+
+      .hero-card,
+      .kpi-card,
+      .section-card,
+      .sub-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .hero-card {
+        padding: 28px;
+        display: grid;
+        gap: 24px;
+      }
+
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 24px;
+      }
+
+      .hero-title h1 {
+        margin: 10px 0 0;
+        font-size: clamp(36px, 4vw, 52px);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+        color: var(--text-strong);
+      }
+
+      .hero-title p {
+        margin: 12px 0 0;
+        max-width: 720px;
+        color: var(--text-muted);
+        font-size: 16px;
+        line-height: 1.6;
+      }
+
+      .hero-meta {
+        margin-top: 14px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        color: var(--text-soft);
+        font-size: 14px;
+      }
+
+      .meta-chip,
+      .status-pill,
+      .mini-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .meta-chip {
+        background: #edf7fb;
+        color: var(--shell);
+      }
+
+      .hero-focus {
+        min-width: 250px;
+        padding: 18px 20px;
+        border-radius: 22px;
+        background: linear-gradient(180deg, #f3fbff 0%, #ebf7fb 100%);
+        border: 1px solid #cfe7ef;
+      }
+
+      .hero-focus strong {
+        display: block;
+        margin-top: 10px;
+        font-size: 16px;
+        color: var(--text-strong);
+      }
+
+      .hero-focus p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .hero-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .kpi-card {
+        padding: 18px;
+        display: grid;
+        gap: 10px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfeff 100%);
+      }
+
+      .kpi-value {
+        font-size: 34px;
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        color: var(--text-strong);
+      }
+
+      .kpi-note {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .status-pill.success,
+      .mini-pill.success {
+        background: var(--success-soft);
+        color: var(--success);
+      }
+
+      .status-pill.warning,
+      .mini-pill.warning {
+        background: var(--warning-soft);
+        color: var(--warning);
+      }
+
+      .status-pill.danger,
+      .mini-pill.danger {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+
+      .status-pill.info,
+      .mini-pill.info {
+        background: var(--info-soft);
+        color: var(--info);
+      }
+
+      .section-card {
+        padding: 24px;
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        margin-bottom: 18px;
+      }
+
+      .section-header h2,
+      .section-header h3 {
+        margin: 8px 0 0;
+        font-size: 28px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+        color: var(--text-strong);
+      }
+
+      .section-header p {
+        margin: 10px 0 0;
+        max-width: 760px;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--text-muted);
+      }
+
+      .focus-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .focus-card {
+        padding: 20px;
+        border-radius: 22px;
+        border: 1px solid #d4e8ef;
+        background: linear-gradient(180deg, #ffffff 0%, #f8fcff 100%);
+        display: grid;
+        gap: 16px;
+      }
+
+      .focus-card.highlight {
+        background: linear-gradient(180deg, #fff7f7 0%, #ffffff 100%);
+        border-color: #f3c6c6;
+      }
+
+      .focus-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 14px;
+      }
+
+      .rank-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 62px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #ebf7fb;
+        color: var(--shell);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .focus-card h3 {
+        margin: 8px 0 0;
+        font-size: 22px;
+        line-height: 1.08;
+        color: var(--text-strong);
+      }
+
+      .focus-card p {
+        margin: 8px 0 0;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--text-muted);
+      }
+
+      .focus-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .sub-card {
+        padding: 14px;
+        background: var(--surface-muted);
+        box-shadow: none;
+      }
+
+      .stat-value {
+        display: block;
+        margin-top: 6px;
+        font-size: 21px;
+        font-weight: 800;
+        color: var(--text-strong);
+      }
+
+      .stat-note {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--text-muted);
+      }
+
+      .focus-action {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        padding-top: 2px;
+      }
+
+      .focus-action strong {
+        display: block;
+        font-size: 14px;
+        color: var(--text-strong);
+      }
+
+      .focus-action span {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .secondary-grid {
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 18px;
+      }
+
+      .aging-list,
+      .acceptance-list,
+      .signal-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .aging-row,
+      .acceptance-row,
+      .signal-row {
+        padding: 16px 18px;
+        border-radius: 20px;
+        border: 1px solid #d7eaf1;
+        background: var(--surface-muted);
+      }
+
+      .aging-row-top,
+      .acceptance-row-top,
+      .signal-row-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+      }
+
+      .aging-row h4,
+      .acceptance-row h4,
+      .signal-row h4 {
+        margin: 0;
+        font-size: 17px;
+        line-height: 1.25;
+        color: var(--text-strong);
+      }
+
+      .aging-row p,
+      .acceptance-row p,
+      .signal-row p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-muted);
+      }
+
+      .aging-value,
+      .acceptance-value {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        color: var(--text-strong);
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        width: 100%;
+        height: 10px;
+        margin-top: 14px;
+        border-radius: 999px;
+        background: #dceff5;
+        overflow: hidden;
+      }
+
+      .bar-fill {
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--shell-accent) 0%, var(--shell-strong) 100%);
+      }
+
+      .acceptance-row {
+        display: grid;
+        gap: 10px;
+      }
+
+      .acceptance-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .signal-row.priority {
+        background: linear-gradient(180deg, #fff7f7 0%, #fffdfd 100%);
+        border-color: #f3c6c6;
+      }
+
+      .signal-row.watch {
+        background: linear-gradient(180deg, #fffaf2 0%, #fffefd 100%);
+        border-color: #f5dcba;
+      }
+
+      .signal-row.stable {
+        background: linear-gradient(180deg, #f5fbf7 0%, #ffffff 100%);
+        border-color: #cae8d8;
+      }
+
+      @media (max-width: 1360px) {
+        .hero-kpis,
+        .focus-grid,
+        .secondary-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .focus-stats {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 980px) {
+        body {
+          padding: 0;
+        }
+
+        .app-shell {
+          min-height: 100vh;
+          border-radius: 0;
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          display: none;
+        }
+
+        .top-band {
+          padding: 16px 20px 40px;
+        }
+
+        .page-scroll {
+          padding: 16px 20px 24px;
+        }
+
+        .top-band-row,
+        .hero-top,
+        .section-header,
+        .focus-action,
+        .aging-row-top,
+        .acceptance-row-top,
+        .signal-row-top {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .header-tools {
+          width: 100%;
+          justify-content: space-between;
+        }
+
+        .search-chip {
+          width: 100%;
+        }
+
+        .profile-menu-panel {
+          right: 16px;
+          width: min(320px, calc(100vw - 32px));
+        }
+      }
+    </style>
+    <div class="app-shell" data-viewport-mode="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 2.8 20.2 7v10L12 21.2 3.8 17V7 12l8.2-4.2Z" fill="rgba(255,255,255,0.18)"></path>
+              <path d="M12 2.8 20.2 7 12 11.2 3.8 7 12 2.8Z" fill="rgba(255,255,255,0.35)"></path>
+              <path d="M12 11.2v10" stroke="#EAF8FD" stroke-width="1.4"></path>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <h1>TASKR</h1>
+            <p>Site Activity</p>
+          </div>
+        </div>
+
+        <div class="workspace-badge">
+          <div class="eyebrow">Company</div>
+          <div class="value">Insite Construction Group</div>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a class="nav-item active" href="#"><span class="nav-dot"></span>Dashboard</a>
+          <a class="nav-item" href="#"><span class="nav-dot"></span>Organization</a>
+          <a class="nav-item" href="#"><span class="nav-dot"></span>Projects</a>
+          <a class="nav-item" href="#"><span class="nav-dot"></span>Tasks</a>
+          <a class="nav-item" href="#"><span class="nav-dot"></span>Reports</a>
+          <a class="nav-item" href="#"><span class="nav-dot"></span>Settings</a>
+        </nav>
+
+        <div class="sidebar-foot">
+          <div class="eyebrow">Dashboard Scope</div>
+          <strong>Project-focused KPI triage for where leadership should spend attention today.</strong>
+          <p>This dashboard stays centered on delivery signals, overdue aging, and acceptance response time so it remains distinct from organization administration.</p>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="top-band">
+          <div class="top-band-row">
+            <div class="header-brand header-tab-title">
+              <div class="header-brand-copy">
+                <strong>Dashboard</strong>
+                <span>Portfolio KPI Summary</span>
+              </div>
+            </div>
+
+            <div class="header-tools">
+              <div class="search-chip" aria-label="Search">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7"></circle>
+                  <path d="m20 20-3.5-3.5"></path>
+                </svg>
+                <span>Search project KPI, focus score, or risk signal</span>
+              </div>
+
+              <div class="profile-menu-shell" data-profile-menu>
+                <button class="avatar-button" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Open profile menu">
+                  T
+                </button>
+                <div class="profile-menu-overlay" hidden></div>
+                <div class="profile-menu-panel" role="menu" hidden>
+                  <div class="profile-menu-user">
+                    <strong>Tristan</strong>
+                    <span>Portfolio Lead</span>
+                  </div>
+                  <div class="profile-menu-list">
+                    <button class="profile-menu-item" type="button">
+                      <svg class="profile-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M20 21a8 8 0 0 0-16 0"></path>
+                        <circle cx="12" cy="8" r="4"></circle>
+                      </svg>
+                      <span>Profile &amp; Settings</span>
+                    </button>
+                    <button class="profile-menu-item" type="button">
+                      <svg class="profile-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M3 7h18"></path>
+                        <path d="M6 12h12"></path>
+                        <path d="M10 17h4"></path>
+                      </svg>
+                      <span>Change Project</span>
+                    </button>
+                    <button class="profile-menu-item" type="button">
+                      <svg class="profile-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M4 5h16v11H4z"></path>
+                        <path d="M8 20h8"></path>
+                        <path d="M12 16v4"></path>
+                      </svg>
+                      <span>Admin Console</span>
+                    </button>
+                    <button class="profile-menu-item danger" type="button">
+                      <svg class="profile-menu-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <path d="m16 17 5-5-5-5"></path>
+                        <path d="M21 12H9"></path>
+                      </svg>
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="page-scroll overflow-y-auto" data-scroll-region="primary">
+          <section class="hero-card">
+            <div class="hero-top">
+              <div class="hero-title">
+                <div class="section-label">Dashboard</div>
+                <h1>East Link Station Concourse</h1>
+                <div class="hero-meta">
+                  <span>Wednesday · Jul 15</span>
+                  <span>Focus score 92</span>
+                  <span>14 reviews waiting</span>
+                  <span>Portfolio on-time 84%</span>
+                </div>
+                <p>
+                  Today’s attention is centered on East Link because overdue work is aging faster than the rest of the portfolio, acceptance is lagging, and close-out reviews are now delaying completions.
+                </p>
+              </div>
+
+              <aside class="hero-focus">
+                <div class="section-label">Project needing focus today</div>
+                <strong>Escalate review turnaround before noon</strong>
+                <p>Clearing the approval queue would unlock 9 near-complete tasks and bring the project back toward the weekly on-time target.</p>
+              </aside>
+            </div>
+
+            <div class="hero-kpis">
+              <article class="kpi-card">
+                <div class="mini-pill success">On-Time Completion</div>
+                <div class="kpi-value">84%</div>
+                <div class="metric-label">Portfolio rate</div>
+                <div class="kpi-note">Up 3 points versus the trailing four-week average across completed tasks.</div>
+              </article>
+              <article class="kpi-card">
+                <div class="mini-pill warning">Open Overdue</div>
+                <div class="kpi-value">19%</div>
+                <div class="metric-label">324 live incomplete tasks</div>
+                <div class="kpi-note">62 items are overdue, with East Link and Harbour Tower carrying most of the load.</div>
+              </article>
+              <article class="kpi-card">
+                <div class="mini-pill info">Time To Acceptance</div>
+                <div class="kpi-value">11h</div>
+                <div class="metric-label">Portfolio median</div>
+                <div class="kpi-note">Target remains under 8 hours; delayed ownership is still feeding next-day backlog.</div>
+              </article>
+              <article class="kpi-card">
+                <div class="mini-pill danger">30+ Day Aging</div>
+                <div class="kpi-value">14</div>
+                <div class="metric-label">Legacy open tasks</div>
+                <div class="kpi-note">Three active projects still carry month-old work, led by East Link Station.</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="section-card">
+            <div class="section-header">
+              <div>
+                <div class="section-label">Projects Requiring Focus Today</div>
+                <h2>What needs leadership attention first</h2>
+                <p>Each project card groups the KPI signals that matter most today so the dashboard reads like a priority list instead of an admin registry table.</p>
+              </div>
+              <div class="status-pill danger">4 projects at elevated risk</div>
+            </div>
+
+            <div class="focus-grid">
+              <article class="focus-card highlight">
+                <div class="focus-top">
+                  <div>
+                    <span class="rank-pill">Rank 1</span>
+                    <h3>East Link Station Concourse</h3>
+                    <p>Structure handover, ceiling close-up, and signage approvals are now compressing into the same close-out window.</p>
+                  </div>
+                  <div class="status-pill danger">Worsening</div>
+                </div>
+                <div class="focus-stats">
+                  <div class="sub-card">
+                    <div class="stat-label">On-Time</div>
+                    <span class="stat-value">71%</span>
+                    <span class="stat-note">6 points below target</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Overdue Aging</div>
+                    <span class="stat-value">18%</span>
+                    <span class="stat-note">1 week overdue · 9% over 2 weeks</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Acceptance</div>
+                    <span class="stat-value">19h</span>
+                    <span class="stat-note">34% same-day acceptance</span>
+                  </div>
+                </div>
+                <div class="focus-action">
+                  <div>
+                    <strong>Next move</strong>
+                    <span>Escalate reviewer coverage and release the 9 tasks already ready for sign-off.</span>
+                  </div>
+                  <div class="status-pill danger">Focus 92</div>
+                </div>
+              </article>
+
+              <article class="focus-card">
+                <div class="focus-top">
+                  <div>
+                    <span class="rank-pill">Rank 2</span>
+                    <h3>Harbour Tower Fit-Out</h3>
+                    <p>Interior finishes are progressing, but approval queues are slowing practical completion work packs.</p>
+                  </div>
+                  <div class="status-pill warning">Watch</div>
+                </div>
+                <div class="focus-stats">
+                  <div class="sub-card">
+                    <div class="stat-label">On-Time</div>
+                    <span class="stat-value">78%</span>
+                    <span class="stat-note">4 points below target</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Overdue Aging</div>
+                    <span class="stat-value">14%</span>
+                    <span class="stat-note">1 week overdue · 2% at 1 month</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Acceptance</div>
+                    <span class="stat-value">16h</span>
+                    <span class="stat-note">41% same-day acceptance</span>
+                  </div>
+                </div>
+                <div class="focus-action">
+                  <div>
+                    <strong>Next move</strong>
+                    <span>Pull two delayed approvals into the morning brief so field completions can convert this week.</span>
+                  </div>
+                  <div class="status-pill warning">Focus 86</div>
+                </div>
+              </article>
+
+              <article class="focus-card">
+                <div class="focus-top">
+                  <div>
+                    <span class="rank-pill">Rank 3</span>
+                    <h3>West Yard Services Upgrade</h3>
+                    <p>Access windows and permit dependencies are keeping a healthy response time from turning into steady throughput.</p>
+                  </div>
+                  <div class="status-pill warning">Flat</div>
+                </div>
+                <div class="focus-stats">
+                  <div class="sub-card">
+                    <div class="stat-label">On-Time</div>
+                    <span class="stat-value">74%</span>
+                    <span class="stat-note">5 points below target</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Blocked Ratio</div>
+                    <span class="stat-value">9.4%</span>
+                    <span class="stat-note">Highest in the portfolio</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Acceptance</div>
+                    <span class="stat-value">14h</span>
+                    <span class="stat-note">46% same-day acceptance</span>
+                  </div>
+                </div>
+                <div class="focus-action">
+                  <div>
+                    <strong>Next move</strong>
+                    <span>Resolve permit blockers instead of adding labor; ownership response is not the main issue here.</span>
+                  </div>
+                  <div class="status-pill warning">Focus 81</div>
+                </div>
+              </article>
+
+              <article class="focus-card">
+                <div class="focus-top">
+                  <div>
+                    <span class="rank-pill">Rank 4</span>
+                    <h3>Civic Centre Lift Modernization</h3>
+                    <p>The project is stable overall, but staged shutdown windows still need close sequencing to avoid service disruption.</p>
+                  </div>
+                  <div class="status-pill success">Improving</div>
+                </div>
+                <div class="focus-stats">
+                  <div class="sub-card">
+                    <div class="stat-label">On-Time</div>
+                    <span class="stat-value">82%</span>
+                    <span class="stat-note">Near the portfolio target</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Overdue Aging</div>
+                    <span class="stat-value">9%</span>
+                    <span class="stat-note">Only 1% aged over a month</span>
+                  </div>
+                  <div class="sub-card">
+                    <div class="stat-label">Acceptance</div>
+                    <span class="stat-value">9h</span>
+                    <span class="stat-note">61% same-day acceptance</span>
+                  </div>
+                </div>
+                <div class="focus-action">
+                  <div>
+                    <strong>Next move</strong>
+                    <span>Keep weekly monitoring and hold current reviewer coverage unless shutdown dates shift.</span>
+                  </div>
+                  <div class="status-pill info">Focus 77</div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="secondary-grid">
+            <article class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-label">Overdue Aging</div>
+                  <h3>How far the overdue work has aged</h3>
+                  <p>These bands show whether the portfolio is dealing with fresh slippage or unresolved older backlog.</p>
+                </div>
+              </div>
+
+              <div class="aging-list">
+                <div class="aging-row">
+                  <div class="aging-row-top">
+                    <div>
+                      <h4>1+ Week Overdue</h4>
+                      <p>48 incomplete tasks are more than seven days late, driven mostly by East Link and Harbour Tower.</p>
+                    </div>
+                    <div class="aging-value">14.8%</div>
+                  </div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 14.8%;"></div></div>
+                </div>
+
+                <div class="aging-row">
+                  <div class="aging-row-top">
+                    <div>
+                      <h4>2+ Weeks Overdue</h4>
+                      <p>23 tasks have crossed the two-week mark and are now at risk of turning into month-old backlog.</p>
+                    </div>
+                    <div class="aging-value">7.1%</div>
+                  </div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 7.1%;"></div></div>
+                </div>
+
+                <div class="aging-row">
+                  <div class="aging-row-top">
+                    <div>
+                      <h4>1+ Month Overdue</h4>
+                      <p>14 legacy tasks remain open past thirty days; East Link accounts for four of them.</p>
+                    </div>
+                    <div class="aging-value">4.3%</div>
+                  </div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 4.3%;"></div></div>
+                </div>
+
+                <div class="aging-row">
+                  <div class="aging-row-top">
+                    <div>
+                      <h4>Still Inside Due Window</h4>
+                      <p>262 incomplete tasks are not overdue yet, giving room to recover if today’s risks are addressed quickly.</p>
+                    </div>
+                    <div class="aging-value">80.9%</div>
+                  </div>
+                  <div class="bar-track"><div class="bar-fill" style="width: 80.9%;"></div></div>
+                </div>
+              </div>
+            </article>
+
+            <article class="section-card">
+              <div class="section-header">
+                <div>
+                  <div class="section-label">Acceptance Responsiveness</div>
+                  <h3>Time from task creation to acceptance</h3>
+                  <p>Response speed remains a strong predictor of whether fresh work turns into tomorrow’s overdue list.</p>
+                </div>
+                <div class="status-pill info">Portfolio median 11h</div>
+              </div>
+
+              <div class="acceptance-list">
+                <div class="acceptance-row">
+                  <div class="acceptance-row-top">
+                    <div>
+                      <h4>North Block Fire Remediation</h4>
+                      <p>Fastest acknowledgement cycle in the portfolio and no sign of queue buildup.</p>
+                    </div>
+                    <div class="acceptance-value">6h</div>
+                  </div>
+                  <div class="acceptance-meta">
+                    <span class="mini-pill success">72% same-day acceptance</span>
+                    <span class="mini-pill info">Best performer</span>
+                  </div>
+                </div>
+
+                <div class="acceptance-row">
+                  <div class="acceptance-row-top">
+                    <div>
+                      <h4>Civic Centre Lift Modernization</h4>
+                      <p>Healthy response time with stable owner coverage across the current shutdown sequence.</p>
+                    </div>
+                    <div class="acceptance-value">9h</div>
+                  </div>
+                  <div class="acceptance-meta">
+                    <span class="mini-pill info">61% same-day acceptance</span>
+                    <span class="mini-pill success">Improved 2h this week</span>
+                  </div>
+                </div>
+
+                <div class="acceptance-row">
+                  <div class="acceptance-row-top">
+                    <div>
+                      <h4>West Yard Services Upgrade</h4>
+                      <p>Acknowledgement is acceptable, but still not fast enough to compensate for blocked permit work.</p>
+                    </div>
+                    <div class="acceptance-value">14h</div>
+                  </div>
+                  <div class="acceptance-meta">
+                    <span class="mini-pill warning">46% same-day acceptance</span>
+                    <span class="mini-pill warning">Needs monitoring</span>
+                  </div>
+                </div>
+
+                <div class="acceptance-row">
+                  <div class="acceptance-row-top">
+                    <div>
+                      <h4>East Link Station Concourse</h4>
+                      <p>Slowest acceptance cycle on the dashboard and the clearest signal feeding overdue growth.</p>
+                    </div>
+                    <div class="acceptance-value">19h</div>
+                  </div>
+                  <div class="acceptance-meta">
+                    <span class="mini-pill danger">34% same-day acceptance</span>
+                    <span class="mini-pill danger">Primary escalation</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
+          <section class="section-card">
+            <div class="section-header">
+              <div>
+                <div class="section-label">Delivery Signals</div>
+                <h3>Why the ranking looks this way</h3>
+                <p>A short narrative layer keeps the dashboard project-centric and helps separate it from organization-level admin pages.</p>
+              </div>
+            </div>
+
+            <div class="signal-list">
+              <div class="signal-row priority">
+                <div class="signal-row-top">
+                  <h4>East Link slipped another 6 points on on-time completion</h4>
+                  <div class="status-pill danger">Priority 1</div>
+                </div>
+                <p>Month-old work doubled from 2 to 4 items while the review queue climbed to 14. This is the first escalation call for the day.</p>
+              </div>
+
+              <div class="signal-row watch">
+                <div class="signal-row-top">
+                  <h4>Harbour Tower approvals are delaying already-finished field work</h4>
+                  <div class="status-pill warning">Priority 2</div>
+                </div>
+                <p>Twelve tasks are in review and six are already overdue. Faster sign-off would immediately improve the project’s completion curve.</p>
+              </div>
+
+              <div class="signal-row">
+                <div class="signal-row-top">
+                  <h4>West Yard’s risk is operational, not staffing-related</h4>
+                  <div class="status-pill info">Priority 3</div>
+                </div>
+                <p>The highest blocked ratio in the portfolio is tied to access constraints and permits, so the recovery path is coordination rather than more assignments.</p>
+              </div>
+
+              <div class="signal-row stable">
+                <div class="signal-row-top">
+                  <h4>North Block is absorbing work well and can stay on lighter monitoring</h4>
+                  <div class="status-pill success">Stable</div>
+                </div>
+                <p>With 88% on-time completion, a 6-hour acceptance median, and no 30+ day backlog, this project can give leadership some breathing room.</p>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      (() => {
+        const shell = document.querySelector('[data-profile-menu]');
+        if (!shell) return;
+
+        const trigger = shell.querySelector('.avatar-button');
+        const overlay = shell.querySelector('.profile-menu-overlay');
+        const panel = shell.querySelector('.profile-menu-panel');
+        const items = shell.querySelectorAll('.profile-menu-item');
+
+        const closeMenu = () => {
+          trigger?.setAttribute('aria-expanded', 'false');
+          overlay?.setAttribute('hidden', '');
+          panel?.setAttribute('hidden', '');
+        };
+
+        const openMenu = () => {
+          trigger?.setAttribute('aria-expanded', 'true');
+          overlay?.removeAttribute('hidden');
+          panel?.removeAttribute('hidden');
+        };
+
+        trigger?.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+          if (isOpen) {
+            closeMenu();
+          } else {
+            openMenu();
+          }
+        });
+
+        overlay?.addEventListener('click', closeMenu);
+        panel?.addEventListener('click', (event) => event.stopPropagation());
+        items.forEach((item) => item.addEventListener('click', closeMenu));
+
+        document.addEventListener('click', closeMenu);
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            closeMenu();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

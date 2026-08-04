@@ -17,7 +17,7 @@ Source of truth scanned for this inventory:
 
 - Latest closed architecture milestone set: `WS-UIA / M-UIA-01`, `WS-UIA / M-UIA-02`, and `WS-UIA / M-UIA-03` are delivered and closed.
 - Current redesign workstream: `WS-UX / M-UX-01` is active, with slices `S-UX-01A` through `S-UX-01E2` closed and later slices still in pipeline per `documentation/ROADMAP.md`.
-- Current pipeline focus remains in `WS-QA / M-QA-01`, `WS-QA / M-QA-02`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
+- Current pipeline focus remains in `WS-QA / M-QA-01`, `WS-QA / M-QA-02`, `WS-QA / M-QA-03`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
 
 ## Shared Repository Context
 

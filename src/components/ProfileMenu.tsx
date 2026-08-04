@@ -82,6 +82,7 @@ export default function ProfileMenu({
 
           <View className="py-2">
             <Pressable
+              testID="profile-menu-profile_settings"
               onPress={handleNavigateToProfile}
               className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
             >
@@ -93,6 +94,7 @@ export default function ProfileMenu({
 
             {onNavigateToProjectPicker ? (
               <Pressable
+                testID="profile-menu-project_picker"
                 onPress={handleNavigateToProjectPicker}
                 className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
               >
@@ -105,6 +107,7 @@ export default function ProfileMenu({
 
             {onNavigateToDeveloperSettings ? (
               <Pressable
+                testID="profile-menu-developer_settings"
                 onPress={handleNavigateToDeveloperSettings}
                 className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
               >
@@ -115,7 +118,11 @@ export default function ProfileMenu({
               </Pressable>
             ) : null}
 
-            <Pressable onPress={handleLogout} className="flex-row items-center px-4 py-3 active:bg-[#FFF1F1]">
+            <Pressable
+              testID="profile-menu-logout"
+              onPress={handleLogout}
+              className="flex-row items-center px-4 py-3 active:bg-[#FFF1F1]"
+            >
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text className="ml-3 text-base font-medium text-red-600">
                 {t.dashboard.logout || "Logout"}

@@ -1,0 +1,321 @@
+{
+  "skillProvenance": {
+    "name": "solo-design",
+    "version": "2026.07.06.8",
+    "version_source": "skill-version.json",
+    "runtime_skill_dir": "/Volumes/KooDrive/Users/tristan/.trae/builtin/design/default/skills/solo-design",
+    "recorded_at": "2026-07-15T00:00:00Z"
+  },
+  "project": {
+    "name": "InsiteApp Web Desktop Control Shell",
+    "path": "/Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell",
+    "operation": "edit",
+    "deviceType": "desktop",
+    "language": "en",
+    "dashboardMode": true,
+    "intentProfile": {
+      "caseFamily": "free_exploration",
+      "graphicStrategy": null,
+      "sourceType": null,
+      "routingReason": "Existing desktop admin mock project expanded with a distinct KPI-driven dashboard page."
+    },
+    "replicationMode": null,
+    "sourceUrl": null,
+    "contextReadBudget": {
+      "workflowFileReadLimit": 1,
+      "largeWorkflowFilesCachedInSummary": [],
+      "restoreInputsCached": [],
+      "subAgentReadsFullSummary": false
+    },
+    "readBudgetLedger": [],
+    "dispatchPreflightManifest": [
+      {
+        "recorded_at": "2026-07-15T00:00:00Z",
+        "packetType": "FreePagePacket",
+        "taskLinePresent": true,
+        "outputPathPresent": true,
+        "sharedTemplate": "/Volumes/KooDrive/Users/tristan/.trae/builtin/design/default/skills/solo-design/workflows/page-generation-free-card.md",
+        "nodeId": "page-dashboard",
+        "htmlSrc": "pages/dashboard.html",
+        "cssFilePath": "/Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/colors_and_type.css",
+        "htmlFilePath": "/Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/pages/dashboard.html",
+        "brandPrefix": "insite",
+        "aestheticsMode": "free-explore",
+        "toolDisciplineBlockPresent": true,
+        "fillHtmlHeadCommand": "node /Volumes/KooDrive/Users/tristan/.trae/builtin/design/default/skills/solo-design/script/fill-html-head.mjs /Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/colors_and_type.css /Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/pages/dashboard.html --title=\"Portfolio Dashboard\" --lang=\"en\" --prefix=insite",
+        "viewportMode": "app-shell",
+        "completionSchemaExpected": "compact",
+        "restoreFieldsPresent": true,
+        "pageSliceOnly": true,
+        "requiredFieldsPresent": true,
+        "missingFields": [],
+        "fillHtmlHeadCommandValid": true,
+        "persistedToSummary": true
+      }
+    ],
+    "cssPreflightEvidence": {
+      "applies": true,
+      "status": "passed",
+      "command": "node /Volumes/KooDrive/Users/tristan/.trae/builtin/design/default/skills/solo-design/script/fill-html-head.mjs /Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/colors_and_type.css /Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/pages/dashboard.html --title=\"Portfolio Dashboard\" --lang=\"en\" --prefix=insite",
+      "brandPrefix": "insite",
+      "checks": {
+        "themeVars": "present",
+        "semanticTokenFallback": "present",
+        "themeInline": "present",
+        "tailwindCdn": "present",
+        "htmlClass": "present"
+      },
+      "retryCount": 0,
+      "blockingReason": null
+    },
+    "repairEntryEvidence": [
+      {
+        "repairPolicyRead": true,
+        "renderBlockingErrorPresent": true,
+        "softWarningOnly": false,
+        "ownerClassified": true,
+        "postValidationMutationDetected": false,
+        "validationErrorClasses": [
+          "app-shell-viewport",
+          "restore-evidence-misclassification"
+        ],
+        "repairBudget": {
+          "validationRunsSoFar": 2,
+          "maxValidationRuns": 3
+        },
+        "recorded_at": "2026-07-15T00:00:00Z"
+      },
+      {
+        "repairPolicyRead": true,
+        "renderBlockingErrorPresent": true,
+        "softWarningOnly": false,
+        "ownerClassified": true,
+        "postValidationMutationDetected": false,
+        "validationErrorClasses": [
+          "html-infrastructure",
+          "semantic-token-fallback"
+        ],
+        "repairBudget": {
+          "validationRunsSoFar": 2,
+          "maxValidationRuns": 3
+        },
+        "recorded_at": "2026-07-15T00:00:00Z"
+      }
+    ],
+    "finishReadinessEvidence": null,
+    "referenceCaptureEvidence": null,
+    "visualSpecExcerpt": null,
+    "restoreVisualCheckpoints": null,
+    "restorationContractLite": null,
+    "restoreEvidenceReview": null,
+    "styleDefinitionBrief": "Operational desktop admin shell with KPI-first portfolio dashboard and separate organization governance page.",
+    "designRead": "dashboard admin / construction operations leadership / practical and trustworthy / dense / avoid activity-feed noise",
+    "designDials": {
+      "layoutVariance": 2,
+      "motionIntensity": 1,
+      "visualDensity": 4
+    },
+    "styleContinuityAnchors": {
+      "colorSystem": "deep teal shell (#08576E / #0D6E87), pale blue workspace (#E7F4F8), white cards, dark ink text, muted blue-gray copy, restrained semantic pills (info/success/warning/danger)",
+      "shapeSystem": "large radii, rounded-2xl / rounded-3xl feel, soft panel edges, compact pill controls",
+      "typographySystem": "practical admin dashboard typography, strong titles, compact support copy, uppercase micro labels where useful",
+      "spacingSystem": "clean desktop spacing, medium-dense information layout, not airy marketing layout",
+      "componentLanguage": "persistent sidebar, top context bar, KPI cards, admin tables/panels, subtle borders, scan-friendly rows",
+      "surfaceAndDepth": "darkest sidebar, lighter top context bar, pale workspace canvas, white elevated cards with soft shadows",
+      "imageryAndIconography": "minimal; prioritize data and administrative controls over decorative visuals",
+      "interactionTone": "operational, trustworthy, visible controls, no hidden-overflow-first interaction model"
+    },
+    "specsConstraints": null,
+    "sharedProjectShellContract": {
+      "navigationShell": "deep teal left sidebar, pale workspace canvas, lighter top context bar, white content cards; active nav item uses filled teal-tint state",
+      "primaryColorSystem": "deep teal structural shell with restrained semantic status colors",
+      "typographySystem": "Inter/SF Pro admin dashboard scale with strong page title and compact supporting copy",
+      "radiusScale": "large rounded cards and chips, 12/16/22/28px system",
+      "surfaceDepthModel": "white elevated cards over pale blue workspace with subtle cool borders and soft shadows",
+      "ctaStyle": "rounded admin actions with solid teal primary and bordered secondary controls",
+      "alignmentRules": "grid-aligned KPI strips, left-aligned content blocks, compact panel headers, scan-friendly rows"
+    },
+    "generationTree": null
+  },
+  "designSource": {
+    "operatingMode": "free-explore",
+    "libraryIdentity": {
+      "name": null,
+      "id": null,
+      "version": null,
+      "scope": null,
+      "path": null,
+      "versionSource": null
+    },
+    "cssFilePath": "/Volumes/KooDrive/InsiteApp/docs/superpowers/mocks/insiteapp-web-desktop-control-shell/colors_and_type.css",
+    "brandPrefix": "insite",
+    "themeMode": "light",
+    "designDecisionSummary": "Use the existing admin shell and separate KPI-driven dashboard, organization governance, project management, and task execution pages.",
+    "componentContractKind": "evidence",
+    "forbiddenInventedComponents": [],
+    "allowedComponents": [],
+    "styleConstraints": {
+      "radiusMax": 28,
+      "spacingBase": 4,
+      "fontSizeBody": 14,
+      "fontSizeMin": 11,
+      "controlHeightDefault": 46,
+      "controlHeightLarge": 52
+    },
+    "productContext": {
+      "kitType": "enterprise-operations-dashboard",
+      "productType": "construction task and portfolio management platform"
+    },
+    "actualTokenNameReference": []
+  },
+  "pages": [
+    {
+      "nodeId": "page-dashboard",
+      "slug": "dashboard",
+      "title": "Portfolio Dashboard",
+      "htmlSrc": "pages/dashboard.html",
+      "pageIndex": 1,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "viewportMode": "app-shell",
+      "businessScenario": "cross-project KPI dashboard for daily portfolio focus and delivery risk triage",
+      "visualNorthStar": "A clean, executive-ready portfolio dashboard that immediately reveals which project needs focus today and why.",
+      "compositionPattern": "Structured KPI board with ranked action table",
+      "continuityAnchors": [
+        "deep teal shell",
+        "pale workspace with white cards",
+        "compact KPI rhythm",
+        "scan-friendly operational tables"
+      ],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": [
+        "dense KPI content",
+        "must stay distinct from organization administration"
+      ]
+    },
+    {
+      "nodeId": "page-admin-control-shell",
+      "slug": "organization",
+      "title": "Organization Administration",
+      "htmlSrc": "pages/admin-control-shell.html",
+      "pageIndex": 2,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "viewportMode": "app-shell",
+      "businessScenario": "organization governance, project registry, user management, and project-level administration tools",
+      "visualNorthStar": "A governance-focused admin page for portfolio structure, users, project tallies, and project administration.",
+      "compositionPattern": "Administrative registry board",
+      "continuityAnchors": [
+        "deep teal shell",
+        "pale workspace with white cards",
+        "project registry tables",
+        "project administration tools"
+      ],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": []
+    },
+    {
+      "nodeId": "page-projects",
+      "slug": "projects",
+      "title": "Projects",
+      "htmlSrc": "pages/projects.html",
+      "pageIndex": 3,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "viewportMode": "app-shell",
+      "businessScenario": "portfolio projects management page for cross-project visibility, health, staffing, schedule status, and project drill-in actions",
+      "visualNorthStar": "A project management page that makes every active project easy to scan, compare, and open for deeper management.",
+      "compositionPattern": "Project portfolio board with status cards and active project list",
+      "continuityAnchors": [
+        "deep teal shell",
+        "pale workspace with white cards",
+        "project health cards",
+        "scan-friendly project rows"
+      ],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": [
+        "must remain distinct from dashboard KPI summary",
+        "must remain distinct from organization governance"
+      ]
+    },
+    {
+      "nodeId": "page-tasks",
+      "slug": "tasks",
+      "title": "Tasks",
+      "htmlSrc": "pages/tasks.html",
+      "pageIndex": 4,
+      "stateGroupId": null,
+      "stateRole": null,
+      "baseStatePageId": null,
+      "sharedShellContract": [],
+      "mutableRegions": [],
+      "derivedFromHtmlSrc": null,
+      "derivationType": "original",
+      "sourcePageId": null,
+      "sourceHtmlSrc": null,
+      "pageType": "information-dense",
+      "viewportMode": "app-shell",
+      "businessScenario": "task execution and triage page for assignment, review, status updates, and operational filtering across project work",
+      "visualNorthStar": "A focused task workspace that supports quick triage, status scanning, and action without drifting into organization administration or dashboard analytics.",
+      "compositionPattern": "Operational task board with queue summary and task list",
+      "continuityAnchors": [
+        "deep teal shell",
+        "pale workspace with white cards",
+        "task queue chips",
+        "dense operational rows"
+      ],
+      "libraryRestraintMode": false,
+      "uiKitPath": null,
+      "componentPlan": [],
+      "imagePlan": [],
+      "chartsRequired": false,
+      "miniProgramStyle": false,
+      "qualityRisks": [
+        "must remain distinct from dashboard KPI summary",
+        "must remain distinct from project management page"
+      ]
+    }
+  ],
+  "assets": [],
+  "wiringPlan": [],
+  "hiddenInteractionPlan": []
+}

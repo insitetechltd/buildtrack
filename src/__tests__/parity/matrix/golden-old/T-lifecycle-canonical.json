@@ -1,0 +1,10 @@
+{
+  "projectId": "<set-on-freeze>",
+  "title": "<set-on-freeze>",
+  "status": "submitted_for_review",
+  "completionPercentage": 40,
+  "assignedTo": [],
+  "assignedBy": "<set-on-freeze>",
+  "activityTypes": ["creation", "progress_update", "status_change"],
+  "note": "Replaced by PARITY_WRITE_GOLDEN=1 during T-lifecycle OLD run"
+}

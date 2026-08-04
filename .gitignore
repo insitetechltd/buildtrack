@@ -101,3 +101,13 @@ google certificates/**
 
 # Build configuration (auto-generated after successful builds)
 .build-config-success.json
+
+.env.parity.local
+supabase/*.env.local
+schema.sql
+schema_public.sql
+schema_public_clean.sql
+test_output.txt
+
+# Parity run scratch (not golden baseline)
+src/__tests__/parity/matrix/golden-old/.run-*

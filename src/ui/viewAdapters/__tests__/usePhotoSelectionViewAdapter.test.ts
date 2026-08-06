@@ -192,6 +192,9 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       success: true,
       file: { public_url: "https://cdn.example.com/attached-1.jpg" },
     });
+    mockGetTasksByProject.mockReturnValue([
+      { id: "task-existing-42", title: "Existing task 42", updated_at: "2026-08-07T00:00:00Z" },
+    ]);
 
     const { result } = renderHook(() =>
       usePhotoSelectionViewAdapter({
@@ -231,6 +234,9 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       success: true,
       file: { public_url: "https://cdn.example.com/d.jpg" },
     });
+    mockGetTasksByProject.mockReturnValue([
+      { id: "task-desc", title: "Desc task", updated_at: "2026-08-07T00:00:00Z" },
+    ]);
 
     const { result } = renderHook(() =>
       usePhotoSelectionViewAdapter({

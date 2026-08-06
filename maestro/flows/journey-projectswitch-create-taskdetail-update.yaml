@@ -1,12 +1,35 @@
 # NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
 # NOTE: Project picker entry uses tapOn "Change Project" — proven pattern from task-core-live-* flows (NOT profile-menu-project_picker testID).
+# NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.taskTitle = "QA03 Journey Create " + Math.floor(Date.now() / 1000)}
 - evalScript: ${output.projectA = ".*Project A.*Commercial Building.*"}
 - evalScript: ${output.projectB = ".*Project B.*"}
 - evalScript: ${output.progressNote = "Progress bump " + Math.floor(Date.now() / 1000)}
-- runFlow: bootstrap-live-manager-a.yaml
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "login-emailOrPhone"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "login-password"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 30000
 - assertVisible:
     id: "dashboard-screen__root"
 

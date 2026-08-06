@@ -1,0 +1,126 @@
+# NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 40000
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "login-emailOrPhone"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "login-password"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 30000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    direction: DOWN
+    element:
+      id: "projectPicker-project-project-a"
+- tapOn:
+    id: "projectPicker-project-project-a"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- assertVisible:
+    id: "dashboard-screen__root"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    direction: DOWN
+    element:
+      id: "projectPicker-project-project-b"
+- tapOn:
+    id: "projectPicker-project-project-b"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- assertVisible:
+    id: "dashboard-screen__root"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    direction: DOWN
+    element:
+      id: "projectPicker-project-project-c"
+- tapOn:
+    id: "projectPicker-project-project-c"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- assertVisible:
+    id: "dashboard-screen__root"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    direction: DOWN
+    element:
+      id: "projectPicker-project-project-a"
+- tapOn:
+    id: "projectPicker-project-project-a"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- assertVisible:
+    id: "dashboard-screen__root"

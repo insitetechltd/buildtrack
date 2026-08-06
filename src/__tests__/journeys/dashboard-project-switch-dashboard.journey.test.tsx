@@ -1,5 +1,7 @@
 import React from "react";
-import { screen } from "@testing-library/react-native";
+import { screen, fireEvent, act } from "@testing-library/react-native";
+import AppNavigator from "@/navigation/AppNavigator";
+import { useProjectFilterStore } from "@/state/projectFilterStore";
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
@@ -164,13 +166,13 @@ jest.mock("@/utils/RealtimeSyncManager", () => ({
 jest.mock("@/screens/LoginScreen", () => "LoginScreen");
 jest.mock("@/screens/CreateTaskScreen", () => "CreateTaskScreen");
 jest.mock("@/screens/ProfileScreen", () => "ProfileScreen");
+jest.mock("@/screens/TaskDetailScreen", () => "TaskDetailScreen");
 jest.mock("@/screens/ProjectsScreen", () => "ProjectsScreen");
 jest.mock("@/screens/CreateProjectScreen", () => "CreateProjectScreen");
 jest.mock("@/screens/UserManagementScreen", () => "UserManagementScreen");
 jest.mock("@/screens/AdminDashboardScreen", () => "AdminDashboardScreen");
 jest.mock("@/screens/ProjectDetailScreen", () => "ProjectDetailScreen");
 jest.mock("@/screens/DevAdminScreen", () => "DevAdminScreen");
-jest.mock("@/screens/ProjectPickerScreen", () => "ProjectPickerScreen");
 jest.mock("@/screens/DeveloperSettingsScreen", () => "DeveloperSettingsScreen");
 jest.mock("@/screens/PendingUsersScreen", () => "PendingUsersScreen");
 jest.mock("@/screens/PhotoViewerScreen", () => "PhotoViewerScreen");
@@ -180,55 +182,120 @@ jest.mock("@/screens/UpdateProgressScreen", () => "UpdateProgressScreen");
 jest.mock("@/screens/AddCommentScreen", () => "AddCommentScreen");
 jest.mock("@/screens/RejectTaskScreen", () => "RejectTaskScreen");
 jest.mock("@/screens/ReassignTaskScreen", () => "ReassignTaskScreen");
-jest.mock("@/screens/DashboardScreen", () => "DashboardScreen");
 jest.mock("@/screens/TasksScreen", () => "TasksScreen");
 
-jest.mock("@/screens/TaskDetailScreen", () => {
+jest.mock("@/screens/DashboardScreen", () => {
   const React = require("react");
-  const { View } = require("react-native");
-  const Comp = function MockTaskDetailScreen() {
+  const { View, Pressable } = require("react-native");
+  const Comp = function MockDashboardScreen() {
     return React.createElement(
       View,
-      { testID: "task-detail__verification_root" },
-      React.createElement(View, { testID: "task-detail__scroll_region" }),
+      { testID: "dashboard-screen__root" },
+      React.createElement(
+        Pressable,
+        {
+          testID: "dashboard__trigger_project_picker",
+          onPress: () => {
+            if ((globalThis as any).__journeySwapToPicker) {
+              (globalThis as any).__journeySwapToPicker();
+            }
+          },
+        },
+      ),
     );
   };
-  (globalThis as any).__MockTaskDetailScreen = Comp;
+  (globalThis as any).__J_DASH = Comp;
   return {
     __esModule: true,
     default: Comp,
   };
 });
 
-import { buildTaskDetailVerificationUrl } from "@/navigation/screenVerification";
+jest.mock("@/screens/ProjectPickerScreen", () => {
+  const React = require("react");
+  const { View, Pressable } = require("react-native");
+  const Comp = function MockProjectPickerScreen() {
+    const selectProject = (projectId: string) => {
+      const { useProjectFilterStore } = jest.requireActual("@/state/projectFilterStore");
+      useProjectFilterStore.setState({ selectedProjectId: projectId });
+      if ((globalThis as any).__journeySwapToDashboard) {
+        (globalThis as any).__journeySwapToDashboard();
+      }
+    };
+    const projectItems = [
+      { id: "project-picker:project-a", projectId: "project-a", title: "Project A" },
+      { id: "project-picker:project-b", projectId: "project-b", title: "Project B" },
+    ];
+    return React.createElement(
+      View,
+      { testID: "project-picker__root" },
+      projectItems.map((item) =>
+        React.createElement(
+          Pressable,
+          {
+            key: item.id,
+            testID: `projectPicker-project-${item.projectId}`,
+            onPress: () => selectProject(item.projectId),
+          },
+        ),
+      ),
+    );
+  };
+  (globalThis as any).__J_PICKER = Comp;
+  return {
+    __esModule: true,
+    default: Comp,
+  };
+});
+
 import { renderAppShellJourney } from "@/test-utils/journeys/renderAppShellJourney";
 import { seedJourneyState } from "@/test-utils/journeys/seedJourneyState";
+import "@/screens/DashboardScreen";
+import "@/screens/ProjectPickerScreen";
 
-describe("task detail verification journey", () => {
+describe("dashboard project switch dashboard journey", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (globalThis as any).__mockActiveStackComponent = undefined;
     (globalThis as any).__mockActiveStackParams = undefined;
     (globalThis as any).__mockOverrideStackComponent = undefined;
     (globalThis as any).__mockOverrideStackParams = undefined;
-  });
-
-  it("builds a deterministic verification url for task detail", () => {
-    expect(buildTaskDetailVerificationUrl("task-123")).toBe("taskr://verify/task/task-123");
-  });
-
-  it("mounts the TaskDetail route screen via the app shell and exposes the verification root testID", async () => {
-    (globalThis as any).__mockOverrideStackComponent =
-      (globalThis as any).__MockTaskDetailScreen;
-    (globalThis as any).__mockOverrideStackParams = { taskId: "task-verify-999" };
     seedJourneyState({
       authUser: { id: "user-1", role: "worker" },
-      selectedProjectId: "project-1",
+      selectedProjectId: "project-a",
+    });
+  });
+
+  it("starts with projectA selected, switches to projectB via picker row, returns to dashboard with updated selectedProjectId", async () => {
+    (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_DASH;
+    expect(useProjectFilterStore.getState().selectedProjectId).toBe("project-a");
+
+    let latestRerender: any;
+    (globalThis as any).__journeySwapToPicker = () => {
+      (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_PICKER;
+      if (latestRerender) latestRerender(<AppNavigator />);
+    };
+    (globalThis as any).__journeySwapToDashboard = () => {
+      (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_DASH;
+      if (latestRerender) latestRerender(<AppNavigator />);
+    };
+
+    const { rerender } = renderAppShellJourney();
+    latestRerender = rerender;
+
+    expect(await screen.findByTestId("dashboard-screen__root")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("dashboard__trigger_project_picker"));
     });
 
-    renderAppShellJourney();
+    expect(await screen.findByTestId("project-picker__root")).toBeTruthy();
 
-    expect(await screen.findByTestId("task-detail__verification_root")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("projectPicker-project-project-b"));
+    });
+
+    expect(useProjectFilterStore.getState().selectedProjectId).toBe("project-b");
+    expect(await screen.findByTestId("dashboard-screen__root")).toBeTruthy();
   });
 });

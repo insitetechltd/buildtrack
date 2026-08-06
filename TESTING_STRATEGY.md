@@ -375,32 +375,6 @@ Examples:
 - `eas.json`
 - build scripts under the repository root or `scripts/`
 
-## Recommended Local Workflow
-
-### During feature development
-
-Run the narrowest relevant script for the area being changed.
-
-Examples:
-
-- task logic: `npm run test:tasks`
-- upload flow: `npm run test:uploads`
-- component changes: `npm run test:components`
-- user-visible runtime change needing simulator proof: `npm run test:e2e:maestro:smoke`
-
-### Before opening a PR
-
-Run:
-
-- `npm run test:regression`
-
-### Before a release or major merge
-
-Run:
-
-- `npm run test:all`
-- `npm run test:coverage`
-
 ## Automation Architecture
 
 Map the CI-relevant layers into CI so local developer discipline and scheduled validation reinforce each other.
@@ -473,3 +447,29 @@ If you implement this in GitHub Actions or an equivalent system, use this shape:
 - keep regression coverage focused on the production Supabase-backed store
 - prefer targeted verification over freezing the environment with unnecessary full test runs
 - update the strategy when critical flows move to new production modules
+
+## Recommended Local Workflow
+
+Use this table to pick the smallest effective check that matches your change size and confidence bar.
+
+| Tier | Speed (approx) | Runs | When |
+|---|---|---|---|
+| Fast Regression | < 5 min | `npm run test:regression` | every feature commit, every focused bug-fix commit, before opening a draft PR |
+| Slow Confidence | 5 – 30 min | `npm run validate:local:confidence && npm run test:e2e:maestro:journeys` | before opening a non-draft PR, before release tagging, and at every `WS-QA / M-QA-03` milestone gate |
+
+### Fast Regression
+
+`test:regression` is the default pre-commit check. It combines the production Supabase-backed task-store unit + workflow tests, the upload-service tests, the mounted component tests, and the integration layer. If your change touches a narrow area and you do not need navigation-level confidence, stop here.
+
+### Slow Confidence
+
+Run the full ladder when:
+
+- your change touches navigation, header/profile popover, project switching, task creation, task detail, or update-progress flows
+- you are preparing a PR for review or a release candidate tag
+- the `WS-QA / M-QA-03` confidence-expansion milestone requires a pass
+
+`validate:local:confidence` runs the local validation wrapper with `VALIDATE_LOCAL_RUN_JOURNEYS=1` (typecheck, lint-like gates, and the Jest app-shell journey suite). After that passes, `test:e2e:maestro:journeys` drives the two longest live Maestro journeys against the booted simulator to prove the Supabase-backed integration surface is intact.
+
+If the simulator or Metro is not ready, `npm run test:confidence` is the pure-Jest fallback (no Maestro required) and covers the regression suite plus the app-shell journeys.
+

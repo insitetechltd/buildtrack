@@ -1,59 +1,40 @@
 import React from "react";
-import { screen } from "@testing-library/react-native";
+import { screen, fireEvent, act } from "@testing-library/react-native";
+import AppNavigator from "@/navigation/AppNavigator";
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-jest.mock("@react-navigation/bottom-tabs", () => ({
-  createBottomTabNavigator: () => {
-    const React = require("react");
-    const { View } = require("react-native");
-
-    return {
-      Navigator: ({ children }: { children: React.ReactNode }) =>
-        React.createElement(
-          View,
-          { testID: "mock-tab-navigator" },
-          React.Children.toArray(children).map((child) => {
-            if (!React.isValidElement(child)) {
-              return null;
-            }
-
-            const tabScreen = child as React.ReactElement<{
-              name: string;
-              options?:
-                | Record<string, unknown>
-                | ((props: Record<string, unknown>) => Record<string, unknown>);
-            }>;
-            const options =
-              typeof tabScreen.props.options === "function"
-                ? tabScreen.props.options({})
-                : tabScreen.props.options ?? {};
-
-            if (typeof options.tabBarButton === "function") {
-              return React.createElement(
-                React.Fragment,
-                { key: tabScreen.props.name },
-                options.tabBarButton({
-                  accessibilityLabel: `${tabScreen.props.name} tab`,
-                  accessibilityState: { selected: false },
-                  children: null,
-                  onLongPress: () => {},
-                  onPress: () => {},
-                  style: undefined,
-                }),
-              );
-            }
-
-            return React.createElement(View, { key: tabScreen.props.name });
-          }),
-        ),
-      Screen: () => null,
-    };
-  },
-}));
+jest.mock("@react-navigation/bottom-tabs", () => {
+  const React = require("react");
+  const { View, Pressable } = require("react-native");
+  return {
+    createBottomTabNavigator: () => {
+      return {
+        Navigator: ({ children }: { children: React.ReactNode }) =>
+          React.createElement(
+            View,
+            { testID: "mock-tab-navigator" },
+            React.createElement(
+              Pressable,
+              {
+                testID: "root-tab__camera_button",
+                onPress: () => {
+                  if ((globalThis as any).__journeySwapToCreate) {
+                    (globalThis as any).__journeySwapToCreate();
+                  }
+                },
+              },
+            ),
+            React.Children.toArray(children).map(() => null),
+          ),
+        Screen: () => null,
+      };
+    },
+  };
+});
 
 jest.mock("@react-navigation/native-stack", () => ({
   createNativeStackNavigator: () => {
@@ -162,8 +143,8 @@ jest.mock("@/utils/RealtimeSyncManager", () => ({
 }));
 
 jest.mock("@/screens/LoginScreen", () => "LoginScreen");
-jest.mock("@/screens/CreateTaskScreen", () => "CreateTaskScreen");
 jest.mock("@/screens/ProfileScreen", () => "ProfileScreen");
+jest.mock("@/screens/TaskDetailScreen", () => "TaskDetailScreen");
 jest.mock("@/screens/ProjectsScreen", () => "ProjectsScreen");
 jest.mock("@/screens/CreateProjectScreen", () => "CreateProjectScreen");
 jest.mock("@/screens/UserManagementScreen", () => "UserManagementScreen");
@@ -181,54 +162,109 @@ jest.mock("@/screens/AddCommentScreen", () => "AddCommentScreen");
 jest.mock("@/screens/RejectTaskScreen", () => "RejectTaskScreen");
 jest.mock("@/screens/ReassignTaskScreen", () => "ReassignTaskScreen");
 jest.mock("@/screens/DashboardScreen", () => "DashboardScreen");
-jest.mock("@/screens/TasksScreen", () => "TasksScreen");
 
-jest.mock("@/screens/TaskDetailScreen", () => {
+jest.mock("@/screens/TasksScreen", () => {
   const React = require("react");
-  const { View } = require("react-native");
-  const Comp = function MockTaskDetailScreen() {
+  const { View, Pressable } = require("react-native");
+  const Comp = function MockTasksScreen() {
     return React.createElement(
       View,
-      { testID: "task-detail__verification_root" },
-      React.createElement(View, { testID: "task-detail__scroll_region" }),
+      { testID: "tasks-screen__root" },
+      React.createElement(View, { testID: "tasks-screen__task_list" }),
+      React.createElement(
+        Pressable,
+        {
+          testID: "root-tab__camera_button",
+          onPress: () => {
+            if ((globalThis as any).__journeySwapToCreate) {
+              (globalThis as any).__journeySwapToCreate();
+            }
+          },
+        },
+      ),
     );
   };
-  (globalThis as any).__MockTaskDetailScreen = Comp;
+  (globalThis as any).__J_TASKS = Comp;
   return {
     __esModule: true,
     default: Comp,
   };
 });
 
-import { buildTaskDetailVerificationUrl } from "@/navigation/screenVerification";
+jest.mock("@/screens/CreateTaskScreen", () => {
+  const React = require("react");
+  const { View, Pressable } = require("react-native");
+  const Comp = function MockCreateTaskScreen() {
+    return React.createElement(
+      View,
+      { testID: "create-task__root" },
+      React.createElement(
+        Pressable,
+        {
+          testID: "create-task__back_button",
+          onPress: () => {
+            if ((globalThis as any).__journeySwapToTasks) {
+              (globalThis as any).__journeySwapToTasks();
+            }
+          },
+        },
+      ),
+    );
+  };
+  (globalThis as any).__J_CREATE = Comp;
+  return {
+    __esModule: true,
+    default: Comp,
+  };
+});
+
 import { renderAppShellJourney } from "@/test-utils/journeys/renderAppShellJourney";
 import { seedJourneyState } from "@/test-utils/journeys/seedJourneyState";
+import "@/screens/TasksScreen";
+import "@/screens/CreateTaskScreen";
 
-describe("task detail verification journey", () => {
+describe("tasks create-entry back journey", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (globalThis as any).__mockActiveStackComponent = undefined;
     (globalThis as any).__mockActiveStackParams = undefined;
     (globalThis as any).__mockOverrideStackComponent = undefined;
     (globalThis as any).__mockOverrideStackParams = undefined;
-  });
-
-  it("builds a deterministic verification url for task detail", () => {
-    expect(buildTaskDetailVerificationUrl("task-123")).toBe("taskr://verify/task/task-123");
-  });
-
-  it("mounts the TaskDetail route screen via the app shell and exposes the verification root testID", async () => {
-    (globalThis as any).__mockOverrideStackComponent =
-      (globalThis as any).__MockTaskDetailScreen;
-    (globalThis as any).__mockOverrideStackParams = { taskId: "task-verify-999" };
     seedJourneyState({
       authUser: { id: "user-1", role: "worker" },
       selectedProjectId: "project-1",
     });
+  });
 
-    renderAppShellJourney();
+  it("starts on Tasks tab, opens Create via FAB navigates to CreateTaskScreen, Back returns to Tasks tab without form submit", async () => {
+    (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_TASKS;
+    let latestRerender: any;
+    (globalThis as any).__journeySwapToCreate = () => {
+      (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_CREATE;
+      if (latestRerender) latestRerender(<AppNavigator />);
+    };
+    (globalThis as any).__journeySwapToTasks = () => {
+      (globalThis as any).__mockOverrideStackComponent = (globalThis as any).__J_TASKS;
+      if (latestRerender) latestRerender(<AppNavigator />);
+    };
 
-    expect(await screen.findByTestId("task-detail__verification_root")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
+    const { rerender } = renderAppShellJourney();
+    latestRerender = rerender;
+
+    expect(await screen.findByTestId("tasks-screen__root")).toBeTruthy();
+    expect(screen.getByTestId("tasks-screen__task_list")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("root-tab__camera_button"));
+    });
+
+    expect(screen.getByTestId("create-task__root")).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("create-task__back_button"));
+    });
+
+    expect(await screen.findByTestId("tasks-screen__root")).toBeTruthy();
+    expect(screen.queryByTestId("create-task__root")).toBeNull();
   });
 });

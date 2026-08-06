@@ -137,3 +137,29 @@ Use `TESTING_STRATEGY.md` for:
 When root-level Maestro flows, scripts, or runtime-alignment steps change, update this file in the same change so it remains the first-stop operational runbook.
 
 Do not scatter Maestro setup or runtime-alignment instructions across one-off root notes when they belong here.
+
+## Failure Triage Cheat Sheet
+
+Use this ordered list for the most common live Maestro failures observed locally.
+
+1. **Metro returns 5xx / Expo dev client never renders the app shell**
+   - First verify: `curl -o /dev/null -s -w "%{http_code}\n" http://127.0.0.1:8081` returns `200`
+   - If Metro is unreachable or returns 5xx → restart Metro in a clean terminal: `npx expo start --dev-client`
+   - If the dev client dialogs for URL, run `launch-smoke.yaml` again (it contains the deep-link reattach stanza)
+
+2. **Maestro 5999 / "Transport unreachable" / ios driver fails to handshake**
+   - Symptom: `AssertionError: Transport is unreachable` or `id: <anything>` never resolves even though the simulator is booted
+   - Fix: re-run the wrapper with the Maestro driver reinstall flag, or invoke `maestro --reinstall-driver test <flow.yaml>` directly
+   - After reinstall, close and re-open the simulator window once before the next run
+
+3. **`assertVisible` fails for an element that is *obviously* on screen**
+   - Take Maestro's screenshot first: the PNG captures what Maestro actually saw, not what you expect
+   - Check LogBox overlay visibility: Maestro cannot see under red-box / yellow-box LogBox surfaces; resolve the RN warning first
+   - Add an `extendedWaitUntil` for the same selector with a generous timeout (3–8s) before the failing assertion
+   - If the element is inside a scroll view, precede the check with `scrollUntilVisible` (use `centerElement: true`)
+
+4. **Wrapper heartbeat stops printing for > 60s**
+   - Expected: the `run-local.sh` wrapper prints `ALIVE pid=<pid> elapsed=<N>s` every 10s for any flow longer than 10s
+   - If the heartbeat goes silent for > 60s, Maestro is stuck in a driver call or the simulator is unresponsive
+   - Recovery: `TERM` the wrapper pid, confirm the maestro child process is gone, then restart the simulator app: `xcrun simctl terminate <UDID> com.buildtrack.app.local` before the next run
+

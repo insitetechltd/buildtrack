@@ -1,6 +1,6 @@
 # Insite App Agent Inventory
 
-This file is the repository-local inventory of the SOLO sub-agent pack currently defined in `.trae/agents/`.
+This file is the repository-local inventory of the SOLO sub-agent pack currently defined in `.trae/agents/` and registered as the Trae skill `solo-agents` in `~/.trae/skills/solo-agents/` (operational YAML source of truth for the agent picker).
 
 Source of truth scanned for this inventory:
 - `.trae/agents/README.md`
@@ -12,11 +12,28 @@ Source of truth scanned for this inventory:
 - `.trae/agents/qa-validator.md`
 - `.trae/agents/release-manager.md`
 - `.trae/agents/docs-curator.md`
+- `~/.trae/skills/solo-agents/SKILL.md`
+- `~/.trae/skills/solo-agents/metadata.json`
+- `~/.trae/skills/solo-agents/agents/solo-orchestrator.yaml`
+- `~/.trae/skills/solo-agents/agents/planner.yaml`
+- `~/.trae/skills/solo-agents/agents/builder.yaml`
+- `~/.trae/skills/solo-agents/agents/reviewer.yaml`
+- `~/.trae/skills/solo-agents/agents/test-engineer.yaml`
+- `~/.trae/skills/solo-agents/agents/qa-validator.yaml`
+- `~/.trae/skills/solo-agents/agents/release-manager.yaml`
+- `~/.trae/skills/solo-agents/agents/docs-curator.yaml`
+
+Dual-source convention:
+- `.md` files in `.trae/agents/*.md` = MINIMAL, human-readable, copy-ready blueprints (used by the manual UI-creation fallback and by this inventory summary).
+- `.yaml` files in `~/.trae/skills/solo-agents/agents/*.yaml` = OPERATIONAL, enriched agent definitions consumed by the Trae agent picker. These contain the exact output format headings, project_memory Maestro rules, milestone references, and marketplace skill synergies. YAMLs are a strict superset of the `.md` prompts.
+- When updating agent behavior: edit the `~/.trae/skills/solo-agents/agents/*.yaml` files first, then update the corresponding `.md` files and this inventory ONLY if the core role/focus/constraints actually change. Do not update `.md` files for minor output-format tweaks.
 
 ## Current Delivery Status
 
 - Latest closed architecture milestone set: `WS-UIA / M-UIA-01`, `WS-UIA / M-UIA-02`, and `WS-UIA / M-UIA-03` are delivered and closed.
 - Current redesign workstream: `WS-UX / M-UX-01` is active, with slices `S-UX-01A` through `S-UX-01E2` closed and later slices still in pipeline per `documentation/ROADMAP.md`.
+- `WS-QA / M-QA-02` now has a shipped root Maestro foundation surface for local smoke and Sprint 7 bootstrap, but its canonical roadmap status stays `Pipeline` until the master-side smoke/bootstrap wrap-up is explicitly re-verified.
+- `WS-QA / M-QA-03` is the active hybrid confidence expansion layer, including journey tests and live Supabase-backed Task Core flows.
 - Current pipeline focus remains in `WS-QA / M-QA-01`, `WS-QA / M-QA-02`, `WS-QA / M-QA-03`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
 
 ## Shared Repository Context
@@ -275,13 +292,20 @@ These constraints apply across the agent pack unless a role narrows them further
 
 ## Operating Sequence Summary
 
-Default workflow expectations from the local agent pack:
+Default workflow expectations from the local agent pack (use `@identifier` syntax for all calls; after Reviewer pass ALWAYS run the `git-commit` skill COMMIT GATE before Test Engineer):
 
-- Feature work: `Planner -> Builder -> Reviewer -> Test Engineer -> QA Validator`
-- Bug fix: `Planner -> Builder -> Reviewer -> Test Engineer`
-- Refactor: `Planner -> Reviewer` pre-check when risky `-> Builder -> Reviewer -> Test Engineer`
-- Release/deployment: `Planner` when scope is unclear, then `Reviewer -> Test Engineer -> QA Validator` when needed `-> Release Manager`
-- Documentation-only work: `Planner -> Docs Curator -> Reviewer`
+- Feature work: `@planner [→ brainstorming → writing-plans] -> @builder [→ executing-plans | test-driven-development | react-native-skills] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer [→ test-driven-development additions] -> @qa-validator [→ TRAE-debugger | figma for WS-UX/M-UX-01]`
+- Bug fix: `@planner [→ brainstorming if fuzzy | TRAE-debugger] -> @builder [→ test-driven-development | TRAE-debugger] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer`
+- Refactor: `@planner [→ writing-plans] -> @reviewer` pre-check when risky `[+ TRAE-code-review] -> @builder [→ executing-plans] -> @reviewer [+ TRAE-code-review] -> [git-commit skill: COMMIT GATE] -> @test-engineer`
+- Release/deployment: `@planner` when scope unclear, then `@reviewer -> [git-commit skill: COMMIT GATE if files changed] -> @test-engineer -> @qa-validator` when needed `-> @release-manager [→ gh-cli]`
+- Documentation-only work: `@planner -> @docs-curator [→ defuddle] -> @reviewer [→ TRAE-code-review for technical accuracy]`
+
+Milestone Gate (mandatory pre-planner dispatch on all workflows):
+- Read AGENTS.md § Current Delivery Status + documentation/ROADMAP.md
+- If task falls under WS-UX/M-UX-01, WS-QA/M-QA-01/02/03, or WS-SUPABASE/M-SUPABASE-01: Planner cites milestone; Test Engineer classifies tests per TESTING_STRATEGY.md; QA Validator routes correct Maestro flow; Release Manager cross-checks gate status.
+
+Autonomy Policy (ratified from SOLO_OPERATING_PROCEDURE.md §0):
+- Default = autonomous. Ask user ONLY for: (1) product behavior choices with multiple valid irresolvable outcomes; (2) schema/persistence changes with user-facing impact; (3) auth/security changes with no precedent; (4) release/deploy/version/submission decisions; (5) scope expansion > one bounded extension. Non-blocking uncertainty → choose repo-aligned default, log as assumption, CONTINUE.
 
 ## Scope Of This Inventory
 

@@ -41,8 +41,8 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UIA / M-UIA-02 | P1 portability, boundary cleanup & parallel-work separation | Closed | M-UIA-01 | 9 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md; ./UI_ARCHITECTURE.md |
 | WS-UIA / M-UIA-03 | P2 render performance hotspots | Closed | M-UIA-02 | 10 | ../docs/superpowers/plans/2026-07-02-ws-uia-01-03-execution-plan.md |
 | WS-QA / M-QA-01 | User testing rubric execution | Pipeline | M-UI-07 | 11 | ../docs/superpowers/plans/sprint7-user-testing-rubric.md; ../docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md |
-| WS-QA / M-QA-02 | UI automation foundation (Maestro local) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
-| WS-QA / M-QA-03 | Automated confidence & end-to-end UX coverage | Pipeline | M-QA-02, S-UX-01I | 12.5 | ../docs/superpowers/plans/2026-08-01-ws-qa-03-automated-confidence-and-e2e-coverage.md; ../TESTING_STRATEGY.md |
+| WS-QA / M-QA-02 | UI automation foundation (root Maestro smoke + Sprint 7 bootstrap surface shipped) | Pipeline | M-UI-07 | 12 | ../docs/superpowers/plans/2026-07-01-ws-qa-02-ui-automation-maestro.md; ../docs/superpowers/specs/2026-07-01-maestro-local-setup-design.md |
+| WS-QA / M-QA-03 | Automated confidence & end-to-end UX coverage (active hybrid confidence expansion) | Pipeline | M-QA-02, S-UX-01I | 12.5 | ../docs/superpowers/plans/2026-08-01-ws-qa-03-automated-confidence-and-e2e-coverage.md; ../TESTING_STRATEGY.md |
 | WS-SUPABASE / M-SUPABASE-01 | Full Supabase deep-dive inspection | Pipeline | M-DATA-02 | 13 | ../docs/superpowers/plans/2026-07-01-ws-supabase-01-deep-dive-inspection.md |
 | WS-UX / M-UX-01 | Insite redesign implementation | Pipeline | M-UIA-03, M-DATA-02 | 14 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
 | WS-UX / M-UX-01 / S-UX-01A | Redesign-safe task model foundation | Closed | M-DATA-02 | 14.1 | ../docs/superpowers/plans/2026-07-03-ws-ux-01-insite-redesign-execution.md |
@@ -75,5 +75,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 - If relaunch is needed, relaunch the app, verify the relaunch succeeds, and treat that verification as part of slice wrap-up rather than an optional follow-up.
 - Default implementation mode is **subagent-driven execution**. Use inline execution only when the user explicitly asks for it or a specific task cannot be reasonably decomposed into reviewed sub-tasks.
 - When a milestone is closed, update its `Status` to `Closed` only after the required validation and any required relaunch verification are complete, and update its primary reference to the latest execution plan or canonical doc when relevant.
+- `WS-QA / M-QA-02` now has a shipped root Maestro foundation surface for local smoke and Sprint 7 bootstrap, but keep the milestone in `Pipeline` until the master-side smoke/bootstrap wrap-up is explicitly re-verified.
+- `WS-QA / M-QA-03` remains the active hybrid confidence expansion layer, including journey tests and live Supabase-backed Task Core flows, so its status stays `Pipeline` until that broader surface is fully closed.
 - Historically closed milestones may reference `AGENTS.md` as a summary record; milestone-level execution artifacts may not exist for all historical work.
 - `WS-UIA / M-UIA-01` and `WS-UIA / M-UIA-02` govern contract stabilization, boundary cleanup, and parallel-work separation for presentation, adapter, and data-layer ownership; roadmap-aligned coordination rules must be reflected in the canonical UI architecture references rather than tracked only in ad hoc prompt notes.

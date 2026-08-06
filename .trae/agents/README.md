@@ -26,7 +26,62 @@ This pack provides:
 - `Release Manager`
 - optional: `Docs Curator`
 
-## How To Use In Trae
+## Registration Methods
+
+### Method 1 (Canonical): User-wide skill auto-registration
+
+The SOLO agent team is registered as the **user-wide Trae skill `solo-agents`**
+installed at:
+
+```
+~/.trae/skills/solo-agents/
+```
+
+This is the CANONICAL OPERATIONAL SOURCE OF TRUTH. When this skill is enabled,
+all 8 agents appear in the agent picker automatically.
+
+**Contents of the installed skill:**
+- `~/.trae/skills/solo-agents/SKILL.md` — skill manifest, agent roster, workflow defaults,
+  **marketplace skill synergy table** with overlap resolution rules
+- `~/.trae/skills/solo-agents/metadata.json` — structured manifest (version 1.1.0, 8 agent entries,
+  related_skills, categories)
+- `~/.trae/skills/solo-agents/agents/solo-orchestrator.yaml` — NOT callable, entry coordinator
+- `~/.trae/skills/solo-agents/agents/planner.yaml` — Callable + milestone-aware scope planning
+- `~/.trae/skills/solo-agents/agents/builder.yaml` — Callable + Maestro UI/automation compatibility rules
+- `~/.trae/skills/solo-agents/agents/reviewer.yaml` — Callable + Maestro accessibility audit findings
+- `~/.trae/skills/solo-agents/agents/test-engineer.yaml` — Callable + Jest/Maestro layer boundary
+- `~/.trae/skills/solo-agents/agents/qa-validator.yaml` — Callable + Maestro keyboard/model/project rules
+- `~/.trae/skills/solo-agents/agents/release-manager.yaml` — Callable + bundle-ID safety + submission rules
+- `~/.trae/skills/solo-agents/agents/docs-curator.yaml` — Callable + milestone/AGENTS.md maintenance rules
+
+**To verify the skill is loaded:**
+
+1. Open Trae settings → Skills. Look for `solo-agents` in the list. If installed
+   via `~/.trae/skills/` it is auto-discovered on reload.
+2. If missing: ensure the folder exists at `~/.trae/skills/solo-agents/` then reload the window.
+3. Type `@` in the chat input — the 8 SOLO agents should appear alongside the
+   built-in "Chat" and "Agent" entries.
+4. Use `@SOLO Orchestrator <request>` as the primary entry point for non-trivial
+   work. It dispatches the correct specialist workflow automatically.
+
+**Dual-source convention (with AGENTS.md):**
+- This folder `.trae/agents/*.md` = MINIMAL human-readable blueprints. Stable,
+  copy-ready prompts for the manual UI-creation fallback.
+- `~/.trae/skills/solo-agents/agents/*.yaml` = OPERATIONAL enriched definitions.
+  These contain exact output format headings, project_memory Maestro rules,
+  milestone references, and marketplace skill synergies. YAMLs are a **strict
+  superset** of the `.md` prompts.
+- When updating agent behavior: **edit the YAMLs first**. Update corresponding
+  `.md` files and AGENTS.md inventory ONLY if the core role/focus/constraints
+  actually changed — not for minor output-format tweaks.
+- AGENTS.md at the repo root is the INVENTORY DOCUMENT that references both
+  sources. Update its § Source of truth scanned list when new canonical sources
+  appear.
+
+### Method 2: Manual creation (fallback / legacy)
+
+Use this if you need to customize an agent beyond the defaults or if skill-based
+registration is not available in your Trae version.
 
 1. Open Trae settings and go to the Agents section.
 2. Create a custom agent manually for each file in this folder.

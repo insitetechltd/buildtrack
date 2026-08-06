@@ -1,73 +1,40 @@
 # NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
+# NOTE: Project picker entry uses tapOn "Change Project" — proven pattern from task-core-live-* flows (NOT profile-menu-project_picker testID).
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.taskTitle = "QA03 Journey Create " + Math.floor(Date.now() / 1000)}
 - evalScript: ${output.projectA = ".*Project A.*Commercial Building.*"}
 - evalScript: ${output.projectB = ".*Project B.*"}
 - evalScript: ${output.progressNote = "Progress bump " + Math.floor(Date.now() / 1000)}
-- launchApp:
-    appId: "com.buildtrack.app.local"
+- runFlow: bootstrap-live-manager-a.yaml
+- assertVisible:
+    id: "dashboard-screen__root"
+
+# Project switch 1: Explicitly land on Project A first (proven text "Change Project" + text regex)
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- tapOn: "Change Project"
+- tapOn: ${output.projectA}
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 40000
-- runFlow:
-    when:
-      visible:
-        id: "login-submit"
-    commands:
-      - tapOn:
-          id: "login-emailOrPhone"
-      - inputText: "john.managera@test.com"
-      - tapOn:
-          id: "login-password"
-      - inputText: "password123"
-      - tapOn:
-          id: "login-submit"
-      - extendedWaitUntil:
-          visible:
-            id: "dashboard-screen__root"
-          timeout: 30000
-- runFlow:
-    when:
-      visible: "Select a project to view the active project summary and queue overview."
-    commands:
-      - tapOn:
-          id: "app-screen-header__profile-trigger"
-      - extendedWaitUntil:
-          visible:
-            id: "profile-menu-project_picker"
-          timeout: 5000
-      - tapOn:
-          id: "profile-menu-project_picker"
-      - extendedWaitUntil:
-          visible:
-            id: "projectPicker-scroll"
-          timeout: 8000
-      - tapOn: ${output.projectA}
-      - assertVisible:
-          id: "dashboard-screen__root"
+    timeout: 20000
 - assertVisible:
     id: "dashboard-screen__root"
+
+# Project switch 2: To Project B (second switch before journey continues — matches Planner spec)
 - tapOn:
     id: "app-screen-header__profile-trigger"
-- extendedWaitUntil:
-    visible:
-      id: "profile-menu-project_picker"
-    timeout: 5000
-- tapOn:
-    id: "profile-menu-project_picker"
-- extendedWaitUntil:
-    visible:
-      id: "projectPicker-scroll"
-    timeout: 8000
+- tapOn: "Change Project"
 - tapOn: ${output.projectB}
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 6000
+    timeout: 20000
 - assertVisible:
     id: "dashboard-screen__root"
+
+# Tasks tab → Create entry → Save
 - tapOn:
     id: "root-tab__tasks_pressable"
 - runFlow:
@@ -126,6 +93,8 @@ appId: com.buildtrack.app.local
     timeout: 10000
 - assertVisible:
     id: "tasks-screen__task_list"
+
+# Tasks search → tap new task → Task Detail
 - tapOn:
     id: "text-field:tasks-search__input"
 - inputText: ${output.taskTitle}
@@ -139,6 +108,8 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "task-detail__bottom_action_bar"
 - assertVisible: ${".*" + output.taskTitle + ".*"}
+
+# Update Progress flow
 - tapOn:
     id: "task-detail__quick-action-update_progress"
 - extendedWaitUntil:

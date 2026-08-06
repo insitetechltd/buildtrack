@@ -4,8 +4,8 @@
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.taskTitle = "QA03 Journey Create " + Math.floor(Date.now() / 1000)}
-- evalScript: ${output.projectA = ".*Project A.*Commercial Building.*"}
-- evalScript: ${output.projectB = ".*Project B.*"}
+- evalScript: ${output.projectA = "Project A"}
+- evalScript: ${output.projectB = "Project B"}
 - evalScript: ${output.progressNote = "Progress bump " + Math.floor(Date.now() / 1000)}
 - launchApp:
     appId: "com.buildtrack.app.local"
@@ -33,7 +33,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Project switch 1: Explicitly land on Project A first (profile-menu-project_picker testID + project row text regex)
+# Project switch 1: Explicitly land on Project A first (profile-menu-project_picker testID + title-only text tap with scroll)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -46,6 +46,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectA}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectA}
 - extendedWaitUntil:
     visible:
@@ -67,6 +73,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectB}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectB}
 - extendedWaitUntil:
     visible:

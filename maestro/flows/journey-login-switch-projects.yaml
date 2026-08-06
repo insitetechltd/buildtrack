@@ -3,10 +3,10 @@
 # NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
 appId: com.buildtrack.app.local
 ---
-- evalScript: ${output.projectA = ".*Project A.*Commercial Building.*"}
-- evalScript: ${output.projectB = ".*Project B.*"}
-- evalScript: ${output.projectC = ".*Project C.*"}
-- evalScript: ${output.projectADefault = ".*Project A.*Commercial Building.*"}
+- evalScript: ${output.projectA = "Project A"}
+- evalScript: ${output.projectB = "Project B"}
+- evalScript: ${output.projectC = "Project C"}
+- evalScript: ${output.projectADefault = "Project A"}
 - launchApp:
     appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
@@ -44,6 +44,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectA}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectA}
 - extendedWaitUntil:
     visible:
@@ -65,6 +71,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectB}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectB}
 - extendedWaitUntil:
     visible:
@@ -86,6 +98,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectC}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectC}
 - extendedWaitUntil:
     visible:
@@ -107,6 +125,12 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: ${output.projectADefault}
+    direction: DOWN
+    centerElement: true
+    timeout: 20000
 - tapOn: ${output.projectADefault}
 - extendedWaitUntil:
     visible:

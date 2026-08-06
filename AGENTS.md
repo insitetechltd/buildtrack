@@ -32,9 +32,10 @@ Dual-source convention:
 
 - Latest closed architecture milestone set: `WS-UIA / M-UIA-01`, `WS-UIA / M-UIA-02`, and `WS-UIA / M-UIA-03` are delivered and closed.
 - Current redesign workstream: `WS-UX / M-UX-01` is active, with slices `S-UX-01A` through `S-UX-01E2` closed and later slices still in pipeline per `documentation/ROADMAP.md`.
+- `WS-QA / M-QA-01` **Closed (2026-08-06)**: User testing rubric 4 scenarios, 18 PNGs (A:4 B:3 C:3 D:8), live suite run rc=0 via `scripts/maestro/run-qa01-suite.sh` against iPhone 17 Pro Max sim. Artifacts: `.cache/maestro-artifacts/qa01-20260806_214425/`, evidence per `documentation/ROADMAP.md` M-QA-01 Closed evidence section.
 - `WS-QA / M-QA-02` now has a shipped root Maestro foundation surface for local smoke and Sprint 7 bootstrap, but its canonical roadmap status stays `Pipeline` until the master-side smoke/bootstrap wrap-up is explicitly re-verified.
 - `WS-QA / M-QA-03` is the active hybrid confidence expansion layer, including journey tests and live Supabase-backed Task Core flows.
-- Current pipeline focus remains in `WS-QA / M-QA-01`, `WS-QA / M-QA-02`, `WS-QA / M-QA-03`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
+- Current pipeline focus remains in `WS-QA / M-QA-02`, `WS-QA / M-QA-03`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
 
 ## Shared Repository Context
 

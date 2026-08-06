@@ -1,5 +1,5 @@
 # NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
-# NOTE: Project picker entry uses tapOn "Change Project" — proven pattern from task-core-live-* flows (NOT profile-menu-project_picker testID).
+# NOTE: Project picker entry uses profile-menu-project_picker testID (attached to the Pressable in ProfileMenu.tsx line 112) for reliable translation-agnostic entry. Rows inside the opened project picker screen are tapped via text regex ${output.projectA/B/C} — matching the proven row-tap pattern used by task-core-live flows rc=0 in M-QA-01.
 # NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
 appId: com.buildtrack.app.local
 ---
@@ -34,7 +34,16 @@ appId: com.buildtrack.app.local
     id: "dashboard-screen__root"
 - tapOn:
     id: "app-screen-header__profile-trigger"
-- tapOn: "Change Project"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
 - tapOn: ${output.projectA}
 - extendedWaitUntil:
     visible:
@@ -46,7 +55,16 @@ appId: com.buildtrack.app.local
 # Switch 2: Project B
 - tapOn:
     id: "app-screen-header__profile-trigger"
-- tapOn: "Change Project"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
 - tapOn: ${output.projectB}
 - extendedWaitUntil:
     visible:
@@ -58,7 +76,16 @@ appId: com.buildtrack.app.local
 # Switch 3: Project C
 - tapOn:
     id: "app-screen-header__profile-trigger"
-- tapOn: "Change Project"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
 - tapOn: ${output.projectC}
 - extendedWaitUntil:
     visible:
@@ -70,7 +97,16 @@ appId: com.buildtrack.app.local
 # Switch 4: Back to Project A (default)
 - tapOn:
     id: "app-screen-header__profile-trigger"
-- tapOn: "Change Project"
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-project_picker"
+    timeout: 5000
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 10000
 - tapOn: ${output.projectADefault}
 - extendedWaitUntil:
     visible:

@@ -63,3 +63,12 @@ Output format:
 Handoff rule:
 - If the plan is ready, hand off to `Builder`
 - If implementation risk is unusually high, recommend `Reviewer` for a pre-implementation design check
+
+## Maestro Flow Planning Mandates (295min Wastage Lesson)
+  When planning ANY Maestro flow for WS-QA/M-QA-01/02/03 or any mobile journey test:
+  1. **LOGBOX FAMILY AUDIT RULE**: Open `index.ts` lines 11–22 (or entry LogBox.ignoreLogs). If you see any "debugger…" string suppressed, the plan MUST flag suppression of the ENTIRE adjacent banner family — specifically "Open debugger to view warnings." (gray) along with the red "Failed to open debugger…". Cherry-picking individual banners from the same bottom-10% render family is a critical planning bug. If suppression is incomplete, the plan must require Builder to PR-suppress the missing text variant BEFORE flow execution. iPhone 17 Pro Max bottom 60px overlap causes Maestro rc=0 with silently-failed Pressable handlers.
+  2. **UNIQUE LANDING TESTID RULE**: For every navigation transition (tab tap, stack push, back, deep link), define a specific assertion testID that EXISTS ONLY on the TARGET SCREEN. Never plan profile-trigger / header / title text assertions that render on every screen. If no unique testID exists → Builder MUST add `<screen>-screen__root` before flows run.
+  3. **BOTTOM TAB NAV RULE**: Never plan `- back` for bottom-tab root navigation. Always plan explicit `tapOn id: root-tab__activity | root-tab__tasks`.
+  4. **SPRINT7 PRESET = ACTOR OVERWRITE**: When plan includes confirmation-sheet actor AND preset, preset ALWAYS wins. Open `src/test-utils/sprint7RuntimeSandbox.ts` lines 256–278 to know the exact hardcoded activeActor each loader applies. Either (a) skip confirmation sheet, (b) skip preset and keep actor-only init, or (c) switch post-preset with switchSprint7RuntimeSandboxActor.
+  5. **ARTIFACT PATH RULE**: Plan artifact scopes to `/tmp/maestro-tmp-home/.maestro/tests/*/` ONLY. Never allow find / / $HOME / repo-.maestro dir searches.
+  6. **VISUAL FIRST VALIDATION**: The plan's validation section MUST lead with "read PNG bytes of 2-5 key screenshots and compare text content to filename intent" BEFORE rc=0 is cited. rc=0 is meaningless without visual PNG match.

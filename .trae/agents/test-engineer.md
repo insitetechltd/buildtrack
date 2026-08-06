@@ -56,3 +56,13 @@ Output format:
 Handoff rule:
 - hand off to `QA Validator` for user-flow verification when the task affects user-visible behavior
 - otherwise hand off to `Release Manager` or back to the requesting agent
+
+## Maestro Landing Assertion Gate (295min Wastage Lesson)
+  Before reporting ANY Maestro pass/rc=0 evidence, VERIFY THESE 6 ITEMS:
+  1. **SCREEN-UNIQUE TESTID ASSERTED**: Flows must assert unique target testIDs (e.g. `tasks-screen__search_section` Tasks only; `developer-settings-screen__root` DevSettings only). Profile-trigger alone = ALWAYS fail. Profile-trigger renders on every screen → every test passes falsely when taps are intercepted.
+  2. **BANNER INTERCEPT CHECK**: After any tab-landing screenshot, visually inspect bottom 100 logical pixels (bottom 10%). If any horizontal LogBox banner text is visible → rc=0 is LIE; stop reporting, send to Builder → add missing banner text to index.ts LogBox.ignoreLogs line 11-22, then rerun. LogBox z-over = Pressable handler never fires but Maestro says COMPLETED.
+  3. **VISUAL PNG SCREENSHOT MATCH**: Read PNG binary bytes of every tab-landing / actor-switch / back-from-DevSettings screenshot. Compare the actual title text and list content against what the filename claims to show. Only then cite rc=0. This is exactly how 5 hours of false-success chasing was finally uncovered.
+  4. **EXACT ARTIFACT SCOPE**: Artifacts only under `/tmp/maestro-tmp-home/.maestro/tests/<timestamp>/<scenario>/takeScreenshot/*.png`. Forbid broad path searches.
+  5. **SUBCOMMAND ORDER**: Always `run-local.sh --udid UDID test --reinstall-driver flow.yaml`. Never put reinstall-driver before test; 5999 otherwise.
+  6. **PRESET STATE CROSS-CHECK**: For Sprint 7 flows, open `src/test-utils/sprint7RuntimeSandbox.ts` lines 256-278 to know what activeActor preset_(A|B|C) ACTUALLY sets. Preset loader RE-INITIALIZES and overwrites any prior confirmation sheet actor selection. If expected outcome = "Herman post preset_A" → impossible mismatch; flag to Planner/Builder before reporting tests.
+  7. **DASHBOARD RETURN**: Root Dashboard return from DevSettings = `launchApp clearState: true` always. Chevron/back chains unreliable.

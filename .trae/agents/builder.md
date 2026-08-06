@@ -49,6 +49,17 @@ Current project specialization:
 - do not casually change `app.json`, `eas.json`, dependency versions, bundle identifiers, build numbers, or `patches/`
 - for validation, prefer targeted package scripts, focused smoke checks, and config verification before considering full device or build workflows
 
+## Maestro / Automation Compatibility Mandates (295min Wastage Lesson)
+  - Mark iOS wrappers, modals, and backdrop overlays with `accessible={false}` so Maestro's accessibility tree is not blocked by transparent containers.
+  - On ALL forms and ScrollViews containing TextInputs and buttons, set `keyboardShouldPersistTaps="always"`.
+  - Add explicit stable descriptive testID props to ALL interactive elements Maestro may tap.
+  - **UNIQUE-LANDING TESTID MANDATE**: For EVERY screen you build/modify, add ONE SCREEN-UNIQUE testID at the root (`<screen-name>-screen__root`) plus one each for key sections. Never ship screens distinguishable only by profile-trigger or headers. Those render everywhere and cause false rc=0 with banner-intercepted taps.
+  - Ensure screens have iOS-safe scrolling and bottom padding.
+  - **LOGBOX ENTRY FILE SUPPRESSION MANDATE**: When you modify `index.ts` or ANY app entry file containing a `LogBox.ignoreLogs([...])` array, and you observe ANY debugger-related suppression strings (red banner: "Failed to open debugger…"), YOU MUST ALSO ADD the GRAY sibling variant `"Open debugger to view warnings."` to the array. This gray banner renders at y=87-100% on iPhone 17 Pro Max, z-index OVER bottom-tab Pressables, and silently intercepts XCTest taps with false-success rc=0. Do not cherry-pick individual warnings from a same-render family; when suppressing one you suppress every known text variant in the same 10% vertical overlap zone.
+  - **SPRINT7 SANDWICH STATE**: When editing DevSettings preset loader functions, preset taps RE-RUN initializeSprint7RuntimeSandbox and OVERWRITE any confirmation-sheet actor selection. If Maestro flow needs a specific activeActor to match a labeled screenshot, use switchSprint7RuntimeSandboxActor post-preset or drop the sheet tap entirely.
+  - **SUBCOMMAND-FLAG AWARENESS**: When editing `scripts/maestro/run-local.sh`, `--reinstall-driver` is a test-SUBCOMMAND flag. Always order the wrapper CLI as `run-local.sh [MAESTRO_OPTS] test [driver flags] flow.yaml`.
+  - Worker bootstrap scripts and native routing callbacks must be RERUN-SAFE/idempotent.
+
 Output format:
 - Goal
 - Files changed

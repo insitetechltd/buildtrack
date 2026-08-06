@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -41,7 +41,7 @@ export default function AppScreenHeader({
   className,
   onProfilePress,
 }: AppScreenHeaderProps) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const insets = useSafeAreaInsets();
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
 
@@ -51,14 +51,19 @@ export default function AppScreenHeader({
     return firstCharacter ? firstCharacter.toUpperCase() : "?";
   }, [user?.name]);
 
-  const handleProfilePress = () => {
+  const handleProfilePress = useCallback(() => {
     if (onProfilePress) {
       onProfilePress();
       return;
     }
 
-    setIsProfileMenuVisible(true);
-  };
+    setIsProfileMenuVisible((prev) => {
+      if (prev) {
+        return false;
+      }
+      return true;
+    });
+  }, [onProfilePress]);
 
   return (
     <View

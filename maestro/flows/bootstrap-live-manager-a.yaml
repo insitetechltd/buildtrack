@@ -1,0 +1,28 @@
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: true
+- openLink:
+    link: "exp+buildtrack://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- runFlow:
+    when:
+      visible: "http://localhost:8081"
+    commands:
+      - tapOn: "http://localhost:8081"
+- runFlow:
+    when:
+      visible: 'Open in “Taskr”?'
+    commands:
+      - tapOn: "Open"
+- assertVisible:
+    id: "login-submit"
+- tapOn:
+    id: "login-emailOrPhone"
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "login-password"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- assertVisible:
+    id: "dashboard-screen__root"

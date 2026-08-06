@@ -27,10 +27,11 @@ import StandardHeader from "@/components/StandardHeader";
 import ExpandableUtilityFAB from "@/components/ExpandableUtilityFAB";
 import TaskCard from "@/components/TaskCard";
 import { useUserStore } from "@/state/userStore.supabase";
+import type { CreateTaskParams } from "@/navigation/navigationTypes";
 
 interface DashboardScreenProps {
   onNavigateToTasks: () => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;

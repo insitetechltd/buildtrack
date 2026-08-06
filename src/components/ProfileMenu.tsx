@@ -20,7 +20,8 @@ export default function ProfileMenu({
   onNavigateToProjectPicker,
   onNavigateToDeveloperSettings,
 }: ProfileMenuProps) {
-  const { user, logout } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
   const t = useTranslation();
 
   if (!user || !visible) {
@@ -59,78 +60,91 @@ export default function ProfileMenu({
   };
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
-      <Pressable className="flex-1 bg-black/30" onPress={onClose}>
-        <View
-          className="absolute right-4 top-16 min-w-[240px] overflow-hidden rounded-3xl border border-[#B9D9E4] bg-[#F8FCFF]"
-          style={{
-            shadowColor: "#000",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <View className="border-b border-[#D8EBF2] px-4 py-3">
-            <Text className="text-sm font-medium text-[#497080]" numberOfLines={1}>
-              {user.name}
-            </Text>
-            <Text className="mt-1 text-xs uppercase tracking-wide text-[#7FA7B4]">
-              {user.role}
-            </Text>
-          </View>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+      testID="profile-menu__root"
+      accessibilityLabel="Profile Menu"
+    >
+      <Pressable
+        className="flex-1 bg-black/30"
+        onPress={onClose}
+        accessible={false}
+        testID="profile-menu__backdrop"
+      >
+        <View />
+      </Pressable>
+      <View
+        className="absolute right-4 top-16 min-w-[240px] overflow-hidden rounded-3xl border border-[#B9D9E4] bg-[#F8FCFF]"
+        style={{
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.15,
+          shadowRadius: 8,
+          elevation: 8,
+        }}
+      >
+        <View className="border-b border-[#D8EBF2] px-4 py-3">
+          <Text className="text-sm font-medium text-[#497080]" numberOfLines={1}>
+            {user.name}
+          </Text>
+          <Text className="mt-1 text-xs uppercase tracking-wide text-[#7FA7B4]">
+            {user.role}
+          </Text>
+        </View>
 
-          <View className="py-2">
+        <View className="py-2">
+          <Pressable
+            testID="profile-menu-profile_settings"
+            onPress={handleNavigateToProfile}
+            className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+          >
+            <Ionicons name="person-outline" size={20} color="#0A556B" />
+            <Text className="ml-3 text-base font-medium text-[#10222B]">
+              {t.dashboard.profileAndSettings || "Profile & Settings"}
+            </Text>
+          </Pressable>
+
+          {onNavigateToProjectPicker ? (
             <Pressable
-              testID="profile-menu-profile_settings"
-              onPress={handleNavigateToProfile}
+              testID="profile-menu-project_picker"
+              onPress={handleNavigateToProjectPicker}
               className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
             >
-              <Ionicons name="person-outline" size={20} color="#0A556B" />
+              <Ionicons name="business-outline" size={20} color="#0A556B" />
               <Text className="ml-3 text-base font-medium text-[#10222B]">
-                {t.dashboard.profileAndSettings || "Profile & Settings"}
+                {t.dashboard.changeProject || "Change Project"}
               </Text>
             </Pressable>
+          ) : null}
 
-            {onNavigateToProjectPicker ? (
-              <Pressable
-                testID="profile-menu-project_picker"
-                onPress={handleNavigateToProjectPicker}
-                className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
-              >
-                <Ionicons name="business-outline" size={20} color="#0A556B" />
-                <Text className="ml-3 text-base font-medium text-[#10222B]">
-                  {t.dashboard.changeProject || "Change Project"}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {onNavigateToDeveloperSettings ? (
-              <Pressable
-                testID="profile-menu-developer_settings"
-                onPress={handleNavigateToDeveloperSettings}
-                className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
-              >
-                <Ionicons name="settings-outline" size={20} color="#0A556B" />
-                <Text className="ml-3 text-base font-medium text-[#10222B]">
-                  Developer Settings
-                </Text>
-              </Pressable>
-            ) : null}
-
+          {onNavigateToDeveloperSettings ? (
             <Pressable
-              testID="profile-menu-logout"
-              onPress={handleLogout}
-              className="flex-row items-center px-4 py-3 active:bg-[#FFF1F1]"
+              testID="profile-menu-developer_settings"
+              onPress={handleNavigateToDeveloperSettings}
+              className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
             >
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-              <Text className="ml-3 text-base font-medium text-red-600">
-                {t.dashboard.logout || "Logout"}
+              <Ionicons name="settings-outline" size={20} color="#0A556B" />
+              <Text className="ml-3 text-base font-medium text-[#10222B]">
+                Developer Settings
               </Text>
             </Pressable>
-          </View>
+          ) : null}
+
+          <Pressable
+            testID="profile-menu-logout"
+            onPress={handleLogout}
+            className="flex-row items-center px-4 py-3 active:bg-[#FFF1F1]"
+          >
+            <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+            <Text className="ml-3 text-base font-medium text-red-600">
+              {t.dashboard.logout || "Logout"}
+            </Text>
+          </Pressable>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }

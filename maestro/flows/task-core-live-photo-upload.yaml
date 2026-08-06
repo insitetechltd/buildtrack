@@ -1,0 +1,185 @@
+appId: com.buildtrack.app.local
+---
+- evalScript: ${output.taskTitle = "Live E2E Task Core Photo Upload " + Date.now()}
+- runFlow: bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- tapOn:
+    id: "root-tab__camera_button"
+- assertVisible:
+    id: "create-task__continuous_form"
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Created and assigned for the live task-core photo upload slice."
+- tapOn: ".*Project A - Commercial Building.*"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__location-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__location-picker-trigger"
+- assertVisible: ".*Live Task Core Site Zone A.*"
+- tapOn: ".*Live Task Core Site Zone A.*"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__assignee-picker-trigger"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: ".*Alice Worker A1.*"
+    direction: DOWN
+- tapOn: ".*Alice Worker A1.*"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__submit-button"
+    direction: DOWN
+- tapOn:
+    id: "create-task__submit-button"
+- tapOn:
+    id: "create-task__submit-button"
+    delay: 3000
+- assertVisible:
+    id: "create-task__submit-success-message"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- assertVisible:
+    id: "dashboard-screen__root"
+- launchApp:
+    clearState: true
+- openLink:
+    link: "exp+buildtrack://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
+- runFlow:
+    when:
+      visible: "http://localhost:8081"
+    commands:
+      - tapOn: "http://localhost:8081"
+- runFlow:
+    when:
+      visible: 'Open in “Taskr”?'
+    commands:
+      - tapOn: "Open"
+- assertVisible:
+    id: "login-submit"
+- tapOn:
+    id: "login-emailOrPhone"
+- inputText: "alice.workera1@test.com"
+- tapOn:
+    id: "login-password"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- assertVisible:
+    id: "dashboard-screen__root"
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- addMedia:
+    - "assets/icon.png"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__task_list"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+          delay: 3000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: ${output.taskTitle}
+- hideKeyboard
+- assertVisible: ${".*" + output.taskTitle + ".*NEW"}
+- tapOn: ${".*" + output.taskTitle + " My Queue.*NEW"}
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__scroll_region"
+    commands:
+      - tapOn:
+          text: ${".*" + output.taskTitle + " My Queue.*NEW"}
+          delay: 2000
+- assertVisible:
+    id: "task-detail__scroll_region"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-accept_task"
+    commands:
+      - tapOn:
+          id: "task-detail__quick-action-accept_task"
+- assertVisible:
+    id: "task-detail__quick-action-update_progress"
+- tapOn:
+    id: "task-detail__quick-action-update_progress"
+- assertVisible: "Progress Update"
+- assertVisible:
+    id: "update-progress__add-photos"
+- tapOn:
+    id: "update-progress__add-photos"
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Choose from Library"
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Choose from Library"
+- runFlow: pick-first-image.yaml
+- assertVisible:
+    id: "photo-selection__confirm"
+- tapOn:
+    id: "photo-selection__confirm"
+- tapOn:
+    id: "update-progress__description"
+- inputText: "Added a fresh progress photo from the live task-core upload validation flow."
+- runFlow:
+    when:
+      visible: "Done"
+    commands:
+      - tapOn: "Photos & Files"
+- swipe:
+    start: 50%, 63%
+    end: 50%, 36%
+    duration: 400
+- assertVisible:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+- runFlow:
+    when:
+      notVisible: ".*Progress update added successfully!.*"
+    commands:
+      - tapOn:
+          id: "update-progress__submit"
+          delay: 2500
+- assertVisible: ".*Progress update added successfully!.*"
+- tapOn: "OK"
+- assertVisible:
+    id: "task-detail__bottom_action_bar"

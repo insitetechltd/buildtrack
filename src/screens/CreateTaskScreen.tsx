@@ -80,6 +80,7 @@ type Attachment = string | SelectedPhoto;
 
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
+  onCreateSuccess?: () => void;
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
@@ -123,6 +124,7 @@ const InputField = ({
 
 export default function CreateTaskScreen({
   onNavigateBack,
+  onCreateSuccess,
   parentTaskId,
   parentSubTaskId,
   editTaskId,
@@ -159,6 +161,7 @@ export default function CreateTaskScreen({
   return (
     <CreateTaskEditorScreen
       onNavigateBack={onNavigateBack}
+      onCreateSuccess={onCreateSuccess}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -179,6 +182,7 @@ export default function CreateTaskScreen({
 
 function CreateTaskEditorScreen({
   onNavigateBack,
+  onCreateSuccess,
   parentTaskId,
   parentSubTaskId,
   editTaskId,
@@ -210,6 +214,10 @@ function CreateTaskEditorScreen({
   const descriptionInputRef = useRef<TextInput>(null);
   const taskReferenceInputRef = useRef<TextInput>(null);
   const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<CreateTaskFormFieldId | null>(null);
+  const [submitSuccessState, setSubmitSuccessState] = useState<null | {
+    title: string;
+    message: string;
+  }>(null);
   const shouldShowPostCaptureRoutingSheet =
     actionType === "photos" &&
     cameraLaunchContext === "global" &&
@@ -431,7 +439,24 @@ function CreateTaskEditorScreen({
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
     if (wasSuccessful) {
-      onNavigateBack();
+      if (editTaskId) {
+        onNavigateBack();
+      } else if (parentTaskId && parentSubTaskId) {
+        setSubmitSuccessState({
+          title: t.createTask.subTaskCreated,
+          message: t.createTask.nestedSubTaskCreatedSuccess,
+        });
+      } else if (parentTaskId) {
+        setSubmitSuccessState({
+          title: t.createTask.subTaskCreated,
+          message: t.createTask.subTaskCreatedSuccess,
+        });
+      } else {
+        setSubmitSuccessState({
+          title: t.createTask.taskCreated,
+          message: t.createTask.taskCreatedSuccess,
+        });
+      }
     }
 
     return wasSuccessful;
@@ -456,6 +481,12 @@ function CreateTaskEditorScreen({
       setEditReason("");
     }
   };
+  const handleSubmitSuccessConfirm = useCallback(() => {
+    setSubmitSuccessState(null);
+    actions.clearDraftPayloads?.();
+    onClearDraftPayloads?.();
+    onCreateSuccess?.();
+  }, [actions, onClearDraftPayloads, onCreateSuccess]);
 
   useEffect(() => {
     if (selectedPhotosProp && selectedPhotosProp.length > 0) {
@@ -1030,6 +1061,36 @@ function CreateTaskEditorScreen({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={submitSuccessState !== null}
+        animationType="fade"
+        transparent
+        onRequestClose={handleSubmitSuccessConfirm}
+      >
+        <View className="flex-1 items-center justify-center bg-black/30 px-6">
+          <View className="w-full max-w-[360px] rounded-3xl bg-white px-6 py-6">
+            <Text className="text-xl font-semibold text-gray-900">
+              {submitSuccessState?.title}
+            </Text>
+            <View testID="create-task__submit-success-message" className="mt-3">
+              <Text className="text-base leading-6 text-gray-700">
+                {submitSuccessState?.message}
+              </Text>
+            </View>
+            <Pressable
+              testID="create-task__submit-success-confirm"
+              accessibilityRole="button"
+              onPress={handleSubmitSuccessConfirm}
+              className="mt-6 items-center justify-center rounded-xl bg-blue-600 py-3"
+            >
+              <Text className="text-base font-semibold text-white">
+                {t.common.ok}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Priority Picker Modal */}
       <Modal

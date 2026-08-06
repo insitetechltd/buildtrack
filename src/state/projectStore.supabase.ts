@@ -13,6 +13,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
+import { useAuthStore } from "./authStore";
 import {
   getProjectRole,
   isLeadProjectManager,
@@ -1495,23 +1496,29 @@ export const useProjectQueryMeta = (resourceKey: string) =>
 // Custom hook that automatically initializes data when accessed
 export const useProjectStoreWithInit = () => {
   const store = useProjectStore();
-  
+  const user = useAuthStore.getState().user;
+  const isSprint7SandboxUser = user
+    ? user.id === "sprint7-user-tristan" || user.id === "sprint7-user-herman"
+    : false;
+
   React.useEffect(() => {
+    if (isSprint7SandboxUser) {
+      return;
+    }
+
     console.log('🔄 useProjectStoreWithInit: Initializing project store...');
-    
-    // Get current user from auth store
+
     const authStore = require('./authStore').useAuthStore.getState();
-    const user = authStore.user;
-    
-    console.log('👤 Current user:', user ? `${user.name} (${user.id})` : 'none');
+    const localUser = authStore.user;
+
+    console.log('👤 Current user:', localUser ? `${localUser.name} (${localUser.id})` : 'none');
     console.log('🔗 Supabase available:', !!supabase);
-    
-    if (user && supabase) {
+
+    if (localUser && supabase) {
       console.log('🚀 Initializing with user context - fetching projects and assignments...');
-      // Fetch both projects and user assignments
       Promise.all([
         store.fetchProjects(),
-        store.fetchUserProjectAssignments(user.id)
+        store.fetchUserProjectAssignments(localUser.id)
       ]).then(() => {
         console.log('✅ Project store initialization complete');
       }).catch(error => {
@@ -1519,13 +1526,12 @@ export const useProjectStoreWithInit = () => {
       });
     } else if (store.projects.length === 0 && !store.isLoading && supabase) {
       console.log('🚀 Fallback to basic initialization...');
-      // Fallback to basic initialization
       store.fetchProjects();
     } else {
       console.log('⏭️ Skipping initialization - already loaded or no Supabase');
     }
-  }, []);
-  
+  }, [isSprint7SandboxUser, store]);
+
   return store;
 };
 

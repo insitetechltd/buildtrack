@@ -26,10 +26,11 @@ import StandardHeader from "@/components/StandardHeader";
 import CompanyBanner from "@/components/CompanyBanner";
 import ExpandableUtilityFAB from "@/components/ExpandableUtilityFAB";
 import TaskCard from "@/components/TaskCard";
+import type { CreateTaskParams } from "@/navigation/navigationTypes";
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;

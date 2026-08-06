@@ -4,12 +4,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
-import type { TasksListParams } from "@/navigation/navigationTypes";
+import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;

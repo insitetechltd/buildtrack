@@ -5,6 +5,8 @@ MODE="validate-local"
 RUN_ID="$(date +"%Y%m%d%H%M%S")-$$"
 STRICT_DIRTY_TREE="${VALIDATE_LOCAL_STRICT_DIRTY_TREE:-0}"
 RUN_SIMULATION="${VALIDATE_LOCAL_RUN_SIMULATION:-0}"
+RUN_JOURNEYS="${VALIDATE_LOCAL_RUN_JOURNEYS:-0}"
+RUN_MAESTRO_SMOKE="${VALIDATE_LOCAL_RUN_MAESTRO_SMOKE:-0}"
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 SCRIPT_DIR=""
 ROOT_DIR=""
@@ -63,9 +65,9 @@ run_stage_command() {
     emit_event "stdout" "$stage" "$sequence" "INFO" "[STAGE_PASS]" 0 "$command_label" "PASS" "Completed ${command_label}" "continue"
     rm -f "$output_file"
     return 0
+  else
+    command_exit=$?
   fi
-
-  command_exit=$?
   emit_event "stderr" "$stage" "$sequence" "ERROR" "$failure_class" "$failure_exit" "$command_label" "FAIL" "Command failed with upstream exit ${command_exit}" "$next_action"
   if [ -s "$output_file" ]; then
     cat "$output_file" >&2
@@ -148,10 +150,21 @@ run_stage_command \
   "fix_tests" \
   npm run test:regression
 
+if [ "$RUN_JOURNEYS" = "1" ]; then
+  run_stage_command \
+    "stage_4_journeys" \
+    "4" \
+    "npm run test:e2e:journeys" \
+    "[JOURNEY_FAILURE]" \
+    "32" \
+    "fix_journeys" \
+    npm run test:e2e:journeys
+fi
+
 if [ "$RUN_SIMULATION" = "1" ]; then
   run_stage_command \
-    "stage_4_simulation" \
-    "4" \
+    "stage_5_simulation" \
+    "5" \
     "npm run test:simulation:ui" \
     "[SIMULATION_FAILURE]" \
     "31" \
@@ -159,5 +172,16 @@ if [ "$RUN_SIMULATION" = "1" ]; then
     npm run test:simulation:ui
 fi
 
-emit_event "stdout" "stage_4_success_exit" "4" "INFO" "[VALIDATION_SUCCESS]" 0 "validate-local" "PASS" "All local validation stages passed" "ready_for_staging"
+if [ "$RUN_MAESTRO_SMOKE" = "1" ]; then
+  run_stage_command \
+    "stage_6_maestro_smoke" \
+    "6" \
+    "npm run test:e2e:maestro:smoke" \
+    "[MAESTRO_FAILURE]" \
+    "33" \
+    "repair_maestro_setup" \
+    npm run test:e2e:maestro:smoke
+fi
+
+emit_event "stdout" "stage_7_success_exit" "7" "INFO" "[VALIDATION_SUCCESS]" 0 "validate-local" "PASS" "All local validation stages passed" "ready_for_staging"
 exit 0

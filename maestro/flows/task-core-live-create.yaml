@@ -1,0 +1,67 @@
+appId: com.buildtrack.app.local
+---
+- evalScript: ${output.taskTitle = "Live E2E Task Core Create " + Date.now()}
+- runFlow: bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn: "Change Project"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- tapOn:
+    id: "root-tab__camera_button"
+- assertVisible:
+    id: "create-task__continuous_form"
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- assertVisible: ${".*" + output.taskTitle + ".*"}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Created from the real Supabase-backed task-core create slice."
+- tapOn:
+    point: "50%, 18%"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__submit-inline"
+    direction: DOWN
+- tapOn:
+    id: "create-task__submit-inline"
+- tapOn:
+    id: "create-task__submit-inline"
+    delay: 3000
+- runFlow:
+    when:
+      visible:
+        id: "create-task__submit-success-confirm"
+    commands:
+      - assertVisible:
+          id: "create-task__submit-success-message"
+      - tapOn:
+          id: "create-task__submit-success-confirm"
+- assertVisible:
+    id: "dashboard-screen__root"
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn: "Change Project"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- assertVisible:
+    id: "tasks-screen__task_list"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: ${output.taskTitle}
+- hideKeyboard
+- assertVisible: ${".*" + output.taskTitle + ".*"}

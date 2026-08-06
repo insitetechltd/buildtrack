@@ -493,7 +493,6 @@ function isWithinOverdueWindow(task: Task, overdueWindow: TasksOverdueWindowValu
       return daysOverdue <= 7;
     case "one_month":
       return daysOverdue <= 30;
-    case "show_all":
     default:
       return true;
   }

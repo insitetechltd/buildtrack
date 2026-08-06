@@ -18,6 +18,7 @@ LogBox.ignoreLogs([
   "The app is running using the Legacy Architecture",
   "Ignoring DevTools app debug target",
   "Failed to open debugger. Please check that the dev server is running and reload the app.",
+  "Open debugger to view warnings.",
 ]);
 
 // Suppress console errors for refresh token issues (they're handled gracefully)

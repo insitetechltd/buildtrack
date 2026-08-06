@@ -1,113 +1,303 @@
 appId: com.buildtrack.app.local
 ---
 - launchApp:
-    clearState: true
-- openLink:
-    link: "exp+buildtrack://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
-- runFlow:
-    when:
-      visible: "http://localhost:8081"
-    commands:
-      - tapOn: "http://localhost:8081"
-      - wait: 2000
-- runFlow:
-    when:
-      visible: 'Open in "Taskr"?'
-    commands:
-      - tapOn: "Open"
-      - wait: 2000
+    appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
     visible:
-      id: "login-submit"
-    timeout: 10000
-- tapOn:
-    id: "login-emailOrPhone"
-- inputText: "john.managera@test.com"
-- tapOn:
-    id: "login-password"
-- inputText: "password123"
-- hideKeyboard
-- tapOn:
-    id: "login-submit"
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-screen__root"
-    timeout: 20000
-- wait: 1000
+      id: "app-screen-header__profile-trigger"
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+      - waitForAnimationToEnd:
+          timeout: 2500
+- assertVisible:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
 - tapOn:
     id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 5000
 - extendedWaitUntil:
     visible:
       id: "profile-menu-developer_settings"
-    timeout: 5000
+    timeout: 20000
+- assertVisible:
+    id: "profile-menu-developer_settings"
 - tapOn:
     id: "profile-menu-developer_settings"
 - extendedWaitUntil:
     visible:
-      id: "developer-settings__action_initialize-sprint7-sandbox"
-    timeout: 10000
-- tapOn:
-    id: "developer-settings__action_initialize-sprint7-sandbox"
+      id: "developer-settings-screen__root"
+    timeout: 20000
 - waitForAnimationToEnd:
-    timeout: 3000
-- tapOn: "Reset as Tristan"
-- extendedWaitUntil:
-    visible: "Sprint 7 Sandbox Ready"
+    timeout: 2000
+- assertVisible:
+    id: "developer-settings-screen__root"
+- scrollUntilVisible:
+    element:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
     timeout: 15000
 - waitForAnimationToEnd:
-    timeout: 1500
-- tapOn: "OK"
-- wait: 800
+    timeout: 2500
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    timeout: 12000
+- assertVisible:
+    id: "developer-settings-action_initialize-sprint7-sandbox"
+- tapOn:
+    id: "developer-settings-action_initialize-sprint7-sandbox"
+- waitForAnimationToEnd:
+    timeout: 8000
 - extendedWaitUntil:
     visible:
       id: "developer-settings__preset_b"
-    timeout: 5000
-- tapOn:
-    id: "developer-settings__preset_b"
-- extendedWaitUntil:
-    visible: "Sprint 7 Preset Loaded"
-    timeout: 15000
-- waitForAnimationToEnd:
-    timeout: 1500
-- tapOn: "OK"
-- wait: 800
-- runFlow:
-    when:
-      visible:
-        id: "app-screen-header__profile-trigger"
-    commands:
-      - back
-- wait: 800
+    timeout: 25000
 - runFlow:
     when:
       notVisible:
-        id: "dashboard-screen__root"
+        id: "developer-settings__preset_b"
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "developer-settings-sheet_confirm-sprint7"
+          commands:
+            - waitForAnimationToEnd:
+                timeout: 2500
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+            - waitForAnimationToEnd:
+                timeout: 4000
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7"
+                timeout: 30000
+            - waitForAnimationToEnd:
+                timeout: 3000
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7_ok"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_info-sprint7_ok"
+            - waitForAnimationToEnd:
+                timeout: 5000
+      - runFlow:
+          when:
+            visible:
+              id: "developer-settings-sheet_info-sprint7"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7_ok"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_info-sprint7_ok"
+            - waitForAnimationToEnd:
+                timeout: 5000
+      - scrollUntilVisible:
+          element:
+            id: "developer-settings__preset_b"
+          direction: DOWN
+          speed: 40
+          visibilityPercentage: 50
+          timeout: 20000
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings__preset_b"
+          timeout: 15000
+- assertVisible:
+    id: "developer-settings__preset_b"
+- scrollUntilVisible:
+    element:
+      id: "developer-settings__preset_b"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    id: "developer-settings__preset_b"
+- tapOn:
+    id: "developer-settings__preset_b"
+- waitForAnimationToEnd:
+    timeout: 3500
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_info-sprint7"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings-sheet_info-sprint7_ok"
+          timeout: 20000
+      - tapOn:
+          id: "developer-settings-sheet_info-sprint7_ok"
+      - waitForAnimationToEnd:
+          timeout: 4500
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_info-sprint7"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings-sheet_info-sprint7_ok"
+          timeout: 20000
+      - tapOn:
+          id: "developer-settings-sheet_info-sprint7_ok"
+      - waitForAnimationToEnd:
+          timeout: 4500
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_confirm-sprint7"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - back
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: "profile-menu__backdrop"
     commands:
       - tapOn:
-          id: "root-tab__activity_pressable"
+          id: "profile-menu__backdrop"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- launchApp:
+    appId: "com.buildtrack.app.local"
+    clearState: true
 - extendedWaitUntil:
     visible:
-      id: "dashboard-screen__root"
+      id: "app-screen-header__profile-trigger"
+    timeout: 180000
+- assertVisible:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
     timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible:
+    id: "app-screen-header__profile-trigger"
 - takeScreenshot:
-    fileName: "qa01-b-01-dashboard-overdue-queue"
+    path: "qa01-b-01-dashboard-overdue-queue"
+
 - tapOn:
-    id: "root-tab__tasks_pressable"
+    point: "96%, 97%"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "96%, 97%"
+- waitForAnimationToEnd:
+    timeout: 1500
 - extendedWaitUntil:
     visible:
-      id: "tasks-screen__task_list"
-    timeout: 10000
+      id: "root-tab__tasks"
+    timeout: 20000
+- tapOn:
+    id: "root-tab__tasks"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__search_section"
+    timeout: 15000
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__search_section"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks"
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - extendedWaitUntil:
+          visible:
+            id: "tasks-screen__search_section"
+          timeout: 15000
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__search_section"
+    commands:
+      - tapOn:
+          text: "Tasks"
+      - waitForAnimationToEnd:
+          timeout: 6000
+      - extendedWaitUntil:
+          visible:
+            id: "tasks-screen__search_section"
+          timeout: 15000
+- assertVisible:
+    id: "tasks-screen__search_section"
+- takeScreenshot:
+    path: "qa01-b-02-tasks-overdue-list"
+
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+      - waitForAnimationToEnd:
+          timeout: 3500
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__activity"
+    timeout: 15000
+- runFlow:
+    when:
+      notVisible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          point: "4%, 97%"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 2500
 - scrollUntilVisible:
     element:
-      text: ".*Review fire-stop.*"
+      text: "Recent Activity"
     direction: DOWN
-    timeout: 8000
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
 - takeScreenshot:
-    fileName: "qa01-b-02-tasks-firestop-overdue-badge"
-- scrollUntilVisible:
-    element:
-      text: ".*Install temporary edge protection.*"
-    direction: DOWN
-    timeout: 8000
-- takeScreenshot:
-    fileName: "qa01-b-03-project-cards-below-grid"
+    path: "qa01-b-03-dashboard-queue-overview-crunch"

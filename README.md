@@ -26,7 +26,7 @@ Start here:
 - [`documentation/ROADMAP.md`](./documentation/ROADMAP.md) - Canonical WS/M/S milestone inventory and execution order
 - [`AGENTS.md`](./AGENTS.md) - Repository-local agent inventory and workflow context
 - [`SOLO_OPERATING_PROCEDURE.md`](./SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
-- [`TESTING_STRATEGY.md`](./TESTING_STRATEGY.md) - Canonical repository testing strategy and confidence ladder
+- [`TESTING_STRATEGY.md`](./TESTING_STRATEGY.md) - Canonical repository testing strategy, confidence ladder, validation matrix, and command-selection cheat sheet
 - [`maestro/README.md`](./maestro/README.md) - Canonical Maestro-specific testing and runtime-alignment runbook
 - [`documentation/SOFTWARE_ARCHITECTURE.md`](./documentation/SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference
 - [`documentation/DATABASE_ARCHITECTURE.md`](./documentation/DATABASE_ARCHITECTURE.md) - Canonical Supabase, schema, and persistence architecture reference

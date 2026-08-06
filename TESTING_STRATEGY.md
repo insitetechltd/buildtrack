@@ -1,6 +1,6 @@
 # Testing Strategy
 
-This repository uses a 3-layer testing strategy designed to keep the developer loop fast while still protecting the highest-risk business workflows.
+This repository uses a 4-layer testing strategy designed to keep the developer loop fast while still protecting the highest-risk business workflows.
 
 ## Canonical Testing Docs
 
@@ -89,7 +89,41 @@ Use this layer for pull requests, merges, and nightly business-flow protection.
 - component behavior tied to core workflows
 - integration-style store workflows using mocked Supabase responses
 
-## Layer 3: Periodic Full Confidence
+## Layer 3: Native Simulator Smoke
+
+Use this layer when a change is user-visible and you need proof that the installed iOS dev client still behaves correctly under real taps in the simulator.
+
+### Purpose
+
+- verify the root Maestro foundation is runnable from the repository
+- prove Maestro can attach to the installed iOS dev client
+- cover deterministic smoke and Sprint 7 bootstrap entry without overstating workflow confidence
+
+### Primary Commands
+
+- `npm run test:e2e:maestro:smoke`
+- `npm run test:e2e:maestro:task-core`
+- `npm run test:e2e:maestro:qa01`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml`
+
+### Scope
+
+- launch smoke for the installed iOS dev client
+- `Profile -> Developer Settings` entry
+- Sprint 7 sandbox bootstrap
+- live Supabase-backed Task Core create, assign, progress, completion, and photo-upload flows
+- Sprint 7 based M-QA-01 rubric automation (Rejection Loop, Overdue Crunch, Isolation Wall, iPhone 17 Viewport Audit) with screenshot evidence capture for final human sign-off
+- local Maestro environment validation
+
+### Boundary
+
+- `WS-QA / M-QA-02` uses Sprint 7 as the canonical bootstrap authority for local Maestro foundation work
+- Sprint 7 is the local bootstrap authority for foundation smoke
+- live Supabase-backed Maestro flows are the authority for critical Task Core workflow confidence
+- Sprint 7 bootstrap smoke alone does not prove live Supabase-backed workflow correctness
+
+## Layer 4: Periodic Full Confidence
 
 Use this layer on nightly and weekly schedules.
 
@@ -112,6 +146,160 @@ The current Jest thresholds are defined in [jest.config.js](file:///Volumes/KooD
 - statements: `70%`
 - branches: `50%`
 - functions: `50%`
+
+## Validation Matrix
+
+Use this section when you need to answer a practical question:
+
+- what does this command actually test?
+- what kind of confidence does a passing result give me?
+- what does a green result not prove yet?
+
+### Type And Fast Logic Gates
+
+- `npx tsc --noEmit`
+  - proves: TypeScript contracts are internally consistent across navigation params, screen props, adapter outputs, imports, and helper types
+  - does not prove: runtime rendering, user interactions, simulator behavior, or live backend workflows
+
+- `npm run test:tasks`
+  - proves: Supabase-backed task-store logic and workflow rules behave correctly in Jest
+  - does not prove: real screen rendering, simulator taps, or live Supabase session/runtime behavior
+
+- `npm run test:uploads`
+  - proves: upload and file-service behavior works at the service/API layer
+  - does not prove: native picker integration, permission prompts, or real upload UX in the app
+
+- `npm run test:components`
+  - proves: isolated components render and react to local interactions correctly
+  - does not prove: whole-screen workflows, navigation transitions, or multi-module runtime behavior
+
+### Gated Regression And Journey Gates
+
+- `npm run test:integration`
+  - proves: screens, adapters, wrappers, and workflow contracts work together in Jest across module boundaries
+  - does not prove: real simulator timing, native navigation behavior, or live backend/runtime truth
+
+- `npm run test:regression`
+  - proves: the main Jest safety net is green across task logic, uploads, components, and integration coverage
+  - tests:
+    - task-store lifecycle and workflow logic
+    - upload entry points and file-service behavior
+    - component rendering and interaction contracts
+    - integration-style workflow and screen/store wiring
+  - does not prove: iOS dev-client launch, Maestro setup, or live Task Core runtime behavior
+
+- `npm run test:e2e:journeys`
+  - proves: higher-level app-shell and navigation contracts remain intact in Jest
+  - tests:
+    - authenticated shell renders the root tabs for a seeded signed-in user
+    - project picker can switch to a different project through stable row selectors
+    - task-detail verification URL generation stays deterministic
+  - does not prove: real deep-link execution, real simulator navigation, or live backend state
+
+### Local Validation Wrapper
+
+- `npm run validate:local`
+  - proves: the local validation wrapper can resolve the repo, audit the workspace, pass typecheck, and pass regression
+  - tests:
+    - repository-root resolution
+    - git worktree and branch safety checks
+    - `npx tsc --noEmit`
+    - `npm run test:regression`
+  - does not prove: journeys unless enabled, Maestro unless enabled, or live runtime behavior
+
+- `npm run validate:local:confidence`
+  - proves: the repo-local confidence ladder is green through typecheck, regression, and journeys
+  - tests:
+    - workspace safety audit
+    - `npx tsc --noEmit`
+    - `npm run test:regression`
+    - `npm run test:e2e:journeys`
+  - does not prove: Maestro smoke unless separately run, or live Task Core runtime unless separately run
+
+- `src/__tests__/integration/validateLocalScript.test.ts`
+  - proves: `validate-local.sh` itself runs the right stages, stops on the right failures, and emits the correct telemetry
+  - tests:
+    - dirty-tree warning behavior
+    - early exit on TypeScript failure
+    - optional simulation, journey, and Maestro smoke gate wiring
+  - does not prove: app workflows by itself
+
+### Maestro Runtime Gates
+
+- `npm run test:e2e:maestro:smoke`
+  - proves: the root Maestro foundation is runnable from this repository against the installed iOS dev client
+  - tests:
+    - Expo dev-client attach from the local Metro URL
+    - Sprint 7 automation deep-link bootstrap entry
+    - authenticated dashboard shell visibility
+    - workspace/profile trigger visibility
+  - does not prove: create, assign, progress, completion, or upload workflow correctness
+
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
+  - proves: the app can navigate from profile to Developer Settings in the simulator
+  - does not prove: task workflows or live Supabase-backed behavior
+
+- `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml`
+  - proves: Sprint 7 bootstrap can be triggered successfully from the app
+  - does not prove: live production-like workflow correctness
+
+- `npm run test:e2e:maestro:task-core`
+  - proves: live Supabase-backed Task Core runtime behavior for the shipped flow bundle, if all slices pass
+  - tests:
+    - manager login and create-task flow
+    - manager assignment flow
+    - worker progress update flow
+    - worker completion-to-review flow
+    - worker photo-upload flow
+  - does not prove: every mobile flow in the app or release readiness beyond Task Core
+
+- `npm run test:e2e:maestro:qa01`
+  - proves: Maestro can run the WS-QA / M-QA-01 Sprint 7 rubric end-to-end inside the iOS simulator and emit screenshot evidence per rubric check
+  - tests:
+    - Scenario A (Rejection Loop): Herman progresses task, Tristan declines, screenshot ACTION_REQUIRED state on Tristan dashboard + tasks list + return to Herman view confirming clean isolation
+    - Scenario B (Overdue Crunch): applies Preset B, screenshots dashboard overdue queue, tasks overdue badge, and project cards below the grid
+    - Scenario C (Isolation Wall): switches to Herman, screenshots dashboard, tasks, and dev-settings statistics confirming Private Penthouse is invisible to Herman
+    - Scenario D (iPhone 17 Viewport Audit): screenshots dashboard header, 3-tile grid, bottom safearea; tasks search (idle + active + bottom safearea); dev settings top/bottom tappable regions
+  - model: Maestro = operator; Human = approver (pass/fail sign-off is on captured PNG evidence, not the green Maestro run)
+  - does not prove: live Supabase-backed Task Core correctness — this is Sprint 7 in-memory runtime sandbox data only
+
+## Confidence Ladder Cheat Sheet
+
+Use the highest layer that directly proves the behavior you changed, and no higher unless the feature needs it.
+
+- logic-only change
+  - run: `npx tsc --noEmit` plus the narrowest Layer 1 Jest script
+  - example: task-store helpers, upload service helpers, adapter mapping logic
+
+- isolated UI or component change
+  - run: `npx tsc --noEmit` plus `npm run test:components`
+  - add `npm run test:integration` if the change crosses component/screen boundaries
+
+- screen contract, route param, or navigation-shell change
+  - run: `npm run test:integration` and `npm run test:e2e:journeys`
+  - add Maestro smoke if the change is user-visible in the real mobile runtime
+
+- task workflow change
+  - run: `npm run test:tasks` and `npm run test:integration`
+  - add `npm run test:e2e:maestro:task-core` when the done-state requires live workflow proof
+
+- user-visible runtime change without live business-flow impact
+  - run: `npm run test:e2e:maestro:smoke`
+  - example: shell launch, runtime attach, bootstrap entry, basic simulator path health
+
+- task create, assign, progress, completion, or upload change
+  - run: `npm run test:regression`, `npm run test:e2e:journeys`, and `npm run test:e2e:maestro:task-core`
+  - this is the strongest proof for real Task Core behavior
+
+## Reading A Green Result
+
+- green `tsc` means: the code fits together
+- green Jest regression means: logic and contract layers still behave
+- green journeys mean: app-shell and navigation contracts still make sense
+- green Maestro smoke means: the installed dev client still launches and attaches in the simulator
+- green Maestro Task Core means: the live Task Core user workflow still works end-to-end for the shipped flow set
+
+A lower green layer never overrides a higher red layer for the same workflow.
 
 ## Active Test Surface
 
@@ -198,6 +386,7 @@ Examples:
 - task logic: `npm run test:tasks`
 - upload flow: `npm run test:uploads`
 - component changes: `npm run test:components`
+- user-visible runtime change needing simulator proof: `npm run test:e2e:maestro:smoke`
 
 ### Before opening a PR
 
@@ -214,7 +403,9 @@ Run:
 
 ## Automation Architecture
 
-Map the 3 layers into CI so local developer discipline and scheduled validation reinforce each other.
+Map the CI-relevant layers into CI so local developer discipline and scheduled validation reinforce each other.
+
+The native simulator smoke layer remains a local operator proof step unless and until the repository explicitly promotes Maestro smoke into CI.
 
 ### Feature Branch Pushes
 

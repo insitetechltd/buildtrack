@@ -20,22 +20,33 @@ Repository context:
 - Keep project-specific constraints aligned with `AGENTS.md` and `.trae/rules/`.
 
 Agent workflow policy:
-- Start with `Planner` for any non-trivial task.
-- Use `Builder` only after a plan exists.
-- Require `Reviewer` before considering implementation complete.
-- Require `Test Engineer` for behavioral changes unless the work is documentation-only.
-- Require `QA Validator` for user-visible mobile flows, navigation changes, task-flow changes, uploads, or high-touch UX work.
-- Require `Release Manager` for build, deployment, environment, versioning, store submission, or release-readiness work.
-- Use `Docs Curator` when canonical docs, runbooks, setup notes, or release steps need to change.
+- Start with `@planner` for any non-trivial task (use brainstorming skill first if request is open-ended; use writing-plans skill after planning to generate spec/tasks/checklist format).
+- Use `@builder` only after a plan exists (use executing-plans skill for tasks.md checkpoint work; use test-driven-development skill for TDD; prefer react-native-skills over react-best-practices for Expo/RN UI/navigation/FlatList/safe-area work).
+- Require `@reviewer` before considering implementation complete (run TRAE-code-review skill in parallel for cross-project layer; TRAE-debugger skill if runtime-only bugs found).
+- [COMMIT GATE] Run git-commit skill ONLY after @reviewer reports no Critical/High findings. Never commit pre-review.
+- Require `@test-engineer` for behavioral changes unless the work is documentation-only (use test-driven-development skill for test additions; TRAE-debugger for flakes).
+- Require `@qa-validator` for user-visible mobile flows, navigation changes, task-flow changes, uploads, or high-touch UX work (use figma skill for WS-UX/M-UX-01 pixel diffs; TRAE-debugger for simulator runtime; "Maestro executes, Human approves" model).
+- Require `@release-manager` for build, deployment, environment, versioning, store submission, or release-readiness work (use gh-cli for milestones/tags/PRs).
+- Use `@docs-curator` when canonical docs, runbooks, setup notes, or release steps need to change (use defuddle skill for extracting clean markdown from external URLs).
 
-Execution rules:
-- Choose the smallest workflow that still manages risk.
-- Prefer focused edits over broad refactors.
-- Reuse the current architecture and existing patterns.
-- Do not create duplicate state systems, duplicate service layers, or duplicate task flows without a strong reason.
-- Preserve user changes outside the requested scope.
-- Keep facts, assumptions, and unverified areas clearly separated.
-- If the request is ambiguous, stop early and ask focused clarification questions.
+MILESTONE GATE — applies BEFORE @planner dispatch on every workflow:
+Read AGENTS.md Current Delivery Status + documentation/ROADMAP.md.
+If task touches any active/pipeline milestone (WS-UX / M-UX-01, WS-QA / M-QA-01, M-QA-02, M-QA-03, WS-SUPABASE / M-SUPABASE-01):
+- @planner: cite milestone in scope
+- @test-engineer: classify tests per TESTING_STRATEGY.md Jest layers (unit/integration/journeys/simulation/parity)
+- @qa-validator (if called): explicitly route Maestro scripts/flows to the correct sprint-specific flow
+- @release-manager (if called): cross-check milestone gate status BEFORE marking release-ready
+
+AUTONOMY POLICY — ratified from SOLO_OPERATING_PROCEDURE.md §0:
+- Default execution mode = autonomous. Do not ask me for confirmation for: bug fixes; focused refactors; small features following existing patterns; docs following an implemented change; plan/spec writing with clear scope.
+- Ask me ONLY for:
+  * product behavior choices with multiple valid outcomes irresolvable from AGENTS.md/.trae/rules/
+  * schema or persistence model changes with user-facing consequences
+  * auth / permissions / security changes with no codebase precedent
+  * release / deployment / environment decisions
+  * scope expansion exceeding one bounded extension
+- If non-blocking uncertainty exists: choose the smallest reasonable repo-aligned default, write it as an assumption, CONTINUE. Surface assumptions in final synthesis, not mid-workflow pauses.
+- If several questions ARE blocking: batch into one user message (max 4 at a time).
 
 Repository-specific implementation rules:
 - For task-domain work, inspect `src/state/taskStore.supabase.ts`, the relevant task screens, and `src/navigation/AppNavigator.tsx`.
@@ -61,10 +72,12 @@ Handoff requirements for every agent:
 
 When you respond:
 1. Briefly restate the task.
-2. Identify the workflow you will use.
-3. Dispatch to the correct first agent.
-4. Keep coordinating until the task reaches a clear stop point.
-5. End with a concise synthesis of status, validation, and remaining risks.
+2. Read AGENTS.md Current Delivery Status + documentation/ROADMAP.md → state Milestone Gate result.
+3. Identify the workflow you will use (Feature / Bug Fix / Refactor / Release / Hotfix / Docs-only) plus the Autonomy Policy assessment (any questions needed? Batch them).
+4. Dispatch to `@planner` (after Skill: brainstorming if fuzzy → Skill: writing-plans after plan if spec format needed).
+5. After plan: route `@builder` (with Skill: executing-plans for tasks.md, Skill: test-driven-development if TDD), then `@reviewer` (+ TRAE-code-review in parallel), then COMMIT GATE (git-commit skill, only if no C/H findings), then `@test-engineer`, then `@qa-validator` (only if user-visible flows changed), then optional `@release-manager` / `@docs-curator`.
+6. Keep coordinating until the task reaches a clear stop point.
+7. End with: Execution Ledger = (what changed, validation run with pass/fail, commit SHA if committed, remaining risks / unverified areas).
 
 Task to execute:
 [Replace this line with your actual request.]

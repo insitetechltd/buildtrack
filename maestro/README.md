@@ -7,15 +7,113 @@ Use this document together with:
 - [`../TESTING_STRATEGY.md`](../TESTING_STRATEGY.md) for the overall testing ladder, command intent, and policy
 - [`../documentation/SOURCE_OF_TRUTH.md`](../documentation/SOURCE_OF_TRUTH.md) for documentation-governance rules
 
-## Current Root Status
+## Foundation Surface
 
-The root repository does not yet ship the full Maestro flow and helper-script scaffold that exists in active QA workstreams.
+The root repository now ships the `WS-QA / M-QA-02` local Maestro foundation for iOS dev-client smoke and Sprint 7 bootstrap coverage.
 
-That means:
+This foundation is intentionally narrow:
 
-- `TESTING_STRATEGY.md` remains the current implementation-aligned testing strategy reference at the repository root
-- this file is the canonical home for Maestro-specific operator guidance as that scaffold is promoted into the root repository
-- when root-level Maestro flows, scripts, or runtime-alignment steps are added, update this file in the same change
+- it proves the local Maestro path is installed, documented, and runnable from the root repo
+- it covers launch smoke plus the deterministic Sprint 7 bootstrap entry points
+- it does not claim live Supabase-backed workflow correctness
+
+## Files
+
+- `flows/launch-smoke.yaml`: launches the installed dev client, attaches Maestro, and confirms the authenticated app shell is visible
+- `flows/sprint7-open-developer-settings.yaml`: opens `Profile -> Developer Settings`
+- `flows/sprint7-initialize-sandbox.yaml`: triggers the canonical Sprint 7 sandbox initializer through the in-app action
+- `flows/bootstrap-live-manager-a.yaml`: logs the seeded manager into the authenticated dashboard
+- `flows/bootstrap-live-worker-a1.yaml`: logs the seeded worker into the authenticated dashboard
+- `flows/qa01-scenario-a-rejection-loop.yaml`: M-QA-01 Scenario A — Rejection Loop (Herman → Tristan decline → Herman return view) with 4 screenshots
+- `flows/qa01-scenario-b-overdue-crunch.yaml`: M-QA-01 Scenario B — Overdue Crunch Preset B with dashboard + tasks overdue + project-card screenshots
+- `flows/qa01-scenario-c-isolation-wall.yaml`: M-QA-01 Scenario C — Isolation Wall, Herman-only visible projects/tasks screenshots
+- `flows/qa01-scenario-d-iphone17-viewport.yaml`: M-QA-01 iPhone 17 Viewport Audit, 8 screenshots across Dashboard + Tasks + Dev Settings safeareas and anchored regions
+- `flows/task-core-live-create.yaml`: creates a live Supabase-backed task from the manager path
+- `flows/task-core-live-assign.yaml`: validates live assignment from the manager path
+- `flows/task-core-live-progress.yaml`: validates worker progress updates on a live task
+- `flows/task-core-live-completion.yaml`: validates worker completion handoff into review-ready state
+- `flows/task-core-live-photo-upload.yaml`: validates worker photo selection and progress update submission
+- `flows/pick-first-image.yaml`: selects the first iOS photo-library image during live upload validation
+- `flows/assets/icon.png`: repo-local media fixture used by the live photo-upload flow
+- `../scripts/maestro/run-local.sh`: repo-local wrapper that runs Maestro against a repo-owned local home and supports `MAESTRO_BIN` overrides
+
+## Preconditions
+
+- Maestro CLI is installed locally and available on `PATH`, or `MAESTRO_BIN` points to the CLI binary
+- the iOS simulator is booted
+- the local dev client is installed for `com.buildtrack.app.local`
+- Metro is running with `npx expo start --dev-client`
+
+## Run Flows
+
+Check the wrapper and CLI resolution:
+
+```bash
+bash ./scripts/maestro/run-local.sh --version
+```
+
+Run the shipped root smoke entry point:
+
+```bash
+npm run test:e2e:maestro:smoke
+```
+
+Run the other `M-QA-02` foundation flows directly through the wrapper:
+
+```bash
+bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-initialize-sandbox.yaml
+```
+
+Run the `M-QA-03` live Task Core bundle:
+
+```bash
+npm run test:e2e:maestro:task-core
+```
+
+Run the `M-QA-01` Sprint 7 rubric automation (Maestro = operator captures evidence; Human = approver signs off on PNGs):
+
+```bash
+npm run test:e2e:maestro:qa01
+```
+
+Or directly via the wrapper for a single scenario (output screenshots land next to the flow YAML, or in the directory specified by your Maestro output flag):
+
+```bash
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-a-rejection-loop.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-b-overdue-crunch.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-c-isolation-wall.yaml
+bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-d-iphone17-viewport.yaml
+```
+
+Evidence convention:
+
+- Scenario A screenshots: `qa01-a-01-dashboard-herman-post-init`, `qa01-a-02-dashboard-tristan-actions-required`, `qa01-a-03-tristan-tasks-action-required`, `qa01-a-04-herman-no-active-task`
+- Scenario B screenshots: `qa01-b-01-dashboard-overdue-queue`, `qa01-b-02-tasks-firestop-overdue-badge`, `qa01-b-03-project-cards-below-grid`
+- Scenario C screenshots: `qa01-c-01-herman-dashboard-only-shared-project`, `qa01-c-02-herman-tasks-no-penthouse`, `qa01-c-03-herman-devsettings-statistics-1-project`
+- Scenario D screenshots: `qa01-d-01` (dashboard header) through `qa01-d-08` (dev settings bottom safearea)
+- Fill pass/fail results into `docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md` after reviewing captured evidence.
+
+## Sprint 7 Bootstrap Role
+
+- Sprint 7 is the canonical local bootstrap path for `M-QA-02`
+- these flows are for local smoke, selector attachment, and deterministic simulator entry
+- Sprint 7 sandbox state is not the workflow-truth source for task behavior, uploads, or other live Supabase-backed confidence claims
+- Sprint 7 sandbox IS the workflow-truth source for `M-QA-01` rubric validation, because M-QA-01 was authored explicitly against the Sprint 7 Tristan/Herman dataset
+
+## M-QA-01 Model
+
+- Model: **Maestro executes, Human approves**
+- Maestro runs the 4 qa01-scenario-* flows and captures screenshots for every rubric checkpoint
+- A passing Maestro run alone does NOT close M-QA-01
+- Closure requires a human reviewer to inspect the emitted PNG evidence and fill Pass/Fail/Needs-follow-up into the execution log at `docs/superpowers/plans/2026-07-01-m-qa-01-user-testing-rubric-execution.md`
+- Only after all 4 scenarios are marked Pass by a human reviewer should M-QA-01 status move from `Pipeline` to `Closed`
+
+## Data Authority
+
+- `M-QA-02` foundation flows use Sprint 7 only for bootstrap and smoke
+- `M-QA-03` Task Core flows use live Supabase-backed login and task mutations
+- do not treat Sprint 7 runtime injection as workflow truth for Task Core debugging
 
 ## Canonical Role
 
@@ -36,6 +134,6 @@ Use `TESTING_STRATEGY.md` for:
 
 ## Promotion Rule
 
-If Maestro assets are added or promoted at the root level, this file must become the first-stop operational runbook for those assets.
+When root-level Maestro flows, scripts, or runtime-alignment steps change, update this file in the same change so it remains the first-stop operational runbook.
 
 Do not scatter Maestro setup or runtime-alignment instructions across one-off root notes when they belong here.

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { useAuthStore } from '@/state/authStore';
 import { useCompanyStore } from '@/state/companyStore';
 import { useProjectFilterStore } from '@/state/projectFilterStore';
@@ -201,6 +202,16 @@ export async function initializeSprint7RuntimeSandbox(
   });
 
   setAuthenticatedActor(dataset, activeActor);
+
+  const authUser = useAuthStore.getState().user;
+  if (authUser) {
+    try {
+      await useProjectFilterStore.getState().initializeWorkspaceProject(authUser.id);
+    } catch (workspaceError: any) {
+      console.warn('[sprint7] workspace bootstrap:', workspaceError?.message ?? workspaceError);
+    }
+  }
+
   return dataset;
 }
 
@@ -229,6 +240,16 @@ export async function switchSprint7RuntimeSandboxActor(
   };
 
   setAuthenticatedActor(dataset, actor);
+
+  const authUser = useAuthStore.getState().user;
+  if (authUser) {
+    try {
+      await useProjectFilterStore.getState().initializeWorkspaceProject(authUser.id);
+    } catch (workspaceError: any) {
+      console.warn('[sprint7] workspace bootstrap:', workspaceError?.message ?? workspaceError);
+    }
+  }
+
   return dataset;
 }
 
@@ -254,4 +275,47 @@ export async function loadScenarioCPreset(now = new Date()): Promise<Sprint7Seed
     scenario: 'isolation-wall',
     now,
   });
+}
+
+let maestroAutoBootstrapAttempted = false;
+
+export async function autoBootstrapSprint7SandboxForMaestroIfNeeded(): Promise<boolean> {
+  if (maestroAutoBootstrapAttempted) {
+    return false;
+  }
+  maestroAutoBootstrapAttempted = true;
+
+  if (typeof __DEV__ === 'undefined' || !__DEV__) {
+    return false;
+  }
+
+  if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+    return false;
+  }
+
+  const authState = useAuthStore.getState();
+  if (!authState.isInitialized) {
+    return false;
+  }
+
+  if (isSprint7RuntimeSandboxLoaded()) {
+    return false;
+  }
+
+  if (authState.user && authState.isAuthenticated) {
+    const uid = authState.user.id;
+    if (uid !== SPRINT7_USER_IDS.tristan && uid !== SPRINT7_USER_IDS.herman) {
+      return false;
+    }
+  }
+
+  try {
+    await initializeSprint7RuntimeSandbox({ activeActor: 'tristan' });
+    console.info('[sprint7] auto-bootstrap: initialized Tristan sandbox for Maestro');
+    return true;
+  } catch (err: any) {
+    maestroAutoBootstrapAttempted = false;
+    console.warn('[sprint7] auto-bootstrap failed:', err?.message ?? err);
+    return false;
+  }
 }

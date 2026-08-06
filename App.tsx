@@ -4,6 +4,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "./src/state/authStore";
+import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.0";
@@ -34,7 +35,6 @@ Last Updated: v13.0
 
 export default function App() {
   useEffect(() => {
-    // Initialize auth store on app mount
     const initAuth = async () => {
       try {
         const authStore = useAuthStore.getState();
@@ -43,12 +43,16 @@ export default function App() {
         }
       } catch (error) {
         console.error("Failed to initialize auth:", error);
-        // Ensure loading state is set to false even on error
         useAuthStore.setState({ isLoading: false });
+      } finally {
+        try {
+          await autoBootstrapSprint7SandboxForMaestroIfNeeded();
+        } catch (autoErr: any) {
+          console.warn("Maestro auto-bootstrap error:", autoErr?.message ?? autoErr);
+        }
       }
     };
 
-    // Add timeout safety to prevent infinite loading (10 seconds max)
     const timeoutId = setTimeout(() => {
       const { isLoading } = useAuthStore.getState();
       if (isLoading) {

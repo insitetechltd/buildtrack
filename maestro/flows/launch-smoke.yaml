@@ -1,0 +1,12 @@
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- assertVisible:
+    id: "dashboard-screen__root"
+- assertVisible:
+    id: "app-screen-header__profile-trigger"

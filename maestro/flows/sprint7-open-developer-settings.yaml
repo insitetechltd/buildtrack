@@ -1,0 +1,45 @@
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 4000
+- runFlow:
+    when:
+      notVisible:
+        id: "profile-menu-developer_settings"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - waitForAnimationToEnd:
+          timeout: 4500
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-developer_settings"
+    timeout: 18000
+- tapOn:
+    id: "profile-menu-developer_settings"
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings-screen__root"
+    timeout: 18000
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    id: "developer-settings-screen__root"
+- scrollUntilVisible:
+    element:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    direction: DOWN
+    visibilityPercentage: 80
+    timeout: 12000
+- assertVisible:
+    id: "developer-settings-action_initialize-sprint7-sandbox"

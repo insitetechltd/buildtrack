@@ -1,0 +1,107 @@
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 60000
+- waitForAnimationToEnd:
+    timeout: 5000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-developer_settings"
+    timeout: 20000
+- tapOn:
+    id: "profile-menu-developer_settings"
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings-screen__root"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
+- scrollUntilVisible:
+    element:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2500
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    timeout: 12000
+- tapOn:
+    id: "developer-settings-action_initialize-sprint7-sandbox"
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings__preset_a"
+    timeout: 25000
+- runFlow:
+    when:
+      notVisible:
+        id: "developer-settings__preset_a"
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "developer-settings-sheet_confirm-sprint7"
+          commands:
+            - waitForAnimationToEnd:
+                timeout: 2500
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+            - waitForAnimationToEnd:
+                timeout: 4000
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7"
+                timeout: 30000
+            - waitForAnimationToEnd:
+                timeout: 3000
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7_ok"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_info-sprint7_ok"
+            - waitForAnimationToEnd:
+                timeout: 5000
+      - runFlow:
+          when:
+            visible:
+              id: "developer-settings-sheet_info-sprint7"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: "developer-settings-sheet_info-sprint7_ok"
+                timeout: 15000
+            - tapOn:
+                id: "developer-settings-sheet_info-sprint7_ok"
+            - waitForAnimationToEnd:
+                timeout: 5000
+      - scrollUntilVisible:
+          element:
+            id: "developer-settings__preset_a"
+          direction: DOWN
+          speed: 40
+          visibilityPercentage: 50
+          timeout: 20000
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings__preset_a"
+          timeout: 15000
+- assertVisible:
+    id: "developer-settings__preset_a"

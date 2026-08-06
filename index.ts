@@ -13,7 +13,11 @@ LogBox.ignoreLogs([
   "Disconnected from Metro", 
   "AbortError",
   "Invalid Refresh Token",
-  "Refresh Token Not Found"
+  "Refresh Token Not Found",
+  "SafeAreaView has been deprecated",
+  "The app is running using the Legacy Architecture",
+  "Ignoring DevTools app debug target",
+  "Failed to open debugger. Please check that the dev server is running and reload the app.",
 ]);
 
 // Suppress console errors for refresh token issues (they're handled gracefully)

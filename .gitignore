@@ -43,6 +43,7 @@ eas-keystores/
 
 # Machine-local artifacts
 .tmp/
+.cache/
 .xcode-derived-data/
 .eas/local-build/
 .eas/artifacts/

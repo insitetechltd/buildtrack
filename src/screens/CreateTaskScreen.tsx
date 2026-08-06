@@ -73,6 +73,7 @@ interface SelectedPhoto {
   fileName: string;
   isAnnotated: boolean;
   annotatedUri?: string;
+  caption?: string;
 }
 
 // Attachment can be either a URL (already uploaded) or a photo object (to be uploaded)
@@ -464,6 +465,20 @@ function CreateTaskEditorScreen({
 
   const handleSubmit = async () => {
     if (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task") {
+      const photos: SelectedPhoto[] =
+        (selectedPhotosProp?.length ? selectedPhotosProp : []) as SelectedPhoto[];
+      navigation.navigate("PhotoSelection", {
+        initialPhotos: photos,
+        uploadedPhotoUrls: uploadedPhotoUrls,
+        saveIntent: "attach_task",
+        projectId: formData.projectId || undefined,
+        returnScreen: "CreateTask",
+        actionType,
+        parentTaskId,
+        parentSubTaskId,
+        editTaskId,
+        updateTargetSubTaskId,
+      });
       return;
     }
 
@@ -727,7 +742,7 @@ function CreateTaskEditorScreen({
               <Text className="mt-3 text-sm text-gray-600">
                 {captureRoutingChoice === "create_task"
                   ? "Photos will be attached to the new task you create below."
-                  : "Existing-task attach flow is not part of this slice yet. Switch back to Create New Task to continue."}
+                  : "Routes to PhotoSelection with task picker enabled to attach the capture below."}
               </Text>
             </View>
           ) : null}
@@ -1041,15 +1056,10 @@ function CreateTaskEditorScreen({
                 <Pressable
                   accessibilityRole="button"
                   onPress={handleSubmit}
-                  disabled={
-                    isSubmitting ||
-                    (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")
-                  }
+                  disabled={isSubmitting}
                   className={cn(
                     "items-center justify-center rounded-xl bg-blue-600 py-3",
-                    (isSubmitting ||
-                      (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task")) &&
-                      "opacity-50",
+                    isSubmitting && "opacity-50",
                   )}
                 >
                   <Text className="text-base font-semibold text-white">

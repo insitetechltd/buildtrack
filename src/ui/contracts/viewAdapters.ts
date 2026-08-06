@@ -510,6 +510,14 @@ export interface SelectablePhotoModel extends PrimitiveReadyItemBase {
   annotatedUri?: string;
   fileName: string;
   isAnnotated: boolean;
+  caption?: string;
+}
+
+export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";
+
+export interface MiniPickerTask {
+  id: string;
+  title: string;
 }
 
 export interface PhotoSelectionScreenViewAdapterOutput {
@@ -520,6 +528,10 @@ export interface PhotoSelectionScreenViewAdapterOutput {
   enlargedPhotoIndex: number | null;
   isUploading: boolean;
   isAnnotating: boolean;
+  saveIntent: PhotoSelectionSaveIntent;
+  selectedTaskId: string | null;
+  tasksForPicker: MiniPickerTask[];
+  isMiniPickerVisible: boolean;
 }
 
 export interface PhotoAnnotationScreenViewAdapterOutput {

@@ -16,6 +16,7 @@ interface ActivityStyleRowCardProps {
   topLeftMarker?: React.ReactNode;
   badgeVariant?: "plain" | "pill";
   onPress?: () => void;
+  disabled?: boolean;
 }
 
 export default function ActivityStyleRowCard({
@@ -32,6 +33,7 @@ export default function ActivityStyleRowCard({
   topLeftMarker,
   badgeVariant = "plain",
   onPress,
+  disabled,
 }: ActivityStyleRowCardProps) {
   const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
@@ -44,6 +46,7 @@ export default function ActivityStyleRowCard({
     <Pressable
       testID={testID}
       onPress={onPress}
+      disabled={disabled}
       className="overflow-hidden rounded-2xl bg-white"
     >
       {topLeftMarker ? (

@@ -3,6 +3,7 @@ import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
+import { useUnattachedPhotoBatchStore } from "@/state/unattachedPhotoBatchStore";
 import { isAdmin, type Project, type Task } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { getFileUrl } from "@/api/fileUploadService";
@@ -220,10 +221,12 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   const projectStore = useProjectStoreWithInit();
   const taskStore = useTaskStore();
+  const unattachedBatchStore = useUnattachedPhotoBatchStore();
   const currentUserId = user?.id ?? "";
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
   const tasks = taskStore.tasks ?? [];
+  const unattachedBatches = unattachedBatchStore.batches ?? [];
   const isLoadingProjects = Boolean(projectStore.isLoading);
 
   const {
@@ -646,7 +649,32 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
           ]
         : [],
       draftItems: mappedDraftItems,
-      activityItems: mappedActivityItems,
+      activityItems: [
+        ...(resolvedActiveProject
+          ? unattachedBatchStore
+              .getBatchesForProject(resolvedActiveProject.id)
+              .map((batch) => {
+                const firstCaption = batch.captions.find((c) => c?.trim()) ?? "";
+                return {
+                  id: `unattached-batch-${batch.id}`,
+                  taskId: `project:${batch.projectId}`,
+                  title: `${batch.photoUrls.length} photos captured`,
+                  subtitle: firstCaption,
+                  timestampLabel: new Date(batch.savedAt).toLocaleString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }),
+                  statusLabel: "Saved to project",
+                  previewPhotoUri: batch.photoUrls[0] ?? undefined,
+                  density: "standard" as const,
+                  structuralState,
+                };
+              })
+          : []),
+        ...mappedActivityItems,
+      ],
       projectSummaryCard: resolvedProjectSummaryCard,
       queueDashboard: resolvedQueueDashboard,
       taskShortcut: resolvedActiveProject
@@ -689,7 +717,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
     };
-  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, tasks]);
+  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, tasks, unattachedBatches]);
 
   const readiness = useMemo(() => {
     return {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Constants from 'expo-constants';
@@ -13,18 +13,25 @@ import { uploadFileWithVerification } from '../../api/fileUploadService';
 import { pinDraftMedia } from '../../utils/draftMediaCache';
 import type { SelectedPhoto } from '../../utils/usePhotoSelection';
 import type {
+  MiniPickerTask,
+  PhotoSelectionSaveIntent,
   PhotoSelectionScreenViewAdapterOutput,
 } from '../contracts/viewAdapters';
+import { useTaskStore } from '../../state/taskStore.supabase';
+import { useUnattachedPhotoBatchStore } from '../../state/unattachedPhotoBatchStore';
 
 export interface PhotoSelectionViewAdapterProps {
   taskId: string;
   subTaskId?: string;
+  projectId?: string;
   companyId: string;
   userId: string;
   initialCompletionPercentage: number;
   initialPhotos?: SelectedPhoto[];
   entityType?: 'task' | 'task-update' | 'project' | 'user';
   uploadImmediately?: boolean;
+  saveIntent?: PhotoSelectionSaveIntent;
+  selectedTaskId?: string;
   onNavigateBack: () => void;
   onNavigateToUpdateProgress?: (
     taskId: string,
@@ -34,21 +41,39 @@ export interface PhotoSelectionViewAdapterProps {
   ) => void;
   onPhotosUploaded?: (photoUrls: string[]) => void;
   onPhotosSelected?: (photos: SelectedPhoto[]) => void;
+  onAttachedToExistingTask?: (taskId: string, uploadedPhotoUrls: string[]) => void;
+  onSaveUnattachedDone?: () => void;
+}
+
+const MINI_PICKER_LIMIT = 20;
+
+function swap<T>(list: T[], from: number, to: number): T[] {
+  if (from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = list.slice();
+  const tmp = next[from];
+  next[from] = next[to];
+  next[to] = tmp;
+  return next;
 }
 
 export function usePhotoSelectionViewAdapter({
   taskId,
   subTaskId,
+  projectId,
   companyId,
   userId,
   initialCompletionPercentage,
   initialPhotos = [],
   entityType = 'task-update',
   uploadImmediately = true,
+  saveIntent: initialSaveIntent = 'attach_task',
+  selectedTaskId: initialSelectedTaskId,
   onNavigateBack,
   onNavigateToUpdateProgress,
   onPhotosUploaded,
   onPhotosSelected,
+  onAttachedToExistingTask,
+  onSaveUnattachedDone,
 }: PhotoSelectionViewAdapterProps): {
   output: PhotoSelectionScreenViewAdapterOutput;
   handleAddPhotos: () => Promise<void>;
@@ -57,11 +82,39 @@ export function usePhotoSelectionViewAdapter({
   handleRemovePhoto: (index: number) => void;
   handleUploadPhotos: () => Promise<void>;
   setEnlargedPhotoIndex: (index: number | null) => void;
+  handleMovePhotoUp: (index: number) => void;
+  handleMovePhotoDown: (index: number) => void;
+  handleSetCaption: (index: number, caption: string) => void;
+  handleSetSaveIntent: (intent: PhotoSelectionSaveIntent) => void;
+  handleToggleMiniPicker: () => void;
+  handleSelectTaskForAttach: (taskId: string) => void;
 } {
   const [selectedPhotos, setSelectedPhotos] = useState<SelectedPhoto[]>(initialPhotos);
   const [enlargedPhotoIndex, setEnlargedPhotoIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAnnotating, setIsAnnotating] = useState(false);
+  const [saveIntent, setSaveIntent] = useState<PhotoSelectionSaveIntent>(initialSaveIntent);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
+    initialSelectedTaskId ?? null,
+  );
+  const [isMiniPickerVisible, setIsMiniPickerVisible] = useState(false);
+
+  const getTasksByProject = useTaskStore((state) => state.getTasksByProject);
+  const addBatch = useUnattachedPhotoBatchStore((state) => state.addBatch);
+
+  const tasksForPicker: MiniPickerTask[] = useMemo(() => {
+    if (!projectId) return [];
+    const tasks = getTasksByProject?.(projectId) ?? [];
+    const withTime = tasks
+      .filter((t) => !(t as any).deletedAt && !(t as any).cancelledAt)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        time: t.updatedAt ? new Date(t.updatedAt).getTime() : new Date(t.createdAt).getTime(),
+      }));
+    withTime.sort((a, b) => b.time - a.time);
+    return withTime.slice(0, MINI_PICKER_LIMIT).map(({ id, title }) => ({ id, title }));
+  }, [projectId, getTasksByProject]);
 
   const createPinnedPhoto = async (
     uri: string,
@@ -251,6 +304,50 @@ export function usePhotoSelectionViewAdapter({
     );
   };
 
+  const handleMovePhotoUp = (index: number) => {
+    if (index <= 0) return;
+    setSelectedPhotos(prev => swap(prev, index, index - 1));
+    if (enlargedPhotoIndex === index) {
+      setEnlargedPhotoIndex(index - 1);
+    } else if (enlargedPhotoIndex === index - 1) {
+      setEnlargedPhotoIndex(index);
+    }
+  };
+
+  const handleMovePhotoDown = (index: number) => {
+    setSelectedPhotos(prev => {
+      if (index >= prev.length - 1) return prev;
+      return swap(prev, index, index + 1);
+    });
+    if (enlargedPhotoIndex === index) {
+      setEnlargedPhotoIndex(index + 1);
+    } else if (enlargedPhotoIndex === index + 1) {
+      setEnlargedPhotoIndex(index);
+    }
+  };
+
+  const handleSetCaption = (index: number, caption: string) => {
+    setSelectedPhotos(prev => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = prev.slice();
+      next[index] = { ...next[index], caption };
+      return next;
+    });
+  };
+
+  const handleSetSaveIntent = (intent: PhotoSelectionSaveIntent) => {
+    setSaveIntent(intent);
+  };
+
+  const handleToggleMiniPicker = () => {
+    setIsMiniPickerVisible(prev => !prev);
+  };
+
+  const handleSelectTaskForAttach = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    setIsMiniPickerVisible(false);
+  };
+
   const handleUploadPhotos = async () => {
     if (selectedPhotos.length === 0) {
       Alert.alert("No Photos", "Please add at least one photo.");
@@ -278,16 +375,50 @@ export function usePhotoSelectionViewAdapter({
       return;
     }
 
-    if (!companyId || !userId || !taskId) {
-      const missing = [];
-      if (!companyId) missing.push('companyId');
-      if (!userId) missing.push('userId');
-      if (!taskId) missing.push('taskId');
-      Alert.alert(
-        "Configuration Error",
-        `Missing required parameters: ${missing.join(', ')}\n\nPlease contact support if this issue persists.`
-      );
-      return;
+    if (saveIntent === 'project_unattached') {
+      if (!projectId || !companyId || !userId) {
+        const missing = [];
+        if (!projectId) missing.push('projectId');
+        if (!companyId) missing.push('companyId');
+        if (!userId) missing.push('userId');
+        Alert.alert(
+          "Configuration Error",
+          `Missing required parameters for Save to Project: ${missing.join(', ')}`
+        );
+        return;
+      }
+    } else if (selectedTaskId) {
+      if (!tasksForPicker.find(t => t.id === selectedTaskId)) {
+        Alert.alert(
+          "Task Unavailable",
+          "Task was archived or deleted. Please re-select a task."
+        );
+        setSelectedTaskId(null);
+        setIsMiniPickerVisible(false);
+        return;
+      }
+      if (!companyId || !userId) {
+        const missing = [];
+        if (!companyId) missing.push('companyId');
+        if (!userId) missing.push('userId');
+        Alert.alert(
+          "Configuration Error",
+          `Missing required parameters for attach to task: ${missing.join(', ')}`
+        );
+        return;
+      }
+    } else {
+      if (!companyId || !userId || !taskId) {
+        const missing = [];
+        if (!companyId) missing.push('companyId');
+        if (!userId) missing.push('userId');
+        if (!taskId) missing.push('taskId');
+        Alert.alert(
+          "Configuration Error",
+          `Missing required parameters: ${missing.join(', ')}\n\nPlease contact support if this issue persists.`
+        );
+        return;
+      }
     }
 
     setIsUploading(true);
@@ -295,6 +426,13 @@ export function usePhotoSelectionViewAdapter({
     let failCount = 0;
     const uploadedUrls: string[] = [];
     const errorMessages: string[] = [];
+
+    const resolvedEntityType: 'task' | 'task-update' | 'project' | 'user' =
+      saveIntent === 'project_unattached' ? 'project' : selectedTaskId ? 'task-update' : entityType;
+    const resolvedEntityId: string =
+      saveIntent === 'project_unattached'
+        ? (projectId as string)
+        : selectedTaskId ?? taskId;
 
     try {
       for (let i = 0; i < selectedPhotos.length; i++) {
@@ -316,10 +454,11 @@ export function usePhotoSelectionViewAdapter({
               name: photo.fileName,
               type: 'image/jpeg',
             },
-            entityType: entityType,
-            entityId: taskId,
+            entityType: resolvedEntityType,
+            entityId: resolvedEntityId,
             companyId: companyId,
             userId: userId,
+            description: photo.caption,
           });
 
           if (result.success && result.file) {
@@ -337,14 +476,71 @@ export function usePhotoSelectionViewAdapter({
         }
       }
 
-      if (successCount > 0) {
-        if (onPhotosUploaded) {
-          onPhotosUploaded(uploadedUrls);
-          onNavigateBack();
-        } else if (onNavigateToUpdateProgress) {
-          onNavigateToUpdateProgress(taskId, subTaskId, initialCompletionPercentage, uploadedUrls);
+      const hasPartialFailure = successCount > 0 && failCount > 0;
+      const buildPartialAlert = (onContinue: () => void) => {
+        const errorDetails = errorMessages.length > 0 
+          ? `\n\nFailed:\n${errorMessages.slice(0, 2).join('\n')}${errorMessages.length > 2 ? `\n... and ${errorMessages.length - 2} more` : ''}`
+          : '';
+        Alert.alert(
+          "Partial Upload",
+          `${successCount} photo(s) uploaded successfully, ${failCount} failed.${errorDetails}`,
+          [
+            {
+              text: "Continue",
+              onPress: onContinue,
+            },
+          ]
+        );
+      };
+
+      if (saveIntent === 'project_unattached' && successCount > 0) {
+        const proceed = () => {
+          addBatch({
+            id: `batch-${Date.now()}`,
+            projectId: projectId as string,
+            companyId,
+            userId,
+            photoUrls: uploadedUrls,
+            captions: selectedPhotos.map((p) => p.caption ?? ''),
+            savedAt: Date.now(),
+          });
+          onSaveUnattachedDone?.();
+        };
+        if (hasPartialFailure) {
+          buildPartialAlert(proceed);
         } else {
-          onNavigateBack();
+          proceed();
+        }
+        return;
+      }
+
+      if (selectedTaskId && successCount > 0) {
+        const proceed = () => {
+          onAttachedToExistingTask?.(selectedTaskId, uploadedUrls);
+        };
+        if (hasPartialFailure) {
+          buildPartialAlert(proceed);
+        } else {
+          proceed();
+        }
+        return;
+      }
+
+      if (successCount > 0) {
+        const proceed = () => {
+          if (onPhotosUploaded) {
+            onPhotosUploaded(uploadedUrls);
+            onNavigateBack();
+          } else if (onNavigateToUpdateProgress) {
+            onNavigateToUpdateProgress(taskId, subTaskId, initialCompletionPercentage, uploadedUrls);
+          } else {
+            onNavigateBack();
+          }
+        };
+        if (hasPartialFailure) {
+          buildPartialAlert(proceed);
+        } else {
+          proceed();
         }
       } else {
         const errorDetails = errorMessages.length > 0 
@@ -353,16 +549,6 @@ export function usePhotoSelectionViewAdapter({
         Alert.alert(
           "Upload Failed", 
           `All ${selectedPhotos.length} photo(s) failed to upload.${errorDetails}\n\nPlease check:\n• Your internet connection\n• Supabase storage configuration\n• Developer Settings → Test File Upload`
-        );
-      }
-
-      if (failCount > 0 && successCount > 0) {
-        const errorDetails = errorMessages.length > 0 
-          ? `\n\nFailed:\n${errorMessages.slice(0, 2).join('\n')}${errorMessages.length > 2 ? `\n... and ${errorMessages.length - 2} more` : ''}`
-          : '';
-        Alert.alert(
-          "Partial Upload",
-          `${successCount} photo(s) uploaded successfully, ${failCount} failed.${errorDetails}`
         );
       }
     } catch (error: any) {
@@ -399,10 +585,15 @@ export function usePhotoSelectionViewAdapter({
       annotatedUri: photo.annotatedUri,
       fileName: photo.fileName,
       isAnnotated: photo.isAnnotated || false,
+      caption: photo.caption,
     })),
     enlargedPhotoIndex,
     isUploading,
     isAnnotating,
+    saveIntent,
+    selectedTaskId,
+    tasksForPicker,
+    isMiniPickerVisible,
   };
 
   return {
@@ -413,5 +604,11 @@ export function usePhotoSelectionViewAdapter({
     handleRemovePhoto,
     handleUploadPhotos,
     setEnlargedPhotoIndex,
+    handleMovePhotoUp,
+    handleMovePhotoDown,
+    handleSetCaption,
+    handleSetSaveIntent,
+    handleToggleMiniPicker,
+    handleSelectTaskForAttach,
   };
 }

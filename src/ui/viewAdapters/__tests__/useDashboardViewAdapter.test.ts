@@ -17,6 +17,28 @@ jest.mock("@/state/projectFilterStore", () => ({
   useProjectFilterStore: jest.fn(),
 }));
 
+const mockGetBatchesForProject = jest.fn().mockReturnValue([]);
+const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+
+jest.mock("@/state/unattachedPhotoBatchStore", () => ({
+  useUnattachedPhotoBatchStore: (selector?: (state: unknown) => unknown) => {
+    const state = {
+      batches: [],
+      addBatch: jest.fn(),
+      dismissBatch: jest.fn(),
+      getBatchesForProject: (projectId: string) => {
+        const mocked = mockGetBatchesForProject(projectId) ?? [];
+        const now = Date.now();
+        return mocked.filter(
+          (b: any) =>
+            b.projectId === projectId && now - b.savedAt <= FIVE_DAYS_MS,
+        );
+      },
+    };
+    return selector ? selector(state) : state;
+  },
+}));
+
 jest.mock("@/api/fileUploadService", () => ({
   getFileUrl: jest.fn((value: string) => `https://cdn.example.com/${value}`),
 }));
@@ -1289,5 +1311,87 @@ describe("useDashboardViewAdapter", () => {
       "Newer draft",
       "Older draft",
     ]);
+  });
+
+  it("prepends synthetic activity rows from unattached photo batches (within 5 days) for the selected project", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({ tasks: [] });
+    mockGetBatchesForProject.mockImplementation((projectId: string) =>
+      projectId === "project-1"
+        ? [
+            {
+              id: "batch-fresh",
+              projectId: "project-1",
+              companyId: "co-1",
+              userId: "user-1",
+              photoUrls: [
+                "https://cdn.example.com/fresh-1.jpg",
+                "https://cdn.example.com/fresh-2.jpg",
+              ],
+              captions: ["Main entry progress"],
+              savedAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
+            },
+          ]
+        : [],
+    );
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    const synthetic = result.current.output.activityItems.find(
+      (item: any) => item.id === "unattached-batch-batch-fresh",
+    );
+    expect(synthetic).toBeTruthy();
+    expect(synthetic.taskId).toBe("project:project-1");
+    expect(synthetic.title).toContain("2 photos captured");
+    expect(synthetic.subtitle).toBe("Main entry progress");
+    expect(synthetic.statusLabel).toBe("Saved to project");
+    expect(synthetic.previewPhotoUri).toBe("https://cdn.example.com/fresh-1.jpg");
+  });
+
+  it("excludes unattached batches older than 5 days from activity items", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-old",
+        name: "Old Works",
+        location: "Site Z",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({ tasks: [] });
+    const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+    mockGetBatchesForProject.mockImplementation((projectId: string) =>
+      projectId === "project-old"
+        ? [
+            {
+              id: "batch-expired",
+              projectId: "project-old",
+              companyId: "co-1",
+              userId: "user-1",
+              photoUrls: ["https://cdn.example.com/old-1.jpg"],
+              captions: [],
+              savedAt: Date.now() - (FIVE_DAYS_MS + 5 * 60 * 1000),
+            },
+          ]
+        : [],
+    );
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    const expired = result.current.output.activityItems.find(
+      (item: any) => item.id === "unattached-batch-batch-expired",
+    );
+    expect(expired).toBeUndefined();
   });
 });

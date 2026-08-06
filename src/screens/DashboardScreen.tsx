@@ -150,7 +150,10 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                     metaLabel={item.timestampLabel}
                     badgeLabel={item.statusLabel}
                     imageUri={item.previewPhotoUri}
-                    onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
+                    disabled={item.taskId.startsWith("project:")}
+                    onPress={() => {
+                      props.onNavigateToTaskDetail?.(item.taskId);
+                    }}
                   />
                 ))
               ) : (

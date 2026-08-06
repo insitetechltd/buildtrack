@@ -1066,9 +1066,17 @@ function PhotoSelectionScreenWrapper({
   route,
   navigation,
 }: PhotoSelectionScreenWrapperProps) {
-  const { taskId, subTaskId, companyId, userId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId } = route.params || {};
+  const { taskId, subTaskId, projectId: routeProjectId, companyId: routeCompanyId, userId: routeUserId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId, selectedTaskId: routeSelectedTaskId, saveIntent: routeSaveIntent, originRouteName: originRouteNameParam } = route.params || {};
+  const originRouteName = originRouteNameParam || route.name;
   const uploadedUrlsRef = React.useRef<string[] | null>(null);
-  
+
+  const authUser = useAuthStore((s) => s.user);
+  const filterProjectId = useProjectFilterStore((s) => s.selectedProjectId);
+
+  const effectiveCompanyId = routeCompanyId ?? authUser?.companyId;
+  const effectiveUserId = routeUserId ?? authUser?.id;
+  const effectiveProjectId = routeProjectId ?? filterProjectId;
+
   // For UpdateProgress and CreateTask, default uploadImmediately to false if not specified
   // This ensures photos are stored locally until submit
   const effectiveUploadImmediately = uploadImmediately !== undefined 
@@ -1220,17 +1228,68 @@ function PhotoSelectionScreenWrapper({
       navigation.goBack();
     }
   };
+
+  const handleAttachedToExistingTask = (attachedTaskId: string, uploadedPhotoUrls: string[]) => {
+    const popThenNavigate = () => {
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        parentNav.navigate("Tasks", {
+          screen: "TasksList",
+        });
+        return;
+      }
+      navigation.goBack();
+    };
+    const photoSelectionNav = navigation as unknown as StackBackNavigation;
+    if (photoSelectionNav.canGoBack?.()) {
+      photoSelectionNav.pop();
+      setTimeout(popThenNavigate, 50);
+    } else {
+      popThenNavigate();
+    }
+  };
+
+  const handleSaveUnattachedDone = () => {
+    const navigateAfterPop = () => {
+      const parentNav = navigation.getParent();
+      if (parentNav) {
+        if (originRouteName && originRouteName !== 'PhotoSelection' && originRouteName !== 'Camera' && originRouteName !== 'CreateTaskMain') {
+          const navState = navigation.getState?.();
+          const currentRouteNames = (navState?.routeNames || []) as string[];
+          if (currentRouteNames.includes(originRouteName)) {
+            (navigation as any).navigate(originRouteName);
+            return;
+          }
+        }
+        parentNav.navigate("Camera", {
+          screen: "CreateTaskMain",
+        });
+        return;
+      }
+      navigation.goBack();
+    };
+    const photoSelectionNav = navigation as unknown as StackBackNavigation;
+    if (photoSelectionNav.canGoBack?.()) {
+      photoSelectionNav.pop();
+      setTimeout(navigateAfterPop, 50);
+    } else {
+      navigateAfterPop();
+    }
+  };
   
   return (
     <PhotoSelectionScreen
-      taskId={taskId as string}
+      taskId={(taskId as string) ?? ""}
       subTaskId={subTaskId}
-      companyId={companyId as string}
-      userId={userId as string}
+      projectId={effectiveProjectId ?? undefined}
+      companyId={(effectiveCompanyId as string) ?? ""}
+      userId={(effectiveUserId as string) ?? ""}
       initialCompletionPercentage={initialCompletionPercentage || 0}
       initialPhotos={initialPhotos}
       entityType={entityType}
       uploadImmediately={effectiveUploadImmediately}
+      saveIntent={routeSaveIntent}
+      selectedTaskId={routeSelectedTaskId}
       onNavigateBack={() => navigation.goBack()}
       onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number, uploadedPhotoUrls?: string[]) => {
         const updateProgressNavigation =
@@ -1249,6 +1308,8 @@ function PhotoSelectionScreenWrapper({
         });
       }}
       onPhotosUploaded={returnScreen && effectiveUploadImmediately !== false ? handlePhotosUploaded : undefined}
+      onAttachedToExistingTask={handleAttachedToExistingTask}
+      onSaveUnattachedDone={handleSaveUnattachedDone}
       onPhotosSelected={(() => {
         // Check if we should use onPhotosSelected (when uploadImmediately is false)
         const shouldUsePhotosSelected = (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false;

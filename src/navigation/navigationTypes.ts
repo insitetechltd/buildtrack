@@ -11,6 +11,7 @@ export type SelectedPhoto = {
   fileName: string;
   isAnnotated: boolean;
   annotatedUri?: string;
+  caption?: string;
 };
 
 export type TaskDetailParams = { taskId: string; subTaskId?: string };
@@ -50,9 +51,12 @@ export type CreateTaskParams = {
   _timestamp?: number;
 };
 
+export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";
+
 export type PhotoSelectionParams = {
   taskId?: string;
   subTaskId?: string;
+  projectId?: string;
   companyId?: string;
   userId?: string;
   initialCompletionPercentage?: number;
@@ -72,6 +76,9 @@ export type PhotoSelectionParams = {
   sourceScreen?: "dashboard" | "tasks";
   sourceTaskId?: string;
   sourceSubTaskId?: string;
+  selectedTaskId?: string;
+  saveIntent?: PhotoSelectionSaveIntent;
+  originRouteName?: string;
 };
 
 export type PhotoViewerParams = {

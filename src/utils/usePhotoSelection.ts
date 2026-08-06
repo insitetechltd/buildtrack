@@ -8,6 +8,7 @@ export interface SelectedPhoto {
   fileName: string;
   isAnnotated?: boolean;
   annotatedUri?: string;
+  caption?: string;
 }
 
 export interface PhotoSelectionOptions {

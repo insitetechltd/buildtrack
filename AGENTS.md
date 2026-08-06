@@ -33,9 +33,9 @@ Dual-source convention:
 - Latest closed architecture milestone set: `WS-UIA / M-UIA-01`, `WS-UIA / M-UIA-02`, and `WS-UIA / M-UIA-03` are delivered and closed.
 - Current redesign workstream: `WS-UX / M-UX-01` is active, with slices `S-UX-01A` through `S-UX-01E2` closed and later slices still in pipeline per `documentation/ROADMAP.md`.
 - `WS-QA / M-QA-01` **Closed (2026-08-06)**: User testing rubric 4 scenarios, 18 PNGs (A:4 B:3 C:3 D:8), live suite run rc=0 via `scripts/maestro/run-qa01-suite.sh` against iPhone 17 Pro Max sim. Artifacts: `.cache/maestro-artifacts/qa01-20260806_214425/`, evidence per `documentation/ROADMAP.md` M-QA-01 Closed evidence section.
-- `WS-QA / M-QA-02` now has a shipped root Maestro foundation surface for local smoke and Sprint 7 bootstrap, but its canonical roadmap status stays `Pipeline` until the master-side smoke/bootstrap wrap-up is explicitly re-verified.
-- `WS-QA / M-QA-03` is the active hybrid confidence expansion layer, including journey tests and live Supabase-backed Task Core flows.
-- Current pipeline focus remains in `WS-QA / M-QA-02`, `WS-QA / M-QA-03`, `WS-SUPABASE / M-SUPABASE-01`, and the remaining `WS-UX / M-UX-01` redesign slices listed in `documentation/ROADMAP.md`.
+- `WS-QA / M-QA-02` **Closed (2026-08-06)**: UI automation foundation — 3-flow re-verify (launch-smoke + sprint7-open-developer-settings + sprint7-initialize-sandbox) all rc=0 on iPhone 17 Pro Max UDID B7B2640C-4738-4F8A-AEEE-5DF3D21D2533. 4 package scripts (`test:e2e:maestro:install` / `:final`, `validate:local:confidence`, `validate:local:maestro`) + `documentation/MAESTRO_LOCAL_SETUP.md` runbook. Run-local.sh wrapper conventions preserved (10s heartbeat, PHASE, FINISHED rc/elapsed, MAESTRO_LOCAL_HOME project-local `.cache/maestro-home`).
+- `WS-QA / M-QA-03` foundation shipped 2026-08-06, status Pipeline: L1 Jest journeys 5 suites 6 tests PASS, L2 regression 35/151 PASS, components 7/32 PASS, tsc-noEmit rc=0, M-QA-02 foundation 3/3 PASS (cross). 2 Maestro long-journey YAMLs authored + `maestro/TESTID_GAPS_TODO.md` (18 known selector gaps). Full close deferred pending `S-UX-01I` (Migration hardening) Pipeline hard-gate — screens/* testIDs not allowed yet.
+- Current pipeline focus: `WS-QA / M-QA-03` (await S-UX-01I close), `WS-SUPABASE / M-SUPABASE-01`, and remaining `WS-UX / M-UX-01` redesign slices per `documentation/ROADMAP.md`.
 
 ## Shared Repository Context
 

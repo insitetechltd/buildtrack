@@ -3,7 +3,7 @@ import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
-import { isAdmin, type Project } from "@/types/buildtrack";
+import { isAdmin, type Project, type Task } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { getFileUrl } from "@/api/fileUploadService";
 import type {
@@ -188,11 +188,13 @@ function resolveImageUri(uri?: string | null): string | undefined {
 
 function collectTaskPhotoUris(task: Task): string[] {
   const activityPhotos =
-    task.activities?.flatMap((activity) => {
+    task.activities?.flatMap((activity: NonNullable<Task["activities"]>[number]) => {
       const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
       return Array.isArray(photos) ? photos : [];
     }) ?? [];
-  const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+  const updatePhotos =
+    task.updates?.flatMap((update: NonNullable<Task["updates"]>[number]) => update.photos ?? []) ??
+    [];
 
   return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos]
     .map(resolveImageUri)

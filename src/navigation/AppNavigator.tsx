@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import {
   CommonActions,
   NavigationContainer,
@@ -72,6 +72,18 @@ import {
   buildTaskDetailVerificationUrl,
   TASK_DETAIL_VERIFICATION_PATH,
 } from "./screenVerification";
+import {
+  initializeSprint7RuntimeSandbox,
+  switchSprint7RuntimeSandboxActor,
+  isSprint7RuntimeSandboxLoaded,
+  loadScenarioAPreset,
+  loadScenarioBPreset,
+  loadScenarioCPreset,
+} from "@/test-utils/sprint7RuntimeSandbox";
+import {
+  SPRINT7_USER_IDS,
+  type Sprint7SandboxActor,
+} from "@/test-utils/sprint7Seeds";
 import type {
   AdminDashboardStackParamList,
   CreateTaskParams,
@@ -137,6 +149,74 @@ function buildRootTabBarStyleForRoute(
   };
 }
 
+const SPRINT7_AUTOMATION_PATH_RE =
+  /^automation\/sprint7\/(tristan|herman)(?:\/preset\/([abcABC])?)?$/;
+
+type Sprint7AutomationLinkMatch = {
+  actor: Sprint7SandboxActor;
+  preset?: "A" | "B" | "C";
+};
+
+function parseSprint7AutomationLink(
+  path: string,
+): Sprint7AutomationLinkMatch | null {
+  const normalized = path.replace(/^\/+/, "");
+  const m = normalized.match(SPRINT7_AUTOMATION_PATH_RE);
+  if (!m) {
+    return null;
+  }
+  const actor = m[1] as Sprint7SandboxActor;
+  const rawPreset = m[2];
+  let preset: "A" | "B" | "C" | undefined;
+  if (rawPreset) {
+    const upper = rawPreset.toUpperCase();
+    if (upper === "A" || upper === "B" || upper === "C") {
+      preset = upper;
+    }
+  }
+  return { actor, preset };
+}
+
+async function applySprint7AutomationLink(
+  match: Sprint7AutomationLinkMatch,
+): Promise<void> {
+  if (typeof __DEV__ !== "undefined" && !__DEV__) {
+    return;
+  }
+
+  const { actor, preset } = match;
+  const alreadyLoaded = isSprint7RuntimeSandboxLoaded();
+  const currentAuthUser = useAuthStore.getState().user;
+  const currentActorId = currentAuthUser?.id ?? null;
+  const targetUserId =
+    actor === "tristan" ? SPRINT7_USER_IDS.tristan : SPRINT7_USER_IDS.herman;
+  const alreadyCurrentActor = currentActorId === targetUserId;
+
+  if (alreadyLoaded && alreadyCurrentActor) {
+    // no-op: same dataset, no reset needed
+  } else if (alreadyLoaded && !alreadyCurrentActor) {
+    await switchSprint7RuntimeSandboxActor(actor);
+  } else {
+    await initializeSprint7RuntimeSandbox({ activeActor: actor });
+  }
+
+  if (!preset) {
+    return;
+  }
+
+  switch (preset) {
+    case "A":
+      await loadScenarioAPreset();
+      break;
+    case "B":
+      await loadScenarioBPreset();
+      break;
+    case "C":
+      await loadScenarioCPreset();
+      break;
+  }
+}
+
 export const appLinking: LinkingOptions<RootStackParamList> = {
   prefixes: ["taskr://"],
   config: {
@@ -154,12 +234,41 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
       },
     },
   },
+  getStateFromPath(path, options) {
+    const automationMatch = parseSprint7AutomationLink(path);
+    void (async () => {
+      if (automationMatch) {
+        try {
+          await applySprint7AutomationLink(automationMatch);
+        } catch (error) {
+          console.error("[Linking] Sprint7 automation link failed:", error);
+        }
+      }
+    })();
+
+    if (automationMatch) {
+      return {
+        routes: [
+          {
+            name: "MainTabs",
+            state: {
+              routes: [{ name: "Activity" }],
+            },
+          },
+        ],
+      };
+    }
+
+    const { getStateFromPath: defaultGetStateFromPath } =
+      require("@react-navigation/native") as typeof import("@react-navigation/native");
+    return defaultGetStateFromPath(path, appLinking.config);
+  },
 };
 
 type RouteStateLike = {
   index?: number;
   routeNames?: string[];
-  routes?: Array<{ key: string }>;
+  routes?: Array<{ key: string; name?: string }>;
 };
 type RootTabLikeNavigation = {
   navigate: (...args: unknown[]) => void;
@@ -187,8 +296,12 @@ type CreateTaskRouteNavigation = {
     | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
     | NativeStackNavigationProp<TasksStackParamList>["navigate"]
     | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
+  canGoBack?: () => boolean;
+  dispatch?: (action: ReturnType<typeof CommonActions.setParams> & { source?: string }) => void;
   getParent?: () => ParentNavigationLike | undefined;
+  goBack: () => void;
   getState?: () => RouteStateLike;
+  setParams?: (params: CreateTaskParams) => void;
 };
 
 type DashboardTaskDetailBackNavigation = Pick<
@@ -376,10 +489,8 @@ export function returnToCreateTaskRoute(
       ? navigationState.index
       : currentRoutes.length - 1;
   const previousRoute = currentIndex > 0 ? currentRoutes[currentIndex - 1] : undefined;
-  const previousRouteName =
-    (previousRoute as { name?: string } | undefined)?.name ||
-    currentRouteNames[currentIndex - 1];
-  const previousRouteKey = (previousRoute as { key?: string } | undefined)?.key;
+  const previousRouteName = previousRoute?.name || currentRouteNames[currentIndex - 1];
+  const previousRouteKey = previousRoute?.key;
   const canReturnToExistingCreateTask =
     navigation.canGoBack?.() &&
     (previousRouteName === "CreateTask" || previousRouteName === "CreateTaskMain");
@@ -423,6 +534,36 @@ export function handleTasksTaskDetailBack(
   }
 
   navigation.navigate("TasksList");
+}
+
+export function handleCameraTabPress({
+  event,
+  navigation,
+}: {
+  event: { preventDefault: () => void };
+  navigation: {
+    getState: () => Parameters<typeof resolveTaskDetailCameraTabParams>[0];
+    navigate: (
+      screen: "Camera",
+      params?: RootTabParamList["Camera"],
+    ) => void;
+  };
+}) {
+  const taskDetailCameraParams = resolveTaskDetailCameraTabParams(
+    navigation.getState() as Parameters<typeof resolveTaskDetailCameraTabParams>[0],
+  );
+
+  event.preventDefault();
+
+  if (taskDetailCameraParams) {
+    navigation.navigate("Camera", taskDetailCameraParams);
+    return;
+  }
+
+  navigation.navigate("Camera", {
+    screen: "CreateTaskMain",
+    params: undefined,
+  });
 }
 
 function CenterCameraTabButton({
@@ -846,9 +987,14 @@ function CreateTaskFromTaskWrapper({
   navigation,
 }: NativeStackScreenProps<TasksStackParamList, "CreateTaskFromTask">) {
   const { parentTaskId, parentSubTaskId, editTaskId } = route.params || {};
+  const handleCreateSuccess = React.useCallback(() => {
+    navigation.navigate("TasksList");
+  }, [navigation]);
+
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
+      onCreateSuccess={handleCreateSuccess}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -1140,9 +1286,24 @@ function CreateTaskScreenWrapper({
       uploadedPhotoUrls: undefined,
     });
   }, [navigation]);
+  const handleCreateSuccess = React.useCallback(() => {
+    clearDraftPayloads();
+    const parentNav = navigation.getParent();
+
+    if (parentNav) {
+      parentNav.navigate("Tasks", {
+        screen: "TasksList",
+      });
+      return;
+    }
+
+    navigation.goBack();
+  }, [clearDraftPayloads, navigation]);
+
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
+      onCreateSuccess={handleCreateSuccess}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -1454,6 +1615,19 @@ function CreateTaskMainScreen({
       uploadedPhotoUrls: undefined,
     });
   }, [navigation]);
+  const handleCreateSuccess = React.useCallback(() => {
+    clearDraftPayloads();
+    const parentNav = navigation.getParent();
+
+    if (parentNav) {
+      parentNav.navigate("Tasks", {
+        screen: "TasksList",
+      });
+      return;
+    }
+
+    navigation.goBack();
+  }, [clearDraftPayloads, navigation]);
 
   // Also listen for navigation focus to catch params that arrive late (already handled above)
   
@@ -1493,6 +1667,7 @@ function CreateTaskMainScreen({
   return (
     <CreateTaskScreen
       onNavigateBack={handleNavigateBack}
+      onCreateSuccess={handleCreateSuccess}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -1711,18 +1886,16 @@ function MainTabs() {
           component={CreateTaskStack}
           listeners={({ navigation }) => ({
             tabPress: (event) => {
-              const taskDetailCameraParams = resolveTaskDetailCameraTabParams(
-                navigation.getState() as Parameters<
-                  typeof resolveTaskDetailCameraTabParams
-                >[0],
-              );
-
-              if (!taskDetailCameraParams) {
-                return;
-              }
-
-              event.preventDefault();
-              navigation.navigate("Camera", taskDetailCameraParams);
+              handleCameraTabPress({
+                event,
+                navigation: {
+                  getState: () =>
+                    navigation.getState() as Parameters<
+                      typeof resolveTaskDetailCameraTabParams
+                    >[0],
+                  navigate: (screen, params) => navigation.navigate(screen, params),
+                },
+              });
             },
           })}
           options={({ route }) => ({

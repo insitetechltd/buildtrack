@@ -26,6 +26,10 @@ module.exports = {
     '**/__tests__/**/*.(test|spec).[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
   ],
-  testPathIgnorePatterns: ['<rootDir>/.tmp/', '<rootDir>/.worktrees/'],
+  testPathIgnorePatterns: [
+    '<rootDir>/.tmp/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/.eas/local-build/',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };

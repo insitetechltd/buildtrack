@@ -1,0 +1,78 @@
+appId: com.buildtrack.app.local
+---
+- runFlow: bootstrap-live-worker-a1.yaml
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__task_list"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+          delay: 3000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: "Safety Equipment Check"
+- hideKeyboard
+- assertVisible: ".*Safety Equipment Check.*"
+- tapOn: ".*Safety Equipment Check My Queue.*IN PROGRESS"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-accept_task"
+    commands:
+      - tapOn:
+          id: "task-detail__quick-action-accept_task"
+- assertVisible:
+    id: "task-detail__quick-action-update_progress"
+- tapOn:
+    id: "task-detail__quick-action-update_progress"
+- assertVisible: "Progress Update"
+- tapOn:
+    id: "update-progress__completion-slider"
+- swipe:
+    start: 10%, 57%
+    end: 95%, 57%
+    duration: 800
+- runFlow:
+    when:
+      visible: "95%"
+    commands:
+      - swipe:
+          start: 90%, 57%
+          end: 99%, 57%
+          duration: 300
+- assertVisible: "100%"
+- tapOn:
+    id: "update-progress__description"
+- inputText: "Completed the final site safety pass and all assigned checks are now fully complete."
+- hideKeyboard
+- assertVisible:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+- assertVisible: ".*Task marked as 100% complete!.*"
+- tapOn: "OK"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__quick-action-submit_review"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+      - assertVisible:
+          id: "tasks-screen__task_list"
+      - tapOn:
+          id: "text-field:tasks-search__input"
+      - inputText: "Safety Equipment Check"
+      - hideKeyboard
+      - tapOn: ".*Safety Equipment Check My Queue.*IN PROGRESS"
+- assertVisible:
+    id: "task-detail__quick-action-submit_review"
+- tapOn:
+    id: "task-detail__quick-action-submit_review"
+- assertVisible:
+    id: "task-detail__status_submitted_for_review"

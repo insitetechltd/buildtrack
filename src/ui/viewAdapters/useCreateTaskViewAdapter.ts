@@ -710,6 +710,40 @@ export function useCreateTaskViewAdapter({
   const hasUsableData = Boolean(user);
   const isInitialLoading = !hasUsableData;
 
+  const clearDraftPayloads = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        "draftCreateTask",
+        "createTask_camera_return_photos",
+        "createTask_camera_return_context",
+        "createTask_camera_return_timestamp",
+      ]);
+      setFormData({
+        title: '',
+        description: '',
+        taskReference: '',
+        billingStatus: 'non_billable',
+        priority: 'medium',
+        category: 'general',
+        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        locationOnSite: '',
+        assignedTo: [],
+        attachments: [],
+        projectId: '',
+      });
+    } catch (e) {
+      console.error("Failed to clear task drafts", e);
+    }
+  }, []);
+
+  const outputGenerateSuggestionFromText = useCallback(async () => {
+    await generateSuggestionFromText();
+  }, [generateSuggestionFromText]);
+
+  const outputSuggestTaskFromText = useCallback(async () => {
+    await generateSuggestionFromText();
+  }, [generateSuggestionFromText]);
+
   const output: CreateTaskScreenViewAdapterOutput = {
     screenId: "CreateTaskScreen",
     readiness: {
@@ -759,34 +793,12 @@ export function useCreateTaskViewAdapter({
       isProcessing,
       lastSuggestion,
       error: llmError,
-    }
+    },
+    generateSuggestionFromText: outputGenerateSuggestionFromText,
+    suggestTaskFromText: outputSuggestTaskFromText,
+    clearSuggestion,
+    clearDraftPayloads,
   };
-
-  const clearDraftPayloads = useCallback(async () => {
-    try {
-      await AsyncStorage.multiRemove([
-        "draftCreateTask",
-        "createTask_camera_return_photos",
-        "createTask_camera_return_context",
-        "createTask_camera_return_timestamp",
-      ]);
-      setFormData({
-        title: '',
-        description: '',
-        taskReference: '',
-        billingStatus: 'non_billable',
-        priority: 'medium',
-        category: 'general',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        locationOnSite: '',
-        assignedTo: [],
-        attachments: [],
-        projectId: '',
-      });
-    } catch (e) {
-      console.error("Failed to clear task drafts", e);
-    }
-  }, []);
 
   return {
     output,
@@ -810,7 +822,7 @@ export function useCreateTaskViewAdapter({
       dismissSuggestionPreview,
       generateSuggestionFromText,
       suggestTaskFromText,
-      clearSuggestion
-    }
+      clearSuggestion,
+    },
   };
 }

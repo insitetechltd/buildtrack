@@ -1069,7 +1069,37 @@ export interface DeveloperSettingsScreenViewAdapterOutput {
   scenarioPresets: DeveloperSettingsScenarioPresetAction[];
   scenarioPresetHint: string | null;
   infoMessage: string;
+  sandboxDialogs?: {
+    confirmation?: Sprint7SandboxConfirmationDialog;
+    info?: Sprint7SandboxInfoDialog;
+  };
 }
+
+export type Sprint7SandboxActorChoice = "tristan" | "herman";
+export type Sprint7SandboxCurrentActor = Sprint7SandboxActorChoice | "none";
+
+export interface Sprint7SandboxConfirmationDialog {
+  key: string;
+  title: string;
+  description: string;
+  currentActor: Sprint7SandboxCurrentActor;
+  choices: Sprint7SandboxConfirmChoice[];
+}
+
+export type Sprint7SandboxInfoVariant = "success" | "error";
+
+export interface Sprint7SandboxInfoDialog {
+  key: string;
+  title: string;
+  lines: string[];
+  variant: Sprint7SandboxInfoVariant;
+}
+
+export type Sprint7SandboxConfirmChoice =
+  | "initialize-tristan"
+  | "initialize-herman"
+  | "switch-tristan"
+  | "switch-herman";
 
 export type DevAdminToolActionId =
   | "generate-mock"

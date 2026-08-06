@@ -3,6 +3,7 @@ import { render } from "@testing-library/react-native";
 
 import DashboardScreen from "@/screens/DashboardScreen";
 import TaskDetailScreen from "@/screens/TaskDetailScreen";
+import type { TaskDetailScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
 jest.mock("@/ui/viewAdapters/useDashboardViewAdapter", () => ({
   useDashboardViewAdapter: jest.fn(),
@@ -131,6 +132,96 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+function createTaskDetailOutput(): TaskDetailScreenViewAdapterOutput {
+  return {
+    screenId: "TaskDetailScreen",
+    readiness: {
+      hasInitialFrame: true,
+      hasUsableData: true,
+      isBackgroundRefreshing: false,
+      isNavigationTransitionActive: false,
+    },
+    continuity: {
+      isInitialLoading: false,
+      isBackgroundRefreshing: false,
+      hasCachedFrame: true,
+      shouldRenderSkeletonShell: false,
+      shouldRenderEmptyState: false,
+      freshnessLabel: "Fresh",
+    },
+    header: {
+      taskId: "task-1",
+      title: "Task Details",
+      statusLabel: "In Progress",
+      projectName: "Project Alpha",
+      assigneeSummary: "Alex",
+    },
+    taskHero: {
+      id: "task-hero",
+      density: "standard",
+      structuralState: "ready",
+      title: "Replace ceiling tiles",
+      statusLabel: "In Progress",
+      categoryLabel: "Interior",
+      projectLabel: "Project Alpha",
+      completionLabel: "50% complete",
+      dueDateLabel: "Jul 10, 2026",
+      isCritical: false,
+    },
+    delegationSummary: {
+      id: "delegation-summary",
+      density: "standard",
+      structuralState: "ready",
+      assignedByLabel: "Casey",
+      assignedToLabel: "Alex",
+      primaryOwnerLabel: "Alex",
+      teamSummaryLabel: "1 assignee",
+    },
+    infoCard: null,
+    quickActions: undefined,
+    activeStage: {
+      id: "active-stage",
+      density: "standard",
+      structuralState: "ready",
+      stageMode: "no_photo",
+      title: "Added status note",
+      summary: "Waiting on supplier confirmation.",
+      actorLabel: "Alex",
+      timestampLabel: "Jul 5, 09:30",
+      photos: [],
+    },
+    evidenceSummary: {
+      id: "evidence-summary",
+      density: "standard",
+      structuralState: "ready",
+      latestPhotoUrls: [],
+      totalPhotoCount: 0,
+      emptyLabel: "No photo evidence yet.",
+    },
+    activityThread: [],
+    subtaskSummary: {
+      id: "subtask-summary",
+      density: "standard",
+      structuralState: "ready",
+      title: "Subtasks",
+      totalCount: 0,
+    },
+    detailSections: [],
+    actionItems: [],
+    scalarMetrics: {
+      attachmentCount: 0,
+      updateCount: 0,
+      childTaskCount: 0,
+      completionPercentage: 50,
+    },
+    banners: [],
+    activities: [],
+    assigners: [],
+    assignees: [],
+    childTasks: [],
+  };
+}
+
 describe("ModernUiMarker", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -157,20 +248,7 @@ describe("ModernUiMarker", () => {
     });
 
     useTaskDetailViewAdapter.mockReturnValue({
-      output: {
-        readiness: {
-          hasUsableData: true,
-        },
-        header: {
-          title: "Task Details",
-        },
-        actionItems: [],
-        taskHero: null,
-        infoCard: null,
-        banners: [],
-        activityThread: { rows: [] },
-        quickActions: null,
-      },
+      output: createTaskDetailOutput(),
       actions: {
         acceptTask: jest.fn(),
         declineTask: jest.fn(),

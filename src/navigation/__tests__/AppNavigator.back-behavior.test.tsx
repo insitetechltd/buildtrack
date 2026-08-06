@@ -200,6 +200,7 @@ const {
   default: AppNavigator,
   handleDashboardTaskDetailBack,
   handleTasksTaskDetailBack,
+  handleCameraTabPress,
   returnToCreateTaskRoute,
 } = require("../AppNavigator");
 
@@ -375,6 +376,41 @@ describe("AppNavigator back helpers", () => {
     expect(setParams).not.toHaveBeenCalled();
   });
 
+  it("falls back to setParams when returning to an existing create-task route without dispatch support", () => {
+    jest.useFakeTimers();
+    const goBack = jest.fn();
+    const navigate = jest.fn();
+    const setParams = jest.fn();
+
+    returnToCreateTaskRoute(
+      {
+        canGoBack: () => true,
+        getState: () => ({
+          index: 1,
+          routeNames: ["CreateTaskMain", "PhotoSelection"],
+          routes: [
+            { key: "CreateTaskMain-1", name: "CreateTaskMain" },
+            { key: "PhotoSelection-1", name: "PhotoSelection" },
+          ],
+        }),
+        goBack,
+        navigate,
+        setParams,
+      } as any,
+      { uploadedPhotoUrls: ["https://example.com/photo.jpg"] },
+    );
+
+    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(setParams).not.toHaveBeenCalled();
+
+    jest.runAllTimers();
+
+    expect(setParams).toHaveBeenCalledWith({
+      uploadedPhotoUrls: ["https://example.com/photo.jpg"],
+    });
+  });
+
   it("falls back to create-task navigation when no existing create-task route can be popped", () => {
     const goBack = jest.fn();
     const navigate = jest.fn();
@@ -400,6 +436,38 @@ describe("AppNavigator back helpers", () => {
     expect(navigate).toHaveBeenCalledWith("CreateTaskMain", {
       clearForm: true,
       _timestamp: 123,
+    });
+  });
+
+  it("opens the default camera create-task entry when the current tab is not a task-detail shortcut", () => {
+    const navigate = jest.fn();
+    const preventDefault = jest.fn();
+
+    handleCameraTabPress({
+      event: { preventDefault },
+      navigation: {
+        getState: () => ({
+          index: 0,
+          routes: [
+            {
+              name: "Activity",
+              state: {
+                index: 0,
+                routes: [{ name: "DashboardMain" }],
+              },
+            },
+            { name: "Camera" },
+            { name: "Tasks" },
+          ],
+        }),
+        navigate,
+      },
+    } as any);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("Camera", {
+      screen: "CreateTaskMain",
+      params: undefined,
     });
   });
 

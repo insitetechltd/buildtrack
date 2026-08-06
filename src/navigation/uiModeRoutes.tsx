@@ -8,7 +8,7 @@ import { useDevToggleStore } from "@/state/devToggleStore";
 
 interface DashboardRouteProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
-  onNavigateToCreateTask: () => void;
+  onNavigateToCreateTask: (params?: CreateTaskParams) => void;
   onNavigateToProfile: () => void;
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToTaskDetail?: (taskId: string, subTaskId?: string) => void;

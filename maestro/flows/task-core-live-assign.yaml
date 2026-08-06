@@ -1,0 +1,52 @@
+appId: com.buildtrack.app.local
+---
+- runFlow: bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- assertVisible:
+    id: "tasks-screen__task_list"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: "Inspection and maintenance of all safety equipment on site"
+- hideKeyboard
+- assertVisible: ".*Safety Equipment Check.*NEW"
+- tapOn: ".*Safety Equipment Check My Queue.*NEW"
+- assertVisible: ".*Edit Task Details.*"
+- tapOn: ".*Edit Task Details.*"
+- assertVisible:
+    id: "create-task__continuous_form"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__assignee-picker-trigger"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: ".*Alice Worker A1.*"
+    direction: DOWN
+- tapOn: ".*Alice Worker A1.*"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- tapOn:
+    id: "create-task__submit-button"
+- assertVisible:
+    id: "create-task__submit-success-message"
+- assertVisible:
+    id: "create-task__submit-success-confirm"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- assertVisible: ".*Alice Worker A1.*"

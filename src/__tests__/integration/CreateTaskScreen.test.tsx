@@ -141,6 +141,11 @@ jest.mock('../../utils/useTranslation', () => ({
       selectLocationOnSiteFirstProject: 'Select a project to add a location on site',
       creating: 'Creating...',
       updating: 'Updating...',
+      taskCreated: 'Task Created',
+      subTaskCreated: 'Sub-Task Created',
+      nestedSubTaskCreatedSuccess: 'Nested sub-task created successfully and assigned to the selected users.',
+      subTaskCreatedSuccess: 'Sub-task created successfully and assigned to the selected users.',
+      taskCreatedSuccess: 'Task created successfully and assigned to the selected users.',
       attachments: 'Attachments',
       tapToAddFiles: 'Tap to add files',
       filesAdded: (count: number) => `${count} file(s) added`,
@@ -165,7 +170,7 @@ jest.mock('../../utils/useTranslation', () => ({
         submitReason: 'Submit',
         cancel: 'Cancel'
       },
-      common: { done: 'Done', selected: 'Selected', save: 'Save', cancel: 'Cancel' }
+      common: { done: 'Done', selected: 'Selected', save: 'Save', cancel: 'Cancel', ok: 'OK' }
   })
 }));
 
@@ -194,7 +199,8 @@ jest.mock('../../utils/usePhotoSelection', () => ({
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(),
   getItem: jest.fn(),
-  removeItem: jest.fn()
+  removeItem: jest.fn(),
+  multiRemove: jest.fn(),
 }));
 
 jest.mock('@expo/vector-icons', () => {
@@ -1712,12 +1718,16 @@ describe('CreateTaskScreen Integration', () => {
     expect(getByText('Nested child')).toBeTruthy();
   });
 
-  it('submits create mode and navigates back after a valid task creation', async () => {
+  it('submits create mode, shows a success confirmation, and routes through create-success instead of generic back navigation', async () => {
     const onNavigateBack = jest.fn();
+    const onCreateSuccess = jest.fn();
 
     const { getByTestId, getByText } = render(
       <NavigationContainer>
-        <CreateTaskScreen onNavigateBack={onNavigateBack} />
+        <CreateTaskScreen
+          onNavigateBack={onNavigateBack}
+          onCreateSuccess={onCreateSuccess}
+        />
       </NavigationContainer>
     );
 
@@ -1736,7 +1746,18 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty('tags');
 
-    expect(onNavigateBack).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getByTestId('create-task__submit-success-message')).toBeTruthy();
+      expect(getByTestId('create-task__submit-success-confirm')).toBeTruthy();
+    });
+
+    expect(onNavigateBack).not.toHaveBeenCalled();
+    expect(onCreateSuccess).not.toHaveBeenCalled();
+
+    fireEvent.press(getByTestId('create-task__submit-success-confirm'));
+
+    expect(onCreateSuccess).toHaveBeenCalledTimes(1);
+    expect(onNavigateBack).not.toHaveBeenCalled();
   });
 
   it('submits edit mode and navigates back after a valid task update', async () => {

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -10,12 +10,16 @@ import { useDevToggleStore } from "@/state/devToggleStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserStore } from "@/state/userStore.supabase";
+import { useProjectFilterStore } from "@/state/projectFilterStore";
 import type {
   DeveloperSettingsActionColor,
   DeveloperSettingsActionId,
   DeveloperSettingsActionItem,
   DeveloperSettingsScenarioPreset,
   DeveloperSettingsScreenViewAdapterOutput,
+  Sprint7SandboxConfirmChoice,
+  Sprint7SandboxConfirmationDialog,
+  Sprint7SandboxInfoDialog,
 } from "@/ui/contracts/viewAdapters";
 import {
   initializeSprint7RuntimeSandbox,
@@ -44,6 +48,7 @@ export interface DeveloperSettingsViewAdapterHookResult {
     handleClearUserCache: () => void;
     handleViewStorageKeys: () => void;
     handleInitializeSprint7Sandbox: () => void;
+    handleSprint7SandboxConfirm?: (choice: Sprint7SandboxConfirmChoice) => void;
     handleScenarioPresetPress: (preset: DeveloperSettingsScenarioPreset) => void;
     handleTestUpload: () => void;
     handleClearAllLocalData: () => void;
@@ -59,7 +64,7 @@ function createActionItem(
   isDisabled = false,
 ): DeveloperSettingsActionItem {
   return {
-    id: `developer-settings-action:${actionId}`,
+    id: actionId,
     actionId,
     label,
     description,
@@ -85,8 +90,29 @@ export function useDeveloperSettingsViewAdapter(
   const [isClearing, setIsClearing] = useState(false);
   const [isTestingUpload, setIsTestingUpload] = useState(false);
   const [isInitializingSprint7Sandbox, setIsInitializingSprint7Sandbox] = useState(false);
+  const [confirmationDialogKey, setConfirmationDialogKey] = useState<string | null>(null);
+  const [infoDialog, setInfoDialog] = useState<Sprint7SandboxInfoDialog | null>(null);
+  const sprint7LoadedRef = useRef<boolean>(isSprint7RuntimeSandboxLoaded());
+  const mountedRef = useRef(false);
 
-  const sprint7SandboxLoaded = isSprint7RuntimeSandboxLoaded();
+  useEffect(() => {
+    mountedRef.current = true;
+    const id = setInterval(() => {
+      if (!mountedRef.current) return;
+      const nowLoaded = isSprint7RuntimeSandboxLoaded();
+      if (nowLoaded !== sprint7LoadedRef.current) {
+        sprint7LoadedRef.current = nowLoaded;
+        setInfoDialog((d) => (d ? { ...d } : d));
+        setConfirmationDialogKey((k) => (k ? `${k}-r` : k));
+      }
+    }, 250);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const sprint7SandboxLoaded = sprint7LoadedRef.current;
 
   const handleNavigateBack = useCallback(() => {
     onNavigateBack();
@@ -285,6 +311,26 @@ export function useDeveloperSettingsViewAdapter(
     })();
   }, [user]);
 
+  const buildInfoKey = (prefix: string, suffix: string) => `${prefix}-${Date.now()}-${suffix}`;
+
+  const setInfoSuccess = (title: string, message: string) => {
+    setInfoDialog({
+      key: buildInfoKey("info-success", title),
+      title,
+      lines: [message],
+      variant: "success",
+    });
+  };
+
+  const setInfoError = (title: string, message: string) => {
+    setInfoDialog({
+      key: buildInfoKey("info-error", title),
+      title,
+      lines: [message],
+      variant: "error",
+    });
+  };
+
   const runSprint7SandboxAction = useCallback(
     async (mode: "initialize" | "switch", actor: "tristan" | "herman") => {
       setIsInitializingSprint7Sandbox(true);
@@ -296,16 +342,26 @@ export function useDeveloperSettingsViewAdapter(
           await switchSprint7RuntimeSandboxActor(actor);
         }
 
+        const userState = useAuthStore.getState().user;
+        const userId = userState?.id ?? null;
+        if (userId) {
+          try {
+            await useProjectFilterStore.getState().initializeWorkspaceProject(userId);
+          } catch (workspaceError: any) {
+            console.warn("[Sprint7] workspace bootstrap after sandbox:", workspaceError?.message ?? workspaceError);
+          }
+        }
+
         const actorLabel = actor === "tristan" ? "Tristan" : "Herman";
         const actionLabel = mode === "initialize" ? "initialized" : "switched";
 
-        Alert.alert(
+        setInfoSuccess(
           "Sprint 7 Sandbox Ready",
           `Sprint 7 staging sandbox ${actionLabel} for ${actorLabel}.`,
         );
       } catch (error: any) {
         console.error("❌ [Developer] Sprint 7 sandbox error:", error);
-        Alert.alert(
+        setInfoError(
           "Sprint 7 Sandbox Error",
           error.message || "Failed to load the Sprint 7 sandbox.",
         );
@@ -317,40 +373,49 @@ export function useDeveloperSettingsViewAdapter(
   );
 
   const handleInitializeSprint7Sandbox = useCallback(() => {
-    Alert.alert(
-      "Initialize Sprint 7 Staging Sandbox",
-      sprint7SandboxLoaded
-        ? "Choose whether to reset the canonical Sprint 7 dataset or switch the active sandbox user."
-        : "Load the canonical Tristan/Herman dataset and choose which user to open first.",
-      [
-        {
-          text: "Reset as Tristan",
-          onPress: () => {
-            void runSprint7SandboxAction("initialize", "tristan");
-          },
-        },
-        {
-          text: "Reset as Herman",
-          onPress: () => {
-            void runSprint7SandboxAction("initialize", "herman");
-          },
-        },
-        {
-          text: "Switch to Tristan",
-          onPress: () => {
-            void runSprint7SandboxAction("switch", "tristan");
-          },
-        },
-        {
-          text: "Switch to Herman",
-          onPress: () => {
-            void runSprint7SandboxAction("switch", "herman");
-          },
-        },
-        { text: "Cancel", style: "cancel" },
-      ],
-    );
-  }, [runSprint7SandboxAction, sprint7SandboxLoaded]);
+    setConfirmationDialogKey(`confirm-sprint7-${Date.now()}`);
+  }, []);
+
+  const handleSprint7SandboxConfirm = useCallback(
+    (choice: Sprint7SandboxConfirmChoice) => {
+      setConfirmationDialogKey(null);
+      switch (choice) {
+        case "initialize-tristan":
+          void runSprint7SandboxAction("initialize", "tristan");
+          break;
+        case "initialize-herman":
+          void runSprint7SandboxAction("initialize", "herman");
+          break;
+        case "switch-tristan":
+          void runSprint7SandboxAction("switch", "tristan");
+          break;
+        case "switch-herman":
+          void runSprint7SandboxAction("switch", "herman");
+          break;
+      }
+    },
+    [runSprint7SandboxAction],
+  );
+
+  const confirmationDialog: Sprint7SandboxConfirmationDialog | null =
+    confirmationDialogKey
+      ? {
+          key: confirmationDialogKey,
+          title: "Initialize Sprint 7 Staging Sandbox",
+          description: sprint7SandboxLoaded
+            ? "Choose whether to reset the canonical Sprint 7 dataset or switch the active sandbox user."
+            : "Load the canonical Tristan/Herman dataset and choose which user to open first.",
+          currentActor: sprint7SandboxLoaded
+            ? (user?.id === "sprint7-user-herman" ? "herman" : "tristan")
+            : "none",
+          choices: (() => {
+            const result: Sprint7SandboxConfirmChoice[] = [];
+            result.push(sprint7SandboxLoaded ? "switch-tristan" : "initialize-tristan");
+            result.push(sprint7SandboxLoaded ? "switch-herman" : "initialize-herman");
+            return result;
+          })(),
+        }
+      : null;
 
   const handleScenarioPresetPress = useCallback(
     (preset: DeveloperSettingsScenarioPreset) => {
@@ -381,10 +446,13 @@ export function useDeveloperSettingsViewAdapter(
                 ? "Preset B: Overdue Crunch"
                 : "Preset C: Isolation Wall";
 
-          Alert.alert("Sprint 7 Preset Loaded", `${presetLabel} is ready for validation.`);
+          setInfoSuccess(
+            "Sprint 7 Preset Loaded",
+            `${presetLabel} is ready for validation.`,
+          );
         } catch (error: any) {
           console.error("❌ [Developer] Sprint 7 preset error:", error);
-          Alert.alert(
+          setInfoError(
             "Sprint 7 Preset Error",
             error.message || "Failed to load the Sprint 7 preset.",
           );
@@ -571,9 +639,15 @@ export function useDeveloperSettingsViewAdapter(
         : "Initialize the Sprint 7 sandbox first to enable these presets.",
       infoMessage:
         "ℹ️ Note: Clearing local data does NOT affect your Supabase database. All data will be re-downloaded when you login again.",
+      sandboxDialogs: {
+        confirmation: confirmationDialog ?? undefined,
+        info: infoDialog ?? undefined,
+      },
     };
   }, [
     companyStore.companies.length,
+    confirmationDialog,
+    infoDialog,
     isClearing,
     isInitializingSprint7Sandbox,
     isTestingUpload,
@@ -583,6 +657,7 @@ export function useDeveloperSettingsViewAdapter(
     uiModernizationMode,
     user,
     userStore.users.length,
+    verificationTaskId,
   ]);
 
   return {
@@ -597,6 +672,7 @@ export function useDeveloperSettingsViewAdapter(
       handleClearUserCache,
       handleViewStorageKeys,
       handleInitializeSprint7Sandbox,
+      handleSprint7SandboxConfirm,
       handleScenarioPresetPress,
       handleTestUpload,
       handleClearAllLocalData,

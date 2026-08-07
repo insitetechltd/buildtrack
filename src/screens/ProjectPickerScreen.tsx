@@ -72,7 +72,7 @@ export default function ProjectPickerScreen({
           output.projectItems.map((project) => (
             <Pressable
               key={project.projectId}
-              testID={`projectPicker-project-${project.projectId}`}
+              testID={`project-picker__row-${project.projectId}`}
               onPress={() => {
                 void actions.handleSelectProject(project.projectId);
               }}

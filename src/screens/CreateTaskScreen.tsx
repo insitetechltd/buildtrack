@@ -765,7 +765,7 @@ function CreateTaskEditorScreen({
             >
               <InputField label={t.tasks.title} error={errors.title}>
               <TextInput
-                testID="createTask-title"
+                testID="create-task__field_title--preview"
                 ref={titleInputRef}
                 accessibilityState={{ selected: activeFormFocusTarget === "title" }}
                 className={cn(

@@ -263,8 +263,16 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       await fetchTaskById(task.id);
 
       if (completionPercentage === 100) {
+        // PLATFORM LIMITATION: Alert.alert native OK cannot carry testID.
+        // RN Alert.alert buttons are native dialog chrome; cannot attach DOM testID.
+        // Maestro YAML must tap this button via accessibility text label "OK".
+        // Corresponding TESTID_GAPS_TODO.md row: Status=PLATFORM_LIMITATION
         Alert.alert("Success", "🎉 Task marked as 100% complete! You can submit it for review when ready.");
       } else {
+        // PLATFORM LIMITATION: Alert.alert native OK cannot carry testID.
+        // RN Alert.alert buttons are native dialog chrome; cannot attach DOM testID.
+        // Maestro YAML must tap this button via accessibility text label "OK".
+        // P0 gap: update-progress__success_confirm — Status=PLATFORM_LIMITATION
         Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
       }
 

@@ -307,7 +307,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               onPress={() => setIsHeaderTitleExpanded((current) => !current)}
             >
               <Text
-                testID="task-detail__header_title_text"
+                testID="task-detail__header_title"
                 className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
                 numberOfLines={isHeaderTitleExpanded ? undefined : 1}
                 ellipsizeMode="tail"

@@ -74,6 +74,11 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
         <StatusBar style="dark" />
         <ModernScreenHeader 
           title={t.taskDetail.progressUpdate}
+          titleNode={(
+            <Text testID="update-progress__screen_title" className="text-[28px] leading-8 font-semibold text-[#F8FCFF]">
+              {t.taskDetail.progressUpdate}
+            </Text>
+          )}
           showBackButton={true}
           onBackPress={() => navigation.goBack()}
           onNavigateToProfile={props.onNavigateToProfile}
@@ -95,6 +100,11 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
       
       <ModernScreenHeader 
         title={t.taskDetail.progressUpdate}
+        titleNode={(
+          <Text testID="update-progress__screen_title" className="text-[28px] leading-8 font-semibold text-[#F8FCFF]">
+            {t.taskDetail.progressUpdate}
+          </Text>
+        )}
         showBackButton={true}
         onBackPress={() => navigation.goBack()}
         onNavigateToProfile={props.onNavigateToProfile}
@@ -111,8 +121,8 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           {validPhotos.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
               <View className="flex-row">
-                {validPhotos.map((photo) => (
-                  <View key={photo.id} className="mr-3 relative">
+                {validPhotos.map((photo, idx) => (
+                  <View key={photo.id} testID={`update-progress__photo_preview_tile_${idx}`} className="mr-3 relative">
                     <Image
                       source={{ uri: photo.uri }}
                       className="w-24 h-24 rounded-lg"
@@ -125,6 +135,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
                       <Ionicons name={photo.isUploaded ? "checkmark" : "time-outline"} size={14} color="white" />
                     </View>
                     <Pressable
+                      testID={`update-progress__photo_preview_remove_${idx}`}
                       onPress={photo.onRemove}
                       className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
                     >
@@ -207,6 +218,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
             {t.taskDetail.updateDescription}
           </Text>
           <TextInput
+            testID="update-progress__description--preview"
             ref={descriptionInputRef}
             className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
             placeholder={t.taskDetail.updateDescriptionPlaceholder}

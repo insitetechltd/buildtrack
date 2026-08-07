@@ -54,7 +54,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               </Text>
             </View>
           ) : (
-            <View className="mb-4 rounded-3xl border border-dashed border-[#A8D3E0] bg-white px-4 py-4">
+            <View testID="dashboard-empty-state__no_project_selected" className="mb-4 rounded-3xl border border-dashed border-[#A8D3E0] bg-white px-4 py-4">
               <Text className="text-lg leading-6 font-medium text-[#577783]">
                 Select a project to view the active project summary and queue overview.
               </Text>

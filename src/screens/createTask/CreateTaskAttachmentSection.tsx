@@ -69,6 +69,7 @@ export default function CreateTaskAttachmentSection({
               return (
                 <View
                   key={`attachment-${index}-${typeof attachment === "string" ? attachment : attachment.uri}`}
+                  testID={`create-task__attachment_preview_${index}`}
                   className="mr-3 relative"
                 >
                   <Image
@@ -85,6 +86,7 @@ export default function CreateTaskAttachmentSection({
                     </View>
                   )}
                   <Pressable
+                    testID={`create-task__attachment_preview_remove_${index}`}
                     onPress={() => onRemoveAttachment(index)}
                     className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
                   >

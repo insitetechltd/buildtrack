@@ -236,17 +236,17 @@ describe("TaskDetailScreen header regression", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-    const headerTitle = screen.getByTestId("task-detail__header_title_text");
+    const headerTitle = screen.getByTestId("task-detail__header_title");
 
     expect(headerTitle.props.numberOfLines).toBe(1);
 
     fireEvent.press(headerTitle);
 
-    expect(screen.getByTestId("task-detail__header_title_text").props.numberOfLines).toBeUndefined();
+    expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBeUndefined();
 
-    fireEvent.press(screen.getByTestId("task-detail__header_title_text"));
+    fireEvent.press(screen.getByTestId("task-detail__header_title"));
 
-    expect(screen.getByTestId("task-detail__header_title_text").props.numberOfLines).toBe(1);
+    expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBe(1);
   });
 
   it("keeps quick actions inside the bounded scroll region between the info card and lower actions", () => {

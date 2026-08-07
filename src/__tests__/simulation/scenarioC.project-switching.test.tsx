@@ -79,7 +79,7 @@ describe('Scenario C (UI): Project switching & syncing', () => {
     const driver = createSimDriver(screen);
 
     await act(async () => {
-      driver.tap('projectPicker-project-project-2');
+      driver.tap('project-picker__row-project-2');
       await Promise.resolve();
     });
 
@@ -98,7 +98,7 @@ describe('Scenario C (UI): Project switching & syncing', () => {
     const driver = createSimDriver(screen);
 
     await act(async () => {
-      driver.tap('projectPicker-project-project-1');
+      driver.tap('project-picker__row-project-1');
       await Promise.resolve();
     });
 

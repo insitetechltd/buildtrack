@@ -110,7 +110,7 @@ describe("project switching journey", () => {
     const view = render(<ProjectPickerScreen onNavigateBack={onNavigateBack} allowBack />);
 
     await act(async () => {
-      fireEvent.press(view.getByTestId("projectPicker-project-project-2"));
+      fireEvent.press(view.getByTestId("project-picker__row-project-2"));
     });
 
     expect(mockHandleSelectProject).toHaveBeenCalledWith("project-2");

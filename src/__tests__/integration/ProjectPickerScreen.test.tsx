@@ -149,7 +149,7 @@ describe("ProjectPickerScreen", () => {
     expect(screen.getByText("Select Project")).toBeTruthy();
     expect(screen.getByText("North Tower")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("projectPicker-project-project-1"));
+    fireEvent.press(screen.getByTestId("project-picker__row-project-1"));
 
     expect(mockHandleSelect).toHaveBeenCalledWith("project-1");
   });

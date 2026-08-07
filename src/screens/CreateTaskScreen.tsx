@@ -764,8 +764,9 @@ function CreateTaskEditorScreen({
               className="border-t border-gray-100 pt-4 gap-4"
             >
               <InputField label={t.tasks.title} error={errors.title}>
+              <View testID="create-task__field_title--preview">
               <TextInput
-                testID="create-task__field_title--preview"
+                testID="createTask-title"
                 ref={titleInputRef}
                 accessibilityState={{ selected: activeFormFocusTarget === "title" }}
                 className={cn(
@@ -785,6 +786,7 @@ function CreateTaskEditorScreen({
                 }}
                 blurOnSubmit={false}
               />
+              </View>
               </InputField>
 
               <InputField label={t.tasks.description} error={errors.description}>

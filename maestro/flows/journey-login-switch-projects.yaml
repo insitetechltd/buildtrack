@@ -48,6 +48,10 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 # Switch 1 (to A / default)
+- scrollUntilVisible:
+    element:
+      id: "project-picker__row-sprint7-project-shared-harbor-tower"
+    timeout: 8000
 - tapOn:
     id: "project-picker__row-sprint7-project-shared-harbor-tower"
 - extendedWaitUntil:
@@ -70,6 +74,10 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "project-picker__row-sprint7-project-tristan-private-fitout"
+    timeout: 8000
 - tapOn:
     id: "project-picker__row-sprint7-project-tristan-private-fitout"
 - extendedWaitUntil:
@@ -92,6 +100,10 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "project-picker__row-sprint7-project-shared-harbor-tower"
+    timeout: 8000
 - tapOn:
     id: "project-picker__row-sprint7-project-shared-harbor-tower"
 - extendedWaitUntil:
@@ -114,6 +126,10 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "project-picker__row-sprint7-project-tristan-private-fitout"
+    timeout: 8000
 - tapOn:
     id: "project-picker__row-sprint7-project-tristan-private-fitout"
 - extendedWaitUntil:

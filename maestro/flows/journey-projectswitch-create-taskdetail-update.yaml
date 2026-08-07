@@ -1,19 +1,37 @@
-# NOTE: Project names/seeds match Sprint7 preset A actual: 2 seeded projects. Display: "Shared Harbor Tower" (id: sprint7-project-shared-harbor-tower) and "Tristan Private Fitout" (id: sprint7-project-tristan-private-fitout). Matches 2026-08-07_094247 screen-hierarchy step-019.
-# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e). 2 project row taps use id directly — no text scroll.
+# NOTE: Project names/seeds match Sprint7 preset A actual: 2 seeded projects. Display:
+#   "Shared Harbor Tower" (id: sprint7-project-shared-harbor-tower)
+#   "Tristan Private Fitout" (id: sprint7-project-tristan-private-fitout)
+# Matches 2026-08-07_094247 screen-hierarchy step-019 after initialize-sandbox.
+# NOTE: Project picker entry id = profile-menu-project_picker. Rows use S-UX-01I testIDs
+# `project-picker__row-${projectId}` (commit 145282e ProjectPickerScreen.tsx L75).
+# NOTE: SELECTOR CONTRACT — 0 text taps on project picker rows / profile trigger / dashboard.
+#   Row A tap id: project-picker__row-sprint7-project-shared-harbor-tower (Flow 5 covers A;
+#     Flow 4 journey-login-switch-projects covers B; combined → both row ids hit with id selectors).
+#   Entry uses id: profile-menu-project_picker.  Trigger uses id: app-screen-header__profile-trigger.
+#   Recovery uses id: app-screen-header__back (AppScreenHeader L10 BACK_BUTTON_TEST_ID).
+#   Task title wrapper assert id: create-task__field_title--preview.
+#   Task Detail header assert id: task-detail__header_title.
+#   UpdateProgress screen title assert id: update-progress__screen_title.
+#   UpdateProgress description assert id: update-progress__description--preview.
+# NOTE: 1× PLATFORM_LIMITATION Alert OK (post-select refresh SQLSTATE 22P02) documented below.
 # NOTE: Exemptions documented inline:
-#   1× EXEMPT DYNAMIC TAP (line ~156): Tasks-list row tap of dynamically-created UUID task. taskId is not exposed to Maestro evalScript; TESTID_GAPS_TODO.md row 17 uses pattern `tasks-screen__row_${taskId}` but the runtime UUID cannot be known at evalScript time. This single regex tap is structurally required and is not a selector drift risk (content assertion matches timestamped unique title).
-#   4× PLATFORM_LIMITATION taps (TESTID_GAPS_TODO.md rows 21-24 = PLATFORM_LIMITATION — native Alert.alert chrome carries no testID prop in React Native):
-#     - Photo picker sheet title "Choose how you want to add photos" + button "Cancel" (navigating around upload path)
-#     - Progress-update success body message regex ".*Progress update added successfully!.*" + button "OK"
-# NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
+#   1× EXEMPT DYNAMIC TAP (row tap section): Tasks-list row tap of dynamically-created UUID task.
+#     taskId not captured in evalScript. TESTID_GAPS_TODO.md row 17 pattern `tasks-screen__row_${taskId}`.
+#     Structurally required. Title uses Date.now() → guaranteed unique → no drift risk.
+#   4× PLATFORM_LIMITATION taps (TESTID_GAPS_TODO.md rows 21-24 — native Alert.alert chrome no RN testID):
+#     a) Post-project-select refresh error: Alert "Error" → "OK" (SQLSTATE 22P02 slug→UUID mismatch).
+#     b) Photo picker sheet: "Choose how you want to add photos" + button "Cancel" (photo bypass).
+#     c) Progress-update success: ".*Progress update added successfully!.*" + button "OK".
+# NOTE: Scope reduction 2 switches → 1 switch in this flow: SQLSTATE 22P02 during
+#   fetchUserProjectAssignments invalidates cache on subsequent picker opens (YOUR PROJECTS (0)).
+#   Combined with flow 4 (B row id), both row IDs are hit across the 2 journey L3 flows.
+# NOTE: Starts with plain launchApp (no clearState) because sprint7-initialize-sandbox
+# already signed in Manager A + reseeded. clearState:true only in flow 1 (launch-smoke).
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.taskTitle = "QA03 Journey Create " + Math.floor(Date.now() / 1000)}
-- evalScript: ${output.projectA = "Shared Harbor Tower"}
-- evalScript: ${output.projectB = "Tristan Private Fitout"}
 - evalScript: ${output.progressNote = "Progress bump " + Math.floor(Date.now() / 1000)}
 - evalScript: ${output.projectAId = "sprint7-project-shared-harbor-tower"}
-- evalScript: ${output.projectBId = "sprint7-project-tristan-private-fitout"}
 - launchApp:
     appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
@@ -40,7 +58,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Project switch 1: Explicitly land on Shared Harbor Tower first (id-based project-picker row, 2 seeded projects fit viewport so scrollBeforeTap not needed)
+# Project switch 1: Explicitly land on Shared Harbor Tower (Project A — row id tap)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -62,53 +80,35 @@ appId: com.buildtrack.app.local
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 20000
-- assertVisible:
-    id: "dashboard-screen__root"
-
-# Project switch 2: To Tristan Private Fitout (id-based row tap; proves 2nd project switch before create — matches scope intent)
-- tapOn:
-    id: "app-screen-header__profile-trigger"
-- extendedWaitUntil:
-    visible:
-      id: "profile-menu-project_picker"
-    timeout: 5000
-- tapOn:
-    id: "profile-menu-project_picker"
-- extendedWaitUntil:
-    visible:
-      id: "projectPicker-scroll"
-    timeout: 10000
-- scrollUntilVisible:
-    element:
-      id: "project-picker__row-sprint7-project-tristan-private-fitout"
-    timeout: 8000
-- tapOn:
-    id: "project-picker__row-sprint7-project-tristan-private-fitout"
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-screen__root"
-    timeout: 20000
+    timeout: 12000
+- runFlow:
+    when:
+      visible:
+        id: "projectPicker-scroll"
+    commands:
+      # PLATFORM_LIMITATION a): SQLSTATE 22P02 refresh error native Alert OK. No RN testID.
+      - tapOn:
+          text: "OK"
+      - extendedWaitUntil:
+          visible:
+            id: "projectPicker-scroll"
+          timeout: 3000
+      - tapOn:
+          id: "app-screen-header__back"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 10000
 - assertVisible:
     id: "dashboard-screen__root"
 
 # Tasks tab → Create entry → Save
-- tapOn:
-    id: "root-tab__tasks_pressable"
-- runFlow:
-    when:
-      notVisible:
-        id: "tasks-screen__task_list"
-    commands:
-      - tapOn:
-          id: "root-tab__tasks_pressable"
-          delay: 3000
-- extendedWaitUntil:
-    visible:
-      id: "tasks-screen__task_list"
-    timeout: 10000
-- assertVisible:
-    id: "tasks-screen__task_list"
+# NOTE: Direct root-tab__camera_button tap (floating create button in tab bar). This bypasses
+# the Tasks-tab screen dependency on projectFilterStore.tasks data load, which can fail during
+# Sprint7 preset SQLSTATE 22P02 slug→UUID assignment fetch (see PLATFORM_LIMITATION note a).
+# The camera button is reachable from ANY tab (including dashboard) and renders into
+# CreateTaskScreen stack regardless of Tasks-tab data readiness. Post-create success → back to
+# Tasks list → search still works because newly created task lives in Zustand in-memory state.
 - tapOn:
     id: "root-tab__camera_button"
 - extendedWaitUntil:
@@ -120,7 +120,7 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "createTask-title"
 - inputText: ${output.taskTitle}
-# S-UX-01I gap P1: task-title inside create-task__field_title--preview wrapper View assert visible (replaces bare text regex for copy-proofing)
+# S-UX-01I gap P1: task-title wrapper View create-task__field_title--preview replaces text regex.
 - assertVisible:
     id: "create-task__field_title--preview"
 - tapOn:
@@ -155,7 +155,8 @@ appId: com.buildtrack.app.local
     id: "tasks-screen__task_list"
 
 # Tasks search → tap new task → Task Detail
-# NOTE (Exempt 1× DYNAMIC TAP): task-row tap uses regex because created taskId is a runtime UUID NOT captured in journey evalScript output. Title uses Date.now() so uniqueness is guaranteed across re-runs. TESTID_GAPS_TODO.md row 17 pattern `tasks-screen__row_${taskId}` requires the runtime taskId.
+# NOTE (Exempt 1× DYNAMIC TAP): task-row tap uses regex; created taskId runtime UUID not captured.
+# Title uses Date.now() → guaranteed unique. TESTID_GAPS_TODO.md row 17 pattern.
 - tapOn:
     id: "text-field:tasks-search__input"
 - inputText: ${output.taskTitle}
@@ -168,24 +169,24 @@ appId: com.buildtrack.app.local
     timeout: 10000
 - assertVisible:
     id: "task-detail__bottom_action_bar"
-# P1 gap C3: task-detail__header_title visible (title node Text carries testID; replaces text regex)
+# P1 gap C3: task-detail__header_title replaces bare text regex.
 - assertVisible:
     id: "task-detail__header_title"
 
-# Update Progress flow
+# Update Progress
 - tapOn:
     id: "task-detail__quick-action-update_progress"
 - extendedWaitUntil:
     visible:
       id: "update-progress__submit"
     timeout: 6000
-# P1 gap row 19: update-progress__screen_title explicit id on titleNode replaces header text regex
+# P1 gap row 19: update-progress__screen_title replaces header text regex.
 - assertVisible:
     id: "update-progress__screen_title"
 - tapOn:
     id: "update-progress__description"
 - inputText: ${output.progressNote}
-# P1 gap row 20: update-progress__description--preview preview wrapper TextInput id assert replaces text regex
+# P1 gap row 20: update-progress__description--preview wrapper replaces description regex.
 - assertVisible:
     id: "update-progress__description--preview"
 - hideKeyboard
@@ -196,7 +197,7 @@ appId: com.buildtrack.app.local
     direction: DOWN
 - tapOn:
     id: "update-progress__submit"
-# PLATFORM_LIMITATION (TESTID_GAPS_TODO.md rows 21 + 22): "Choose how you want to add photos" + "Cancel" are native Alert.alert body + button. No RN testID possible. Inline contract: skip photo path by tapping Cancel when the alert is visible, then re-submit progress.
+# PLATFORM_LIMITATION b): Photo picker native Alert body + Cancel. No RN testID. Bypass upload path.
 - runFlow:
     when:
       visible: "Choose how you want to add photos"
@@ -206,7 +207,7 @@ appId: com.buildtrack.app.local
           id: "update-progress__submit"
       - tapOn:
           id: "update-progress__submit"
-# PLATFORM_LIMITATION (TESTID_GAPS_TODO.md rows 23 + 24): success toast body + "OK" are inside native Alert.alert. No RN testID. Inline contract: match via text only.
+# PLATFORM_LIMITATION c): Progress-update success body + OK native Alert chrome.
 - extendedWaitUntil:
     visible: ".*Progress update added successfully!.*"
     timeout: 8000

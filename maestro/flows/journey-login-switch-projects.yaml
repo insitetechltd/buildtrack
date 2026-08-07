@@ -1,5 +1,6 @@
 # NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
-# NOTE: Project picker entry uses profile-menu-project_picker testID (attached to the Pressable in ProfileMenu.tsx line 112) for reliable translation-agnostic entry. Rows inside the opened project picker screen are tapped via text regex ${output.projectA/B/C} — matching the proven row-tap pattern used by task-core-live flows rc=0 in M-QA-01.
+# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e). projectId values = project-1 (Project A) / project-2 (Project B) / project-3 (Project C) match Sprint7 seeded IDs.
+# NOTE: PLATFORM_LIMITATION exemptions: 0 Alert.alert taps in this flow — ALL 4 taps use id-based project-picker row IDs + profile-menu-project_picker + login/dashboard/tab ids. 0 text taps.
 # NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
 appId: com.buildtrack.app.local
 ---
@@ -7,6 +8,10 @@ appId: com.buildtrack.app.local
 - evalScript: ${output.projectB = "Project B"}
 - evalScript: ${output.projectC = "Project C"}
 - evalScript: ${output.projectADefault = "Project A"}
+- evalScript: ${output.projectAId = "project-1"}
+- evalScript: ${output.projectBId = "project-2"}
+- evalScript: ${output.projectCId = "project-3"}
+- evalScript: ${output.projectADefaultId = "project-1"}
 - launchApp:
     appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
@@ -44,13 +49,8 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
-- scrollUntilVisible:
-    element:
-      text: ${output.projectA}
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- tapOn: ${output.projectA}
+- tapOn:
+    id: "project-picker__row-project-1"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -71,13 +71,8 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
-- scrollUntilVisible:
-    element:
-      text: ${output.projectB}
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- tapOn: ${output.projectB}
+- tapOn:
+    id: "project-picker__row-project-2"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -98,13 +93,8 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
-- scrollUntilVisible:
-    element:
-      text: ${output.projectC}
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- tapOn: ${output.projectC}
+- tapOn:
+    id: "project-picker__row-project-3"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -125,13 +115,8 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
-- scrollUntilVisible:
-    element:
-      text: ${output.projectADefault}
-    direction: DOWN
-    centerElement: true
-    timeout: 20000
-- tapOn: ${output.projectADefault}
+- tapOn:
+    id: "project-picker__row-project-1"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"

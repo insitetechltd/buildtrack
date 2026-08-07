@@ -133,7 +133,10 @@ function getDeferredTaskSchemaField(error: unknown) {
   }
 
   const errorCode = "code" in error ? String((error as { code?: unknown }).code || "") : "";
-  if (errorCode !== "PGRST204") {
+  const isColumnNotExistsCode =
+    errorCode === "PGRST204" ||
+    errorCode === "42703";
+  if (!isColumnNotExistsCode) {
     return null;
   }
 
@@ -143,7 +146,7 @@ function getDeferredTaskSchemaField(error: unknown) {
   const errorDetails = "details" in error
     ? String((error as { details?: unknown }).details || "")
     : "";
-  const errorText = `${errorMessage} ${errorDetails}`;
+  const errorText = `${errorMessage} ${errorDetails} ${errorCode}`;
 
   return (
     DEFERRED_TASK_CREATE_SCHEMA_FIELDS.find((fieldName) => errorText.includes(fieldName)) || null

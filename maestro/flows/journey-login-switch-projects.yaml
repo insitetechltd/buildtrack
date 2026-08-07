@@ -1,17 +1,15 @@
-# NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
-# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e). projectId values = project-1 (Project A) / project-2 (Project B) / project-3 (Project C) match Sprint7 seeded IDs.
+# NOTE: Project names/seeds below match Sprint7 preset A: 2 seeded projects, display names "Shared Harbor Tower" and "Tristan Private Fitout". IDs are sprint7-project-shared-harbor-tower / sprint7-project-tristan-private-fitout (visible via screen hierarchy JSON 2026-08-07_094247 step-019).
+# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e). 4 switches use alternating ids between the 2 seeded projects.
 # NOTE: PLATFORM_LIMITATION exemptions: 0 Alert.alert taps in this flow — ALL 4 taps use id-based project-picker row IDs + profile-menu-project_picker + login/dashboard/tab ids. 0 text taps.
 # NOTE: Starts with plain launchApp (no bootstrap / clearState) because sprint7-initialize-sandbox flow (executed earlier in the D7 suite) already signed in Manager A and reseeded. Keeping clearState:true ONLY in the first bootstrap flow of a session avoids repeated reinstall-clears breaking iOS dev-client routing between flows in the same Maestro suite.
 appId: com.buildtrack.app.local
 ---
-- evalScript: ${output.projectA = "Project A"}
-- evalScript: ${output.projectB = "Project B"}
-- evalScript: ${output.projectC = "Project C"}
-- evalScript: ${output.projectADefault = "Project A"}
-- evalScript: ${output.projectAId = "project-1"}
-- evalScript: ${output.projectBId = "project-2"}
-- evalScript: ${output.projectCId = "project-3"}
-- evalScript: ${output.projectADefaultId = "project-1"}
+- evalScript: ${output.projectA = "Shared Harbor Tower"}
+- evalScript: ${output.projectB = "Tristan Private Fitout"}
+- evalScript: ${output.projectADefault = "Shared Harbor Tower"}
+- evalScript: ${output.projectAId = "sprint7-project-shared-harbor-tower"}
+- evalScript: ${output.projectBId = "sprint7-project-tristan-private-fitout"}
+- evalScript: ${output.projectADefaultId = "sprint7-project-shared-harbor-tower"}
 - launchApp:
     appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
@@ -49,8 +47,9 @@ appId: com.buildtrack.app.local
     visible:
       id: "projectPicker-scroll"
     timeout: 10000
+# Switch 1 (to A / default)
 - tapOn:
-    id: "project-picker__row-project-1"
+    id: "project-picker__row-sprint7-project-shared-harbor-tower"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -58,7 +57,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Switch 2: Project B
+# Switch 2: Project B (Tristan Private Fitout)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -72,7 +71,7 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 - tapOn:
-    id: "project-picker__row-project-2"
+    id: "project-picker__row-sprint7-project-tristan-private-fitout"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -80,7 +79,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Switch 3: Project C
+# Switch 3: Project A (back to Shared Harbor Tower)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -94,7 +93,7 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 - tapOn:
-    id: "project-picker__row-project-3"
+    id: "project-picker__row-sprint7-project-shared-harbor-tower"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -102,7 +101,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Switch 4: Back to Project A (default)
+# Switch 4: Back to Project B (proves alternating routing works; Sprint7 preset A has 2 seeded projects so 4 switches = A→B→A→B pattern)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -116,7 +115,7 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 - tapOn:
-    id: "project-picker__row-project-1"
+    id: "project-picker__row-sprint7-project-tristan-private-fitout"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"

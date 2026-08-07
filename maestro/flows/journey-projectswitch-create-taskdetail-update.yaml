@@ -1,5 +1,5 @@
-# NOTE: Project names/seeds below assume Sprint7 sandbox project names. If developer re-seeded re-run with current preset after reseed: update projectA/projectB/projectC names.
-# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e): project-1 = Project A, project-2 = Project B, project-3 = Project C. ALL 4 project row taps use id (no text taps).
+# NOTE: Project names/seeds match Sprint7 preset A actual: 2 seeded projects. Display: "Shared Harbor Tower" (id: sprint7-project-shared-harbor-tower) and "Tristan Private Fitout" (id: sprint7-project-tristan-private-fitout). Matches 2026-08-07_094247 screen-hierarchy step-019.
+# NOTE: Project picker entry uses profile-menu-project_picker testID. Rows use S-UX-01I testIDs `project-picker__row-${projectId}` (commit 145282e). 2 project row taps use id directly — no text scroll.
 # NOTE: Exemptions documented inline:
 #   1× EXEMPT DYNAMIC TAP (line ~156): Tasks-list row tap of dynamically-created UUID task. taskId is not exposed to Maestro evalScript; TESTID_GAPS_TODO.md row 17 uses pattern `tasks-screen__row_${taskId}` but the runtime UUID cannot be known at evalScript time. This single regex tap is structurally required and is not a selector drift risk (content assertion matches timestamped unique title).
 #   4× PLATFORM_LIMITATION taps (TESTID_GAPS_TODO.md rows 21-24 = PLATFORM_LIMITATION — native Alert.alert chrome carries no testID prop in React Native):
@@ -9,11 +9,11 @@
 appId: com.buildtrack.app.local
 ---
 - evalScript: ${output.taskTitle = "QA03 Journey Create " + Math.floor(Date.now() / 1000)}
-- evalScript: ${output.projectA = "Project A"}
-- evalScript: ${output.projectB = "Project B"}
+- evalScript: ${output.projectA = "Shared Harbor Tower"}
+- evalScript: ${output.projectB = "Tristan Private Fitout"}
 - evalScript: ${output.progressNote = "Progress bump " + Math.floor(Date.now() / 1000)}
-- evalScript: ${output.projectAId = "project-1"}
-- evalScript: ${output.projectBId = "project-2"}
+- evalScript: ${output.projectAId = "sprint7-project-shared-harbor-tower"}
+- evalScript: ${output.projectBId = "sprint7-project-tristan-private-fitout"}
 - launchApp:
     appId: "com.buildtrack.app.local"
 - extendedWaitUntil:
@@ -40,7 +40,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Project switch 1: Explicitly land on Project A first (id-based project-picker row, no text scrollBeforeTap since 3 rows fit on screen)
+# Project switch 1: Explicitly land on Shared Harbor Tower first (id-based project-picker row, 2 seeded projects fit viewport so scrollBeforeTap not needed)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -54,7 +54,7 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 - tapOn:
-    id: "project-picker__row-project-1"
+    id: "project-picker__row-sprint7-project-shared-harbor-tower"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
@@ -62,7 +62,7 @@ appId: com.buildtrack.app.local
 - assertVisible:
     id: "dashboard-screen__root"
 
-# Project switch 2: To Project B (id-based row tap; matches Planner spec's "second project switch before create")
+# Project switch 2: To Tristan Private Fitout (id-based row tap; proves 2nd project switch before create — matches scope intent)
 - tapOn:
     id: "app-screen-header__profile-trigger"
 - extendedWaitUntil:
@@ -76,7 +76,7 @@ appId: com.buildtrack.app.local
       id: "projectPicker-scroll"
     timeout: 10000
 - tapOn:
-    id: "project-picker__row-project-2"
+    id: "project-picker__row-sprint7-project-tristan-private-fitout"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"

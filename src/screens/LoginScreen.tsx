@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   NativeSyntheticEvent,
   View,
@@ -24,6 +24,28 @@ import {
   getTabNavigationDirection,
 } from "../utils/formNavigation";
 
+// #region debug-point A:login-screen instrumentation init
+const __DEBUG_SERVER_URL__ = "http://192.168.86.47:7777/event";
+const __DEBUG_SESSION_ID__ = "ui-buttons-unresponsive";
+const __dbgReport = (fields: Record<string, any>) => {
+  try {
+    const payload = JSON.stringify({
+      sessionId: __DEBUG_SESSION_ID__,
+      runId: "pre",
+      ...fields,
+      ts: Date.now(),
+    });
+    if (typeof fetch === "function") {
+      fetch(__DEBUG_SERVER_URL__, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).catch(() => {});
+    }
+  } catch {}
+};
+// #endregion
+
 interface LoginScreenProps {
   onToggleRegister?: () => void; // Optional - registration is hidden
 }
@@ -47,6 +69,28 @@ export default function LoginScreen(_props: LoginScreenProps) {
       ]),
     [],
   );
+
+  // #region debug-point A:login-screen mount heartbeat (inside component)
+  useEffect(() => {
+    __dbgReport({
+      hypothesisId: "A",
+      location: "src/screens/LoginScreen.tsx:93",
+      msg: "[DEBUG] LoginScreen mounted (pre-fix run).",
+      data: { platform: Platform.OS, dev: __DEV__ },
+      traceId: "login-mount-" + Date.now(),
+    });
+    const iv = setInterval(() => {
+      __dbgReport({
+        hypothesisId: "C",
+        location: "src/screens/LoginScreen.tsx:102",
+        msg: "[DEBUG] LoginScreen idle heartbeat (JS responsiveness).",
+        data: { t_ms: Date.now() },
+        traceId: "login-hb-" + Date.now(),
+      });
+    }, 2000);
+    return () => clearInterval(iv);
+  }, []);
+  // #endregion
   const focusFormField = useCallback((fieldId: "emailOrPhone" | "password" | "submit" | null) => {
     if (!fieldId || fieldId === "submit") {
       emailInputRef.current?.blur?.();
@@ -203,9 +247,49 @@ export default function LoginScreen(_props: LoginScreenProps) {
                       passwordInputRef.current?.blur();
                     }}
                   />
+                  {/* Password visibility toggle */}
                   <Pressable
                     testID="login-togglePassword"
-                    onPress={actions.togglePasswordVisibility}
+                    // #region debug-point D:login-togglePassword-tap
+                    onPressIn={() => __dbgReport({
+                      hypothesisId: "D",
+                      location: "src/screens/LoginScreen.tsx:247",
+                      msg: "[DEBUG] login-togglePassword onPressIn (native responder start).",
+                      data: { t_native_ms: Date.now(), testID: "login-togglePassword" },
+                      traceId: "login-toggle-" + Date.now(),
+                    })}
+                    onPressOut={() => __dbgReport({
+                      hypothesisId: "D",
+                      location: "src/screens/LoginScreen.tsx:253",
+                      msg: "[DEBUG] login-togglePassword onPressOut (native responder end).",
+                      data: { t_native_ms: Date.now(), testID: "login-togglePassword" },
+                      traceId: "login-toggle-" + Date.now(),
+                    })}
+                    // #endregion
+                    onPress={() => {
+                      // #region debug-point A/D:login-togglePassword-onPress
+                      const start = Date.now();
+                      __dbgReport({
+                        hypothesisId: "A",
+                        location: "src/screens/LoginScreen.tsx:265",
+                        msg: "[DEBUG] login-togglePassword onPress JS start.",
+                        data: { t_press_started_ms: start, testID: "login-togglePassword" },
+                        traceId: "login-toggle-" + start,
+                      });
+                      try {
+                        actions.togglePasswordVisibility();
+                      } finally {
+                        const end = Date.now();
+                        __dbgReport({
+                          hypothesisId: "A",
+                          location: "src/screens/LoginScreen.tsx:278",
+                          msg: "[DEBUG] login-togglePassword onPress JS end.",
+                          data: { t_press_ended_ms: end, duration_ms: end - start, testID: "login-togglePassword" },
+                          traceId: "login-toggle-" + start,
+                        });
+                      }
+                      // #endregion
+                    }}
                     className="ml-2"
                   >
                     <Ionicons
@@ -225,8 +309,51 @@ export default function LoginScreen(_props: LoginScreenProps) {
               {/* Login Button */}
               <Pressable
                 testID="login-submit"
+                // #region debug-point D:login-submit-tap
+                onPressIn={() => __dbgReport({
+                  hypothesisId: "D",
+                  location: "src/screens/LoginScreen.tsx:309",
+                  msg: "[DEBUG] login-submit onPressIn (native responder start).",
+                  data: { t_native_ms: Date.now(), testID: "login-submit", disabled: output.isLoading },
+                  traceId: "login-submit-" + Date.now(),
+                })}
+                onPressOut={() => __dbgReport({
+                  hypothesisId: "D",
+                  location: "src/screens/LoginScreen.tsx:318",
+                  msg: "[DEBUG] login-submit onPressOut (native responder end).",
+                  data: { t_native_ms: Date.now(), testID: "login-submit", disabled: output.isLoading },
+                  traceId: "login-submit-" + Date.now(),
+                })}
+                // #endregion
                 onPress={() => {
-                  void actions.submitLogin();
+                  // #region debug-point A:login-submit-onPress
+                  const start = Date.now();
+                  const traceId = "login-submit-" + start;
+                  __dbgReport({
+                    hypothesisId: "A",
+                    location: "src/screens/LoginScreen.tsx:330",
+                    msg: "[DEBUG] login-submit onPress JS start.",
+                    data: { t_press_started_ms: start, testID: "login-submit", disabled: output.isLoading },
+                    traceId,
+                  });
+                  try {
+                    void actions.submitLogin();
+                  } finally {
+                    const end = Date.now();
+                    __dbgReport({
+                      hypothesisId: "A",
+                      location: "src/screens/LoginScreen.tsx:342",
+                      msg: "[DEBUG] login-submit onPress JS end (submitLogin Promise launched).",
+                      data: {
+                        t_press_ended_ms: end,
+                        duration_ms: end - start,
+                        testID: "login-submit",
+                        disabled: output.isLoading,
+                      },
+                      traceId,
+                    });
+                  }
+                  // #endregion
                 }}
                 disabled={output.isLoading}
                 className={cn(

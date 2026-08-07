@@ -1495,14 +1495,53 @@ export const useProjectQueryMeta = (resourceKey: string) =>
 
 // Custom hook that automatically initializes data when accessed
 export const useProjectStoreWithInit = () => {
-  const store = useProjectStore();
+  useProjectStore();
   const user = useAuthStore.getState().user;
   const isSprint7SandboxUser = user
     ? user.id === "sprint7-user-tristan" || user.id === "sprint7-user-herman"
     : false;
+  const initStartedRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
+    if (initStartedRef.current) {
+      return;
+    }
     if (isSprint7SandboxUser) {
+      initStartedRef.current = true;
+      return;
+    }
+    initStartedRef.current = true;
+    const s = useProjectStore.getState();
+    const store = s;
+
+    const projectResourceKey = buildResourceKey("projects", "all");
+    const userAssignmentsResourceKey = user ? buildResourceKey("assignments", "user", user.id) : null;
+    const cachedProjectIds = s.queryProjectIds[projectResourceKey] || s.projects.map((p) => p.id);
+    const hasCachedProjects = cachedProjectIds.length > 0;
+    const hasCachedAssignments = user
+      ? (s.assignmentIdsByUser[user.id] || []).length > 0
+      : false;
+    const hasFetchedProjectsOnce = Boolean(s.projectQueryMeta[projectResourceKey]?.hasFetchedOnce);
+    const hasFetchedAssignmentsOnce = userAssignmentsResourceKey
+      ? Boolean(s.assignmentQueryMeta[userAssignmentsResourceKey]?.hasFetchedOnce)
+      : true;
+    const isProjectsLoading =
+      s.isLoading || Boolean(s.projectQueryMeta[projectResourceKey]?.isInitialLoading);
+    const isAssignmentsLoading =
+      s.isLoading ||
+      (userAssignmentsResourceKey
+        ? Boolean(s.assignmentQueryMeta[userAssignmentsResourceKey]?.isInitialLoading)
+        : false);
+    if (
+      hasCachedProjects &&
+      hasCachedAssignments &&
+      hasFetchedProjectsOnce &&
+      hasFetchedAssignmentsOnce
+    ) {
+      return;
+    }
+    if (isProjectsLoading || isAssignmentsLoading) {
+      initStartedRef.current = false;
       return;
     }
 
@@ -1524,15 +1563,15 @@ export const useProjectStoreWithInit = () => {
       }).catch(error => {
         console.error('❌ Error during project store initialization:', error);
       });
-    } else if (store.projects.length === 0 && !store.isLoading && supabase) {
+    } else if (s.projects.length === 0 && !isProjectsLoading && supabase) {
       console.log('🚀 Fallback to basic initialization...');
       store.fetchProjects();
     } else {
       console.log('⏭️ Skipping initialization - already loaded or no Supabase');
     }
-  }, [isSprint7SandboxUser, store]);
+  }, [isSprint7SandboxUser]);
 
-  return store;
+  return useProjectStore();
 };
 
 // Custom hook that automatically fetches projects for a specific company

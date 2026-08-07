@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,28 +12,6 @@ import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
 import { cn } from "@/utils/cn";
-
-// #region debug-point C:tasks-screen instrumentation init
-const __DEBUG_SERVER_URL__ = "http://192.168.86.47:7777/event";
-const __DEBUG_SESSION_ID__ = "ui-buttons-unresponsive";
-const __dbgReport = (fields: Record<string, any>) => {
-  try {
-    const payload = JSON.stringify({
-      sessionId: __DEBUG_SESSION_ID__,
-      runId: "pre",
-      ...fields,
-      ts: Date.now(),
-    });
-    if (typeof fetch === "function") {
-      fetch(__DEBUG_SERVER_URL__, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-      }).catch(() => {});
-    }
-  } catch {}
-};
-// #endregion
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
@@ -145,36 +123,6 @@ export default function TasksScreen(props: TasksScreenProps) {
   const [swipeBlockedTaskIds, setSwipeBlockedTaskIds] = useState<
     Record<string, "active" | "dismissed">
   >({});
-
-  // #region debug-point C:tasks-screen re-render counter + heartbeat
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  useEffect(() => {
-    __dbgReport({
-      hypothesisId: "C",
-      location: "src/screens/TasksScreen.tsx:157",
-      msg: "[DEBUG] TasksScreen mounted (pre-fix). Re-render counter + heartbeat initialized.",
-      data: {
-        renderCount: renderCountRef.current,
-        visibleTaskCount: output.scalarMetrics?.totalVisibleTaskCount ?? null,
-        groupCount: (output as any).groups?.length ?? null,
-        rowCount: output.taskRowItems?.length ?? null,
-        activeChips: output.activeFilterChips?.length ?? null,
-      },
-      traceId: "tasks-mount-" + Date.now(),
-    });
-    const t = setInterval(() => {
-      __dbgReport({
-        hypothesisId: "C",
-        location: "src/screens/TasksScreen.tsx:171",
-        msg: "[DEBUG] TasksScreen idle heartbeat + render count sample.",
-        data: { t_ms: Date.now(), renderCountSample: renderCountRef.current },
-        traceId: "tasks-hb-" + Date.now(),
-      });
-    }, 2500);
-    return () => clearInterval(t);
-  }, []);
-  // #endregion
 
   const searchContract = useMemo(() => {
     const contract = mapTaskInputToTextFieldProps(searchInput);

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo } from "react";
 import {
   CommonActions,
   NavigationContainer,
@@ -6,27 +6,6 @@ import {
   type LinkingOptions,
 } from "@react-navigation/native";
 
-// #region debug-point A/D:bottom-tab-buttons instrumentation init
-const __DEBUG_SERVER_URL__ = "http://192.168.86.47:7777/event";
-const __DEBUG_SESSION_ID__ = "ui-buttons-unresponsive";
-const __dbgReport = (fields: Record<string, any>) => {
-  try {
-    const payload = JSON.stringify({
-      sessionId: __DEBUG_SESSION_ID__,
-      runId: "pre",
-      ...fields,
-      ts: Date.now(),
-    });
-    if (typeof fetch === "function") {
-      fetch(__DEBUG_SERVER_URL__, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-      }).catch(() => {});
-    }
-  } catch {}
-};
-// #endregion
 import {
   createBottomTabNavigator,
   type BottomTabBarButtonProps,
@@ -616,45 +595,7 @@ function CenterCameraTabButton({
           accessibilityRole="button"
           accessibilityState={accessibilityState}
           onLongPress={onLongPress}
-          // #region debug-point A/D:camera-tab-press
-          onPressIn={() => __dbgReport({
-            hypothesisId: "D",
-            location: "src/navigation/AppNavigator.tsx:615",
-            msg: "[DEBUG] root-tab__camera_button onPressIn (native responder start).",
-            data: { t_native_ms: Date.now(), testID: "root-tab__camera_button", isFocused },
-            traceId: "root-tab-camera-" + Date.now(),
-          })}
-          onPressOut={() => __dbgReport({
-            hypothesisId: "D",
-            location: "src/navigation/AppNavigator.tsx:624",
-            msg: "[DEBUG] root-tab__camera_button onPressOut (native responder end).",
-            data: { t_native_ms: Date.now(), testID: "root-tab__camera_button", isFocused },
-            traceId: "root-tab-camera-" + Date.now(),
-          })}
-          onPress={() => {
-            const start = Date.now();
-            const traceId = "root-tab-camera-" + start;
-            __dbgReport({
-              hypothesisId: "A",
-              location: "src/navigation/AppNavigator.tsx:633",
-              msg: "[DEBUG] root-tab__camera_button onPress JS start.",
-              data: { t_press_started_ms: start, testID: "root-tab__camera_button", isFocused },
-              traceId,
-            });
-            try {
-              if (onPress) onPress(undefined as any);
-            } finally {
-              const end = Date.now();
-              __dbgReport({
-                hypothesisId: "A",
-                location: "src/navigation/AppNavigator.tsx:645",
-                msg: "[DEBUG] root-tab__camera_button onPress JS end (navigation triggered).",
-                data: { t_press_ended_ms: end, duration_ms: end - start, testID: "root-tab__camera_button" },
-                traceId,
-              });
-            }
-          }}
-          // #endregion
+          onPress={onPress}
           testID="root-tab__camera_button"
           style={[
             styles.centerCameraTabButton,
@@ -709,45 +650,7 @@ function RootTabButton({
         accessibilityRole="button"
         accessibilityState={accessibilityState}
         onLongPress={onLongPress}
-        // #region debug-point A/D:root-tab-button-press
-        onPressIn={() => __dbgReport({
-          hypothesisId: "D",
-          location: "src/navigation/AppNavigator.tsx:710",
-          msg: "[DEBUG] RootTabButton onPressIn (native responder start).",
-          data: { t_native_ms: Date.now(), testID: pressableTestID, isFocused },
-          traceId: "root-tab-" + pressableTestID + "-" + Date.now(),
-        })}
-        onPressOut={() => __dbgReport({
-          hypothesisId: "D",
-          location: "src/navigation/AppNavigator.tsx:719",
-          msg: "[DEBUG] RootTabButton onPressOut (native responder end).",
-          data: { t_native_ms: Date.now(), testID: pressableTestID, isFocused },
-          traceId: "root-tab-" + pressableTestID + "-" + Date.now(),
-        })}
-        onPress={() => {
-          const start = Date.now();
-          const traceId = "root-tab-" + pressableTestID + "-" + start;
-          __dbgReport({
-            hypothesisId: "A",
-            location: "src/navigation/AppNavigator.tsx:728",
-            msg: "[DEBUG] RootTabButton onPress JS start.",
-            data: { t_press_started_ms: start, testID: pressableTestID, isFocused },
-            traceId,
-          });
-          try {
-            if (onPress) onPress(undefined as any);
-          } finally {
-            const end = Date.now();
-            __dbgReport({
-              hypothesisId: "A",
-              location: "src/navigation/AppNavigator.tsx:740",
-              msg: "[DEBUG] RootTabButton onPress JS end (navigation triggered).",
-              data: { t_press_ended_ms: end, duration_ms: end - start, testID: pressableTestID },
-              traceId,
-            });
-          }
-        }}
-        // #endregion
+        onPress={onPress}
         testID={pressableTestID}
         style={styles.rootTabButton}
       >

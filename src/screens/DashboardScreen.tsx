@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppScreenHeader from "@/components/AppScreenHeader";
@@ -6,28 +6,6 @@ import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
-
-// #region debug-point B/C:dashboard-screen instrumentation init
-const __DEBUG_SERVER_URL__ = "http://192.168.86.47:7777/event";
-const __DEBUG_SESSION_ID__ = "ui-buttons-unresponsive";
-const __dbgReport = (fields: Record<string, any>) => {
-  try {
-    const payload = JSON.stringify({
-      sessionId: __DEBUG_SESSION_ID__,
-      runId: "pre",
-      ...fields,
-      ts: Date.now(),
-    });
-    if (typeof fetch === "function") {
-      fetch(__DEBUG_SERVER_URL__, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: payload,
-      }).catch(() => {});
-    }
-  } catch {}
-};
-// #endregion
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -41,41 +19,6 @@ interface DashboardScreenProps {
 export default function DashboardScreen(props: DashboardScreenProps) {
   const { output, visibility } = useDashboardViewAdapter();
   const [isDraftsExpanded, setIsDraftsExpanded] = useState(false);
-
-  // #region debug-point B/C:dashboard re-render counter + heartbeat
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  useEffect(() => {
-    __dbgReport({
-      hypothesisId: "B",
-      location: "src/screens/DashboardScreen.tsx:52",
-      msg: "[DEBUG] DashboardScreen mounted. className token count probe.",
-      data: {
-        renderCount: renderCountRef.current,
-        classNameTokens: {
-          root: 2,
-          body: 1,
-          summaryCard: output.projectSummaryCard ? 10 : 0,
-          queueGroups: (output as any).queueDashboard?.groups?.length ?? 0,
-          activityItems: output.activityItems?.length ?? 0,
-          draftItems: output.draftItems?.length ?? 0,
-          criticalDates: output.projectSummaryCard?.criticalDates?.length ?? 0,
-        },
-      },
-      traceId: "dashboard-mount-" + Date.now(),
-    });
-    const t = setInterval(() => {
-      __dbgReport({
-        hypothesisId: "C",
-        location: "src/screens/DashboardScreen.tsx:67",
-        msg: "[DEBUG] DashboardScreen idle heartbeat + render count sample.",
-        data: { t_ms: Date.now(), renderCountSample: renderCountRef.current },
-        traceId: "dashboard-hb-" + Date.now(),
-      });
-    }, 2500);
-    return () => clearInterval(t);
-  }, []);
-  // #endregion
 
   return (
     <SafeAreaView

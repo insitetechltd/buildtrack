@@ -1,32 +1,30 @@
 # Insite App Agent Inventory
 
-This file is the repository-local inventory of the SOLO sub-agent pack currently defined in `.trae/agents/` and registered as the Trae skill `solo-agents` in `~/.trae/skills/solo-agents/` (operational YAML source of truth for the agent picker).
+This file is the repository-local inventory of the SOLO delivery roles for **Cursor**.
+Operational methodology lives in the personal skill `solo-dev-harness`
+(`~/.cursor/skills/solo-dev-harness/`). Project law lives in `.cursor/rules/`
+and the project overlay skill `.cursor/skills/insite-dev/`.
+
+Machine readiness: `npm run dev:doctor` (`scripts/dev/doctor.sh`).
+Harness runbook: `documentation/CURSOR_DEV_HARNESS.md`.
 
 Source of truth scanned for this inventory:
-- `.trae/agents/README.md`
-- `.trae/agents/solo-orchestrator.md`
-- `.trae/agents/planner.md`
-- `.trae/agents/builder.md`
-- `.trae/agents/reviewer.md`
-- `.trae/agents/test-engineer.md`
-- `.trae/agents/qa-validator.md`
-- `.trae/agents/release-manager.md`
-- `.trae/agents/docs-curator.md`
-- `~/.trae/skills/solo-agents/SKILL.md`
-- `~/.trae/skills/solo-agents/metadata.json`
-- `~/.trae/skills/solo-agents/agents/solo-orchestrator.yaml`
-- `~/.trae/skills/solo-agents/agents/planner.yaml`
-- `~/.trae/skills/solo-agents/agents/builder.yaml`
-- `~/.trae/skills/solo-agents/agents/reviewer.yaml`
-- `~/.trae/skills/solo-agents/agents/test-engineer.yaml`
-- `~/.trae/skills/solo-agents/agents/qa-validator.yaml`
-- `~/.trae/skills/solo-agents/agents/release-manager.yaml`
-- `~/.trae/skills/solo-agents/agents/docs-curator.yaml`
+- `.cursor/rules/*.mdc` (project constitution — **canonical**)
+- `.cursor/skills/insite-dev/SKILL.md`
+- `~/.cursor/skills/solo-dev-harness/SKILL.md` (+ workflows/autonomy/handoffs/bootstrap)
+- `SOLO_OPERATING_PROCEDURE.md`
+- `TESTING_STRATEGY.md`
+- `documentation/ROADMAP.md`
+- `documentation/SOURCE_OF_TRUTH.md`
+- Legacy (read-only during Trae exit — do not extend):
+  - `.trae/agents/*.md`
+  - `.trae/rules/*.md`
+  - `~/.trae/skills/solo-agents/` (Trae picker YAMLs)
 
-Dual-source convention:
-- `.md` files in `.trae/agents/*.md` = MINIMAL, human-readable, copy-ready blueprints (used by the manual UI-creation fallback and by this inventory summary).
-- `.yaml` files in `~/.trae/skills/solo-agents/agents/*.yaml` = OPERATIONAL, enriched agent definitions consumed by the Trae agent picker. These contain the exact output format headings, project_memory Maestro rules, milestone references, and marketplace skill synergies. YAMLs are a strict superset of the `.md` prompts.
-- When updating agent behavior: edit the `~/.trae/skills/solo-agents/agents/*.yaml` files first, then update the corresponding `.md` files and this inventory ONLY if the core role/focus/constraints actually change. Do not update `.md` files for minor output-format tweaks.
+Dual-loader convention (Cursor):
+- **Methodology** (reusable across projects) = `~/.cursor/skills/solo-dev-harness/`
+- **Project law** (versioned with Insite) = `.cursor/rules/` + this `AGENTS.md` + `.cursor/skills/insite-dev/`
+- When updating delivery behavior: edit the Cursor skill/rules first. Leave `.trae/` untouched unless deleting after migration complete.
 
 ## Current Delivery Status
 
@@ -37,7 +35,10 @@ Dual-source convention:
 - `WS-QA / M-QA-03` **Closed (2026-08-07)**: Automated confidence & end-to-end UX coverage — S-UX-01I unlocked 18 TESTID_GAPS_TODO.md gap-catalog testIDs (commit 145282e) + hotfix 998948f. L1 Jest journeys 5/5 suites 6/6 tests PASS, L2 regression 35/151 PASS + post-01I 85/85 components PASS (baseline 7/32 exceeded), tsc-noEmit rc=0, M-QA-02 foundation 3/3 PASS cross. L3 Maestro 5/5 flows ALL rc=0 PASS on iPhone 17 Pro Max UDID B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 iOS 26.0 via scripts/maestro/run-local.sh wrapper (execution order flow 4 first for conditional login fallback): launch-smoke 72s, open-dev-settings 73s, initialize-sandbox 74s, journey-login-switch-projects 166s, journey-projectswitch-create-taskdetail-update 74s. 4 master commits (f722314 / 70171a6 / a552eba / 6d044b5), 0 prod edits, YAML-only. P0 surfaces id-based selectors only; 1× EXEMPT DYNAMIC (task row UUID content-match Date.now unique) + 5× PLATFORM_LIMITATION native Alert taps (RN Alert.alert chrome carries no RN testID prop). SQLSTATE 22P02 slug→UUID preset seed bug handled via YAML-only recovery (when-stuck tap Alert OK PLATFORM_LIMITATION → tap back id → dashboard) + per-flow 1-switch scope reduction (rows still exist pre-first-cache-invalidation); flow 5 tasks-screen gate bypassed via direct root-tab__camera_button tap (floating create button reachable from any tab). Evidence block + selector contract + artifacts in documentation/ROADMAP.md WS-QA/M-QA-03 Closed section.
 - `WS-SUPABASE / M-SUPABASE-01` **Closed (2026-08-07)**: Full Supabase inspection — system coupling map (5 stores: auth/user/project/task/upload + RealtimeSyncManager, each with Source-of-truth claim bullets aligned to SOURCE_OF_TRUTH.md); §1–§4 4-domain inspection report (Auth+User Model, Core Domain Tables, App Coupling incl. deferred-schema compat layer F-003, Runtime Safety incl. service-role script dry-run matrix); findings backlog 11 entries = 2 P0 (anon-RLS 7-tables + profile FK) / 6 P1 (role CHECK, 6-col tasks redesign metadata migration M-SUPABASE-03b with ROLLOUT WARNING citing ROADMAP L98 + explicit 6-col list: primary_assignee_id, delegated_user_ids, container_id, sub_container_id, tags, location_on_site, storage bucket policy, compat-fallback observability, 2 service-role scripts missing --dry-run, Realtime publication membership) / 3 P2 (WebSocket reconnect loop, legacy status dual-path cleanup, storage retention, indexes health). Live DB audit: skipped; code-path only (no ~/.pgpass). Anti-secret grep on the 3 new deliverables = 0 matches (3 pre-existing historical false-positives: SUPABASE_OPERATIONS_RUNBOOK.md redacted placeholder + scripts/greenfield/apply_remote.sh env var NAME only). Test Engineer baseline: test:regression 37 suites / 160 tests PASS; tsc --noEmit rc=0. QA Validator D7 docs-review 5/5 PASS. Evidence: documentation/audit/database/2026-08-07-msupabase01-{system-coupling-map,inspection-report,findings-backlog}.md + documentation/ROADMAP.md WS-SUPABASE-01 Closed evidence section.
 - `WS-SUPABASE / M-SUPABASE-00 (Placeholder Groom)` **Closed (2026-08-07)**: Docs-only ledger-groom cycle — promoted 11 WS-SUPABASE-01 placeholder milestones (M-SUPABASE-02a, 02b, 03a, 03b, 03c, 03d, 03e, 04a, 04b, 04c, 04d) to real ROADMAP rows as sub-numbered children Order 13.1→13.11 under M-SUPABASE-01; inserted 4 unregistered UX tail slices (S-UX-01J Tags+Primary Assignee, S-UX-01K Task Delegation Panel, S-UX-01M Create Task Location Refinement location_on_site, S-UX-01N Container Model container_id/sub_container_id) as real Pipeline rows Order 13.12→13.15 with Prereq = M-SUPABASE-03b (hard close gate before they ship). 15 real rows total; 3 copy-paste next-session kickoff prompts written to `docs/superpowers/plans/2026-08-07-msupabase-groom-next-session-kickoffs.md` (Prompt 1 M-02a/b combined P0 live-SQL REQUIRED; Prompt 2 M-03b 6-col migration with EXPLICIT human-in-the-loop Schema Review Gate before live apply; Prompt 3 parallel P1s/P2s 03a/03c/03d/03e + 04a-d). M-SUPABASE-03b Notes column carries copied verbatim ROLLOUT WARNING from findings F-003 + inline 6-col list. AGENTS.md Status ledger updated; pipeline focus precedence correct. Anti-secret 0 matches; tsc rc=0; test:regression baseline PASS; QA Validator 5/5 docs-review PASS. Commits on master 1 single-scoped docs-only commit. Close evidence: ROADMAP.md 13.1→13.15 ledger rows + Notes 03b ROLLOUT WARNING inline; AGENTS.md this line + pipeline focus.
-- Current pipeline focus precedence: (1) M-SUPABASE-02a/b combined P0 session NEXT (live-Gate-1 read-only SQL pass REQUIRED NOT OPTIONAL → RLS 7-table anon-block + users FK/policy NOT VALID + VALIDATE later rollback-safe; 2026-08-07 groom prompt Prompt 1 at `docs/superpowers/plans/2026-08-07-msupabase-groom-next-session-kickoffs.md § Prompt 1`) → (2) M-SUPABASE-03b tasks 6-col migration + Schema Review Gate (prompt Prompt 2) → (3) S-UX-01J/K/M/N UX tail slices unblocked after 03b Closed → (4) parallel idle P1s: M-03a role CHECK, M-03c bucket policy, M-03d fallback observability, M-03e script dry-run gates → (5) parallel idle P2s: M-04a Realtime reconnect + publication audit, M-04b legacy status cleanup (30d cool-down post 03b), M-04c storage retention, M-04d index health pass. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
+- `WS-SUPABASE / M-SUPABASE-02a` **Closed (2026-08-08)**: Gate 1 Option A 7/7 redacted evidence (`docs/superpowers/evidence/m-supabase-02a-02b-gate1-redacted-20260808.md`); live apply `20260808000100_msupabase02a_anon_block_seven_tables.sql` — REVOKE anon + RLS + restrictive `anon_block_all` on 7 tables; anon SELECT permission_denied all 7. Rule 1 BLOCKED cleared.
+- `WS-SUPABASE / M-SUPABASE-02b` **Closed (2026-08-08)**: Live apply `20260808000200_msupabase02b_users_fk_and_self_write.sql` — `users_id_fkey_auth_users` NOT VALID + `users_self_write`; VALIDATE deferred. Close report: `docs/superpowers/reports/2026-08-08-m-supabase-02a-02b-close.md`.
+- Current pipeline focus precedence: (1) M-SUPABASE-03b Phase A only (artefacts + Schema Review Human Gate; NO LIVE WRITES until written GO — prompt Prompt 2) → (2) M-SUPABASE-03b Phase B after Human Gate → (3) S-UX-01J/K/M/N after 03b Closed → (4) parallel idle P1s: M-03a role CHECK, M-03c bucket policy, M-03d fallback observability, M-03e script dry-run gates → (5) parallel idle P2s: M-04a Realtime reconnect + publication audit, M-04b legacy status cleanup (30d cool-down post 03b), M-04c storage retention, M-04d index health pass. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
+- `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context
 
@@ -295,7 +296,7 @@ These constraints apply across the agent pack unless a role narrows them further
 
 ## Operating Sequence Summary
 
-Default workflow expectations from the local agent pack (use `@identifier` syntax for all calls; after Reviewer pass ALWAYS run the `git-commit` skill COMMIT GATE before Test Engineer):
+Default workflow expectations (Cursor roles via `solo-dev-harness` + `.cursor/rules/workflow-*.md`; after Reviewer pass run commit gate only when the user asks to commit, before Test Engineer):
 
 - Feature work: `@planner [→ brainstorming → writing-plans] -> @builder [→ executing-plans | test-driven-development | react-native-skills] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer [→ test-driven-development additions] -> @qa-validator [→ TRAE-debugger | figma for WS-UX/M-UX-01]`
 - Bug fix: `@planner [→ brainstorming if fuzzy | TRAE-debugger] -> @builder [→ test-driven-development | TRAE-debugger] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer`
@@ -312,6 +313,10 @@ Autonomy Policy (ratified from SOLO_OPERATING_PROCEDURE.md §0):
 
 ## Scope Of This Inventory
 
-This inventory reflects the **repository-local SOLO custom agent pack** checked into `.trae/agents/`.
+This inventory reflects the **Cursor-native SOLO delivery system** for InsiteApp:
+personal skill `solo-dev-harness`, project `.cursor/rules/`, and `.cursor/skills/insite-dev/`.
+
+Legacy Trae blueprints under `.trae/agents/` are retained read-only during migration
+and are not the operational source of truth.
 
 It does **not** claim to enumerate hidden platform internals, provider-managed system prompts, or runtime-only agent infrastructure that is not materially inspectable from this workspace.

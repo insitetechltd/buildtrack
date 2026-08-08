@@ -104,6 +104,8 @@ Signer: ______________  Date: ______________
 
 Until that exact GO phrase appears in chat (or signed above), agents remain **Phase A ONLY**.
 
+**GO RECORDED (2026-08-08):** chat transcript contained `you have GO for Phase B live apply`. Phase B executed same day — see `2026-08-08-m-supabase-03b-close.md`.
+
 ---
 
 ## Phase A evidence paths

@@ -1,0 +1,25 @@
+---
+description: Task-management domain — stores, screens, optimistic/realtime safety
+globs: src/state/taskStore*.ts,src/screens/**/*Task*,src/screens/**/UpdateProgress*,src/screens/**/AddComment*,src/screens/**/Reject*,src/navigation/AppNavigator.tsx
+alwaysApply: false
+---
+
+# Task Domain
+
+## Primary files
+
+- `src/state/taskStore.supabase.ts`
+- Task screens under `src/screens/` (Tasks, Detail, Create, UpdateProgress, AddComment, Reject)
+- `src/navigation/AppNavigator.tsx`
+
+## Expectations
+
+- Preserve workflow semantics: create, assign, accept/decline, progress, review, approve/reject, comments, archive/cancel/delete, subtasks
+- Inspect store + triggering screen together
+- Stay consistent with existing Supabase schema/activity model
+- Careful with optimistic updates, realtime refresh, and persisted cache
+
+## Validation
+
+- Prefer `npm run test:tasks` (and related targeted Jest) before broader suites
+- User-visible task UX also needs Maestro/QA when interaction-sensitive

@@ -1,0 +1,24 @@
+---
+description: Expo/EAS build, release, patches, and environment safety
+globs: package.json,app.json,eas.json,babel.config.js,metro.config.js,tailwind.config.js,patches/**/*,scripts/**/*,documentation/**/*
+alwaysApply: false
+---
+
+# Build And Release
+
+## Constraints
+
+- Preserve Expo-managed workflow unless explicitly asked otherwise
+- Install expectation: `npm install --legacy-peer-deps`; `patch-package` patches are intentional
+- Do not casually upgrade Expo, RN, React, Reanimated, or EAS config
+- Treat bundle ID, package name, runtime version, and build numbers as human-gated
+
+## Environment
+
+- Align with Supabase env-var configuration (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`)
+- Never hardcode secrets or credential material into source/docs
+
+## Verification
+
+- Confirm script names/paths against the repo before documenting them
+- Prefer targeted validation over full platform builds unless asked

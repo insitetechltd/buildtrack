@@ -1,0 +1,20 @@
+---
+description: Human-gated danger zones for Insite — schema, RLS, secrets, store
+alwaysApply: true
+---
+
+# Danger Gates (Insite)
+
+Ask the user before:
+
+- Supabase schema / 6-col task metadata migrations / RLS policy applies
+- Auth, role CHECK, or permissions changes without precedent
+- `app.json` / `eas.json` version, buildNumber, bundle ID, runtimeVersion changes
+- App Store / Play / TestFlight submission or “released to users” claims
+- Scope expansion beyond one bounded extension
+
+Always:
+
+- Never commit `.env`, credentials, keystores, or service-role keys
+- Prefer dry-run / read-only SQL before live applies (M-SUPABASE gates)
+- Anti-secret: do not echo env values in chat or docs

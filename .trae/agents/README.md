@@ -1,6 +1,12 @@
 # SOLO Agent Pack
 
-This folder contains a reusable custom-agent pack for Trae SOLO environments.
+> **LEGACY (Trae exit in progress — 2026-08-08)**  
+> Operational SoT is now Cursor: `documentation/CURSOR_DEV_HARNESS.md`,  
+> `.cursor/rules/`, `.cursor/skills/insite-dev/`, and personal skill  
+> `~/.cursor/skills/solo-dev-harness/`. Do not extend this Trae pack.  
+> Keep this folder read-only until migration is confirmed, then archive/delete.
+
+This folder contains a reusable custom-agent pack for Trae SOLO environments (historical).
 
 ## Purpose
 

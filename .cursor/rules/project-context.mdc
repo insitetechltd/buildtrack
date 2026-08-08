@@ -1,0 +1,23 @@
+---
+description: Insite App stack, architecture, and change discipline
+alwaysApply: true
+---
+
+# Insite App Project Context
+
+## Stack
+
+- Expo-managed React Native, TypeScript, React Navigation, Zustand, Supabase, NativeWind when surrounding code uses it.
+
+## Architecture
+
+- Screens: `src/screens/` · State: `src/state/` · API: `src/api/` · Nav: `src/navigation/AppNavigator.tsx`
+- Prefer extending current modules over duplicate stores/clients/layers
+- Task SoT: `src/state/taskStore.supabase.ts` · Backend root: `src/api/supabase.ts`
+
+## Change discipline
+
+- Focused diffs; no broad refactors unless requested
+- Do not casually change build IDs, Expo/RN versions, or `patches/`
+- Keep secrets out of code and docs
+- Validate with the smallest relevant script from `package.json`

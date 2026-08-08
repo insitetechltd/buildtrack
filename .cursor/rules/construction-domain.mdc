@@ -1,0 +1,13 @@
+---
+description: Construction product domain — roles, evidence, project isolation, field UX
+alwaysApply: true
+---
+
+# Construction Domain
+
+- Jobsite roles (PM / supervisor / trade) ≠ consumer “users”; respect `documentation/role-permission-matrix.md`
+- Wrong-project data is a safety defect — preserve project isolation walls
+- Core loop: capture evidence (photo) → task → review → reject/rework → complete
+- Field constraints: fat-finger UI, camera-first create, poor network, location_on_site when in scope
+- Do not invent SaaS dashboard patterns that fight mobile jobsite use
+- Upcoming gated slices (after M-SUPABASE-03b): tags/assignee, delegation, location, containers

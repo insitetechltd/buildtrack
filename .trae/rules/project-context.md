@@ -1,6 +1,11 @@
 ---
 alwaysApply: true
 ---
+# LEGACY — Trae exit in progress
+
+Project law for Cursor lives in `.cursor/rules/`. Do not extend this file.
+See `documentation/CURSOR_DEV_HARNESS.md`.
+
 # Insite App Project Context
 
 ## Stack

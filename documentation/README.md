@@ -12,14 +12,15 @@ For repository-wide orientation, read these in order:
 2. [ROADMAP.md](./ROADMAP.md)
 3. [AGENTS.md](../AGENTS.md)
 4. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
-5. [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
-6. [maestro/README.md](../maestro/README.md)
-7. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
-8. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
-9. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
-10. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
-11. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
-12. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
+5. [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
+6. [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
+7. [maestro/README.md](../maestro/README.md)
+8. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
+9. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
+10. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+11. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
+12. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
+13. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
 
 ## Canonical References
 
@@ -27,6 +28,7 @@ For repository-wide orientation, read these in order:
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
 - [AGENTS.md](../AGENTS.md) - Repository-local agent inventory and workflow context
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
+- [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md) - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse
 - [TESTING_STRATEGY.md](../TESTING_STRATEGY.md) - Canonical repository testing strategy, confidence ladder, validation matrix, and command-selection cheat sheet
 - [maestro/README.md](../maestro/README.md) - Canonical Maestro-specific testing and runtime-alignment runbook
 - [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference

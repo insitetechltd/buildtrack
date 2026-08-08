@@ -46,6 +46,7 @@
     "greenfield:apply": "bash scripts/greenfield/apply_remote.sh",
     "greenfield:apply:parity": "GREENFIELD_RUN_PARITY=1 bash scripts/greenfield/apply_remote.sh",
     "test:all": "jest --coverage --verbose",
+    "dev:doctor": "bash \"./scripts/dev/doctor.sh\"",
     "validate:local": "bash \"./scripts/validation/validate-local.sh\"",
     "validate:local:confidence": "VALIDATE_LOCAL_RUN_JOURNEYS=1 bash \"./scripts/validation/validate-local.sh\"",
     "validate:local:maestro": "npm run validate:local:confidence && npm run test:e2e:maestro:journeys",

@@ -1,0 +1,15 @@
+---
+description: Solo dev cycle for Insite — milestone gate and role routing via Cursor harness
+alwaysApply: true
+---
+
+# Solo Dev Cycle (Insite)
+
+- Follow personal skill `solo-dev-harness` for workflows, autonomy, and handoffs.
+- Milestone gate: read `AGENTS.md` § Current Delivery Status and `documentation/ROADMAP.md` before planning.
+- Cursor SoT for project law: `.cursor/rules/`. `.trae/` is legacy read-only during migration.
+- Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only.
+- User-visible mobile/nav/upload/task changes require QA path; logic-only may stop at Test Engineer.
+- Before Maestro or release claims, run `npm run dev:doctor`.
+- Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
+- Maestro 8-gate preflight: `.cursor/rules/maestro-preflight.md`.

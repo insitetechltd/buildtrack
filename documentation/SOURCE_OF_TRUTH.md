@@ -111,6 +111,7 @@ These documents define how the repository should be interpreted and maintained:
 - [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
 - [AGENTS.md](file:///Volumes/KooDrive/Insite%20App/AGENTS.md)
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
+- [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)
 - [README.md](file:///Volumes/KooDrive/Insite%20App/README.md)
 
 ### 3. Canonical Product, UX, Architecture, And Domain References
@@ -276,6 +277,8 @@ When a document should stay active:
   - single canonical WS/M/S milestone inventory and execution order
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
   - canonical operator workflow reference
+- [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)
+  - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse
 
 ### Product, UX, Architecture, And Domain Truth
 

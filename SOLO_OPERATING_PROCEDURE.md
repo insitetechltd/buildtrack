@@ -2,15 +2,17 @@
 
 ## Objective
 
-This procedure defines a reusable multi-agent operating model for Trae SOLO environments. It is designed to work across projects by combining:
+This procedure defines a reusable multi-role operating model for **Cursor** solo delivery. It is designed to work across projects by combining:
 
-- reusable agent roles
+- reusable methodology in personal skill `solo-dev-harness` (`~/.cursor/skills/solo-dev-harness/`)
 - project-specific `AGENTS.md`
-- project-specific `.trae/rules/`
+- project-specific `.cursor/rules/` (+ optional `.cursor/skills/<project>-dev/`)
+
+Legacy Trae paths (`.trae/`, `~/.trae/skills/solo-agents/`) are read-only during migration and must not be extended. See `documentation/CURSOR_DEV_HARNESS.md`.
 
 ## Core Team
 
-Agents are invoked via the `@identifier` syntax. Keep these exact identifiers:
+Roles are behavioral modes (or Task subagents) inside Cursor — not Trae picker entries. Keep these identifiers for handoffs:
 
 | Display name | Identifier | Callable by other agents |
 |---|---|---|
@@ -23,7 +25,7 @@ Agents are invoked via the `@identifier` syntax. Keep these exact identifiers:
 | `Release Manager` | `@release-manager` | Yes |
 | `Docs Curator` (optional) | `@docs-curator` | Yes |
 
-The canonical operational definitions live in the installed Trae skill at `~/.trae/skills/solo-agents/agents/*.yaml`. The files under `.trae/agents/*.md` are minimal copy-ready blueprints. The YAML definitions are a strict superset and are authoritative.
+Canonical operational methodology: `~/.cursor/skills/solo-dev-harness/` (workflows, autonomy, handoffs). Project law: `.cursor/rules/` + `AGENTS.md`. Insite overlay: `.cursor/skills/insite-dev/`.
 
 ## Operating Principles
 
@@ -65,8 +67,9 @@ Each agent should stay inside its job boundary:
 Keep the agents mostly reusable. Put project-specific constraints in:
 
 - `AGENTS.md`
-- `.trae/rules/project-context.md`
-- additional domain rules under `.trae/rules/`
+- `.cursor/rules/` (canonical project law in Cursor)
+- `.cursor/skills/insite-dev/` (Insite overlay)
+- Legacy during Trae exit only: `.trae/rules/` (do not extend)
 
 ### 3. Smallest Safe Change
 
@@ -124,9 +127,10 @@ Before handoff:
 At the beginning of every non-trivial development cycle, review these inputs before planning or coding:
 
 1. `AGENTS.md`
-2. project rules under `.trae/rules/`
+2. project rules under `.cursor/rules/` (legacy `.trae/rules/` only if Cursor rules missing)
 3. `TESTING_STRATEGY.md`
 4. `maestro/README.md` when the task can affect real user-visible runtime behavior
+5. `npm run dev:doctor` before Maestro or release-readiness claims
 
 This preflight is mandatory for:
 

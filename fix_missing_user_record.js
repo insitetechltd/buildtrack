@@ -1,8 +1,26 @@
+#!/usr/bin/env node
+
+/**
+ * Fix a missing public.users row from auth.users (service-role).
+ *
+ * Usage:
+ *   node fix_missing_user_record.js [email] [--dry-run|--check-only] [--apply]
+ *
+ * Default = dry-run (no writes). Pass --apply to insert.
+ * --dry-run / --check-only force dry-run even if --apply is also present.
+ */
+
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
+const args = process.argv.slice(2);
+const FORCE_DRY = args.includes('--dry-run') || args.includes('--check-only');
+const APPLY = args.includes('--apply') && !FORCE_DRY;
+const DRY_RUN = !APPLY;
+const emailToFix = args.find((arg) => !arg.startsWith('--')) || 'admin@buildtrack.com';
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ Error: Supabase credentials not found.');
@@ -15,6 +33,11 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
 
 async function fixMissingUserRecord(email) {
   console.log(`\n=== Fixing Missing User Record for: ${email} ===\n`);
+  console.log(
+    DRY_RUN
+      ? '🔒 Mode: DRY-RUN (default) — no writes. Pass --apply to insert.\n'
+      : '⚠️  Mode: APPLY — will insert into public.users if missing.\n'
+  );
 
   try {
     // Step 1: Find user in auth.users
@@ -99,8 +122,13 @@ async function fixMissingUserRecord(email) {
       created_at: authUser.created_at || new Date().toISOString()
     };
 
-    console.log('📋 User data to insert:');
+    console.log('📋 Pre-write diff (users insert):');
     console.log(JSON.stringify(newUserData, null, 2));
+
+    if (DRY_RUN) {
+      console.log('\n🔒 [dry-run] Skipping insert. Re-run with --apply to write.');
+      return;
+    }
 
     const { data: insertedUser, error: insertError } = await supabaseAdmin
       .from('users')
@@ -133,9 +161,4 @@ async function fixMissingUserRecord(email) {
   }
 }
 
-const emailToFix = process.argv[2] || 'admin@buildtrack.com';
 fixMissingUserRecord(emailToFix);
-
-
-
-

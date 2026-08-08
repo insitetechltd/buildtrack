@@ -1,8 +1,23 @@
+/**
+ * Rebuild auth.users from public.users (service-role).
+ *
+ * Usage:
+ *   node rebuild_auth_users_from_users.js [--dry-run|--check-only] [--apply]
+ *
+ * Default = dry-run (no writes). Pass --apply to perform updates/creates.
+ * --dry-run / --check-only force dry-run even if --apply is also present.
+ */
+
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY;
+
+const args = process.argv.slice(2);
+const FORCE_DRY = args.includes('--dry-run') || args.includes('--check-only');
+const APPLY = args.includes('--apply') && !FORCE_DRY;
+const DRY_RUN = !APPLY;
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('❌ Error: Supabase credentials not found.');
@@ -68,6 +83,11 @@ function convertToE164HongKong(phone) {
 
 async function rebuildAuthUsers() {
   console.log('\n=== Rebuilding auth.users from users table ===\n');
+  console.log(
+    DRY_RUN
+      ? '🔒 Mode: DRY-RUN (default) — no writes. Pass --apply to mutate auth.users.\n'
+      : '⚠️  Mode: APPLY — will update/create auth.users records.\n'
+  );
 
   try {
     // Step 1: Fetch all users from public.users table
@@ -113,6 +133,8 @@ async function rebuildAuthUsers() {
     const results = {
       updated: 0,
       created: 0,
+      wouldUpdate: 0,
+      wouldCreate: 0,
       skipped: 0,
       errors: []
     };
@@ -189,6 +211,12 @@ async function rebuildAuthUsers() {
             user_metadata: updateData.user_metadata
           }, null, 2));
 
+          if (DRY_RUN) {
+            console.log('   [dry-run] would call auth.admin.updateUserById');
+            results.wouldUpdate++;
+            continue;
+          }
+
           const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
             existingAuthUser.id,
             updateData
@@ -261,8 +289,8 @@ async function rebuildAuthUsers() {
           
           // Generate a temporary password (user will need to reset it)
           const tempPassword = `temp_${user.id.substring(0, 8)}_${Date.now()}`;
-          
-          const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+
+          const createPayload = {
             id: user.id, // Use the same ID from users table
             email: user.email || undefined,
             phone: phoneE164, // Use E.164 formatted phone (required by Supabase)
@@ -277,7 +305,22 @@ async function rebuildAuthUsers() {
               approved_by: user.approved_by?.toString(),
               approved_at: user.approved_at
             }
-          });
+          };
+
+          console.log('   📋 Create diff:', JSON.stringify({
+            id: createPayload.id,
+            email: createPayload.email,
+            phone: createPayload.phone || null,
+            user_metadata: createPayload.user_metadata
+          }, null, 2));
+
+          if (DRY_RUN) {
+            console.log('   [dry-run] would call auth.admin.createUser + password reset');
+            results.wouldCreate++;
+            continue;
+          }
+          
+          const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser(createPayload);
 
           if (createError) {
             console.error(`   ❌ Creation failed: ${createError.message}`);
@@ -322,8 +365,14 @@ async function rebuildAuthUsers() {
 
     // Step 4: Summary
     console.log('\n=== Summary ===');
-    console.log(`✅ Updated: ${results.updated} users`);
-    console.log(`➕ Created: ${results.created} users`);
+    if (DRY_RUN) {
+      console.log(`🔍 Would update: ${results.wouldUpdate} users`);
+      console.log(`🔍 Would create: ${results.wouldCreate} users`);
+      console.log('🔒 No writes performed (dry-run). Re-run with --apply to mutate.');
+    } else {
+      console.log(`✅ Updated: ${results.updated} users`);
+      console.log(`➕ Created: ${results.created} users`);
+    }
     console.log(`⏭️  Skipped: ${results.skipped} users`);
     console.log(`❌ Errors: ${results.errors.length} users`);
     
@@ -342,11 +391,13 @@ async function rebuildAuthUsers() {
       });
     }
 
-    console.log('\n✅ Rebuild complete!');
-    console.log('\n📝 Next steps:');
-    console.log('   1. Users can now log in with their email/phone and password "testing"');
-    console.log('   2. Users should change their password after first login');
-    console.log('   3. Review any errors above and fix them manually if needed');
+    console.log(DRY_RUN ? '\n✅ Dry-run complete!' : '\n✅ Rebuild complete!');
+    if (!DRY_RUN) {
+      console.log('\n📝 Next steps:');
+      console.log('   1. Users can now log in with their email/phone and password "testing"');
+      console.log('   2. Users should change their password after first login');
+      console.log('   3. Review any errors above and fix them manually if needed');
+    }
 
   } catch (error) {
     console.error('\n❌ Fatal error:', error.message);

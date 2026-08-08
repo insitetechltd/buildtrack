@@ -12,6 +12,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
+import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
 
 export type { QueryMeta } from "../api/supabase";
@@ -1612,6 +1613,15 @@ export const useTaskStore = create<TaskStore>()(
 
           const deferredField = getDeferredTaskSchemaField(error);
           if (deferredField) {
+            const errorCode =
+              error && typeof error === "object" && "code" in error
+                ? String((error as { code?: unknown }).code || "")
+                : "";
+            recordDeferredFallbackFire({
+              op: "createTask",
+              deferredField,
+              errorCode: errorCode || null,
+            });
             console.warn(
               '⚠️ [createTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.',
               { deferredField }
@@ -2073,6 +2083,15 @@ export const useTaskStore = create<TaskStore>()(
           const deferredField = getDeferredTaskSchemaField(error);
           if (deferredField) {
             usedDeferredSchemaCompatibility = true;
+            const errorCode =
+              error && typeof error === "object" && "code" in error
+                ? String((error as { code?: unknown }).code || "")
+                : "";
+            recordDeferredFallbackFire({
+              op: "updateTask",
+              deferredField,
+              errorCode: errorCode || null,
+            });
             console.warn(
               '⚠️ [updateTask] Supabase schema is missing deferred redesign task fields. Retrying with compatibility payload until the migration lands.',
               { deferredField }

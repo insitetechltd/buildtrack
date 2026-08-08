@@ -149,6 +149,7 @@ describe("TaskDetailScreen header regression", () => {
     assignees: [],
     activities: [],
     childTasks: [],
+    canEditDelegation: true,
     quickActions: {
       id: "task-quick-actions",
       density: "standard",

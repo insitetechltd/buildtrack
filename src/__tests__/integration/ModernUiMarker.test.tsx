@@ -219,6 +219,7 @@ function createTaskDetailOutput(): TaskDetailScreenViewAdapterOutput {
     assigners: [],
     assignees: [],
     childTasks: [],
+    canEditDelegation: true,
   };
 }
 

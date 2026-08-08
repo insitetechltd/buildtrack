@@ -481,6 +481,8 @@ export interface TaskDetailScreenViewAdapterOutput {
   assigners: TaskDetailAssigneeModel[];
   assignees: TaskDetailAssigneeModel[];
   childTasks: TasksScreenRowItem[];
+  /** S-UX-01K2: creator + unlocked status may edit primary/delegates. */
+  canEditDelegation: boolean;
 }
 
 export interface UpdateProgressPhotoModel extends PrimitiveReadyItemBase {

@@ -440,6 +440,15 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
                 Tags, Primary & Delegates
               </Text>
+              {!output.canEditDelegation ? (
+                <Text
+                  testID="task-detail__delegation_locked_hint"
+                  className="mt-2 text-sm text-slate-500"
+                >
+                  Only the task creator can change primary and delegates before
+                  the task is underway.
+                </Text>
+              ) : null}
               {output.assignees.length > 0 ? (
                 <View className="mt-3">
                   <Text className="mb-2 text-sm text-slate-600">
@@ -453,7 +462,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                         <Pressable
                           key={assignee.id}
                           testID={`task-detail__set_primary_${assignee.id}`}
+                          disabled={!output.canEditDelegation}
                           onPress={() => {
+                            if (!output.canEditDelegation) {
+                              return;
+                            }
                             void actions.setPrimaryAssignee(assignee.id);
                           }}
                           className={cn(
@@ -461,6 +474,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                             isPrimary
                               ? "border-amber-300 bg-amber-50"
                               : "border-slate-200 bg-slate-50",
+                            !output.canEditDelegation && "opacity-60",
                           )}
                         >
                           <Text
@@ -498,7 +512,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                         <Pressable
                           key={`delegate-${assignee.id}`}
                           testID={`task-detail__toggle_delegate_${assignee.id}`}
+                          disabled={!output.canEditDelegation}
                           onPress={() => {
+                            if (!output.canEditDelegation) {
+                              return;
+                            }
                             void actions.toggleDelegate(assignee.id);
                           }}
                           className={cn(
@@ -506,6 +524,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                             isDelegate
                               ? "border-blue-300 bg-blue-50"
                               : "border-slate-200 bg-slate-50",
+                            !output.canEditDelegation && "opacity-60",
                           )}
                         >
                           <Text

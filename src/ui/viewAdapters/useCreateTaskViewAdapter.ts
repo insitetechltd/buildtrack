@@ -26,6 +26,10 @@ import {
   normalizeDelegatedUserIds,
 } from '../contracts/taskDelegation';
 import {
+  canEditTaskDelegation,
+  canSelectUserAsAssignee,
+} from '../contracts/taskDelegationPermissions';
+import {
   normalizeContainerLabel,
   shouldShowContainerOrganization,
   type ProjectContainerRecord,
@@ -106,15 +110,6 @@ function isSelectedPhotoAttachment(attachment: unknown): attachment is SelectedP
   );
 }
 
-function areAssigneesLockedForStatus(status?: TaskStatus): boolean {
-  return Boolean(
-    status &&
-      status !== 'new' &&
-      status !== 'not_started' &&
-      status !== 'rejected' &&
-      status !== 'declined'
-  );
-}
 
 function requiresEditReasonForStatus(status?: TaskStatus): boolean {
   return status === 'accepted' || status === 'in_progress' || status === 'submitted_for_review';
@@ -408,7 +403,12 @@ export function useCreateTaskViewAdapter({
       );
     });
   }, [allAssignableUsers, userSearchQuery]);
-  const assigneesLocked = areAssigneesLockedForStatus(editTask?.status as TaskStatus | undefined);
+  const assigneesLocked = !canEditTaskDelegation({
+    actorUserId: user?.id,
+    taskAssignedBy: editTask?.assignedBy,
+    taskStatus: editTask?.status as TaskStatus | undefined,
+    isCreateFlow: !editTask,
+  });
   const requiresEditReason = requiresEditReasonForStatus(editTask?.status as TaskStatus | undefined);
 
   const context = useMemo(() => {
@@ -454,27 +454,51 @@ export function useCreateTaskViewAdapter({
     t.createTask.subTaskOf,
   ]);
 
-  const toggleUserSelection = useCallback((userId: string) => {
-    setFormData((previous) => {
-      const assignedTo = previous.assignedTo.includes(userId)
-        ? previous.assignedTo.filter((id) => id !== userId)
-        : [...previous.assignedTo, userId];
-      return {
-        ...previous,
-        assignedTo,
-        primaryAssigneeId: resolvePrimaryAssigneeId(assignedTo, previous.primaryAssigneeId) || '',
-      };
-    });
-  }, []);
-
-  const setPrimaryAssignee = useCallback((userId: string) => {
-    setFormData((previous) => {
-      if (!previous.assignedTo.includes(userId)) {
-        return previous;
+  const toggleUserSelection = useCallback(
+    (userId: string) => {
+      if (assigneesLocked) {
+        return;
       }
-      return { ...previous, primaryAssigneeId: userId };
-    });
-  }, []);
+      const assignableIds = allAssignableUsers.map((assignableUser) => assignableUser.id);
+      const alreadySelected = formData.assignedTo.includes(userId);
+      if (
+        !alreadySelected &&
+        !canSelectUserAsAssignee({
+          candidateUserId: userId,
+          assignableUserIds: assignableIds,
+        })
+      ) {
+        return;
+      }
+      setFormData((previous) => {
+        const assignedTo = previous.assignedTo.includes(userId)
+          ? previous.assignedTo.filter((id) => id !== userId)
+          : [...previous.assignedTo, userId];
+        return {
+          ...previous,
+          assignedTo,
+          primaryAssigneeId:
+            resolvePrimaryAssigneeId(assignedTo, previous.primaryAssigneeId) || '',
+        };
+      });
+    },
+    [allAssignableUsers, assigneesLocked, formData.assignedTo],
+  );
+
+  const setPrimaryAssignee = useCallback(
+    (userId: string) => {
+      if (assigneesLocked) {
+        return;
+      }
+      setFormData((previous) => {
+        if (!previous.assignedTo.includes(userId)) {
+          return previous;
+        }
+        return { ...previous, primaryAssigneeId: userId };
+      });
+    },
+    [assigneesLocked],
+  );
 
   const addCustomTag = useCallback((rawTag: string) => {
     const tag = rawTag.trim().toLowerCase().replace(/\s+/g, '_');

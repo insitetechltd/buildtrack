@@ -17,6 +17,10 @@ import {
   mergeAssignedToIds,
   normalizeDelegatedUserIds,
 } from '../contracts/taskDelegation';
+import {
+  canEditTaskDelegation,
+  canSelectUserAsAssignee,
+} from '../contracts/taskDelegationPermissions';
 import type {
   TaskDetailActiveStageModel,
   TaskDetailQuickActionRowModel,
@@ -539,6 +543,7 @@ export function useTaskDetailViewAdapter({
         assigners: [],
         assignees: [],
         childTasks: [],
+        canEditDelegation: false,
       },
       actions: {
         acceptTask: async () => {},
@@ -566,6 +571,11 @@ export function useTaskDetailViewAdapter({
   });
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
+  const canEditDelegation = canEditTaskDelegation({
+    actorUserId: user.id,
+    taskAssignedBy: task.assignedBy,
+    taskStatus: task.status,
+  });
   const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
   const isAwaitingAcceptance = isAssignedToMe && isPreAcceptanceTaskStatus(task.status);
   const isReviewerApprovalState =
@@ -1095,6 +1105,7 @@ export function useTaskDetailViewAdapter({
       assigners,
       assignees,
       childTasks,
+      canEditDelegation,
     },
     actions: {
       acceptTask: async () => {
@@ -1136,6 +1147,17 @@ export function useTaskDetailViewAdapter({
         await fetchTask();
       },
       setPrimaryAssignee: async (userId: string) => {
+        if (!canEditDelegation) {
+          return;
+        }
+        if (
+          !canSelectUserAsAssignee({
+            candidateUserId: userId,
+            assignableUserIds: assignedTo,
+          })
+        ) {
+          return;
+        }
         const nextAssignedTo = mergeAssignedToIds({
           assignedTo: task.assignedTo || [],
           primaryAssigneeId: userId,
@@ -1156,6 +1178,17 @@ export function useTaskDetailViewAdapter({
         await fetchTask();
       },
       toggleDelegate: async (userId: string) => {
+        if (!canEditDelegation) {
+          return;
+        }
+        if (
+          !canSelectUserAsAssignee({
+            candidateUserId: userId,
+            assignableUserIds: assignedTo,
+          })
+        ) {
+          return;
+        }
         const primaryAssigneeId =
           resolvePrimaryAssigneeId(
             mergeAssignedToIds({

@@ -303,6 +303,7 @@ describe("Sprint 4 UI migration contracts", () => {
       assigners: [],
       assignees: [],
       childTasks: [],
+      canEditDelegation: false,
       scalarMetrics: {
         attachmentCount: 3,
         updateCount: 5,

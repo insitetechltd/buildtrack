@@ -7,7 +7,11 @@ import { useTranslation } from '../../utils/useTranslation';
 import { getFileUrl } from '../../api/fileUploadService';
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
 import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
-import { CRITICAL_THIS_WEEK_TAG } from '../contracts/viewAdapters';
+import {
+  getTaskTags,
+  hasCriticalThisWeekTag,
+  withCriticalThisWeekTag,
+} from '../contracts/taskTags';
 import type {
   TaskDetailActiveStageModel,
   TaskDetailQuickActionRowModel,
@@ -48,20 +52,6 @@ function isApprovedTaskStatus(status: TaskStatus): boolean {
 
 function isActiveWorkTaskStatus(status: TaskStatus): boolean {
   return status === 'accepted' || status === 'in_progress' || status === 'wip' || status === 'rejected';
-}
-
-function getTaskTags(tags?: string[]): string[] {
-  return Array.isArray(tags) ? tags.filter(Boolean) : [];
-}
-
-function hasCriticalThisWeekTag(task: Pick<Task, 'tags'>): boolean {
-  return getTaskTags(task.tags).includes(CRITICAL_THIS_WEEK_TAG);
-}
-
-function withCriticalThisWeekTag(tags: string[] | undefined, isEnabled: boolean): string[] {
-  const normalizedTags = getTaskTags(tags).filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG);
-
-  return isEnabled ? [...normalizedTags, CRITICAL_THIS_WEEK_TAG] : normalizedTags;
 }
 
 function humanizeToken(value: string | undefined): string {
@@ -427,6 +417,9 @@ export function useTaskDetailViewAdapter({
     submitForReview: () => Promise<void>;
     approveTask: () => Promise<void>;
     toggleCriticalThisWeek: () => Promise<void>;
+    setPrimaryAssignee: (userId: string) => Promise<void>;
+    addCustomTag: (tag: string) => Promise<void>;
+    removeCustomTag: (tag: string) => Promise<void>;
     archiveTask: () => Promise<void>;
     cancelTask: () => Promise<void>;
     fetchTask: () => Promise<void>;
@@ -542,6 +535,9 @@ export function useTaskDetailViewAdapter({
         submitForReview: async () => {},
         approveTask: async () => {},
         toggleCriticalThisWeek: async () => {},
+        setPrimaryAssignee: async () => {},
+        addCustomTag: async () => {},
+        removeCustomTag: async () => {},
         archiveTask: async () => {},
         cancelTask: async () => {},
         fetchTask,
@@ -552,7 +548,7 @@ export function useTaskDetailViewAdapter({
   const assignedTo = task.assignedTo || [];
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
-  const isCriticalThisWeek = hasCriticalThisWeekTag(task);
+  const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
   const isAwaitingAcceptance = isAssignedToMe && isPreAcceptanceTaskStatus(task.status);
   const isReviewerApprovalState =
     isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100;
@@ -750,6 +746,8 @@ export function useTaskDetailViewAdapter({
     assignedByLabel: delegationSummary.assignedByLabel,
     assignedToLabel: delegationSummary.assignedToLabel,
     primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
+    primaryAssigneeId: primaryOwner?.id || task.primaryAssigneeId,
+    tagLabels: getTaskTags(task.tags),
     detailRows: [],
   };
 
@@ -1097,6 +1095,34 @@ export function useTaskDetailViewAdapter({
         await updateTask(task.id, {
           tags: withCriticalThisWeekTag(task.tags, !isCriticalThisWeek),
         } as Partial<Task>);
+        await fetchTask();
+      },
+      setPrimaryAssignee: async (userId: string) => {
+        const assignedTo = Array.isArray(task.assignedTo) ? [...task.assignedTo] : [];
+        if (!assignedTo.includes(userId)) {
+          assignedTo.push(userId);
+        }
+        await updateTask(task.id, {
+          assignedTo,
+          primaryAssigneeId: userId,
+        } as Partial<Task>);
+        await fetchTask();
+      },
+      addCustomTag: async (rawTag: string) => {
+        const tag = rawTag.trim().toLowerCase().replace(/\s+/g, '_');
+        if (!tag) {
+          return;
+        }
+        const nextTags = withCriticalThisWeekTag(
+          [...getTaskTags(task.tags).filter((entry) => entry !== tag), tag],
+          isCriticalThisWeek,
+        );
+        await updateTask(task.id, { tags: nextTags } as Partial<Task>);
+        await fetchTask();
+      },
+      removeCustomTag: async (tag: string) => {
+        const nextTags = getTaskTags(task.tags).filter((entry) => entry !== tag);
+        await updateTask(task.id, { tags: nextTags } as Partial<Task>);
         await fetchTask();
       },
       archiveTask: async () => {

@@ -348,6 +348,9 @@ export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   assignedByLabel?: string;
   assignedToLabel?: string;
   primaryOwnerLabel?: string;
+  primaryAssigneeId?: string;
+  /** Display tags including critical_this_week when present. */
+  tagLabels?: string[];
   detailRows: TaskDetailInfoCardRow[];
 }
 
@@ -1356,6 +1359,11 @@ export interface CreateTaskFormModel {
   dueDate: Date;
   locationOnSite: string;
   assignedTo: string[];
+  /** Single primary owner (text id matching live primary_assignee_id). */
+  primaryAssigneeId: string;
+  /** Custom tags only; critical_this_week is derived from isCriticalThisWeek. */
+  customTags: string[];
+  isCriticalThisWeek: boolean;
   projectId: string;
   attachments: any[]; // Or Attachment type
 }

@@ -1744,7 +1744,8 @@ describe('CreateTaskScreen Integration', () => {
       );
     });
 
-    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty('tags');
+    expect(mockCreateTask.mock.calls[0][0]).toHaveProperty('tags');
+    expect(mockCreateTask.mock.calls[0][0]).toHaveProperty('primaryAssigneeId');
 
     await waitFor(() => {
       expect(getByTestId('create-task__submit-success-message')).toBeTruthy();

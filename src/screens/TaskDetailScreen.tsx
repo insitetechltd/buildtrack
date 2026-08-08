@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   Alert,
+  TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -18,6 +19,7 @@ import { cn } from "@/utils/cn";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
+import { CRITICAL_THIS_WEEK_TAG } from "@/ui/contracts/taskTags";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -147,7 +149,8 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
-  const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = React.useState(false);
+  const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = useState(false);
+  const [tagDraft, setTagDraft] = useState("");
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -389,6 +392,91 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                 </Pressable>
               </View>
             ) : null}
+
+            <View
+              testID="task-detail__tags_primary_editor"
+              className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4"
+            >
+              <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
+                Tags & Primary
+              </Text>
+              {output.assignees.length > 0 ? (
+                <View className="mt-3">
+                  <Text className="mb-2 text-sm text-slate-600">
+                    Tap to set Primary owner
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {output.assignees.map((assignee) => {
+                      const isPrimary =
+                        output.infoCard?.primaryAssigneeId === assignee.id;
+                      return (
+                        <Pressable
+                          key={assignee.id}
+                          testID={`task-detail__set_primary_${assignee.id}`}
+                          onPress={() => {
+                            void actions.setPrimaryAssignee(assignee.id);
+                          }}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 border",
+                            isPrimary
+                              ? "border-amber-300 bg-amber-50"
+                              : "border-slate-200 bg-slate-50",
+                          )}
+                        >
+                          <Text
+                            className={cn(
+                              "text-sm font-medium",
+                              isPrimary ? "text-amber-900" : "text-slate-800",
+                            )}
+                          >
+                            {assignee.name}
+                            {isPrimary ? " · Primary" : ""}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              <View className="mt-4">
+                <Text className="mb-2 text-sm text-slate-600">Custom tags</Text>
+                <View className="flex-row flex-wrap gap-2 mb-2">
+                  {(output.infoCard?.tagLabels ?? [])
+                    .filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG)
+                    .map((tag) => (
+                      <View
+                        key={tag}
+                        className="rounded-full bg-slate-100 px-3 py-1.5 flex-row items-center"
+                      >
+                        <Text className="text-sm text-slate-800 mr-1">{tag}</Text>
+                        <Pressable
+                          testID={`task-detail__remove_tag_${tag}`}
+                          onPress={() => {
+                            void actions.removeCustomTag(tag);
+                          }}
+                        >
+                          <Ionicons name="close-circle" size={16} color="#475569" />
+                        </Pressable>
+                      </View>
+                    ))}
+                </View>
+                <TextInput
+                  testID="task-detail__tag_input"
+                  className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900"
+                  placeholder="Add tag, press return"
+                  placeholderTextColor="#94a3b8"
+                  value={tagDraft}
+                  onChangeText={setTagDraft}
+                  returnKeyType="done"
+                  blurOnSubmit
+                  onSubmitEditing={() => {
+                    void actions.addCustomTag(tagDraft);
+                    setTagDraft("");
+                  }}
+                />
+              </View>
+            </View>
 
             <TaskActivityTimeline
               testID="task-detail__activity_thread"

@@ -491,11 +491,12 @@ describe("useCreateTaskViewAdapter", () => {
         projectId: "project-1",
         locationOnSite: "Lift lobby",
         assignedTo: ["user-2"],
+        primaryAssigneeId: "user-2",
+        tags: [],
         assignedBy: "user-1",
       }),
     );
     expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("location");
-    expect(mockCreateTask.mock.calls[0][0]).not.toHaveProperty("tags");
     expect(mockEnsureProjectLocation).toHaveBeenCalledWith("project-1", "Lift lobby", "user-1");
 
     mockUseTaskStore.mockReturnValue({
@@ -553,11 +554,38 @@ describe("useCreateTaskViewAdapter", () => {
         projectId: "project-1",
         locationOnSite: "Level 2 riser",
         assignedTo: ["user-2"],
+        primaryAssigneeId: "user-2",
+        tags: [],
       }),
     );
     expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("location");
-    expect(mockUpdateTask.mock.calls[0][1]).not.toHaveProperty("tags");
     expect(mockEnsureProjectLocation).toHaveBeenLastCalledWith("project-1", "Level 2 riser", "user-1");
+  });
+
+  it("persists critical tag and explicit primary assignee on create", async () => {
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    act(() => {
+      result.current.actions.updateField("title", "Critical rail work");
+      result.current.actions.updateField("description", "Edge protection");
+      result.current.actions.updateField("projectId", "project-1");
+      result.current.actions.updateField("assignedTo", ["user-2", "user-3"]);
+      result.current.actions.setPrimaryAssignee("user-3");
+      result.current.actions.updateField("isCriticalThisWeek", true);
+      result.current.actions.addCustomTag("hvac");
+    });
+
+    await act(async () => {
+      await result.current.actions.submit();
+    });
+
+    expect(mockCreateTask).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignedTo: ["user-2", "user-3"],
+        primaryAssigneeId: "user-3",
+        tags: ["hvac", "critical_this_week"],
+      }),
+    );
   });
 
   it("does not create a shared project location when the optional field is blank", async () => {

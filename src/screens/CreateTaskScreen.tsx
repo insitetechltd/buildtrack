@@ -219,6 +219,7 @@ function CreateTaskEditorScreen({
     title: string;
     message: string;
   }>(null);
+  const [tagDraft, setTagDraft] = useState("");
   const shouldShowPostCaptureRoutingSheet =
     actionType === "photos" &&
     cameraLaunchContext === "global" &&
@@ -243,6 +244,9 @@ function CreateTaskEditorScreen({
     setTextInput,
     setUserSearchQuery,
     toggleUserSelection,
+    setPrimaryAssignee,
+    addCustomTag,
+    removeCustomTag,
     removeAttachment,
     setShowSuggestionPreview,
     saveLocationOnSiteSelection,
@@ -918,22 +922,52 @@ function CreateTaskEditorScreen({
               </InputField>
 
               {selectedUsers.length > 0 && (
-                <View className="rounded-xl border border-gray-200 bg-gray-50 p-3">
-                  <Text className="mb-2 text-sm font-medium text-gray-700">{t.createTask.selectedUsers}</Text>
+                <View
+                  testID="create-task__selected_assignees"
+                  className="rounded-xl border border-gray-200 bg-gray-50 p-3"
+                >
+                  <Text className="mb-2 text-sm font-medium text-gray-700">
+                    {t.createTask.selectedUsers}
+                  </Text>
+                  <Text className="mb-2 text-xs text-gray-500">
+                    Tap a name to set Primary owner.
+                  </Text>
                   <View className="flex-row flex-wrap">
                     {selectedUsers.map((userId) => {
                       const selectedUser = assigneePicker.availableUsers.find((assignee) => assignee.id === userId);
                       if (!selectedUser) return null;
+                      const isPrimary = formData.primaryAssigneeId === userId;
 
                       return (
                         <View
                           key={userId}
-                          className="bg-blue-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                          className={cn(
+                            "rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center",
+                            isPrimary ? "bg-amber-100 border border-amber-300" : "bg-blue-100",
+                          )}
                         >
-                          <Text className="text-blue-900 text-sm font-medium mr-1">{selectedUser.name}</Text>
+                          <Pressable
+                            testID={`create-task__set_primary_${userId}`}
+                            disabled={context.assigneesLocked}
+                            onPress={() => setPrimaryAssignee(userId)}
+                          >
+                            <Text
+                              className={cn(
+                                "text-sm font-medium mr-1",
+                                isPrimary ? "text-amber-900" : "text-blue-900",
+                              )}
+                            >
+                              {selectedUser.name}
+                              {isPrimary ? " · Primary" : ""}
+                            </Text>
+                          </Pressable>
                           {!context.assigneesLocked ? (
                             <Pressable onPress={() => toggleUserSelection(userId)}>
-                              <Ionicons name="close-circle" size={16} color="#1e40af" />
+                              <Ionicons
+                                name="close-circle"
+                                size={16}
+                                color={isPrimary ? "#92400e" : "#1e40af"}
+                              />
                             </Pressable>
                           ) : null}
                         </View>
@@ -942,6 +976,68 @@ function CreateTaskEditorScreen({
                   </View>
                 </View>
               )}
+
+              <Pressable
+                testID="create-task__toggle_critical_this_week"
+                accessibilityRole="button"
+                accessibilityState={{ selected: formData.isCriticalThisWeek }}
+                onPress={() => updateField("isCriticalThisWeek", !formData.isCriticalThisWeek)}
+                className={cn(
+                  "flex-row items-center justify-between rounded-xl border px-4 py-3",
+                  formData.isCriticalThisWeek
+                    ? "border-amber-300 bg-amber-50"
+                    : "border-gray-200 bg-white",
+                )}
+              >
+                <View className="mr-3 flex-1">
+                  <Text className="text-base font-semibold text-slate-900">
+                    Critical this week
+                  </Text>
+                  <Text className="mt-1 text-sm text-slate-600">
+                    Persist as tag critical_this_week on save.
+                  </Text>
+                </View>
+                <Ionicons
+                  name={formData.isCriticalThisWeek ? "flag" : "flag-outline"}
+                  size={20}
+                  color={formData.isCriticalThisWeek ? "#b45309" : "#6b7280"}
+                />
+              </Pressable>
+
+              <InputField label="Tags">
+                <View testID="create-task__tags_editor">
+                  <View className="flex-row flex-wrap mb-2">
+                    {formData.customTags.map((tag) => (
+                      <View
+                        key={tag}
+                        className="bg-slate-100 rounded-full px-3 py-1 mr-2 mb-2 flex-row items-center"
+                      >
+                        <Text className="text-slate-800 text-sm mr-1">{tag}</Text>
+                        <Pressable
+                          testID={`create-task__remove_tag_${tag}`}
+                          onPress={() => removeCustomTag(tag)}
+                        >
+                          <Ionicons name="close-circle" size={16} color="#475569" />
+                        </Pressable>
+                      </View>
+                    ))}
+                  </View>
+                  <TextInput
+                    testID="create-task__tag_input"
+                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white text-lg text-gray-900"
+                    placeholder="Add tag, press return"
+                    placeholderTextColor="#9ca3af"
+                    value={tagDraft}
+                    onChangeText={setTagDraft}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    onSubmitEditing={() => {
+                      addCustomTag(tagDraft);
+                      setTagDraft("");
+                    }}
+                  />
+                </View>
+              </InputField>
             </View>
 
             <View className="border-t border-gray-100 pt-4 gap-4">

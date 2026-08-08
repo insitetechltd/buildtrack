@@ -15,6 +15,12 @@ import type {
   CreateTaskFormModel,
   CreateTaskLocationOptionModel,
 } from '../contracts/viewAdapters';
+import {
+  getCustomTaskTags,
+  hasCriticalThisWeekTag,
+  mergeTaskTags,
+  resolvePrimaryAssigneeId,
+} from '../contracts/taskTags';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
@@ -31,6 +37,41 @@ const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
 const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
+
+function createEmptyFormData(): CreateTaskFormModel {
+  return {
+    title: '',
+    description: '',
+    taskReference: '',
+    billingStatus: 'non_billable',
+    priority: 'medium',
+    category: 'general',
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    locationOnSite: '',
+    assignedTo: [],
+    primaryAssigneeId: '',
+    customTags: [],
+    isCriticalThisWeek: false,
+    attachments: [],
+    projectId: '',
+  };
+}
+
+function buildRedesignMetadataPayload(formData: CreateTaskFormModel) {
+  const assignedTo = formData.assignedTo;
+  const primaryAssigneeId = resolvePrimaryAssigneeId(
+    assignedTo,
+    formData.primaryAssigneeId || undefined,
+  );
+  return {
+    assignedTo,
+    primaryAssigneeId: primaryAssigneeId || undefined,
+    tags: mergeTaskTags({
+      customTags: formData.customTags,
+      isCriticalThisWeek: formData.isCriticalThisWeek,
+    }),
+  };
+}
 
 function isSelectedPhotoAttachment(attachment: unknown): attachment is SelectedPhoto {
   return Boolean(
@@ -140,19 +181,7 @@ export function useCreateTaskViewAdapter({
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   
-  const [formData, setFormData] = useState<CreateTaskFormModel>({
-    title: '',
-    description: '',
-    taskReference: '',
-    billingStatus: 'non_billable',
-    priority: 'medium',
-    category: 'general',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    locationOnSite: '',
-    assignedTo: [],
-    attachments: [],
-    projectId: '',
-  });
+  const [formData, setFormData] = useState<CreateTaskFormModel>(createEmptyFormData);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -270,19 +299,7 @@ export function useCreateTaskViewAdapter({
 
     handledClearFormRequestRef.current = clearFormRequestKey;
     AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
-    setFormData({
-      title: '',
-      description: '',
-      taskReference: '',
-      billingStatus: 'non_billable',
-      priority: 'medium',
-      category: 'general',
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      locationOnSite: '',
-      assignedTo: [],
-      attachments: [],
-      projectId: '',
-    });
+    setFormData(createEmptyFormData());
   }, [clearFormRequestKey]);
 
   useEffect(() => {
@@ -409,11 +426,44 @@ export function useCreateTaskViewAdapter({
   ]);
 
   const toggleUserSelection = useCallback((userId: string) => {
+    setFormData((previous) => {
+      const assignedTo = previous.assignedTo.includes(userId)
+        ? previous.assignedTo.filter((id) => id !== userId)
+        : [...previous.assignedTo, userId];
+      return {
+        ...previous,
+        assignedTo,
+        primaryAssigneeId: resolvePrimaryAssigneeId(assignedTo, previous.primaryAssigneeId) || '',
+      };
+    });
+  }, []);
+
+  const setPrimaryAssignee = useCallback((userId: string) => {
+    setFormData((previous) => {
+      if (!previous.assignedTo.includes(userId)) {
+        return previous;
+      }
+      return { ...previous, primaryAssigneeId: userId };
+    });
+  }, []);
+
+  const addCustomTag = useCallback((rawTag: string) => {
+    const tag = rawTag.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!tag) {
+      return;
+    }
+    setFormData((previous) => {
+      if (previous.customTags.includes(tag)) {
+        return previous;
+      }
+      return { ...previous, customTags: [...previous.customTags, tag] };
+    });
+  }, []);
+
+  const removeCustomTag = useCallback((tag: string) => {
     setFormData((previous) => ({
       ...previous,
-      assignedTo: previous.assignedTo.includes(userId)
-        ? previous.assignedTo.filter((id) => id !== userId)
-        : [...previous.assignedTo, userId],
+      customTags: previous.customTags.filter((entry) => entry !== tag),
     }));
   }, []);
 
@@ -485,6 +535,10 @@ export function useCreateTaskViewAdapter({
         dueDate: new Date(editTask.dueDate),
         locationOnSite: editTask.locationOnSite || '',
         assignedTo: editTask.assignedTo || [],
+        primaryAssigneeId:
+          resolvePrimaryAssigneeId(editTask.assignedTo || [], editTask.primaryAssigneeId) || '',
+        customTags: getCustomTaskTags(editTask.tags),
+        isCriticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
       });
@@ -629,6 +683,8 @@ export function useCreateTaskViewAdapter({
       }
 
       // Basic submit logic extracted from screen
+      const redesignMetadata = buildRedesignMetadataPayload(formData);
+
       if (editTaskId) {
         const { baseAttachments, uploadedAttachments } = await normalizeAttachmentsForSubmission(
           formData.attachments,
@@ -644,7 +700,7 @@ export function useCreateTaskViewAdapter({
           billingStatus: formData.billingStatus as BillingStatus,
           dueDate: formData.dueDate.toISOString(),
           locationOnSite: trimmedLocationOnSite,
-          assignedTo: formData.assignedTo,
+          ...redesignMetadata,
           attachments: [...baseAttachments, ...uploadedAttachments],
           _editReason: options?.editReason,
         } as Partial<any>);
@@ -659,7 +715,7 @@ export function useCreateTaskViewAdapter({
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
           locationOnSite: trimmedLocationOnSite,
-          assignedTo: formData.assignedTo,
+          ...redesignMetadata,
           assignedBy: user?.id || '',
           attachments: existingAttachmentUrls,
         });
@@ -683,7 +739,7 @@ export function useCreateTaskViewAdapter({
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
           locationOnSite: trimmedLocationOnSite,
-          assignedTo: formData.assignedTo,
+          ...redesignMetadata,
           assignedBy: user?.id || '',
           attachments: existingAttachmentUrls,
         });
@@ -718,19 +774,7 @@ export function useCreateTaskViewAdapter({
         "createTask_camera_return_context",
         "createTask_camera_return_timestamp",
       ]);
-      setFormData({
-        title: '',
-        description: '',
-        taskReference: '',
-        billingStatus: 'non_billable',
-        priority: 'medium',
-        category: 'general',
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        locationOnSite: '',
-        assignedTo: [],
-        attachments: [],
-        projectId: '',
-      });
+      setFormData(createEmptyFormData());
     } catch (e) {
       console.error("Failed to clear task drafts", e);
     }
@@ -809,6 +853,9 @@ export function useCreateTaskViewAdapter({
       submit,
       setUserSearchQuery,
       toggleUserSelection,
+      setPrimaryAssignee,
+      addCustomTag,
+      removeCustomTag,
       removeAttachment,
       setTextInput,
       saveLocationOnSiteSelection,

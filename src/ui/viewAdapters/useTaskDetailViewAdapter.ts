@@ -20,6 +20,7 @@ import {
 import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
+  resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
 import type {
   TaskDetailActiveStageModel,
@@ -571,6 +572,7 @@ export function useTaskDetailViewAdapter({
   });
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
+  const actorAssigneeRole = resolveAssigneeRoleFromUser(user);
   const canEditDelegation = canEditTaskDelegation({
     actorUserId: user.id,
     taskAssignedBy: task.assignedBy,
@@ -1150,10 +1152,13 @@ export function useTaskDetailViewAdapter({
         if (!canEditDelegation) {
           return;
         }
+        const candidate = getUserById(userId);
         if (
           !canSelectUserAsAssignee({
             candidateUserId: userId,
             assignableUserIds: assignedTo,
+            actorRole: actorAssigneeRole,
+            candidateRole: resolveAssigneeRoleFromUser(candidate),
           })
         ) {
           return;
@@ -1181,10 +1186,13 @@ export function useTaskDetailViewAdapter({
         if (!canEditDelegation) {
           return;
         }
+        const candidate = getUserById(userId);
         if (
           !canSelectUserAsAssignee({
             candidateUserId: userId,
             assignableUserIds: assignedTo,
+            actorRole: actorAssigneeRole,
+            candidateRole: resolveAssigneeRoleFromUser(candidate),
           })
         ) {
           return;

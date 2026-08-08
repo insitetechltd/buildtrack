@@ -1,8 +1,12 @@
 import {
   areAssigneesLockedForStatus,
   canEditTaskDelegation,
+  canSelectAssignee,
   canSelectUserAsAssignee,
   filterSelectableAssigneeIds,
+  filterSelectableAssigneeUsers,
+  getAssigneePrivilegeRank,
+  resolveAssigneeRoleFromUser,
 } from "../taskDelegationPermissions";
 
 describe("taskDelegationPermissions", () => {
@@ -68,6 +72,70 @@ describe("taskDelegationPermissions", () => {
     });
   });
 
+  describe("canSelectAssignee (who→whom privilege)", () => {
+    it("ranks admin/company_admin above manager/supervisor above foreman above member/worker", () => {
+      expect(getAssigneePrivilegeRank("admin")).toBeGreaterThan(
+        getAssigneePrivilegeRank("manager"),
+      );
+      expect(getAssigneePrivilegeRank("company_admin")).toBe(
+        getAssigneePrivilegeRank("admin"),
+      );
+      expect(getAssigneePrivilegeRank("supervisor")).toBe(
+        getAssigneePrivilegeRank("manager"),
+      );
+      expect(getAssigneePrivilegeRank("foreman")).toBeGreaterThan(
+        getAssigneePrivilegeRank("member"),
+      );
+      expect(getAssigneePrivilegeRank("worker")).toBe(
+        getAssigneePrivilegeRank("member"),
+      );
+    });
+
+    it("allows peer and down-rank selection; denies up-rank", () => {
+      expect(
+        canSelectAssignee({ actorRole: "manager", candidateRole: "member" }),
+      ).toBe(true);
+      expect(
+        canSelectAssignee({ actorRole: "manager", candidateRole: "manager" }),
+      ).toBe(true);
+      expect(
+        canSelectAssignee({ actorRole: "member", candidateRole: "manager" }),
+      ).toBe(false);
+      expect(
+        canSelectAssignee({ actorRole: "foreman", candidateRole: "supervisor" }),
+      ).toBe(false);
+      expect(
+        canSelectAssignee({
+          actorRole: "admin",
+          candidateRole: "company_admin",
+        }),
+      ).toBe(true);
+    });
+
+    it("denies when actor role is missing", () => {
+      expect(canSelectAssignee({ candidateRole: "member" })).toBe(false);
+    });
+
+    it("treats missing candidate role as member band", () => {
+      expect(canSelectAssignee({ actorRole: "member" })).toBe(true);
+      expect(canSelectAssignee({ actorRole: "worker", candidateRole: undefined })).toBe(
+        true,
+      );
+    });
+  });
+
+  describe("resolveAssigneeRoleFromUser", () => {
+    it("prefers systemPermission over legacy role", () => {
+      expect(
+        resolveAssigneeRoleFromUser({
+          systemPermission: "manager",
+          role: "worker",
+        }),
+      ).toBe("manager");
+      expect(resolveAssigneeRoleFromUser({ role: "foreman" })).toBe("foreman");
+    });
+  });
+
   describe("canSelectUserAsAssignee / filterSelectableAssigneeIds", () => {
     it("requires membership in the assignable pool", () => {
       const pool = new Set(["u1", "u2"]);
@@ -90,6 +158,47 @@ describe("taskDelegationPermissions", () => {
         "u1",
         "u2",
       ]);
+    });
+
+    it("applies who→whom when actorRole is provided", () => {
+      expect(
+        canSelectUserAsAssignee({
+          candidateUserId: "u-mgr",
+          assignableUserIds: ["u-mgr", "u-mem"],
+          actorRole: "member",
+          candidateRole: "manager",
+        }),
+      ).toBe(false);
+      expect(
+        canSelectUserAsAssignee({
+          candidateUserId: "u-mem",
+          assignableUserIds: ["u-mgr", "u-mem"],
+          actorRole: "member",
+          candidateRole: "member",
+        }),
+      ).toBe(true);
+    });
+
+    it("filters ids by role map when actorRole set", () => {
+      expect(
+        filterSelectableAssigneeIds(["u-mgr", "u-mem"], ["u-mgr", "u-mem"], {
+          actorRole: "member",
+          roleByUserId: { "u-mgr": "manager", "u-mem": "member" },
+        }),
+      ).toEqual(["u-mem"]);
+    });
+
+    it("filters user objects for Create picker", () => {
+      const users = [
+        { id: "a", role: "admin" },
+        { id: "m", role: "member" },
+      ];
+      expect(
+        filterSelectableAssigneeUsers(users, {
+          actorRole: "manager",
+          resolveRole: (u) => u.role,
+        }).map((u) => u.id),
+      ).toEqual(["m"]);
     });
   });
 });

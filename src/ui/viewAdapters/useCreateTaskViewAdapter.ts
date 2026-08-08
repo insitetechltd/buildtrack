@@ -28,6 +28,8 @@ import {
 import {
   canEditTaskDelegation,
   canSelectUserAsAssignee,
+  filterSelectableAssigneeUsers,
+  resolveAssigneeRoleFromUser,
 } from '../contracts/taskDelegationPermissions';
 import {
   normalizeContainerLabel,
@@ -381,15 +383,21 @@ export function useCreateTaskViewAdapter({
     () => userProjects.find((project) => project.id === activeProjectId),
     [activeProjectId, userProjects]
   );
-  const allAssignableUsers = useMemo(
-    () =>
-      getAssignableProjectUsers({
-        projectId: activeProjectId,
-        assignments: getProjectUserAssignments(activeProjectId),
-        users: getAllUsers(),
-      }),
-    [activeProjectId, getAllUsers, getProjectUserAssignments]
+  const actorAssigneeRole = useMemo(
+    () => resolveAssigneeRoleFromUser(user),
+    [user],
   );
+  const allAssignableUsers = useMemo(() => {
+    const projectMembers = getAssignableProjectUsers({
+      projectId: activeProjectId,
+      assignments: getProjectUserAssignments(activeProjectId),
+      users: getAllUsers(),
+    });
+    return filterSelectableAssigneeUsers(projectMembers, {
+      actorRole: actorAssigneeRole,
+      resolveRole: resolveAssigneeRoleFromUser,
+    });
+  }, [activeProjectId, actorAssigneeRole, getAllUsers, getProjectUserAssignments]);
   const filteredAssignableUsers = useMemo(() => {
     if (!userSearchQuery) {
       return allAssignableUsers;
@@ -461,11 +469,16 @@ export function useCreateTaskViewAdapter({
       }
       const assignableIds = allAssignableUsers.map((assignableUser) => assignableUser.id);
       const alreadySelected = formData.assignedTo.includes(userId);
+      const candidate = allAssignableUsers.find(
+        (assignableUser) => assignableUser.id === userId,
+      );
       if (
         !alreadySelected &&
         !canSelectUserAsAssignee({
           candidateUserId: userId,
           assignableUserIds: assignableIds,
+          actorRole: actorAssigneeRole,
+          candidateRole: resolveAssigneeRoleFromUser(candidate),
         })
       ) {
         return;
@@ -482,7 +495,7 @@ export function useCreateTaskViewAdapter({
         };
       });
     },
-    [allAssignableUsers, assigneesLocked, formData.assignedTo],
+    [actorAssigneeRole, allAssignableUsers, assigneesLocked, formData.assignedTo],
   );
 
   const setPrimaryAssignee = useCallback(

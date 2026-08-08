@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -151,6 +151,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   });
   const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = useState(false);
   const [tagDraft, setTagDraft] = useState("");
+  const [locationDraft, setLocationDraft] = useState("");
+
+  useEffect(() => {
+    setLocationDraft(output.infoCard?.siteLocationLabel || "");
+  }, [output.infoCard?.siteLocationLabel]);
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -394,11 +399,46 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             ) : null}
 
             <View
+              testID="task-detail__location_editor"
+              className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4"
+            >
+              <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
+                Location on Site
+              </Text>
+              <Text className="mt-1 mb-3 text-sm text-slate-600">
+                Where on the jobsite this task applies (separate from the project address).
+              </Text>
+              <TextInput
+                testID="task-detail__location_input"
+                className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900"
+                placeholder="e.g. Level 3 - South Core"
+                placeholderTextColor="#94a3b8"
+                value={locationDraft}
+                onChangeText={setLocationDraft}
+                returnKeyType="done"
+                blurOnSubmit
+                onSubmitEditing={() => {
+                  void actions.setLocationOnSite(locationDraft);
+                }}
+              />
+              <Pressable
+                testID="task-detail__location_save"
+                accessibilityRole="button"
+                onPress={() => {
+                  void actions.setLocationOnSite(locationDraft);
+                }}
+                className="mt-3 items-center rounded-xl bg-slate-900 px-4 py-3"
+              >
+                <Text className="text-base font-semibold text-white">Save location</Text>
+              </Pressable>
+            </View>
+
+            <View
               testID="task-detail__tags_primary_editor"
               className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4"
             >
               <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
-                Tags & Primary
+                Tags, Primary & Delegates
               </Text>
               {output.assignees.length > 0 ? (
                 <View className="mt-3">
@@ -431,6 +471,51 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                           >
                             {assignee.name}
                             {isPrimary ? " · Primary" : ""}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
+
+              {output.assignees.length > 0 ? (
+                <View testID="task-detail__delegates_editor" className="mt-4">
+                  <Text className="mb-2 text-sm text-slate-600">
+                    Tap to add or remove Delegates (not Primary)
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {output.assignees.map((assignee) => {
+                      const isPrimary =
+                        output.infoCard?.primaryAssigneeId === assignee.id;
+                      const isDelegate = (
+                        output.infoCard?.delegatedUserIds ?? []
+                      ).includes(assignee.id);
+                      if (isPrimary) {
+                        return null;
+                      }
+                      return (
+                        <Pressable
+                          key={`delegate-${assignee.id}`}
+                          testID={`task-detail__toggle_delegate_${assignee.id}`}
+                          onPress={() => {
+                            void actions.toggleDelegate(assignee.id);
+                          }}
+                          className={cn(
+                            "rounded-full px-3 py-1.5 border",
+                            isDelegate
+                              ? "border-blue-300 bg-blue-50"
+                              : "border-slate-200 bg-slate-50",
+                          )}
+                        >
+                          <Text
+                            className={cn(
+                              "text-sm font-medium",
+                              isDelegate ? "text-blue-900" : "text-slate-800",
+                            )}
+                          >
+                            {assignee.name}
+                            {isDelegate ? " · Delegate" : ""}
                           </Text>
                         </Pressable>
                       );

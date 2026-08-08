@@ -930,7 +930,7 @@ function CreateTaskEditorScreen({
                     {t.createTask.selectedUsers}
                   </Text>
                   <Text className="mb-2 text-xs text-gray-500">
-                    Tap a name to set Primary owner.
+                    Tap a name to set Primary. Other selected users save as Delegates.
                   </Text>
                   <View className="flex-row flex-wrap">
                     {selectedUsers.map((userId) => {
@@ -958,11 +958,14 @@ function CreateTaskEditorScreen({
                               )}
                             >
                               {selectedUser.name}
-                              {isPrimary ? " · Primary" : ""}
+                              {isPrimary ? " · Primary" : " · Delegate"}
                             </Text>
                           </Pressable>
                           {!context.assigneesLocked ? (
-                            <Pressable onPress={() => toggleUserSelection(userId)}>
+                            <Pressable
+                              testID={`create-task__remove_assignee_${userId}`}
+                              onPress={() => toggleUserSelection(userId)}
+                            >
                               <Ionicons
                                 name="close-circle"
                                 size={16}

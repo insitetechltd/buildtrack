@@ -10,8 +10,13 @@ import { buildActiveStageModel } from '../../components/taskDetail/taskDetailAct
 import {
   getTaskTags,
   hasCriticalThisWeekTag,
+  resolvePrimaryAssigneeId,
   withCriticalThisWeekTag,
 } from '../contracts/taskTags';
+import {
+  mergeAssignedToIds,
+  normalizeDelegatedUserIds,
+} from '../contracts/taskDelegation';
 import type {
   TaskDetailActiveStageModel,
   TaskDetailQuickActionRowModel,
@@ -418,6 +423,8 @@ export function useTaskDetailViewAdapter({
     approveTask: () => Promise<void>;
     toggleCriticalThisWeek: () => Promise<void>;
     setPrimaryAssignee: (userId: string) => Promise<void>;
+    toggleDelegate: (userId: string) => Promise<void>;
+    setLocationOnSite: (locationLabel: string) => Promise<void>;
     addCustomTag: (tag: string) => Promise<void>;
     removeCustomTag: (tag: string) => Promise<void>;
     archiveTask: () => Promise<void>;
@@ -428,7 +435,7 @@ export function useTaskDetailViewAdapter({
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask } = useTaskStore();
+  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation } = useTaskStore();
   const { getUserById } = useUserStore();
 
   const foundTask = tasks.find((t) => t.id === taskId);
@@ -536,6 +543,8 @@ export function useTaskDetailViewAdapter({
         approveTask: async () => {},
         toggleCriticalThisWeek: async () => {},
         setPrimaryAssignee: async () => {},
+        toggleDelegate: async () => {},
+        setLocationOnSite: async () => {},
         addCustomTag: async () => {},
         removeCustomTag: async () => {},
         archiveTask: async () => {},
@@ -545,7 +554,11 @@ export function useTaskDetailViewAdapter({
     };
   }
 
-  const assignedTo = task.assignedTo || [];
+  const assignedTo = mergeAssignedToIds({
+    assignedTo: task.assignedTo || [],
+    primaryAssigneeId: task.primaryAssigneeId,
+    delegatedUserIds: task.delegatedUserIds || [],
+  });
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
   const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
@@ -721,6 +734,19 @@ export function useTaskDetailViewAdapter({
   const primaryOwner = task.primaryAssigneeId
     ? getUserById(task.primaryAssigneeId)
     : assignees[0];
+  const primaryAssigneeId =
+    resolvePrimaryAssigneeId(assignedTo, primaryOwner?.id || task.primaryAssigneeId) ||
+    primaryOwner?.id;
+  const delegatedUserIds = normalizeDelegatedUserIds(
+    task.delegatedUserIds?.length ? task.delegatedUserIds : assignedTo,
+    primaryAssigneeId,
+  );
+  const delegatedAssignees = delegatedUserIds
+    .map((id) => {
+      const u = getUserById(id);
+      return u ? { id: u.id, name: u.name } : null;
+    })
+    .filter(Boolean) as Array<{ id: string; name: string }>;
 
   const delegationSummary: TaskDetailDelegationSummaryModel = {
     id: 'delegation-summary',
@@ -729,7 +755,10 @@ export function useTaskDetailViewAdapter({
     assignedByLabel: assigners.map((assigner) => assigner.name).join(', ') || 'Unassigned',
     assignedToLabel: assignees.map((assignee) => assignee.name).join(', ') || 'Unassigned',
     primaryOwnerLabel: primaryOwner?.name,
-    teamSummaryLabel: assignees.length > 1 ? `${assignees.length} assignees` : undefined,
+    teamSummaryLabel:
+      delegatedAssignees.length > 0
+        ? `${delegatedAssignees.length} delegate${delegatedAssignees.length === 1 ? '' : 's'}: ${delegatedAssignees.map((d) => d.name).join(', ')}`
+        : undefined,
   };
 
   const detailRows = [
@@ -746,7 +775,9 @@ export function useTaskDetailViewAdapter({
     assignedByLabel: delegationSummary.assignedByLabel,
     assignedToLabel: delegationSummary.assignedToLabel,
     primaryOwnerLabel: delegationSummary.primaryOwnerLabel,
-    primaryAssigneeId: primaryOwner?.id || task.primaryAssigneeId,
+    primaryAssigneeId: primaryAssigneeId || task.primaryAssigneeId,
+    delegatedUserIds,
+    delegatedLabels: delegatedAssignees.map((d) => d.name),
     tagLabels: getTaskTags(task.tags),
     detailRows: [],
   };
@@ -1098,13 +1129,67 @@ export function useTaskDetailViewAdapter({
         await fetchTask();
       },
       setPrimaryAssignee: async (userId: string) => {
-        const assignedTo = Array.isArray(task.assignedTo) ? [...task.assignedTo] : [];
-        if (!assignedTo.includes(userId)) {
-          assignedTo.push(userId);
+        const nextAssignedTo = mergeAssignedToIds({
+          assignedTo: task.assignedTo || [],
+          primaryAssigneeId: userId,
+          delegatedUserIds: task.delegatedUserIds || [],
+        });
+        if (!nextAssignedTo.includes(userId)) {
+          nextAssignedTo.push(userId);
+        }
+        const delegatedUserIds = normalizeDelegatedUserIds(nextAssignedTo, userId);
+        await updateTask(task.id, {
+          assignedTo: mergeAssignedToIds({
+            primaryAssigneeId: userId,
+            delegatedUserIds,
+          }),
+          primaryAssigneeId: userId,
+          delegatedUserIds,
+        } as Partial<Task>);
+        await fetchTask();
+      },
+      toggleDelegate: async (userId: string) => {
+        const primaryAssigneeId =
+          resolvePrimaryAssigneeId(
+            mergeAssignedToIds({
+              assignedTo: task.assignedTo || [],
+              primaryAssigneeId: task.primaryAssigneeId,
+              delegatedUserIds: task.delegatedUserIds || [],
+            }),
+            task.primaryAssigneeId,
+          ) || task.primaryAssigneeId;
+        if (!userId || userId === primaryAssigneeId) {
+          return;
+        }
+        const currentDelegates = normalizeDelegatedUserIds(
+          task.delegatedUserIds?.length
+            ? task.delegatedUserIds
+            : mergeAssignedToIds({
+                assignedTo: task.assignedTo || [],
+                primaryAssigneeId,
+              }),
+          primaryAssigneeId,
+        );
+        const delegatedUserIds = currentDelegates.includes(userId)
+          ? currentDelegates.filter((id) => id !== userId)
+          : [...currentDelegates, userId];
+        await updateTask(task.id, {
+          assignedTo: mergeAssignedToIds({
+            primaryAssigneeId,
+            delegatedUserIds,
+          }),
+          primaryAssigneeId: primaryAssigneeId || undefined,
+          delegatedUserIds,
+        } as Partial<Task>);
+        await fetchTask();
+      },
+      setLocationOnSite: async (locationLabel: string) => {
+        const trimmed = String(locationLabel || "").trim();
+        if (task.projectId && trimmed) {
+          await ensureProjectLocation(task.projectId, trimmed, user.id);
         }
         await updateTask(task.id, {
-          assignedTo,
-          primaryAssigneeId: userId,
+          locationOnSite: trimmed || undefined,
         } as Partial<Task>);
         await fetchTask();
       },

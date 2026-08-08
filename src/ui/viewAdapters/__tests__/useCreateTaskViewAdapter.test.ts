@@ -492,6 +492,7 @@ describe("useCreateTaskViewAdapter", () => {
         locationOnSite: "Lift lobby",
         assignedTo: ["user-2"],
         primaryAssigneeId: "user-2",
+        delegatedUserIds: [],
         tags: [],
         assignedBy: "user-1",
       }),
@@ -555,6 +556,7 @@ describe("useCreateTaskViewAdapter", () => {
         locationOnSite: "Level 2 riser",
         assignedTo: ["user-2"],
         primaryAssigneeId: "user-2",
+        delegatedUserIds: [],
         tags: [],
       }),
     );
@@ -583,6 +585,7 @@ describe("useCreateTaskViewAdapter", () => {
       expect.objectContaining({
         assignedTo: ["user-2", "user-3"],
         primaryAssigneeId: "user-3",
+        delegatedUserIds: ["user-2"],
         tags: ["hvac", "critical_this_week"],
       }),
     );

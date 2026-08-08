@@ -21,6 +21,10 @@ import {
   mergeTaskTags,
   resolvePrimaryAssigneeId,
 } from '../contracts/taskTags';
+import {
+  mergeAssignedToIds,
+  normalizeDelegatedUserIds,
+} from '../contracts/taskDelegation';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
@@ -58,14 +62,23 @@ function createEmptyFormData(): CreateTaskFormModel {
 }
 
 function buildRedesignMetadataPayload(formData: CreateTaskFormModel) {
-  const assignedTo = formData.assignedTo;
   const primaryAssigneeId = resolvePrimaryAssigneeId(
-    assignedTo,
+    formData.assignedTo,
     formData.primaryAssigneeId || undefined,
   );
+  const delegatedUserIds = normalizeDelegatedUserIds(
+    formData.assignedTo,
+    primaryAssigneeId,
+  );
+  const assignedTo = mergeAssignedToIds({
+    assignedTo: formData.assignedTo,
+    primaryAssigneeId,
+    delegatedUserIds,
+  });
   return {
     assignedTo,
     primaryAssigneeId: primaryAssigneeId || undefined,
+    delegatedUserIds,
     tags: mergeTaskTags({
       customTags: formData.customTags,
       isCriticalThisWeek: formData.isCriticalThisWeek,
@@ -525,6 +538,11 @@ export function useCreateTaskViewAdapter({
 
   useEffect(() => {
     if (editTask) {
+      const mergedAssignedTo = mergeAssignedToIds({
+        assignedTo: editTask.assignedTo || [],
+        primaryAssigneeId: editTask.primaryAssigneeId,
+        delegatedUserIds: editTask.delegatedUserIds || [],
+      });
       setFormData({
         title: editTask.title,
         description: editTask.description || '',
@@ -534,9 +552,9 @@ export function useCreateTaskViewAdapter({
         category: editTask.category || 'general',
         dueDate: new Date(editTask.dueDate),
         locationOnSite: editTask.locationOnSite || '',
-        assignedTo: editTask.assignedTo || [],
+        assignedTo: mergedAssignedTo,
         primaryAssigneeId:
-          resolvePrimaryAssigneeId(editTask.assignedTo || [], editTask.primaryAssigneeId) || '',
+          resolvePrimaryAssigneeId(mergedAssignedTo, editTask.primaryAssigneeId) || '',
         customTags: getCustomTaskTags(editTask.tags),
         isCriticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         attachments: editTask.attachments || [],

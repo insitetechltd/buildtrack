@@ -349,6 +349,10 @@ export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   assignedToLabel?: string;
   primaryOwnerLabel?: string;
   primaryAssigneeId?: string;
+  /** Helper assignees excluding primary (live delegated_user_ids). */
+  delegatedUserIds?: string[];
+  /** Display names for delegates. */
+  delegatedLabels?: string[];
   /** Display tags including critical_this_week when present. */
   tagLabels?: string[];
   detailRows: TaskDetailInfoCardRow[];

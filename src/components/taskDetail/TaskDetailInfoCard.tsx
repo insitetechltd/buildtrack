@@ -47,6 +47,12 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
         <InfoChip label="By" value={model.assignedByLabel} />
         <InfoChip label="To" value={model.assignedToLabel} />
         {model.primaryOwnerLabel ? <InfoChip label="Owner" value={model.primaryOwnerLabel} /> : null}
+        {(model.delegatedLabels ?? []).length > 0 ? (
+          <InfoChip
+            label="Delegates"
+            value={(model.delegatedLabels ?? []).join(", ")}
+          />
+        ) : null}
         {(model.tagLabels ?? []).map((tag) => (
           <InfoChip key={`tag-${tag}`} label="Tag" value={tag} />
         ))}

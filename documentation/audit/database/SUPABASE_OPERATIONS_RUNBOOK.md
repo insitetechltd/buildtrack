@@ -365,6 +365,17 @@ where schemaname = 'storage'
 order by tablename, policyname;
 ```
 
+### M-SUPABASE-03c Phase A (2026-08-09)
+
+- Artefacts: `supabase/migrations/20260809000200_msupabase03c_storage_bucket_policy.sql`,
+  `docs/superpowers/reports/2026-08-09-m-supabase-03c-phase-a-storage-review.md`
+- Greenfield baseline: bucket **private** (`public = false`) with company-folder RLS
+- App still uses `getPublicUrl()` in `src/api/fileUploadService.ts` — signed-URL cutover is
+  **blocked** until live bucket flag is confirmed and Human GO:
+  `you have GO for M-SUPABASE-03c live apply`
+- Recommended Decision D1: keep private; D2: `createSignedUrl` with configurable TTL after GO
+- Do **not** flip the live bucket to public to paper over client URL strategy
+
 ## Realtime Verification
 
 The app subscribes broadly to:

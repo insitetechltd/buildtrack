@@ -43,7 +43,11 @@ Dual-loader convention (Cursor):
 - `WS-UX / S-UX-01M` **Closed (2026-08-08)**: Location on Site — Create picker + Task Detail editor persist `location_on_site` (distinct from project address); shared `project_locations` via `ensureProjectLocation`. UI originally merged `03627be`; closed after M-SUPABASE-03b.
 - `WS-UX / S-UX-01N` **Closed (2026-08-08)**: Live `project_containers` + assignment RLS; progressive Create area UI; text `container_id`/`sub_container_id`. Close report `docs/superpowers/reports/2026-08-08-s-ux-01n-close.md`.
 - `WS-UX / S-UX-01K2` **Closed Phase B (2026-08-09)**: Phase A creator+status edit + project-member select pool. Phase B who→whom: `canSelectAssignee` privilege ranks (admin/company_admin > manager/supervisor > foreman > member/worker); Create picker filtered; Detail guards. Assumption: no product matrix table — ranks documented in ROADMAP. Helper: `src/ui/contracts/taskDelegationPermissions.ts`. RLS deferred.
-- Current pipeline focus precedence: (1) parallel idle P1s: M-03a/03c/03d/03e → (2) parallel idle P2s: M-04a–d. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
+- `WS-SUPABASE / M-SUPABASE-03a` **Phase A artefacts (2026-08-09)**: role CHECK + normalize + role-write trigger SQL + schema review checklist. **NO live apply** until GO phrase `you have GO for M-SUPABASE-03a live apply`.
+- `WS-SUPABASE / M-SUPABASE-03c` **Phase A artefacts (2026-08-09)**: storage ensure-private SQL + review doc + runbook note. Signed-URL client cutover deferred. **NO live apply** until GO phrase `you have GO for M-SUPABASE-03c live apply`.
+- `WS-SUPABASE / M-SUPABASE-03d` **Closed (2026-08-09)**: deferred-schema fallback observability (`deferredSchemaObservability.ts` + taskStore hooks).
+- `WS-SUPABASE / M-SUPABASE-03e` **Closed (2026-08-09)**: service-role scripts default dry-run; `--apply` required to write.
+- Current pipeline focus precedence: (1) Human GO for 03a/03c live apply → (2) parallel idle P2s: M-04a–d. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
 - `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context

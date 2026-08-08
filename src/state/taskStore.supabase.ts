@@ -53,6 +53,16 @@ export interface ProjectLocationRecord {
   updatedAt?: string;
 }
 
+export interface ProjectContainerRecord {
+  id: string;
+  projectId: string;
+  parentId?: string;
+  label: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
 const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
@@ -283,6 +293,22 @@ function normalizeProjectLocationLabel(label: string | undefined | null) {
   return label.replace(/\s+/g, " ").trim();
 }
 
+function isMissingProjectContainersRelation(error: { code?: string; message?: string } | null | undefined) {
+  if (!error) {
+    return false;
+  }
+  const code = String(error.code || "");
+  const message = String(error.message || "").toLowerCase();
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    (message.includes("project_containers") &&
+      (message.includes("does not exist") ||
+        message.includes("could not find") ||
+        message.includes("schema cache")))
+  );
+}
+
 function deriveTaskIdsForQuery(
   resourceKey: string,
   allTaskIds: string[],
@@ -410,11 +436,17 @@ interface TaskStore {
   fetchTasksByUser: (userId: string, forceRefresh?: boolean) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
   fetchProjectLocations: (projectId: string) => Promise<ProjectLocationRecord[]>;
+  fetchProjectContainers: (projectId: string) => Promise<ProjectContainerRecord[]>;
   
   // Task management
   createTask: (task: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   ensureProjectLocation: (projectId: string, label: string, createdBy?: string) => Promise<void>;
+  ensureProjectContainer: (
+    projectId: string,
+    label: string,
+    options?: { parentId?: string | null; createdBy?: string },
+  ) => Promise<ProjectContainerRecord | null>;
   deleteTask: (id: string) => Promise<void>; // Legacy method - kept for backward compatibility
   deleteTaskById: (taskId: string, userId: string) => Promise<void>; // Soft delete task (only assigner can delete, maintains audit trail)
   cancelTask: (taskId: string, userId: string) => Promise<void>; // Cancel task (only creator can cancel)
@@ -1498,6 +1530,36 @@ export const useTaskStore = create<TaskStore>()(
         }));
       },
 
+      fetchProjectContainers: async (projectId: string) => {
+        if (!supabase || !projectId) {
+          return [];
+        }
+
+        const { data, error } = await supabase
+          .from('project_containers')
+          .select('id, project_id, parent_id, label, created_by, created_at, updated_at')
+          .eq('project_id', projectId)
+          .order('label', { ascending: true });
+
+        if (error) {
+          if (isMissingProjectContainersRelation(error)) {
+            return [];
+          }
+          console.error('Error fetching project containers:', error);
+          throw error;
+        }
+
+        return (data || []).map((container: any) => ({
+          id: String(container.id),
+          projectId: String(container.project_id),
+          parentId: container.parent_id ? String(container.parent_id) : undefined,
+          label: String(container.label || ''),
+          createdBy: container.created_by ? String(container.created_by) : undefined,
+          createdAt: container.created_at || undefined,
+          updatedAt: container.updated_at || undefined,
+        }));
+      },
+
       // CREATE task in Supabase
       createTask: async (taskData) => {
         if (!supabase) {
@@ -1788,6 +1850,71 @@ export const useTaskStore = create<TaskStore>()(
 
         console.error('Error ensuring project location:', error);
         throw error;
+      },
+
+      ensureProjectContainer: async (projectId, label, options) => {
+        const normalizedLabel = normalizeProjectLocationLabel(label);
+        const parentId = options?.parentId ? String(options.parentId) : null;
+        const createdBy = options?.createdBy;
+
+        if (!projectId || !normalizedLabel || !supabase) {
+          return null;
+        }
+
+        const existingContainers = await get().fetchProjectContainers(projectId);
+        const normalizedTarget = normalizedLabel.toLocaleLowerCase();
+        const match = existingContainers.find((container) => {
+          const sameParent = (container.parentId || null) === parentId;
+          return (
+            sameParent &&
+            normalizeProjectLocationLabel(container.label).toLocaleLowerCase() === normalizedTarget
+          );
+        });
+        if (match) {
+          return match;
+        }
+
+        const { data, error } = await supabase
+          .from('project_containers')
+          .insert({
+            project_id: projectId,
+            parent_id: parentId,
+            label: normalizedLabel,
+            created_by: createdBy || null,
+          })
+          .select('id, project_id, parent_id, label, created_by, created_at, updated_at')
+          .single();
+
+        if (error) {
+          if (isMissingProjectContainersRelation(error)) {
+            return null;
+          }
+          if (String((error as { code?: unknown }).code || '') === '23505') {
+            const refreshed = await get().fetchProjectContainers(projectId);
+            return (
+              refreshed.find((container) => {
+                const sameParent = (container.parentId || null) === parentId;
+                return (
+                  sameParent &&
+                  normalizeProjectLocationLabel(container.label).toLocaleLowerCase() ===
+                    normalizedTarget
+                );
+              }) || null
+            );
+          }
+          console.error('Error ensuring project container:', error);
+          throw error;
+        }
+
+        return {
+          id: String(data.id),
+          projectId: String(data.project_id),
+          parentId: data.parent_id ? String(data.parent_id) : undefined,
+          label: String(data.label || ''),
+          createdBy: data.created_by ? String(data.created_by) : undefined,
+          createdAt: data.created_at || undefined,
+          updatedAt: data.updated_at || undefined,
+        };
       },
 
       // UPDATE task in Supabase

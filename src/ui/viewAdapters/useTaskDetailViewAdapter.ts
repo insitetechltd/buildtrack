@@ -425,6 +425,10 @@ export function useTaskDetailViewAdapter({
     setPrimaryAssignee: (userId: string) => Promise<void>;
     toggleDelegate: (userId: string) => Promise<void>;
     setLocationOnSite: (locationLabel: string) => Promise<void>;
+    setTaskContainers: (args: {
+      containerId?: string | null;
+      subContainerId?: string | null;
+    }) => Promise<void>;
     addCustomTag: (tag: string) => Promise<void>;
     removeCustomTag: (tag: string) => Promise<void>;
     archiveTask: () => Promise<void>;
@@ -545,6 +549,7 @@ export function useTaskDetailViewAdapter({
         setPrimaryAssignee: async () => {},
         toggleDelegate: async () => {},
         setLocationOnSite: async () => {},
+        setTaskContainers: async () => {},
         addCustomTag: async () => {},
         removeCustomTag: async () => {},
         archiveTask: async () => {},
@@ -778,6 +783,8 @@ export function useTaskDetailViewAdapter({
     primaryAssigneeId: primaryAssigneeId || task.primaryAssigneeId,
     delegatedUserIds,
     delegatedLabels: delegatedAssignees.map((d) => d.name),
+    containerId: task.containerId,
+    subContainerId: task.subContainerId,
     tagLabels: getTaskTags(task.tags),
     detailRows: [],
   };
@@ -1190,6 +1197,13 @@ export function useTaskDetailViewAdapter({
         }
         await updateTask(task.id, {
           locationOnSite: trimmed || undefined,
+        } as Partial<Task>);
+        await fetchTask();
+      },
+      setTaskContainers: async ({ containerId, subContainerId }) => {
+        await updateTask(task.id, {
+          containerId: containerId || undefined,
+          subContainerId: subContainerId || undefined,
         } as Partial<Task>);
         await fetchTask();
       },

@@ -353,6 +353,8 @@ export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   delegatedUserIds?: string[];
   /** Display names for delegates. */
   delegatedLabels?: string[];
+  containerId?: string;
+  subContainerId?: string;
   /** Display tags including critical_this_week when present. */
   tagLabels?: string[];
   detailRows: TaskDetailInfoCardRow[];
@@ -1365,6 +1367,10 @@ export interface CreateTaskFormModel {
   assignedTo: string[];
   /** Single primary owner (text id matching live primary_assignee_id). */
   primaryAssigneeId: string;
+  /** Optional area container id (text UUID from project_containers). */
+  containerId: string;
+  /** Optional sub-container id under containerId. */
+  subContainerId: string;
   /** Custom tags only; critical_this_week is derived from isCriticalThisWeek. */
   customTags: string[];
   isCriticalThisWeek: boolean;
@@ -1430,6 +1436,16 @@ export interface CreateTaskScreenViewAdapterOutput {
   locationPicker: {
     projectId: string;
     options: CreateTaskLocationOptionModel[];
+  };
+  containerOrganization: {
+    /** Progressive disclosure — false keeps Create form free of container chrome. */
+    isVisible: boolean;
+    isExpanded: boolean;
+    catalogueAvailable: boolean;
+    containers: Array<{ id: string; label: string; parentId?: string }>;
+    selectedContainerId: string;
+    selectedSubContainerId: string;
+    draftLabel: string;
   };
   projects: {
     availableProjects: Project[];

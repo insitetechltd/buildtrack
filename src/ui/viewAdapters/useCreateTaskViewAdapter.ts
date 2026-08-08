@@ -25,6 +25,11 @@ import {
   mergeAssignedToIds,
   normalizeDelegatedUserIds,
 } from '../contracts/taskDelegation';
+import {
+  normalizeContainerLabel,
+  shouldShowContainerOrganization,
+  type ProjectContainerRecord,
+} from '../contracts/taskContainers';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
@@ -41,6 +46,8 @@ const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
 const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
+const NOOP_FETCH_PROJECT_CONTAINERS = async (): Promise<ProjectContainerRecord[]> => [];
+const NOOP_ENSURE_PROJECT_CONTAINER = async () => null;
 
 function createEmptyFormData(): CreateTaskFormModel {
   return {
@@ -54,6 +61,8 @@ function createEmptyFormData(): CreateTaskFormModel {
     locationOnSite: '',
     assignedTo: [],
     primaryAssigneeId: '',
+    containerId: '',
+    subContainerId: '',
     customTags: [],
     isCriticalThisWeek: false,
     attachments: [],
@@ -79,6 +88,8 @@ function buildRedesignMetadataPayload(formData: CreateTaskFormModel) {
     assignedTo,
     primaryAssigneeId: primaryAssigneeId || undefined,
     delegatedUserIds,
+    containerId: formData.containerId || undefined,
+    subContainerId: formData.subContainerId || undefined,
     tags: mergeTaskTags({
       customTags: formData.customTags,
       isCriticalThisWeek: formData.isCriticalThisWeek,
@@ -188,6 +199,8 @@ export function useCreateTaskViewAdapter({
     updateTask,
     fetchProjectLocations = NOOP_FETCH_PROJECT_LOCATIONS,
     ensureProjectLocation = NOOP_ENSURE_PROJECT_LOCATION,
+    fetchProjectContainers = NOOP_FETCH_PROJECT_CONTAINERS,
+    ensureProjectContainer = NOOP_ENSURE_PROJECT_CONTAINER,
   } = taskStore;
   const { getAllUsers } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
@@ -226,6 +239,9 @@ export function useCreateTaskViewAdapter({
   const [showEditReasonModal, setShowEditReasonModal] = useState(false);
   const [editReason, setEditReason] = useState('');
   const [projectLocationLabels, setProjectLocationLabels] = useState<string[]>([]);
+  const [projectContainers, setProjectContainers] = useState<ProjectContainerRecord[]>([]);
+  const [containerOrganizationExpanded, setContainerOrganizationExpanded] = useState(false);
+  const [containerDraft, setContainerDraft] = useState('');
   const handledClearFormRequestRef = useRef<string | null>(null);
 
   // 1. AsyncStorage Persistence Logic
@@ -555,6 +571,8 @@ export function useCreateTaskViewAdapter({
         assignedTo: mergedAssignedTo,
         primaryAssigneeId:
           resolvePrimaryAssigneeId(mergedAssignedTo, editTask.primaryAssigneeId) || '',
+        containerId: editTask.containerId || '',
+        subContainerId: editTask.subContainerId || '',
         customTags: getCustomTaskTags(editTask.tags),
         isCriticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
         attachments: editTask.attachments || [],
@@ -616,6 +634,35 @@ export function useCreateTaskViewAdapter({
     };
   }, [activeProjectId, fetchProjectLocations]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!activeProjectId) {
+      setProjectContainers((current) => (current.length === 0 ? current : []));
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void (async () => {
+      try {
+        const containers = await fetchProjectContainers(activeProjectId);
+        if (!cancelled) {
+          setProjectContainers(containers);
+        }
+      } catch (error) {
+        console.error('Failed to fetch project containers', error);
+        if (!cancelled) {
+          setProjectContainers([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeProjectId, fetchProjectContainers]);
+
   const locationOptions = useMemo(
     () =>
       getProjectScopedLocationOptions(
@@ -642,6 +689,69 @@ export function useCreateTaskViewAdapter({
     await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
     return true;
   };
+
+  const setContainerId = useCallback((containerId: string) => {
+    setFormData((previous) => ({
+      ...previous,
+      containerId,
+      subContainerId:
+        previous.containerId === containerId ? previous.subContainerId : '',
+    }));
+  }, []);
+
+  const setSubContainerId = useCallback((subContainerId: string) => {
+    setFormData((previous) => ({ ...previous, subContainerId }));
+  }, []);
+
+  const expandContainerOrganization = useCallback(() => {
+    setContainerOrganizationExpanded(true);
+  }, []);
+
+  const addProjectContainer = useCallback(
+    async (rawLabel: string, parentId?: string) => {
+      const label = normalizeContainerLabel(rawLabel);
+      if (!formData.projectId || !label) {
+        return null;
+      }
+      const created = await ensureProjectContainer(formData.projectId, label, {
+        parentId: parentId || null,
+        createdBy: user?.id,
+      });
+      const refreshed = await fetchProjectContainers(formData.projectId);
+      setProjectContainers(refreshed);
+      setContainerOrganizationExpanded(true);
+      if (created) {
+        if (parentId) {
+          setFormData((previous) => ({
+            ...previous,
+            containerId: parentId,
+            subContainerId: created.id,
+          }));
+        } else {
+          setFormData((previous) => ({
+            ...previous,
+            containerId: created.id,
+            subContainerId: '',
+          }));
+        }
+      }
+      setContainerDraft('');
+      return created;
+    },
+    [
+      ensureProjectContainer,
+      fetchProjectContainers,
+      formData.projectId,
+      user?.id,
+    ],
+  );
+
+  const containerOrganizationVisible = shouldShowContainerOrganization({
+    containerCount: projectContainers.length,
+    selectedContainerId: formData.containerId,
+    selectedSubContainerId: formData.subContainerId,
+    userExpanded: containerOrganizationExpanded,
+  });
 
   const normalizeAttachmentsForSubmission = useCallback(async (
     attachments: CreateTaskFormModel['attachments'],
@@ -841,6 +951,19 @@ export function useCreateTaskViewAdapter({
       projectId: activeProjectId,
       options: locationOptions,
     },
+    containerOrganization: {
+      isVisible: containerOrganizationVisible,
+      isExpanded: containerOrganizationExpanded || containerOrganizationVisible,
+      catalogueAvailable: projectContainers.length > 0,
+      containers: projectContainers.map((container) => ({
+        id: container.id,
+        label: container.label,
+        parentId: container.parentId,
+      })),
+      selectedContainerId: formData.containerId,
+      selectedSubContainerId: formData.subContainerId,
+      draftLabel: containerDraft,
+    },
     projects: {
       availableProjects: userProjects,
     },
@@ -877,6 +1000,11 @@ export function useCreateTaskViewAdapter({
       removeAttachment,
       setTextInput,
       saveLocationOnSiteSelection,
+      expandContainerOrganization,
+      setContainerId,
+      setSubContainerId,
+      addProjectContainer,
+      setContainerDraft,
       setShowSuggestionPreview,
       setAcceptedFields,
       setShowEditReasonModal,

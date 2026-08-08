@@ -41,7 +41,8 @@ Dual-loader convention (Cursor):
 - `WS-UX / S-UX-01J` **Closed (2026-08-08)**: Tags + Primary Assignee editor against live text/text[] columns — Create/Edit persist `primaryAssigneeId` + `tags`; Task Detail Tags & Primary editor; Critical this week tag persistence. No containers DDL.
 - `WS-UX / S-UX-01K` **Closed (2026-08-08)**: Task Delegation Panel — Create/Edit + Task Detail persist `delegated_user_ids text[]` (non-primary assignees); `assigned_to` = primary ∪ delegates. Who→whom permission matrix deferred to **S-UX-01K2**.
 - `WS-UX / S-UX-01M` **Closed (2026-08-08)**: Location on Site — Create picker + Task Detail editor persist `location_on_site` (distinct from project address); shared `project_locations` via `ensureProjectLocation`. UI originally merged `03627be`; closed after M-SUPABASE-03b.
-- Current pipeline focus precedence: (1) S-UX-01N Container Model (needs D3 containers DDL) → (2) S-UX-01K2 delegation who→whom rules → (3) parallel idle P1s: M-03a/03c/03d/03e → (4) parallel idle P2s: M-04a–d. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
+- `WS-UX / S-UX-01N` **Closed (2026-08-08)**: Live `project_containers` + assignment RLS; progressive Create area UI; text `container_id`/`sub_container_id`. Close report `docs/superpowers/reports/2026-08-08-s-ux-01n-close.md`.
+- Current pipeline focus precedence: (1) S-UX-01K2 delegation who→whom rules → (2) parallel idle P1s: M-03a/03c/03d/03e → (3) parallel idle P2s: M-04a–d. Then remaining WS-UX / M-UX-01 redesign slices continue per pipeline.
 - `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context

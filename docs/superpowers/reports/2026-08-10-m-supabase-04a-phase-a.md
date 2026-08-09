@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-10  
 **Milestone:** WS-SUPABASE / M-SUPABASE-04a  
-**Status:** App reconnect **shipped**; live publication SQL audit **pending** (`~/.pgpass` absent this cycle)
+**Status:** App reconnect **shipped**; live publication SQL audit **DONE 2026-08-10 — 0/4 FAIL** (see live-audit report). Milestone **not Closed**.
 
 ---
 
@@ -30,11 +30,11 @@ Expected tables in `supabase_realtime` / `postgres_changes`:
 | `projects` | `*` |
 | `users` | `UPDATE` |
 
-**This cycle:** live SELECT skipped — no `~/.pgpass` and no Dashboard paste. Run the audit SQL in Dashboard when convenient; paste **redacted** row counts / table names only.
+**Live audit (2026-08-10):** executed on pooler session `:5432`. Result **0/4** — `supabase_realtime` has zero public table members. Evidence: `docs/superpowers/evidence/m-supabase-04a-publication-membership-redacted-20260810.md`. Report: `docs/superpowers/reports/2026-08-10-m-supabase-04a-live-audit.md`. Remediation SQL (NOT applied): `docs/superpowers/sql/20260810_msupabase04a_publication_add_tables.sql`.
 
 ## Close gate (remaining)
 
-1. Live audit: 4/4 tables in publication (redacted appendix).
+1. Human GO + apply ADD TABLE remediation → re-audit **4/4** (redacted appendix).
 2. Manual: force socket close / background → foreground → channels resubscribe without app kill (log lines `[Realtime] Reconnecting` / `App foreground — soft resubscribe`).
 
-No schema writes in this milestone.
+No schema writes applied in the audit cycle (read-only only).

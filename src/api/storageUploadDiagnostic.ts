@@ -19,9 +19,13 @@ interface StorageDiagnosticClient {
         data: { path: string } | null;
         error: { message: string; statusCode?: string | number } | null;
       }>;
-      getPublicUrl: (path: string) => {
-        data: { publicUrl?: string | null };
-      };
+      createSignedUrl: (
+        path: string,
+        expiresIn: number
+      ) => Promise<{
+        data: { signedUrl?: string | null } | null;
+        error: { message: string } | null;
+      }>;
       remove: (paths: string[]) => Promise<{
         data: unknown;
         error: { message: string } | null;
@@ -29,6 +33,8 @@ interface StorageDiagnosticClient {
     };
   };
 }
+
+const DIAGNOSTIC_SIGNED_URL_TTL_SECONDS = 3600;
 
 export async function runStorageUploadDiagnostic(
   supabase: StorageDiagnosticClient | null
@@ -102,13 +108,21 @@ export async function runStorageUploadDiagnostic(
     results.push('✅ Test upload successful!');
     results.push(`   Path: ${uploadedPath}`);
 
-    const { data: urlData } = supabase.storage.from('buildtrack-files').getPublicUrl(uploadedPath);
-    if (urlData?.publicUrl) {
-      results.push(`✅ Public URL generated: ${urlData.publicUrl}`);
+    const { data: urlData, error: signedError } = await supabase.storage
+      .from('buildtrack-files')
+      .createSignedUrl(uploadedPath, DIAGNOSTIC_SIGNED_URL_TTL_SECONDS);
+
+    if (signedError || !urlData?.signedUrl) {
+      results.push(
+        `⚠️  Signed URL generation failed: ${signedError?.message || 'no signedUrl returned'}`
+      );
+      results.push('   Upload may still be valid; check storage SELECT policies for authenticated.');
+    } else {
+      results.push(`✅ Signed URL generated (ttl=${DIAGNOSTIC_SIGNED_URL_TTL_SECONDS}s)`);
       results.push('\n🔍 Verifying upload...');
 
       try {
-        const response = await fetch(urlData.publicUrl, {
+        const response = await fetch(urlData.signedUrl, {
           method: 'HEAD',
           headers: {
             'Cache-Control': 'no-cache',
@@ -119,16 +133,16 @@ export async function runStorageUploadDiagnostic(
           results.push('✅ Upload verification successful');
         } else {
           results.push(
-            `⚠️  Public URL verification was inconclusive (HTTP ${response.status})`
+            `⚠️  Signed URL verification was inconclusive (HTTP ${response.status})`
           );
           results.push(
-            '   Upload may still be valid; check bucket visibility or object read policies.'
+            '   Upload may still be valid; check object read policies for authenticated users.'
           );
         }
       } catch (verifyError: any) {
-        results.push(`⚠️  Public URL verification was inconclusive: ${verifyError.message}`);
+        results.push(`⚠️  Signed URL verification was inconclusive: ${verifyError.message}`);
         results.push(
-          '   Upload may still be valid; check bucket visibility or object read policies.'
+          '   Upload may still be valid; check object read policies for authenticated users.'
         );
       }
     }

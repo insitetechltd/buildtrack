@@ -44,14 +44,14 @@ Dual-loader convention (Cursor):
 - `WS-UX / S-UX-01N` **Closed (2026-08-08)**: Live `project_containers` + assignment RLS; progressive Create area UI; text `container_id`/`sub_container_id`. Close report `docs/superpowers/reports/2026-08-08-s-ux-01n-close.md`.
 - `WS-UX / S-UX-01K2` **Closed Phase B (2026-08-09)**: Phase A creator+status edit + project-member select pool. Phase B who→whom: `canSelectAssignee` privilege ranks (admin/company_admin > manager/supervisor > foreman > member/worker); Create picker filtered; Detail guards. Assumption: no product matrix table — ranks documented in ROADMAP. Helper: `src/ui/contracts/taskDelegationPermissions.ts`. RLS deferred.
 - `WS-SUPABASE / M-SUPABASE-03a` **Closed (2026-08-10)**: Human GO + live apply — role CHECK + normalize (`manager`→`supervisor`) + dual-path helpers + role-write trigger. Close: `docs/superpowers/reports/2026-08-10-m-supabase-03a-close.md`.
-- `WS-SUPABASE / M-SUPABASE-03c` **Closed (2026-08-10)**: Human GO + live apply — `buildtrack-files.public=false`. Signed-URL client cutover still deferred (D2). Close: `docs/superpowers/reports/2026-08-10-m-supabase-03c-close.md`.
+- `WS-SUPABASE / M-SUPABASE-03c` **Closed (2026-08-10)**: Human GO + live apply — `buildtrack-files.public=false`. **D2 signed-URL cutover shipped (2026-08-10)** (`createSignedUrl` TTL 3600s in `fileUploadService` + adapter re-sign cache). Close: `docs/superpowers/reports/2026-08-10-m-supabase-03c-close.md`.
 - `WS-SUPABASE / M-SUPABASE-03d` **Closed (2026-08-09)**: deferred-schema fallback observability (`deferredSchemaObservability.ts` + taskStore hooks).
 - `WS-SUPABASE / M-SUPABASE-03e` **Closed (2026-08-09)**: service-role scripts default dry-run; `--apply` required to write.
 - `WS-SUPABASE / M-SUPABASE-04a` **App reconnect shipped (2026-08-10)**; live publication membership audit pending. Artefacts: `RealtimeSyncManager` backoff + `docs/superpowers/sql/20260810_msupabase04a_publication_membership_audit.sql` + report `2026-08-10-m-supabase-04a-phase-a.md`.
 - `WS-SUPABASE / M-SUPABASE-04b` **Blocked until ~2026-09-07** (30d cool-down post 03b 2026-08-08). No column drops.
 - `WS-SUPABASE / M-SUPABASE-04c` **Pipeline** (03c Closed — unblocked). Retention stub in `SUPABASE_OPERATIONS_RUNBOOK.md` only.
 - `WS-SUPABASE / M-SUPABASE-04d` **Phase A artefacts (2026-08-10) — BLOCKED awaiting GO**: `20260810000100_msupabase04d_index_health.sql` + report. **NO live apply** until `you have GO for M-SUPABASE-04d live apply`.
-- Current pipeline focus precedence: (1) finish 04a live publication audit → (2) optional 04d GO / 04c retention schedule → (3) 04b after ~2026-09-07. Prefer signed-URL cutover soon after 03c private bucket. `S-UX-01P` is Pipeline but **deferred improvement** — not active focus.
+- Current pipeline focus precedence: (1) finish 04a live publication audit → (2) optional 04d GO / 04c retention schedule → (3) 04b after ~2026-09-07. `S-UX-01P` is Pipeline but **deferred improvement** — not active focus.
 - `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context

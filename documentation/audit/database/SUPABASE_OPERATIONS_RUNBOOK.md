@@ -365,16 +365,15 @@ where schemaname = 'storage'
 order by tablename, policyname;
 ```
 
-### M-SUPABASE-03c Phase A (2026-08-09)
+### M-SUPABASE-03c Phase A (2026-08-09) + D2 cutover (2026-08-10)
 
 - Artefacts: `supabase/migrations/20260809000200_msupabase03c_storage_bucket_policy.sql`,
   `docs/superpowers/reports/2026-08-09-m-supabase-03c-phase-a-storage-review.md`
 - Greenfield baseline: bucket **private** (`public = false`) with company-folder RLS
-- App still uses `getPublicUrl()` in `src/api/fileUploadService.ts` — signed-URL cutover is
-  **blocked** until live bucket flag is confirmed and Human GO:
-  `you have GO for M-SUPABASE-03c live apply`
-- Recommended Decision D1: keep private; D2: `createSignedUrl` with configurable TTL after GO
-- Do **not** flip the live bucket to public to paper over client URL strategy
+- Live apply Closed: `buildtrack-files.public = false` (do **not** reopen to public)
+- **D2 shipped:** `src/api/fileUploadService.ts` uses `createSignedUrl` (TTL `SIGNED_URL_EXPIRY_SECONDS=3600`)
+  with in-memory cache + Dashboard/Tasks/TaskDetail adapter re-sign for legacy `/object/public/` URLs
+- Close report: `docs/superpowers/reports/2026-08-10-m-supabase-03c-close.md`
 
 ## Realtime Verification
 
@@ -408,17 +407,16 @@ If Realtime failures occur, inspect:
 
 ## Storage retention / lifecycle (M-SUPABASE-04c)
 
-**Blocked** until M-SUPABASE-03c live apply completes
-(`you have GO for M-SUPABASE-03c live apply`).
+**Unblocked** — M-SUPABASE-03c Closed (bucket private + D2 signed-URL cutover shipped).
 
-After 03c closes (bucket private/public + signed-URL decision):
+Still Pipeline (no live lifecycle this cycle):
 
-1. Prefer private bucket + signed URLs (Decision D1 from 03c review).
+1. Prefer private bucket + signed URLs (Decision D1/D2 from 03c — already applied).
 2. Define company retention policy (e.g. archive after N days / expire after M days).
 3. Configure S3-style lifecycle on `buildtrack-files` (non-current version transitions if versioning enabled).
 4. Document the chosen N/M and Dashboard path here — **no live lifecycle apply** until product retention numbers are agreed.
 
-Do not invent retention TTLs in code; ops configures lifecycle in the Supabase/Storage console after GO.
+Do not invent retention TTLs in code; ops configures lifecycle in the Supabase/Storage console after product GO.
 
 ## Safe Change Workflow
 

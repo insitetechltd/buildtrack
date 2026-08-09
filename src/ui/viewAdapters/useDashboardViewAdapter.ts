@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
@@ -6,7 +6,12 @@ import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUnattachedPhotoBatchStore } from "@/state/unattachedPhotoBatchStore";
 import { isAdmin, type Project, type Task } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
-import { getFileUrl } from "@/api/fileUploadService";
+import {
+  extractBuildtrackStoragePath,
+  getFileUrl,
+  prefetchSignedUrls,
+  subscribeSignedUrlCache,
+} from "@/api/fileUploadService";
 import type {
   DashboardActivityItem,
   DashboardProjectSummaryItem,
@@ -168,7 +173,7 @@ function resolveImageUri(uri?: string | null): string | undefined {
     );
   }
 
-  if (/^(https?:|file:|content:|data:|asset:)/i.test(uri)) {
+  if (/^(file:|content:|data:|asset:)/i.test(uri)) {
     return uri;
   }
 
@@ -184,7 +189,29 @@ function resolveImageUri(uri?: string | null): string | undefined {
     }
   }
 
+  if (/^https?:/i.test(uri)) {
+    if (extractBuildtrackStoragePath(uri)) {
+      return getFileUrl(uri) ?? undefined;
+    }
+    return uri;
+  }
+
   return getFileUrl(uri) ?? undefined;
+}
+
+function collectTaskPhotoRefs(task: Task): string[] {
+  const activityPhotos =
+    task.activities?.flatMap((activity: NonNullable<Task["activities"]>[number]) => {
+      const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+      return Array.isArray(photos) ? photos : [];
+    }) ?? [];
+  const updatePhotos =
+    task.updates?.flatMap((update: NonNullable<Task["updates"]>[number]) => update.photos ?? []) ??
+    [];
+
+  return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].filter(
+    (value): value is string => typeof value === "string" && value.length > 0
+  );
 }
 
 function collectTaskPhotoUris(task: Task): string[] {
@@ -223,11 +250,22 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const taskStore = useTaskStore();
   const unattachedBatchStore = useUnattachedPhotoBatchStore();
   const currentUserId = user?.id ?? "";
+  const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
   const tasks = taskStore.tasks ?? [];
   const unattachedBatches = unattachedBatchStore.batches ?? [];
   const isLoadingProjects = Boolean(projectStore.isLoading);
+
+  useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
+
+  useEffect(() => {
+    const refs = tasks.flatMap((task) => collectTaskPhotoRefs(task));
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [tasks]);
 
   const {
     activeProject,
@@ -717,7 +755,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
     };
-  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, tasks, unattachedBatches]);
+  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, signedUrlEpoch, tasks, unattachedBatches]);
 
   const readiness = useMemo(() => {
     return {

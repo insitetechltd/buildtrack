@@ -3,6 +3,18 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
+/** Storage bucket for task evidence (private after M-SUPABASE-03c). */
+export const BUILDTRACK_FILES_BUCKET = 'buildtrack-files';
+
+/**
+ * Signed URL TTL (seconds). M-SUPABASE-03c D2 default = 3600.
+ * Display paths re-sign via cache before expiry; do not treat stored URLs as durable.
+ */
+export const SIGNED_URL_EXPIRY_SECONDS = 3600;
+
+/** Refresh cached signed URLs this many ms before they expire. */
+const SIGNED_URL_REFRESH_MARGIN_MS = 60_000;
+
 export interface FileUploadOptions {
   file: {
     uri: string;
@@ -24,6 +36,7 @@ export interface FileAttachment {
   file_size: number;
   mime_type: string;
   storage_path: string;
+  /** Display URL — signed after 03c D2 cutover; not a durable public link. */
   public_url: string;
   entity_type: string;
   entity_id: string;
@@ -39,6 +52,165 @@ export interface UploadResult {
   success: boolean;
   file?: FileAttachment;
   error?: string;
+}
+
+type SignedUrlCacheEntry = {
+  url: string;
+  expiresAtMs: number;
+};
+
+const signedUrlCache = new Map<string, SignedUrlCacheEntry>();
+const inflightSignedUrls = new Map<string, Promise<string | null>>();
+const signedUrlListeners = new Set<() => void>();
+
+/**
+ * Extract a buildtrack-files object path from a storage path or Supabase Storage URL
+ * (public or signed). Returns null for non-storage refs (local file URIs, external https).
+ */
+export function extractBuildtrackStoragePath(pathOrUrl: string): string | null {
+  const trimmed = pathOrUrl?.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (/^(file:|content:|data:|asset:)/i.test(trimmed)) {
+    return null;
+  }
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return trimmed.replace(/^\//, '') || null;
+  }
+
+  const match = trimmed.match(
+    /\/storage\/v1\/object\/(?:public|sign)\/buildtrack-files\/([^?#]+)/i
+  );
+  if (!match?.[1]) {
+    return null;
+  }
+
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+export function subscribeSignedUrlCache(listener: () => void): () => void {
+  signedUrlListeners.add(listener);
+  return () => {
+    signedUrlListeners.delete(listener);
+  };
+}
+
+function notifySignedUrlCache(): void {
+  signedUrlListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch {
+      // Ignore listener errors so one subscriber cannot break others.
+    }
+  });
+}
+
+function cacheSignedUrl(storagePath: string, signedUrl: string, expiresInSeconds: number): void {
+  signedUrlCache.set(storagePath, {
+    url: signedUrl,
+    expiresAtMs: Date.now() + expiresInSeconds * 1000,
+  });
+  notifySignedUrlCache();
+}
+
+function getFreshCachedSignedUrl(storagePath: string): string | null {
+  const cached = signedUrlCache.get(storagePath);
+  if (!cached) {
+    return null;
+  }
+  if (cached.expiresAtMs <= Date.now() + SIGNED_URL_REFRESH_MARGIN_MS) {
+    return null;
+  }
+  return cached.url;
+}
+
+/**
+ * Create (or reuse in-flight) a signed URL for a storage path. Updates the sync cache.
+ */
+export async function createSignedFileUrl(
+  storagePath: string,
+  expiresInSeconds: number = SIGNED_URL_EXPIRY_SECONDS
+): Promise<string | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  const path = storagePath.replace(/^\//, '');
+  if (!path) {
+    return null;
+  }
+
+  const fresh = getFreshCachedSignedUrl(path);
+  if (fresh) {
+    return fresh;
+  }
+
+  const existing = inflightSignedUrls.get(path);
+  if (existing) {
+    return existing;
+  }
+
+  const request = (async (): Promise<string | null> => {
+    const { data, error } = await supabase.storage
+      .from(BUILDTRACK_FILES_BUCKET)
+      .createSignedUrl(path, expiresInSeconds);
+
+    if (error || !data?.signedUrl) {
+      console.error('❌ [File Upload] createSignedUrl failed:', error?.message || 'no signedUrl');
+      return signedUrlCache.get(path)?.url ?? null;
+    }
+
+    cacheSignedUrl(path, data.signedUrl, expiresInSeconds);
+    return data.signedUrl;
+  })().finally(() => {
+    inflightSignedUrls.delete(path);
+  });
+
+  inflightSignedUrls.set(path, request);
+  return request;
+}
+
+/**
+ * Resolve any photo ref (storage path, legacy public URL, or signed URL) to a usable URI.
+ * Local / non-storage https URLs pass through unchanged.
+ */
+export async function resolveStorageUrl(pathOrUrl: string): Promise<string | null> {
+  if (!pathOrUrl) {
+    return null;
+  }
+
+  if (/^(file:|content:|data:|asset:)/i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  const storagePath = extractBuildtrackStoragePath(pathOrUrl);
+  if (!storagePath) {
+    return /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : null;
+  }
+
+  return createSignedFileUrl(storagePath);
+}
+
+/**
+ * Prefetch signed URLs for a batch of path/URL refs (fire-and-forget friendly).
+ */
+export async function prefetchSignedUrls(pathOrUrls: string[]): Promise<void> {
+  const uniquePaths = Array.from(
+    new Set(
+      pathOrUrls
+        .map((value) => extractBuildtrackStoragePath(value))
+        .filter((value): value is string => Boolean(value))
+    )
+  );
+
+  await Promise.all(uniquePaths.map((path) => createSignedFileUrl(path)));
 }
 
 /**
@@ -86,18 +258,17 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
 
     // 3. Generate unique file name
     const timestamp = Date.now();
-    const fileExt = file.name.split('.').pop() || 'bin';
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const uniqueName = `${timestamp}-${sanitizedName}`;
 
-    // 4. Determine storage path
+    // 4. Determine storage path (company isolation preserved)
     const storagePath = `${companyId}/${entityType}s/${entityId}/${uniqueName}`;
 
     console.log(`📁 [File Upload] Storage path: ${storagePath}`);
 
     // 5. Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('buildtrack-files')
+    const { error: uploadError } = await supabase.storage
+      .from(BUILDTRACK_FILES_BUCKET)
       .upload(storagePath, decode(base64), {
         contentType: file.type,
         upsert: false,
@@ -110,16 +281,13 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
 
     console.log(`✅ [File Upload] File uploaded successfully`);
 
-    // 6. Get public URL
-    const { data: urlData } = supabase.storage
-      .from('buildtrack-files')
-      .getPublicUrl(storagePath);
-
-    if (!urlData?.publicUrl) {
-      throw new Error('Failed to get public URL');
+    // 6. Signed URL (private bucket — getPublicUrl 403s after M-SUPABASE-03c)
+    const signedUrl = await createSignedFileUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
+    if (!signedUrl) {
+      throw new Error('Failed to create signed URL');
     }
 
-    console.log(`🔗 [File Upload] Public URL generated`);
+    console.log(`🔗 [File Upload] Signed URL generated (ttl=${SIGNED_URL_EXPIRY_SECONDS}s)`);
 
     // 7. Determine file type
     const fileType = getFileType(file.type);
@@ -135,7 +303,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       file_size: fileSize,
       mime_type: file.type,
       storage_path: storagePath,
-      public_url: urlData.publicUrl,
+      public_url: signedUrl,
       entity_type: entityType,
       entity_id: entityId,
       uploaded_by: userId,
@@ -146,7 +314,7 @@ export async function uploadFile(options: FileUploadOptions): Promise<FileAttach
       updated_at: new Date().toISOString(),
     };
 
-    console.log(`🎉 [File Upload] Complete! File available at: ${urlData.publicUrl}`);
+    console.log(`🎉 [File Upload] Complete! File available at signed URL`);
 
     return fileAttachment;
   } catch (error: any) {
@@ -165,13 +333,14 @@ export async function deleteFile(storagePath: string): Promise<void> {
 
   try {
     const { error } = await supabase.storage
-      .from('buildtrack-files')
+      .from(BUILDTRACK_FILES_BUCKET)
       .remove([storagePath]);
 
     if (error) {
       throw new Error(`Delete failed: ${error.message}`);
     }
 
+    signedUrlCache.delete(storagePath);
     console.log(`🗑️ [File Upload] File deleted: ${storagePath}`);
   } catch (error: any) {
     console.error('❌ [File Upload] Delete failed:', error);
@@ -180,18 +349,37 @@ export async function deleteFile(storagePath: string): Promise<void> {
 }
 
 /**
- * Get download URL for a file
+ * Sync display URL for a storage path or legacy Supabase Storage URL.
+ * Returns a cached signed URL when available; kicks async refresh otherwise.
+ * Non-storage https / local URIs pass through.
  */
-export function getFileUrl(storagePath: string): string | null {
+export function getFileUrl(pathOrUrl: string): string | null {
+  if (!pathOrUrl) {
+    return null;
+  }
+
+  if (/^(file:|content:|data:|asset:)/i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  const storagePath = extractBuildtrackStoragePath(pathOrUrl);
+  if (!storagePath) {
+    return /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : null;
+  }
+
   if (!supabase) {
     return null;
   }
 
-  const { data } = supabase.storage
-    .from('buildtrack-files')
-    .getPublicUrl(storagePath);
+  const cached = getFreshCachedSignedUrl(storagePath);
+  if (cached) {
+    return cached;
+  }
 
-  return data?.publicUrl || null;
+  // Stale cache is better than nothing while refresh is in flight
+  const stale = signedUrlCache.get(storagePath)?.url ?? null;
+  void createSignedFileUrl(storagePath);
+  return stale;
 }
 
 /**
@@ -201,9 +389,9 @@ export function getFileUrl(storagePath: string): string | null {
 export async function verifyUpload(publicUrl: string): Promise<{ success: boolean; error?: string }> {
   try {
     console.log(`🔍 [Upload Verification] Verifying file at: ${publicUrl}`);
-    
+
     // Try to fetch the file with a HEAD request to check if it exists
-    const response = await fetch(publicUrl, { 
+    const response = await fetch(publicUrl, {
       method: 'HEAD',
       headers: {
         'Cache-Control': 'no-cache',
@@ -233,18 +421,18 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
   try {
     // Upload the file
     const fileAttachment = await uploadFile(options);
-    
+
     // Verify the upload
     const verification = await verifyUpload(fileAttachment.public_url);
-    
+
     if (!verification.success) {
       console.warn(
-        `⚠️ [File Upload] Upload completed but public verification was inconclusive: ${
+        `⚠️ [File Upload] Upload completed but signed-URL verification was inconclusive: ${
           verification.error || 'Unknown verification issue'
         }`
       );
     }
-    
+
     return {
       success: true,
       file: fileAttachment,
@@ -255,4 +443,10 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
       error: error.message || 'Upload failed',
     };
   }
+}
+
+/** @internal test helper — clears signed URL cache between tests */
+export function __resetSignedUrlCacheForTests(): void {
+  signedUrlCache.clear();
+  inflightSignedUrls.clear();
 }

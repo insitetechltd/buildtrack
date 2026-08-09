@@ -6,6 +6,11 @@ import {
   getFileUrl,
   verifyUpload,
   uploadFileWithVerification,
+  extractBuildtrackStoragePath,
+  createSignedFileUrl,
+  __resetSignedUrlCacheForTests,
+  SIGNED_URL_EXPIRY_SECONDS,
+  BUILDTRACK_FILES_BUCKET,
 } from '../fileUploadService';
 import { supabase } from '../supabase';
 
@@ -18,6 +23,8 @@ jest.mock('base64-arraybuffer', () => ({
 describe('fileUploadService', () => {
   const mockSupabase = supabase as jest.Mocked<typeof supabase>;
   const mockDecode = decode as jest.Mock;
+  const signedUrl =
+    'https://storage.supabase.co/storage/v1/object/sign/buildtrack-files/company-123/tasks/task-123/1718524800000-task-photo.jpg?token=abc';
   const fileOptions = {
     file: {
       uri: 'file:///task-photo.jpg',
@@ -34,6 +41,7 @@ describe('fileUploadService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetSignedUrlCacheForTests();
     jest.spyOn(global, 'fetch').mockResolvedValue({ ok: true } as Response);
 
     (FileSystem.readAsStringAsync as jest.Mock).mockResolvedValue('mock-base64');
@@ -56,15 +64,14 @@ describe('fileUploadService', () => {
       data: null,
       error: null,
     });
-    const getPublicUrl = jest.fn().mockReturnValue({
-      data: {
-        publicUrl: 'https://storage.supabase.co/company-123/tasks/task-123/1718524800000-task-photo.jpg',
-      },
+    const createSignedUrl = jest.fn().mockResolvedValue({
+      data: { signedUrl },
+      error: null,
     });
     const from = jest.fn().mockReturnValue({
       upload,
       remove,
-      getPublicUrl,
+      createSignedUrl,
     });
 
     Object.defineProperty(mockSupabase, 'storage', {
@@ -73,11 +80,26 @@ describe('fileUploadService', () => {
       configurable: true,
     });
 
-    return { from, upload, remove, getPublicUrl };
+    return { from, upload, remove, createSignedUrl };
   };
 
-  it('uploads a file and returns the generated attachment metadata', async () => {
-    const { from, upload } = installStorageMocks();
+  it('extracts storage paths from public and signed Supabase URLs', () => {
+    expect(
+      extractBuildtrackStoragePath(
+        'https://xyz.supabase.co/storage/v1/object/public/buildtrack-files/co/tasks/t1/a.jpg'
+      )
+    ).toBe('co/tasks/t1/a.jpg');
+    expect(
+      extractBuildtrackStoragePath(
+        'https://xyz.supabase.co/storage/v1/object/sign/buildtrack-files/co/tasks/t1/a.jpg?token=x'
+      )
+    ).toBe('co/tasks/t1/a.jpg');
+    expect(extractBuildtrackStoragePath('co/tasks/t1/a.jpg')).toBe('co/tasks/t1/a.jpg');
+    expect(extractBuildtrackStoragePath('file:///local.jpg')).toBeNull();
+  });
+
+  it('uploads a file and returns signed attachment metadata', async () => {
+    const { from, upload, createSignedUrl } = installStorageMocks();
     jest.spyOn(Date, 'now').mockReturnValue(1718524800000);
 
     const result = await uploadFile(fileOptions);
@@ -86,7 +108,7 @@ describe('fileUploadService', () => {
       encoding: FileSystem.EncodingType.Base64,
     });
     expect(mockDecode).toHaveBeenCalledWith('mock-base64');
-    expect(from).toHaveBeenCalledWith('buildtrack-files');
+    expect(from).toHaveBeenCalledWith(BUILDTRACK_FILES_BUCKET);
     expect(upload).toHaveBeenCalledWith(
       'company-123/tasks/task-123/1718524800000-task-photo.jpg',
       'decoded-file-data',
@@ -95,9 +117,13 @@ describe('fileUploadService', () => {
         upsert: false,
       })
     );
+    expect(createSignedUrl).toHaveBeenCalledWith(
+      'company-123/tasks/task-123/1718524800000-task-photo.jpg',
+      SIGNED_URL_EXPIRY_SECONDS
+    );
     expect(result.storage_path).toBe('company-123/tasks/task-123/1718524800000-task-photo.jpg');
     expect(result.file_type).toBe('image');
-    expect(result.public_url).toContain('https://storage.supabase.co/');
+    expect(result.public_url).toBe(signedUrl);
   });
 
   it('deletes a file from Supabase storage', async () => {
@@ -108,21 +134,25 @@ describe('fileUploadService', () => {
     expect(remove).toHaveBeenCalledWith(['company-123/tasks/task-123/file.jpg']);
   });
 
-  it('builds a public file URL from the storage path', () => {
-    installStorageMocks();
+  it('returns a cached signed file URL from the storage path', async () => {
+    const { createSignedUrl } = installStorageMocks();
+
+    const created = await createSignedFileUrl('company-123/tasks/task-123/file.jpg');
+    expect(created).toBe(signedUrl);
+    expect(createSignedUrl).toHaveBeenCalledWith(
+      'company-123/tasks/task-123/file.jpg',
+      SIGNED_URL_EXPIRY_SECONDS
+    );
 
     const result = getFileUrl('company-123/tasks/task-123/file.jpg');
-
-    expect(result).toBe(
-      'https://storage.supabase.co/company-123/tasks/task-123/1718524800000-task-photo.jpg'
-    );
+    expect(result).toBe(signedUrl);
   });
 
-  it('verifies that an uploaded file is publicly accessible', async () => {
-    const result = await verifyUpload('https://storage.supabase.co/uploads/task-photo.jpg');
+  it('verifies that an uploaded file is accessible via signed URL', async () => {
+    const result = await verifyUpload(signedUrl);
 
     expect(global.fetch).toHaveBeenCalledWith(
-      'https://storage.supabase.co/uploads/task-photo.jpg',
+      signedUrl,
       expect.objectContaining({
         method: 'HEAD',
       })
@@ -130,7 +160,7 @@ describe('fileUploadService', () => {
     expect(result).toEqual({ success: true });
   });
 
-  it('returns success when upload completes but public verification is forbidden', async () => {
+  it('returns success when upload completes but signed verification is forbidden', async () => {
     installStorageMocks();
     const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});

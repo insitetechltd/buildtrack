@@ -36,16 +36,18 @@ describe('runStorageUploadDiagnostic', () => {
     jest.restoreAllMocks();
   });
 
-  it('reports upload success even when public HEAD verification is inconclusive', async () => {
+  it('reports upload success even when signed HEAD verification is inconclusive', async () => {
     const upload = jest.fn().mockResolvedValue({
       data: { path: 'diagnostics/1718524800000-test-upload.txt' },
       error: null,
     });
     const remove = jest.fn().mockResolvedValue({ data: null, error: null });
-    const getPublicUrl = jest.fn().mockReturnValue({
+    const createSignedUrl = jest.fn().mockResolvedValue({
       data: {
-        publicUrl: 'https://storage.supabase.co/object/public/buildtrack-files/diagnostics/1718524800000-test-upload.txt',
+        signedUrl:
+          'https://storage.supabase.co/storage/v1/object/sign/buildtrack-files/diagnostics/1718524800000-test-upload.txt?token=abc',
       },
+      error: null,
     });
 
     const mockSupabase = {
@@ -59,7 +61,7 @@ describe('runStorageUploadDiagnostic', () => {
         from: jest.fn().mockReturnValue({
           upload,
           remove,
-          getPublicUrl,
+          createSignedUrl,
         }),
       },
     } as any;
@@ -69,9 +71,15 @@ describe('runStorageUploadDiagnostic', () => {
     expect(mockSupabase.auth.getSession).toHaveBeenCalled();
     expect(mockSupabase.storage.from).toHaveBeenCalledWith('buildtrack-files');
     expect(upload).toHaveBeenCalled();
+    expect(createSignedUrl).toHaveBeenCalledWith(
+      'diagnostics/1718524800000-test-upload.txt',
+      3600
+    );
     expect(decode).toHaveBeenCalledWith('bW9jay1iYXNlNjQ=');
     expect(results).toContain('✅ Test upload successful!');
-    expect(results.some((line) => line.includes('Public URL verification was inconclusive'))).toBe(true);
+    expect(results.some((line) => line.includes('Signed URL verification was inconclusive'))).toBe(
+      true
+    );
     expect(results.some((line) => line.includes('Bucket not found'))).toBe(false);
     expect(remove).toHaveBeenCalledWith(['diagnostics/1718524800000-test-upload.txt']);
   });

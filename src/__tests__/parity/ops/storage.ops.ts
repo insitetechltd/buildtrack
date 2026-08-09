@@ -49,8 +49,11 @@ export async function getParityFileUrl(
   client: SupabaseClient,
   path: string,
 ): Promise<string> {
-  const { data } = client.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  const { data, error } = await client.storage.from(BUCKET).createSignedUrl(path, 3600);
+  if (error || !data?.signedUrl) {
+    throw error || new Error('Failed to create signed URL');
+  }
+  return data.signedUrl;
 }
 
 export async function deleteParityFile(

@@ -5,7 +5,12 @@ import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
-import { getFileUrl } from "@/api/fileUploadService";
+import {
+  extractBuildtrackStoragePath,
+  getFileUrl,
+  prefetchSignedUrls,
+  subscribeSignedUrlCache,
+} from "@/api/fileUploadService";
 import type {
   TasksActiveFilterChipModel,
   TasksOverdueWindowValue,
@@ -110,7 +115,15 @@ function resolveImageUri(uri?: string | null): string | undefined {
     return undefined;
   }
 
-  if (/^(https?:|file:|content:|data:|asset:)/i.test(uri)) {
+  if (/^(file:|content:|data:|asset:)/i.test(uri)) {
+    return uri;
+  }
+
+  if (/^https?:/i.test(uri)) {
+    // Legacy public / expired signed URLs must be re-signed for the private bucket.
+    if (extractBuildtrackStoragePath(uri)) {
+      return getFileUrl(uri) ?? undefined;
+    }
     return uri;
   }
 
@@ -603,12 +616,36 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const [appliedFilters, setAppliedFilters] = useState<AppliedTasksFilters>(launchPresetFilters);
   const [stagedFilters, setStagedFilters] = useState<AppliedTasksFilters>(launchPresetFilters);
   const [expandedTaskIds, setExpandedTaskIds] = useState<string[]>([]);
+  const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
   const stagedFiltersRef = useRef<AppliedTasksFilters>(launchPresetFilters);
   const archivedFetchRequestedRef = useRef(false);
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   const tasksLaunchPreset = projectFilterStore.tasksLaunchPreset;
   const clearTasksLaunchPreset = projectFilterStore.clearTasksLaunchPreset;
+
+  useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
+
+  useEffect(() => {
+    const activityAndUpdateRefs = [...tasks, ...archivedTasks].flatMap((task) => {
+      const activityPhotos =
+        task.activities?.flatMap((activity) => {
+          const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+          return Array.isArray(photos) ? photos : [];
+        }) ?? [];
+      const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+      return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos];
+    });
+    const refs = activityAndUpdateRefs.filter(
+      (value): value is string => typeof value === "string" && value.length > 0
+    );
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [archivedTasks, tasks]);
+
+  void signedUrlEpoch;
 
   useEffect(() => {
     if (!tasksLaunchPreset) {
@@ -958,6 +995,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     projectStore,
     props,
     selectedProjectId,
+    signedUrlEpoch,
     stagedFilters,
     tasks,
   ]);

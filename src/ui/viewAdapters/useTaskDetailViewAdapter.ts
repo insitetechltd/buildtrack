@@ -1,10 +1,15 @@
-import { useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useEffect, useCallback, useState } from 'react';
 import { useTaskStore } from '../../state/taskStore.supabase';
 import { useAuthStore } from '../../state/authStore';
 import { useUserStore } from '../../state/userStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
-import { getFileUrl } from '../../api/fileUploadService';
+import {
+  extractBuildtrackStoragePath,
+  getFileUrl,
+  prefetchSignedUrls,
+  subscribeSignedUrlCache,
+} from "../../api/fileUploadService";
 import { getResponsibilityToken } from '../../utils/accountabilityEngine';
 import { buildActiveStageModel } from '../../components/taskDetail/taskDetailActiveStage';
 import {
@@ -259,7 +264,14 @@ function resolveAssetUri(value: unknown): string | undefined {
     }
   }
 
-  if (/^(https?:|file:|content:|data:|asset:)/i.test(value)) {
+  if (/^(file:|content:|data:|asset:)/i.test(value)) {
+    return value;
+  }
+
+  if (/^https?:/i.test(value)) {
+    if (extractBuildtrackStoragePath(value)) {
+      return getFileUrl(value) ?? undefined;
+    }
     return value;
   }
 
@@ -446,6 +458,7 @@ export function useTaskDetailViewAdapter({
   const { user } = useAuthStore();
   const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation } = useTaskStore();
   const { getUserById } = useUserStore();
+  const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
 
   const foundTask = tasks.find((t) => t.id === taskId);
   const subTask = subTaskId ? tasks.find((t) => t.id === subTaskId) : foundTask?.parentTaskId ? foundTask : null;
@@ -465,6 +478,30 @@ export function useTaskDetailViewAdapter({
   useEffect(() => {
     fetchTask();
   }, [fetchTask]);
+
+  useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (!task) {
+      return;
+    }
+    const activityPhotos =
+      task.activities?.flatMap((activity) => {
+        const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+        return Array.isArray(photos) ? photos : [];
+      }) ?? [];
+    const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
+    const refs = [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].filter(
+      (value): value is string => typeof value === 'string' && value.length > 0
+    );
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [task]);
+
+  // Touch epoch so memoized photo URIs rebuild after signed-URL cache fills.
+  void signedUrlEpoch;
 
   if (!task || !user) {
     return {

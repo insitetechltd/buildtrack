@@ -19,6 +19,11 @@ jest.mock("@/state/taskStore.supabase", () => ({
 
 jest.mock("@/api/fileUploadService", () => ({
   getFileUrl: jest.fn((value: string) => `https://cdn.example.com/${value}`),
+  extractBuildtrackStoragePath: jest.fn((value: string) =>
+    /^https?:|^file:|^content:|^data:|^asset:/i.test(value) ? null : value
+  ),
+  prefetchSignedUrls: jest.fn(() => Promise.resolve()),
+  subscribeSignedUrlCache: jest.fn(() => () => {}),
 }));
 
 describe("useTasksViewAdapter", () => {

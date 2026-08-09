@@ -334,6 +334,12 @@ if (process.env.USE_REAL_SUPABASE !== '1') {
           getPublicUrl: jest.fn(() => ({
             data: { publicUrl: 'https://example.com/mock-url.jpg' },
           })),
+          createSignedUrl: jest.fn(() =>
+            Promise.resolve({
+              data: { signedUrl: 'https://example.com/mock-signed-url.jpg' },
+              error: null,
+            }),
+          ),
           remove: jest.fn(() =>
             Promise.resolve({
               data: null,

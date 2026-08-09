@@ -15,7 +15,7 @@ Closed **M-SUPABASE-03c** after Human GO: `you have GO for M-SUPABASE-03a and 03
 | ID | Choice |
 |---|---|
 | D1 | Keep bucket **private** (`public=false`) — matched greenfield |
-| D2 | Client signed-URL refactor **deferred** (app still `getPublicUrl()` in `fileUploadService.ts`) |
+| D2 | Client signed-URL refactor **shipped (2026-08-10)** — `createSignedUrl` TTL 3600s |
 
 ## Phase B (production — pooler session `:5432`)
 
@@ -26,7 +26,7 @@ Closed **M-SUPABASE-03c** after Human GO: `you have GO for M-SUPABASE-03a and 03
 
 ## Residual risks / follow-ons
 
-- **Photo URLs:** flipping private may 403 `getPublicUrl()` until signed-URL cutover ships (D2)
+- **Photo URLs:** D2 signed-URL cutover shipped in app (`createSignedUrl` TTL 3600s + adapter cache). Residual: first paint may miss until cache fills; legacy screens that bind raw attachment URLs without adapters may still 403 until updated.
 - **M-SUPABASE-04c** retention/lifecycle now unblocked to schedule (still Pipeline; no live lifecycle this cycle)
 
 ## Sign-off

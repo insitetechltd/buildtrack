@@ -2,10 +2,9 @@
 
 **Date:** 2026-08-10  
 **Milestone:** WS-SUPABASE / M-SUPABASE-04d  
-**Status:** Phase A artefacts complete — **AWAITING HUMAN GO for live apply**  
-**GO phrase required:** `you have GO for M-SUPABASE-04d live apply`
-
-**Do not** apply on production without that exact written GO.
+**Status:** Phase A artefacts complete — **LIVE APPLY CLOSED** (see close report)  
+**GO phrase (historical):** `you have GO for M-SUPABASE-04d live apply`  
+**Human GO received:** `GO → M-SUPABASE-04d live` (2026-08-10)
 
 ---
 
@@ -26,6 +25,8 @@ See commented probes in the migration file (`pg_stat_user_indexes` + `pg_indexes
 
 ## Close gate after GO
 
-1. Apply CONCURRENTLY statements individually.
-2. Re-run `pg_indexes` — both names present.
+1. Apply CONCURRENTLY statements individually. ✅
+2. Re-run `pg_indexes` — both names present. ✅
 3. Optional: Dashboard/Tasks unread + CreateTask location picker smoke (no Maestro required for Phase A close of artefacts).
+
+**Close report:** `docs/superpowers/reports/2026-08-10-m-supabase-04d-close.md`

@@ -1,6 +1,9 @@
--- M-SUPABASE-04d Phase A — index health (task_read_status + project_locations)
--- ROLLOUT: artefacts only. NO LIVE PRODUCTION APPLY without explicit written Human GO:
---   "you have GO for M-SUPABASE-04d live apply"
+-- M-SUPABASE-04d — index health (task_read_status + project_locations)
+-- Live applied production 2026-08-10 after Human GO (`GO → M-SUPABASE-04d live`).
+-- Post-apply: idx_task_read_status_user_task created; idx_project_locations_project_id
+-- already present (IF NOT EXISTS no-op). Both valid/ready. Close report:
+--   docs/superpowers/reports/2026-08-10-m-supabase-04d-close.md
+-- Historical GO phrase: "you have GO for M-SUPABASE-04d live apply"
 --
 -- Intent:
 --   1) Ensure composite lookup index on task_read_status (user_id, task_id)

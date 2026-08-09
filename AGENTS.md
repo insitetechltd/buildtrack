@@ -50,8 +50,8 @@ Dual-loader convention (Cursor):
 - `WS-SUPABASE / M-SUPABASE-04a` **Closed (2026-08-10)**: Human GO + live `ALTER PUBLICATION supabase_realtime ADD TABLE` (tasks, task_activities, projects, users) on pooler session `:5432`; post-apply audit **4/4**. App reconnect already shipped (`5d7b4e4`). Evidence: `docs/superpowers/evidence/m-supabase-04a-publication-membership-post-apply-redacted-20260810.md`. Close: `docs/superpowers/reports/2026-08-10-m-supabase-04a-close.md`. Migration SoT: `supabase/migrations/20260810000200_msupabase04a_publication_add_tables.sql`.
 - `WS-SUPABASE / M-SUPABASE-04b` **Blocked until ~2026-09-07** (30d cool-down post 03b 2026-08-08). No column drops.
 - `WS-SUPABASE / M-SUPABASE-04c` **Pipeline** (03c Closed — unblocked). Retention stub in `SUPABASE_OPERATIONS_RUNBOOK.md` only.
-- `WS-SUPABASE / M-SUPABASE-04d` **Phase A artefacts (2026-08-10) — BLOCKED awaiting GO**: `20260810000100_msupabase04d_index_health.sql` + report. **NO live apply** until `you have GO for M-SUPABASE-04d live apply`.
-- Current pipeline focus precedence: (1) optional **04d live GO** → (2) **04c** retention schedule → (3) **04b** after ~2026-09-07. `S-UX-01P` is Pipeline but **deferred improvement** — not active focus.
+- `WS-SUPABASE / M-SUPABASE-04d` **Closed (2026-08-10)**: Human GO + live `CREATE INDEX CONCURRENTLY IF NOT EXISTS` on session `:5432` — `idx_task_read_status_user_task` created; `idx_project_locations_project_id` already present. Post-apply `pg_indexes` **2/2** valid. Close: `docs/superpowers/reports/2026-08-10-m-supabase-04d-close.md`. Migration SoT: `supabase/migrations/20260810000100_msupabase04d_index_health.sql`.
+- Current pipeline focus precedence: (1) **04c** retention schedule → (2) **04b** after ~2026-09-07. `S-UX-01P` is Pipeline but **deferred improvement** — not active focus.
 - `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context

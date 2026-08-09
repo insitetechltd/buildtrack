@@ -14,6 +14,22 @@
 --   backfill only rewrites known stray aliases.
 
 -- ---------------------------------------------------------------------------
+-- 0) Drop legacy narrower role CHECKs that conflict with F-004 vocabulary
+--     (live prod had users_role_check IN (admin, manager, worker) which blocks
+--      manager→supervisor normalize and the expanded users_role_allowed_values).
+-- ---------------------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+  ) THEN
+    ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+  END IF;
+END
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 1) Normalize stray public.users.role values (when column exists)
 -- ---------------------------------------------------------------------------
 DO $$
@@ -176,6 +192,113 @@ BEGIN
   END LOOP;
 END
 $$;
+
+-- ---------------------------------------------------------------------------
+-- 5a) Ensure helper functions used by the role-write guard (dual-path:
+--     greenfield system_permission OR live legacy role column).
+--     Production 2026-08-10 lacked both helpers (greenfield never applied).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.user_system_permission(uid uuid)
+RETURNS text
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  has_sys boolean;
+  has_role boolean;
+  v text;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'system_permission'
+  ) INTO has_sys;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+  ) INTO has_role;
+
+  IF has_sys THEN
+    EXECUTE 'SELECT system_permission FROM public.users WHERE id = $1' INTO v USING uid;
+    RETURN v;
+  END IF;
+
+  IF has_role THEN
+    EXECUTE 'SELECT role FROM public.users WHERE id = $1' INTO v USING uid;
+    RETURN CASE lower(coalesce(v, ''))
+      WHEN 'admin' THEN 'admin'
+      WHEN 'company_admin' THEN 'admin'
+      WHEN 'manager' THEN 'manager'
+      WHEN 'supervisor' THEN 'manager'
+      WHEN 'foreman' THEN 'manager'
+      ELSE 'member'
+    END;
+  END IF;
+
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.user_is_company_admin(uid uuid, p_company_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  has_sys boolean;
+  has_role boolean;
+  ok boolean := false;
+BEGIN
+  IF p_company_id IS NULL OR uid IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'system_permission'
+  ) INTO has_sys;
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'role'
+  ) INTO has_role;
+
+  IF has_sys THEN
+    EXECUTE $q$
+      SELECT EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.id = $1
+          AND u.company_id = $2
+          AND u.system_permission = 'admin'
+          AND coalesce(u.is_pending, false) = false
+      )
+    $q$ INTO ok USING uid, p_company_id;
+    RETURN ok;
+  END IF;
+
+  IF has_role THEN
+    EXECUTE $q$
+      SELECT EXISTS (
+        SELECT 1 FROM public.users u
+        WHERE u.id = $1
+          AND u.company_id = $2
+          AND lower(u.role) IN ('admin', 'company_admin')
+          AND coalesce(u.is_pending, false) = false
+      )
+    $q$ INTO ok USING uid, p_company_id;
+    RETURN ok;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.user_system_permission(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.user_is_company_admin(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.user_system_permission(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.user_is_company_admin(uuid, uuid) TO authenticated, service_role;
 
 -- ---------------------------------------------------------------------------
 -- 5) Trigger: non–company-admin cannot change role / system_permission

@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-09  
 **Milestone:** WS-SUPABASE / M-SUPABASE-03c  
-**Status:** Phase A artefacts complete — **AWAITING HUMAN GO for live apply / client signed-URL cutover**  
-**GO phrase required:** `you have GO for M-SUPABASE-03c live apply`
+**Status:** Phase A artefacts complete — **LIVE APPLIED / Closed 2026-08-10** (ensure-private only; signed-URL cutover still deferred)  
+**GO phrase:** satisfied (`you have GO for M-SUPABASE-03a and 03c live apply`)  
+**Close report:** `docs/superpowers/reports/2026-08-10-m-supabase-03c-close.md`
 
 ---
 
@@ -62,5 +63,5 @@ order by policyname;
 
 | Role | Sign | Date |
 |---|---|---|
-| Human storage decision D1/D2 | _pending_ | |
-| Live apply GO | _pending — requires phrase above_ | |
+| Human storage decision D1/D2 | D1 private applied; D2 signed-URL deferred | 2026-08-10 |
+| Live apply GO | GO via chat (03a+03c) | 2026-08-10 |

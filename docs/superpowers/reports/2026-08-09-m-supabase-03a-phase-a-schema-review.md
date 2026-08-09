@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-09  
 **Milestone:** WS-SUPABASE / M-SUPABASE-03a  
-**Status:** Phase A artefacts complete — **AWAITING HUMAN GO for live apply**  
-**GO phrase required:** `you have GO for M-SUPABASE-03a live apply`
+**Status:** Phase A artefacts complete — **LIVE APPLIED / Closed 2026-08-10**  
+**GO phrase:** satisfied (`you have GO for M-SUPABASE-03a and 03c live apply`)  
+**Close report:** `docs/superpowers/reports/2026-08-10-m-supabase-03a-close.md`
 
 **Do not** apply on production without that exact written GO. Parity/sandbox apply is allowed for proof.
 
@@ -87,5 +88,5 @@ ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_system_permission_allow
 
 | Role | Sign | Date |
 |---|---|---|
-| Human Schema Review | _pending_ | |
-| Live apply GO | _pending — requires phrase above_ | |
+| Human Schema Review | GO via chat | 2026-08-10 |
+| Live apply GO | GO via chat (03a+03c) | 2026-08-10 |

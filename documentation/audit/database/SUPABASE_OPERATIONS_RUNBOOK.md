@@ -380,10 +380,10 @@ order by tablename, policyname;
 
 The app subscribes broadly to:
 
-- `tasks`
-- `task_activities`
-- `projects`
-- `users`
+- `tasks` (event `*`)
+- `task_activities` (event `INSERT`)
+- `projects` (event `*`)
+- `users` (event `UPDATE`)
 
 Operational checks:
 
@@ -391,11 +391,34 @@ Operational checks:
 - confirm broad subscriptions are still safe under current RLS
 - confirm list invalidation volume remains acceptable
 
+### M-SUPABASE-04a (2026-08-10)
+
+- App reconnect: exponential backoff + AppState soft resubscribe in
+  `src/utils/RealtimeSyncManager.tsx` / `src/utils/realtimeReconnect.ts`
+- Read-only publication audit SQL:
+  `docs/superpowers/sql/20260810_msupabase04a_publication_membership_audit.sql`
+- Report: `docs/superpowers/reports/2026-08-10-m-supabase-04a-phase-a.md`
+- Live `pg_publication_tables` SELECT: run in Dashboard when available; never paste secrets
+
 If Realtime failures occur, inspect:
 
-- table publication settings
-- channel error logs
+- table publication settings (`supabase_realtime` / `postgres_changes`)
+- channel error logs (`CHANNEL_ERROR` / `CLOSED` → reconnect backoff)
 - policy denials
+
+## Storage retention / lifecycle (M-SUPABASE-04c)
+
+**Blocked** until M-SUPABASE-03c live apply completes
+(`you have GO for M-SUPABASE-03c live apply`).
+
+After 03c closes (bucket private/public + signed-URL decision):
+
+1. Prefer private bucket + signed URLs (Decision D1 from 03c review).
+2. Define company retention policy (e.g. archive after N days / expire after M days).
+3. Configure S3-style lifecycle on `buildtrack-files` (non-current version transitions if versioning enabled).
+4. Document the chosen N/M and Dashboard path here — **no live lifecycle apply** until product retention numbers are agreed.
+
+Do not invent retention TTLs in code; ops configures lifecycle in the Supabase/Storage console after GO.
 
 ## Safe Change Workflow
 

@@ -13,3 +13,9 @@ alwaysApply: true
 - Before Maestro or release claims, run `npm run dev:doctor`.
 - Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
 - Maestro 8-gate preflight: `.cursor/rules/maestro-preflight.md`.
+
+## Git push default (solo)
+
+- After a successful **user-requested** commit, push to the tracked remote by default (`git push` / `git push -u origin HEAD` if needed).
+- Skip push only if the user says not to, if push would require force, or if auth fails (then report the blocker).
+- Never force-push to main/master; never update git config; never echo secrets or credential-bearing remote URLs.

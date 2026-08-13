@@ -3,6 +3,10 @@ import { fireEvent, render } from "@testing-library/react-native";
 
 import PrimaryActionBar from "../PrimaryActionBar";
 
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 12, left: 0, right: 0 }),
+}));
+
 describe("PrimaryActionBar", () => {
   it("renders the primary action and optional secondary action", () => {
     const onPrimaryPress = jest.fn();

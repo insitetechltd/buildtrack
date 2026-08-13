@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import Slider from "@react-native-community/slider";
 import { cn } from "../utils/cn";
 import ModernScreenHeader from "../components/ModernScreenHeader";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import { useTranslation } from "../utils/useTranslation";
 import { useUpdateProgressViewAdapter, UpdateProgressScreenProps } from "../ui/viewAdapters/useUpdateProgressViewAdapter";
 import {
@@ -95,7 +96,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
   const failedPhotos = output.photos.filter(p => p.isFailed);
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       <ModernScreenHeader 
@@ -273,36 +274,11 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
         </View>
       </ScrollView>
 
-      {/* Fixed Bottom Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
-        }}
-      >
-        <SafeAreaView edges={['bottom']}>
-          <Pressable
-            onPress={actions.handleSubmitUpdate}
-            disabled={output.form.isSubmitting}
-            className={cn(
-              "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-              output.form.isSubmitting ? "bg-gray-300" : "bg-blue-600"
-            )}
-          >
-            <Ionicons 
-              name="checkmark-circle-outline" 
-              size={18} 
-              color="white" 
-            />
-            <Text className="text-white font-semibold text-base ml-2">
-              {output.form.isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
-            </Text>
-          </Pressable>
-        </SafeAreaView>
-      </View>
+      <PrimaryActionBar
+        primaryLabel={output.form.isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
+        onPrimaryPress={actions.handleSubmitUpdate}
+        isPrimaryDisabled={output.form.isSubmitting}
+      />
     </SafeAreaView>
   );
 }

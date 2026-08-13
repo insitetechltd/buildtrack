@@ -13,8 +13,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import { useTranslation } from "../utils/useTranslation";
 import {
   createFormNavigationRegistry,
@@ -94,7 +94,7 @@ export default function RejectTaskScreen({
   }
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -171,40 +171,14 @@ export default function RejectTaskScreen({
         </View>
       </ScrollView>
 
-      {/* Fixed Bottom Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
+      <PrimaryActionBar
+        primaryLabel={output.rejectForm.isSubmitting ? t.common.loading : t.taskDetail.reject}
+        onPrimaryPress={() => {
+          void actions.handleSubmitReject();
         }}
-      >
-        <SafeAreaView edges={['bottom']}>
-          <Pressable
-            onPress={() => {
-              void actions.handleSubmitReject();
-            }}
-            disabled={output.rejectForm.isSubmitting || !output.rejectForm.isValid}
-            className={cn(
-              "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-              (output.rejectForm.isSubmitting || !output.rejectForm.isValid)
-                ? "bg-gray-300"
-                : "bg-red-600"
-            )}
-          >
-            <Ionicons 
-              name="close-circle-outline" 
-              size={18} 
-              color="white" 
-            />
-            <Text className="text-white font-semibold text-base ml-2">
-              {output.rejectForm.isSubmitting ? t.common.loading : t.taskDetail.reject}
-            </Text>
-          </Pressable>
-        </SafeAreaView>
-      </View>
+        isPrimaryDisabled={output.rejectForm.isSubmitting || !output.rejectForm.isValid}
+        destructive
+      />
     </SafeAreaView>
   );
 }

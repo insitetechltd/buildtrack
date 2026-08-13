@@ -108,16 +108,10 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
 
         {/* Enlarged Photo View */}
         {enlargedPhotoIndex !== null && enlargedPhoto && (
-          <View className="absolute inset-0 bg-black z-50">
-            <KeyboardAvoidingView
-              style={{ flex: 1 }}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            >
-              <SafeAreaView edges={['top']} className="flex-1">
+          <View className="absolute inset-0 bg-black z-50" style={{ paddingTop: topPadding }}>
                 {/* Header */}
                 <View 
                   className="flex-row items-center justify-between px-6 py-4 bg-black/80"
-                  style={{ paddingTop: topPadding }}
                 >
                   <Pressable
                     onPress={() => setEnlargedPhotoIndex(null)}
@@ -223,8 +217,6 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                     </View>
                   )}
                 </View>
-              </SafeAreaView>
-            </KeyboardAvoidingView>
           </View>
         )}
 

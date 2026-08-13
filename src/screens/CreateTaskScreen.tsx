@@ -533,12 +533,12 @@ function CreateTaskEditorScreen({
         className="flex-1 bg-[#E7F4F8]"
       >
         <StatusBar style="light" />
-        <View testID="create-task__header" className="bg-[#08576E]">
+        <View testID="create-task__header">
           <ModernScreenHeader
             title={context.headerTitle}
             subtitle={headerSubtitle}
-          showBackButton={true}
-          onBackPress={handleCancel}
+            showBackButton={true}
+            onBackPress={handleCancel}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
             className="border-b-0 bg-[#08576E] pb-2"
@@ -559,7 +559,7 @@ function CreateTaskEditorScreen({
     >
       <StatusBar style="light" />
 
-      <View testID="create-task__header" className="bg-[#08576E]">
+      <View testID="create-task__header">
         <ModernScreenHeader
           title={context.headerTitle}
           subtitle={headerSubtitle}

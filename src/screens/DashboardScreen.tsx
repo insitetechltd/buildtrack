@@ -24,9 +24,8 @@ export default function DashboardScreen(props: DashboardScreenProps) {
     <SafeAreaView
       testID="dashboard-screen__root"
       edges={["left", "right", "bottom"]}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-[#E7F4F8]"
     >
-      <View className="flex-1 bg-[#E7F4F8]">
         <AppScreenHeader
           title="Taskr"
           titleNode={<BrandHeaderTitle subtitle="Site activity" />}
@@ -38,7 +37,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           }
           className="border-b-0 bg-[#08576E] pb-2"
         />
-        <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 15 }} className="flex-1 px-4">
+        <ScrollView contentContainerStyle={{ paddingTop: 15 }} className="flex-1 px-4">
 
           {output.projectSummaryCard ? (
             <View className="mb-5" testID="dashboard-screen__project_summary_section">
@@ -199,8 +198,8 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               ) : null}
             </View>
           ) : null}
+          <View className="h-24" />
         </ScrollView>
-      </View>
     </SafeAreaView>
   );
 }

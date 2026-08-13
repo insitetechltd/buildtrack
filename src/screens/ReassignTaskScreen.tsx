@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { cn } from "../utils/cn";
 import StandardHeader from "../components/StandardHeader";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import {
   createFormNavigationRegistry,
   getNextFocusableFieldId,
@@ -91,7 +92,7 @@ export default function ReassignTaskScreen({
   }
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       {/* Standard Header */}
@@ -183,38 +184,13 @@ export default function ReassignTaskScreen({
         })}
       </ScrollView>
 
-      {/* Fixed Bottom Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 8
+      <PrimaryActionBar
+        primaryLabel={`Reassign (${output.selectedUserIds.length})`}
+        onPrimaryPress={() => {
+          void actions.handleReassign();
         }}
-      >
-        <SafeAreaView edges={['bottom']}>
-          <Pressable
-            onPress={() => {
-              void actions.handleReassign();
-            }}
-            disabled={output.selectedUserIds.length === 0}
-            className={cn(
-              "px-4 py-3 rounded-xl flex-row items-center justify-center w-full",
-              output.selectedUserIds.length === 0 ? "bg-gray-300" : "bg-blue-600"
-            )}
-          >
-            <Ionicons 
-              name="people-outline" 
-              size={18} 
-              color="white" 
-            />
-            <Text className="text-white font-semibold text-base ml-2">
-              Reassign ({output.selectedUserIds.length})
-            </Text>
-          </Pressable>
-        </SafeAreaView>
-      </View>
+        isPrimaryDisabled={output.selectedUserIds.length === 0}
+      />
     </SafeAreaView>
   );
 }

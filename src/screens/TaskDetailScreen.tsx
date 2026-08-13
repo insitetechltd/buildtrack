@@ -345,7 +345,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       />
 
       <View className="flex-1">
-        <View testID="task-detail__scroll_region" className="flex-1">
+          <View testID="task-detail__scroll_region" className="flex-1">
           <ScrollView
             testID="task-detail__workthread_scroll"
             className="flex-1"
@@ -616,7 +616,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               </View>
             ) : null}
           </ScrollView>
-        </View>
+          </View>
 
         {hasQuickActions ? (
           <View

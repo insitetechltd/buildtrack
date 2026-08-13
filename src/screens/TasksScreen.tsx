@@ -216,8 +216,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   );
 
   return (
-    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-slate-50" edges={["left", "right", "bottom"]}>
-      <View className="flex-1">
+    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-[#E7F4F8]" edges={["left", "right", "bottom"]}>
         <AppScreenHeader
           title="Tasks"
           titleNode={<BrandHeaderTitle subtitle="Tasks" />}
@@ -245,7 +244,7 @@ export default function TasksScreen(props: TasksScreenProps) {
         <View
           testID="tasks-screen__search_section"
           className={cn(
-            "bg-slate-50 px-4 pt-1",
+            "bg-[#E7F4F8] px-4 pt-1",
             output.activeFilterChips.length > 0 ? "pb-4" : "pb-1",
           )}
         >
@@ -426,7 +425,6 @@ export default function TasksScreen(props: TasksScreenProps) {
           onStageStatus={actions.stageStatusFilter}
           onStageOverdueWindow={actions.stageOverdueWindowFilter}
         />
-      </View>
     </SafeAreaView>
   );
 }

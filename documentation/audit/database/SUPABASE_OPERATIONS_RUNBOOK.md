@@ -405,18 +405,40 @@ If Realtime failures occur, inspect:
 - channel error logs (`CHANNEL_ERROR` / `CLOSED` → reconnect backoff)
 - policy denials
 
-## Storage retention / lifecycle (M-SUPABASE-04c)
+## Storage retention / lifecycle (M-SUPABASE-04c) — Closed (2026-08-13)
 
-**Unblocked** — M-SUPABASE-03c Closed (bucket private + D2 signed-URL cutover shipped).
+**Status:** Closed as **docs/policy**. **No live Dashboard lifecycle Expire applied. No bucket-wide expire. No SQL migrations for 04c.**
 
-Still Pipeline (no live lifecycle this cycle):
+Prereq M-SUPABASE-03c remains Closed (bucket private + D2 signed-URL cutover). Prefer private bucket + signed URLs (Decision D1/D2).
 
-1. Prefer private bucket + signed URLs (Decision D1/D2 from 03c — already applied).
-2. Define company retention policy (e.g. archive after N days / expire after M days).
-3. Configure S3-style lifecycle on `buildtrack-files` (non-current version transitions if versioning enabled).
-4. Document the chosen N/M and Dashboard path here — **no live lifecycle apply** until product retention numbers are agreed.
+### Product policy (agreed — do not invent extra day counts in app code)
 
-Do not invent retention TTLs in code; ops configures lifecycle in the Supabase/Storage console after product GO.
+- **Paying tenants:** keep files indefinitely on hot `buildtrack-files`.
+- **After plan expiry:** recover with **back-pay up to 6 months**. Objects remain on hot storage during that window; restore does not require a cold-tier copy-back.
+- Do **not** encode additional retention TTLs in application code.
+
+### Hosted Supabase Storage — what 04c uses
+
+Hosted Storage can: **hot retain**, and optionally **expire/delete**.
+
+04c uses **hot retain only**. Optional expire/delete is **not applied** on production.
+
+### Explicit non-goals (not 04c)
+
+- Cold archive / Glacier / S3 Intelligent-Tiering / 6–24 month cheap tier
+- Copy-out to operator-owned storage then delete hot copies
+- Lifecycle transition / storage-class change (`PutBucketLifecycleConfiguration` unsupported on hosted Supabase; no `x-amz-storage-class`)
+
+Those belong to **M-SUPABASE-04e** (Pipeline, deferred — not active focus).
+
+### Ops rules (production)
+
+1. Do **not** apply Dashboard Storage lifecycle Expire on production.
+2. Do **not** live-expire the whole `buildtrack-files` bucket.
+3. Do **not** write SQL migrations for retention.
+4. Restore after plan expiry = tenant **back-pay up to 6 months** while objects are still hot.
+
+Evidence: this section + `documentation/ROADMAP.md` M-SUPABASE-04c Closed notes + `docs/superpowers/reports/2026-08-13-m-supabase-04c-close.md`.
 
 ## Safe Change Workflow
 

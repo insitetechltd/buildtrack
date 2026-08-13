@@ -14,8 +14,9 @@
 - `M-SUPABASE-03e` → Script safety + dry-run gates P1
 - `M-SUPABASE-04a` → Realtime reconnect + membership P2
 - `M-SUPABASE-04b` → Legacy status-field cleanup P2
-- `M-SUPABASE-04c` → Storage retention / lifecycle P2
+- `M-SUPABASE-04c` → Storage retention / lifecycle P2 — **Closed (2026-08-13) docs/policy** (hot retain + 6-month back-pay; no live expire)
 - `M-SUPABASE-04d` → Realtime publication audit P2 (bundled into 04a or split-out as needed)
+- `M-SUPABASE-04e` → Operator-owned cold archive copy-out (P2; Pipeline deferred; prereq 04c Closed)
 
 ---
 
@@ -167,6 +168,7 @@
 | **Evidence** | `fileUploadService.ts` storage bucket path `<companyId>/task_files/<entityId>/<uniqueName>` has no retention, versioning, or auto-archive. Supabase supports lifecycle rules — they should be configured per company/retention policy. |
 | **Current Confidence** | Repo-only. UNKNOWN pending dashboard inspection. |
 | **Proposed follow-on milestone** | **M-SUPABASE-04c Storage retention + lifecycle policy** — enable appropriate S3-style lifecycle for bucket; document in SUPABASE_OPERATIONS_RUNBOOK.md. |
+| **Resolution (2026-08-13)** | **M-SUPABASE-04c Closed** as docs/policy: paying tenants keep files indefinitely on hot `buildtrack-files`; after plan expiry restore = back-pay up to 6 months (objects stay hot). **No live Dashboard Expire / no bucket-wide expire / no SQL migrations.** Hosted Storage cannot Glacier/lifecycle-transition. Cold archive copy-out parked as **M-SUPABASE-04e** (Pipeline deferred). |
 
 ---
 

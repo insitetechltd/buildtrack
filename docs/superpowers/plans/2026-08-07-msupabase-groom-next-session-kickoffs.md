@@ -93,6 +93,8 @@ When human GO provided later, resume:
 
 ## Prompt 3 = Session 4 Kickoff (Parallel P1s 03a/03c/03d/03e + P2 04a-d — can be interleaved with UX tails after 03b)
 
+**Status (2026-08-13):** Prompt 3 items Closed except **M-SUPABASE-04b** (Blocked until ~2026-09-07; no column drops). **M-SUPABASE-04c** Closed docs/policy (hot retain + 6-month back-pay; no live expire). Cold archive parked as **M-SUPABASE-04e** (Order 13.18, Pipeline deferred). Historical prompt body left intact below.
+
 These are parallel-safe. You can do them one-at-a-time, or combined into a single "P1/P2 Hygiene" session if bandwidth allows. Copy verbatim as a combined master prompt:
 
 ```

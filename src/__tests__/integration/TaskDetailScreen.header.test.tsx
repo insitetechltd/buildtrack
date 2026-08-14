@@ -620,7 +620,11 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
     expect(screen.getByText("Add Comment")).toBeTruthy();
-    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
+    const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
+    expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
+    expect(within(secondaryActions).getByTestId("task-detail__location_editor")).toBeTruthy();
+    expect(within(secondaryActions).getByTestId("task-detail__tags_primary_editor")).toBeTruthy();
+    expect(within(secondaryActions).queryByText("Add Comment")).toBeNull();
     expect(screen.queryByText("Add Photos")).toBeNull();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
     expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();

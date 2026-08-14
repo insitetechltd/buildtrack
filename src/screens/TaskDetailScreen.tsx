@@ -363,8 +363,40 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
             ))}
 
-            {criticalThisWeekAction ? (
-              <View className="px-4 pt-4">
+            <TaskActivityTimeline
+              testID="task-detail__activity_thread"
+              thread={output.activityThread}
+            />
+
+            <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
+                <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
+                  Other actions
+                </Text>
+
+                {secondaryActions.length > 0 ? (
+                <View className="flex-row flex-wrap gap-2 mb-4">
+                  {secondaryActions.map((action) => (
+                    <Pressable
+                      key={action.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ disabled: action.isDisabled }}
+                      disabled={action.isDisabled}
+                      onPress={() => handleActionPress(action.actionId)}
+                      className={cn(
+                        "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
+                        action.isDisabled && "opacity-50",
+                      )}
+                    >
+                      {action.icon ? (
+                        <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
+                      ) : null}
+                      <Text className="text-base font-medium text-gray-700">{action.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                ) : null}
+
+                {criticalThisWeekAction ? (
                 <Pressable
                   testID="task-detail__toggle_critical_this_week"
                   accessibilityRole="button"
@@ -372,10 +404,10 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                   disabled={criticalThisWeekAction.isDisabled}
                   onPress={() => handleActionPress(criticalThisWeekAction.actionId)}
                   className={cn(
-                    "flex-row items-center justify-between rounded-2xl border px-4 py-3",
+                    "mb-4 flex-row items-center justify-between rounded-xl border px-4 py-3",
                     criticalThisWeekAction.isActive
                       ? "border-amber-300 bg-amber-50"
-                      : "border-amber-200 bg-white",
+                      : "border-amber-200 bg-slate-50",
                     criticalThisWeekAction.isDisabled && "opacity-50",
                   )}
                 >
@@ -395,12 +427,11 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                     color={criticalThisWeekAction.isActive ? "#b45309" : "#6b7280"}
                   />
                 </Pressable>
-              </View>
-            ) : null}
+                ) : null}
 
             <View
               testID="task-detail__location_editor"
-              className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4"
+              className="rounded-xl border border-slate-200 bg-slate-50 p-3"
             >
               <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
                 Location on Site
@@ -410,7 +441,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               </Text>
               <TextInput
                 testID="task-detail__location_input"
-                className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900"
+                className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900 bg-white"
                 placeholder="e.g. Level 3 - South Core"
                 placeholderTextColor="#94a3b8"
                 value={locationDraft}
@@ -435,7 +466,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
 
             <View
               testID="task-detail__tags_primary_editor"
-              className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4"
+              className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
             >
               <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
                 Tags, Primary & Delegates
@@ -473,7 +504,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                             "rounded-full px-3 py-1.5 border",
                             isPrimary
                               ? "border-amber-300 bg-amber-50"
-                              : "border-slate-200 bg-slate-50",
+                              : "border-slate-200 bg-white",
                             !output.canEditDelegation && "opacity-60",
                           )}
                         >
@@ -523,7 +554,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                             "rounded-full px-3 py-1.5 border",
                             isDelegate
                               ? "border-blue-300 bg-blue-50"
-                              : "border-slate-200 bg-slate-50",
+                              : "border-slate-200 bg-white",
                             !output.canEditDelegation && "opacity-60",
                           )}
                         >
@@ -551,7 +582,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                     .map((tag) => (
                       <View
                         key={tag}
-                        className="rounded-full bg-slate-100 px-3 py-1.5 flex-row items-center"
+                        className="rounded-full bg-white px-3 py-1.5 flex-row items-center border border-slate-200"
                       >
                         <Text className="text-sm text-slate-800 mr-1">{tag}</Text>
                         <Pressable
@@ -567,7 +598,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                 </View>
                 <TextInput
                   testID="task-detail__tag_input"
-                  className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900"
+                  className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900 bg-white"
                   placeholder="Add tag, press return"
                   placeholderTextColor="#94a3b8"
                   value={tagDraft}
@@ -581,40 +612,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                 />
               </View>
             </View>
-
-            <TaskActivityTimeline
-              testID="task-detail__activity_thread"
-              thread={output.activityThread}
-            />
-
-            {secondaryActions.length > 0 ? (
-              <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
-                <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
-                  Other actions
-                </Text>
-
-                <View className="flex-row flex-wrap gap-2">
-                  {secondaryActions.map((action) => (
-                    <Pressable
-                      key={action.id}
-                      accessibilityRole="button"
-                      accessibilityState={{ disabled: action.isDisabled }}
-                      disabled={action.isDisabled}
-                      onPress={() => handleActionPress(action.actionId)}
-                      className={cn(
-                        "flex-row items-center rounded-full border border-gray-300 bg-white px-3 py-2",
-                        action.isDisabled && "opacity-50",
-                      )}
-                    >
-                      {action.icon ? (
-                        <Ionicons name={action.icon as any} size={16} color="#4b5563" style={{ marginRight: 6 }} />
-                      ) : null}
-                      <Text className="text-base font-medium text-gray-700">{action.label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+            </View>
           </ScrollView>
           </View>
 

@@ -287,6 +287,14 @@ describe("TaskDetailScreen sticky layout", () => {
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
+    const tree = screen.toJSON();
+    const scrollIds = collectTestIds(findNodeByTestId(tree, "task-detail__scroll_region"));
+    const otherActionsIds = collectTestIds(findNodeByTestId(tree, "task-detail__secondary-actions"));
+    expect(otherActionsIds).toContain("task-detail__location_editor");
+    expect(otherActionsIds).toContain("task-detail__tags_primary_editor");
+    expect(scrollIds.indexOf("task-detail__activity_thread")).toBeLessThan(
+      scrollIds.indexOf("task-detail__secondary-actions"),
+    );
   });
 
   it("shows archive in other actions and runs the archive flow after confirmation", async () => {

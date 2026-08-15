@@ -1,16 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import Constants from 'expo-constants';
-import IMGLYEditor, {
-  EditorPreset,
-  EditorSettingsModel,
-  SourceType,
-} from '@imgly/editor-react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { uploadFileWithVerification } from '../../api/fileUploadService';
 import { pinDraftMedia } from '../../utils/draftMediaCache';
+import type { SourceCrop } from '../../utils/photoPreviewEdit';
 import type { SelectedPhoto } from '../../utils/usePhotoSelection';
 import type {
   MiniPickerTask,
@@ -43,6 +39,10 @@ export interface PhotoSelectionViewAdapterProps {
   onPhotosSelected?: (photos: SelectedPhoto[]) => void;
   onAttachedToExistingTask?: (taskId: string, uploadedPhotoUrls: string[]) => void;
   onSaveUnattachedDone?: () => void;
+  /** Prefer in-app library over system PHPicker when provided. */
+  onOpenInAppLibrary?: (currentPhotos: SelectedPhoto[]) => void;
+  /** When set, replaces the local batch (e.g. after library append). */
+  selectionRevision?: number;
 }
 
 const MINI_PICKER_LIMIT = 20;
@@ -74,16 +74,21 @@ export function usePhotoSelectionViewAdapter({
   onPhotosSelected,
   onAttachedToExistingTask,
   onSaveUnattachedDone,
+  onOpenInAppLibrary,
+  selectionRevision,
 }: PhotoSelectionViewAdapterProps): {
   output: PhotoSelectionScreenViewAdapterOutput;
   handleAddPhotos: () => Promise<void>;
   handlePhotoPress: (index: number) => void;
-  handleAnnotatePhoto: (index: number) => Promise<void>;
+  handleRotatePhoto: (index: number) => Promise<void>;
+  handleApplyCrop: (index: number, crop: SourceCrop) => Promise<void>;
+  handleResetEdits: (index: number) => void;
   handleRemovePhoto: (index: number) => void;
   handleUploadPhotos: () => Promise<void>;
   setEnlargedPhotoIndex: (index: number | null) => void;
   handleMovePhotoUp: (index: number) => void;
   handleMovePhotoDown: (index: number) => void;
+  handleSetPhotoOrder: (nextPhotos: SelectedPhoto[]) => void;
   handleSetCaption: (index: number, caption: string) => void;
   handleSetSaveIntent: (intent: PhotoSelectionSaveIntent) => void;
   handleToggleMiniPicker: () => void;
@@ -92,12 +97,18 @@ export function usePhotoSelectionViewAdapter({
   const [selectedPhotos, setSelectedPhotos] = useState<SelectedPhoto[]>(initialPhotos);
   const [enlargedPhotoIndex, setEnlargedPhotoIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isEditingPhoto, setIsEditingPhoto] = useState(false);
   const [saveIntent, setSaveIntent] = useState<PhotoSelectionSaveIntent>(initialSaveIntent);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(
     initialSelectedTaskId ?? null,
   );
   const [isMiniPickerVisible, setIsMiniPickerVisible] = useState(false);
+
+  useEffect(() => {
+    if (selectionRevision == null) return;
+    setSelectedPhotos(initialPhotos);
+    setEnlargedPhotoIndex(null);
+  }, [selectionRevision, initialPhotos]);
 
   const getTasksByProject = useTaskStore((state) => state.getTasksByProject);
   const addBatch = useUnattachedPhotoBatchStore((state) => state.addBatch);
@@ -168,6 +179,11 @@ export function usePhotoSelectionViewAdapter({
         {
           text: "Choose from Library",
           onPress: async () => {
+            if (onOpenInAppLibrary) {
+              onOpenInAppLibrary(selectedPhotos);
+              return;
+            }
+
             try {
               const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
               if (status !== 'granted') {
@@ -213,73 +229,90 @@ export function usePhotoSelectionViewAdapter({
     setEnlargedPhotoIndex(index);
   };
 
-  const handleAnnotatePhoto = async (index: number) => {
+  const workingUri = (photo: SelectedPhoto) => photo.annotatedUri || photo.uri;
+
+  const commitEditedUri = async (index: number, resultUri: string) => {
+    const fileName = `edited_${Date.now()}.jpg`;
+    const finalUri = resultUri.startsWith('file://')
+      ? await pinDraftMedia(resultUri, fileName)
+      : resultUri;
+
+    setSelectedPhotos((prev) => {
+      const updated = [...prev];
+      if (!updated[index]) return prev;
+      updated[index] = {
+        ...updated[index],
+        isAnnotated: true,
+        annotatedUri: finalUri,
+      };
+      return updated;
+    });
+  };
+
+  const handleRotatePhoto = async (index: number) => {
     const photo = selectedPhotos[index];
-    console.log('📝 [PhotoSelection] Annotate button pressed for photo:', index, photo.uri);
-    
+    if (!photo) return;
+
     try {
-      setIsAnnotating(true);
-      
-      const isExpoGo = Constants.executionEnvironment === 'storeClient';
-      if (isExpoGo) {
-        throw new Error('Photo annotation requires a development build. Expo Go does not support native modules like @imgly/editor-react-native. Please build a development build using: eas build --profile development --platform ios/android');
-      }
-
-      if (!IMGLYEditor) {
-        throw new Error('IMGLY Editor is not available. Please use a development build.');
-      }
-
-      const settings = new EditorSettingsModel({
-        license: undefined,
-        userId: 'user-' + Date.now(),
-      });
-
-      console.log('🎨 [PhotoSelection] Opening editor for photo:', photo.uri);
-
-      const result = await IMGLYEditor.openEditor(
-        settings,
-        {
-          source: photo.uri,
-          type: SourceType.IMAGE,
-        },
-        EditorPreset.PHOTO,
+      setIsEditingPhoto(true);
+      const result = await ImageManipulator.manipulateAsync(
+        workingUri(photo),
+        [{ rotate: 90 }],
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
       );
-
-      const resultSource = (result as any)?.source as string | undefined;
-
-      if (result && resultSource) {
-        const annotatedUri = resultSource;
-        let finalUri = annotatedUri;
-        
-        if (annotatedUri.startsWith('file://')) {
-          const fileName = `annotated_${Date.now()}.jpg`;
-          finalUri = await pinDraftMedia(annotatedUri, fileName);
-        }
-
-        setSelectedPhotos(prev => {
-          const updated = [...prev];
-          if (updated[index]) {
-            updated[index] = {
-              ...updated[index],
-              isAnnotated: true,
-              annotatedUri: finalUri,
-            };
-          }
-          return updated;
-        });
-        
-        console.log('✅ [PhotoSelection] Photo annotated successfully:', finalUri);
-      }
+      await commitEditedUri(index, result.uri);
     } catch (error: any) {
-      console.error('❌ [PhotoSelection] Error annotating photo:', error);
-      Alert.alert(
-        'Error',
-        error.message || 'Failed to open annotation editor. Please make sure you are using a development build.',
-        [{ text: 'OK' }]
-      );
+      console.error('❌ [PhotoSelection] Rotate failed:', error);
+      Alert.alert('Error', error.message || 'Failed to rotate photo.');
     } finally {
-      setIsAnnotating(false);
+      setIsEditingPhoto(false);
     }
+  };
+
+  const handleApplyCrop = async (index: number, crop: SourceCrop) => {
+    const photo = selectedPhotos[index];
+    if (!photo) return;
+    if (crop.width < 1 || crop.height < 1) {
+      Alert.alert('Invalid Crop', 'Please select a larger crop area.');
+      return;
+    }
+
+    try {
+      setIsEditingPhoto(true);
+      const result = await ImageManipulator.manipulateAsync(
+        workingUri(photo),
+        [
+          {
+            crop: {
+              originX: crop.originX,
+              originY: crop.originY,
+              width: crop.width,
+              height: crop.height,
+            },
+          },
+        ],
+        { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      await commitEditedUri(index, result.uri);
+    } catch (error: any) {
+      console.error('❌ [PhotoSelection] Crop failed:', error);
+      Alert.alert('Error', error.message || 'Failed to crop photo.');
+    } finally {
+      setIsEditingPhoto(false);
+    }
+  };
+
+  const handleResetEdits = (index: number) => {
+    setSelectedPhotos((prev) => {
+      const updated = [...prev];
+      if (!updated[index]) return prev;
+      updated[index] = {
+        ...updated[index],
+        isAnnotated: false,
+        annotatedUri: undefined,
+      };
+      return updated;
+    });
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -324,6 +357,21 @@ export function usePhotoSelectionViewAdapter({
     } else if (enlargedPhotoIndex === index + 1) {
       setEnlargedPhotoIndex(index);
     }
+  };
+
+  const handleSetPhotoOrder = (nextPhotos: SelectedPhoto[]) => {
+    setSelectedPhotos(nextPhotos);
+    if (enlargedPhotoIndex === null) return;
+    const current = selectedPhotos[enlargedPhotoIndex];
+    if (!current) {
+      setEnlargedPhotoIndex(null);
+      return;
+    }
+    const nextIndex = nextPhotos.findIndex(
+      (photo) =>
+        (photo.annotatedUri || photo.uri) === (current.annotatedUri || current.uri),
+    );
+    setEnlargedPhotoIndex(nextIndex >= 0 ? nextIndex : null);
   };
 
   const handleSetCaption = (index: number, caption: string) => {
@@ -589,7 +637,7 @@ export function usePhotoSelectionViewAdapter({
     })),
     enlargedPhotoIndex,
     isUploading,
-    isAnnotating,
+    isAnnotating: isEditingPhoto,
     saveIntent,
     selectedTaskId,
     tasksForPicker,
@@ -600,12 +648,15 @@ export function usePhotoSelectionViewAdapter({
     output,
     handleAddPhotos,
     handlePhotoPress,
-    handleAnnotatePhoto,
+    handleRotatePhoto,
+    handleApplyCrop,
+    handleResetEdits,
     handleRemovePhoto,
     handleUploadPhotos,
     setEnlargedPhotoIndex,
     handleMovePhotoUp,
     handleMovePhotoDown,
+    handleSetPhotoOrder,
     handleSetCaption,
     handleSetSaveIntent,
     handleToggleMiniPicker,

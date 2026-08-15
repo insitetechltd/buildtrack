@@ -55,6 +55,7 @@ import PendingUsersScreen from "../screens/PendingUsersScreen";
 import PhotoViewerScreen from "../screens/PhotoViewerScreen";
 import PhotoAnnotationScreen from "../screens/PhotoAnnotationScreen";
 import PhotoSelectionScreen from "../screens/PhotoSelectionScreen";
+import InAppLibraryPickerScreen from "../screens/InAppLibraryPickerScreen";
 import UpdateProgressScreen from "../screens/UpdateProgressScreen";
 import AddCommentScreen from "../screens/AddCommentScreen";
 import RejectTaskScreen from "../screens/RejectTaskScreen";
@@ -68,6 +69,9 @@ import {
   buildCreateTaskPhotoReturnParams,
   resolveCreateTaskEntryParams,
 } from "./createTaskRouteParams";
+import {
+  returnToPhotoSelectionFlat,
+} from "./photoFlowNavigation";
 import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
 import {
   buildTaskDetailVerificationUrl,
@@ -92,6 +96,7 @@ import type {
   DashboardStackParamList,
   PhotoAnnotationParams,
   PhotoSelectionParams,
+  InAppLibraryPickerParams,
   PhotoViewerParams,
   ProfileStackParamList,
   RootStackParamList,
@@ -123,12 +128,22 @@ const ROOT_TAB_BAR_STYLE: ViewStyle = {
 const ROOT_TAB_CAMERA_TOP_OFFSET = -16;
 const ROOT_TAB_SIDE_CENTER_OFFSET = Dimensions.get("window").width / 12;
 
-export function shouldHideTabBarOnTaskDetailRoute(routeName?: string) {
+export function shouldCollapseRootSideTabsOnTaskDetailRoute(routeName?: string) {
   return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
 }
 
+export function shouldHideRootSideTabsForTabState(
+  tabState?: Parameters<typeof resolveTaskDetailCameraTabParams>[0],
+) {
+  return Boolean(resolveTaskDetailCameraTabParams(tabState));
+}
+
 export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
-  return routeName === "CreateTaskMain";
+  return (
+    routeName === "CreateTaskMain" ||
+    routeName === "PhotoSelection" ||
+    routeName === "InAppLibraryPicker"
+  );
 }
 
 function buildRootTabBarStyleForRoute(
@@ -136,9 +151,7 @@ function buildRootTabBarStyleForRoute(
   initialRouteName?: string,
 ): ViewStyle {
   const resolvedRouteName = routeName ?? initialRouteName;
-  const shouldHideTabBar =
-    shouldHideTabBarOnTaskDetailRoute(resolvedRouteName) ||
-    shouldHideTabBarOnCreateTaskRoute(resolvedRouteName);
+  const shouldHideTabBar = shouldHideTabBarOnCreateTaskRoute(resolvedRouteName);
 
   if (!shouldHideTabBar) {
     return ROOT_TAB_BAR_STYLE;
@@ -625,13 +638,32 @@ function RootTabButton({
   style,
   testID,
   alignTowardsCamera,
+  hidden = false,
 }: BottomTabBarButtonProps & {
   testID: string;
   alignTowardsCamera: "left" | "right";
+  hidden?: boolean;
 }) {
   const tabButtonStyle = style as StyleProp<ViewStyle>;
   const pressableTestID = `${testID}_pressable`;
-  const isFocused = accessibilityState?.selected === true;
+
+  if (hidden) {
+    return (
+      <View
+        pointerEvents="none"
+        style={[
+          tabButtonStyle,
+          styles.rootTabSideSlot,
+          alignTowardsCamera === "right"
+            ? styles.rootTabSideSlotTowardCameraRight
+            : styles.rootTabSideSlotTowardCameraLeft,
+        ]}
+        testID={testID}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
+    );
+  }
 
   return (
     <View
@@ -725,6 +757,11 @@ function DashboardStack() {
         name="PhotoAnnotation" 
         component={PhotoAnnotationScreenWrapper}
       />
+      <DashboardStackNavigator.Screen
+        name="InAppLibraryPicker"
+        component={InAppLibraryPickerScreenWrapper}
+        options={{ headerShown: false, animation: "slide_from_bottom" }}
+      />
     </DashboardStackNavigator.Navigator>
   );
 }
@@ -764,7 +801,7 @@ function DashboardMainScreen({
             uploadedPhotoUrls: params?.uploadedPhotoUrls,
             cameraLaunchContext: params?.cameraLaunchContext,
             postCaptureDefault: params?.postCaptureDefault,
-            clearForm: params?.clearForm ?? true,
+            clearForm: params?.clearForm ?? !params?.editTaskId,
             _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
@@ -880,6 +917,11 @@ function TasksStack() {
         name="CreateTask" 
         component={CreateTaskScreenWrapper}
       />
+      <TasksStackNavigator.Screen
+        name="InAppLibraryPicker"
+        component={InAppLibraryPickerScreenWrapper}
+        options={{ headerShown: false, animation: "slide_from_bottom" }}
+      />
     </TasksStackNavigator.Navigator>
   );
 }
@@ -929,7 +971,7 @@ function ProjectsTasksListScreen({
             uploadedPhotoUrls: params?.uploadedPhotoUrls,
             cameraLaunchContext: params?.cameraLaunchContext,
             postCaptureDefault: params?.postCaptureDefault,
-            clearForm: params?.clearForm ?? true,
+            clearForm: params?.clearForm ?? !params?.editTaskId,
             _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
@@ -1060,6 +1102,58 @@ function PhotoAnnotationScreenWrapper({
   );
 }
 
+type InAppLibraryPickerScreenWrapperProps =
+  | NativeStackScreenProps<DashboardStackParamList, "InAppLibraryPicker">
+  | NativeStackScreenProps<TasksStackParamList, "InAppLibraryPicker">
+  | NativeStackScreenProps<CreateTaskStackParamList, "InAppLibraryPicker">;
+
+function InAppLibraryPickerScreenWrapper({
+  route,
+  navigation,
+}: InAppLibraryPickerScreenWrapperProps) {
+  const params = route.params || {};
+
+  return (
+    <InAppLibraryPickerScreen
+      onCancel={() => navigation.goBack()}
+      initiallySelectedPhotos={params.existingPhotos ?? []}
+      onSave={(libraryPhotos) => {
+        // Picker returns the full library selection (including pre-highlighted).
+        // Keep non-library drafts (e.g. camera) that cannot appear in the picker.
+        const localOnly = (params.existingPhotos ?? []).filter(
+          (photo) => !photo.mediaLibraryAssetId,
+        );
+        const nextPhotos = [...localOnly, ...libraryPhotos];
+        const photoParams: PhotoSelectionParams = {
+          taskId: params.taskId,
+          subTaskId: params.subTaskId,
+          projectId: params.projectId,
+          companyId: params.companyId,
+          userId: params.userId,
+          initialCompletionPercentage: params.initialCompletionPercentage ?? 0,
+          initialPhotos: nextPhotos,
+          returnScreen: params.returnScreen ?? "CreateTask",
+          actionType: params.actionType,
+          parentTaskId: params.parentTaskId,
+          parentSubTaskId: params.parentSubTaskId,
+          editTaskId: params.editTaskId,
+          entityType: params.entityType,
+          uploadImmediately: params.uploadImmediately ?? false,
+          sourceScreen: params.sourceScreen,
+          sourceTaskId: params.sourceTaskId,
+          sourceSubTaskId: params.sourceSubTaskId,
+          selectedTaskId: params.selectedTaskId,
+          saveIntent: params.saveIntent,
+          originRouteName: params.originRouteName,
+          selectionRevision: Date.now(),
+        };
+
+        returnToPhotoSelectionFlat(navigation as any, photoParams);
+      }}
+    />
+  );
+}
+
 type PhotoSelectionScreenWrapperProps =
   | NativeStackScreenProps<DashboardStackParamList, "PhotoSelection">
   | NativeStackScreenProps<TasksStackParamList, "PhotoSelection">
@@ -1069,7 +1163,7 @@ function PhotoSelectionScreenWrapper({
   route,
   navigation,
 }: PhotoSelectionScreenWrapperProps) {
-  const { taskId, subTaskId, projectId: routeProjectId, companyId: routeCompanyId, userId: routeUserId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId, selectedTaskId: routeSelectedTaskId, saveIntent: routeSaveIntent, originRouteName: originRouteNameParam } = route.params || {};
+  const { taskId, subTaskId, projectId: routeProjectId, companyId: routeCompanyId, userId: routeUserId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId, selectedTaskId: routeSelectedTaskId, saveIntent: routeSaveIntent, originRouteName: originRouteNameParam, selectionRevision } = route.params || {};
   const originRouteName = originRouteNameParam || route.name;
   const uploadedUrlsRef = React.useRef<string[] | null>(null);
 
@@ -1171,6 +1265,8 @@ function PhotoSelectionScreenWrapper({
         fileName: candidate?.fileName ?? "",
         isAnnotated: Boolean(candidate?.isAnnotated),
         annotatedUri: candidate?.annotatedUri,
+        caption: candidate?.caption,
+        mediaLibraryAssetId: candidate?.mediaLibraryAssetId,
       };
     });
 
@@ -1293,6 +1389,41 @@ function PhotoSelectionScreenWrapper({
       uploadImmediately={effectiveUploadImmediately}
       saveIntent={routeSaveIntent}
       selectedTaskId={routeSelectedTaskId}
+      selectionRevision={selectionRevision}
+      onOpenInAppLibrary={(currentPhotos) => {
+        (
+          navigation as {
+            navigate: (name: "InAppLibraryPicker", params: InAppLibraryPickerParams) => void;
+          }
+        ).navigate("InAppLibraryPicker", {
+          taskId,
+          subTaskId,
+          projectId: effectiveProjectId ?? undefined,
+          companyId: effectiveCompanyId,
+          userId: effectiveUserId,
+          initialCompletionPercentage: initialCompletionPercentage || 0,
+          returnScreen,
+          actionType,
+          entityType,
+          uploadImmediately: effectiveUploadImmediately,
+          sourceScreen,
+          sourceTaskId,
+          sourceSubTaskId,
+          selectedTaskId: routeSelectedTaskId,
+          saveIntent: routeSaveIntent,
+          originRouteName,
+          existingPhotos: currentPhotos.map(
+            (photo): SelectedPhoto => ({
+              uri: photo.uri,
+              fileName: photo.fileName,
+              isAnnotated: Boolean(photo.isAnnotated),
+              annotatedUri: photo.annotatedUri,
+              caption: photo.caption,
+              mediaLibraryAssetId: photo.mediaLibraryAssetId,
+            }),
+          ),
+        });
+      }}
       onNavigateBack={() => navigation.goBack()}
       onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number, uploadedPhotoUrls?: string[]) => {
         const updateProgressNavigation =
@@ -1555,6 +1686,11 @@ function CreateTaskStack() {
         name="PhotoAnnotation" 
         component={PhotoAnnotationScreenWrapper}
       />
+      <CreateTaskStackNavigator.Screen
+        name="InAppLibraryPicker"
+        component={InAppLibraryPickerScreenWrapper}
+        options={{ headerShown: false, animation: "slide_from_bottom" }}
+      />
     </CreateTaskStackNavigator.Navigator>
   );
 }
@@ -1586,6 +1722,8 @@ function CreateTaskMainScreen({
         fileName: candidate.fileName,
         isAnnotated: Boolean(candidate.isAnnotated),
         annotatedUri: candidate.annotatedUri,
+        caption: candidate.caption,
+        mediaLibraryAssetId: candidate.mediaLibraryAssetId,
       };
     });
   };
@@ -1914,22 +2052,34 @@ function MainTabs() {
         <Tab.Screen
           name="Activity"
           component={DashboardStack}
-          options={({ route }) => ({
+          options={({ route, navigation }) => {
+            const hideSideTabs = shouldHideRootSideTabsForTabState(
+              typeof navigation?.getState === "function"
+                ? (navigation.getState() as Parameters<
+                    typeof resolveTaskDetailCameraTabParams
+                  >[0])
+                : undefined,
+            );
+            return {
             tabBarLabel: "Activity",
             tabBarButton: (props) => (
               <RootTabButton
                 {...props}
                 testID="root-tab__activity"
                 alignTowardsCamera="right"
+                hidden={hideSideTabs}
               />
             ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="sparkles-outline" size={size} color={color} />
             ),
-            tabBarBadge: badgeCount,
+            tabBarBadge: hideSideTabs ? undefined : badgeCount,
             tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
-            tabBarStyle: buildRootTabBarStyleForRoute(getFocusedRouteNameFromRoute(route)),
-          })}
+            tabBarStyle: buildRootTabBarStyleForRoute(
+              getFocusedRouteNameFromRoute(route),
+            ),
+          };
+          }}
         />
       )}
       {isAdmin(user) ? (
@@ -1962,17 +2112,28 @@ function MainTabs() {
               });
             },
           })}
-          options={({ route }) => ({
-            tabBarLabel: "Camera",
+          options={({ route, navigation }) => {
+            const isTaskDetailUpdate = Boolean(
+              resolveTaskDetailCameraTabParams(
+                typeof navigation?.getState === "function"
+                  ? (navigation.getState() as Parameters<
+                      typeof resolveTaskDetailCameraTabParams
+                    >[0])
+                  : undefined,
+              ),
+            );
+            return {
+            tabBarLabel: isTaskDetailUpdate ? "Update" : "Camera",
             tabBarActiveTintColor: "#ffffff",
             tabBarInactiveTintColor: "#ffffff",
             tabBarButton: (props) => (
               <CenterCameraTabButton
                 {...props}
+                accessibilityLabel={isTaskDetailUpdate ? "Update" : props.accessibilityLabel}
                 icon={
                   <Ionicons
                     testID="root-tab__camera_icon"
-                    name="camera"
+                    name={isTaskDetailUpdate ? "add" : "camera"}
                     size={28}
                     color="#ffffff"
                   />
@@ -1983,27 +2144,40 @@ function MainTabs() {
               getFocusedRouteNameFromRoute(route),
               "CreateTaskMain",
             ),
-          })}
+          };
+          }}
         />
       )}
       {!isAdmin(user) && (
         <Tab.Screen
           name="Tasks"
           component={TasksStack}
-          options={({ route }) => ({
+          options={({ route, navigation }) => {
+            const hideSideTabs = shouldHideRootSideTabsForTabState(
+              typeof navigation?.getState === "function"
+                ? (navigation.getState() as Parameters<
+                    typeof resolveTaskDetailCameraTabParams
+                  >[0])
+                : undefined,
+            );
+            return {
             tabBarLabel: "Tasks",
             tabBarButton: (props) => (
               <RootTabButton
                 {...props}
                 testID="root-tab__tasks"
                 alignTowardsCamera="left"
+                hidden={hideSideTabs}
               />
             ),
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="list-outline" size={size} color={color} />
             ),
-            tabBarStyle: buildRootTabBarStyleForRoute(getFocusedRouteNameFromRoute(route)),
-          })}
+            tabBarStyle: buildRootTabBarStyleForRoute(
+              getFocusedRouteNameFromRoute(route),
+            ),
+          };
+          }}
         />
       )}
     </Tab.Navigator>

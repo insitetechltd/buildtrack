@@ -12,6 +12,8 @@ export type SelectedPhoto = {
   isAnnotated: boolean;
   annotatedUri?: string;
   caption?: string;
+  /** MediaLibrary asset id — used to pre-highlight in the in-app library picker. */
+  mediaLibraryAssetId?: string;
 };
 
 export type TaskDetailParams = { taskId: string; subTaskId?: string };
@@ -79,6 +81,8 @@ export type PhotoSelectionParams = {
   selectedTaskId?: string;
   saveIntent?: PhotoSelectionSaveIntent;
   originRouteName?: string;
+  /** Bumps when returning from in-app library with a new/merged batch. */
+  selectionRevision?: number;
 };
 
 export type PhotoViewerParams = {
@@ -96,6 +100,31 @@ export type PhotoAnnotationParams = {
   returnScreen?: "PhotoSelection";
 };
 
+/** In-app MediaLibrary gallery (library path; Photo Edit stays on Select Photos). */
+export type InAppLibraryPickerParams = {
+  taskId?: string;
+  subTaskId?: string;
+  companyId?: string;
+  userId?: string;
+  initialCompletionPercentage?: number;
+  returnScreen?: PhotoSelectionParams["returnScreen"];
+  actionType?: CreateTaskParams["actionType"];
+  parentTaskId?: string;
+  parentSubTaskId?: string;
+  editTaskId?: string;
+  /** When adding more from Select Photos, keep the current batch and append. */
+  existingPhotos?: SelectedPhoto[];
+  projectId?: string;
+  entityType?: PhotoSelectionParams["entityType"];
+  uploadImmediately?: boolean;
+  sourceScreen?: PhotoSelectionParams["sourceScreen"];
+  sourceTaskId?: string;
+  sourceSubTaskId?: string;
+  selectedTaskId?: string;
+  saveIntent?: PhotoSelectionParams["saveIntent"];
+  originRouteName?: string;
+};
+
 export type DashboardStackParamList = {
   DashboardMain: undefined;
   TaskDetailFromDashboard: TaskDetailParams;
@@ -108,6 +137,7 @@ export type DashboardStackParamList = {
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
   PhotoAnnotation: PhotoAnnotationParams;
+  InAppLibraryPicker: InAppLibraryPickerParams;
 };
 
 export type TasksListParams =
@@ -137,6 +167,7 @@ export type TasksStackParamList = {
   RejectTask: TaskDetailParams;
   ReassignTask: TaskDetailParams;
   CreateTask: CreateTaskParams;
+  InAppLibraryPicker: InAppLibraryPickerParams;
 };
 
 export type ProfileStackParamList = {
@@ -153,6 +184,7 @@ export type CreateTaskStackParamList = {
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
   PhotoAnnotation: PhotoAnnotationParams;
+  InAppLibraryPicker: InAppLibraryPickerParams;
 };
 
 export type AdminDashboardStackParamList = {

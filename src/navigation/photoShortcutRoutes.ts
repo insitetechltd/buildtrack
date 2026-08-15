@@ -126,7 +126,7 @@ export function resolveTaskDetailCameraTabParams(
     params: buildPhotoShortcutCreateTaskParams({
       taskId: taskDetailParams.taskId,
       subTaskId: taskDetailParams.subTaskId,
-      actionType: "photos",
+      actionType: "update",
       sourceScreen: activeTabName === "Activity" ? "dashboard" : "tasks",
     }),
   };

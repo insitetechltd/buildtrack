@@ -357,6 +357,14 @@ export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
   subContainerId?: string;
   /** Display tags including critical_this_week when present. */
   tagLabels?: string[];
+  statusLabel?: string;
+  categoryLabel?: string;
+  completionLabel?: string;
+  dueDateLabel?: string;
+  isCritical?: boolean;
+  criticalLabel?: string;
+  /** True when the signed-in user is in assignedTo / primary / delegates. */
+  isAssignedToCurrentUser?: boolean;
   detailRows: TaskDetailInfoCardRow[];
 }
 

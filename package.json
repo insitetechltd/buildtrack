@@ -111,6 +111,7 @@
     "expo-haptics": "~14.1.4",
     "expo-image": "~2.2.0",
     "expo-image-manipulator": "~13.1.5",
+    "expo-image-multiple-picker": "^4.10.0",
     "expo-image-picker": "~16.1.4",
     "expo-insights": "~0.9.3",
     "expo-keep-awake": "~15.0.7",

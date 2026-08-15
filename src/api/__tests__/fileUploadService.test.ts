@@ -8,6 +8,7 @@ import {
   uploadFileWithVerification,
   extractBuildtrackStoragePath,
   createSignedFileUrl,
+  prefetchSignedUrls,
   __resetSignedUrlCacheForTests,
   SIGNED_URL_EXPIRY_SECONDS,
   BUILDTRACK_FILES_BUCKET,
@@ -96,6 +97,36 @@ describe('fileUploadService', () => {
     ).toBe('co/tasks/t1/a.jpg');
     expect(extractBuildtrackStoragePath('co/tasks/t1/a.jpg')).toBe('co/tasks/t1/a.jpg');
     expect(extractBuildtrackStoragePath('file:///local.jpg')).toBeNull();
+    expect(extractBuildtrackStoragePath('file:/Volumes/KooDrive/draft-media/IMG_0001.jpg')).toBeNull();
+  });
+
+  it('does not treat draft-media JSON blobs as storage keys', () => {
+    const localDraft = JSON.stringify({
+      uri: 'file:/Volumes/KooDrive/tristan-xocde-library/CoreSimulator/Devices/1BEE670D/data/Containers/Data/Application/59BAD799/Documents/draft-media/IMG_0001_1783690940162.jpg',
+      fileName: 'IMG_0001_1783690940162.jpg',
+    });
+    expect(extractBuildtrackStoragePath(localDraft)).toBeNull();
+    expect(
+      extractBuildtrackStoragePath(
+        JSON.stringify({ storage_path: 'co/tasks/t1/a.jpg', uri: 'file:///local.jpg' })
+      )
+    ).toBe('co/tasks/t1/a.jpg');
+  });
+
+  it('skips createSignedUrl for local draft refs and does not log an overlay error', async () => {
+    const { createSignedUrl } = installStorageMocks();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const localDraft = JSON.stringify({
+      uri: 'file:/Volumes/KooDrive/draft-media/IMG_0001.jpg',
+      fileName: 'IMG_0001.jpg',
+    });
+
+    await expect(createSignedFileUrl(localDraft)).resolves.toBeNull();
+    await prefetchSignedUrls([localDraft, 'file:///local.jpg', 'co/tasks/t1/a.jpg']);
+
+    expect(createSignedUrl).toHaveBeenCalledTimes(1);
+    expect(createSignedUrl).toHaveBeenCalledWith('co/tasks/t1/a.jpg', SIGNED_URL_EXPIRY_SECONDS);
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 
   it('uploads a file and returns signed attachment metadata', async () => {

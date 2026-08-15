@@ -133,14 +133,14 @@ appId: com.buildtrack.app.local
       - tapOn:
           id: "task-detail__quick-action-accept_task"
 - assertVisible:
-    id: "task-detail__quick-action-update_progress"
+    id: "root-tab__camera_button"
 - tapOn:
-    id: "task-detail__quick-action-update_progress"
+    id: "root-tab__camera_button"
 - assertVisible: "Progress Update"
 - assertVisible:
-    id: "update-progress__add-photos"
+    id: "update-progress__take_photo"
 - tapOn:
-    id: "update-progress__add-photos"
+    id: "update-progress__take_photo"
 - runFlow:
     when:
       visible: "Choose how you want to add photos"
@@ -182,4 +182,4 @@ appId: com.buildtrack.app.local
 - assertVisible: ".*Progress update added successfully!.*"
 - tapOn: "OK"
 - assertVisible:
-    id: "task-detail__bottom_action_bar"
+    id: "task-detail__header_title"

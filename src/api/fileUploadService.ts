@@ -63,9 +63,56 @@ const signedUrlCache = new Map<string, SignedUrlCacheEntry>();
 const inflightSignedUrls = new Map<string, Promise<string | null>>();
 const signedUrlListeners = new Set<() => void>();
 
+function looksLikeJsonBlob(value: string): boolean {
+  return (
+    (value.startsWith('{') && value.endsWith('}')) ||
+    (value.startsWith('[') && value.endsWith(']'))
+  );
+}
+
+function isLocalAssetRef(value: string): boolean {
+  return /^(file:|content:|data:|asset:)/i.test(value);
+}
+
+/** Object keys we persist in buildtrack-files — not JSON, not local URIs. */
+function isPlausibleStorageObjectKey(value: string): boolean {
+  if (!value || value.length > 1024) {
+    return false;
+  }
+  if (looksLikeJsonBlob(value) || isLocalAssetRef(value)) {
+    return false;
+  }
+  if (/[{}"\n]/.test(value)) {
+    return false;
+  }
+  return true;
+}
+
+function extractBuildtrackStoragePathFromRecord(record: Record<string, unknown>): string | null {
+  const candidates = [
+    record.storage_path,
+    record.storagePath,
+    record.public_url,
+    record.publicUrl,
+    record.uri,
+    record.url,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate !== 'string' || !candidate.trim()) {
+      continue;
+    }
+    const found = extractBuildtrackStoragePath(candidate);
+    if (found) {
+      return found;
+    }
+  }
+  return null;
+}
+
 /**
  * Extract a buildtrack-files object path from a storage path or Supabase Storage URL
- * (public or signed). Returns null for non-storage refs (local file URIs, external https).
+ * (public or signed). Returns null for non-storage refs (local file URIs, JSON draft
+ * blobs, external https).
  */
 export function extractBuildtrackStoragePath(pathOrUrl: string): string | null {
   const trimmed = pathOrUrl?.trim();
@@ -73,12 +120,39 @@ export function extractBuildtrackStoragePath(pathOrUrl: string): string | null {
     return null;
   }
 
-  if (/^(file:|content:|data:|asset:)/i.test(trimmed)) {
+  if (looksLikeJsonBlob(trimmed)) {
+    try {
+      const parsed = JSON.parse(trimmed) as unknown;
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          const nested =
+            typeof item === 'string'
+              ? extractBuildtrackStoragePath(item)
+              : item && typeof item === 'object'
+                ? extractBuildtrackStoragePathFromRecord(item as Record<string, unknown>)
+                : null;
+          if (nested) {
+            return nested;
+          }
+        }
+        return null;
+      }
+      if (parsed && typeof parsed === 'object') {
+        return extractBuildtrackStoragePathFromRecord(parsed as Record<string, unknown>);
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  if (isLocalAssetRef(trimmed)) {
     return null;
   }
 
   if (!/^https?:\/\//i.test(trimmed)) {
-    return trimmed.replace(/^\//, '') || null;
+    const key = trimmed.replace(/^\//, '');
+    return isPlausibleStorageObjectKey(key) ? key : null;
   }
 
   const match = trimmed.match(
@@ -143,7 +217,7 @@ export async function createSignedFileUrl(
   }
 
   const path = storagePath.replace(/^\//, '');
-  if (!path) {
+  if (!path || !isPlausibleStorageObjectKey(path)) {
     return null;
   }
 

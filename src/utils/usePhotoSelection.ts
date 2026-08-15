@@ -9,12 +9,14 @@ export interface SelectedPhoto {
   isAnnotated?: boolean;
   annotatedUri?: string;
   caption?: string;
+  mediaLibraryAssetId?: string;
 }
 
 export interface PhotoSelectionOptions {
   onPhotosSelected: (photos: SelectedPhoto[]) => void;
   allowClipboard?: boolean;
   allowMultiple?: boolean;
+  source?: "camera" | "library";
 }
 
 /**
@@ -37,7 +39,7 @@ export function usePhotoSelection() {
   };
 
   const showPhotoSelectionDialog = async (options: PhotoSelectionOptions) => {
-    const { onPhotosSelected, allowClipboard = true, allowMultiple = true } = options;
+    const { onPhotosSelected, allowClipboard = true, allowMultiple = true, source } = options;
 
     const dialogOptions: any[] = [
       {
@@ -242,6 +244,16 @@ export function usePhotoSelection() {
       text: "Cancel",
       style: "cancel",
     });
+
+    if (source === "camera" || source === "library") {
+      const selectedOption = dialogOptions.find((option) =>
+        source === "camera"
+          ? option.text === "Take Photo"
+          : option.text === "Choose from Library",
+      );
+      await selectedOption?.onPress?.();
+      return;
+    }
 
     Alert.alert(
       "Add Photos",

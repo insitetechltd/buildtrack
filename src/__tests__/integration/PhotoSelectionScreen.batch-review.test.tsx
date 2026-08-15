@@ -32,6 +32,40 @@ jest.mock("expo-status-bar", () => ({
   StatusBar: () => null,
 }));
 
+jest.mock("@/components/photoEdit/SortablePhotoGrid", () => {
+  const React = require("react");
+  const { View, Text, Pressable } = require("react-native");
+  return {
+    __esModule: true,
+    default: function MockSortablePhotoGrid({
+      photos,
+      onPressPhoto,
+      onPressAdd,
+    }: {
+      photos: Array<{ uri: string }>;
+      onPressPhoto: (index: number) => void;
+      onPressAdd: () => void;
+    }) {
+      return (
+        <View testID="photo-selection__draggable_grid">
+          <Pressable testID="photo-selection__add_more" onPress={onPressAdd}>
+            <Text>Add Photo</Text>
+          </Pressable>
+          {photos.map((photo, index) => (
+            <Pressable
+              key={`${photo.uri}-${index}`}
+              testID={`photo-selection__tile_${index}`}
+              onPress={() => onPressPhoto(index)}
+            >
+              <View testID={`photo-selection__drag_handle_${index}`} />
+            </Pressable>
+          ))}
+        </View>
+      );
+    },
+  };
+});
+
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useSafeAreaInsets: () => ({
@@ -52,6 +86,14 @@ jest.mock("@react-navigation/native", () => ({
   }),
 }));
 
+const baseScreenProps = {
+  taskId: "task-1",
+  companyId: "company-1",
+  userId: "user-1",
+  initialCompletionPercentage: 0,
+  onNavigateBack: jest.fn(),
+};
+
 function buildAdapterOutput(overrides: Record<string, any> = {}) {
   const photos = overrides.photos ?? [
     { id: "p1", uri: "file://p1", caption: "", isSelected: true, index: 0 },
@@ -69,13 +111,15 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
   const mockHandleNavigateBack = jest.fn();
   const mockHandleMovePhotoUp = jest.fn();
   const mockHandleMovePhotoDown = jest.fn();
-  const mockHandleSetCaption = jest.fn();
+  const mockHandleSetPhotoOrder = jest.fn();
   const mockHandleSetSaveIntent = jest.fn();
   const mockHandleToggleMiniPicker = jest.fn();
   const mockHandleSelectTaskForAttach = jest.fn();
   const mockSetEnlargedPhotoIndex = jest.fn();
   const mockHandlePhotoPress = jest.fn();
-  const mockHandleAnnotatePhoto = jest.fn();
+  const mockHandleRotatePhoto = jest.fn();
+  const mockHandleApplyCrop = jest.fn();
+  const mockHandleResetEdits = jest.fn();
   const mockHandleAddPhotos = jest.fn();
   const mockHandleRemovePhoto = jest.fn();
 
@@ -115,7 +159,9 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
     handleRemovePhotoAt: mockHandleRemovePhotoAt,
     handleAddPhotos: overrides.handleAddPhotos ?? mockHandleAddPhotos,
     handlePhotoPress: overrides.handlePhotoPress ?? mockHandlePhotoPress,
-    handleAnnotatePhoto: overrides.handleAnnotatePhoto ?? mockHandleAnnotatePhoto,
+    handleRotatePhoto: overrides.handleRotatePhoto ?? mockHandleRotatePhoto,
+    handleApplyCrop: overrides.handleApplyCrop ?? mockHandleApplyCrop,
+    handleResetEdits: overrides.handleResetEdits ?? mockHandleResetEdits,
     handleRemovePhoto: overrides.handleRemovePhoto ?? mockHandleRemovePhoto,
     handleUploadPhotos: overrides.handleUploadPhotos ?? mockHandleUploadPhotos,
     setEnlargedPhotoIndex: overrides.setEnlargedPhotoIndex ?? mockSetEnlargedPhotoIndex,
@@ -126,7 +172,7 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
     handleNavigateBack: mockHandleNavigateBack,
     handleMovePhotoUp: overrides.handleMovePhotoUp ?? mockHandleMovePhotoUp,
     handleMovePhotoDown: overrides.handleMovePhotoDown ?? mockHandleMovePhotoDown,
-    handleSetCaption: overrides.handleSetCaption ?? mockHandleSetCaption,
+    handleSetPhotoOrder: overrides.handleSetPhotoOrder ?? mockHandleSetPhotoOrder,
     handleSetSaveIntent: overrides.handleSetSaveIntent ?? mockHandleSetSaveIntent,
     handleToggleMiniPicker: overrides.handleToggleMiniPicker ?? mockHandleToggleMiniPicker,
     handleSelectTaskForAttach: overrides.handleSelectTaskForAttach ?? mockHandleSelectTaskForAttach,
@@ -146,15 +192,7 @@ describe("PhotoSelectionScreen batch review", () => {
     const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
     usePhotoSelectionViewAdapter.mockReturnValue(adapter);
 
-    const screen = render(
-      <PhotoSelectionScreen
-        photos={[]}
-        onPhotosSelected={jest.fn()}
-        onPhotosUploaded={jest.fn()}
-        onNavigateToUpdateProgress={jest.fn()}
-        onNavigateBack={jest.fn()}
-      />,
-    );
+    const screen = render(<PhotoSelectionScreen {...baseScreenProps} />);
 
     expect(screen.getByText("Attach to Task")).toBeTruthy();
     expect(screen.getByText("Save to Project")).toBeTruthy();
@@ -166,34 +204,23 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(adapter.handleSetSaveIntent).toHaveBeenCalledWith("attach_task");
   });
 
-  it("renders 3 photo tiles with caption inputs and Up/Down chevrons; first tile Up disabled; moving index 1 up calls handleMovePhotoUp(1)", () => {
+  it("renders add tile, drag handles, and no up/down chevrons; tap tile opens edit", () => {
     const adapter = buildAdapterOutput({});
     const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
     usePhotoSelectionViewAdapter.mockReturnValue(adapter);
 
-    const screen = render(
-      <PhotoSelectionScreen
-        photos={[]}
-        onPhotosSelected={jest.fn()}
-        onPhotosUploaded={jest.fn()}
-        onNavigateToUpdateProgress={jest.fn()}
-        onNavigateBack={jest.fn()}
-      />,
-    );
+    const screen = render(<PhotoSelectionScreen {...baseScreenProps} />);
 
-    const captionInputs = screen.getAllByPlaceholderText("Caption");
-    expect(captionInputs).toHaveLength(3);
+    expect(screen.queryByPlaceholderText("Caption")).toBeNull();
+    expect(screen.getByTestId("photo-selection__add_more")).toBeTruthy();
+    expect(screen.getByText("Add Photo")).toBeTruthy();
+    expect(screen.queryByText("[ionicon:chevron-up]")).toBeNull();
+    expect(screen.queryByText("[ionicon:chevron-down]")).toBeNull();
+    expect(screen.getByTestId("photo-selection__drag_handle_0")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__drag_handle_1")).toBeTruthy();
 
-    const upChevrons = screen.getAllByText("[ionicon:chevron-up]");
-    const downChevrons = screen.getAllByText("[ionicon:chevron-down]");
-    expect(upChevrons.length).toBeGreaterThanOrEqual(3);
-    expect(downChevrons.length).toBeGreaterThanOrEqual(3);
-
-    fireEvent(upChevrons[1], "onPress");
-    expect(adapter.handleMovePhotoUp).toHaveBeenCalledWith(1);
-
-    fireEvent.changeText(captionInputs[0], "Excavation starting");
-    expect(adapter.handleSetCaption).toHaveBeenCalledWith(0, "Excavation starting");
+    fireEvent.press(screen.getByTestId("photo-selection__tile_1"));
+    expect(adapter.handlePhotoPress).toHaveBeenCalledWith(1);
   });
 
   it("renders +Choose task trigger, opens mini-picker with 2 tasks, tapping task calls handleSelectTaskForAttach then hides picker", () => {
@@ -209,15 +236,7 @@ describe("PhotoSelectionScreen batch review", () => {
     const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
     usePhotoSelectionViewAdapter.mockReturnValue(initialAdapter);
 
-    const screen = render(
-      <PhotoSelectionScreen
-        photos={[]}
-        onPhotosSelected={jest.fn()}
-        onPhotosUploaded={jest.fn()}
-        onNavigateToUpdateProgress={jest.fn()}
-        onNavigateBack={jest.fn()}
-      />,
-    );
+    const screen = render(<PhotoSelectionScreen {...baseScreenProps} />);
 
     const trigger = screen.getByText("+ Choose task to attach");
     expect(trigger).toBeTruthy();
@@ -230,20 +249,74 @@ describe("PhotoSelectionScreen batch review", () => {
       tasksForPicker,
     });
     usePhotoSelectionViewAdapter.mockReturnValue(visiblePickerAdapter);
-    screen.rerender(
-      <PhotoSelectionScreen
-        photos={[]}
-        onPhotosSelected={jest.fn()}
-        onPhotosUploaded={jest.fn()}
-        onNavigateToUpdateProgress={jest.fn()}
-        onNavigateBack={jest.fn()}
-      />,
-    );
+    screen.rerender(<PhotoSelectionScreen {...baseScreenProps} />);
 
     expect(screen.getByText("Foundation pour")).toBeTruthy();
     expect(screen.getByText("Framing rough-in")).toBeTruthy();
 
     fireEvent.press(screen.getByText("Foundation pour"));
     expect(visiblePickerAdapter.handleSelectTaskForAttach).toHaveBeenCalledWith("t1");
+  });
+
+  it("shows grid add tile and header confirm; tile opens edit; confirm finishes selection", () => {
+    const adapter = buildAdapterOutput({});
+    const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
+    usePhotoSelectionViewAdapter.mockReturnValue(adapter);
+
+    const screen = render(
+      <PhotoSelectionScreen {...baseScreenProps} uploadImmediately={false} />,
+    );
+
+    expect(screen.queryByText("Attach to Task")).toBeNull();
+    expect(screen.queryByTestId("photo-selection__selected_pill")).toBeNull();
+    expect(screen.queryByText(/Edit ·/)).toBeNull();
+    expect(screen.getByTestId("photo-selection__add_more")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__confirm")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("photo-selection__tile_0"));
+    expect(adapter.handlePhotoPress).toHaveBeenCalledWith(0);
+
+    fireEvent.press(screen.getByTestId("photo-selection__add_more"));
+    expect(adapter.handleAddPhotos).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(screen.getByTestId("photo-selection__confirm"));
+    expect(adapter.handleUploadPhotos).toHaveBeenCalledTimes(1);
+  });
+
+  it("hosts rotate/crop/reset on edit modal and done returns to selection without finishing", () => {
+    const photos = [
+      { id: "p1", uri: "file://p1", caption: "", isAnnotated: false },
+      { id: "p2", uri: "file://p2", caption: "", isAnnotated: true, annotatedUri: "file://p2-a" },
+    ];
+    const adapter = buildAdapterOutput({
+      photos,
+      enlargedPhotoIndex: 0,
+    });
+    const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
+    usePhotoSelectionViewAdapter.mockReturnValue(adapter);
+
+    const screen = render(
+      <PhotoSelectionScreen {...baseScreenProps} uploadImmediately={false} />,
+    );
+
+    expect(screen.getByTestId("photo-selection__preview")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__preview_tools_band")).toBeTruthy();
+    expect(screen.queryByTestId("photo-selection__annotate")).toBeNull();
+    expect(screen.queryByTestId("photo-selection__preview_caption")).toBeNull();
+    expect(screen.getByTestId("photo-selection__tool_rotate")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tool_crop")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tool_reset")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__preview_thumb_0")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__preview_thumb_1")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("photo-selection__tool_rotate"));
+    expect(adapter.handleRotatePhoto).toHaveBeenCalledWith(0);
+
+    fireEvent.press(screen.getByTestId("photo-selection__tool_reset"));
+    expect(adapter.handleResetEdits).toHaveBeenCalledWith(0);
+
+    fireEvent.press(screen.getByTestId("photo-selection__preview_confirm"));
+    expect(adapter.setEnlargedPhotoIndex).toHaveBeenCalledWith(null);
+    expect(adapter.handleUploadPhotos).not.toHaveBeenCalled();
   });
 });

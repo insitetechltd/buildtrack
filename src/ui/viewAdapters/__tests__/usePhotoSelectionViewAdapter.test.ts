@@ -6,11 +6,16 @@ const mockAddBatch = jest.fn();
 const mockGetTasksByProject = jest.fn();
 const mockDismissBatch = jest.fn();
 
-jest.mock("@imgly/editor-react-native", () => ({
-  EditorPreset: { PHOTO: "PHOTO" },
-  default: {
-    openEditor: jest.fn(),
-  },
+const mockManipulateAsync = jest.fn();
+const mockPinDraftMedia = jest.fn();
+
+jest.mock("expo-image-manipulator", () => ({
+  manipulateAsync: (...args: unknown[]) => mockManipulateAsync(...args),
+  SaveFormat: { JPEG: "jpeg" },
+}));
+
+jest.mock("../../../utils/draftMediaCache", () => ({
+  pinDraftMedia: (...args: unknown[]) => mockPinDraftMedia(...args),
 }));
 
 jest.mock("../../../api/fileUploadService", () => ({
@@ -54,10 +59,6 @@ jest.mock("expo-file-system/legacy", () => ({
   getInfoAsync: jest.fn(() => ({ exists: true, size: 1024 })),
 }));
 
-jest.mock("expo-constants", () => ({
-  executionEnvironment: "storeClient",
-}));
-
 describe("usePhotoSelectionViewAdapter batch-review features", () => {
   const baseProps = {
     taskId: "",
@@ -75,6 +76,79 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       success: true,
       file: { public_url: "https://cdn.example.com/u/1.jpg" },
     });
+    mockManipulateAsync.mockResolvedValue({ uri: "file://edited.jpg" });
+    mockPinDraftMedia.mockImplementation(async (uri: string) => `pinned:${uri}`);
+  });
+
+  it("handleRotatePhoto bakes a 90° rotate into annotatedUri", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [{ uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false }],
+      } as any),
+    );
+
+    await act(async () => {
+      await result.current.handleRotatePhoto(0);
+    });
+
+    expect(mockManipulateAsync).toHaveBeenCalledWith(
+      "file://a.jpg",
+      [{ rotate: 90 }],
+      expect.objectContaining({ format: "jpeg" }),
+    );
+    expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
+    expect(result.current.output.photos[0].isAnnotated).toBe(true);
+    expect(result.current.output.photos[0].uri).toBe("file://a.jpg");
+  });
+
+  it("handleApplyCrop writes crop actions then pins annotatedUri", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [{ uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false }],
+      } as any),
+    );
+
+    await act(async () => {
+      await result.current.handleApplyCrop(0, {
+        originX: 10,
+        originY: 20,
+        width: 100,
+        height: 80,
+      });
+    });
+
+    expect(mockManipulateAsync).toHaveBeenCalledWith(
+      "file://a.jpg",
+      [{ crop: { originX: 10, originY: 20, width: 100, height: 80 } }],
+      expect.objectContaining({ format: "jpeg" }),
+    );
+    expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
+  });
+
+  it("handleResetEdits clears annotatedUri back to original", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          {
+            uri: "file://a.jpg",
+            fileName: "a.jpg",
+            isAnnotated: true,
+            annotatedUri: "file://edited.jpg",
+          },
+        ],
+      } as any),
+    );
+
+    act(() => {
+      result.current.handleResetEdits(0);
+    });
+
+    expect(result.current.output.photos[0].annotatedUri).toBeUndefined();
+    expect(result.current.output.photos[0].isAnnotated).toBe(false);
+    expect(result.current.output.photos[0].uri).toBe("file://a.jpg");
   });
 
   it("handleSetCaption updates photos[i].caption on selected photo state", () => {
@@ -94,6 +168,33 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
 
     expect(result.current.output.photos[1].caption).toBe("Crack in foundation");
     expect(result.current.output.photos[0].caption).toBeUndefined();
+  });
+
+  it("handleSetPhotoOrder replaces batch order", () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          { uri: "file://0.jpg", fileName: "0.jpg", isAnnotated: false },
+          { uri: "file://1.jpg", fileName: "1.jpg", isAnnotated: false },
+          { uri: "file://2.jpg", fileName: "2.jpg", isAnnotated: false },
+        ],
+      } as any),
+    );
+
+    act(() => {
+      result.current.handleSetPhotoOrder([
+        { uri: "file://2.jpg", fileName: "2.jpg", isAnnotated: false },
+        { uri: "file://0.jpg", fileName: "0.jpg", isAnnotated: false },
+        { uri: "file://1.jpg", fileName: "1.jpg", isAnnotated: false },
+      ]);
+    });
+
+    expect(result.current.output.photos.map((p) => p.fileName)).toEqual([
+      "2.jpg",
+      "0.jpg",
+      "1.jpg",
+    ]);
   });
 
   it("handleMovePhotoUp swaps index with its previous sibling", () => {

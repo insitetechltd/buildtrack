@@ -179,7 +179,7 @@ describe("uiModeRoutes", () => {
       expect.objectContaining({
         screen: "CreateTaskMain",
         params: expect.objectContaining({
-          actionType: "photos",
+          actionType: "update",
           cameraLaunchContext: "task_detail",
           postCaptureDefault: "same_task_update",
           updateTargetSubTaskId: "subtask-1",

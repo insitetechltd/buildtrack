@@ -183,7 +183,8 @@ jest.mock("../../screens/ReassignTaskScreen", () => "ReassignTaskScreen");
 const {
   default: AppNavigator,
   shouldHideTabBarOnCreateTaskRoute,
-  shouldHideTabBarOnTaskDetailRoute,
+  shouldCollapseRootSideTabsOnTaskDetailRoute,
+  shouldHideRootSideTabsForTabState,
 } = require("../AppNavigator");
 
 describe("AppNavigator bottom-tab spacing", () => {
@@ -247,16 +248,49 @@ describe("AppNavigator bottom-tab spacing", () => {
     );
   });
 
-  it("hides the root tab bar only on Task Detail routes", () => {
-    expect(shouldHideTabBarOnTaskDetailRoute("TaskDetail")).toBe(true);
-    expect(shouldHideTabBarOnTaskDetailRoute("TaskDetailFromDashboard")).toBe(true);
-    expect(shouldHideTabBarOnTaskDetailRoute("TasksList")).toBe(false);
-    expect(shouldHideTabBarOnTaskDetailRoute(undefined)).toBe(false);
+  it("keeps the root tab bar on Task Detail and collapses the side tabs", () => {
+    expect(shouldCollapseRootSideTabsOnTaskDetailRoute("TaskDetail")).toBe(true);
+    expect(shouldCollapseRootSideTabsOnTaskDetailRoute("TaskDetailFromDashboard")).toBe(true);
+    expect(shouldCollapseRootSideTabsOnTaskDetailRoute("TasksList")).toBe(false);
+    expect(shouldCollapseRootSideTabsOnTaskDetailRoute(undefined)).toBe(false);
+    expect(
+      shouldHideRootSideTabsForTabState({
+        index: 2,
+        routes: [
+          { name: "Activity" },
+          { name: "Camera" },
+          {
+            name: "Tasks",
+            state: {
+              index: 1,
+              routes: [
+                { name: "TasksList" },
+                { name: "TaskDetail", params: { taskId: "task-1" } },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toBe(true);
+    expect(
+      shouldHideRootSideTabsForTabState({
+        index: 0,
+        routes: [
+          {
+            name: "Activity",
+            state: { index: 0, routes: [{ name: "DashboardMain" }] },
+          },
+          { name: "Camera" },
+          { name: "Tasks" },
+        ],
+      }),
+    ).toBe(false);
   });
 
-  it("hides the root tab bar only on the main Create Task route inside the camera stack", () => {
+  it("hides the root tab bar on Create Task, Select Photos, and in-app library routes", () => {
     expect(shouldHideTabBarOnCreateTaskRoute("CreateTaskMain")).toBe(true);
-    expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(false);
+    expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(true);
+    expect(shouldHideTabBarOnCreateTaskRoute("InAppLibraryPicker")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoViewer")).toBe(false);
     expect(shouldHideTabBarOnCreateTaskRoute(undefined)).toBe(false);
   });

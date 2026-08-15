@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   ScrollView,
   Pressable,
   Alert,
-  TextInput,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useTaskDetailViewAdapter } from "@/ui/viewAdapters/useTaskDetailViewAdapter";
 import ModernScreenHeader from "@/components/ModernScreenHeader";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
@@ -19,7 +19,6 @@ import { cn } from "@/utils/cn";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
-import { CRITICAL_THIS_WEEK_TAG } from "@/ui/contracts/taskTags";
 
 interface TaskDetailScreenProps {
   taskId: string;
@@ -117,45 +116,12 @@ function prioritizeActionItems(actionItems: TaskDetailActionItem[]) {
   };
 }
 
-function HeaderBadge({
-  label,
-  critical = false,
-}: {
-  label: string;
-  critical?: boolean;
-}) {
-  return (
-    <View
-      className={cn(
-        "rounded-full px-3 py-1.5",
-        critical ? "bg-amber-100" : "bg-white/10",
-      )}
-    >
-      <Text
-        className={cn(
-          "text-base font-medium",
-          critical ? "text-amber-900" : "text-white",
-        )}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 export default function TaskDetailScreen(props: TaskDetailScreenProps) {
-  const insets = useSafeAreaInsets();
   const { output, actions } = useTaskDetailViewAdapter({
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
   const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = useState(false);
-  const [tagDraft, setTagDraft] = useState("");
-  const [locationDraft, setLocationDraft] = useState("");
-
-  useEffect(() => {
-    setLocationDraft(output.infoCard?.siteLocationLabel || "");
-  }, [output.infoCard?.siteLocationLabel]);
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -267,18 +233,29 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       (action) =>
         !quickActionIds.has(action.actionId) &&
         action.actionId !== "toggle_critical_this_week" &&
-        action.actionId !== "upload_photos",
+        action.actionId !== "upload_photos" &&
+        action.actionId !== "update_progress" &&
+        action.actionId !== "add_comment",
     ),
   );
   const hasQuickActions = Boolean(output.quickActions?.actions?.length);
+  const hasSecondaryActionsCard =
+    secondaryActions.length > 0 || Boolean(criticalThisWeekAction);
   const scrollRegionBottomPadding = 16;
 
   if (!output.readiness.hasUsableData) {
     return (
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
         <ModernScreenHeader 
-          title="Loading..." 
-          showBackButton 
+          title="Loading..."
+          titleNode={(
+            <BrandHeaderTitle
+              label="Loading..."
+              subtitle="Task details"
+              titleTestID="task-detail__header_title"
+            />
+          )}
+          showBackButton={false}
           onBackPress={props.onNavigateBack}
         />
         <View className="flex-1 items-center justify-center">
@@ -288,57 +265,36 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     );
   }
 
-  const headerBadges = [
-    output.taskHero.isCritical && output.taskHero.criticalLabel
-      ? { id: "critical", label: output.taskHero.criticalLabel, critical: true }
-      : null,
-    output.taskHero.categoryLabel
-      ? { id: "category", label: output.taskHero.categoryLabel }
-      : null,
-    { id: "status", label: output.taskHero.statusLabel },
-    { id: "completion", label: output.taskHero.completionLabel },
-    output.taskHero.dueDateLabel
-      ? { id: "due", label: `Due ${output.taskHero.dueDateLabel}` }
-      : null,
-  ].filter((badge): badge is { id: string; label: string; critical?: boolean } => Boolean(badge));
+  const infoCardModel = output.infoCard
+    ? {
+        ...output.infoCard,
+        statusLabel: output.infoCard.statusLabel ?? output.taskHero.statusLabel,
+        categoryLabel: output.infoCard.categoryLabel ?? output.taskHero.categoryLabel,
+        completionLabel: output.infoCard.completionLabel ?? output.taskHero.completionLabel,
+        dueDateLabel: output.infoCard.dueDateLabel ?? output.taskHero.dueDateLabel,
+        isCritical: output.infoCard.isCritical ?? output.taskHero.isCritical,
+        criticalLabel: output.infoCard.criticalLabel ?? output.taskHero.criticalLabel,
+      }
+    : undefined;
 
   return (
-    <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
+    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
       <ModernScreenHeader 
         title={output.header.title || "Task Details"}
         titleNode={(
           <View testID="task-detail__header_title_block">
-            <Pressable
-              testID="task-detail__header_title_pressable"
-              onPress={() => setIsHeaderTitleExpanded((current) => !current)}
-            >
-              <Text
-                testID="task-detail__header_title"
-                className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
-                numberOfLines={isHeaderTitleExpanded ? undefined : 1}
-                ellipsizeMode="tail"
-                adjustsFontSizeToFit={!isHeaderTitleExpanded}
-                minimumFontScale={isHeaderTitleExpanded ? undefined : 0.9}
-              >
-                {output.header.title || "Task Details"}
-              </Text>
-            </Pressable>
-            {headerBadges.length > 0 ? (
-              <View testID="task-detail__header_badges" className="mt-3 flex-row flex-wrap gap-2">
-                {headerBadges.map((badge) => (
-                  <HeaderBadge
-                    key={badge.id}
-                    label={badge.label}
-                    critical={badge.critical}
-                  />
-                ))}
-              </View>
-            ) : null}
+            <BrandHeaderTitle
+              label={output.header.title || "Task Details"}
+              subtitle="Task details"
+              titleTestID="task-detail__header_title"
+              titleNumberOfLines={isHeaderTitleExpanded ? undefined : 1}
+              onTitlePress={() => setIsHeaderTitleExpanded((current) => !current)}
+            />
           </View>
         )}
-        showBackButton={true}
+        showBackButton={false}
         onBackPress={props.onNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
@@ -356,18 +312,25 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             scrollEnabled
             showsVerticalScrollIndicator={false}
           >
-            {output.infoCard ? <TaskDetailInfoCard model={output.infoCard} /> : null}
+            {infoCardModel ? <TaskDetailInfoCard model={infoCardModel} /> : null}
 
-            {/* Banners */}
             {output.banners.map(banner => (
               <BannerPrimitive key={banner.id} contract={mapBannerModelToBannerProps(banner)} />
             ))}
+
+            {hasQuickActions ? (
+              <TaskDetailQuickActions
+                model={output.quickActions!}
+                onPress={handleActionPress}
+              />
+            ) : null}
 
             <TaskActivityTimeline
               testID="task-detail__activity_thread"
               thread={output.activityThread}
             />
 
+            {hasSecondaryActionsCard ? (
             <View testID="task-detail__secondary-actions" className="mx-4 mb-4 rounded-2xl border border-gray-200 bg-white p-3">
                 <Text className="mb-3 text-base font-semibold uppercase tracking-wide text-gray-500">
                   Other actions
@@ -378,6 +341,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                   {secondaryActions.map((action) => (
                     <Pressable
                       key={action.id}
+                      testID={`task-detail__quick-action-${action.actionId}`}
                       accessibilityRole="button"
                       accessibilityState={{ disabled: action.isDisabled }}
                       disabled={action.isDisabled}
@@ -428,207 +392,10 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                   />
                 </Pressable>
                 ) : null}
-
-            <View
-              testID="task-detail__location_editor"
-              className="rounded-xl border border-slate-200 bg-slate-50 p-3"
-            >
-              <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
-                Location on Site
-              </Text>
-              <Text className="mt-1 mb-3 text-sm text-slate-600">
-                Where on the jobsite this task applies (separate from the project address).
-              </Text>
-              <TextInput
-                testID="task-detail__location_input"
-                className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900 bg-white"
-                placeholder="e.g. Level 3 - South Core"
-                placeholderTextColor="#94a3b8"
-                value={locationDraft}
-                onChangeText={setLocationDraft}
-                returnKeyType="done"
-                blurOnSubmit
-                onSubmitEditing={() => {
-                  void actions.setLocationOnSite(locationDraft);
-                }}
-              />
-              <Pressable
-                testID="task-detail__location_save"
-                accessibilityRole="button"
-                onPress={() => {
-                  void actions.setLocationOnSite(locationDraft);
-                }}
-                className="mt-3 items-center rounded-xl bg-slate-900 px-4 py-3"
-              >
-                <Text className="text-base font-semibold text-white">Save location</Text>
-              </Pressable>
             </View>
-
-            <View
-              testID="task-detail__tags_primary_editor"
-              className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
-            >
-              <Text className="text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
-                Tags, Primary & Delegates
-              </Text>
-              {!output.canEditDelegation ? (
-                <Text
-                  testID="task-detail__delegation_locked_hint"
-                  className="mt-2 text-sm text-slate-500"
-                >
-                  Only the task creator can change primary and delegates before
-                  the task is underway.
-                </Text>
-              ) : null}
-              {output.assignees.length > 0 ? (
-                <View className="mt-3">
-                  <Text className="mb-2 text-sm text-slate-600">
-                    Tap to set Primary owner
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {output.assignees.map((assignee) => {
-                      const isPrimary =
-                        output.infoCard?.primaryAssigneeId === assignee.id;
-                      return (
-                        <Pressable
-                          key={assignee.id}
-                          testID={`task-detail__set_primary_${assignee.id}`}
-                          disabled={!output.canEditDelegation}
-                          onPress={() => {
-                            if (!output.canEditDelegation) {
-                              return;
-                            }
-                            void actions.setPrimaryAssignee(assignee.id);
-                          }}
-                          className={cn(
-                            "rounded-full px-3 py-1.5 border",
-                            isPrimary
-                              ? "border-amber-300 bg-amber-50"
-                              : "border-slate-200 bg-white",
-                            !output.canEditDelegation && "opacity-60",
-                          )}
-                        >
-                          <Text
-                            className={cn(
-                              "text-sm font-medium",
-                              isPrimary ? "text-amber-900" : "text-slate-800",
-                            )}
-                          >
-                            {assignee.name}
-                            {isPrimary ? " · Primary" : ""}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-
-              {output.assignees.length > 0 ? (
-                <View testID="task-detail__delegates_editor" className="mt-4">
-                  <Text className="mb-2 text-sm text-slate-600">
-                    Tap to add or remove Delegates (not Primary)
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {output.assignees.map((assignee) => {
-                      const isPrimary =
-                        output.infoCard?.primaryAssigneeId === assignee.id;
-                      const isDelegate = (
-                        output.infoCard?.delegatedUserIds ?? []
-                      ).includes(assignee.id);
-                      if (isPrimary) {
-                        return null;
-                      }
-                      return (
-                        <Pressable
-                          key={`delegate-${assignee.id}`}
-                          testID={`task-detail__toggle_delegate_${assignee.id}`}
-                          disabled={!output.canEditDelegation}
-                          onPress={() => {
-                            if (!output.canEditDelegation) {
-                              return;
-                            }
-                            void actions.toggleDelegate(assignee.id);
-                          }}
-                          className={cn(
-                            "rounded-full px-3 py-1.5 border",
-                            isDelegate
-                              ? "border-blue-300 bg-blue-50"
-                              : "border-slate-200 bg-white",
-                            !output.canEditDelegation && "opacity-60",
-                          )}
-                        >
-                          <Text
-                            className={cn(
-                              "text-sm font-medium",
-                              isDelegate ? "text-blue-900" : "text-slate-800",
-                            )}
-                          >
-                            {assignee.name}
-                            {isDelegate ? " · Delegate" : ""}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-
-              <View className="mt-4">
-                <Text className="mb-2 text-sm text-slate-600">Custom tags</Text>
-                <View className="flex-row flex-wrap gap-2 mb-2">
-                  {(output.infoCard?.tagLabels ?? [])
-                    .filter((tag) => tag !== CRITICAL_THIS_WEEK_TAG)
-                    .map((tag) => (
-                      <View
-                        key={tag}
-                        className="rounded-full bg-white px-3 py-1.5 flex-row items-center border border-slate-200"
-                      >
-                        <Text className="text-sm text-slate-800 mr-1">{tag}</Text>
-                        <Pressable
-                          testID={`task-detail__remove_tag_${tag}`}
-                          onPress={() => {
-                            void actions.removeCustomTag(tag);
-                          }}
-                        >
-                          <Ionicons name="close-circle" size={16} color="#475569" />
-                        </Pressable>
-                      </View>
-                    ))}
-                </View>
-                <TextInput
-                  testID="task-detail__tag_input"
-                  className="border border-slate-200 rounded-xl px-3 py-3 text-base text-slate-900 bg-white"
-                  placeholder="Add tag, press return"
-                  placeholderTextColor="#94a3b8"
-                  value={tagDraft}
-                  onChangeText={setTagDraft}
-                  returnKeyType="done"
-                  blurOnSubmit
-                  onSubmitEditing={() => {
-                    void actions.addCustomTag(tagDraft);
-                    setTagDraft("");
-                  }}
-                />
-              </View>
-            </View>
-            </View>
+            ) : null}
           </ScrollView>
           </View>
-
-        {hasQuickActions ? (
-          <View
-            testID="task-detail__bottom_action_bar"
-            className="border-t border-gray-200 bg-gray-50 px-4 pt-3"
-            style={{ paddingBottom: Math.max(insets.bottom, 12) }}
-          >
-            <TaskDetailQuickActions
-              model={output.quickActions!}
-              onPress={handleActionPress}
-              containerClassName="mx-0 mt-0"
-            />
-          </View>
-        ) : null}
       </View>
 
     </SafeAreaView>

@@ -111,7 +111,7 @@ describe("RejectTaskScreen", () => {
     expect(rejectPressTarget).toBeTruthy();
 
     fireEvent.changeText(reasonInput, "Incorrect scope");
-    fireEvent.press(screen.getByText("Add Photos"));
+    fireEvent.press(screen.getByTestId("file-upload-harness__add"));
     expect(Alert.alert).toHaveBeenCalledWith(
       "Add Photos",
       "Choose how you want to add photos",

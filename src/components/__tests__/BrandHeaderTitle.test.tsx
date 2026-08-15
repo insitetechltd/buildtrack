@@ -11,4 +11,14 @@ describe("BrandHeaderTitle", () => {
     expect(screen.getByText("TASKR")).toBeTruthy();
     expect(screen.getByText("Site activity")).toBeTruthy();
   });
+
+  it("renders a two-line title without the brand mark", () => {
+    const screen = render(
+      <BrandHeaderTitle label="Test Upload 1" subtitle="Task details" showMark={false} />,
+    );
+
+    expect(screen.getByText("TEST UPLOAD 1")).toBeTruthy();
+    expect(screen.getByText("Task details").props.className).toContain("text-xs");
+    expect(screen.getByText("TEST UPLOAD 1").props.className).toContain("text-[24px]");
+  });
 });

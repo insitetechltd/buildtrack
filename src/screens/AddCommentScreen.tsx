@@ -4,17 +4,15 @@ import {
   View,
   Text,
   ScrollView,
-  Pressable,
   TextInput,
   TextInputKeyPressEventData,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import StandardHeader from "../components/StandardHeader";
 import PrimaryActionBar from "../components/ui/PrimaryActionBar";
+import FileUploadHarness from "../components/ui/FileUploadHarness";
 import {
   createFormNavigationRegistry,
   getNextFocusableFieldId,
@@ -105,46 +103,17 @@ export default function AddCommentScreen({
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Photos Section */}
-        <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            Photos (Optional)
-          </Text>
-          
-          {output.photoAttachments.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-              <View className="flex-row">
-                {output.photoAttachments.map((photo) => (
-                  <View key={photo.id} className="mr-3 relative">
-                    <Image
-                      source={{ uri: photo.uri }}
-                      className="w-24 h-24 rounded-lg"
-                      resizeMode="cover"
-                    />
-                    <Pressable
-                      onPress={photo.onRemove}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="close" size={14} color="white" />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          ) : null}
-
-          <Pressable
-            onPress={() => {
-              void actions.handleAddPhotos();
-            }}
-            className="flex-row items-center justify-center border-2 border-dashed border-gray-300 rounded-lg py-4"
-          >
-            <Ionicons name="camera-outline" size={24} color="#6b7280" />
-            <Text className="text-gray-600 ml-2 font-medium">
-              Add Photos
-            </Text>
-          </Pressable>
-        </View>
+        <FileUploadHarness
+          title="Photos (Optional)"
+          items={output.photoAttachments.map((photo) => ({
+            id: photo.id,
+            uri: photo.uri,
+            onRemove: photo.onRemove,
+          }))}
+          onAdd={() => {
+            void actions.handleAddPhotos();
+          }}
+        />
 
         {/* Comment Text */}
         <View className="mb-6">

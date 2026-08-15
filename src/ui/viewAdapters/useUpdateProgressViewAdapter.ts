@@ -120,7 +120,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     }, [props.selectedPhotos, props.uploadedPhotoUrls, route.params, navigation])
   );
 
-  const handleAddPhotos = () => {
+  const handleAddPhotos = (source?: "camera" | "library") => {
     if (!user || !task) return;
 
     showPhotoSelectionDialog({
@@ -160,6 +160,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       },
       allowClipboard: true,
       allowMultiple: true,
+      source,
     });
   };
 

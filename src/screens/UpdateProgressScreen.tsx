@@ -7,16 +7,15 @@ import {
   Pressable,
   TextInput,
   TextInputKeyPressEventData,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import Slider from "@react-native-community/slider";
-import { cn } from "../utils/cn";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import PrimaryActionBar from "../components/ui/PrimaryActionBar";
+import CompletionPercentageDialer from "../components/ui/CompletionPercentageDialer";
+import FileUploadHarness from "../components/ui/FileUploadHarness";
 import { useTranslation } from "../utils/useTranslation";
 import { useUpdateProgressViewAdapter, UpdateProgressScreenProps } from "../ui/viewAdapters/useUpdateProgressViewAdapter";
 import {
@@ -113,42 +112,19 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-        {/* Photos & Files - Top Section */}
-        <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            {t.taskDetail.photosAndFiles}
-          </Text>
-          
-          {validPhotos.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-              <View className="flex-row">
-                {validPhotos.map((photo, idx) => (
-                  <View key={photo.id} testID={`update-progress__photo_preview_tile_${idx}`} className="mr-3 relative">
-                    <Image
-                      source={{ uri: photo.uri }}
-                      className="w-24 h-24 rounded-lg"
-                      resizeMode="cover"
-                    />
-                    <View className={cn(
-                      "absolute top-1 left-1 w-6 h-6 rounded-full items-center justify-center",
-                      photo.isUploaded ? "bg-green-500" : "bg-yellow-500"
-                    )}>
-                      <Ionicons name={photo.isUploaded ? "checkmark" : "time-outline"} size={14} color="white" />
-                    </View>
-                    <Pressable
-                      testID={`update-progress__photo_preview_remove_${idx}`}
-                      onPress={photo.onRemove}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                    >
-                      <Ionicons name="close" size={14} color="white" />
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
-          ) : null}
-
-          {/* Failed Uploads Section with Retry */}
+        <FileUploadHarness
+          title={t.taskDetail.photosAndFiles}
+          items={validPhotos.map((photo, idx) => ({
+            id: photo.id,
+            uri: photo.uri,
+            status: photo.isUploaded ? "uploaded" : "pending",
+            onRemove: photo.onRemove,
+          }))}
+          onAdd={() => actions.handleAddPhotos()}
+          addTestID="update-progress__take_photo"
+          previewTestIDPrefix="update-progress__photo_preview_tile"
+          removeTestIDPrefix="update-progress__photo_preview_remove"
+        />
           {failedPhotos.length > 0 && (
             <View className="mb-3">
               <View className="bg-red-50 border border-red-200 rounded-lg p-3 mb-2">
@@ -194,24 +170,6 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
               </ScrollView>
             </View>
           )}
-          
-          <Pressable
-            onPress={actions.handleAddPhotos}
-            className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
-          >
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
-              <Text className="text-gray-600 font-medium ml-2 text-sm">
-                {output.scalarMetrics.totalPhotos === 0 
-                  ? t.taskDetail.tapToAddFiles 
-                  : `${output.scalarMetrics.totalPhotos} file(s) added`}
-              </Text>
-            </View>
-            {output.scalarMetrics.totalPhotos > 0 && (
-              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-            )}
-          </Pressable>
-        </View>
 
         {/* Update Description */}
         <View className="mb-6">
@@ -239,37 +197,14 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           />
         </View>
 
-        {/* Completion Percentage - Bottom with Horizontal Slider */}
         <View className="mb-6">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xl font-semibold text-gray-900">
-              {t.taskDetail.completionPercentage}
-            </Text>
-            <Text className="text-3xl font-bold text-blue-600">
-              {output.form.completionPercentage}%
-            </Text>
-          </View>
-          
-          {/* Current Progress Indicator */}
-          <View className="flex-row items-center justify-between mb-2">
-            <Text className="text-base text-gray-600">{t.taskDetail.current}: {output.form.previousPercentage}%</Text>
-            <View className="flex-row items-center">
-              <View className="w-3 h-3 bg-red-500 rounded-full mr-2"></View>
-              <Text className="text-base text-red-600 font-medium">{t.taskDetail.previous}</Text>
-            </View>
-          </View>
-          
-          {/* Horizontal Slider */}
-          <Slider
-            style={{ width: '100%', height: 40 }}
-            minimumValue={0}
-            maximumValue={100}
-            step={5}
+          <Text className="text-xl font-semibold text-gray-900 mb-3">
+            {t.taskDetail.completionPercentage}
+          </Text>
+          <CompletionPercentageDialer
             value={output.form.completionPercentage}
-            onValueChange={actions.setCompletionPercentage}
-            minimumTrackTintColor="#ffffff"
-            maximumTrackTintColor="#d1d5db"
-            thumbTintColor="#ffffff"
+            onChange={actions.setCompletionPercentage}
+            previousPercentage={output.form.previousPercentage}
           />
         </View>
       </ScrollView>

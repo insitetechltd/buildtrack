@@ -674,6 +674,10 @@ describe("TasksScreen", () => {
         actionType: "update",
         editTaskId: "task-1",
         sourceScreen: "tasks",
+        sourceTaskId: "task-1",
+        cameraLaunchContext: "task_detail",
+        postCaptureDefault: "same_task_update",
+        clearForm: false,
       }),
     );
 

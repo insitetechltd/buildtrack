@@ -165,17 +165,14 @@ appId: com.buildtrack.app.local
 - tapOn: ${".*" + output.taskTitle + ".*"}
 - extendedWaitUntil:
     visible:
-      id: "task-detail__bottom_action_bar"
+      id: "task-detail__header_title"
     timeout: 10000
-- assertVisible:
-    id: "task-detail__bottom_action_bar"
-# P1 gap C3: task-detail__header_title replaces bare text regex.
 - assertVisible:
     id: "task-detail__header_title"
 
 # Update Progress
 - tapOn:
-    id: "task-detail__quick-action-update_progress"
+    id: "root-tab__camera_button"
 - extendedWaitUntil:
     visible:
       id: "update-progress__submit"
@@ -215,7 +212,7 @@ appId: com.buildtrack.app.local
 - tapOn: "OK"
 - extendedWaitUntil:
     visible:
-      id: "task-detail__bottom_action_bar"
+      id: "task-detail__header_title"
     timeout: 8000
 - assertVisible:
-    id: "task-detail__bottom_action_bar"
+    id: "task-detail__header_title"

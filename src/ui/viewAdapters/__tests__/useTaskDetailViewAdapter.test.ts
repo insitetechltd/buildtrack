@@ -398,11 +398,7 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
-      "update_progress",
-      "add_comment",
-      "add_subtask",
-    ]);
+    expect(result.current.output.quickActions).toBeUndefined();
   });
 
   it("does not produce nextStepLabel for the task-detail hero", () => {
@@ -526,11 +522,7 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
-      "approve_task",
-      "reject_task",
-      "add_comment",
-    ]);
+    expect(result.current.output.quickActions).toBeUndefined();
   });
 
   it("builds quick actions for contributor review state", () => {
@@ -577,11 +569,7 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
-      "submit_review",
-      "add_comment",
-      "update_progress",
-    ]);
+    expect(result.current.output.quickActions).toBeUndefined();
   });
 
   it("excludes add_subtask on subtask detail active work", () => {
@@ -649,10 +637,7 @@ describe("useTaskDetailViewAdapter", () => {
       }),
     );
 
-    expect(result.current.output.quickActions?.actions.map((item) => item.actionId)).toEqual([
-      "update_progress",
-      "add_comment",
-    ]);
+    expect(result.current.output.quickActions).toBeUndefined();
   });
 
   it("shows edit_task for the task creator", () => {
@@ -1285,7 +1270,15 @@ describe("useTaskDetailViewAdapter", () => {
       assignedByLabel: "User manager-1",
       assignedToLabel: "User user-1, User user-2",
       primaryOwnerLabel: "User user-2",
-      teamSummaryLabel: "2 assignees",
+      teamSummaryLabel: "1 delegate: User user-1",
+    });
+
+    expect(result.current.output.infoCard).toMatchObject({
+      statusLabel: "In Progress",
+      categoryLabel: "General",
+      completionLabel: "50% complete",
+      dueDateLabel: "Oct 10, 2026",
+      isAssignedToCurrentUser: true,
     });
   });
 });

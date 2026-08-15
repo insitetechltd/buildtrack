@@ -39,6 +39,7 @@ import {
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
+import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
 
 export interface UseCreateTaskViewAdapterProps {
   editTaskId?: string;
@@ -540,6 +541,19 @@ export function useCreateTaskViewAdapter({
     }));
   }, []);
 
+  const mergeIncomingAttachments = useCallback(
+    (incoming: CreateTaskFormModel["attachments"]) => {
+      if (!incoming.length) {
+        return;
+      }
+      setFormData((previous) => ({
+        ...previous,
+        attachments: mergeUniqueAttachments(previous.attachments, incoming),
+      }));
+    },
+    [],
+  );
+
   const updateSuggestionField = useCallback(
     (field: keyof CreateTaskFormModel, value: CreateTaskFormModel[keyof CreateTaskFormModel]) => {
       updateField(field, value);
@@ -596,6 +610,7 @@ export function useCreateTaskViewAdapter({
         primaryAssigneeId: editTask.primaryAssigneeId,
         delegatedUserIds: editTask.delegatedUserIds || [],
       });
+      const taggedCritical = hasCriticalThisWeekTag(editTask.tags);
       setFormData({
         title: editTask.title,
         description: editTask.description || '',
@@ -611,7 +626,7 @@ export function useCreateTaskViewAdapter({
         containerId: editTask.containerId || '',
         subContainerId: editTask.subContainerId || '',
         customTags: getCustomTaskTags(editTask.tags),
-        isCriticalThisWeek: hasCriticalThisWeekTag(editTask.tags),
+        isCriticalThisWeek: taggedCritical,
         attachments: editTask.attachments || [],
         projectId: editTask.projectId || '',
       });
@@ -1035,6 +1050,7 @@ export function useCreateTaskViewAdapter({
       addCustomTag,
       removeCustomTag,
       removeAttachment,
+      mergeIncomingAttachments,
       setTextInput,
       saveLocationOnSiteSelection,
       expandContainerOrganization,

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import { View } from "react-native";
 
 import TaskDetailHero from "../../components/taskDetail/TaskDetailHero";
@@ -130,6 +130,10 @@ describe("TaskDetailScreen acceptance UI", () => {
       assignedByLabel: "Casey",
       assignedToLabel: "Sam, Alex",
       primaryOwnerLabel: "Sam",
+      statusLabel: "In Progress",
+      categoryLabel: "Interior",
+      completionLabel: "50% complete",
+      dueDateLabel: "Jul 10, 2026",
       detailRows: [],
     },
     activeStage: {
@@ -251,11 +255,106 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.getByText("Task Details")).toBeTruthy();
-    expect(screen.getByText("Confirm supplier lead times before final delivery.")).toBeTruthy();
-    expect(screen.getByText("Site: Level 9 Rooftop")).toBeTruthy();
-    expect(screen.getByText("By: Casey")).toBeTruthy();
-    expect(screen.getByText("To: Sam, Alex")).toBeTruthy();
-    expect(screen.getByText("Owner: Sam")).toBeTruthy();
+    expect(screen.queryByText("Confirm supplier lead times before final delivery.")).toBeNull();
+    expect(screen.getByTestId("task-detail__location_group")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__location_group__summary")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("task-detail__location_group__toggle"));
+    expect(screen.getByText("Site")).toBeTruthy();
+    expect(screen.getByText("Level 9 Rooftop")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__people_group")).toBeTruthy();
+    expect(screen.getByText("Team")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__people_group__summary").props.children).toBe(
+      "Assigned to Sam, Alex",
+    );
+    fireEvent.press(screen.getByTestId("task-detail__people_group__toggle"));
+    expect(screen.getByText("Assigned by")).toBeTruthy();
+    expect(screen.getByText("Casey")).toBeTruthy();
+    expect(screen.getByText("Assigned to")).toBeTruthy();
+    expect(screen.getByText("Sam, Alex")).toBeTruthy();
+    expect(screen.getByText("Owner")).toBeTruthy();
+    expect(screen.getByText("Sam")).toBeTruthy();
+  });
+
+  it("collapses Task Details groups by default and expands labeled rows on toggle", () => {
+    const screen = render(
+      <TaskDetailInfoCard
+        model={{
+          id: "task-info-card",
+          density: "standard",
+          structuralState: "ready",
+          statusLabel: "In Progress",
+          categoryLabel: "Interior",
+          completionLabel: "50% complete",
+          dueDateLabel: "Jul 10, 2026",
+          siteLocationLabel: "Level 9 Rooftop",
+          assignedByLabel: "Casey",
+          assignedToLabel: "Sam, Alex",
+          primaryOwnerLabel: "Sam",
+          detailRows: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("task-detail__status_chips__summary")).toBeTruthy();
+    expect(screen.queryByText("Status")).toBeNull();
+    expect(screen.queryByText("Category")).toBeNull();
+    expect(screen.getByTestId("task-detail__location_group__summary")).toBeTruthy();
+    expect(screen.queryByText("Site")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("task-detail__status_chips__toggle"));
+    expect(screen.queryByTestId("task-detail__status_chips__summary")).toBeNull();
+    expect(screen.getByText("Status")).toBeTruthy();
+    expect(screen.getByText("Category")).toBeTruthy();
+    expect(screen.getByText("Interior")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("task-detail__status_chips__toggle"));
+    expect(screen.getByTestId("task-detail__status_chips__summary")).toBeTruthy();
+    expect(screen.queryByText("Status")).toBeNull();
+  });
+
+  it("summarizes Team as Assigned by when the current user is an assignee", () => {
+    const screen = render(
+      <TaskDetailInfoCard
+        model={{
+          id: "task-info-card",
+          density: "standard",
+          structuralState: "ready",
+          assignedByLabel: "Casey",
+          assignedToLabel: "Sam, Alex",
+          primaryOwnerLabel: "Sam",
+          isAssignedToCurrentUser: true,
+          detailRows: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Team")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__people_group__summary").props.children).toBe(
+      "Assigned by Casey",
+    );
+    expect(screen.queryByText("Owner Sam")).toBeNull();
+  });
+
+  it("summarizes Team as Assigned to when the current user is not an assignee", () => {
+    const screen = render(
+      <TaskDetailInfoCard
+        model={{
+          id: "task-info-card",
+          density: "standard",
+          structuralState: "ready",
+          assignedByLabel: "Casey",
+          assignedToLabel: "Sam, Alex",
+          primaryOwnerLabel: "Sam",
+          isAssignedToCurrentUser: false,
+          detailRows: [],
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId("task-detail__people_group__summary").props.children).toBe(
+      "Assigned to Sam, Alex",
+    );
+    expect(screen.queryByText("Owner Sam")).toBeNull();
   });
 
   it("uses larger readable sizes for hero and compact Task Details chip text", () => {
@@ -271,14 +370,21 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     expect(infoCardScreen.getByTestId("task-detail__info_card").props.className).toContain("p-[14px]");
     expect(infoCardScreen.getByText("Task Details").props.className).toContain("text-base");
-    expect(infoCardScreen.getByText("Confirm supplier lead times before final delivery.").props.className).toContain(
-      "text-lg",
-    );
-    expect(infoCardScreen.getByTestId("task-detail__detail_chips").props.className).toContain("mt-3");
-    expect(infoCardScreen.getByTestId("task-detail__detail_chips").props.className).toContain("gap-1.5");
-    expect(infoCardScreen.getByText("Site: Level 9 Rooftop").props.className).toContain("text-sm");
-    expect(infoCardScreen.getByText("By: Casey").props.className).toContain("text-sm");
-    expect(infoCardScreen.getByText("To: Sam, Alex").props.className).toContain("text-sm");
+    expect(infoCardScreen.queryByText("Confirm supplier lead times before final delivery.")).toBeNull();
+    expect(infoCardScreen.getByTestId("task-detail__status_chips")).toBeTruthy();
+    fireEvent.press(infoCardScreen.getByTestId("task-detail__status_chips__toggle"));
+    expect(infoCardScreen.getByText("Interior").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("In Progress").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("50% complete").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("Jul 10, 2026").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByTestId("task-detail__detail_chips")).toBeTruthy();
+    expect(infoCardScreen.getByTestId("task-detail__location_group")).toBeTruthy();
+    fireEvent.press(infoCardScreen.getByTestId("task-detail__location_group__toggle"));
+    expect(infoCardScreen.getByTestId("task-detail__people_group")).toBeTruthy();
+    fireEvent.press(infoCardScreen.getByTestId("task-detail__people_group__toggle"));
+    expect(infoCardScreen.getByText("Level 9 Rooftop").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("Casey").props.className).toContain("text-sm");
+    expect(infoCardScreen.getByText("Sam, Alex").props.className).toContain("text-sm");
   });
 
   it("keeps quick actions below the info card in the task-detail content stack", () => {
@@ -387,32 +493,9 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.queryByTestId("task-detail__quick-action-reject_task")).toBeNull();
   });
 
-  it("keeps update_progress and add_comment in the bottom quick-action set through review", () => {
+  it("does not render Add Photos or Add Comment on task detail", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
-        quickActions: {
-          id: "task-quick-actions",
-          density: "standard",
-          structuralState: "ready",
-          actions: [
-            {
-              id: "action-update",
-              actionId: "update_progress",
-              label: "Add Photos",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-            {
-              id: "action-comment",
-              actionId: "add_comment",
-              label: "Add Comment",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-          ],
-        },
         actionItems: [
           {
             id: "action-update",
@@ -457,159 +540,20 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__quick-action-update_progress")).toBeTruthy();
-    expect(screen.getByTestId("task-detail__quick-action-add_comment")).toBeTruthy();
-    expect(screen.queryByTestId("task-detail__quick-action-approve_task")).toBeNull();
-    expect(screen.queryByTestId("task-detail__quick-action-reject_task")).toBeNull();
+    expect(screen.queryByTestId("task-detail__quick-action-update_progress")).toBeNull();
+    expect(screen.queryByTestId("task-detail__quick-action-add_comment")).toBeNull();
+    expect(screen.queryByText("Add Photos")).toBeNull();
+    expect(screen.queryByText("Add Comment")).toBeNull();
+    expect(screen.getByTestId("task-detail__quick-action-approve_task")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__quick-action-reject_task")).toBeTruthy();
   });
 
-  it("routes Add Photos through the photo-first shared composer entry", () => {
-    const onNavigateToCreateTask = jest.fn();
-    mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: createAdapterOutput({
-        quickActions: {
-          id: "task-quick-actions",
-          density: "standard",
-          structuralState: "ready",
-          actions: [
-            {
-              id: "action-update",
-              actionId: "update_progress",
-              label: "Add Photos",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-            {
-              id: "action-comment",
-              actionId: "add_comment",
-              label: "Add Comment",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-          ],
-        },
-        actionItems: [
-          {
-            id: "action-update",
-            actionId: "update_progress",
-            label: "Add Photos",
-            icon: "camera-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-          {
-            id: "action-comment",
-            actionId: "add_comment",
-            label: "Add Comment",
-            icon: "chatbubble-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-        ],
-      }),
-      actions: createAdapterActions(),
-    } as ReturnType<typeof useTaskDetailViewAdapter>);
-
-    const screen = render(
-      <TaskDetailScreen
-        taskId="task-1"
-        subTaskId="subtask-1"
-        onNavigateBack={jest.fn()}
-        onNavigateToCreateTask={onNavigateToCreateTask}
-      />,
-    );
-
-    fireEvent.press(screen.getByTestId("task-detail__quick-action-update_progress"));
-
-    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      "task-1",
-      "photos",
-      "subtask-1",
-    );
-  });
-
-  it("keeps Add Comment routed to the comment-first shared composer entry", () => {
-    const onNavigateToCreateTask = jest.fn();
-    mockUseTaskDetailViewAdapter.mockReturnValue({
-      output: createAdapterOutput({
-        quickActions: {
-          id: "task-quick-actions",
-          density: "standard",
-          structuralState: "ready",
-          actions: [
-            {
-              id: "action-update",
-              actionId: "update_progress",
-              label: "Add Photos",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-            {
-              id: "action-comment",
-              actionId: "add_comment",
-              label: "Add Comment",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-          ],
-        },
-        actionItems: [
-          {
-            id: "action-update",
-            actionId: "update_progress",
-            label: "Add Photos",
-            icon: "camera-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-          {
-            id: "action-comment",
-            actionId: "add_comment",
-            label: "Add Comment",
-            icon: "chatbubble-outline",
-            isDisabled: false,
-            density: "standard",
-            structuralState: "ready",
-          },
-        ],
-      }),
-      actions: createAdapterActions(),
-    } as ReturnType<typeof useTaskDetailViewAdapter>);
-
-    const screen = render(
-      <TaskDetailScreen
-        taskId="task-1"
-        subTaskId="subtask-1"
-        onNavigateBack={jest.fn()}
-        onNavigateToCreateTask={onNavigateToCreateTask}
-      />,
-    );
-
-    fireEvent.press(screen.getByTestId("task-detail__quick-action-add_comment"));
-
-    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      "task-1",
-      "comment",
-      "subtask-1",
-    );
-  });
-
-  it("renders task detail as a work-thread surface with header badges, one Task Details card, and no hero", () => {
+  it("renders task detail as a work-thread surface with status chips in Task Details, and no hero", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
     expect(screen.queryByTestId("task-detail__hero")).toBeNull();
-    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
+    expect(screen.getByTestId("task-detail__status_chips")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__delegation_summary")).toBeNull();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
@@ -633,7 +577,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByText("Submitted task for review")).toBeTruthy();
   });
 
-  it("renders the critical badge inside the header badge row and no standalone critical section", () => {
+  it("renders the critical badge inside the Task Details chip row and no standalone critical section", () => {
     const baseOutput = createAdapterOutput();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -649,7 +593,10 @@ describe("TaskDetailScreen acceptance UI", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Critical this week")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
+    expect(within(screen.getByTestId("task-detail__status_chips")).getByText("Critical this week")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("task-detail__status_chips__toggle"));
+    expect(within(screen.getByTestId("task-detail__status_chips")).getByText("Priority")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__toggle_critical_this_week")).toBeNull();
   });
 
@@ -797,15 +744,16 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByText("Other actions")).toBeTruthy();
     expect(screen.getByText("Edit Task Details")).toBeTruthy();
-    expect(screen.getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByText("Add Comment")).toBeNull();
   });
 
-  it("hides edit action for non-creators while keeping other secondary actions visible", () => {
+  it("hides edit action for non-creators while omitting photos and comment from the screen", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
-    expect(screen.getByText("Other actions")).toBeTruthy();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
-    expect(screen.getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByText("Add Comment")).toBeNull();
+    expect(screen.queryByText("Add Photos")).toBeNull();
+    expect(screen.queryByTestId("task-detail__location_editor")).toBeNull();
+    expect(screen.queryByTestId("task-detail__tags_primary_editor")).toBeNull();
   });
 });

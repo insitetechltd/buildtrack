@@ -149,22 +149,7 @@ describe("TaskDetailScreen sticky layout", () => {
     activities: [],
     childTasks: [],
     canEditDelegation: true,
-    quickActions: {
-      id: "task-quick-actions",
-      density: "standard",
-      structuralState: "ready",
-      actions: [
-        {
-          id: "quick-action-comment",
-          actionId: "add_comment",
-          label: "Add Comment",
-          icon: "chatbubble-outline",
-          isDisabled: false,
-          density: "standard",
-          structuralState: "ready",
-        },
-      ],
-    },
+    quickActions: undefined,
     actionItems: [],
     ...overrides,
   });
@@ -232,7 +217,8 @@ describe("TaskDetailScreen sticky layout", () => {
 
     expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
     expect(screen.queryByTestId("task-detail__hero")).toBeNull();
-    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
+    expect(screen.getByTestId("task-detail__status_chips")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__evidence_pinned_region")).toBeNull();
@@ -248,25 +234,9 @@ describe("TaskDetailScreen sticky layout", () => {
     );
   });
 
-  it("renders quick actions above the work thread and keeps other actions below the thread", () => {
+  it("keeps other actions below the work thread and omits inline location and tags editors", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
-        quickActions: {
-          id: "task-quick-actions",
-          density: "standard",
-          structuralState: "ready",
-          actions: [
-            {
-              id: "quick-action-accept",
-              actionId: "accept_task",
-              label: "Accept",
-              icon: "checkmark-circle-outline",
-              isDisabled: false,
-              density: "standard",
-              structuralState: "ready",
-            },
-          ],
-        },
         actionItems: [
           {
             id: "secondary-action-edit",
@@ -283,15 +253,17 @@ describe("TaskDetailScreen sticky layout", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
-    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__quick-actions")).toBeNull();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.getByTestId("task-detail__secondary-actions")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     const tree = screen.toJSON();
     const scrollIds = collectTestIds(findNodeByTestId(tree, "task-detail__scroll_region"));
     const otherActionsIds = collectTestIds(findNodeByTestId(tree, "task-detail__secondary-actions"));
-    expect(otherActionsIds).toContain("task-detail__location_editor");
-    expect(otherActionsIds).toContain("task-detail__tags_primary_editor");
+    expect(otherActionsIds).not.toContain("task-detail__location_editor");
+    expect(otherActionsIds).not.toContain("task-detail__tags_primary_editor");
+    expect(screen.queryByText("Location on Site")).toBeNull();
+    expect(screen.queryByText("Tags, Primary & Delegates")).toBeNull();
     expect(scrollIds.indexOf("task-detail__activity_thread")).toBeLessThan(
       scrollIds.indexOf("task-detail__secondary-actions"),
     );
@@ -337,7 +309,7 @@ describe("TaskDetailScreen sticky layout", () => {
     alertSpy.mockRestore();
   });
 
-  it("anchors the quick actions in a bottom action bar outside the scroll region", () => {
+  it("keeps accept and decline in the scroll region instead of a competing bottom action bar", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         quickActions: {
@@ -372,12 +344,10 @@ describe("TaskDetailScreen sticky layout", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
     const tree = screen.toJSON();
     const scrollRegionNode = findNodeByTestId(tree, "task-detail__scroll_region");
-    const bottomBarNode = findNodeByTestId(tree, "task-detail__bottom_action_bar");
 
     expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
-    expect(bottomBarNode).toBeTruthy();
-    expect(collectTestIds(bottomBarNode)).toContain("task-detail__quick-actions");
-    expect(collectTestIds(scrollRegionNode)).not.toContain("task-detail__quick-actions");
+    expect(findNodeByTestId(tree, "task-detail__bottom_action_bar")).toBeNull();
+    expect(collectTestIds(scrollRegionNode)).toContain("task-detail__quick-actions");
   });
 
   it("does not render separate subtasks or detail cards once info is merged into the new layout", () => {

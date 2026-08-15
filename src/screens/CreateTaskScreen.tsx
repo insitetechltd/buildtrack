@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal as RNModal,
-  Image,
   ActivityIndicator,
   type TextInputKeyPressEventData,
 } from "react-native";
@@ -20,9 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import Slider from "@react-native-community/slider";
-import * as ImagePicker from "expo-image-picker";
-import * as Clipboard from "expo-clipboard";
 import {
   type NavigationProp,
   useFocusEffect,
@@ -42,6 +38,8 @@ import { cn } from "../utils/cn";
 import ModalHandle from "../components/ModalHandle";
 import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
+import CompletionPercentageDialer from "../components/ui/CompletionPercentageDialer";
+import FileUploadHarness from "../components/ui/FileUploadHarness";
 import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
@@ -54,6 +52,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type {
   CameraLaunchContext,
   CameraPostCaptureDefault,
+  InAppLibraryPickerParams,
   PhotoSelectionParams,
 } from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
@@ -206,7 +205,10 @@ function CreateTaskEditorScreen({
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
   const { getAllUsers } = useUserStore();
   const navigation = useNavigation<
-    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
+    NavigationProp<{
+      PhotoSelection: PhotoSelectionParams;
+      InAppLibraryPicker: InAppLibraryPickerParams;
+    }>
   >();
   const { showPhotoSelectionDialog } = usePhotoSelection();
 
@@ -248,6 +250,7 @@ function CreateTaskEditorScreen({
     addCustomTag,
     removeCustomTag,
     removeAttachment,
+    mergeIncomingAttachments,
     setShowSuggestionPreview,
     saveLocationOnSiteSelection,
     expandContainerOrganization,
@@ -268,7 +271,10 @@ function CreateTaskEditorScreen({
   const handleTaskReferenceChange = (val: string) => updateField('taskReference', val);
   const handleDateChange = (date: Date) => updateField('dueDate', date);
 
-  const handlePriorityChange = (val: string) => { updateField('priority', val); setShowPriorityPicker(false); };
+  const handlePriorityChange = (val: string) => {
+    updateField("priority", val);
+    setShowPriorityPicker(false);
+  };
   const handleCategoryChange = (val: string) => { updateField('category', val); setShowCategoryPicker(false); };
   const handleBillingStatusChange = (val: string) => { updateField('billingStatus', val); setShowBillingStatusPicker(false); };
 
@@ -371,35 +377,77 @@ function CreateTaskEditorScreen({
   const handleAddPhotos = async () => {
     if (!user) return;
 
-    await showPhotoSelectionDialog({
-      onPhotosSelected: (photos) => {
-        const serializablePhotos = photos.map((photo) => ({
-          uri: photo.uri,
-          fileName: photo.fileName,
-          isAnnotated: photo.isAnnotated || false,
-        }));
+    const goToPhotoSelection = (photos: SelectedPhoto[]) => {
+      const serializablePhotos = photos.map((photo) => ({
+        uri: photo.uri,
+        fileName: photo.fileName,
+        isAnnotated: photo.isAnnotated || false,
+      }));
 
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            navigation.navigate("PhotoSelection", {
-              taskId: editTaskId,
-              subTaskId: parentSubTaskId,
-              companyId: user.companyId,
-              userId: user.id,
-              initialCompletionPercentage: 0,
-              initialPhotos: serializablePhotos,
-              returnScreen: "CreateTask",
-              actionType: actionType,
-              parentTaskId,
-              parentSubTaskId,
-              editTaskId,
-            });
-          }, 100);
-        });
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          navigation.navigate("PhotoSelection", {
+            taskId: editTaskId,
+            subTaskId: parentSubTaskId,
+            companyId: user.companyId,
+            userId: user.id,
+            initialCompletionPercentage: 0,
+            initialPhotos: serializablePhotos,
+            returnScreen: "CreateTask",
+            actionType: actionType,
+            parentTaskId,
+            parentSubTaskId,
+            editTaskId,
+          });
+        }, 100);
+      });
+    };
+
+    Alert.alert("Add Photos", "Choose how you want to add photos", [
+      {
+        text: "Take Photo",
+        onPress: () => {
+          void showPhotoSelectionDialog({
+            source: "camera",
+            allowClipboard: false,
+            allowMultiple: false,
+            onPhotosSelected: (photos) => {
+              goToPhotoSelection(
+                photos.map((photo) => ({
+                  uri: photo.uri,
+                  fileName: photo.fileName,
+                  isAnnotated: photo.isAnnotated || false,
+                  annotatedUri: photo.annotatedUri,
+                  caption: photo.caption,
+                })),
+              );
+            },
+          });
+        },
       },
-      allowClipboard: true,
-      allowMultiple: true,
-    });
+      {
+        text: "Choose from Library",
+        onPress: () => {
+          // Spike: in-app MediaLibrary gallery (not Apple PHPicker)
+          navigation.navigate("InAppLibraryPicker", {
+            taskId: editTaskId,
+            subTaskId: parentSubTaskId,
+            companyId: user.companyId,
+            userId: user.id,
+            initialCompletionPercentage: 0,
+            returnScreen: "CreateTask",
+            actionType: actionType,
+            parentTaskId,
+            parentSubTaskId,
+            editTaskId,
+          });
+        },
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
   };
   
   const removePhoto = (index: number) => {
@@ -514,15 +562,15 @@ function CreateTaskEditorScreen({
 
   useEffect(() => {
     if (selectedPhotosProp && selectedPhotosProp.length > 0) {
-      updateField('attachments', [...formData.attachments, ...selectedPhotosProp]);
+      mergeIncomingAttachments(selectedPhotosProp);
     }
-  }, [selectedPhotosProp]);
+  }, [selectedPhotosProp, mergeIncomingAttachments]);
 
   useEffect(() => {
     if (uploadedPhotoUrls && uploadedPhotoUrls.length > 0) {
-      updateField('attachments', [...formData.attachments, ...uploadedPhotoUrls]);
+      mergeIncomingAttachments(uploadedPhotoUrls);
     }
-  }, [uploadedPhotoUrls]);
+  }, [uploadedPhotoUrls, mergeIncomingAttachments]);
 
   if (!user) return null;
   if (isAdmin(user)) {
@@ -829,12 +877,14 @@ function CreateTaskEditorScreen({
                 <View className="flex-row flex-wrap gap-2">
                   {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
                     const isSelected = formData.priority === priority;
+                    const label = t.tasks[priority as keyof typeof t.tasks] || priority;
 
                     return (
                       <Pressable
                         key={priority}
                         testID={`createTask-priority-${priority}`}
                         onPress={() => handlePriorityChange(priority)}
+                        accessibilityState={{ selected: isSelected }}
                         className={cn(
                           "rounded-full border px-4 py-2.5",
                           isSelected ? "border-blue-600 bg-blue-50" : "border-gray-300 bg-white"
@@ -846,11 +896,41 @@ function CreateTaskEditorScreen({
                             isSelected ? "text-blue-700" : "text-gray-700"
                           )}
                         >
-                          {t.tasks[priority as keyof typeof t.tasks] || priority}
+                          {label}
                         </Text>
                       </Pressable>
                     );
                   })}
+                  <Pressable
+                    testID="create-task__toggle_critical_this_week"
+                    accessibilityRole="button"
+                    accessibilityLabel="Critical this week"
+                    accessibilityState={{ selected: formData.isCriticalThisWeek }}
+                    onPress={() =>
+                      updateField("isCriticalThisWeek", !formData.isCriticalThisWeek)
+                    }
+                    className={cn(
+                      "flex-row items-center rounded-full border px-4 py-2.5",
+                      formData.isCriticalThisWeek
+                        ? "border-amber-500 bg-amber-50"
+                        : "border-gray-300 bg-white"
+                    )}
+                  >
+                    <Ionicons
+                      name={formData.isCriticalThisWeek ? "flag" : "flag-outline"}
+                      size={14}
+                      color={formData.isCriticalThisWeek ? "#b45309" : "#6b7280"}
+                      style={{ marginRight: 6 }}
+                    />
+                    <Text
+                      className={cn(
+                        "text-sm font-medium",
+                        formData.isCriticalThisWeek ? "text-amber-800" : "text-gray-700"
+                      )}
+                    >
+                      This week
+                    </Text>
+                  </Pressable>
                 </View>
               </InputField>
 
@@ -1108,33 +1188,6 @@ function CreateTaskEditorScreen({
                   </View>
                 </View>
               )}
-
-              <Pressable
-                testID="create-task__toggle_critical_this_week"
-                accessibilityRole="button"
-                accessibilityState={{ selected: formData.isCriticalThisWeek }}
-                onPress={() => updateField("isCriticalThisWeek", !formData.isCriticalThisWeek)}
-                className={cn(
-                  "flex-row items-center justify-between rounded-xl border px-4 py-3",
-                  formData.isCriticalThisWeek
-                    ? "border-amber-300 bg-amber-50"
-                    : "border-gray-200 bg-white",
-                )}
-              >
-                <View className="mr-3 flex-1">
-                  <Text className="text-base font-semibold text-slate-900">
-                    Critical this week
-                  </Text>
-                  <Text className="mt-1 text-sm text-slate-600">
-                    Persist as tag critical_this_week on save.
-                  </Text>
-                </View>
-                <Ionicons
-                  name={formData.isCriticalThisWeek ? "flag" : "flag-outline"}
-                  size={20}
-                  color={formData.isCriticalThisWeek ? "#b45309" : "#6b7280"}
-                />
-              </Pressable>
 
               <InputField label="Tags">
                 <View testID="create-task__tags_editor">
@@ -1396,7 +1449,7 @@ function CreateTaskEditorScreen({
               return (
                 <Pressable
                   key={priority}
-                  testID={`createTask-priority-${priority}`}
+                  testID={`createTask-priority-modal-${priority}`}
                   onPress={() => {
                     handlePriorityChange(priority);
                     setShowPriorityPicker(false);
@@ -2256,7 +2309,7 @@ function TaskActionScreen({
     handleAddPhotos();
   }, [draftSelectedPhotos.length, initialIncomingPhotos.length, isPhotoFirstEntry, updateForm.photos.length]);
 
-  const handleAddPhotos = async () => {
+  const handleAddPhotos = async (source?: "camera" | "library") => {
     if (!user || !task || !targetTask) return;
 
     // Use unified photo selection utility
@@ -2302,6 +2355,7 @@ function TaskActionScreen({
       },
       allowClipboard: true,
       allowMultiple: true,
+      source,
     });
   };
 
@@ -2459,18 +2513,56 @@ function TaskActionScreen({
 
   // Render based on action type
   if (isSharedUpdateComposerMode) {
+    const composerTitle =
+      actionType === "photos"
+        ? "Add Photos"
+        : actionType === "comment"
+          ? "Add Comment"
+          : t.taskDetail.progressUpdate;
+
     return (
-      <View className="flex-1 bg-gray-50">
-        <SafeAreaView edges={['top']} className="flex-1">
+      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
+        <StatusBar style="dark" />
           <ModernScreenHeader
-            title={actionType === 'photos' ? 'Add Photos' : actionType === 'comment' ? 'Add Comment' : t.taskDetail.progressUpdate}
+            title={composerTitle}
+            titleNode={(
+              <Text
+                testID="update-progress__screen_title"
+                className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
+              >
+                {composerTitle}
+              </Text>
+            )}
             showBackButton={true}
             onBackPress={handleAttemptNavigateBack}
             onNavigateToProfile={onNavigateToProfile}
             onNavigateToProjectPicker={onNavigateToProjectPicker}
           />
-          <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Description */}
+          <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+            <FileUploadHarness
+              title={t.taskDetail.photosAndFiles}
+              items={updateForm.photos.map((photo, index) => ({
+                id: `${photo}-${index}`,
+                uri: photo,
+                status: "pending",
+                onRemove: () => {
+                  setDraftSelectedPhotos((prev) =>
+                    prev.filter((draftPhoto) => (draftPhoto.annotatedUri || draftPhoto.uri) !== photo),
+                  );
+                  setUpdateForm((prev) => ({
+                    ...prev,
+                    photos: prev.photos.filter((_: string, photoIndex: number) => photoIndex !== index),
+                  }));
+                },
+              }))}
+              onAdd={() => {
+                void handleAddPhotos();
+              }}
+              addTestID="update-progress__take_photo"
+              previewTestIDPrefix="update-progress__photo_preview_tile"
+              removeTestIDPrefix="update-progress__photo_preview_remove"
+            />
+
             <View className="mb-6">
               <Text className="text-xl font-semibold text-gray-900 mb-3">
                 {t.taskDetail.updateDescription}
@@ -2488,78 +2580,13 @@ function TaskActionScreen({
               />
             </View>
 
-            {/* Photos Section */}
             <View className="mb-6">
               <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.photosAndFiles}
+                {t.taskDetail.completionPercentage}
               </Text>
-              
-              {updateForm.photos.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                  <View className="flex-row">
-                    {updateForm.photos.map((photo, index) => (
-                      <View key={index} className="mr-3 relative">
-                        <Image
-                          source={{ uri: photo }}
-                          className="w-24 h-24 rounded-lg"
-                          resizeMode="cover"
-                        />
-                        <Pressable
-                          onPress={() => {
-                            const removedPhotoUri = photo;
-                            setDraftSelectedPhotos((prev) =>
-                              prev.filter((draftPhoto) => (draftPhoto.annotatedUri || draftPhoto.uri) !== removedPhotoUri),
-                            );
-                            setUpdateForm(prev => ({
-                              ...prev,
-                              photos: prev.photos.filter((_: any, i: number) => i !== index)
-                            }));
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                        >
-                          <Ionicons name="close" size={14} color="white" />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
-
-              <Pressable
-                onPress={handleAddPhotos}
-                className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
-              >
-                <View className="flex-row items-center flex-1">
-                  <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
-                  <Text className="text-gray-600 font-medium ml-2 text-sm">{t.taskDetail.tapToAddFiles}</Text>
-                </View>
-                {updateForm.photos.length > 0 && (
-                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-                )}
-              </Pressable>
-            </View>
-
-            {/* Completion Percentage */}
-            <View className="mb-6">
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xl font-semibold text-gray-900">
-                  {t.taskDetail.completionPercentage}
-                </Text>
-                <Text className="text-3xl font-bold text-blue-600">
-                  {updateForm.completionPercentage}%
-                </Text>
-              </View>
-              
-              <Slider
-                style={{ width: '100%', height: 40 }}
-                minimumValue={0}
-                maximumValue={100}
-                step={5}
+              <CompletionPercentageDialer
                 value={updateForm.completionPercentage}
-                onValueChange={(value: number) => setUpdateForm(prev => ({ ...prev, completionPercentage: value }))}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor="#d1d5db"
-                thumbTintColor="#3b82f6"
+                onChange={(value) => setUpdateForm((prev) => ({ ...prev, completionPercentage: value }))}
               />
             </View>
           </ScrollView>
@@ -2590,8 +2617,7 @@ function TaskActionScreen({
               </Pressable>
             </SafeAreaView>
           </View>
-        </SafeAreaView>
-      </View>
+    </SafeAreaView>
     );
   }
 
@@ -2620,51 +2646,23 @@ function TaskActionScreen({
           onNavigateToProjectPicker={onNavigateToProjectPicker}
         />
         <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-          <View className="mb-6">
-            <Text className="text-xl font-semibold text-gray-900 mb-3">
-              Photos
-            </Text>
-            
-            {updateForm.photos.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-                <View className="flex-row">
-                  {updateForm.photos.map((photo, index) => (
-                    <View key={index} className="mr-3 relative">
-                      <Image
-                        source={{ uri: photo }}
-                        className="w-24 h-24 rounded-lg"
-                        resizeMode="cover"
-                      />
-                      <Pressable
-                        onPress={() => {
-                          setUpdateForm(prev => ({
-                            ...prev,
-                            photos: prev.photos.filter((_: any, i: number) => i !== index)
-                          }));
-                        }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full items-center justify-center"
-                      >
-                        <Ionicons name="close" size={14} color="white" />
-                      </Pressable>
-                    </View>
-                  ))}
-                </View>
-              </ScrollView>
-            ) : null}
-
-            <Pressable
-              onPress={handleAddPhotos}
-              className="flex-row items-center justify-between border-2 border-dashed border-gray-300 rounded-lg px-4 py-3 bg-gray-50"
-            >
-              <View className="flex-row items-center flex-1">
-                <Ionicons name="cloud-upload-outline" size={20} color="#9ca3af" />
-                <Text className="text-gray-600 font-medium ml-2 text-sm">Tap to add photos</Text>
-              </View>
-              {updateForm.photos.length > 0 && (
-                <Ionicons name="checkmark-circle" size={20} color="#10b981" />
-              )}
-            </Pressable>
-          </View>
+          <FileUploadHarness
+            title="Photos"
+            items={updateForm.photos.map((photo, index) => ({
+              id: `${photo}-${index}`,
+              uri: photo,
+              onRemove: () => {
+                setUpdateForm((prev) => ({
+                  ...prev,
+                  photos: prev.photos.filter((_: string, photoIndex: number) => photoIndex !== index),
+                }));
+              },
+            }))}
+            onAdd={() => {
+              void handleAddPhotos();
+            }}
+            addTestID="update-progress__take_photo"
+          />
         </ScrollView>
 
         <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"

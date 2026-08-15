@@ -431,6 +431,32 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Loading task...')).toBeNull();
   });
 
+  it('shows Critical this week as a separate flagged pill next to priority', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(screen.queryByText('Persist as tag critical_this_week on save.')).toBeNull();
+    const thisWeekPill = screen.getByTestId('create-task__toggle_critical_this_week');
+    expect(thisWeekPill).toBeTruthy();
+    expect(screen.getByText('This week')).toBeTruthy();
+    expect(thisWeekPill.props.accessibilityState?.selected).toBe(false);
+
+    fireEvent.press(thisWeekPill);
+    expect(
+      screen.getByTestId('create-task__toggle_critical_this_week').props.accessibilityState
+        ?.selected,
+    ).toBe(true);
+
+    fireEvent.press(screen.getByTestId('createTask-priority-medium'));
+    expect(
+      screen.getByTestId('create-task__toggle_critical_this_week').props.accessibilityState
+        ?.selected,
+    ).toBe(true);
+  });
+
   it('renders the create task form as one continuous sheet with simplified section chrome', () => {
     const screen = render(
       <NavigationContainer>
@@ -511,7 +537,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 
-  it('renders an inline thumbnail-sized CTA when photos are already attached', () => {
+  it('keeps the dashed plus CTA when photos are already attached', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen 
@@ -527,11 +553,52 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    const inlineCta = screen.getByTestId('createTask-add-photos');
-    expect(inlineCta.props.className).toContain('w-24');
-    expect(inlineCta.props.className).toContain('h-24');
-    expect(inlineCta.props.className).not.toContain('py-5');
-    expect(screen.queryByTestId('create-task__attachments_cta_plus_icon')).toBeNull();
+    expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
+    expect(screen.getByTestId('create-task__attachments_cta_plus_icon')).toBeTruthy();
+  });
+
+  it('reuses the create-task Add photos / files section on Edit Task', () => {
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: 'task-1',
+          projectId: 'project-1',
+          title: 'Existing task',
+          description: 'Existing description',
+          taskReference: '',
+          billingStatus: 'non_billable',
+          priority: 'medium',
+          category: 'general',
+          dueDate: '2099-01-01T00:00:00.000Z',
+          assignedTo: ['worker-1'],
+          assignedBy: 'manager-1',
+          attachments: ['https://example.com/existing-photo.jpg'],
+          status: 'new',
+          completionPercentage: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchTaskById: jest.fn(),
+      addTaskUpdate: jest.fn(),
+      addAssignerComment: jest.fn(),
+    });
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} editTaskId="task-1" />
+      </NavigationContainer>
+    );
+
+    expect(screen.getByText('Edit Task')).toBeTruthy();
+    expect(screen.getByText('Add photos / files')).toBeTruthy();
+    expect(screen.getByTestId('create-task__attachments_section')).toBeTruthy();
+    expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
+    expect(screen.getByTestId('create-task__attachments_cta_plus_icon')).toBeTruthy();
   });
 
   it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
@@ -808,7 +875,12 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     fireEvent.changeText(screen.getByPlaceholderText('Describe progress'), 'Installed wall framing');
-    fireEvent(screen.getByTestId('Slider'), 'onValueChange', 55);
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
+    fireEvent.press(screen.getByTestId('update-progress__completion-plus'));
     fireEvent.press(screen.getByText('Submit Update'));
 
     await waitFor(() => {
@@ -828,7 +900,7 @@ describe('CreateTaskScreen Integration', () => {
       expect(screen.getByPlaceholderText('Describe progress').props.value).toBe('');
     });
 
-    expect(screen.getByText('25%')).toBeTruthy();
+    expect(screen.getByTestId('update-progress__completion-value')).toHaveTextContent('25%');
 
     fireEvent.press(screen.getByTestId('app-screen-header__back'));
 
@@ -1218,7 +1290,7 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    fireEvent.press(screen.getByText('Tap to add files'));
+    fireEvent.press(screen.getByTestId('update-progress__take_photo'));
 
     await waitFor(() => {
       expect(mockShowPhotoSelectionDialog).toHaveBeenCalledWith(
@@ -1229,6 +1301,7 @@ describe('CreateTaskScreen Integration', () => {
         }),
       );
     });
+    expect(mockShowPhotoSelectionDialog.mock.calls[0][0].source).toBeUndefined();
   });
 
   it('uses addSubTaskUpdate for shortcut submits targeting a subtask', async () => {
@@ -1934,8 +2007,46 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    expect(screen.getByText('Pending')).toBeTruthy();
+    expect(screen.queryByText('Pending')).toBeNull();
     expect(screen.getAllByText('1 file(s) added').length).toBeGreaterThan(0);
+  });
+
+  it('does not duplicate attachments when the same selected photos are applied again', () => {
+    const photos = [
+      {
+        uri: 'file:///flower.jpg',
+        fileName: 'flower.jpg',
+        isAnnotated: false,
+        mediaLibraryAssetId: 'flower',
+      },
+      {
+        uri: 'file:///plant.jpg',
+        fileName: 'plant.jpg',
+        isAnnotated: false,
+        mediaLibraryAssetId: 'plant',
+      },
+    ];
+
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} selectedPhotos={photos} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getAllByText('2 file(s) added').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
+    expect(screen.getByTestId('create-task__attachment_preview_1')).toBeTruthy();
+    expect(screen.queryByTestId('create-task__attachment_preview_2')).toBeNull();
+
+    screen.rerender(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} selectedPhotos={photos} />
+      </NavigationContainer>
+    );
+
+    expect(screen.getAllByText('2 file(s) added').length).toBeGreaterThan(0);
+    expect(screen.queryByText('4 file(s) added')).toBeNull();
+    expect(screen.queryByTestId('create-task__attachment_preview_2')).toBeNull();
   });
 
   it('shows the post-capture routing sheet when global camera capture returns with selected photos', () => {

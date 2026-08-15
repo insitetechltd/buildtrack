@@ -241,27 +241,21 @@ describe("TaskDetailQuickActions", () => {
     ]);
   });
 
-  it("shows update_progress and add_comment after the task is accepted", () => {
+  it("does not promote photos or comment into in-screen quick actions after accept", () => {
     const { output } = buildTaskDetailForStatus("accepted");
 
-    expect(output.quickActions?.actions.map((action) => action.actionId)).toEqual([
-      "update_progress",
-      "add_comment",
-    ]);
-    expect(output.quickActions?.actions.map((action) => action.label)).toEqual([
-      "Add Photos",
-      "Add Comment",
-    ]);
+    expect(output.quickActions).toBeUndefined();
+    expect(output.actionItems.some((action) => action.actionId === "update_progress")).toBe(true);
+    expect(output.actionItems.find((action) => action.actionId === "update_progress")?.label).toBe(
+      "Update",
+    );
   });
 
-  it("keeps update_progress and add_comment while the task is in review", () => {
+  it("does not promote photos or comment into in-screen quick actions during review", () => {
     const { output } = buildTaskDetailForStatus("submitted_for_review");
 
-    expect(output.quickActions?.actions.map((action) => action.actionId)).toEqual([
-      "update_progress",
-      "add_comment",
-    ]);
-    expect(output.quickActions?.actions.some((action) => action.actionId === "approve_task")).toBe(false);
-    expect(output.quickActions?.actions.some((action) => action.actionId === "reject_task")).toBe(false);
+    expect(output.quickActions).toBeUndefined();
+    expect(output.actionItems.some((action) => action.actionId === "approve_task")).toBe(true);
+    expect(output.actionItems.some((action) => action.actionId === "reject_task")).toBe(true);
   });
 });

@@ -27,9 +27,9 @@ appId: com.buildtrack.app.local
       - tapOn:
           id: "task-detail__quick-action-accept_task"
 - assertVisible:
-    id: "task-detail__quick-action-update_progress"
+    id: "root-tab__camera_button"
 - tapOn:
-    id: "task-detail__quick-action-update_progress"
+    id: "root-tab__camera_button"
 - assertVisible: "Progress Update"
 - tapOn:
     id: "update-progress__completion-slider"
@@ -61,8 +61,10 @@ appId: com.buildtrack.app.local
       notVisible:
         id: "task-detail__quick-action-submit_review"
     commands:
-      - tapOn:
-          id: "app-screen-header__back"
+      - swipe:
+          start: 2%, 45%
+          end: 80%, 45%
+          duration: 400
       - assertVisible:
           id: "tasks-screen__task_list"
       - tapOn:

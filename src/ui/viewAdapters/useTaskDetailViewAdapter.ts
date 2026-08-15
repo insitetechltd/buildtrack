@@ -835,6 +835,13 @@ export function useTaskDetailViewAdapter({
     containerId: task.containerId,
     subContainerId: task.subContainerId,
     tagLabels: getTaskTags(task.tags),
+    statusLabel: getStatusLabel(task.status),
+    categoryLabel: humanizeToken(task.category || 'general'),
+    completionLabel: `${task.completionPercentage}% complete`,
+    dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
+    isCritical: isCriticalThisWeek,
+    criticalLabel: isCriticalThisWeek ? 'Critical this week' : undefined,
+    isAssignedToCurrentUser: isAssignedToMe,
     detailRows: [],
   };
 
@@ -1022,8 +1029,8 @@ export function useTaskDetailViewAdapter({
     if (isAssignedToMe || isReviewerApprovalState) {
       addActionItem({
         actionId: 'update_progress',
-        label: 'Add Photos',
-        icon: 'camera-outline',
+        label: 'Update',
+        icon: 'create-outline',
       });
     }
 
@@ -1076,9 +1083,7 @@ export function useTaskDetailViewAdapter({
 
   const quickActionIds = isAwaitingAcceptance
     ? ['accept_task', 'decline_task']
-    : isActiveWorkState || isContributorReviewState || isReviewerApprovalState
-      ? ['update_progress', 'add_comment']
-      : [];
+    : [];
 
   const quickActions: TaskDetailQuickActionRowModel | undefined = quickActionIds.length
     ? {

@@ -150,22 +150,7 @@ describe("TaskDetailScreen header regression", () => {
     activities: [],
     childTasks: [],
     canEditDelegation: true,
-    quickActions: {
-      id: "task-quick-actions",
-      density: "standard",
-      structuralState: "ready",
-      actions: [
-        {
-          id: "quick-action-comment",
-          actionId: "add_comment",
-          label: "Add Comment",
-          icon: "chatbubble-outline",
-          isDisabled: false,
-          density: "standard",
-          structuralState: "ready",
-        },
-      ],
-    },
+    quickActions: undefined,
     actionItems: [],
     ...overrides,
   });
@@ -196,11 +181,14 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Loading...")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__header_title")).toBeTruthy();
+    expect(screen.getByText("LOADING...")).toBeTruthy();
+    expect(screen.getByText("Task details")).toBeTruthy();
+    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 
-  it("renders the loaded header title, badge row, and calls the provided back callback", () => {
+  it("renders the loaded two-line header without a back arrow", () => {
     const onNavigateBack = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -211,18 +199,23 @@ describe("TaskDetailScreen header regression", () => {
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
 
     expect(screen.getByTestId("task-detail__header_title_block")).toBeTruthy();
+    expect(screen.getByTestId("brand-header-title")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__header_title_subtitle")).toBeTruthy();
+    expect(screen.getByText("Task details")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__header_title").props.className).toContain("text-[24px]");
+    expect(screen.getByTestId("task-detail__header_title_subtitle").props.className).toContain("text-xs");
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
     expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
-    expect(screen.getByTestId("task-detail__header_badges")).toBeTruthy();
-    expect(screen.getByText("Interior")).toBeTruthy();
-    expect(screen.getByText("In Progress")).toBeTruthy();
-    expect(screen.getByText("50% complete")).toBeTruthy();
-    expect(screen.getByText("Due Jul 10, 2026")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
+    expect(screen.getByTestId("task-detail__status_chips")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("task-detail__status_chips__toggle"));
+    expect(within(screen.getByTestId("task-detail__info_card")).getByText("Interior")).toBeTruthy();
+    expect(within(screen.getByTestId("task-detail__info_card")).getByText("In Progress")).toBeTruthy();
+    expect(within(screen.getByTestId("task-detail__info_card")).getByText("50% complete")).toBeTruthy();
+    expect(within(screen.getByTestId("task-detail__info_card")).getByText("Jul 10, 2026")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
-
-    fireEvent.press(screen.getByTestId("app-screen-header__back"));
-
-    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
   });
 
   it("toggles the task detail header title inline when the title text is pressed", () => {
@@ -241,11 +234,11 @@ describe("TaskDetailScreen header regression", () => {
 
     expect(headerTitle.props.numberOfLines).toBe(1);
 
-    fireEvent.press(headerTitle);
+    fireEvent.press(screen.getByTestId("task-detail__header_title_pressable"));
 
     expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBeUndefined();
 
-    fireEvent.press(screen.getByTestId("task-detail__header_title"));
+    fireEvent.press(screen.getByTestId("task-detail__header_title_pressable"));
 
     expect(screen.getByTestId("task-detail__header_title").props.numberOfLines).toBe(1);
   });
@@ -485,8 +478,10 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
     expect(screen.queryByText("Details")).toBeNull();
-    expect(screen.getByText("Site: Level 9 Rooftop")).toBeTruthy();
-    expect(screen.getByText("By: Casey")).toBeTruthy();
+    expect(screen.getByText("Level 9 Rooftop")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("task-detail__people_group__toggle"));
+    expect(screen.getByText("Assigned by")).toBeTruthy();
+    expect(screen.getByText("Casey")).toBeTruthy();
     expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__subtasks")).toBeNull();
     expect(screen.queryByText("Subtasks")).toBeNull();
@@ -580,9 +575,8 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    const quickActions = screen.getByTestId("task-detail__quick-actions");
     const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
-    expect(within(quickActions).getByText("Add Comment")).toBeTruthy();
+    expect(screen.queryByTestId("task-detail__quick-actions")).toBeNull();
     expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
     expect(within(secondaryActions).getByText("Edit Task Details")).toBeTruthy();
     expect(within(secondaryActions).queryByText("Add Comment")).toBeNull();
@@ -618,13 +612,11 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByTestId("task-detail__quick-actions")).toBeTruthy();
-    expect(screen.getByText("Add Comment")).toBeTruthy();
-    const secondaryActions = screen.getByTestId("task-detail__secondary-actions");
-    expect(within(secondaryActions).getByText("Other actions")).toBeTruthy();
-    expect(within(secondaryActions).getByTestId("task-detail__location_editor")).toBeTruthy();
-    expect(within(secondaryActions).getByTestId("task-detail__tags_primary_editor")).toBeTruthy();
-    expect(within(secondaryActions).queryByText("Add Comment")).toBeNull();
+    expect(screen.queryByTestId("task-detail__quick-actions")).toBeNull();
+    expect(screen.queryByText("Add Comment")).toBeNull();
+    expect(screen.queryByTestId("task-detail__secondary-actions")).toBeNull();
+    expect(screen.queryByTestId("task-detail__location_editor")).toBeNull();
+    expect(screen.queryByTestId("task-detail__tags_primary_editor")).toBeNull();
     expect(screen.queryByText("Add Photos")).toBeNull();
     expect(screen.queryByText("Edit Task Details")).toBeNull();
     expect(screen.queryByTestId("task-detail__primary-action-bar")).toBeNull();

@@ -10,6 +10,7 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
+import { buildPhotoShortcutCreateTaskParams } from "@/navigation/photoShortcutRoutes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
 import { cn } from "@/utils/cn";
 
@@ -138,10 +139,12 @@ export default function TasksScreen(props: TasksScreenProps) {
 
   const handleTaskUpdatePress = (taskId: string) => {
     props.onNavigateToCreateTask({
-      editTaskId: taskId,
-      actionType: "update",
-      sourceScreen: "tasks",
-      clearForm: true,
+      ...buildPhotoShortcutCreateTaskParams({
+        taskId,
+        actionType: "update",
+        sourceScreen: "tasks",
+      }),
+      clearForm: false,
       _timestamp: Date.now(),
     });
   };

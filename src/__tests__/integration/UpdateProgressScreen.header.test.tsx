@@ -123,6 +123,8 @@ describe("UpdateProgressScreen header regression", () => {
 
     expect(screen.getByText("Progress Update")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
+    expect(screen.getByTestId("update-progress__take_photo")).toBeTruthy();
+    expect(screen.getByTestId("file-upload-harness__plus_icon")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
 

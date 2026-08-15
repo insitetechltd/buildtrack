@@ -66,6 +66,16 @@ jest.mock("@/components/photoEdit/SortablePhotoGrid", () => {
   };
 });
 
+jest.mock("@/components/photoEdit/DrawOverlay", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    DrawOverlay: function MockDrawOverlay() {
+      return <View testID="photo-selection__draw_overlay" />;
+    },
+  };
+});
+
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   useSafeAreaInsets: () => ({
@@ -119,6 +129,7 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
   const mockHandlePhotoPress = jest.fn();
   const mockHandleRotatePhoto = jest.fn();
   const mockHandleApplyCrop = jest.fn();
+  const mockHandleApplyDraw = jest.fn();
   const mockHandleResetEdits = jest.fn();
   const mockHandleAddPhotos = jest.fn();
   const mockHandleRemovePhoto = jest.fn();
@@ -161,6 +172,7 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
     handlePhotoPress: overrides.handlePhotoPress ?? mockHandlePhotoPress,
     handleRotatePhoto: overrides.handleRotatePhoto ?? mockHandleRotatePhoto,
     handleApplyCrop: overrides.handleApplyCrop ?? mockHandleApplyCrop,
+    handleApplyDraw: overrides.handleApplyDraw ?? mockHandleApplyDraw,
     handleResetEdits: overrides.handleResetEdits ?? mockHandleResetEdits,
     handleRemovePhoto: overrides.handleRemovePhoto ?? mockHandleRemovePhoto,
     handleUploadPhotos: overrides.handleUploadPhotos ?? mockHandleUploadPhotos,
@@ -283,7 +295,7 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(adapter.handleUploadPhotos).toHaveBeenCalledTimes(1);
   });
 
-  it("hosts rotate/crop/reset on edit modal and done returns to selection without finishing", () => {
+  it("hosts rotate/crop/draw/reset on edit modal and done returns to selection without finishing", () => {
     const photos = [
       { id: "p1", uri: "file://p1", caption: "", isAnnotated: false },
       { id: "p2", uri: "file://p2", caption: "", isAnnotated: true, annotatedUri: "file://p2-a" },
@@ -305,12 +317,21 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(screen.queryByTestId("photo-selection__preview_caption")).toBeNull();
     expect(screen.getByTestId("photo-selection__tool_rotate")).toBeTruthy();
     expect(screen.getByTestId("photo-selection__tool_crop")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tool_draw")).toBeTruthy();
     expect(screen.getByTestId("photo-selection__tool_reset")).toBeTruthy();
     expect(screen.getByTestId("photo-selection__preview_thumb_0")).toBeTruthy();
     expect(screen.getByTestId("photo-selection__preview_thumb_1")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("photo-selection__tool_rotate"));
     expect(adapter.handleRotatePhoto).toHaveBeenCalledWith(0);
+
+    fireEvent.press(screen.getByTestId("photo-selection__tool_draw"));
+    expect(screen.getByTestId("photo-selection__draw_overlay")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tool_draw_undo")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tool_draw_done")).toBeTruthy();
+
+    fireEvent.press(screen.getByTestId("photo-selection__tool_draw"));
+    expect(screen.queryByTestId("photo-selection__draw_overlay")).toBeNull();
 
     fireEvent.press(screen.getByTestId("photo-selection__tool_reset"));
     expect(adapter.handleResetEdits).toHaveBeenCalledWith(0);

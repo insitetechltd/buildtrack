@@ -8,6 +8,7 @@ const mockDismissBatch = jest.fn();
 
 const mockManipulateAsync = jest.fn();
 const mockPinDraftMedia = jest.fn();
+const mockBakeStrokesOntoPhoto = jest.fn();
 
 jest.mock("expo-image-manipulator", () => ({
   manipulateAsync: (...args: unknown[]) => mockManipulateAsync(...args),
@@ -16,6 +17,10 @@ jest.mock("expo-image-manipulator", () => ({
 
 jest.mock("../../../utils/draftMediaCache", () => ({
   pinDraftMedia: (...args: unknown[]) => mockPinDraftMedia(...args),
+}));
+
+jest.mock("../../../utils/bakePhotoDraw", () => ({
+  bakeStrokesOntoPhoto: (...args: unknown[]) => mockBakeStrokesOntoPhoto(...args),
 }));
 
 jest.mock("../../../api/fileUploadService", () => ({
@@ -78,6 +83,7 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     });
     mockManipulateAsync.mockResolvedValue({ uri: "file://edited.jpg" });
     mockPinDraftMedia.mockImplementation(async (uri: string) => `pinned:${uri}`);
+    mockBakeStrokesOntoPhoto.mockResolvedValue("file://drawn.jpg");
   });
 
   it("handleRotatePhoto bakes a 90° rotate into annotatedUri", async () => {
@@ -125,6 +131,35 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
       expect.objectContaining({ format: "jpeg" }),
     );
     expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
+  });
+
+  it("handleApplyDraw bakes strokes via Skia helper then pins annotatedUri", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [{ uri: "file://a.jpg", fileName: "a.jpg", isAnnotated: false }],
+      } as any),
+    );
+
+    const strokes = [
+      {
+        color: "#ef4444",
+        width: 8,
+        points: [
+          { x: 1, y: 1 },
+          { x: 20, y: 30 },
+        ],
+      },
+    ];
+
+    await act(async () => {
+      const applied = await result.current.handleApplyDraw(0, strokes);
+      expect(applied).toBe(true);
+    });
+
+    expect(mockBakeStrokesOntoPhoto).toHaveBeenCalledWith("file://a.jpg", strokes);
+    expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://drawn.jpg");
+    expect(result.current.output.photos[0].isAnnotated).toBe(true);
   });
 
   it("handleResetEdits clears annotatedUri back to original", async () => {

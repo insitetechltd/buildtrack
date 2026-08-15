@@ -16,9 +16,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { ScrollView as GestureScrollView } from "react-native-gesture-handler";
 
 import { CropOverlay } from "../components/photoEdit/CropOverlay";
+import { DrawOverlay } from "../components/photoEdit/DrawOverlay";
 import { PreviewEditToolbar } from "../components/photoEdit/PreviewEditToolbar";
 import SortablePhotoGrid from "../components/photoEdit/SortablePhotoGrid";
 import { cn } from "../utils/cn";
+import {
+  appendStroke,
+  DRAW_COLORS,
+  undoLastStroke,
+  type DrawColor,
+  type DrawStroke,
+} from "../utils/photoPreviewDraw";
 import type { SelectedPhoto } from "../utils/usePhotoSelection";
 import { usePhotoSelectionViewAdapter } from "../ui/viewAdapters/usePhotoSelectionViewAdapter";
 import type { PhotoSelectionSaveIntent } from "../ui/contracts/viewAdapters";
@@ -62,6 +70,9 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   const topPadding = insets.top > 0 ? insets.top + 8 : 16;
   const isDeferredReturn = props.uploadImmediately === false;
   const [cropMode, setCropMode] = useState(false);
+  const [drawMode, setDrawMode] = useState(false);
+  const [drawColor, setDrawColor] = useState<DrawColor>(DRAW_COLORS[0]);
+  const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
   const [previewImageSize, setPreviewImageSize] = useState({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
@@ -73,6 +84,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
     handlePhotoPress,
     handleRotatePhoto,
     handleApplyCrop,
+    handleApplyDraw,
     handleResetEdits,
     handleRemovePhoto,
     handleUploadPhotos,
@@ -105,17 +117,26 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   const isEditOpen =
     enlargedPhotoIndex !== null && enlargedPhoto != null && Boolean(previewUri);
 
-  /** Step 2: N-Photos / tile → open rotate·crop·reset editor (not accept). */
+  /** Step 2: N-Photos / tile → open rotate·crop·draw·reset editor (not accept). */
   const openEditScreen = (index: number) => {
     if (index < 0 || index >= photos.length) return;
     setCropMode(false);
+    setDrawMode(false);
+    setDrawStrokes([]);
     handlePhotoPress(index);
   };
 
   /** Leave editor only — does not accept the batch. */
   const closeEditScreen = () => {
     setCropMode(false);
+    setDrawMode(false);
+    setDrawStrokes([]);
     setEnlargedPhotoIndex(null);
+  };
+
+  const exitDrawMode = () => {
+    setDrawMode(false);
+    setDrawStrokes([]);
   };
 
   // Step 2: full-screen edit (rotate / crop / reset) — replaces selection until Done/X
@@ -160,6 +181,19 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                 }}
               />
             ) : null}
+            {drawMode ? (
+              <DrawOverlay
+                uri={previewUri}
+                containerWidth={previewImageSize.width}
+                containerHeight={previewImageSize.height}
+                color={drawColor}
+                strokes={drawStrokes}
+                disabled={isEditingPhoto}
+                onCommitStroke={(stroke) => {
+                  setDrawStrokes((previous) => appendStroke(previous, stroke));
+                }}
+              />
+            ) : null}
 
             <View
               pointerEvents="box-none"
@@ -184,10 +218,10 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               <Pressable
                 testID="photo-selection__preview_confirm"
                 onPress={closeEditScreen}
-                disabled={cropMode}
+                disabled={cropMode || drawMode}
                 className={cn(
                   "h-11 w-11 items-center justify-center rounded-full",
-                  cropMode ? "bg-gray-600" : "bg-zinc-700",
+                  cropMode || drawMode ? "bg-gray-600" : "bg-zinc-700",
                 )}
                 accessibilityRole="button"
                 accessibilityLabel="Done editing photo"
@@ -206,13 +240,40 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               disabled={isUploading}
               isEditing={isEditingPhoto}
               cropMode={cropMode}
+              drawMode={drawMode}
+              drawColor={drawColor}
+              canUndoDraw={drawStrokes.length > 0}
               onRotate={() => handleRotatePhoto(enlargedPhotoIndex)}
-              onToggleCrop={() => setCropMode((v) => !v)}
-              onReset={() => handleResetEdits(enlargedPhotoIndex)}
+              onToggleCrop={() => {
+                setDrawMode(false);
+                setDrawStrokes([]);
+                setCropMode((value) => !value);
+              }}
+              onToggleDraw={() => {
+                if (drawMode) {
+                  exitDrawMode();
+                  return;
+                }
+                setCropMode(false);
+                setDrawMode(true);
+              }}
+              onSelectDrawColor={setDrawColor}
+              onUndoDraw={() => setDrawStrokes((previous) => undoLastStroke(previous))}
+              onDoneDraw={async () => {
+                const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
+                if (applied) {
+                  exitDrawMode();
+                }
+              }}
+              onReset={() => {
+                exitDrawMode();
+                setCropMode(false);
+                handleResetEdits(enlargedPhotoIndex);
+              }}
               onRemove={() => handleRemovePhoto(enlargedPhotoIndex)}
             />
 
-            {!cropMode ? (
+            {!cropMode && !drawMode ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -245,7 +306,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               </ScrollView>
             ) : null}
 
-            {enlargedPhoto.isAnnotated && !cropMode ? (
+            {enlargedPhoto.isAnnotated && !cropMode && !drawMode ? (
               <View className="px-4 pb-2">
                 <View className="bg-green-600 rounded-xl py-2 px-4 flex-row items-center justify-center">
                   <Ionicons name="checkmark-circle" size={16} color="white" />

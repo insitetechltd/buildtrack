@@ -1,7 +1,7 @@
 # Photo Preview Light Edit — Phase 1 Plan
 
-> **Status (2026-08-15):** **Parked — Phase 1 rotate/crop/reset + Select Photos grid UX landed in working tree (commit pending).**  
-> Phase 2 draw spike and Phase 3 caption remain deferred. No IMGLY on library path.
+> **Status (2026-08-15):** **Phase 1 + Phase 2 Draw closed.**  
+> Phase 1 rotate/crop/reset + Select Photos grid UX landed. Phase 2 pen draw (Skia offscreen bake → `annotatedUri`) shipped; iOS native rebuild via `ios.buildReactNativeFromSource=true` (keeps static frameworks for IMGLY). Phase 3 caption remains deferred. No IMGLY on library path.
 
 > **For agentic workers:** Implement task-by-task. Checkboxes track progress. Do **not** start Phase 2 draw until the spike checklist passes. Caption is **Phase 3 optional** — do not ship in Phase 1.
 
@@ -99,7 +99,7 @@ Keep `expo-image-picker` multi-select; keep `fileUploadService` + `imageCompress
 ### Task 5: Reviewer gate
 
 - [x] Gesture conflicts, crop mapping, Reset, no upload drift (self-review; residual: device crop QA).
-- [ ] Commit only if user requests.
+- [x] Commit only if user requests.
 
 ---
 
@@ -115,11 +115,11 @@ Keep `expo-image-picker` multi-select; keep `fileUploadService` + `imageCompress
 
 ## Phase 2 spike (draw only — not Phase 1)
 
-- [ ] Skia (or chosen bake) boots on Expo 54 iOS + Android.
-- [ ] Strokes on large JPEG; undo; export at **source** resolution (not screen shot).
-- [ ] Export → existing compression → upload/draft pin.
-- [ ] No gesture deadlocks with thumbs.
-- [ ] Spike fail → contingency; do **not** return IMGLY to this path.
+- [x] Skia (or chosen bake) boots on Expo 54 iOS + Android. — `@shopify/react-native-skia@2.2.12`; native rebuild unblocked via `ios.buildReactNativeFromSource=true` (keeps `useFrameworks: static` for IMGLY). `RNSkiaModule.mm` compiled; Build Succeeded 2026-08-15.
+- [x] Strokes on large JPEG; undo; export at **source** resolution (not screen shot). — `bakeStrokesOntoPhoto` offscreen surface + SVG live overlay.
+- [x] Export → existing compression → upload/draft pin. — bake → `writeClipboardImageToDraft` / `pinDraftMedia` → `annotatedUri`.
+- [x] No gesture deadlocks with thumbs. — thumbs hidden while drawMode; pan on overlay only.
+- [x] Spike fail → contingency; do **not** return IMGLY to this path. — N/A (spike passed; view-shot contingency not needed). Human smoke: Draw works; setState-in-render redbox fixed.
 
 **Phase 2 scope:** 1 pen, few colors, undo; no stickers/filters/text-on-image.
 

@@ -7,6 +7,8 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { uploadFileWithVerification } from '../../api/fileUploadService';
 import { pinDraftMedia } from '../../utils/draftMediaCache';
 import type { SourceCrop } from '../../utils/photoPreviewEdit';
+import { bakeStrokesOntoPhoto } from '../../utils/bakePhotoDraw';
+import type { DrawStroke } from '../../utils/photoPreviewDraw';
 import type { SelectedPhoto } from '../../utils/usePhotoSelection';
 import type {
   MiniPickerTask,
@@ -82,6 +84,7 @@ export function usePhotoSelectionViewAdapter({
   handlePhotoPress: (index: number) => void;
   handleRotatePhoto: (index: number) => Promise<void>;
   handleApplyCrop: (index: number, crop: SourceCrop) => Promise<void>;
+  handleApplyDraw: (index: number, strokes: DrawStroke[]) => Promise<boolean>;
   handleResetEdits: (index: number) => void;
   handleRemovePhoto: (index: number) => void;
   handleUploadPhotos: () => Promise<void>;
@@ -297,6 +300,31 @@ export function usePhotoSelectionViewAdapter({
     } catch (error: any) {
       console.error('❌ [PhotoSelection] Crop failed:', error);
       Alert.alert('Error', error.message || 'Failed to crop photo.');
+    } finally {
+      setIsEditingPhoto(false);
+    }
+  };
+
+  const handleApplyDraw = async (index: number, strokes: DrawStroke[]): Promise<boolean> => {
+    const photo = selectedPhotos[index];
+    if (!photo) return false;
+    if (!strokes.length) {
+      Alert.alert('Nothing to apply', 'Draw at least one stroke before tapping Done.');
+      return false;
+    }
+
+    try {
+      setIsEditingPhoto(true);
+      const bakedUri = await bakeStrokesOntoPhoto(workingUri(photo), strokes);
+      await commitEditedUri(index, bakedUri);
+      return true;
+    } catch (error: any) {
+      console.error('❌ [PhotoSelection] Draw bake failed:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to apply drawing. Rebuild the app if Skia is missing.',
+      );
+      return false;
     } finally {
       setIsEditingPhoto(false);
     }
@@ -650,6 +678,7 @@ export function usePhotoSelectionViewAdapter({
     handlePhotoPress,
     handleRotatePhoto,
     handleApplyCrop,
+    handleApplyDraw,
     handleResetEdits,
     handleRemovePhoto,
     handleUploadPhotos,

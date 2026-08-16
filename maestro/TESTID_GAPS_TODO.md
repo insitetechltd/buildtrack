@@ -28,3 +28,8 @@ Priority scale:
 | (shared across flows) | ProjectPicker root container (asserting list rendered) | `id:project-picker__root` already exists per journey 4 — OK | — | — | N/A | — | — |
 | (create-task-photo suite) | In-app library gallery tile | percent `point:` tap | `in-app-library__tile_${assetId}` (future) | P0 | PLATFORM_LIMITATION | 2026-08-16 | `expo-image-multiple-picker` tiles have no RN testID. Suite uses iPhone 17 Pro Max percent taps. |
 | (create-task-photo suite) | Create Task add-photos sheet | text "Choose from Library" | — | P1 | PLATFORM_LIMITATION | 2026-08-16 | RN Alert.alert — same as Update Progress photo sheet. |
+| (create-task-photo suite) | Keyboard dismiss on submit | percent `point: 50%, 12%` in `_submit-create-task` | — | P1 | ACCEPTED | 2026-08-16 | `hideKeyboard` flakes on this sim; header chrome tap is intentional. |
+
+## B8 standing-order note (2026-08-16)
+
+M-QA-03 P0/P1 journey gaps remain **COMPLETED** or **PLATFORM_LIMITATION**. Create-task-photo residual selectors are documented above; no further product testID work without wrapping/replacing `expo-image-multiple-picker` tiles (out of B8 — would be product scope). Helper flake fixes for the photo suite already shipped with `edafbba` (`_open-library` LogBox drain, cancel retries, submit success wait, suite `START_FROM` guard).

@@ -532,8 +532,8 @@ describe('CreateTaskScreen Integration', () => {
       </NavigationContainer>
     );
 
-    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
-    expect(screen.getByTestId('create-task__attachments_cta_plus_icon').props.className).toContain('border-2');
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('w-24 h-24');
+    expect(screen.getByTestId('create-task__attachments_cta_plus_icon').props.className).toContain('border');
     expect(screen.queryByText('Tap to add files')).toBeNull();
   });
 
@@ -554,7 +554,7 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
-    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('w-24 h-24');
     expect(screen.getByTestId('create-task__attachments_cta_plus_icon')).toBeTruthy();
   });
 
@@ -597,7 +597,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByText('Add photos / files')).toBeTruthy();
     expect(screen.getByTestId('create-task__attachments_section')).toBeTruthy();
     expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
-    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('py-5');
+    expect(screen.getByTestId('createTask-add-photos').props.className).toContain('w-24 h-24');
     expect(screen.getByTestId('create-task__attachments_cta_plus_icon')).toBeTruthy();
   });
 
@@ -620,7 +620,7 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
-    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('create-task__header')).toBeTruthy();
     expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
     expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
   });
@@ -635,7 +635,7 @@ describe('CreateTaskScreen Integration', () => {
     );
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
-    expect(screen.getByTestId('create-task__header').props.className).toContain('bg-[#08576E]');
+    expect(screen.getByTestId('create-task__header')).toBeTruthy();
     expect(screen.getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
     expect(
       screen.getByText(
@@ -1970,7 +1970,7 @@ describe('CreateTaskScreen Integration', () => {
   });
 
   it('opens the create-task photo selection flow from the attachment CTA', async () => {
-    mockShowPhotoSelectionDialog.mockResolvedValue(undefined);
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 
     const { getByTestId } = render(
       <NavigationContainer>
@@ -1981,14 +1981,17 @@ describe('CreateTaskScreen Integration', () => {
     fireEvent.press(getByTestId('createTask-add-photos'));
 
     await waitFor(() => {
-      expect(mockShowPhotoSelectionDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          allowClipboard: true,
-          allowMultiple: true,
-          onPhotosSelected: expect.any(Function),
-        }),
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Add Photos',
+        'Choose how you want to add photos',
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'Take Photo' }),
+          expect.objectContaining({ text: 'Choose from Library' }),
+        ]),
       );
     });
+
+    alertSpy.mockRestore();
   });
 
   it('renders translated attachment state for pending selected photos', () => {

@@ -279,7 +279,9 @@ describe("ModernUiMarker", () => {
     expect(dashboardScreen.getByText("Recent Activity")).toBeTruthy();
     expect(dashboardScreen.queryByText("Modern UI")).toBeNull();
 
-    expect(taskDetailScreen.getByText("Task Details")).toBeTruthy();
+    // BrandHeaderTitle uppercases the label ("Task Details" → "TASK DETAILS")
+    expect(taskDetailScreen.getByTestId("task-detail__header_title")).toBeTruthy();
+    expect(taskDetailScreen.getByText("TASK DETAILS")).toBeTruthy();
     expect(taskDetailScreen.queryByText("Modern UI")).toBeNull();
   });
 });

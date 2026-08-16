@@ -8,12 +8,19 @@ import {
   getRequestCacheEnvelope,
   supabase,
 } from '@/api/supabase';
+import { getSessionScopedSupabase } from '@/api/supabaseSessionGate';
 import { Task, TaskCategory, TaskStatus } from '@/types/buildtrack';
 
 jest.mock('@/api/supabase');
+jest.mock('@/api/supabaseSessionGate', () => ({
+  getSessionScopedSupabase: jest.fn(),
+}));
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockFrom = mockSupabase.from as unknown as jest.Mock;
+const mockGetSessionScopedSupabase = getSessionScopedSupabase as jest.MockedFunction<
+  typeof getSessionScopedSupabase
+>;
 
 const managerId = 'manager-123';
 const workerId = 'worker-456';
@@ -111,6 +118,20 @@ describe('taskStore.supabase unit tests', () => {
     resetTaskStore();
     clearRequestCoordinator();
     jest.clearAllMocks();
+    // Post M-SUPABASE-02a: fetchTasks no-ops without a JWT session.
+    mockGetSessionScopedSupabase.mockResolvedValue(mockSupabase as any);
+  });
+
+  it('skips fetchTasks when there is no Supabase session (avoids anon 42501)', async () => {
+    mockGetSessionScopedSupabase.mockResolvedValue(null);
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks).toHaveLength(0);
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 
   it('fetches tasks from Supabase, caches them, and only refetches on force refresh', async () => {

@@ -79,6 +79,8 @@ npm run validate:local:confidence  # local confidence wrapper
 # Maestro: always via scripts/maestro/run-local.sh (see maestro/README.md)
 ```
 
+`dev:doctor` may report `WARN .trae/ still present` — **expected** until the exit checklist “Delete or archive `.trae/`” item is explicitly completed. Cursor rules remain SoT; do not treat that WARN as a fail.
+
 ## Related
 
 - Handoff packet (Trae exit context): `cursor-handoff-2026-08-08.md`

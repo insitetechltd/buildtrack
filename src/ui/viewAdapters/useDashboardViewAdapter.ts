@@ -91,6 +91,37 @@ function formatStatusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+/** Activity-row lead line: clearer than a bare status token like "New". */
+function formatActivityHeadline(status: string): string {
+  switch (status.trim().toLowerCase()) {
+    case "new":
+    case "not_started":
+    case "assigned":
+    case "received":
+      return "New Task";
+    case "accepted":
+      return "Task Accepted";
+    case "in_progress":
+      return "Task In Progress";
+    case "submitted_for_review":
+    case "pending_review":
+      return "Submitted for Review";
+    case "rejected":
+    case "declined":
+      return "Task Rejected";
+    case "approved":
+    case "completed":
+    case "done":
+      return "Task Completed";
+    case "cancelled":
+      return "Task Cancelled";
+    default: {
+      const label = formatStatusLabel(status);
+      return label.toLowerCase().includes("task") ? label : `${label} Task`;
+    }
+  }
+}
+
 function formatElapsedDayLabel(startDate?: string): string {
   if (!startDate) {
     return "Day 1";
@@ -451,10 +482,11 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             {
               id: `activity-task:${task.id}`,
               taskId: task.id,
-              title: task.title,
-              subtitle: task.description || resolvedActiveProject?.name || "Active project task",
+              // Activity recipe: lead with change headline, task title secondary
+              title: formatActivityHeadline(task.status),
+              subtitle: task.title,
               timestampLabel: "Task activity",
-              statusLabel: task.status.replace(/_/g, " "),
+              statusLabel: formatStatusLabel(task.status),
               previewPhotoUri: collectTaskPhotoUris(task)[0],
               density: "standard" as const,
               structuralState,
@@ -463,23 +495,29 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
           ];
         }
 
-        return updates.map((update) => ({
-          id: update.id,
-          taskId: task.id,
-          title: task.title,
-          subtitle: update.description,
-          timestampLabel: new Date(update.timestamp).toLocaleString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-          }),
-          statusLabel: update.status.replace(/_/g, " "),
-          previewPhotoUri: resolveImageUri(update.photos?.[0]) || collectTaskPhotoUris(task)[0],
-          density: "standard" as const,
-          structuralState,
-          sortTimestamp: update.timestamp,
-        }));
+        return updates.map((update) => {
+          const description = update.description?.trim() ?? "";
+          const changeLine = description.length > 0
+            ? description
+            : formatActivityHeadline(update.status);
+          return {
+            id: update.id,
+            taskId: task.id,
+            title: changeLine,
+            subtitle: task.title,
+            timestampLabel: new Date(update.timestamp).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+            statusLabel: formatStatusLabel(update.status),
+            previewPhotoUri: resolveImageUri(update.photos?.[0]) || collectTaskPhotoUris(task)[0],
+            density: "standard" as const,
+            structuralState,
+            sortTimestamp: update.timestamp,
+          };
+        });
       })
       .filter((item) => {
         const timestamp = new Date(
@@ -599,6 +637,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         dateLabel,
         title: task.title,
         subtitle: buildCriticalDateSubtitle(task),
+        imageUri: collectTaskPhotoUris(task)[0],
       }));
     const resolvedProjectSummaryCard = resolvedActiveProject
       ? {

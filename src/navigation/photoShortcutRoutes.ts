@@ -3,6 +3,7 @@ import type {
   PhotoSelectionParams,
   RootTabParamList,
   TaskDetailParams,
+  UpdateProgressParams,
 } from "./navigationTypes";
 
 type RouteStateLike = {
@@ -17,13 +18,14 @@ type RouteLike = {
 };
 
 export function shouldReturnToCreateTaskShortcut({
-  returnScreen,
-  actionType,
+  returnScreen: _returnScreen,
+  actionType: _actionType,
 }: {
   returnScreen?: PhotoSelectionParams["returnScreen"];
   actionType?: string;
 }) {
-  return returnScreen === "UpdateProgress" && actionType === "update";
+  // S-UX-01Q C3: Update Progress photo returns stay on UpdateProgress (no CreateTask TaskAction).
+  return false;
 }
 
 export function buildPhotoShortcutCreateTaskParams({
@@ -87,9 +89,9 @@ function getActiveIndex(state?: RouteStateLike) {
   return routes.length - 1;
 }
 
-export function resolveTaskDetailCameraTabParams(
+export function resolveTaskDetailUpdateShortcut(
   tabState?: RouteStateLike,
-): RootTabParamList["Camera"] | undefined {
+): { tabName: "Activity" | "Tasks"; params: UpdateProgressParams } | undefined {
   const activeTabIndex = getActiveIndex(tabState);
   const activeTabName =
     activeTabIndex === undefined ? undefined : tabState?.routes?.[activeTabIndex]?.name;
@@ -121,13 +123,35 @@ export function resolveTaskDetailCameraTabParams(
     return undefined;
   }
 
+  const tabName = activeTabName === "Activity" ? "Activity" : "Tasks";
+  return {
+    tabName,
+    params: {
+      taskId: taskDetailParams.taskId,
+      subTaskId: taskDetailParams.subTaskId,
+      sourceScreen: tabName === "Activity" ? "dashboard" : "tasks",
+      sourceTaskId: taskDetailParams.taskId,
+      sourceSubTaskId: taskDetailParams.subTaskId,
+    },
+  };
+}
+
+/** @deprecated Prefer resolveTaskDetailUpdateShortcut (C3). Kept for compatibility shims. */
+export function resolveTaskDetailCameraTabParams(
+  tabState?: RouteStateLike,
+): RootTabParamList["Camera"] | undefined {
+  const shortcut = resolveTaskDetailUpdateShortcut(tabState);
+  if (!shortcut) {
+    return undefined;
+  }
+
   return {
     screen: "CreateTaskMain",
     params: buildPhotoShortcutCreateTaskParams({
-      taskId: taskDetailParams.taskId,
-      subTaskId: taskDetailParams.subTaskId,
+      taskId: shortcut.params.taskId,
+      subTaskId: shortcut.params.subTaskId,
       actionType: "update",
-      sourceScreen: activeTabName === "Activity" ? "dashboard" : "tasks",
+      sourceScreen: shortcut.params.sourceScreen === "dashboard" ? "dashboard" : "tasks",
     }),
   };
 }

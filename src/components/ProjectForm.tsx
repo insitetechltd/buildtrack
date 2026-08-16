@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import TextField from "@/components/primitives/input/TextField";
+import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import { useAuthStore } from "../state/authStore";
 import { ProjectStatus, Project } from "../types/buildtrack";
 import { cn } from "../utils/cn";
@@ -255,90 +257,75 @@ export default function ProjectForm({
           <Text className="text-2xl font-bold text-gray-900 mb-4">Project Information</Text>
           
           <View className="space-y-4">
-            {/* Client Name */}
-            <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">
-                Client <Text className="text-red-500">*</Text>
-              </Text>
-              <TextInput
-                ref={clientNameInputRef}
-                className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
-                  errors.clientName ? "border-red-300" : "border-gray-300"
-                )}
-                placeholder="Enter client name"
-                value={formData.clientInfo.name}
-                onChangeText={(text) => handleClientChange("name", text)}
-                maxLength={100}
-                returnKeyType="next"
-                onKeyPress={(event) => handleFieldKeyPress("clientName", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("clientName");
-                }}
-                blurOnSubmit={false}
-              />
-              {errors.clientName && (
-                <Text className="text-red-500 text-sm mt-1">{errors.clientName}</Text>
-              )}
-            </View>
+            <TextField
+              contract={buildFormTextFieldContract({
+                id: "project-clientName",
+                label: "Client",
+                value: formData.clientInfo.name,
+                placeholder: "Enter client name",
+                error: errors.clientName,
+                required: true,
+                testId: "project-form-clientName",
+              })}
+              inputTestId="project-form-clientName"
+              inputRef={clientNameInputRef}
+              onChangeText={(text) => handleClientChange("name", text)}
+              maxLength={100}
+              returnKeyType="next"
+              onKeyPress={(event) => handleFieldKeyPress("clientName", event)}
+              onSubmitEditing={() => {
+                moveFormFocus("clientName");
+              }}
+              blurOnSubmit={false}
+            />
 
-            {/* Project Name */}
-            <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">
-                Project Title <Text className="text-red-500">*</Text>
-              </Text>
-              <TextInput
-                ref={projectNameInputRef}
-                className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg",
-                  errors.name ? "border-red-300" : "border-gray-300"
-                )}
-                placeholder="Enter project name"
-                value={formData.name}
-                onChangeText={handleNameChange}
-                maxLength={100}
-                returnKeyType="next"
-                onKeyPress={(event) => handleFieldKeyPress("name", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("name");
-                }}
-                blurOnSubmit={false}
-              />
-              {errors.name && (
-                <Text className="text-red-500 text-sm mt-1">{errors.name}</Text>
-              )}
-            </View>
+            <TextField
+              contract={buildFormTextFieldContract({
+                id: "project-name",
+                label: "Project Title",
+                value: formData.name,
+                placeholder: "Enter project name",
+                error: errors.name,
+                required: true,
+                testId: "project-form-name",
+              })}
+              inputTestId="project-form-name"
+              inputRef={projectNameInputRef}
+              onChangeText={handleNameChange}
+              maxLength={100}
+              returnKeyType="next"
+              onKeyPress={(event) => handleFieldKeyPress("name", event)}
+              onSubmitEditing={() => {
+                moveFormFocus("name");
+              }}
+              blurOnSubmit={false}
+            />
 
-            {/* Description */}
-            <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">
-                Description <Text className="text-red-500">*</Text>
-              </Text>
-              <TextInput
-                ref={descriptionInputRef}
-                className={cn(
-                  "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[90px]",
-                  errors.description ? "border-red-300" : "border-gray-300"
-                )}
-                placeholder="Project description"
-                value={formData.description}
-                onChangeText={handleDescriptionChange}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-                maxLength={500}
-                style={{ minHeight: 90 }}
-                returnKeyType="next"
-                onKeyPress={(event) => handleFieldKeyPress("description", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("description");
-                }}
-                blurOnSubmit={false}
-              />
-              {errors.description && (
-                <Text className="text-red-500 text-sm mt-1">{errors.description}</Text>
-              )}
-            </View>
+            <TextField
+              contract={buildFormTextFieldContract({
+                id: "project-description",
+                label: "Description",
+                value: formData.description,
+                placeholder: "Project description",
+                error: errors.description,
+                required: true,
+                testId: "project-form-description",
+              })}
+              inputTestId="project-form-description"
+              inputRef={descriptionInputRef}
+              inputClassName="min-h-[90px]"
+              onChangeText={handleDescriptionChange}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              maxLength={500}
+              returnKeyType="next"
+              onKeyPress={(event) => handleFieldKeyPress("description", event)}
+              onSubmitEditing={() => {
+                moveFormFocus("description");
+              }}
+              blurOnSubmit={false}
+            />
 
             {/* Status */}
             <View className="relative" style={{ zIndex: showStatusPicker ? 1000 : 1 }}>
@@ -406,73 +393,77 @@ export default function ProjectForm({
             <Text className="text-red-500 text-2xl font-bold ml-1">*</Text>
           </View>
           
-          <View>
-            <TextInput
-              ref={locationInputRef}
-              className={cn(
-                "border rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg min-h-[130px]",
-                errors.location ? "border-red-300" : "border-gray-300"
-              )}
-              placeholder="Enter full address (street, city, state/province, postal code, country)"
-              value={formData.location}
-              onChangeText={handleLocationChange}
-              multiline={true}
-              numberOfLines={5}
-              textAlignVertical="top"
-              style={{ minHeight: 130 }}
-              returnKeyType="next"
-              onKeyPress={(event) => handleFieldKeyPress("location", event)}
-              onSubmitEditing={() => {
-                moveFormFocus("location");
-              }}
-              blurOnSubmit={false}
-            />
-            {errors.location && (
-              <Text className="text-red-500 text-sm mt-1">{errors.location}</Text>
-            )}
-          </View>
+          <TextField
+            contract={buildFormTextFieldContract({
+              id: "project-location",
+              label: "",
+              value: formData.location,
+              placeholder: "Enter full address (street, city, state/province, postal code, country)",
+              error: errors.location,
+              required: true,
+              testId: "project-form-location",
+            })}
+            collapseEmptyChrome
+            inputTestId="project-form-location"
+            inputRef={locationInputRef}
+            inputClassName="min-h-[130px]"
+            onChangeText={handleLocationChange}
+            multiline
+            numberOfLines={5}
+            textAlignVertical="top"
+            returnKeyType="next"
+            onKeyPress={(event) => handleFieldKeyPress("location", event)}
+            onSubmitEditing={() => {
+              moveFormFocus("location");
+            }}
+            blurOnSubmit={false}
+          />
         </View>
 
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <Text className="text-2xl font-bold text-gray-900 mb-4">Client Contact</Text>
 
           <View className="space-y-4">
-            <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">Client Email</Text>
-              <TextInput
-                ref={clientEmailInputRef}
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
-                placeholder="Enter client email"
-                value={formData.clientInfo.email}
-                onChangeText={(text) => handleClientChange("email", text)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                onKeyPress={(event) => handleFieldKeyPress("clientEmail", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("clientEmail");
-                }}
-                blurOnSubmit={false}
-              />
-            </View>
+            <TextField
+              contract={buildFormTextFieldContract({
+                id: "project-clientEmail",
+                label: "Client Email",
+                value: formData.clientInfo.email,
+                placeholder: "Enter client email",
+                testId: "project-form-clientEmail",
+              })}
+              inputTestId="project-form-clientEmail"
+              inputRef={clientEmailInputRef}
+              onChangeText={(text) => handleClientChange("email", text)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="next"
+              onKeyPress={(event) => handleFieldKeyPress("clientEmail", event)}
+              onSubmitEditing={() => {
+                moveFormFocus("clientEmail");
+              }}
+              blurOnSubmit={false}
+            />
 
-            <View>
-              <Text className="text-lg font-medium text-gray-700 mb-2">Client Phone</Text>
-              <TextInput
-                ref={clientPhoneInputRef}
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-gray-50 text-lg"
-                placeholder="Enter client phone"
-                value={formData.clientInfo.phone}
-                onChangeText={(text) => handleClientChange("phone", text)}
-                keyboardType="phone-pad"
-                returnKeyType="done"
-                onKeyPress={(event) => handleFieldKeyPress("clientPhone", event)}
-                onSubmitEditing={() => {
-                  clientPhoneInputRef.current?.blur();
-                }}
-              />
-            </View>
+            <TextField
+              contract={buildFormTextFieldContract({
+                id: "project-clientPhone",
+                label: "Client Phone",
+                value: formData.clientInfo.phone,
+                placeholder: "Enter client phone",
+                testId: "project-form-clientPhone",
+              })}
+              inputTestId="project-form-clientPhone"
+              inputRef={clientPhoneInputRef}
+              onChangeText={(text) => handleClientChange("phone", text)}
+              keyboardType="phone-pad"
+              returnKeyType="done"
+              onKeyPress={(event) => handleFieldKeyPress("clientPhone", event)}
+              onSubmitEditing={() => {
+                clientPhoneInputRef.current?.blur();
+              }}
+            />
           </View>
         </View>
 

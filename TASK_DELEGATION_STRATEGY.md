@@ -37,28 +37,11 @@ export interface Task {
 
 ## 2. UI Implementation
 
-### TaskCard Component (`src/components/TaskCard.tsx`)
+### List row SoT (`ActivityStyleRowCard`) — TaskCard removed (S-UX-01Q C4, 2026-08-16)
 
-The `TaskCard` component displays a delegation banner when a task has delegation history:
+The legacy `TaskCard` component (including its amber “Delegated from …” banner) was **deleted** with the modern-only row collapse. Task lists now use [`src/components/cards/ActivityStyleRowCard.tsx`](src/components/cards/ActivityStyleRowCard.tsx) (Tasks / Dashboard). Delegation banner UI is **not** carried on that card today — reintroduce via Task Detail / row meta if product still wants list-level delegation chrome.
 
-```typescript
-// Check if task is delegated
-const isDelegated = task.delegationHistory && task.delegationHistory.length > 0;
-const lastDelegation = isDelegated && task.delegationHistory 
-  ? task.delegationHistory[task.delegationHistory.length - 1] 
-  : null;
-const delegatedFromUser = lastDelegation 
-  ? getUserById(lastDelegation.fromUserId) 
-  : null;
-```
-
-**Visual Display:**
-- **Amber/Orange header banner** at the top of the task card
-- Shows: "Delegated from [User Name]"
-- Optionally displays the delegation reason if provided
-- Only shown on top-level tasks (not sub-tasks)
-
-**Code Location:** `src/components/TaskCard.tsx` (lines 327-351)
+**Historical note:** TaskCard previously showed an amber header when `delegationHistory.length > 0`. That path no longer exists in the repo.
 
 ---
 
@@ -67,13 +50,13 @@ const delegatedFromUser = lastDelegation
 ### ✅ Implemented:
 
 1. **Data Structure**: `delegationHistory` field exists in Task interface
-2. **UI Display**: TaskCard shows delegation banner when history exists
-3. **Initialization**: `delegationHistory` is initialized as empty array `[]` when tasks are created
-4. **Original Creator Tracking**: `originalAssignedBy` field exists to preserve original creator
+2. **Initialization**: `delegationHistory` is initialized as empty array `[]` when tasks are created
+3. **Original Creator Tracking**: `originalAssignedBy` field exists to preserve original creator
 
 ### ❌ Missing Implementation:
 
-1. **Delegation Tracking on Reassignment**: When `handleReassignTask` is called in `TaskDetailScreen.tsx`, it does NOT:
+1. **List / Detail delegation chrome**: No TaskCard banner; ActivityStyleRowCard does not show “Delegated from …” (optional follow-up)
+2. **Delegation Tracking on Reassignment**: When `handleReassignTask` is called in `TaskDetailScreen.tsx`, it does NOT:
    - Create a delegation history entry
    - Track who delegated to whom
    - Store the delegation reason
@@ -190,12 +173,13 @@ CREATE TABLE tasks (
 
 ### Current Implementation:
 - `src/types/buildtrack.ts` - Task interface with `delegationHistory`
-- `src/components/TaskCard.tsx` - UI display of delegation banner
+- `src/components/cards/ActivityStyleRowCard.tsx` - modern list row SoT (no delegation banner)
 - `src/screens/TaskDetailScreen.tsx` - Reassignment handler (missing delegation logic)
 - `src/state/taskStore.supabase.ts` - Task store (initializes empty `delegationHistory`)
 
-### Documentation:
-- `TASKCARD_VARIATIONS.md` - Documents the delegation banner UI
+### Removed (S-UX-01Q C4):
+- `src/components/TaskCard.tsx` — deleted
+- `TASKCARD_VARIATIONS.md` — deleted (was TaskCard visual catalog)
 
 ---
 

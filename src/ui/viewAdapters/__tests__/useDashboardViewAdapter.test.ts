@@ -374,6 +374,7 @@ describe("useDashboardViewAdapter", () => {
         dateLabel: "Jul 5",
         title: "Approve facade mockup",
         subtitle: "Submitted For Review · Critical",
+        imageUri: undefined,
       },
     ]);
 
@@ -745,8 +746,8 @@ describe("useDashboardViewAdapter", () => {
       "task-1",
     ]);
     expect(result.current.output.activityItems[0]).toMatchObject({
-      title: "Concrete pour",
-      subtitle: "Pour completed for section A",
+      title: "Pour completed for section A",
+      subtitle: "Concrete pour",
       previewPhotoUri: "https://example.com/photo-1.jpg",
     });
   });
@@ -843,8 +844,8 @@ describe("useDashboardViewAdapter", () => {
       "task-fresh-fallback",
     ]);
     expect(result.current.output.activityItems.map((item: any) => item.title)).toEqual([
-      "Fresh update task",
-      "Fresh fallback task",
+      "Fresh update inside the window",
+      "New Task",
     ]);
   });
 
@@ -1149,8 +1150,8 @@ describe("useDashboardViewAdapter", () => {
     const { result } = renderHook(() => useDashboardViewAdapter());
 
     expect(result.current.output.activityItems.map((item: any) => item.title)).toEqual([
-      "Newer update",
-      "Older update",
+      "Most recent update",
+      "First update",
     ]);
   });
 

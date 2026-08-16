@@ -509,7 +509,7 @@ describe("TasksScreen", () => {
       <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-slate-50");
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-[#E7F4F8]");
     expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pt-1");
     expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pb-1");
     expect(screen.getByTestId("tasks-screen__filters_button")).toBeTruthy();
@@ -591,6 +591,7 @@ describe("TasksScreen", () => {
   it("shows archive on right swipe, update on left swipe, and renders icon-only row actions", () => {
     const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
     const onNavigateToCreateTask = jest.fn();
+    const onNavigateToUpdateProgress = jest.fn();
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
 
     mockedModule.__setTasksScreenOverride({
@@ -626,7 +627,11 @@ describe("TasksScreen", () => {
     });
 
     const screen = render(
-      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={onNavigateToCreateTask} />,
+      <TasksScreen
+        onNavigateToTaskDetail={jest.fn()}
+        onNavigateToCreateTask={onNavigateToCreateTask}
+        onNavigateToUpdateProgress={onNavigateToUpdateProgress}
+      />,
     );
 
     expect(
@@ -669,17 +674,8 @@ describe("TasksScreen", () => {
     });
 
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:update-action"));
-    expect(onNavigateToCreateTask).toHaveBeenCalledWith(
-      expect.objectContaining({
-        actionType: "update",
-        editTaskId: "task-1",
-        sourceScreen: "tasks",
-        sourceTaskId: "task-1",
-        cameraLaunchContext: "task_detail",
-        postCaptureDefault: "same_task_update",
-        clearForm: false,
-      }),
-    );
+    expect(onNavigateToUpdateProgress).toHaveBeenCalledWith("task-1");
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:archive-action"));
     expect(alertSpy).toHaveBeenCalled();

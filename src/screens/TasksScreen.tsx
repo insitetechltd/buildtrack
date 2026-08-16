@@ -10,13 +10,13 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
-import { buildPhotoShortcutCreateTaskParams } from "@/navigation/photoShortcutRoutes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
 import { cn } from "@/utils/cn";
 
 interface TasksScreenProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: (params?: CreateTaskParams) => void;
+  onNavigateToUpdateProgress?: (taskId: string) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -138,12 +138,15 @@ export default function TasksScreen(props: TasksScreenProps) {
   const visibleTaskCount = output.scalarMetrics.totalVisibleTaskCount;
 
   const handleTaskUpdatePress = (taskId: string) => {
+    if (props.onNavigateToUpdateProgress) {
+      props.onNavigateToUpdateProgress(taskId);
+      return;
+    }
+
     props.onNavigateToCreateTask({
-      ...buildPhotoShortcutCreateTaskParams({
-        taskId,
-        actionType: "update",
-        sourceScreen: "tasks",
-      }),
+      editTaskId: taskId,
+      actionType: "update",
+      sourceScreen: "tasks",
       clearForm: false,
       _timestamp: Date.now(),
     });
@@ -378,16 +381,12 @@ export default function TasksScreen(props: TasksScreenProps) {
                 >
                   <ActivityStyleRowCard
                     testID={`tasks-screen__row_${row.taskId}`}
+                    variant="task"
                     title={row.title}
                     subtitle={row.contextLine ?? row.projectName}
                     metaLabel={row.latestUpdateLabel ?? "Task activity"}
                     badgeLabel={row.statusLabel}
                     imageUri={row.primaryPhotoUri}
-                    titleClassName="text-base font-semibold text-slate-900"
-                    subtitleClassName="mt-1 text-sm text-slate-500"
-                    metaClassName="text-sm font-medium text-slate-400"
-                    badgeClassName="text-sm font-medium uppercase tracking-wide text-slate-600"
-                    badgeVariant="pill"
                     topLeftMarker={
                       row.isOverdue ? (
                         <View

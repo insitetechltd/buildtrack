@@ -76,13 +76,6 @@ jest.mock("@/components/primitives/container/ContainerCard", () => ({
   },
 }));
 
-jest.mock("@/components/TaskCard", () => ({
-  __esModule: true,
-  default: function MockTaskCard() {
-    return null;
-  },
-}));
-
 jest.mock("@/components/taskDetail/TaskDetailHero", () => ({
   __esModule: true,
   default: function MockTaskDetailHero() {

@@ -19,7 +19,7 @@ Canonical docs:
 | --- | --- | --- |
 | H1 | Dual brand: teal shell vs blue CTAs | `AppScreenHeader` vs widespread `bg-blue-600` |
 | H2 | Three headers, two ProjectPicker routes | `ModernScreenHeader` Activity-nested vs `StandardHeader` parent navigate |
-| H3 | Three task-row models | `ActivityStyleRowCard` / `TaskCard` / CompactTaskCard |
+| H3 | Three task-row models → **resolved C4** | Was `ActivityStyleRowCard` / `TaskCard` / CompactTaskCard; now ActivityStyleRowCard only (legacy + TaskCard deleted) |
 | H4 | Page background split | `#E7F4F8` / slate-50 vs gray-50 vs white auth |
 | H5 | Sticky footers + nested bottom SafeArea | Update/Reassign/Reject/AddComment; `PrimaryActionBar` unused |
 

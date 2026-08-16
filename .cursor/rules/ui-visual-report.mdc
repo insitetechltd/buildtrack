@@ -1,0 +1,21 @@
+# UI change reports — visual artifacts required
+
+When the work changes **user-visible UI** (screens, chrome, navigation shells, forms, photo flows):
+
+## In the final report (mandatory)
+
+1. **Show visuals** — include screenshot(s) or generated mockups the user can see in chat (not only file paths).
+2. **Explain the delta** — for each artifact, state what changed vs before (layout, header, color, CTAs, spacing).
+3. **Prefer real UI** — simulator / device / Maestro PNGs of the actual app when available.
+4. **Before/after** when practical — same screen, same device width; label clearly.
+
+## How to obtain artifacts
+
+- Maestro / QA runs: attach or read PNGs from `.cache/maestro-*` / Maestro test dirs and **display them** via the image read path so they render in the report.
+- Manual sim: capture after the change; include at least the primary touched screen.
+- Design-only / not yet built: use `GenerateImage` only when the user wants a mockup, and label it as **mock / proposed**, not shipped UI.
+
+## Do not
+
+- Claim a UI pass with text-only “looks good” and no artifact.
+- Dump dozens of screenshots — pick **1–3** highest-signal frames per change set unless asked for more.

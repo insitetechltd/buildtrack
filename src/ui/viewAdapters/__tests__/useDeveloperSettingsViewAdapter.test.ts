@@ -10,7 +10,6 @@ const mockFetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
 const mockFetchUsers = jest.fn().mockResolvedValue(undefined);
 const mockFetchCompanies = jest.fn().mockResolvedValue(undefined);
 const mockLogout = jest.fn();
-const mockToggleUiMode = jest.fn();
 
 jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({
@@ -20,13 +19,6 @@ jest.mock("@/state/authStore", () => ({
       role: "admin",
     },
     logout: mockLogout,
-  }),
-}));
-
-jest.mock("@/state/devToggleStore", () => ({
-  useDevToggleStore: () => ({
-    uiModernizationMode: "modern",
-    toggleUiMode: mockToggleUiMode,
   }),
 }));
 

@@ -1,10 +1,7 @@
 import React from "react";
 import DashboardScreen from "@/screens/DashboardScreen";
 import TasksScreen from "@/screens/TasksScreen";
-import LegacyDashboardScreen from "@/screens/legacy/LegacyDashboardScreen";
-import LegacyTasksScreen from "@/screens/legacy/LegacyTasksScreen";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
-import { useDevToggleStore } from "@/state/devToggleStore";
 
 interface DashboardRouteProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -18,28 +15,18 @@ interface DashboardRouteProps {
 interface TasksRouteProps {
   onNavigateToTaskDetail: (taskId: string, subTaskId?: string) => void;
   onNavigateToCreateTask: (params?: CreateTaskParams) => void;
+  onNavigateToUpdateProgress?: (taskId: string) => void;
   onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
   onNavigateToDeveloperSettings?: () => void;
 }
 
+/** Always modern Dashboard / Tasks — legacy dual-path removed (S-UX-01Q C4). */
 export function DashboardRoute(props: DashboardRouteProps) {
-  const uiModernizationMode = useDevToggleStore((state) => state.uiModernizationMode);
-
-  if (uiModernizationMode === "legacy") {
-    return <LegacyDashboardScreen {...props} />;
-  }
-
   return <DashboardScreen {...props} />;
 }
 
 export function TasksRoute(props: TasksRouteProps) {
-  const uiModernizationMode = useDevToggleStore((state) => state.uiModernizationMode);
-
-  if (uiModernizationMode === "legacy") {
-    return <LegacyTasksScreen {...props} />;
-  }
-
   return <TasksScreen {...props} />;
 }

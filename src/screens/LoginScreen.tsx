@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   NativeSyntheticEvent,
   View,
@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import TextField from "@/components/primitives/input/TextField";
+import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import { useLoginViewAdapter } from "../ui/viewAdapters/useLoginViewAdapter";
@@ -124,93 +126,64 @@ export default function LoginScreen(_props: LoginScreenProps) {
 
             {/* Login Form */}
             <View className="space-y-4 mb-6">
-              {/* Email or Phone Input */}
-              <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
-                  {t.login.emailOrPhone}
-                </Text>
-                <View
-                  className={cn(
-                    "flex-row items-center border rounded-lg px-3 py-3",
-                    output.validationErrors.emailOrPhone
-                      ? "border-red-300 bg-red-50"
-                      : "border-gray-300 bg-gray-50"
-                  )}
-                >
+              <TextField
+                contract={buildFormTextFieldContract({
+                  id: "login-emailOrPhone",
+                  label: t.login.emailOrPhone,
+                  value: output.emailOrPhone,
+                  placeholder: t.login.emailOrPhonePlaceholder,
+                  error: output.validationErrors.emailOrPhone,
+                  required: true,
+                  testId: "login-emailOrPhone",
+                })}
+                inputTestId="login-emailOrPhone"
+                inputRef={emailInputRef}
+                leftSlot={
                   <Ionicons
                     name={isPhoneNumber(output.emailOrPhone) ? "call-outline" : "mail-outline"}
                     size={20}
                     color={output.validationErrors.emailOrPhone ? "#ef4444" : "#6b7280"}
                   />
-                  <TextInput
-                    testID="login-emailOrPhone"
-                    ref={emailInputRef}
-                    className="flex-1 ml-3 text-gray-900"
-                    placeholder={t.login.emailOrPhonePlaceholder}
-                    value={output.emailOrPhone}
-                    onChangeText={actions.setEmailOrPhone}
-                    keyboardType="default"
-                    autoCapitalize="none"
-                    autoComplete="off"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    returnKeyType="next"
-                    onKeyPress={(event) => handleFieldKeyPress("emailOrPhone", event)}
-                    onSubmitEditing={() => {
-                      moveFormFocus("emailOrPhone");
-                    }}
-                    blurOnSubmit={false}
-                  />
-                </View>
-                {output.validationErrors.emailOrPhone && (
-                  <Text className="text-red-500 text-sm mt-1">
-                    {output.validationErrors.emailOrPhone}
-                  </Text>
-                )}
-              </View>
+                }
+                onChangeText={actions.setEmailOrPhone}
+                keyboardType="default"
+                autoCapitalize="none"
+                autoComplete="off"
+                autoCorrect={false}
+                spellCheck={false}
+                returnKeyType="next"
+                onKeyPress={(event) => handleFieldKeyPress("emailOrPhone", event)}
+                onSubmitEditing={() => {
+                  moveFormFocus("emailOrPhone");
+                }}
+                blurOnSubmit={false}
+              />
 
-              {/* Password Input */}
-              <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
-                  {t.auth.password}
-                </Text>
-                <View
-                  className={cn(
-                    "flex-row items-center border rounded-lg px-3 py-3",
-                    output.validationErrors.password
-                      ? "border-red-300 bg-red-50"
-                      : "border-gray-300 bg-gray-50"
-                  )}
-                >
+              <TextField
+                contract={buildFormTextFieldContract({
+                  id: "login-password",
+                  label: t.auth.password,
+                  value: output.password,
+                  placeholder: t.login.passwordPlaceholder,
+                  error: output.validationErrors.password,
+                  required: true,
+                  testId: "login-password",
+                })}
+                inputTestId="login-password"
+                inputRef={passwordInputRef}
+                leftSlot={
                   <Ionicons
                     name="lock-closed-outline"
                     size={20}
                     color={output.validationErrors.password ? "#ef4444" : "#6b7280"}
                   />
-                  <TextInput
-                    testID="login-password"
-                    ref={passwordInputRef}
-                    className="flex-1 ml-3 text-gray-900"
-                    placeholder={t.login.passwordPlaceholder}
-                    value={output.password}
-                    onChangeText={actions.setPassword}
-                    secureTextEntry={!output.isPasswordVisible}
-                    autoComplete="password"
-                    autoCorrect={false}
-                    spellCheck={false}
-                    returnKeyType="done"
-                    onKeyPress={(event) => handleFieldKeyPress("password", event)}
-                    onSubmitEditing={() => {
-                      passwordInputRef.current?.blur();
-                    }}
-                  />
-                  {/* Password visibility toggle */}
+                }
+                rightSlot={
                   <Pressable
                     testID="login-togglePassword"
                     onPress={() => {
                       actions.togglePasswordVisibility();
                     }}
-                    className="ml-2"
                   >
                     <Ionicons
                       name={output.isPasswordVisible ? "eye-outline" : "eye-off-outline"}
@@ -218,13 +191,18 @@ export default function LoginScreen(_props: LoginScreenProps) {
                       color="#6b7280"
                     />
                   </Pressable>
-                </View>
-                {output.validationErrors.password && (
-                  <Text className="text-red-500 text-sm mt-1">
-                    {output.validationErrors.password}
-                  </Text>
-                )}
-              </View>
+                }
+                onChangeText={actions.setPassword}
+                secureTextEntry={!output.isPasswordVisible}
+                autoComplete="password"
+                autoCorrect={false}
+                spellCheck={false}
+                returnKeyType="done"
+                onKeyPress={(event) => handleFieldKeyPress("password", event)}
+                onSubmitEditing={() => {
+                  passwordInputRef.current?.blur();
+                }}
+              />
 
               {/* Login Button */}
               <Pressable

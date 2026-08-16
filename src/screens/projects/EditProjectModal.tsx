@@ -18,6 +18,8 @@ import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 import ModalHandle from "@/components/ModalHandle";
+import TextField from "@/components/primitives/input/TextField";
+import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithCompanyInit } from "@/state/projectStore.supabase";
 import { useUserStoreWithInit } from "@/state/userStore.supabase";
@@ -291,48 +293,51 @@ export function EditProjectModal({
               <Text className="mb-4 text-2xl font-bold text-gray-900">Project Information</Text>
 
               <View className="space-y-4">
-                <View>
-                  <Text className="mb-2 text-base font-medium text-gray-700">
-                    Project Name <Text className="text-red-500">*</Text>
-                  </Text>
-                  <TextInput
-                    ref={nameInputRef}
-                    className="bg-gray-50 text-xl text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
-                    placeholder="Enter project name"
-                    value={formData.name}
-                    onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
-                    maxLength={100}
-                    returnKeyType="next"
-                    onKeyPress={(event) => handleFieldKeyPress("name", event)}
-                    onSubmitEditing={() => {
-                      moveFormFocus("name");
-                    }}
-                    blurOnSubmit={false}
-                  />
-                </View>
+                <TextField
+                  contract={buildFormTextFieldContract({
+                    id: "edit-project-name",
+                    label: "Project Name",
+                    value: formData.name,
+                    placeholder: "Enter project name",
+                    required: true,
+                    testId: "edit-project-name",
+                  })}
+                  inputTestId="edit-project-name"
+                  inputRef={nameInputRef}
+                  onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
+                  maxLength={100}
+                  returnKeyType="next"
+                  onKeyPress={(event) => handleFieldKeyPress("name", event)}
+                  onSubmitEditing={() => {
+                    moveFormFocus("name");
+                  }}
+                  blurOnSubmit={false}
+                />
 
-                <View>
-                  <Text className="mb-2 text-base font-medium text-gray-700">Description</Text>
-                  <TextInput
-                    ref={descriptionInputRef}
-                    className="bg-gray-50 text-xl text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
-                    placeholder="Project description"
-                    value={formData.description}
-                    onChangeText={(text) =>
-                      setFormData((prev) => ({ ...prev, description: text }))
-                    }
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                    maxLength={500}
-                    returnKeyType="next"
-                    onKeyPress={(event) => handleFieldKeyPress("description", event)}
-                    onSubmitEditing={() => {
-                      moveFormFocus("description");
-                    }}
-                    blurOnSubmit={false}
-                  />
-                </View>
+                <TextField
+                  contract={buildFormTextFieldContract({
+                    id: "edit-project-description",
+                    label: "Description",
+                    value: formData.description,
+                    placeholder: "Project description",
+                    testId: "edit-project-description",
+                  })}
+                  inputTestId="edit-project-description"
+                  inputRef={descriptionInputRef}
+                  onChangeText={(text) =>
+                    setFormData((prev) => ({ ...prev, description: text }))
+                  }
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                  maxLength={500}
+                  returnKeyType="next"
+                  onKeyPress={(event) => handleFieldKeyPress("description", event)}
+                  onSubmitEditing={() => {
+                    moveFormFocus("description");
+                  }}
+                  blurOnSubmit={false}
+                />
 
                 <View>
                   <Text className="mb-2 text-base font-medium text-gray-700">Status</Text>
@@ -392,24 +397,29 @@ export function EditProjectModal({
             <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
               <Text className="mb-3 text-2xl font-bold text-gray-900">Location</Text>
 
-              <View>
-                <TextInput
-                  ref={locationInputRef}
-                  className="bg-gray-50 text-lg text-gray-900 border border-gray-300 rounded-lg px-4 py-3"
-                  placeholder="Enter full address (street, city, state/province, postal code, country)"
-                  value={formData.location}
-                  onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
-                  multiline
-                  numberOfLines={5}
-                  textAlignVertical="top"
-                  returnKeyType="done"
-                  onKeyPress={(event) => handleFieldKeyPress("location", event)}
-                  onSubmitEditing={() => {
-                    locationInputRef.current?.blur();
-                  }}
-                  blurOnSubmit={false}
-                />
-              </View>
+              <TextField
+                contract={buildFormTextFieldContract({
+                  id: "edit-project-location",
+                  label: "",
+                  value: formData.location,
+                  placeholder:
+                    "Enter full address (street, city, state/province, postal code, country)",
+                  testId: "edit-project-location",
+                })}
+                collapseEmptyChrome
+                inputTestId="edit-project-location"
+                inputRef={locationInputRef}
+                onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                returnKeyType="done"
+                onKeyPress={(event) => handleFieldKeyPress("location", event)}
+                onSubmitEditing={() => {
+                  locationInputRef.current?.blur();
+                }}
+                blurOnSubmit={false}
+              />
             </View>
 
             <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">

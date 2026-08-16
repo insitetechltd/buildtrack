@@ -4,13 +4,13 @@ import {
 } from "../photoShortcutRoutes";
 
 describe("photo shortcut route helpers", () => {
-  it("normalizes update action photo returns back into CreateTask shortcut params", () => {
+  it("keeps UpdateProgress photo returns on UpdateProgress (no CreateTask TaskAction shortcut)", () => {
     expect(
       shouldReturnToCreateTaskShortcut({
         returnScreen: "UpdateProgress",
         actionType: "update",
       }),
-    ).toBe(true);
+    ).toBe(false);
 
     expect(
       buildPhotoShortcutCreateTaskParams({

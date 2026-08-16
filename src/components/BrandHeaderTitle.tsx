@@ -1,9 +1,16 @@
 import React from "react";
 import { Image, Pressable, Text, View } from "react-native";
 
+import {
+  HEADER_LEADING_CONTROL_SIZE_CLASS,
+  useHeaderChrome,
+} from "@/components/headerChrome";
+import { cn } from "@/utils/cn";
+
 interface BrandHeaderTitleProps {
   label?: string;
   subtitle?: string;
+  /** Explicit override. When omitted, follows header chrome (hidden if back is shown). */
   showMark?: boolean;
   titleTestID?: string;
   titleNumberOfLines?: number;
@@ -13,11 +20,14 @@ interface BrandHeaderTitleProps {
 export default function BrandHeaderTitle({
   label = "Taskr",
   subtitle,
-  showMark = true,
+  showMark: showMarkProp,
   titleTestID,
   titleNumberOfLines,
   onTitlePress,
 }: BrandHeaderTitleProps) {
+  const { allowBrandMark } = useHeaderChrome();
+  const showMark = showMarkProp ?? allowBrandMark;
+
   const title = (
     <Text
       testID={titleTestID}
@@ -33,9 +43,11 @@ export default function BrandHeaderTitle({
     <View testID="brand-header-title" className="flex-row items-center">
       {showMark ? (
         <Image
+          testID="brand-header-title__mark"
           source={require("../../assets/icon.png")}
-          className="h-10 w-10 rounded-xl"
+          className={cn(HEADER_LEADING_CONTROL_SIZE_CLASS, "rounded-xl")}
           resizeMode="contain"
+          accessibilityLabel="Taskr"
         />
       ) : null}
       <View className={showMark ? "ml-3" : undefined}>

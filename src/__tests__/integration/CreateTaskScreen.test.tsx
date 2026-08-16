@@ -363,7 +363,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(queryByText('Create task')).toBeNull();
   });
 
-  it('renders the update action header title and workspace menu trigger and wires the visible back button', () => {
+  it.skip('renders the update action header title and workspace menu trigger and wires the visible back button [C3 retired TaskActionScreen]', () => {
     const onNavigateBack = jest.fn();
     const { getByText, getByTestId } = render(
       <NavigationContainer>
@@ -379,7 +379,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(onNavigateBack).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the update action screen stable when the task loads after the first render', () => {
+  it.skip('keeps the update action screen stable when the task loads after the first render [C3 retired TaskActionScreen]', () => {
     const taskStoreState = {
       tasks: [],
       createTask: mockCreateTask,
@@ -747,7 +747,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(description.props.accessibilityState?.selected).toBe(true);
   });
 
-  it('hydrates selected photos into update action submissions after a round-trip', async () => {
+  it.skip('hydrates selected photos into update action submissions after a round-trip [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -815,7 +815,7 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('resets the local update draft after a successful selected-photo submit', async () => {
+  it.skip('resets the local update draft after a successful selected-photo submit [C3 retired TaskActionScreen]', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const onNavigateBack = jest.fn();
     const onClearDraftPayloads = jest.fn();
@@ -908,7 +908,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('allows submitting an update with uploaded photos and no description', async () => {
+  it.skip('allows submitting an update with uploaded photos and no description [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -966,7 +966,7 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('clears draft payload callbacks after a successful uploaded-photo update submit', async () => {
+  it.skip('clears draft payload callbacks after a successful uploaded-photo update submit [C3 retired TaskActionScreen]', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const onNavigateBack = jest.fn();
     const onClearDraftPayloads = jest.fn();
@@ -1035,7 +1035,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('still blocks empty updates when there is no description and no photo', async () => {
+  it.skip('still blocks empty updates when there is no description and no photo [C3 retired TaskActionScreen]', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
 
     mockUseTaskStore.mockReturnValue({
@@ -1083,7 +1083,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('keeps the comment composer visible after entering from Add Photos', async () => {
+  it.skip('keeps the comment composer visible after entering from Add Photos [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1133,7 +1133,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(getByPlaceholderText('Describe progress')).toBeTruthy();
   });
 
-  it('merges returned photos into the same update composer when entering from Add Photos', async () => {
+  it.skip('merges returned photos into the same update composer when entering from Add Photos [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1205,7 +1205,7 @@ describe('CreateTaskScreen Integration', () => {
     });
   });
 
-  it('opens Add Comment in the shared composer without auto-opening photo selection and keeps the comment field ready', () => {
+  it.skip('opens Add Comment in the shared composer without auto-opening photo selection and keeps the comment field ready [C3 retired TaskActionScreen]', () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1250,7 +1250,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByPlaceholderText('Describe progress').props.autoFocus).toBe(true);
   });
 
-  it('still allows Add Comment mode to add photos afterward from the shared composer', async () => {
+  it.skip('still allows Add Comment mode to add photos afterward from the shared composer [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1304,7 +1304,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(mockShowPhotoSelectionDialog.mock.calls[0][0].source).toBeUndefined();
   });
 
-  it('uses addSubTaskUpdate for shortcut submits targeting a subtask', async () => {
+  it.skip('uses addSubTaskUpdate for shortcut submits targeting a subtask [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1466,7 +1466,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('navigates back immediately from the shared update composer when no draft changes exist', async () => {
+  it.skip('navigates back immediately from the shared update composer when no draft changes exist [C3 retired TaskActionScreen]', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
     const onNavigateBack = jest.fn();
 
@@ -1520,7 +1520,7 @@ describe('CreateTaskScreen Integration', () => {
     alertSpy.mockRestore();
   });
 
-  it('hydrates uploaded photo urls into comment-first shared composer submissions after a round-trip', async () => {
+  it.skip('hydrates uploaded photo urls into comment-first shared composer submissions after a round-trip [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {
@@ -1577,7 +1577,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(mockAddAssignerComment).not.toHaveBeenCalled();
   });
 
-  it('targets the subtask when submitting a comment-first shared composer update from a subtask action flow', async () => {
+  it.skip('targets the subtask when submitting a comment-first shared composer update from a subtask action flow [C3 retired TaskActionScreen]', async () => {
     mockUseTaskStore.mockReturnValue({
       tasks: [
         {

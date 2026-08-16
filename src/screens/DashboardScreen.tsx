@@ -41,7 +41,11 @@ export default function DashboardScreen(props: DashboardScreenProps) {
 
           {output.projectSummaryCard ? (
             <View className="mb-5" testID="dashboard-screen__project_summary_section">
-              <Text className="text-[34px] leading-9 font-semibold text-[#0D2630]">
+              <Text
+                className="text-[24px] leading-8 font-semibold text-[#0D2630]"
+                numberOfLines={2}
+                ellipsizeMode="tail"
+              >
                 {output.projectSummaryCard.title}
               </Text>
               <Text className="mt-2 text-lg leading-6 text-[#577783]">
@@ -68,20 +72,25 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               {output.projectSummaryCard.criticalDates.length > 0 ? (
                 <View className="gap-3">
                   {output.projectSummaryCard.criticalDates.map((item) => (
-                    <Pressable
+                    <ActivityStyleRowCard
                       key={item.id}
                       testID={`dashboard-screen__critical_task_${item.id}`}
+                      variant="critical"
+                      title={item.title}
+                      subtitle={item.subtitle}
+                      metaLabel="Due this week"
+                      badgeLabel={item.dateLabel}
+                      imageUri={item.imageUri}
+                      topLeftMarker={
+                        <View
+                          testID={`dashboard-screen__critical_task_${item.id}:this-week`}
+                          className="rounded-full bg-amber-500 px-2.5 py-1"
+                        >
+                          <Text className="text-xs font-semibold text-white">This week</Text>
+                        </View>
+                      }
                       onPress={() => props.onNavigateToTaskDetail?.(item.taskId)}
-                      className="flex-row items-start justify-between rounded-2xl border border-[#B9D9E4] bg-[#F8FCFF] px-4 py-4"
-                    >
-                      <View className="mr-3 flex-1">
-                        <Text className="text-lg font-semibold text-[#0D2630]">{item.title}</Text>
-                        <Text className="mt-1 text-base leading-5 text-[#577783]">{item.subtitle}</Text>
-                      </View>
-                      <Text className="text-base font-semibold uppercase tracking-wide text-[#0A728F]">
-                        {item.dateLabel}
-                      </Text>
-                    </Pressable>
+                    />
                   ))}
                 </View>
               ) : (
@@ -144,6 +153,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                   <ActivityStyleRowCard
                     key={item.id}
                     testID={`dashboard-screen__activity_${item.id}`}
+                    variant="activity"
                     title={item.title}
                     subtitle={item.subtitle}
                     metaLabel={item.timestampLabel}

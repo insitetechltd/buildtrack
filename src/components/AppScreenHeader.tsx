@@ -1,9 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ProfileMenu from "@/components/ProfileMenu";
+import {
+  HEADER_LEADING_CONTROL_SIZE_CLASS,
+  HeaderChromeProvider,
+} from "@/components/headerChrome";
 import { useAuthStore } from "@/state/authStore";
 import { cn } from "@/utils/cn";
 
@@ -66,17 +70,21 @@ export default function AppScreenHeader({
   }, [onProfilePress]);
 
   return (
-    <View
-      testID="app-screen-header__root"
-      className={cn("border-b border-[#0B6A84] bg-[#08576E] px-4 pb-3", className)}
-      style={{ paddingTop: topPadding }}
-    >
+    <HeaderChromeProvider allowBrandMark={!showBackButton}>
+      <View
+        testID="app-screen-header__root"
+        className={cn("border-b border-[#0B6A84] bg-[#08576E] px-4 pb-3", className)}
+        style={{ paddingTop: topPadding }}
+      >
       <View className="flex-row items-center">
         {showBackButton ? (
           <Pressable
             testID={BACK_BUTTON_TEST_ID}
             onPress={onBackPress}
-            className="mr-3 h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
+            className={cn(
+              "mr-3 items-center justify-center rounded-full bg-[#0D6E87]",
+              HEADER_LEADING_CONTROL_SIZE_CLASS,
+            )}
             accessibilityRole="button"
             accessibilityLabel={BACK_BUTTON_ACCESSIBILITY_LABEL}
           >
@@ -130,6 +138,7 @@ export default function AppScreenHeader({
           onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
         />
       ) : null}
-    </View>
+      </View>
+    </HeaderChromeProvider>
   );
 }

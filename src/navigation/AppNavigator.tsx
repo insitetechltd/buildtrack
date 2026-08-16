@@ -41,6 +41,7 @@ import LoginScreen from "../screens/LoginScreen";
 // Registration temporarily disabled for App Store submission
 // import RegisterScreen from "../screens/RegisterScreen";
 import { DashboardRoute, TasksRoute } from "./uiModeRoutes";
+import { buildDefaultStackScreenOptions, buildTaskDetailStackScreenOptions } from "./nativeStackOptions";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
@@ -63,8 +64,10 @@ import ReassignTaskScreen from "../screens/ReassignTaskScreen";
 import {
   buildPhotoShortcutCreateTaskParams,
   resolveTaskDetailCameraTabParams,
+  resolveTaskDetailUpdateShortcut,
   shouldReturnToCreateTaskShortcut,
 } from "./photoShortcutRoutes";
+import { resolveStandaloneTaskAction } from "./taskActionRouting";
 import {
   buildCreateTaskPhotoReturnParams,
   resolveCreateTaskEntryParams,
@@ -73,7 +76,6 @@ import {
   cancelInAppLibraryPicker,
   returnToPhotoSelectionFlat,
 } from "./photoFlowNavigation";
-import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
 import {
   buildTaskDetailVerificationUrl,
   TASK_DETAIL_VERIFICATION_PATH,
@@ -133,9 +135,9 @@ export function shouldCollapseRootSideTabsOnTaskDetailRoute(routeName?: string) 
 }
 
 export function shouldHideRootSideTabsForTabState(
-  tabState?: Parameters<typeof resolveTaskDetailCameraTabParams>[0],
+  tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
 ) {
-  return Boolean(resolveTaskDetailCameraTabParams(tabState));
+  return Boolean(resolveTaskDetailUpdateShortcut(tabState));
 }
 
 export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
@@ -564,21 +566,21 @@ export function handleCameraTabPress({
 }: {
   event: { preventDefault: () => void };
   navigation: {
-    getState: () => Parameters<typeof resolveTaskDetailCameraTabParams>[0];
-    navigate: (
-      screen: "Camera",
-      params?: RootTabParamList["Camera"],
-    ) => void;
+    getState: () => Parameters<typeof resolveTaskDetailUpdateShortcut>[0];
+    navigate: (screen: string, params?: unknown) => void;
   };
 }) {
-  const taskDetailCameraParams = resolveTaskDetailCameraTabParams(
-    navigation.getState() as Parameters<typeof resolveTaskDetailCameraTabParams>[0],
+  const updateShortcut = resolveTaskDetailUpdateShortcut(
+    navigation.getState() as Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
   );
 
   event.preventDefault();
 
-  if (taskDetailCameraParams) {
-    navigation.navigate("Camera", taskDetailCameraParams);
+  if (updateShortcut) {
+    navigation.navigate(updateShortcut.tabName, {
+      screen: "UpdateProgress",
+      params: updateShortcut.params,
+    });
     return;
   }
 
@@ -728,6 +730,7 @@ function DashboardStack() {
       <DashboardStackNavigator.Screen 
         name="TaskDetailFromDashboard" 
         component={TaskDetailFromDashboardWrapper}
+        options={buildTaskDetailStackScreenOptions()}
       />
       <DashboardStackNavigator.Screen 
         name="ProjectPicker" 
@@ -856,7 +859,24 @@ function TaskDetailFromDashboardWrapper({
         navigation.navigate("TaskDetailFromDashboard", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId) => {
-        // Navigate to CreateTask screen in the same stack with card transition
+        const resolved = resolveStandaloneTaskAction({
+          editTaskId,
+          actionType,
+          updateTargetSubTaskId,
+          sourceScreen: "dashboard",
+        });
+        if (resolved?.kind === "updateProgress") {
+          navigation.navigate("UpdateProgress", resolved.params);
+          return;
+        }
+        if (resolved?.kind === "addComment") {
+          navigation.navigate("AddComment", resolved.params);
+          return;
+        }
+        if (resolved?.kind === "reassign") {
+          navigation.navigate("ReassignTask", resolved.params);
+          return;
+        }
         navigation.navigate("CreateTask", {
           parentTaskId,
           parentSubTaskId,
@@ -884,6 +904,7 @@ function TasksStack() {
       <TasksStackNavigator.Screen 
         name="TaskDetail" 
         component={TaskDetailScreenWrapper}
+        options={buildTaskDetailStackScreenOptions()}
       />
       <TasksStackNavigator.Screen 
         name="CreateTaskFromTask" 
@@ -976,6 +997,13 @@ function ProjectsTasksListScreen({
           },
         });
       }}
+      onNavigateToUpdateProgress={(taskId) => {
+        navigation.navigate("UpdateProgress", {
+          taskId,
+          sourceScreen: "tasks",
+          sourceTaskId: taskId,
+        });
+      }}
       onNavigateBack={() =>
         (navigation.getParent?.() as BottomTabNavigationProp<RootTabParamList> | undefined)?.navigate(
           "Activity",
@@ -1007,9 +1035,26 @@ function TaskDetailScreenWrapper({
         navigation.navigate("TaskDetail", { taskId, subTaskId });
       }}
       onNavigateToCreateTask={(parentTaskId, parentSubTaskId, editTaskId, actionType, updateTargetSubTaskId) => {
-        // Navigate to CreateTask screen in the same stack with card transition
+        const resolved = resolveStandaloneTaskAction({
+          editTaskId,
+          actionType,
+          updateTargetSubTaskId,
+          sourceScreen: "tasks",
+        });
+        if (resolved?.kind === "updateProgress") {
+          navigation.navigate("UpdateProgress", resolved.params);
+          return;
+        }
+        if (resolved?.kind === "addComment") {
+          navigation.navigate("AddComment", resolved.params);
+          return;
+        }
+        if (resolved?.kind === "reassign") {
+          navigation.navigate("ReassignTask", resolved.params);
+          return;
+        }
         navigation.navigate("CreateTask", {
-          parentTaskId, 
+          parentTaskId,
           parentSubTaskId,
           editTaskId,
           actionType,
@@ -1176,18 +1221,19 @@ function PhotoSelectionScreenWrapper({
       navigation.goBack();
 
       setTimeout(() => {
-        navigateToCreateTaskRoute(
-          navigation,
-          buildPhotoShortcutCreateTaskParams({
-            taskId: taskId as string,
-            subTaskId,
-            actionType: actionType as "update",
-            sourceScreen,
-            sourceTaskId: sourceTaskId || (taskId as string),
-            sourceSubTaskId: sourceSubTaskId || subTaskId,
-            uploadedPhotoUrls: photoUrls,
-          }),
-        );
+        const updateProgressNavigation =
+          navigation as NativeStackNavigationProp<
+            DashboardStackParamList | TasksStackParamList
+          >;
+
+        updateProgressNavigation.navigate("UpdateProgress", {
+          taskId: taskId as string,
+          subTaskId,
+          uploadedPhotoUrls: photoUrls,
+          sourceScreen,
+          sourceTaskId: sourceTaskId || (taskId as string),
+          sourceSubTaskId: sourceSubTaskId || subTaskId,
+        });
       }, 150);
     } else if (returnScreen === 'UpdateProgress' || returnScreen === 'AddComment') {
       const updateProgressNavigation =
@@ -2069,17 +2115,21 @@ function MainTabs() {
                     navigation.getState() as Parameters<
                       typeof resolveTaskDetailCameraTabParams
                     >[0],
-                  navigate: (screen, params) => navigation.navigate(screen, params),
+                  navigate: (screen, params) =>
+                    (navigation.navigate as (screen: string, params?: unknown) => void)(
+                      screen,
+                      params,
+                    ),
                 },
               });
             },
           })}
           options={({ route, navigation }) => {
             const isTaskDetailUpdate = Boolean(
-              resolveTaskDetailCameraTabParams(
+              resolveTaskDetailUpdateShortcut(
                 typeof navigation?.getState === "function"
                   ? (navigation.getState() as Parameters<
-                      typeof resolveTaskDetailCameraTabParams
+                      typeof resolveTaskDetailUpdateShortcut
                     >[0])
                   : undefined,
               ),

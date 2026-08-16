@@ -269,6 +269,8 @@ export default function TaskActivityTimeline({
                         testID={`task-activity-timeline__photo_swipe_surface-${activity.id}`}
                         horizontal
                         pagingEnabled
+                        directionalLockEnabled
+                        nestedScrollEnabled
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={{ height: '100%' }}
                         onMomentumScrollEnd={(event) => {

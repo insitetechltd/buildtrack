@@ -19,6 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import TextField from "@/components/primitives/input/TextField";
+import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import {
   type NavigationProp,
   useFocusEffect,
@@ -40,7 +42,6 @@ import { notifyDataMutation } from "../utils/DataRefreshManager";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import CompletionPercentageDialer from "../components/ui/CompletionPercentageDialer";
 import FileUploadHarness from "../components/ui/FileUploadHarness";
-import ReassignTaskModal from "../components/ReassignTaskModal";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
 import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
@@ -141,24 +142,6 @@ export default function CreateTaskScreen({
   onNavigateToProfile,
   onNavigateToProjectPicker
 }: CreateTaskScreenProps) {
-  const effectiveActionType = actionType || (editTaskId ? "edit" : undefined);
-
-  if (effectiveActionType && effectiveActionType !== "edit" && editTaskId) {
-    return (
-      <TaskActionScreen
-        actionType={effectiveActionType}
-        taskId={editTaskId}
-        updateTargetSubTaskId={updateTargetSubTaskId}
-        onNavigateBack={onNavigateBack}
-        selectedPhotos={selectedPhotosProp}
-        uploadedPhotoUrls={uploadedPhotoUrls}
-        onClearDraftPayloads={onClearDraftPayloads}
-        onNavigateToProfile={onNavigateToProfile}
-        onNavigateToProjectPicker={onNavigateToProjectPicker}
-      />
-    );
-  }
-
   return (
     <CreateTaskEditorScreen
       onNavigateBack={onNavigateBack}
@@ -166,7 +149,7 @@ export default function CreateTaskScreen({
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
-      actionType={effectiveActionType}
+      actionType={actionType || (editTaskId ? "edit" : undefined)}
       cameraLaunchContext={cameraLaunchContext}
       postCaptureDefault={postCaptureDefault}
       updateTargetSubTaskId={updateTargetSubTaskId}
@@ -837,43 +820,45 @@ function CreateTaskEditorScreen({
               testID="create-task__field-stack"
               className="border-t border-gray-100 pt-4 gap-4"
             >
-              <InputField label={t.tasks.title} error={errors.title}>
               <View testID="create-task__field_title--preview">
-              <TextInput
-                testID="createTask-title"
-                ref={titleInputRef}
-                accessibilityState={{ selected: activeFormFocusTarget === "title" }}
-                className={cn(
-                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
-                  errors.title ? "border-red-300" : "border-gray-300"
-                )}
-                placeholder={t.createTask.titlePlaceholder}
-                value={formData.title}
-                onChangeText={handleTitleChange}
-                maxLength={100}
-                autoCorrect={false}
-                returnKeyType="next"
-                onFocus={() => setActiveFormFocusTarget("title")}
-                onKeyPress={(event) => handleFieldKeyPress("title", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("title");
-                }}
-                blurOnSubmit={false}
-              />
+                <TextField
+                  contract={buildFormTextFieldContract({
+                    id: "create-task-title",
+                    label: t.tasks.title,
+                    value: formData.title,
+                    placeholder: t.createTask.titlePlaceholder,
+                    error: errors.title,
+                    required: true,
+                    testId: "create-task__field_title",
+                  })}
+                  inputTestId="createTask-title"
+                  inputRef={titleInputRef}
+                  onChangeText={handleTitleChange}
+                  maxLength={100}
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  accessibilityState={{ selected: activeFormFocusTarget === "title" }}
+                  onFocus={() => setActiveFormFocusTarget("title")}
+                  onKeyPress={(event) => handleFieldKeyPress("title", event)}
+                  onSubmitEditing={() => {
+                    moveFormFocus("title");
+                  }}
+                  blurOnSubmit={false}
+                />
               </View>
-              </InputField>
 
-              <InputField label={t.tasks.description} error={errors.description}>
-              <TextInput
-                testID="createTask-description"
-                ref={descriptionInputRef}
-                accessibilityState={{ selected: activeFormFocusTarget === "description" }}
-                className={cn(
-                  "border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white",
-                  errors.description ? "border-red-300" : "border-gray-300"
-                )}
-                placeholder={t.createTask.descriptionPlaceholder}
-                value={formData.description}
+              <TextField
+                contract={buildFormTextFieldContract({
+                  id: "create-task-description",
+                  label: t.tasks.description,
+                  value: formData.description,
+                  placeholder: t.createTask.descriptionPlaceholder,
+                  error: errors.description,
+                  required: true,
+                  testId: "create-task__field_description",
+                })}
+                inputTestId="createTask-description"
+                inputRef={descriptionInputRef}
                 onChangeText={handleDescriptionChange}
                 multiline
                 numberOfLines={4}
@@ -881,6 +866,7 @@ function CreateTaskEditorScreen({
                 maxLength={500}
                 autoCorrect={false}
                 returnKeyType="next"
+                accessibilityState={{ selected: activeFormFocusTarget === "description" }}
                 onFocus={() => setActiveFormFocusTarget("description")}
                 onKeyPress={(event) => handleFieldKeyPress("description", event)}
                 onSubmitEditing={() => {
@@ -888,7 +874,6 @@ function CreateTaskEditorScreen({
                 }}
                 blurOnSubmit={false}
               />
-              </InputField>
 
               <InputField label={t.tasks.priority}>
                 <View className="flex-row flex-wrap gap-2">
@@ -1293,26 +1278,29 @@ function CreateTaskEditorScreen({
                 </View>
               )}
 
-              <InputField label={t.createTask.taskReference} required={false}>
-                <TextInput
-                  testID="createTask-taskReference"
-                  ref={taskReferenceInputRef}
-                  accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
-                  className="border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
-                  placeholder={t.createTask.taskReferencePlaceholder}
-                  value={formData.taskReference}
-                  onChangeText={handleTaskReferenceChange}
-                  maxLength={50}
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onFocus={() => setActiveFormFocusTarget("taskReference")}
-                  onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
-                  onSubmitEditing={() => {
-                    taskReferenceInputRef.current?.blur();
-                  }}
-                  blurOnSubmit={true}
-                />
-              </InputField>
+              <TextField
+                contract={buildFormTextFieldContract({
+                  id: "create-task-taskReference",
+                  label: t.createTask.taskReference,
+                  value: formData.taskReference,
+                  placeholder: t.createTask.taskReferencePlaceholder,
+                  required: false,
+                  testId: "create-task__field_taskReference",
+                })}
+                inputTestId="createTask-taskReference"
+                inputRef={taskReferenceInputRef}
+                onChangeText={handleTaskReferenceChange}
+                maxLength={50}
+                autoCorrect={false}
+                returnKeyType="done"
+                accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
+                onFocus={() => setActiveFormFocusTarget("taskReference")}
+                onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
+                onSubmitEditing={() => {
+                  taskReferenceInputRef.current?.blur();
+                }}
+                blurOnSubmit={true}
+              />
 
               <InputField label={t.createTask.billingStatus}>
                 <Pressable
@@ -2134,580 +2122,5 @@ function CreateTaskEditorScreen({
       </Modal>
 
     </SafeAreaView>
-  );
-}
-
-// TaskActionScreen - Handles non-edit actions (update, photos, comment, reassign)
-function TaskActionScreen({ 
-  actionType, 
-  taskId, 
-  updateTargetSubTaskId,
-  onNavigateBack,
-  selectedPhotos,
-  uploadedPhotoUrls,
-  onClearDraftPayloads,
-  onNavigateToProfile,
-  onNavigateToProjectPicker,
-}: { 
-  actionType: 'update' | 'photos' | 'comment' | 'reassign';
-  taskId: string;
-  updateTargetSubTaskId?: string;
-  onNavigateBack: () => void;
-  selectedPhotos?: SelectedPhoto[];
-  uploadedPhotoUrls?: string[];
-  onClearDraftPayloads?: () => void;
-  onNavigateToProfile?: () => void;
-  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
-}) {
-  const t = useTranslation();
-  const { user } = useAuthStore();
-  const tasks = useTaskStore(state => state.tasks);
-  const fetchTaskById = useTaskStore(state => state.fetchTaskById);
-  const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
-  const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
-  const addAssignerComment = useTaskStore(state => state.addAssignerComment);
-  const updateTask = useTaskStore(state => state.updateTask);
-  const { getUserById } = useUserStore();
-  const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
-  const { getProjectUserAssignments } = projectStore;
-  const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
-  const { pickAndUploadImages } = useFileUpload();
-  const { showPhotoSelectionDialog } = usePhotoSelection();
-  const navigation = useNavigation<
-    NavigationProp<{ PhotoSelection: PhotoSelectionParams }>
-  >();
-
-  const task = tasks.find(t => t.id === taskId);
-  const targetTask = updateTargetSubTaskId
-    ? tasks.find((candidate) => candidate.id === updateTargetSubTaskId)
-    : task;
-  const initialSelectedPhotoUris = (selectedPhotos || []).map((photo) => photo.annotatedUri || photo.uri);
-  const initialIncomingPhotos = Array.from(new Set([...initialSelectedPhotoUris, ...(uploadedPhotoUrls || [])]));
-  const isSharedUpdateComposerMode = actionType === 'update' || actionType === 'photos' || actionType === 'comment';
-  const isPhotoFirstEntry = actionType === 'photos';
-  const isCommentFirstEntry = actionType === 'comment';
-  
-  // Update form state
-  const [updateForm, setUpdateForm] = useState({
-    description: "",
-    photos: initialIncomingPhotos,
-    completionPercentage: targetTask?.completionPercentage || 0,
-    status: (targetTask?.status || "in_progress") as TaskStatus,
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [failedUploadsInSession, setFailedUploadsInSession] = useState<Array<{ fileName: string; error: string; originalFile: any }>>([]);
-  const [draftSelectedPhotos, setDraftSelectedPhotos] = useState<SelectedPhoto[]>(selectedPhotos || []);
-  const [shouldIgnoreIncomingDraftPayloads, setShouldIgnoreIncomingDraftPayloads] = useState(false);
-  const hasAutoOpenedPhotoSelectionRef = useRef(false);
-  const selectedPhotoUris = useMemo(
-    () => draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
-    [draftSelectedPhotos],
-  );
-  const hasMountedDraftHydrationRef = useRef(false);
-  const resetUpdateDraft = useCallback(() => {
-    setShouldIgnoreIncomingDraftPayloads(true);
-    setDraftSelectedPhotos([]);
-    setFailedUploadsInSession([]);
-    setUpdateForm({
-      description: "",
-      photos: [],
-      completionPercentage: targetTask?.completionPercentage || 0,
-      status: (targetTask?.status || "in_progress") as TaskStatus,
-    });
-  }, [targetTask]);
-  const hasDirtyUpdateDraft =
-    updateForm.description.trim().length > 0 ||
-    updateForm.photos.length > 0 ||
-    draftSelectedPhotos.length > 0 ||
-    updateForm.completionPercentage !== (targetTask?.completionPercentage || 0);
-
-
-  // Initialize form when task loads
-  useEffect(() => {
-    if (targetTask && isSharedUpdateComposerMode) {
-      setUpdateForm(prev => ({
-        ...prev,
-        completionPercentage: targetTask.completionPercentage || 0,
-        status: (targetTask.status || "in_progress") as TaskStatus,
-      }));
-    }
-  }, [isSharedUpdateComposerMode, targetTask]);
-
-  // Fetch task on mount
-  useEffect(() => {
-    if (taskId) {
-      fetchTaskById(taskId);
-    }
-    if (updateTargetSubTaskId) {
-      fetchTaskById(updateTargetSubTaskId);
-    }
-  }, [taskId, updateTargetSubTaskId, fetchTaskById]);
-
-  useEffect(() => {
-    if (
-      shouldIgnoreIncomingDraftPayloads &&
-      (!selectedPhotos || selectedPhotos.length === 0) &&
-      (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)
-    ) {
-      setShouldIgnoreIncomingDraftPayloads(false);
-    }
-  }, [
-    selectedPhotos,
-    shouldIgnoreIncomingDraftPayloads,
-    uploadedPhotoUrls,
-  ]);
-
-  useEffect(() => {
-    if (!hasMountedDraftHydrationRef.current) {
-      hasMountedDraftHydrationRef.current = true;
-      return;
-    }
-
-    if (shouldIgnoreIncomingDraftPayloads) {
-      return;
-    }
-
-    if (selectedPhotoUris.length === 0 && (!uploadedPhotoUrls || uploadedPhotoUrls.length === 0)) {
-      return;
-    }
-
-    const incomingPhotos = [...selectedPhotoUris, ...(uploadedPhotoUrls || [])];
-    if (incomingPhotos.length === 0) {
-      return;
-    }
-
-    setUpdateForm((prev) => ({
-      ...prev,
-      photos: Array.from(new Set([...prev.photos, ...incomingPhotos])),
-    }));
-  }, [selectedPhotoUris, shouldIgnoreIncomingDraftPayloads, uploadedPhotoUrls]);
-
-  useEffect(() => {
-    if (shouldIgnoreIncomingDraftPayloads) {
-      return;
-    }
-
-    if (!selectedPhotos || selectedPhotos.length === 0) {
-      return;
-    }
-
-    setDraftSelectedPhotos((prev) => {
-      const merged = [...prev];
-
-      for (const photo of selectedPhotos) {
-        const nextKey = photo.annotatedUri || photo.uri;
-        if (!merged.some((existing) => (existing.annotatedUri || existing.uri) === nextKey)) {
-          merged.push(photo);
-        }
-      }
-
-      return merged;
-    });
-  }, [selectedPhotos, shouldIgnoreIncomingDraftPayloads]);
-
-  useEffect(() => {
-    if (!isPhotoFirstEntry) {
-      return;
-    }
-
-    if (!user || !task || !targetTask) {
-      return;
-    }
-
-    if (hasAutoOpenedPhotoSelectionRef.current) {
-      return;
-    }
-
-    if (initialIncomingPhotos.length > 0 || draftSelectedPhotos.length > 0 || updateForm.photos.length > 0) {
-      return;
-    }
-
-    hasAutoOpenedPhotoSelectionRef.current = true;
-    handleAddPhotos();
-  }, [draftSelectedPhotos.length, initialIncomingPhotos.length, isPhotoFirstEntry, updateForm.photos.length]);
-
-  const handleAddPhotos = async (source?: "camera" | "library") => {
-    if (!user || !task || !targetTask) return;
-
-    // Use unified photo selection utility
-    showPhotoSelectionDialog({
-      onPhotosSelected: (photos) => {
-        // Ensure photos are serializable (only include necessary fields)
-        const serializablePhotos = photos.map(photo => ({
-          uri: photo.uri,
-          fileName: photo.fileName,
-          isAnnotated: photo.isAnnotated || false,
-        }));
-
-        // Defer navigation to avoid conflicts with Alert dialog
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            try {
-              if (!navigation || !navigation.navigate) {
-                console.error('❌ [TaskActionScreen] Navigation object not available');
-                Alert.alert("Error", "Navigation is not available. Please try again.");
-                return;
-              }
-
-              // Navigate to PhotoSelectionScreen
-              navigation.navigate("PhotoSelection", {
-                taskId: task.id,
-                subTaskId: updateTargetSubTaskId,
-                companyId: user.companyId,
-                userId: user.id,
-                initialCompletionPercentage: targetTask?.completionPercentage || 0,
-                initialPhotos: serializablePhotos,
-                returnScreen: actionType === 'update' ? 'UpdateProgress' : actionType === 'comment' ? 'AddComment' : 'CreateTask',
-                actionType: actionType,
-              });
-            } catch (error: any) {
-              console.error('❌ [TaskActionScreen] Navigation error:', error);
-              Alert.alert(
-                "Navigation Error",
-                `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`
-              );
-            }
-          }, 100);
-        });
-      },
-      allowClipboard: true,
-      allowMultiple: true,
-      source,
-    });
-  };
-
-  const handleSubmitUpdate = async () => {
-    const hasUploadedPhotos = updateForm.photos.length > 0;
-    const hasSelectedDraftPhotos = draftSelectedPhotos.length > 0;
-
-    if (!updateForm.description.trim() && !hasUploadedPhotos && !hasSelectedDraftPhotos) {
-      Alert.alert("Error", "Please provide a description for this update");
-      return;
-    }
-
-    if (!user || !task || !targetTask) {
-      Alert.alert("Error", "Task details are still loading. Please try again.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const calculatedStatus: TaskStatus = 
-        (targetTask?.status === "accepted" || targetTask?.status === "in_progress" || targetTask?.status === "submitted_for_review") ? 
-          "in_progress" :
-        targetTask?.status || "in_progress";
-
-      const selectedDraftPhotoUris = new Set(
-        draftSelectedPhotos.map((photo) => photo.annotatedUri || photo.uri),
-      );
-      let durablePhotoUrls = updateForm.photos.filter((photoUrl) => !selectedDraftPhotoUris.has(photoUrl));
-
-      if (draftSelectedPhotos.length > 0) {
-        for (const photo of draftSelectedPhotos) {
-          const result = await uploadFileWithVerification({
-            file: {
-              uri: photo.annotatedUri || photo.uri,
-              name: photo.fileName,
-              type: "image/jpeg",
-            },
-            entityType: "task-update",
-            entityId: updateTargetSubTaskId || task.id,
-            companyId: user.companyId,
-            userId: user.id,
-          });
-
-          if (!result.success || !result.file) {
-            throw new Error(result.error || "Photo upload failed");
-          }
-
-          durablePhotoUrls.push(result.file.public_url);
-        }
-      }
-
-      const updatePayload = {
-        description: updateForm.description,
-        photos: durablePhotoUrls,
-        completionPercentage: updateForm.completionPercentage,
-        status: calculatedStatus,
-        userId: user.id,
-      };
-
-      if (updateTargetSubTaskId) {
-        await addSubTaskUpdate(task.id, updateTargetSubTaskId, updatePayload);
-      } else {
-        await addTaskUpdate(task.id, updatePayload);
-      }
-
-      resetUpdateDraft();
-      onClearDraftPayloads?.();
-      await fetchTaskById(task.id);
-
-      Alert.alert("Success", updateForm.completionPercentage === 100 
-        ? "🎉 Task marked as 100% complete! You can submit it for review when ready."
-        : t.taskDetail.progressUpdateAdded);
-      
-      onNavigateBack();
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "Failed to submit update");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAttemptNavigateBack = () => {
-    if (!isSharedUpdateComposerMode || !hasDirtyUpdateDraft) {
-      onNavigateBack();
-      return;
-    }
-
-    Alert.alert(
-      "Discard update?",
-      "Your draft photos and progress changes will be lost.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Discard",
-          style: "destructive",
-          onPress: () => {
-            resetUpdateDraft();
-            onClearDraftPayloads?.();
-            onNavigateBack();
-          },
-        },
-      ],
-    );
-  };
-
-  const handleReassignTask = async (selectedUserIds: string[]) => {
-    if (selectedUserIds.length === 0) {
-      Alert.alert(t.errors.error, t.taskDetail.selectUsers);
-      return;
-    }
-
-    if (!task) return;
-
-    try {
-      await updateTask(task.id, {
-        assignedTo: selectedUserIds,
-        status: "new" as TaskStatus,
-        declinedReason: undefined,
-      });
-
-      Alert.alert(
-        t.taskDetail.taskReassigned,
-        `${t.taskDetail.taskReassigned} ${selectedUserIds.length} ${t.phrases.users}.`,
-        [{ text: t.common.ok, onPress: onNavigateBack }]
-      );
-    } catch (error) {
-      console.error("Error reassigning task:", error);
-      Alert.alert(t.errors.error, t.taskDetail.taskReassigned);
-    }
-  };
-
-  if (!task) {
-    return (
-      <View className="flex-1 bg-gray-50">
-        <SafeAreaView edges={['top']} className="flex-1">
-          <ModernScreenHeader
-            title={actionType === 'update' ? 'Update Progress' : 
-                   actionType === 'photos' ? 'Add Photos' :
-                   actionType === 'comment' ? 'Add Comment' :
-                   actionType === 'reassign' ? 'Reassign Task' : 'Task Actions'}
-            showBackButton={true}
-            onBackPress={onNavigateBack}
-            onNavigateToProfile={onNavigateToProfile}
-            onNavigateToProjectPicker={onNavigateToProjectPicker}
-          />
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#3b82f6" />
-            <Text className="text-gray-500 mt-4">Loading task...</Text>
-          </View>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // Render based on action type
-  if (isSharedUpdateComposerMode) {
-    const composerTitle =
-      actionType === "photos"
-        ? "Add Photos"
-        : actionType === "comment"
-          ? "Add Comment"
-          : t.taskDetail.progressUpdate;
-
-    return (
-      <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-          <ModernScreenHeader
-            title={composerTitle}
-            titleNode={(
-              <Text
-                testID="update-progress__screen_title"
-                className="text-[28px] leading-8 font-semibold text-[#F8FCFF]"
-              >
-                {composerTitle}
-              </Text>
-            )}
-            showBackButton={true}
-            onBackPress={handleAttemptNavigateBack}
-            onNavigateToProfile={onNavigateToProfile}
-            onNavigateToProjectPicker={onNavigateToProjectPicker}
-          />
-          <ScrollView className="flex-1 px-4 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-            <FileUploadHarness
-              title={t.taskDetail.photosAndFiles}
-              items={updateForm.photos.map((photo, index) => ({
-                id: `${photo}-${index}`,
-                uri: photo,
-                status: "pending",
-                onRemove: () => {
-                  setDraftSelectedPhotos((prev) =>
-                    prev.filter((draftPhoto) => (draftPhoto.annotatedUri || draftPhoto.uri) !== photo),
-                  );
-                  setUpdateForm((prev) => ({
-                    ...prev,
-                    photos: prev.photos.filter((_: string, photoIndex: number) => photoIndex !== index),
-                  }));
-                },
-              }))}
-              onAdd={() => {
-                void handleAddPhotos();
-              }}
-              addTestID="update-progress__take_photo"
-              previewTestIDPrefix="update-progress__photo_preview_tile"
-              removeTestIDPrefix="update-progress__photo_preview_remove"
-            />
-
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.updateDescription}
-              </Text>
-              <TextInput
-                autoFocus={isCommentFirstEntry}
-                className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-                placeholder={t.taskDetail.updateDescriptionPlaceholder}
-                value={updateForm.description}
-                onChangeText={(text) => setUpdateForm(prev => ({ ...prev, description: text }))}
-                multiline
-                numberOfLines={5}
-                textAlignVertical="top"
-                style={{ height: 120 }}
-              />
-            </View>
-
-            <View className="mb-6">
-              <Text className="text-xl font-semibold text-gray-900 mb-3">
-                {t.taskDetail.completionPercentage}
-              </Text>
-              <CompletionPercentageDialer
-                value={updateForm.completionPercentage}
-                onChange={(value) => setUpdateForm((prev) => ({ ...prev, completionPercentage: value }))}
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Bottom Bar */}
-          <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 8
-            }}
-          >
-            <SafeAreaView edges={['bottom']}>
-              <Pressable
-                onPress={handleSubmitUpdate}
-                disabled={isSubmitting}
-                className={cn(
-                  "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                  isSubmitting ? "bg-gray-300" : "bg-blue-600"
-                )}
-              >
-                <Ionicons name="checkmark-circle-outline" size={18} color="white" />
-                <Text className="text-white font-semibold text-base ml-2">
-                  {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
-                </Text>
-              </Pressable>
-            </SafeAreaView>
-          </View>
-    </SafeAreaView>
-    );
-  }
-
-  if (actionType === 'reassign') {
-    return (
-      <View className="flex-1 bg-transparent">
-        <ReassignTaskModal
-          visible={true}
-          taskId={taskId}
-          onClose={onNavigateBack}
-          onReassign={handleReassignTask}
-        />
-      </View>
-    );
-  }
-
-  // Photos action - same as update but just for photos
-  return (
-    <View className="flex-1 bg-gray-50">
-      <SafeAreaView edges={['top']} className="flex-1">
-        <ModernScreenHeader
-          title="Add Photos"
-          showBackButton={true}
-          onBackPress={onNavigateBack}
-          onNavigateToProfile={onNavigateToProfile}
-          onNavigateToProjectPicker={onNavigateToProjectPicker}
-        />
-        <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
-          <FileUploadHarness
-            title="Photos"
-            items={updateForm.photos.map((photo, index) => ({
-              id: `${photo}-${index}`,
-              uri: photo,
-              onRemove: () => {
-                setUpdateForm((prev) => ({
-                  ...prev,
-                  photos: prev.photos.filter((_: string, photoIndex: number) => photoIndex !== index),
-                }));
-              },
-            }))}
-            onAdd={() => {
-              void handleAddPhotos();
-            }}
-            addTestID="update-progress__take_photo"
-          />
-        </ScrollView>
-
-        <View className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-3"
-          style={{
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 8
-          }}
-        >
-          <SafeAreaView edges={['bottom']}>
-            <Pressable
-              onPress={handleSubmitUpdate}
-              disabled={isSubmitting}
-              className={cn(
-                "w-full rounded-xl py-3 px-4 flex-row items-center justify-center",
-                isSubmitting ? "bg-gray-300" : "bg-blue-600"
-              )}
-            >
-              <Ionicons name="checkmark-circle-outline" size={18} color="white" />
-              <Text className="text-white font-semibold text-base ml-2">
-                {isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
-              </Text>
-            </Pressable>
-          </SafeAreaView>
-        </View>
-      </SafeAreaView>
-    </View>
   );
 }

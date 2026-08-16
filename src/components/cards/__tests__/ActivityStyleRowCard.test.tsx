@@ -109,6 +109,45 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:task-overdue:badge-pill")).toBeTruthy();
   });
 
+  it("applies critical recipe chrome without a left accent bar", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:critical"
+        variant="critical"
+        title="Facade inspection"
+        subtitle="In Progress · High"
+        metaLabel="Due this week"
+        badgeLabel="Aug 18"
+        imageUri={undefined}
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:critical:variant-critical")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:critical:badge-pill")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:critical:accent-bar")).toBeNull();
+    expect(screen.getByText("Aug 18")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:critical:title").props.className).toContain("text-xl");
+  });
+
+  it("uses enlarged activity typography without a left accent bar", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:activity"
+        variant="activity"
+        title="In Progress"
+        subtitle="Facade inspection"
+        metaLabel="2h ago"
+        badgeLabel="In Progress"
+        imageUri={undefined}
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:activity:variant-activity")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:activity:accent-bar")).toBeNull();
+    expect(screen.getByTestId("shared-card:activity:title").props.className).toContain("text-xl");
+    expect(screen.getByTestId("shared-card:activity:subtitle").props.className).toContain("text-lg");
+  });
+
   it("does not render the top-left marker when none is provided", () => {
     const screen = render(
       <ActivityStyleRowCard

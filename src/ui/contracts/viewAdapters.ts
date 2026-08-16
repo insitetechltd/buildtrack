@@ -77,6 +77,8 @@ export interface DashboardProjectSummaryCard {
     dateLabel: string;
     title: string;
     subtitle: string;
+    /** Primary task photo when available (visual-driven critical row). */
+    imageUri?: string;
   }>;
 }
 
@@ -1043,12 +1045,6 @@ export interface DeveloperSettingsStatisticItem {
   count: number;
 }
 
-export interface DeveloperSettingsUiModeModel {
-  currentMode: "modern" | "legacy";
-  currentModeLabel: string;
-  description: string;
-}
-
 export interface DeveloperSettingsLoadingState {
   isClearing: boolean;
   isTestingUpload: boolean;
@@ -1087,7 +1083,6 @@ export interface DeveloperSettingsScreenViewAdapterOutput {
   warningTitle: string;
   warningMessage: string;
   statistics: DeveloperSettingsStatisticItem[];
-  uiMode: DeveloperSettingsUiModeModel;
   loadingState: DeveloperSettingsLoadingState;
   actionGroups: DeveloperSettingsActionGroup[];
   scenarioPresets: DeveloperSettingsScenarioPresetAction[];

@@ -90,13 +90,6 @@ jest.mock("@/state/languageStore", () => ({
   }),
 }));
 
-jest.mock("@/state/devToggleStore", () => ({
-  useDevToggleStore: () => ({
-    uiModernizationMode: "modern",
-    toggleUiMode: jest.fn(),
-  }),
-}));
-
 jest.mock("@/api/supabase", () => ({
   supabase: {},
 }));
@@ -138,7 +131,6 @@ jest.mock("react-native-safe-area-context", () => ({
 describe("DeveloperSettingsScreen", () => {
   const mockHandleForceSyncAll = jest.fn();
   const mockHandleOpenTaskDetailVerification = jest.fn();
-  const mockHandleToggleUiMode = jest.fn();
   const mockHandleScenarioPreset = jest.fn();
 
   beforeEach(() => {
@@ -173,11 +165,6 @@ describe("DeveloperSettingsScreen", () => {
           { id: "tasks", label: "Tasks", count: 2 },
           { id: "projects", label: "Projects", count: 1 },
         ],
-        uiMode: {
-          currentMode: "modern",
-          currentModeLabel: "Modern",
-          description: "Long-press to toggle between legacy and modern screens",
-        },
         loadingState: {
           isClearing: false,
           isTestingUpload: false,
@@ -253,7 +240,6 @@ describe("DeveloperSettingsScreen", () => {
         handleClearUserCache: jest.fn(),
         handleViewStorageKeys: jest.fn(),
         handleInitializeSprint7Sandbox: jest.fn(),
-        handleToggleUiMode: mockHandleToggleUiMode,
         handleScenarioPresetPress: mockHandleScenarioPreset,
         handleTestUpload: jest.fn(),
         handleClearAllLocalData: jest.fn(),

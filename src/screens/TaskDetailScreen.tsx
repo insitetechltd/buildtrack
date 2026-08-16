@@ -255,7 +255,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
               titleTestID="task-detail__header_title"
             />
           )}
-          showBackButton={false}
+          showBackButton={true}
           onBackPress={props.onNavigateBack}
         />
         <View className="flex-1 items-center justify-center">
@@ -294,7 +294,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
             />
           </View>
         )}
-        showBackButton={false}
+        showBackButton={true}
         onBackPress={props.onNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}

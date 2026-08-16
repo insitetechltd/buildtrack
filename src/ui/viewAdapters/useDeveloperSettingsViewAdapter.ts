@@ -6,7 +6,6 @@ import { runStorageUploadDiagnostic } from "@/api/storageUploadDiagnostic";
 import { supabase } from "@/api/supabase";
 import { useCompanyStore } from "@/state/companyStore";
 import { useAuthStore } from "@/state/authStore";
-import { useDevToggleStore } from "@/state/devToggleStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserStore } from "@/state/userStore.supabase";
@@ -41,7 +40,6 @@ export interface DeveloperSettingsViewAdapterHookResult {
   actions: {
     handleNavigateBack: () => void;
     handleOpenTaskDetailVerification: () => void;
-    handleToggleUiMode: () => void;
     handleForceSyncAll: () => void;
     handleClearTaskCache: () => void;
     handleClearProjectCache: () => void;
@@ -81,7 +79,6 @@ export function useDeveloperSettingsViewAdapter(
 ): DeveloperSettingsViewAdapterHookResult {
   const { onNavigateBack, onOpenTaskDetailVerification } = props;
   const { user, logout } = useAuthStore();
-  const { uiModernizationMode, toggleUiMode } = useDevToggleStore();
   const taskStore = useTaskStore();
   const projectStore = useProjectStoreWithInit();
   const userStore = useUserStore();
@@ -131,15 +128,6 @@ export function useDeveloperSettingsViewAdapter(
 
     onOpenTaskDetailVerification(verificationTaskId);
   }, [onOpenTaskDetailVerification, verificationTaskId]);
-
-  const handleToggleUiMode = useCallback(() => {
-    toggleUiMode();
-    Alert.alert(
-      "UI Mode Updated",
-      `Now running: ${uiModernizationMode === "modern" ? "Legacy" : "Modern"}`,
-      [{ text: "OK" }],
-    );
-  }, [toggleUiMode, uiModernizationMode]);
 
   const handleClearAllLocalData = useCallback(() => {
     Alert.alert(
@@ -495,11 +483,6 @@ export function useDeveloperSettingsViewAdapter(
       warningTitle: "Developer Tools",
       warningMessage: "These tools are for testing and development. Use with caution!",
       statistics,
-      uiMode: {
-        currentMode: uiModernizationMode,
-        currentModeLabel: uiModernizationMode === "modern" ? "Modern" : "Legacy",
-        description: "Long-press to toggle between legacy and modern screens",
-      },
       loadingState: {
         isClearing,
         isTestingUpload,
@@ -654,7 +637,6 @@ export function useDeveloperSettingsViewAdapter(
     projectStore.projects.length,
     sprint7SandboxLoaded,
     taskStore.tasks.length,
-    uiModernizationMode,
     user,
     userStore.users.length,
     verificationTaskId,
@@ -665,7 +647,6 @@ export function useDeveloperSettingsViewAdapter(
     actions: {
       handleNavigateBack,
       handleOpenTaskDetailVerification,
-      handleToggleUiMode,
       handleForceSyncAll,
       handleClearTaskCache,
       handleClearProjectCache,

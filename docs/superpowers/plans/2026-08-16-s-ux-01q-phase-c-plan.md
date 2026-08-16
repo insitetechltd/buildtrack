@@ -1,8 +1,17 @@
 # S-UX-01Q Phase C — Planning Only (2026-08-16)
 
-**Status:** Docs-only plan. **No product implementation in this artefact.**  
+**Status:** Track **C1 implemented** (2026-08-16). C2–C6 remain planned only.  
 **Source:** `docs/superpowers/analysis/2026-08-14-ui-ux-consistency-audit.md` § Deferred (Phase C / option 2+)  
 **Prerequisite closed:** S-UX-01Q P0 + upload Phase 1+2 Draw; S-UX-01Q2 IMGLY uninstall.
+
+## C1 delivered
+
+Shell contract applied to Projects / ProjectDetail / CreateProject / Profile (+ pending modals soft bg) / PendingUsers / AdminDashboard / DevAdmin / UserManagement / Login / Register:
+
+- `ModernScreenHeader` + `BrandHeaderTitle`
+- Page bg `#E7F4F8`, StatusBar `light` on chrome screens (auth keeps `dark`)
+- Header chrome `className="border-b-0 bg-[#08576E] pb-2"`
+- Header action pills use `#0D6E87` (primary form CTAs stay blue)
 
 ## Goal
 

@@ -17,22 +17,27 @@ jest.mock(
   }),
 );
 
-jest.mock("@/components/StandardHeader", () => ({
+jest.mock("@/components/ModernScreenHeader", () => ({
   __esModule: true,
-  default: function MockStandardHeader({
+  default: function MockModernScreenHeader({
     title,
+    subtitle,
+    titleNode,
     rightElement,
   }: {
-    title: string;
+    title?: string;
+    subtitle?: string;
+    titleNode?: React.ReactNode;
     rightElement?: React.ReactNode;
   }) {
+    const React = require("react");
     const { Text, View } = require("react-native");
-
-    return (
-      <View>
-        <Text>{title}</Text>
-        {rightElement}
-      </View>
+    return React.createElement(
+      View,
+      null,
+      titleNode || (title ? React.createElement(Text, null, title) : null),
+      subtitle ? React.createElement(Text, null, subtitle) : null,
+      rightElement || null,
     );
   },
 }));
@@ -156,6 +161,22 @@ jest.mock("react-native/Libraries/Modal/Modal", () => {
     },
   };
 });
+
+jest.mock("@/components/BrandHeaderTitle", () => ({
+  __esModule: true,
+  default: function MockBrandHeaderTitle({
+    label,
+    subtitle,
+  }: {
+    label?: string;
+    subtitle?: string;
+  }) {
+    const React = require("react");
+    const { Text } = require("react-native");
+    return React.createElement(Text, null, label || subtitle || "Brand");
+  },
+}));
+
 
 jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({

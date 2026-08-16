@@ -16,7 +16,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
 import ModalHandle from "../components/ModalHandle";
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import type {
   UserManagementProjectRoleOption,
   UserManagementUserCard,
@@ -287,8 +288,15 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
 
   if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
+        <ModernScreenHeader
+          title="User Management"
+          titleNode={<BrandHeaderTitle label="User Management" subtitle="Admin" />}
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-gray-500 text-center">
             {output.access.deniedMessage || "Access denied."}
@@ -305,25 +313,27 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title="User Management"
+        titleNode={<BrandHeaderTitle label="User Management" subtitle="Admin" />}
         showBackButton={true}
         onBackPress={onNavigateBack}
+        className="border-b-0 bg-[#08576E] pb-2"
         rightElement={
           <Pressable onPress={actions.toggleProfileMenu} className="flex-row items-center">
             <View className="mr-2">
-              <Text className="text-base font-semibold text-right text-gray-900">
+              <Text className="text-base font-semibold text-right text-[#F8FCFF]">
                 {output.profileMenu.displayName}
               </Text>
-              <Text className="text-sm text-gray-600 text-right capitalize">
+              <Text className="text-sm text-[#B9D9E4] text-right capitalize">
                 {output.profileMenu.roleLabel}
               </Text>
             </View>
-            <View className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center">
-              <Text className="text-white font-bold text-lg">{output.profileMenu.avatarInitial}</Text>
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]">
+              <Text className="text-lg font-bold text-[#F8FCFF]">{output.profileMenu.avatarInitial}</Text>
             </View>
           </Pressable>
         }
@@ -420,7 +430,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
           <ModalHandle />
 
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -511,7 +521,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
           <ModalHandle />
 
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
@@ -557,7 +567,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         animationType="slide"
         presentationStyle="formSheet"
       >
-        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
+        <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
           <ModalHandle />
 
           <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">

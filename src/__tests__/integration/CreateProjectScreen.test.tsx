@@ -7,15 +7,27 @@ jest.mock("@/ui/viewAdapters/useCreateProjectViewAdapter", () => ({
   useCreateProjectViewAdapter: jest.fn(),
 }));
 
-jest.mock("@/components/StandardHeader", () => ({
+jest.mock("@/components/ModernScreenHeader", () => ({
   __esModule: true,
-  default: function MockStandardHeader({ title }: { title: string }) {
-    const { View, Text } = require("react-native");
-
-    return (
-      <View>
-        <Text>{title}</Text>
-      </View>
+  default: function MockModernScreenHeader({
+    title,
+    subtitle,
+    titleNode,
+    rightElement,
+  }: {
+    title?: string;
+    subtitle?: string;
+    titleNode?: React.ReactNode;
+    rightElement?: React.ReactNode;
+  }) {
+    const React = require("react");
+    const { Text, View } = require("react-native");
+    return React.createElement(
+      View,
+      null,
+      titleNode || (title ? React.createElement(Text, null, title) : null),
+      subtitle ? React.createElement(Text, null, subtitle) : null,
+      rightElement || null,
     );
   },
 }));
@@ -109,6 +121,22 @@ jest.mock("@/types/buildtrack", () => {
     isAdmin: jest.fn(() => true),
   };
 });
+
+jest.mock("@/components/BrandHeaderTitle", () => ({
+  __esModule: true,
+  default: function MockBrandHeaderTitle({
+    label,
+    subtitle,
+  }: {
+    label?: string;
+    subtitle?: string;
+  }) {
+    const React = require("react");
+    const { Text } = require("react-native");
+    return React.createElement(Text, null, label || subtitle || "Brand");
+  },
+}));
+
 
 jest.mock("@/utils/DataRefreshManager", () => ({
   notifyDataMutation: jest.fn(),

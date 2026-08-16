@@ -4,7 +4,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import type { PendingUsersScreenCard } from "../ui/contracts/viewAdapters";
 import {
   usePendingUsersViewAdapter,
@@ -74,14 +75,16 @@ export default function PendingUsersScreen(props: PendingUsersScreenProps) {
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title={output.title}
         subtitle={output.subtitle}
+        titleNode={<BrandHeaderTitle label={output.title} subtitle={output.subtitle || "Pending users"} />}
         showBackButton={true}
         onBackPress={onNavigateBack}
+        className="border-b-0 bg-[#08576E] pb-2"
       />
 
       <FlatList

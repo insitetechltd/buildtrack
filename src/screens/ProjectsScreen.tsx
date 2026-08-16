@@ -13,7 +13,8 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
 import ProjectsOverviewHero from "../components/projects/ProjectsOverviewHero";
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ScreenSection from "../components/ui/ScreenSection";
 import { EditProjectModal } from "./projects/EditProjectModal";
 import { ProjectsScreenEmptyState } from "./projects/ProjectsScreenEmptyState";
@@ -48,13 +49,15 @@ export default function ProjectsScreen({
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title={t.projects.projects}
+        titleNode={<BrandHeaderTitle subtitle={t.projects.projects} />}
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
+        className="border-b-0 bg-[#08576E] pb-2"
         rightElement={
           showHeaderActions ? (
             <View className="flex-row space-x-2">
@@ -62,18 +65,18 @@ export default function ProjectsScreen({
                 <Pressable
                   testID="projects-user-management-action"
                   onPress={onNavigateToUserManagement}
-                  className="w-10 h-10 bg-purple-600 rounded-full items-center justify-center"
+                  className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
                 >
-                  <Ionicons name="people" size={20} color="white" />
+                  <Ionicons name="people" size={20} color="#F8FCFF" />
                 </Pressable>
               ) : null}
               {output.headerActions.showCreateAction ? (
                 <Pressable
                   testID="projects-create-action"
                   onPress={onNavigateToCreateProject}
-                  className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
+                  className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
                 >
-                  <Ionicons name="add" size={24} color="white" />
+                  <Ionicons name="add" size={24} color="#F8FCFF" />
                 </Pressable>
               ) : null}
             </View>

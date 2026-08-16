@@ -14,7 +14,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ModalHandle from "../components/ModalHandle";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
@@ -174,15 +175,17 @@ export default function ProfileScreen({
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title={t.profile.profile}
+        titleNode={<BrandHeaderTitle subtitle={t.profile.profile} />}
         showBackButton={true}
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
+        className="border-b-0 bg-[#08576E] pb-2"
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -254,8 +257,8 @@ export default function ProfileScreen({
           presentationStyle="pageSheet"
           onRequestClose={actions.closePasswordChange}
         >
-          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-            <StatusBar style="dark" />
+          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+            <StatusBar style="light" />
 
             <ModalHandle />
 
@@ -365,8 +368,8 @@ export default function ProfileScreen({
           presentationStyle="pageSheet"
           onRequestClose={actions.closeLanguagePicker}
         >
-          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-            <StatusBar style="dark" />
+          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+            <StatusBar style="light" />
 
             <ModalHandle />
 

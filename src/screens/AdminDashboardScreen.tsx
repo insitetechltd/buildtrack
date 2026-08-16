@@ -15,7 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import AdminOverviewHero from "../components/admin/AdminOverviewHero";
 import ModalHandle from "../components/ModalHandle";
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ScreenSection from "../components/ui/ScreenSection";
 import { cn } from "../utils/cn";
 import type {
@@ -106,8 +107,8 @@ function BannerSettingsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
 
         <ModalHandle />
 
@@ -294,8 +295,13 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
 
   if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
+        <ModernScreenHeader
+          title="Admin Dashboard"
+          titleNode={<BrandHeaderTitle label="Admin Dashboard" subtitle="Admin" />}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-gray-500 text-center">
             {output.access.deniedMessage || "Access denied."}
@@ -306,10 +312,14 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader title="Admin Dashboard" />
+      <ModernScreenHeader
+        title="Admin Dashboard"
+        titleNode={<BrandHeaderTitle label="Admin Dashboard" subtitle="Admin" />}
+        className="border-b-0 bg-[#08576E] pb-2"
+      />
 
       <ScrollView
         className="flex-1"

@@ -88,7 +88,7 @@ export default function LoginScreen(_props: LoginScreenProps) {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
       <StatusBar style="dark" />
       
       {/* Build Identifier */}

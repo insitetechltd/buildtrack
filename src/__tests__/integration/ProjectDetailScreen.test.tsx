@@ -7,22 +7,27 @@ jest.mock("@/ui/viewAdapters/useProjectDetailViewAdapter", () => ({
   useProjectDetailViewAdapter: jest.fn(),
 }));
 
-jest.mock("@/components/StandardHeader", () => ({
+jest.mock("@/components/ModernScreenHeader", () => ({
   __esModule: true,
-  default: function MockStandardHeader({
+  default: function MockModernScreenHeader({
     title,
+    subtitle,
+    titleNode,
     rightElement,
   }: {
-    title: string;
+    title?: string;
+    subtitle?: string;
+    titleNode?: React.ReactNode;
     rightElement?: React.ReactNode;
   }) {
-    const { View, Text } = require("react-native");
-
-    return (
-      <View>
-        <Text>{title}</Text>
-        {rightElement}
-      </View>
+    const React = require("react");
+    const { Text, View } = require("react-native");
+    return React.createElement(
+      View,
+      null,
+      titleNode || (title ? React.createElement(Text, null, title) : null),
+      subtitle ? React.createElement(Text, null, subtitle) : null,
+      rightElement || null,
     );
   },
 }));
@@ -154,6 +159,27 @@ jest.mock("@/types/buildtrack", () => {
       assignment.projectRole || assignment.category || "worker",
   };
 });
+
+jest.mock("@/components/BrandHeaderTitle", () => ({
+  __esModule: true,
+  default: function MockBrandHeaderTitle({
+    label,
+    subtitle,
+  }: {
+    label?: string;
+    subtitle?: string;
+  }) {
+    const React = require("react");
+    const { Text, View } = require("react-native");
+    return React.createElement(
+      View,
+      null,
+      label ? React.createElement(Text, null, label) : null,
+      subtitle ? React.createElement(Text, null, subtitle) : null,
+    );
+  },
+}));
+
 
 jest.mock("@/utils/dateFormatter", () => ({
   useDateFormatter: () => ({
@@ -316,8 +342,8 @@ describe("ProjectDetailScreen", () => {
       />,
     );
 
-    expect(screen.getByText("Project Details")).toBeTruthy();
-    expect(screen.getByText("Tower A")).toBeTruthy();
+    expect(screen.getAllByText("Tower A").length).toBeGreaterThan(0);
+    expect(screen.getByText("Project details")).toBeTruthy();
     expect(screen.getByText("Lead Project Manager: Jordan Lee")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("project-detail__edit"));

@@ -15,7 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import ModalHandle from "@/components/ModalHandle";
 import ProjectForm from "@/components/ProjectForm";
-import StandardHeader from "@/components/StandardHeader";
+import ModernScreenHeader from "@/components/ModernScreenHeader";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import { useAuthStore } from "@/state/authStore";
 import { useCompanyStore } from "@/state/companyStore";
 import { useUserPreferencesStore } from "@/state/userPreferencesStore";
@@ -55,12 +56,14 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
 
   if (!output.project || !output.header || output.emptyState) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
-        <StandardHeader
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
+        <ModernScreenHeader
           title="Project Details"
+          titleNode={<BrandHeaderTitle label="Project Details" subtitle="Project details" />}
           showBackButton={true}
           onBackPress={onNavigateBack}
+          className="border-b-0 bg-[#08576E] pb-2"
         />
         <View className="flex-1 items-center justify-center p-6">
           <Ionicons name="alert-circle-outline" size={64} color="#9ca3af" />
@@ -85,19 +88,26 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title="Project Details"
+        titleNode={
+          <BrandHeaderTitle
+            label={output.header.title || "Project Details"}
+            subtitle="Project details"
+          />
+        }
         showBackButton={true}
         onBackPress={onNavigateBack}
+        className="border-b-0 bg-[#08576E] pb-2"
         rightElement={
           output.canEdit ? (
             <Pressable
               testID="project-detail__edit"
               onPress={actions.openEditProject}
-              className="w-10 h-10 bg-blue-600 rounded-full items-center justify-center"
+              className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
             >
               <Ionicons name="pencil" size={20} color="white" />
             </Pressable>
@@ -333,13 +343,15 @@ function EditProjectModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
 
-        <StandardHeader
+        <ModernScreenHeader
           title="Edit Project"
+          titleNode={<BrandHeaderTitle label="Edit Project" subtitle="Project details" />}
           showBackButton={true}
           onBackPress={onClose}
+          className="border-b-0 bg-[#08576E] pb-2"
         />
 
         <ProjectForm
@@ -447,8 +459,8 @@ function AddMemberModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={['bottom', 'left', 'right']} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
 
         <ModalHandle />
 

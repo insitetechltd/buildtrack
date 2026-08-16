@@ -3,7 +3,8 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 
-import StandardHeader from "../components/StandardHeader";
+import ModernScreenHeader from "../components/ModernScreenHeader";
+import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ProjectForm from "../components/ProjectForm";
 import {
   useCreateProjectViewAdapter,
@@ -21,8 +22,15 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
 
   if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
+        <ModernScreenHeader
+          title="Create Project"
+          titleNode={<BrandHeaderTitle label="Create Project" subtitle="Projects" />}
+          showBackButton={true}
+          onBackPress={actions.cancel}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-gray-500 text-center">
             {output.access.deniedMessage || "Access denied."}
@@ -36,13 +44,15 @@ export default function CreateProjectScreen({ onNavigateBack }: CreateProjectScr
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title={output.headerTitle}
+        titleNode={<BrandHeaderTitle label={output.headerTitle} subtitle="Projects" />}
         showBackButton={true}
         onBackPress={actions.cancel}
+        className="border-b-0 bg-[#08576E] pb-2"
       />
 
       {output.companyBanner ? (

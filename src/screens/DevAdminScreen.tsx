@@ -11,7 +11,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import StandardHeader from "@/components/StandardHeader";
+import ModernScreenHeader from "@/components/ModernScreenHeader";
+import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type {
   DevAdminEnvironmentItem,
   DevAdminToolActionItem,
@@ -118,8 +119,15 @@ export default function DevAdminScreen(props: DevAdminScreenProps) {
 
   if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-        <StatusBar style="dark" />
+      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+        <StatusBar style="light" />
+        <ModernScreenHeader
+          title="Dev Admin"
+          titleNode={<BrandHeaderTitle label="Dev Admin" subtitle="Admin" />}
+          showBackButton
+          onBackPress={actions.handleNavigateBack}
+          className="border-b-0 bg-[#08576E] pb-2"
+        />
         <View className="flex-1 items-center justify-center px-6">
           <Ionicons name="shield-outline" size={64} color="#ef4444" />
           <Text className="mt-4 text-2xl font-bold text-gray-900 text-center">Access Denied</Text>
@@ -143,13 +151,15 @@ export default function DevAdminScreen(props: DevAdminScreenProps) {
   const activeTone = output.activeEnvironment ? getToneClasses(output.activeEnvironment.tone) : null;
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-gray-50">
-      <StatusBar style="dark" />
+    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <StatusBar style="light" />
 
-      <StandardHeader
+      <ModernScreenHeader
         title={output.title}
+        titleNode={<BrandHeaderTitle label={output.title} subtitle="Admin" />}
         showBackButton
         onBackPress={actions.handleNavigateBack}
+        className="border-b-0 bg-[#08576E] pb-2"
       />
 
       <ScrollView className="flex-1">

@@ -1,0 +1,47 @@
+# Track B boot (iOS 26.2 Pro Max): same TCC grants as _boot + Save Password dismiss.
+# photos/medialibrary allow avoids long blank/loading after clearState.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: true
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 25000
+- tapOn:
+    id: "login-emailOrPhone"
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "login-password"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 800
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- runFlow: _assert-no-logbox.yaml
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000

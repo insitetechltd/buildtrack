@@ -1,12 +1,36 @@
 import {
   dismissPhotoFlowScreens,
+  cancelInAppLibraryPicker,
   returnToPhotoSelectionFlat,
 } from "../photoFlowNavigation";
 
 describe("photoFlowNavigation", () => {
-  it("dismissPhotoFlowScreens pops all library/select layers back to the form", () => {
+  it("dismissPhotoFlowScreens pops a form-reopened library back to Create Task (no Select Photos under it)", () => {
     const dispatch = jest.fn();
+    const goBack = jest.fn();
     dismissPhotoFlowScreens({
+      getState: () => ({
+        index: 1,
+        routes: [
+          { key: "a", name: "CreateTaskMain" },
+          { key: "c", name: "InAppLibraryPicker" },
+        ],
+      }),
+      dispatch,
+      goBack,
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+    expect(goBack).not.toHaveBeenCalled();
+  });
+
+  it("cancelInAppLibraryPicker pops only the library when Select Photos is underneath", () => {
+    const dispatch = jest.fn();
+    cancelInAppLibraryPicker({
       getState: () => ({
         index: 2,
         routes: [
@@ -21,7 +45,53 @@ describe("photoFlowNavigation", () => {
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         type: "POP",
-        payload: expect.objectContaining({ count: 2 }),
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+  });
+
+  it("cancelInAppLibraryPicker dismisses photo flow when Create Task sits above a stale Select Photos", () => {
+    const dispatch = jest.fn();
+    cancelInAppLibraryPicker({
+      getState: () => ({
+        index: 4,
+        routes: [
+          { key: "a", name: "CreateTaskMain" },
+          { key: "b", name: "InAppLibraryPicker" },
+          { key: "c", name: "PhotoSelection" },
+          { key: "d", name: "CreateTaskMain" },
+          { key: "e", name: "InAppLibraryPicker" },
+        ],
+      }),
+      dispatch,
+      goBack: jest.fn(),
+    });
+    // Immediate parent is CreateTaskMain → dismiss only the top library
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+  });
+
+  it("cancelInAppLibraryPicker dismisses the whole photo flow when library is root", () => {
+    const dispatch = jest.fn();
+    cancelInAppLibraryPicker({
+      getState: () => ({
+        index: 1,
+        routes: [
+          { key: "a", name: "CreateTaskMain" },
+          { key: "c", name: "InAppLibraryPicker" },
+        ],
+      }),
+      dispatch,
+      goBack: jest.fn(),
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
       }),
     );
   });

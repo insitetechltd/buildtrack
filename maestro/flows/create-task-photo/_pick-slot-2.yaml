@@ -1,0 +1,5 @@
+# Pick gallery slot 2 (row0 col2).
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    point: "83%, 20%"

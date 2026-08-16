@@ -1,0 +1,30 @@
+# P03 — Three in first visit → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p03
+---
+- evalScript: ${output.permutation = "P03"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: _pick-slot-1.yaml
+- extendedWaitUntil:
+    visible: ".*2 selected.*"
+    timeout: 8000
+- runFlow: _pick-slot-2.yaml
+- extendedWaitUntil:
+    visible: ".*3 selected.*"
+    timeout: 8000
+- takeScreenshot: "ct-P03-picker-three"
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_2"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P03-done"

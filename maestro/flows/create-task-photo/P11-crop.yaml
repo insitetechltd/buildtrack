@@ -1,0 +1,33 @@
+# P11 — Crop Apply → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p11
+---
+- evalScript: ${output.permutation = "P11"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__preview"
+- tapOn:
+    id: "photo-selection__tool_crop"
+- assertVisible:
+    id: "photo-selection__crop_overlay"
+- takeScreenshot: "ct-P11-crop-mode"
+- tapOn:
+    id: "photo-selection__crop_apply"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_crop"
+    timeout: 5000
+- takeScreenshot: "ct-P11-after-crop"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P11-done"

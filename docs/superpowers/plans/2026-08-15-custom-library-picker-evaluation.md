@@ -69,6 +69,7 @@ Form → Add Photos sheet → Choose from Library
 
 - [x] `npx expo install expo-image-multiple-picker` (peer: media-library, svg already OK) — v4.10.0
 - [x] Requests MediaLibrary permission via package `usePermissions` (denied → `onCancel`); limited-library behavior **needs device smoke**
+- [x] **2026-08-16 release blocker fixed:** gate `ImagePicker` mount until `MediaLibrary` granted — `expo-image-multiple-picker` + `noAlbums` otherwise blank-grids after first Allow Full Access (see `docs/superpowers/findings/2026-08-16-in-app-library-permission-blank-grid.md`)
 - [x] Multi-select resolves `localUri` then `pinDraftMedia` → `file://` drafts
 - [x] Theme header: Cancel, count, Accept ✓ (no Apple Photos\|Collections) — `InAppLibraryPickerScreen`
 - [x] `onSave` → `replace` `PhotoSelection` with `initialPhotos` (`uploadImmediately: false`)
@@ -119,7 +120,7 @@ Form → Add Photos sheet → Choose from Library
 - Draw (Phase 2 spike still separate)  
 - Per-photo caption (Phase 3 optional)  
 - Replacing Photo Edit with a third-party editor  
-- Uninstalling `@imgly` (separate cleanup)  
+- [x] Uninstalling `@imgly` (separate cleanup) — **S-UX-01Q2 Closed 2026-08-15**  
 - Custom camera UI  
 
 ---

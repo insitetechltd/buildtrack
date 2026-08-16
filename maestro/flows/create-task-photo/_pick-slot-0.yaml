@@ -1,0 +1,6 @@
+# Pick gallery slot 0 (row0 col0) — 3-col grid, first row (clean 3-fixture library).
+# Y≈20%: header ends ~12%; 28% lands in empty space under the first row (iOS 26 Pro Max).
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    point: "17%, 20%"

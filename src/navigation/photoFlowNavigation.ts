@@ -52,6 +52,25 @@ export function dismissPhotoFlowScreens(navigation: PhotoFlowStackNav) {
 }
 
 /**
+ * Library Cancel:
+ * - Add-more: Select Photos is the immediate parent → pop library only.
+ * - Otherwise (form reopen / root library) → dismiss contiguous photo-flow screens.
+ *   Do not jump to a stale PhotoSelection buried under an intervening Create Task.
+ */
+export function cancelInAppLibraryPicker(navigation: PhotoFlowStackNav) {
+  const state = navigation.getState?.();
+  const routes = state?.routes ?? [];
+  const index = state?.index ?? routes.length - 1;
+
+  if (index > 0 && routes[index - 1]?.name === "PhotoSelection") {
+    navigation.dispatch(StackActions.pop(1));
+    return;
+  }
+
+  dismissPhotoFlowScreens(navigation);
+}
+
+/**
  * After library accept:
  * - If Select Photos already exists under the library (add-more), update it and pop back.
  * - Otherwise push Select Photos so Library stays underneath (Select X → Library).

@@ -34,8 +34,10 @@ This foundation is intentionally narrow:
 - `flows/task-core-live-completion.yaml`: validates worker completion handoff into review-ready state
 - `flows/task-core-live-photo-upload.yaml`: validates worker photo selection and progress update submission
 - `flows/pick-first-image.yaml`: selects the first iOS photo-library image during live upload validation
+- `flows/create-task-photo/*.yaml`: Create Task in-app library / Select Photos / draw / dedupe permutations (see `../docs/superpowers/plans/2026-08-16-maestro-create-task-photo-permutations.md`)
 - `flows/assets/icon.png`: repo-local media fixture used by the live photo-upload flow
 - `../scripts/maestro/run-local.sh`: repo-local wrapper that runs Maestro against a repo-owned local home and supports `MAESTRO_BIN` overrides
+- `../scripts/maestro/run-create-task-photo-suite.sh`: stop-on-fail runner for Create Task photo permutations
 
 ## Preconditions
 
@@ -69,6 +71,10 @@ Run the `M-QA-03` live Task Core bundle:
 
 ```bash
 npm run test:e2e:maestro:task-core
+```
+
+```bash
+bash ./scripts/maestro/run-create-task-photo-suite.sh
 ```
 
 Run the `M-QA-01` Sprint 7 rubric automation (Maestro = operator captures evidence; Human = approver signs off on PNGs):

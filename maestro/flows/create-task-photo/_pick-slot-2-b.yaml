@@ -1,0 +1,7 @@
+# Track B: slot 2 — settle then tap.
+appId: com.buildtrack.app.local
+---
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    point: "83%, 20%"

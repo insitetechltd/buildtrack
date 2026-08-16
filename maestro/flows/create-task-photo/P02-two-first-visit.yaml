@@ -1,0 +1,26 @@
+# P02 — Two in first picker visit → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p02
+---
+- evalScript: ${output.permutation = "P02"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: _pick-slot-1.yaml
+- extendedWaitUntil:
+    visible: ".*2 selected.*"
+    timeout: 8000
+- takeScreenshot: "ct-P02-picker-two"
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_1"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P02-done"

@@ -1,0 +1,54 @@
+# P2 — Library 1 photo → Draw stroke → Done bake → confirm → submit.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - permutation-02
+---
+- evalScript: ${output.permutation = "02-draw-then-upload"}
+- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- runFlow: _open-library.yaml
+- runFlow: _pick-first.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__preview"
+- tapOn:
+    id: "photo-selection__tool_draw"
+- assertVisible:
+    id: "photo-selection__draw_overlay"
+- takeScreenshot: "ct-photo-02-draw-mode"
+# Stroke across preview (source bake path; HEIC normalize covered in Jest)
+- swipe:
+    start: 30%, 45%
+    end: 70%, 55%
+    duration: 600
+- assertVisible:
+    id: "photo-selection__tool_draw_done"
+- tapOn:
+    id: "photo-selection__tool_draw_done"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_draw"
+    timeout: 12000
+- takeScreenshot: "ct-photo-02-after-bake"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- assertVisible:
+    id: "photo-selection__confirm"
+- tapOn:
+    id: "photo-selection__confirm"
+- assertVisible:
+    id: "create-task__continuous_form"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-photo-02-done"

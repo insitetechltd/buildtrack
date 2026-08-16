@@ -1,0 +1,34 @@
+# Ensure an active project (Harbor Tower preferred; Project A fallback).
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - extendedWaitUntil:
+          visible:
+            id: "projectPicker-scroll"
+          timeout: 5000
+      - runFlow:
+          when:
+            visible:
+              id: "project-picker__row-sprint7-project-shared-harbor-tower"
+          commands:
+            - tapOn:
+                id: "project-picker__row-sprint7-project-shared-harbor-tower"
+      - runFlow:
+          when:
+            visible: ".*Project A - Commercial Building.*"
+          commands:
+            - tapOn: ".*Project A - Commercial Building.*"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 12000
+- assertVisible:
+    id: "dashboard-screen__root"
+- runFlow: _assert-no-logbox.yaml

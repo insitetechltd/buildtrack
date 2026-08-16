@@ -176,7 +176,6 @@ jest.mock("@/screens/DevAdminScreen", () => "DevAdminScreen");
 jest.mock("@/screens/DeveloperSettingsScreen", () => "DeveloperSettingsScreen");
 jest.mock("@/screens/PendingUsersScreen", () => "PendingUsersScreen");
 jest.mock("@/screens/PhotoViewerScreen", () => "PhotoViewerScreen");
-jest.mock("@/screens/PhotoAnnotationScreen", () => "PhotoAnnotationScreen");
 jest.mock("@/screens/PhotoSelectionScreen", () => "PhotoSelectionScreen");
 jest.mock("@/screens/UpdateProgressScreen", () => "UpdateProgressScreen");
 jest.mock("@/screens/AddCommentScreen", () => "AddCommentScreen");

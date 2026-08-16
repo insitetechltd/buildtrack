@@ -1,0 +1,21 @@
+# From Select Photos: Add more → Choose from Library.
+appId: com.buildtrack.app.local
+---
+- assertVisible:
+    id: "photo-selection__add_more"
+- tapOn:
+    id: "photo-selection__add_more"
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 5000

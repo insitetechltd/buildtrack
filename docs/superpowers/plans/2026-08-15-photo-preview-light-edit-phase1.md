@@ -1,7 +1,7 @@
 # Photo Preview Light Edit — Phase 1 Plan
 
 > **Status (2026-08-15):** **Phase 1 + Phase 2 Draw closed.**  
-> Phase 1 rotate/crop/reset + Select Photos grid UX landed. Phase 2 pen draw (Skia offscreen bake → `annotatedUri`) shipped; iOS native rebuild via `ios.buildReactNativeFromSource=true` (keeps static frameworks for IMGLY). Phase 3 caption remains deferred. No IMGLY on library path.
+> Phase 1 rotate/crop/reset + Select Photos grid UX landed. Phase 2 pen draw (Skia offscreen bake → `annotatedUri`) shipped. **S-UX-01Q2:** IMGLY package + dead `PhotoAnnotation` path removed (2026-08-15). Phase 3 caption remains deferred.
 
 > **For agentic workers:** Implement task-by-task. Checkboxes track progress. Do **not** start Phase 2 draw until the spike checklist passes. Caption is **Phase 3 optional** — do not ship in Phase 1.
 

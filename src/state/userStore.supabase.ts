@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
+import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { User, UserRole, SystemPermission, getUserSystemPermission, hasSystemPermission } from "../types/buildtrack";
 
 interface UserStore {
@@ -48,15 +49,16 @@ export const useUserStore = create<UserStore>()(
 
       // FETCH from Supabase
       fetchUsers: async () => {
-        if (!supabase) {
-          console.error('Supabase not configured, no data available');
-          set({ users: [], isLoading: false, error: 'Supabase not configured' });
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [users] Skipping fetchUsers — no Supabase session (avoids anon 42501)');
+          set({ isLoading: false });
           return;
         }
 
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
+          const { data, error } = await sessionClient
             .from('users')
             .select(`
               *,

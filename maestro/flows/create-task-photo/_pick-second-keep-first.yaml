@@ -1,0 +1,12 @@
+# With ledger=1 already selected, pick slot 1 → accept → 2 tiles.
+appId: com.buildtrack.app.local
+---
+- runFlow: _pick-slot-1.yaml
+- extendedWaitUntil:
+    visible: ".*2 selected.*"
+    timeout: 5000
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__tile_1"

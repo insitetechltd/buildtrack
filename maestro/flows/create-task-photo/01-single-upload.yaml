@@ -1,0 +1,33 @@
+# P1 — Single photo: Create Task → Library → 1 photo → Select Photos confirm → submit.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - permutation-01
+---
+- evalScript: ${output.permutation = "01-single-upload"}
+- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- runFlow: _open-library.yaml
+- runFlow: _pick-first.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- takeScreenshot: "ct-photo-01-selection-one"
+- tapOn:
+    id: "photo-selection__confirm"
+- assertVisible:
+    id: "create-task__continuous_form"
+- assertVisible:
+    id: "create-task__attachments_section"
+- takeScreenshot: "ct-photo-01-form-with-attachment"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-photo-01-done"

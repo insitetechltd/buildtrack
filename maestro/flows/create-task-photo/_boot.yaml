@@ -1,0 +1,36 @@
+# Iron-clad boot: clearState + live login (no exp+ openLink — sim -10814).
+# Assert no LogBox Console Error / permission-denied on landing.
+appId: com.buildtrack.app.local
+---
+# clearState resets TCC → Photos prompt on first library open unless pre-granted.
+# Explicit photos/medialibrary avoid a flashing system sheet that Maestro can
+# miss (when: one-shot) or auto-dismiss before "Allow Full Access" is tappable.
+- launchApp:
+    clearState: true
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 25000
+- tapOn:
+    id: "login-emailOrPhone"
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "login-password"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- runFlow: _assert-no-logbox.yaml
+# Prefer icon surface (more reliable than Pressable wrapper under XCTest flake)
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000

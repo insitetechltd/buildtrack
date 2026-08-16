@@ -1,0 +1,7 @@
+# Track B: slot 0 — settle then tap (Y≈20% = tile row center on Pro Max 440×956).
+appId: com.buildtrack.app.local
+---
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    point: "17%, 20%"

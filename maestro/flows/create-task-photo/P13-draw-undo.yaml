@@ -1,0 +1,34 @@
+# P13 — Draw → Undo → cancel draw (no false bake)
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p13
+---
+- evalScript: ${output.permutation = "P13"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first-b.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- tapOn:
+    id: "photo-selection__tool_draw"
+- assertVisible:
+    id: "photo-selection__draw_overlay"
+- swipe:
+    start: 30%, 45%
+    end: 70%, 55%
+    duration: 500
+- tapOn:
+    id: "photo-selection__tool_draw_undo"
+- takeScreenshot: "ct-P13-after-undo"
+- tapOn:
+    id: "photo-selection__tool_draw"
+- assertVisible:
+    id: "photo-selection__tool_draw"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P13-done"

@@ -4,6 +4,7 @@ import { useAuthStore } from '../state/authStore';
 import { useTaskStore } from '../state/taskStore.supabase';
 import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
+import { getSessionScopedSupabase } from '../api/supabaseSessionGate';
 
 /**
  * DataSyncManager - Keeps app data synchronized with Supabase
@@ -33,6 +34,16 @@ export function DataSyncManager() {
   const syncAllData = async () => {
     if (!user) {
       console.log('📊 [DataSync] Skipping sync - no user logged in');
+      return;
+    }
+
+    // AuthStore can rehydrate a user before Supabase JWT is attached. Post
+    // M-SUPABASE-02a, anon SELECT is REVOKE'd → SQLSTATE 42501 LogBox spam.
+    const sessionClient = await getSessionScopedSupabase();
+    if (!sessionClient) {
+      console.warn(
+        '📊 [DataSync] Skipping sync - no Supabase session yet (avoids anon 42501)',
+      );
       return;
     }
 

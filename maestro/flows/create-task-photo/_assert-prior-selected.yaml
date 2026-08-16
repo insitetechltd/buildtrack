@@ -1,0 +1,24 @@
+# Assert library header shows prior ledger count already selected.
+# Caller sets output.ledgerCount via evalScript before runFlow.
+appId: com.buildtrack.app.local
+---
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 5000
+- runFlow:
+    when:
+      true: ${output.ledgerCount == 1}
+    commands:
+      - assertVisible: ".*1 selected.*"
+- runFlow:
+    when:
+      true: ${output.ledgerCount == 2}
+    commands:
+      - assertVisible: ".*2 selected.*"
+- runFlow:
+    when:
+      true: ${output.ledgerCount == 3}
+    commands:
+      - assertVisible: ".*3 selected.*"
+- takeScreenshot: "ct-photo-prior-selected-ledger"

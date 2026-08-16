@@ -37,7 +37,7 @@ Derived from `package.json` and `app.json` (exact patch versions may drift with 
 - **State:** Zustand (e.g. `authStore`, `taskStore.supabase`, project filter store)  
 - **Backend:** Supabase JS client with AsyncStorage session persistence (`src/api/supabase.ts`)  
 - **Styling:** NativeWind / Tailwind-related packages  
-- **Media:** `expo-image-picker`, `expo-camera`, `expo-file-system`, **IMG.LY** (`@imgly/editor-react-native`, with Maven repo in `expo-build-properties`) for annotation/editing  
+- **Media:** `expo-image-picker`, in-app library picker, `expo-camera`, `expo-file-system`, Select Photos light edit (`expo-image-manipulator` + Skia draw bake)  
 - **Testing:** Jest, Testing Library (`package.json` scripts)
 
 **Configuration:** `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are required for online operation; if missing, the client warns and the app degrades (e.g. offline-oriented behavior per implementation).

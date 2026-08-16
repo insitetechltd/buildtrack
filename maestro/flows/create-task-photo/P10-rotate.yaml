@@ -1,0 +1,28 @@
+# P10 — Rotate → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p10
+---
+- evalScript: ${output.permutation = "P10"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__preview"
+- tapOn:
+    id: "photo-selection__tool_rotate"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_rotate"
+    timeout: 5000
+- takeScreenshot: "ct-P10-after-rotate"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P10-done"

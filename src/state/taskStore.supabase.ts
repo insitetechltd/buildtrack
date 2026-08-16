@@ -12,6 +12,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
+import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
 
@@ -712,14 +713,14 @@ export const useTaskStore = create<TaskStore>()(
 
       // FETCH from Supabase
       fetchTasks: async (forceRefresh: boolean = false) => {
-        if (!supabase) {
-          console.error('Supabase not configured, no data available');
-          set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [tasks] Skipping fetchTasks — no Supabase session (avoids anon 42501)');
           return;
         }
 
         const resourceKey = buildResourceKey("tasks", "all");
-        const supabaseClient = supabase;
+        const supabaseClient = sessionClient;
         const cachedIds = get().queryTaskIds[resourceKey] || get().tasks.map((task) => task.id);
         const hasCachedData = cachedIds.length > 0;
 

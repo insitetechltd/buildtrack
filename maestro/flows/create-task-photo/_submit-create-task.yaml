@@ -1,0 +1,47 @@
+# Fill Create Task title + description + submit; assert success landing.
+# Caller must already be on create-task__continuous_form with attachments ready.
+appId: com.buildtrack.app.local
+---
+- evalScript: ${output.taskTitle = "Maestro CT Photo " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Maestro create-task photo suite attachment coverage."
+# Dismiss keyboard via header chrome (hideKeyboard flakes on this sim)
+- tapOn:
+    point: "50%, 12%"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__submit-inline"
+    direction: DOWN
+- tapOn:
+    id: "create-task__submit-inline"
+- tapOn:
+    id: "create-task__submit-inline"
+    delay: 1500
+# Success Alert can appear after the first visibility poll — wait, don't one-shot skip.
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 20000
+- assertVisible:
+    id: "create-task__submit-success-message"
+- takeScreenshot: "ct-photo-submit-success"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+# Post-create lands on Tasks tab (not Dashboard) after success OK.
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- runFlow: _assert-no-logbox.yaml

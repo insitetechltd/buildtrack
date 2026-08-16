@@ -1,0 +1,42 @@
+# P20 — Cancel library without picking — land back on Create Task form (no crash)
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p20
+---
+- evalScript: ${output.permutation = "P20"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- takeScreenshot: "ct-P20-empty-library"
+- tapOn:
+    id: "in-app-library__cancel"
+- waitForAnimationToEnd:
+    timeout: 1500
+# Cancel can miss under XCTest — retry / system back like P19
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - back
+- runFlow:
+    when:
+      visible: "Dismiss"
+    commands:
+      - tapOn: "Dismiss"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 12000
+- takeScreenshot: "ct-P20-back-on-form"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P20-done"

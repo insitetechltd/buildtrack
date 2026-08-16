@@ -8,6 +8,12 @@ jest.mock("@react-navigation/native", () => ({
       payload: { params },
     }),
   },
+  StackActions: {
+    pop: (count: number) => ({
+      type: "POP",
+      payload: { count },
+    }),
+  },
   getFocusedRouteNameFromRoute: () => undefined,
   NavigationContainer: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -189,7 +195,6 @@ jest.mock("../../screens/ProjectPickerScreen", () => "ProjectPickerScreen");
 jest.mock("../../screens/DeveloperSettingsScreen", () => "DeveloperSettingsScreen");
 jest.mock("../../screens/PendingUsersScreen", () => "PendingUsersScreen");
 jest.mock("../../screens/PhotoViewerScreen", () => "PhotoViewerScreen");
-jest.mock("../../screens/PhotoAnnotationScreen", () => "PhotoAnnotationScreen");
 jest.mock("../../screens/PhotoSelectionScreen", () => "PhotoSelectionScreen");
 jest.mock("../../screens/UpdateProgressScreen", () => "UpdateProgressScreen");
 jest.mock("../../screens/AddCommentScreen", () => "AddCommentScreen");
@@ -357,9 +362,14 @@ describe("AppNavigator back helpers", () => {
       { selectedPhotos: [{ uri: "file:///photo.jpg", fileName: "photo.jpg", isAnnotated: false }] },
     );
 
-    expect(goBack).toHaveBeenCalledTimes(1);
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+    expect(goBack).not.toHaveBeenCalled();
     expect(navigate).not.toHaveBeenCalled();
-    expect(dispatch).not.toHaveBeenCalled();
     expect(setParams).not.toHaveBeenCalled();
 
     jest.runAllTimers();

@@ -73,8 +73,6 @@ export type PhotoSelectionParams = {
   updateTargetSubTaskId?: string;
   selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
-  annotationResult?: string;
-  photoIndex?: number;
   sourceScreen?: "dashboard" | "tasks";
   sourceTaskId?: string;
   sourceSubTaskId?: string;
@@ -91,13 +89,6 @@ export type PhotoViewerParams = {
   allowDelete?: boolean;
   onDelete?: unknown;
   activityInfo?: TaskActivity | null;
-};
-
-export type PhotoAnnotationParams = {
-  photoUri: string;
-  existingAnnotations?: unknown[];
-  photoIndex?: number;
-  returnScreen?: "PhotoSelection";
 };
 
 /** In-app MediaLibrary gallery (library path; Photo Edit stays on Select Photos). */
@@ -136,7 +127,6 @@ export type DashboardStackParamList = {
   CreateTask: CreateTaskParams;
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
-  PhotoAnnotation: PhotoAnnotationParams;
   InAppLibraryPicker: InAppLibraryPickerParams;
 };
 
@@ -160,7 +150,6 @@ export type TasksStackParamList = {
       }
     | undefined;
   PhotoViewer: PhotoViewerParams;
-  PhotoAnnotation: PhotoAnnotationParams;
   PhotoSelection: PhotoSelectionParams;
   UpdateProgress: UpdateProgressParams;
   AddComment: TaskDetailParams;
@@ -183,7 +172,6 @@ export type CreateTaskStackParamList = {
   CreateTaskMain: CreateTaskParams | undefined;
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
-  PhotoAnnotation: PhotoAnnotationParams;
   InAppLibraryPicker: InAppLibraryPickerParams;
 };
 

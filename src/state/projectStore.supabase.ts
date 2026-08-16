@@ -13,6 +13,7 @@ import {
   supabase,
   type QueryMeta,
 } from "../api/supabase";
+import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { useAuthStore } from "./authStore";
 import {
   getProjectRole,
@@ -480,14 +481,14 @@ export const useProjectStore = create<ProjectStore>()(
 
       // FETCH from Supabase
       fetchProjects: async (forceRefresh = false) => {
-        if (!supabase) {
-          console.error('Supabase not configured, no data available');
-          set({ projects: [], userAssignments: [], isLoading: false, error: 'Supabase not configured' });
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [projects] Skipping fetchProjects — no Supabase session (avoids anon 42501)');
           return;
         }
 
         const resourceKey = buildResourceKey("projects", "all");
-        const supabaseClient = supabase;
+        const supabaseClient = sessionClient;
         const cachedIds = get().queryProjectIds[resourceKey] || get().projects.map((project) => project.id);
         const hasCachedData = cachedIds.length > 0;
 

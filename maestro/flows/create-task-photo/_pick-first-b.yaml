@@ -1,0 +1,28 @@
+# Track B pick-first with retries if first tap misses (percent-grid flake).
+appId: com.buildtrack.app.local
+---
+- runFlow: _pick-slot-0-b.yaml
+- runFlow:
+    when:
+      notVisible: ".*1 selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 22%"
+- runFlow:
+    when:
+      notVisible: ".*1 selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 24%"
+- runFlow:
+    when:
+      notVisible: ".*1 selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 18%"
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"

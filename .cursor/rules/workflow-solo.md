@@ -38,6 +38,12 @@ Pick exactly ONE route from:
 ## 4. Discipline Rules (every SOLO cycle)
 - Start with Planner for non-trivial tasks
 - Use Build ONLY after plan exists
+- Prefer **concurrent tracks** when ownership partitions (disjoint files / independent Maestro cases); serialize shared helpers, product SoT, schema/auth/release, same sim UDID
+- Cap Maestro ≤2 UDIDs on this host; 1 job per UDID; one-shot case runs while developing; full suite = final gate
+- Reviewer before COMMIT GATE
+- Test Engineer after commit (or after Reviewer if no commit requested)
+- QA Validator for user-visible / nav / upload / task-flow
+- Release Manager only for build/store/env decisions
 - Review ALWAYS before commit. 0 Critical / 0 High findings mandatory.
 - Commit gate ordering: Build → Review 0 C/H → Conventional commit → Test → QA (if user-visible)
 - NEVER commit pre-review. NEVER commit with C/H open.

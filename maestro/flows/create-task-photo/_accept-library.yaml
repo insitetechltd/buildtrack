@@ -1,0 +1,36 @@
+# Accept library selection → wait for Select Photos (multi-pin can be slow).
+# Keep waits tight: fail fast if pin/nav hangs rather than sit on loading for 60s+.
+appId: com.buildtrack.app.local
+---
+- assertVisible:
+    id: "in-app-library__accept"
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: "in-app-library__accept"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 12000
+# Retry accept if still on library (disabled-race / missed press)
+- runFlow:
+    when:
+      visible: ".*selected.*"
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "in-app-library__screen"
+          commands:
+            - tapOn:
+                id: "in-app-library__accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__confirm"
+    timeout: 15000
+- runFlow: _assert-no-logbox.yaml

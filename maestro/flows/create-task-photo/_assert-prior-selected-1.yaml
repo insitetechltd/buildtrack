@@ -1,0 +1,9 @@
+# Assert library shows exactly 1 prior selected (ledger invariant).
+appId: com.buildtrack.app.local
+---
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 8000
+- assertVisible: ".*1 selected.*"
+- takeScreenshot: "ct-photo-ledger-1-selected"

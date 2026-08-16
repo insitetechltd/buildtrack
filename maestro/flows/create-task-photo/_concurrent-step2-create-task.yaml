@@ -1,0 +1,51 @@
+# Concurrent coaching — Step 2: camera FAB → Create Task form.
+# Drain LogBox first (Gate 1: overlays intercept tab taps). Prefer icon surface tap.
+appId: com.buildtrack.app.local
+---
+- launchApp
+- waitForAnimationToEnd
+- repeat:
+    times: 5
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-empty-state__no_project_selected"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn:
+          id: "project-picker__row-sprint7-project-shared-harbor-tower"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 12000
+- assertVisible:
+    id: "root-tab__camera_button"
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "create-task__post_capture_routing_sheet"
+    commands:
+      - tapOn:
+          id: "create-task__routing_choice_create"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 12000
+- takeScreenshot: "concurrent-step2-create-task"

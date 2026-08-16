@@ -14,6 +14,14 @@ alwaysApply: true
 - Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
 - Maestro 8-gate preflight: `.cursor/rules/maestro-preflight.md`.
 
+## Concurrent development (default)
+
+- Orchestrator **prefers concurrent tracks** when ownership partitions (disjoint files / P## cases / idle-parallel milestones).
+- Cap Maestro at **≤2** distinct sim UDIDs on this machine; **1 job per UDID**.
+- Independent Maestro cases: `scripts/maestro/run-create-task-photo-one.sh P##` while iterating; full suite = final gate only.
+- Shared helpers / product SoT / Photos `FORCE_PURGE` = single-writer; sync then re-run affected cases.
+- Details: `.cursor/skills/insite-dev/SKILL.md` § Concurrent development + `solo-dev-harness` workflows.md.
+
 ## Git push default (solo)
 
 - After a successful **user-requested** commit, push to the tracked remote by default (`git push` / `git push -u origin HEAD` if needed).

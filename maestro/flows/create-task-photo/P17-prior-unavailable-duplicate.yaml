@@ -1,0 +1,39 @@
+# P17 — Form + prior unavailable as duplicate (retap + accept still 1)
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p17
+---
+- evalScript: ${output.permutation = "P17"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first-b.yaml
+- runFlow: _confirm-selection.yaml
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _assert-prior-selected-1.yaml
+# Retap already-selected slot 0 — must not end as a second unique attachment after Accept.
+# If the grid toggle clears selection, re-select once so Accept is enabled.
+- runFlow: _pick-slot-0-b.yaml
+- runFlow:
+    when:
+      notVisible: ".*1 selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 20%"
+- assertVisible: ".*1 selected.*"
+- takeScreenshot: "ct-P17-after-retap"
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__tile_1"
+    commands:
+      - assertVisible:
+          id: "FAIL__P17_duplicate_tile_must_not_appear"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P17-done"

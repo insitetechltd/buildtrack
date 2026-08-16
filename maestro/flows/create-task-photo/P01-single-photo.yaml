@@ -1,0 +1,17 @@
+# P01 — Single photo → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p01
+---
+- evalScript: ${output.permutation = "P01"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- takeScreenshot: "ct-P01-selection-one"
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "ct-P01-form-one"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P01-done"

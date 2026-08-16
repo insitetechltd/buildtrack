@@ -1,0 +1,26 @@
+# P05 — Add more twice 1→2→3 with ledger each reopen
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p05
+---
+- evalScript: ${output.permutation = "P05"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- runFlow: _reopen-library-from-selection.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- runFlow: _pick-second-keep-first.yaml
+- runFlow: _reopen-library-from-selection.yaml
+- runFlow: _assert-prior-selected-2.yaml
+- runFlow: _pick-slot-2.yaml
+- assertVisible: ".*3 selected.*"
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_2"
+- takeScreenshot: "ct-P05-three-tiles"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P05-done"

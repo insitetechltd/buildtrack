@@ -1,0 +1,36 @@
+# P5 — Two photos from first picker visit (no intermediate Select Photos add).
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - permutation-05
+---
+- evalScript: ${output.permutation = "05-two-from-first-picker"}
+- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- runFlow: _open-library.yaml
+- tapOn:
+    point: "17%, 26%"
+- tapOn:
+    point: "50%, 26%"
+- assertVisible: ".*2 selected.*"
+- takeScreenshot: "ct-photo-05-picker-two"
+- tapOn:
+    id: "in-app-library__accept"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tile_1"
+    timeout: 12000
+- tapOn:
+    id: "photo-selection__confirm"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-photo-05-done"

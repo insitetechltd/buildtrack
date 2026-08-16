@@ -114,26 +114,47 @@ is_next_value() {
     *) return 1 ;;
   esac
 }
+# Maestro test-only flags that MUST appear after the `test` subcommand (not at root).
+is_test_only_flag() {
+  case "$1" in
+    --reinstall-driver|--no-reinstall-driver|--[no-]reinstall-driver|--continuous|-c|--analyze|--flatten-debug-output|--headless)
+      return 0 ;;
+    *) return 1 ;;
+  esac
+}
 args_final_src=( "$@" )
+declare -a DEFERRED_TEST_FLAGS=()
 while [ $i -lt ${#args_final_src[@]} ]; do
   a="${args_final_src[$i]}"
   if [ "$inserted_test" -eq 0 ]; then
     # If this arg starts with '-' it's a flag
     if [[ "$a" == -* ]]; then
-      FINAL_ARGS+=( "$a" )
-      # If flag takes a value, skip the next arg as well
-      if is_next_value "$a" && [ $((i+1)) -lt ${#args_final_src[@]} ] && [[ "${args_final_src[$((i+1))]}" != -* ]]; then
-        FINAL_ARGS+=( "${args_final_src[$((i+1))]}" )
-        i=$((i+1))
+      if is_test_only_flag "$a"; then
+        DEFERRED_TEST_FLAGS+=( "$a" )
+      else
+        FINAL_ARGS+=( "$a" )
+        # If flag takes a value, skip the next arg as well
+        if is_next_value "$a" && [ $((i+1)) -lt ${#args_final_src[@]} ] && [[ "${args_final_src[$((i+1))]}" != -* ]]; then
+          FINAL_ARGS+=( "${args_final_src[$((i+1))]}" )
+          i=$((i+1))
+        fi
       fi
     elif is_known_sub "$a"; then
       # Already a subcommand, do not insert test
       inserted_test=1
       FINAL_ARGS+=( "$a" )
+      if [ "${#DEFERRED_TEST_FLAGS[@]}" -gt 0 ]; then
+        FINAL_ARGS+=( "${DEFERRED_TEST_FLAGS[@]}" )
+        DEFERRED_TEST_FLAGS=()
+      fi
     else
       # First positional: this is a flow file or dir; inject test before it
       FINAL_ARGS+=( "test" )
       inserted_test=1
+      if [ "${#DEFERRED_TEST_FLAGS[@]}" -gt 0 ]; then
+        FINAL_ARGS+=( "${DEFERRED_TEST_FLAGS[@]}" )
+        DEFERRED_TEST_FLAGS=()
+      fi
       FINAL_ARGS+=( "$a" )
     fi
   else

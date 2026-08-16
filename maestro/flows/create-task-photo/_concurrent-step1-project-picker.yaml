@@ -1,0 +1,40 @@
+# Concurrent coaching — Step 1 complete: Project Picker → Harbor Tower (live sandbox names).
+# Note: project-picker__root is NOT on screen; landing id is projectPicker-scroll / row ids.
+appId: com.buildtrack.app.local
+---
+- launchApp
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "login-emailOrPhone"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "login-password"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 5000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- tapOn:
+    id: "profile-menu-project_picker"
+- extendedWaitUntil:
+    visible:
+      id: "projectPicker-scroll"
+    timeout: 5000
+- assertVisible: "Select a Project"
+- takeScreenshot: "concurrent-step1-project-picker"
+# Live Sprint7 sandbox titles (not Task-Core "Project A")
+- tapOn:
+    id: "project-picker__row-sprint7-project-shared-harbor-tower"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 12000
+- takeScreenshot: "concurrent-step1-harbor-selected"

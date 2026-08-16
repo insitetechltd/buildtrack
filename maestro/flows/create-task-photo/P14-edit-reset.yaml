@@ -1,0 +1,28 @@
+# P14 — Edit → Reset → confirm
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p14
+---
+- evalScript: ${output.permutation = "P14"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first-b.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- tapOn:
+    id: "photo-selection__tool_rotate"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_reset"
+    timeout: 5000
+- tapOn:
+    id: "photo-selection__tool_reset"
+- takeScreenshot: "ct-P14-after-reset"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P14-done"

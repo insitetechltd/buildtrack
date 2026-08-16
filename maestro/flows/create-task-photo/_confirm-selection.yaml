@@ -1,0 +1,12 @@
+# Confirm Select Photos → back on Create Task form with attachments.
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    id: "photo-selection__confirm"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 8000
+- assertVisible:
+    id: "create-task__attachments_section"
+- runFlow: _assert-no-logbox.yaml

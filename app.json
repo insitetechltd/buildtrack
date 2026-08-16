@@ -15,15 +15,11 @@
         {
           "ios": {
             "deploymentTarget": "16.0",
-            "useFrameworks": "static",
             "buildReactNativeFromSource": true,
             "clangCxxLanguageStandard": "c++20",
             "clangCxxLibrary": "libc++"
           },
         "android": {
-          "extraMavenRepos": [
-            "https://artifactory.img.ly/artifactory/maven"
-          ],
           "compileSdkVersion": 35,
           "targetSdkVersion": 35,
           "buildToolsVersion": "35.0.0",

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from "react";
 import {
   CommonActions,
   NavigationContainer,
+  StackActions,
   getFocusedRouteNameFromRoute,
   type LinkingOptions,
 } from "@react-navigation/native";
@@ -53,7 +54,6 @@ import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
 import PendingUsersScreen from "../screens/PendingUsersScreen";
 import PhotoViewerScreen from "../screens/PhotoViewerScreen";
-import PhotoAnnotationScreen from "../screens/PhotoAnnotationScreen";
 import PhotoSelectionScreen from "../screens/PhotoSelectionScreen";
 import InAppLibraryPickerScreen from "../screens/InAppLibraryPickerScreen";
 import UpdateProgressScreen from "../screens/UpdateProgressScreen";
@@ -70,6 +70,7 @@ import {
   resolveCreateTaskEntryParams,
 } from "./createTaskRouteParams";
 import {
+  cancelInAppLibraryPicker,
   returnToPhotoSelectionFlat,
 } from "./photoFlowNavigation";
 import { buildDefaultStackScreenOptions } from "./nativeStackOptions";
@@ -94,7 +95,6 @@ import type {
   CreateTaskParams,
   CreateTaskStackParamList,
   DashboardStackParamList,
-  PhotoAnnotationParams,
   PhotoSelectionParams,
   InAppLibraryPickerParams,
   PhotoViewerParams,
@@ -311,7 +311,7 @@ type CreateTaskRouteNavigation = {
     | NativeStackNavigationProp<TasksStackParamList>["navigate"]
     | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
   canGoBack?: () => boolean;
-  dispatch?: (action: ReturnType<typeof CommonActions.setParams> & { source?: string }) => void;
+  dispatch?: (action: any) => void;
   getParent?: () => ParentNavigationLike | undefined;
   goBack: () => void;
   getState?: () => RouteStateLike;
@@ -496,31 +496,39 @@ export function returnToCreateTaskRoute(
   params: CreateTaskParams,
 ) {
   const navigationState = navigation.getState?.();
-  const currentRouteNames = navigationState?.routeNames || [];
   const currentRoutes = navigationState?.routes || [];
   const currentIndex =
     typeof navigationState?.index === "number"
       ? navigationState.index
       : currentRoutes.length - 1;
-  const previousRoute = currentIndex > 0 ? currentRoutes[currentIndex - 1] : undefined;
-  const previousRouteName = previousRoute?.name || currentRouteNames[currentIndex - 1];
-  const previousRouteKey = previousRoute?.key;
-  const canReturnToExistingCreateTask =
-    navigation.canGoBack?.() &&
-    (previousRouteName === "CreateTask" || previousRouteName === "CreateTaskMain");
 
-  if (!canReturnToExistingCreateTask) {
+  let createTaskIndex = -1;
+  for (let i = currentIndex - 1; i >= 0; i -= 1) {
+    const name = currentRoutes[i]?.name;
+    if (name === "CreateTask" || name === "CreateTaskMain") {
+      createTaskIndex = i;
+      break;
+    }
+  }
+
+  if (createTaskIndex < 0 || navigation.canGoBack?.() === false) {
     navigateToCreateTaskRoute(navigation, params);
     return;
   }
 
-  navigation.goBack();
+  const createTaskKey = currentRoutes[createTaskIndex]?.key;
+  const popCount = currentIndex - createTaskIndex;
+  if (popCount > 0 && navigation.dispatch) {
+    navigation.dispatch(StackActions.pop(popCount) as any);
+  } else {
+    navigation.goBack();
+  }
 
   setTimeout(() => {
-    if (previousRouteKey && navigation.dispatch) {
+    if (createTaskKey && navigation.dispatch) {
       navigation.dispatch({
         ...CommonActions.setParams(params),
-        source: previousRouteKey,
+        source: createTaskKey,
       });
       return;
     }
@@ -753,10 +761,6 @@ function DashboardStack() {
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
       />
-      <DashboardStackNavigator.Screen 
-        name="PhotoAnnotation" 
-        component={PhotoAnnotationScreenWrapper}
-      />
       <DashboardStackNavigator.Screen
         name="InAppLibraryPicker"
         component={InAppLibraryPickerScreenWrapper}
@@ -888,10 +892,6 @@ function TasksStack() {
       <TasksStackNavigator.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
-      />
-      <TasksStackNavigator.Screen 
-        name="PhotoAnnotation" 
-        component={PhotoAnnotationScreenWrapper}
       />
       <TasksStackNavigator.Screen 
         name="PhotoSelection" 
@@ -1067,41 +1067,6 @@ function PhotoViewerScreenWrapper({
   );
 }
 
-type PhotoAnnotationScreenWrapperProps =
-  | NativeStackScreenProps<DashboardStackParamList, "PhotoAnnotation">
-  | NativeStackScreenProps<TasksStackParamList, "PhotoAnnotation">
-  | NativeStackScreenProps<CreateTaskStackParamList, "PhotoAnnotation">;
-
-function PhotoAnnotationScreenWrapper({
-  route,
-  navigation,
-}: PhotoAnnotationScreenWrapperProps) {
-  const { photoUri, photoIndex, returnScreen } = route.params || {};
-  
-  const handleSave = (annotatedPhotoUri: string) => {
-    // If we came from PhotoSelection, pass the result back via params
-    if (returnScreen === 'PhotoSelection' && photoIndex !== undefined) {
-      (
-        navigation as NativeStackNavigationProp<CreateTaskStackParamList>
-      ).navigate("PhotoSelection", {
-        annotationResult: annotatedPhotoUri,
-        photoIndex: photoIndex,
-      });
-    } else {
-      // Fallback: just go back
-      navigation.goBack();
-    }
-  };
-  
-  return (
-    <PhotoAnnotationScreen
-      photoUri={photoUri as string}
-      onSave={handleSave}
-      onCancel={() => navigation.goBack()}
-    />
-  );
-}
-
 type InAppLibraryPickerScreenWrapperProps =
   | NativeStackScreenProps<DashboardStackParamList, "InAppLibraryPicker">
   | NativeStackScreenProps<TasksStackParamList, "InAppLibraryPicker">
@@ -1115,7 +1080,8 @@ function InAppLibraryPickerScreenWrapper({
 
   return (
     <InAppLibraryPickerScreen
-      onCancel={() => navigation.goBack()}
+      // Cancel: return to Select Photos when add-more; otherwise leave the photo flow.
+      onCancel={() => cancelInAppLibraryPicker(navigation as any)}
       initiallySelectedPhotos={params.existingPhotos ?? []}
       onSave={(libraryPhotos) => {
         // Picker returns the full library selection (including pre-highlighted).
@@ -1681,10 +1647,6 @@ function CreateTaskStack() {
       <CreateTaskStackNavigator.Screen 
         name="PhotoViewer" 
         component={PhotoViewerScreenWrapper}
-      />
-      <CreateTaskStackNavigator.Screen 
-        name="PhotoAnnotation" 
-        component={PhotoAnnotationScreenWrapper}
       />
       <CreateTaskStackNavigator.Screen
         name="InAppLibraryPicker"

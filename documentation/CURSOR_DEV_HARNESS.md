@@ -21,8 +21,9 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 2. Kickoff: read `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
 3. For non-trivial work, follow `solo-dev-harness` workflows (Planner → Builder → Reviewer → Test → QA/Release as needed).
 4. Confidence ladder: Jest (`TESTING_STRATEGY.md`) → Maestro via `scripts/maestro/run-local.sh` → human accept.
-5. Commit only when you ask; never before Reviewer clears Critical/High.
-6. Teardown: note shipped/blocked; leave a next-session kickoff prompt.
+5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 UDIDs; one-shot case runs while developing; full suite = final gate.
+6. Commit only when you ask; never before Reviewer clears Critical/High.
+7. Teardown: note shipped/blocked; leave a next-session kickoff prompt.
 
 ## Insite `.cursor/rules`
 

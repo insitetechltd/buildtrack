@@ -1,0 +1,6 @@
+# Soft LogBox settle — hierarchy polls thrash XCTest on this sim.
+# Persistent banners are caught by Gate 8 screenshots; do not dismiss-and-continue.
+appId: com.buildtrack.app.local
+---
+- waitForAnimationToEnd:
+    timeout: 1500

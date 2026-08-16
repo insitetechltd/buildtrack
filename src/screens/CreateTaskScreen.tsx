@@ -73,6 +73,7 @@ interface SelectedPhoto {
   isAnnotated: boolean;
   annotatedUri?: string;
   caption?: string;
+  mediaLibraryAssetId?: string;
 }
 
 // Attachment can be either a URL (already uploaded) or a photo object (to be uploaded)
@@ -382,6 +383,9 @@ function CreateTaskEditorScreen({
         uri: photo.uri,
         fileName: photo.fileName,
         isAnnotated: photo.isAnnotated || false,
+        annotatedUri: photo.annotatedUri,
+        caption: photo.caption,
+        mediaLibraryAssetId: photo.mediaLibraryAssetId,
       }));
 
       requestAnimationFrame(() => {
@@ -419,6 +423,7 @@ function CreateTaskEditorScreen({
                   isAnnotated: photo.isAnnotated || false,
                   annotatedUri: photo.annotatedUri,
                   caption: photo.caption,
+                  mediaLibraryAssetId: photo.mediaLibraryAssetId,
                 })),
               );
             },
@@ -428,6 +433,10 @@ function CreateTaskEditorScreen({
       {
         text: "Choose from Library",
         onPress: () => {
+          const existingPhotos = (formData.attachments || []).filter(
+            (attachment): attachment is SelectedPhoto =>
+              typeof attachment !== "string",
+          );
           // Spike: in-app MediaLibrary gallery (not Apple PHPicker)
           navigation.navigate("InAppLibraryPicker", {
             taskId: editTaskId,
@@ -440,6 +449,14 @@ function CreateTaskEditorScreen({
             parentTaskId,
             parentSubTaskId,
             editTaskId,
+            existingPhotos: existingPhotos.map((photo) => ({
+              uri: photo.uri,
+              fileName: photo.fileName,
+              isAnnotated: Boolean(photo.isAnnotated),
+              annotatedUri: photo.annotatedUri,
+              caption: photo.caption,
+              mediaLibraryAssetId: photo.mediaLibraryAssetId,
+            })),
           });
         },
       },

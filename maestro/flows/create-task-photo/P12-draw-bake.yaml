@@ -1,0 +1,37 @@
+# P12 — Draw → Done bake → confirm → submit
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p12
+---
+- evalScript: ${output.permutation = "P12"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first-b.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__preview"
+- tapOn:
+    id: "photo-selection__tool_draw"
+- assertVisible:
+    id: "photo-selection__draw_overlay"
+- takeScreenshot: "ct-P12-draw-mode"
+- swipe:
+    start: 30%, 45%
+    end: 70%, 55%
+    duration: 600
+- tapOn:
+    id: "photo-selection__tool_draw_done"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_draw"
+    timeout: 12000
+- takeScreenshot: "ct-P12-after-bake"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P12-done"

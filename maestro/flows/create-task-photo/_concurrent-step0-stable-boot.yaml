@@ -1,0 +1,37 @@
+# Concurrent coaching — Step 0: iron-clad boot without exp+ openLink (broken on this sim: -10814).
+# clearState + login → dashboard; assert no permission-denied LogBox.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 45000
+- tapOn:
+    id: "login-emailOrPhone"
+- inputText: "john.managera@test.com"
+- tapOn:
+    id: "login-password"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 25000
+- runFlow:
+    when:
+      visible: "Console Error"
+    commands:
+      - assertVisible:
+          id: "boot-must-not-show-console-error"
+- runFlow:
+    when:
+      visible: ".*permission denied for table.*"
+    commands:
+      - assertVisible:
+          id: "boot-must-not-show-permission-denied"
+- assertVisible:
+    id: "root-tab__camera_button"
+- takeScreenshot: "concurrent-step0-stable-landing"

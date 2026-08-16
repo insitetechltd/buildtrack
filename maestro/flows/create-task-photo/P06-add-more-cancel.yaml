@@ -1,0 +1,40 @@
+# P06 — Add more → Cancel library → still 1
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p06
+---
+- evalScript: ${output.permutation = "P06"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- runFlow: _reopen-library-from-selection.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- tapOn:
+    id: "in-app-library__cancel"
+- waitForAnimationToEnd:
+    timeout: 1000
+# Cancel can miss under XCTest — retry / system back like P20
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - back
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__confirm"
+- takeScreenshot: "ct-P06-still-one"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P06-done"

@@ -1,0 +1,50 @@
+# P4 — Confirm to Create Task → press + / Add photos → Library must show prior as selected
+# (existingPhotos from form attachments) to prevent silent duplication.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - permutation-04
+---
+- evalScript: ${output.permutation = "04-reopen-plus-preserves-selection"}
+- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- runFlow: _open-library.yaml
+- runFlow: _pick-first.yaml
+- tapOn:
+    id: "photo-selection__confirm"
+- assertVisible:
+    id: "create-task__continuous_form"
+- assertVisible:
+    id: "create-task__attachments_section"
+- takeScreenshot: "ct-photo-04-form-one-attachment"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-add-photos"
+    direction: DOWN
+- tapOn:
+    id: "createTask-add-photos"
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 5000
+# Product contract: previously attached library assets reopen pre-selected
+- assertVisible: ".*1 selected.*"
+- takeScreenshot: "ct-photo-04-plus-preserves-selection"
+- tapOn:
+    id: "in-app-library__cancel"
+- assertVisible:
+    id: "create-task__continuous_form"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-photo-04-done"

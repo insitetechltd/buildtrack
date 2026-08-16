@@ -1,0 +1,19 @@
+# P04 — 1 → Add more → pick 2nd (ledger invariant)
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p04
+---
+- evalScript: ${output.permutation = "P04"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- runFlow: _reopen-library-from-selection.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- runFlow: _pick-second-keep-first.yaml
+- takeScreenshot: "ct-P04-two-tiles"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P04-done"

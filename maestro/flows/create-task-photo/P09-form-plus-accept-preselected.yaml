@@ -1,0 +1,29 @@
+# P09 — Form + → Accept preselected only → still 1
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p09
+---
+- evalScript: ${output.permutation = "P09"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- runFlow: _confirm-selection.yaml
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__tile_1"
+    commands:
+      - assertVisible:
+          id: "FAIL__P09_must_not_create_second_tile"
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "ct-P09-still-one"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P09-done"

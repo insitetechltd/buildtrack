@@ -1,0 +1,49 @@
+# P3 — Pick 1 → Select Photos → Add more → prior stays selected (header "1 selected")
+# → pick second → confirm with 2 tiles. Prior photo must not disappear / re-pick as blank.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - permutation-03
+---
+- evalScript: ${output.permutation = "03-add-second-from-selection"}
+- runFlow: ../bootstrap-live-manager-a.yaml
+- runFlow:
+    when:
+      visible: "Select a project to view the active project summary and queue overview."
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - tapOn: ".*Project A - Commercial Building.*"
+      - assertVisible:
+          id: "dashboard-screen__root"
+- runFlow: _open-library.yaml
+- runFlow: _pick-first.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__add_more"
+- tapOn:
+    id: "photo-selection__add_more"
+# PLATFORM_LIMITATION: Alert again
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 5000
+# Prior selection must already be highlighted — count starts at 1
+- assertVisible: ".*1 selected.*"
+- takeScreenshot: "ct-photo-03-reopen-preserves-first"
+- runFlow: _pick-second-keep-first.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__tile_1"
+- takeScreenshot: "ct-photo-03-two-tiles"
+- tapOn:
+    id: "photo-selection__confirm"
+- assertVisible:
+    id: "create-task__continuous_form"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-photo-03-done"

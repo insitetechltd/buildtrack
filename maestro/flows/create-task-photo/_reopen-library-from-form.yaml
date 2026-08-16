@@ -1,0 +1,24 @@
+# From Create Task form: Add photos → Choose from Library.
+appId: com.buildtrack.app.local
+---
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-add-photos"
+    direction: DOWN
+- tapOn:
+    id: "createTask-add-photos"
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 5000

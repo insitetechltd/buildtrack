@@ -1,0 +1,39 @@
+# P07 — Confirm to form → + → Library prior selected
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p07
+---
+- evalScript: ${output.permutation = "P07"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first.yaml
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "ct-P07-form-one"
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- tapOn:
+    id: "in-app-library__cancel"
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 8000
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P07-done"

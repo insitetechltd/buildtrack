@@ -302,16 +302,21 @@ export async function autoBootstrapSprint7SandboxForMaestroIfNeeded(): Promise<b
     return false;
   }
 
-  if (authState.user && authState.isAuthenticated) {
-    const uid = authState.user.id;
-    if (uid !== SPRINT7_USER_IDS.tristan && uid !== SPRINT7_USER_IDS.herman) {
-      return false;
-    }
+  // Only resume an already-active Sprint7 actor. Never invent Tristan for an
+  // empty/live session — that leaves AuthStore "logged in" without a JWT and
+  // floods LogBox with SQLSTATE 42501 (anon REVOKE after M-SUPABASE-02a).
+  if (!authState.user || !authState.isAuthenticated) {
+    return false;
+  }
+
+  const uid = authState.user.id;
+  if (uid !== SPRINT7_USER_IDS.tristan && uid !== SPRINT7_USER_IDS.herman) {
+    return false;
   }
 
   try {
-    await initializeSprint7RuntimeSandbox({ activeActor: 'tristan' });
-    console.info('[sprint7] auto-bootstrap: initialized Tristan sandbox for Maestro');
+    await initializeSprint7RuntimeSandbox({ activeActor: uid === SPRINT7_USER_IDS.herman ? 'herman' : 'tristan' });
+    console.info('[sprint7] auto-bootstrap: resumed Sprint7 sandbox for Maestro');
     return true;
   } catch (err: any) {
     maestroAutoBootstrapAttempted = false;

@@ -46,8 +46,34 @@ Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAE
 1. Suppress LogBox debugger banners as a family (red + gray) if either is ignored
 2. Assert unique landing testIDs (not headers that appear on every screen)
 3. Bottom-tab nav via tab testIDs — never rely on root `- back`
-4. Use `run-local.sh [opts] test …` flag order only
+4. Use `run-local.sh [opts] test …` flag order only (`--reinstall-driver` after `test`)
 5. After every run, visually read screenshot PNGs — `rc=0` alone is insufficient
+
+## Concurrent development (Orchestrator / Maestro)
+
+Prefer concurrent tracks whenever file ownership partitions cleanly.
+
+### Create Task photo cases (P01–P22)
+
+- Each `P##-*.yaml` is **independent** (`_boot` clearState). Develop/fix with one-shot runs — not full sequential loops.
+- One-shot: `bash scripts/maestro/run-create-task-photo-one.sh P04` (or `FORCE_PURGE=1 …`).
+- Full sequential suite (`run-create-task-photo-suite.sh`) = **final gate only** after all cases pass alone.
+- Partition P-ranges across concurrent agents (e.g. A: P01–P11, B: P12–P22). Do not co-edit the same `P##` file.
+
+### Machine / sim caps (this host profile)
+
+- Typical Insite laptop: **≤2** concurrent Maestro jobs (distinct iPhone 17 Pro Max UDIDs).
+- Primary UDID: `B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`. Spare Pro Max: `3B152AF5-DA35-4E1A-B30D-11201518E0E0`.
+- **1** Maestro job per UDID. Never two suite/one-shot processes on the same UDID.
+- Shared helpers (`_boot`, `_open-library`, `_accept-library`, `_submit-*`, `ensure-*.sh`, `run-local.sh`) = **single-writer**; other track re-runs after.
+- Prefer Photos **REUSE**; only one track may `FORCE_PURGE` at a time.
+- Serialize when editing Create Task / library / Select Photos product code; both tracks re-verify after.
+
+### Orchestrator sync checklist
+
+1. Assign UDID + P-range (or file paths) per track before launch.
+2. List single-writer files up front.
+3. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## → final suite gate.
 
 ## Trae migration
 

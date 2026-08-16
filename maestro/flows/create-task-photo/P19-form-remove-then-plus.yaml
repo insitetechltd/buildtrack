@@ -1,0 +1,42 @@
+# P19 — Form has 2 → remove 1 → + library preselect remaining
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p19
+---
+- evalScript: ${output.permutation = "P19"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-slot-0-b.yaml
+- runFlow: _pick-slot-1-b.yaml
+- assertVisible: ".*2 selected.*"
+- runFlow: _accept-library.yaml
+- runFlow: _confirm-selection.yaml
+- tapOn:
+    id: "create-task__attachment_preview_remove_0"
+- takeScreenshot: "ct-P19-form-one-after-remove"
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- tapOn:
+    id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - back
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 8000
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P19-done"

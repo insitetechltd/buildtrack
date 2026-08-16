@@ -1,0 +1,83 @@
+# Open Create Task → in-app Library.
+# Photos are seeded ONLY by scripts/maestro/ensure-create-task-photo-media.sh
+# (exactly photo-1..3 by default). Do NOT addMedia here — that duplicates fixtures.
+#
+# Product owns permission + first-load: InAppLibraryPickerScreen requests
+# MediaLibrary access BEFORE mounting expo-image-multiple-picker (blank-grid fix).
+# Do not cancel/reopen as a substitute for that product gate.
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+# Dashboard refresh can LogBox transient createSignedUrl timeouts and block the FAB.
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 15000
+- runFlow: _assert-no-logbox.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-add-photos"
+    direction: DOWN
+- tapOn:
+    id: "createTask-add-photos"
+- assertVisible: "Add Photos"
+- tapOn: "Choose from Library"
+# System permission sheet (first grant / Maestro clearState). Product shows loading
+# until granted, then mounts the gallery — do not remount around this.
+- runFlow:
+    when:
+      visible: "Allow Full Access"
+    commands:
+      - tapOn: "Allow Full Access"
+- runFlow:
+    when:
+      visible: "Allow Access to All Photos"
+    commands:
+      - tapOn: "Allow Access to All Photos"
+- runFlow:
+    when:
+      visible: "Allow.*Photos.*"
+    commands:
+      - tapOn: "Allow.*Photos.*"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 12000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 10000
+# Second chance if the sheet appeared after chrome
+- runFlow:
+    when:
+      visible: "Allow Full Access"
+    commands:
+      - tapOn: "Allow Full Access"
+- waitForAnimationToEnd:
+    timeout: 1000
+- assertNotVisible: "No Photos"
+- assertNotVisible:
+    id: "in-app-library__permission_denied"

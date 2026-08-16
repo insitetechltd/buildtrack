@@ -1,0 +1,29 @@
+# P22 — Force same asset again via + → single attachment
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p22
+---
+- evalScript: ${output.permutation = "P22"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-first-b.yaml
+- runFlow: _confirm-selection.yaml
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: _assert-prior-selected-1.yaml
+- runFlow: _accept-library.yaml
+- runFlow: _confirm-selection.yaml
+- assertVisible:
+    id: "create-task__attachment_preview_0"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__attachment_preview_1"
+    commands:
+      - assertVisible:
+          id: "FAIL__P22_duplicate_attachment_must_not_appear"
+- takeScreenshot: "ct-P22-single-attachment"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P22-done"

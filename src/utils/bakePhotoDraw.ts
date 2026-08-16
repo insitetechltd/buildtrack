@@ -1,5 +1,6 @@
 import { NativeModules, TurboModuleRegistry } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 
 import { writeClipboardImageToDraft } from "./draftMediaCache";
 import type { DrawStroke } from "./photoPreviewDraw";
@@ -51,6 +52,22 @@ function loadSkiaModule(): {
 }
 
 /**
+ * Library / camera assets are often HEIC (or other formats RN Image can show).
+ * Skia MakeImageFromEncoded does not reliably decode HEIC — normalize to JPEG first
+ * the same way rotate/crop already do via expo-image-manipulator.
+ */
+async function normalizePhotoToJpegUri(photoUri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(photoUri, [], {
+    compress: 1,
+    format: ImageManipulator.SaveFormat.JPEG,
+  });
+  if (!result?.uri) {
+    throw new Error("Failed to normalize photo for draw bake");
+  }
+  return result.uri;
+}
+
+/**
  * Composite strokes onto a photo at source resolution and pin a JPEG draft.
  * Uses Skia offscreen surface (not a view screenshot).
  * Skia is required only when this function runs (Draw → Done).
@@ -66,7 +83,8 @@ export async function bakeStrokesOntoPhoto(
 
   const { Skia, ImageFormat, PaintStyle, StrokeCap, StrokeJoin } = loadSkiaModule();
 
-  const base64 = await FileSystem.readAsStringAsync(photoUri, {
+  const jpegUri = await normalizePhotoToJpegUri(photoUri);
+  const base64 = await FileSystem.readAsStringAsync(jpegUri, {
     encoding: FileSystem.EncodingType.Base64,
   });
   const data = Skia.Data.fromBase64(base64);

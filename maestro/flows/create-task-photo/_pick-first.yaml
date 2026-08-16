@@ -1,0 +1,17 @@
+# Pick first (slot 0) → accept → Select Photos with tile_0.
+# Retry alternate Y if percent-grid flake (same pattern as _pick-first-b).
+appId: com.buildtrack.app.local
+---
+- runFlow: _pick-slot-0.yaml
+- runFlow:
+    when:
+      notVisible: ".*1 selected.*"
+    commands:
+      - tapOn:
+          point: "17%, 22%"
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: _accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"

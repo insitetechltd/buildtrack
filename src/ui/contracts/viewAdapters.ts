@@ -553,13 +553,6 @@ export interface PhotoSelectionScreenViewAdapterOutput {
   isMiniPickerVisible: boolean;
 }
 
-export interface PhotoAnnotationScreenViewAdapterOutput {
-  screenId: "PhotoAnnotationScreen";
-  readiness: NavigationScreenReadiness;
-  continuity: ScreenContinuityContract;
-  isLoading: boolean;
-}
-
 export interface ProjectPickerListItem extends PrimitiveReadyItemBase {
   id: string;
   projectId: string;

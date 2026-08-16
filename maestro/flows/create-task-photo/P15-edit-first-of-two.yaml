@@ -1,0 +1,31 @@
+# P15 — Pick 2 → edit only first → confirm
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - p15
+---
+- evalScript: ${output.permutation = "P15"}
+- runFlow: _boot-b.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+
+- runFlow: _pick-slot-0-b.yaml
+- runFlow: _pick-slot-1-b.yaml
+- assertVisible: ".*2 selected.*"
+- runFlow: _accept-library.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- tapOn:
+    id: "photo-selection__tool_rotate"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_rotate"
+    timeout: 5000
+- takeScreenshot: "ct-P15-first-edited"
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- assertVisible:
+    id: "photo-selection__tile_1"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "ct-P15-done"

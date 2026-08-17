@@ -4,22 +4,25 @@
 // This prevents "Cannot read property 'getGlobalHandler' of undefined" errors
 import "./src/utils/errorUtilsShim";
 
-console.log("[index] Project ID is: ", process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID);
 import "./global.css";
 import "react-native-get-random-values";
 import { LogBox } from "react-native";
-LogBox.ignoreLogs([
-  "Expo AV has been deprecated", 
-  "Disconnected from Metro", 
-  "AbortError",
-  "Invalid Refresh Token",
-  "Refresh Token Not Found",
-  "SafeAreaView has been deprecated",
-  "The app is running using the Legacy Architecture",
-  "Ignoring DevTools app debug target",
-  "Failed to open debugger. Please check that the dev server is running and reload the app.",
-  "Open debugger to view warnings.",
-]);
+
+if (__DEV__) {
+  console.log("[index] Project ID is: ", process.env.EXPO_PUBLIC_VIBECODE_PROJECT_ID);
+  LogBox.ignoreLogs([
+    "Expo AV has been deprecated",
+    "Disconnected from Metro",
+    "AbortError",
+    "Invalid Refresh Token",
+    "Refresh Token Not Found",
+    "SafeAreaView has been deprecated",
+    "The app is running using the Legacy Architecture",
+    "Ignoring DevTools app debug target",
+    "Failed to open debugger. Please check that the dev server is running and reload the app.",
+    "Open debugger to view warnings.",
+  ]);
+}
 
 // Suppress console errors for refresh token issues (they're handled gracefully)
 const originalConsoleError = console.error;

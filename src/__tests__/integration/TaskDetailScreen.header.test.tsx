@@ -184,11 +184,11 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__header_title")).toBeTruthy();
     expect(screen.getByText("LOADING...")).toBeTruthy();
     expect(screen.getByText("Task details")).toBeTruthy();
-    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
   });
 
-  it("renders the loaded two-line header without a back arrow", () => {
+  it("renders the loaded two-line header with a back arrow", () => {
     const onNavigateBack = jest.fn();
 
     mockUseTaskDetailViewAdapter.mockReturnValue({
@@ -205,7 +205,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.getByTestId("task-detail__header_title").props.className).toContain("text-[24px]");
     expect(screen.getByTestId("task-detail__header_title_subtitle").props.className).toContain("text-xs");
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
-    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
     expect(screen.queryByTestId("task-detail__hero_shell")).toBeNull();
     expect(screen.queryByTestId("task-detail__header_badges")).toBeNull();
     expect(screen.getByTestId("task-detail__status_chips")).toBeTruthy();
@@ -215,7 +215,7 @@ describe("TaskDetailScreen header regression", () => {
     expect(within(screen.getByTestId("task-detail__info_card")).getByText("50% complete")).toBeTruthy();
     expect(within(screen.getByTestId("task-detail__info_card")).getByText("Jul 10, 2026")).toBeTruthy();
     expect(screen.getByTestId("task-detail__scroll_region")).toBeTruthy();
-    expect(screen.queryByTestId("app-screen-header__back")).toBeNull();
+    expect(screen.getByTestId("app-screen-header__back")).toBeTruthy();
   });
 
   it("toggles the task detail header title inline when the title text is pressed", () => {

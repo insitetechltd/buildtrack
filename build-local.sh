@@ -108,6 +108,31 @@ else
   echo "⚠️  Warning: Apple credentials not found in .env"
   echo "   Build may prompt for Apple account information"
 fi
+
+# Non-interactive eas-cli cannot 2FA. Reuse the submit-profile ASC API key
+# already in eas.json so iOS credential setup can finish without a TTY.
+if [ -z "${EXPO_ASC_API_KEY_PATH:-}" ] && [ -f eas.json ]; then
+  eval "$(python3 - <<'PY'
+import json
+from pathlib import Path
+eas = json.loads(Path("eas.json").read_text())
+ios = eas.get("submit", {}).get("production", {}).get("ios", {})
+key_path = ios.get("ascApiKeyPath")
+if key_path and Path(key_path).is_file():
+    print(f'export EXPO_ASC_API_KEY_PATH={json.dumps(str(Path(key_path).resolve()))}')
+    print(f'export EXPO_ASC_KEY_ID={json.dumps(ios.get("ascApiKeyId") or "")}')
+    print(f'export EXPO_ASC_ISSUER_ID={json.dumps(ios.get("ascApiKeyIssuerId") or "")}')
+PY
+)"
+fi
+# Skip the "Select your Apple Team Type" prompt (store = App Store team, not Enterprise).
+if [ -z "${EXPO_APPLE_TEAM_TYPE:-}" ]; then
+  export EXPO_APPLE_TEAM_TYPE="COMPANY_OR_ORGANIZATION"
+fi
+if [ -n "${EXPO_ASC_KEY_ID:-}" ]; then
+  echo "✅ ASC API key id: $EXPO_ASC_KEY_ID (for non-interactive iOS credentials)"
+  echo "✅ Apple Team Type: $EXPO_APPLE_TEAM_TYPE"
+fi
 echo ""
 
 # Step 3: Build
@@ -140,8 +165,15 @@ mkdir -p "$LOCAL_BUILD_ARTIFACTS_DIR"
 export EAS_LOCAL_BUILD_WORKINGDIR="$LOCAL_BUILD_WORKDIR"
 export EAS_LOCAL_BUILD_ARTIFACTS_DIR="$LOCAL_BUILD_ARTIFACTS_DIR"
 export EAS_LOCAL_BUILD_SKIP_CLEANUP="${EAS_LOCAL_BUILD_SKIP_CLEANUP:-1}"
+export EAS_BUILD_PROFILE="$PROFILE"
 
-npx eas build --platform "$PLATFORM" --profile "$PROFILE" --local --non-interactive
+EAS_BUILD_ARGS=(--platform "$PLATFORM" --profile "$PROFILE" --local)
+# Default: non-interactive (agent/CI). Set EAS_ALLOW_INTERACTIVE=1 when a TTY
+# can finish first-time Apple credential setup (expect wrapper or Terminal).
+if [ "${EAS_ALLOW_INTERACTIVE:-}" != "1" ]; then
+  EAS_BUILD_ARGS+=(--non-interactive)
+fi
+npx eas build "${EAS_BUILD_ARGS[@]}"
 
 echo ""
 echo "✅ Build completed successfully!"

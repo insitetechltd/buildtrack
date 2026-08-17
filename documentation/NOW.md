@@ -10,15 +10,15 @@
 
 ## Doing
 
-Commercial **RC week**. **R5 Closed (2026-08-17):** production env hardened; local IPA **build 181** submitted to ASC (`com.buildtrack.app.local`). Overnight: docs/validation/audit pass (A1–A9, B1–B2).
+Commercial **RC week**. **R5 Closed:** build **181** in TestFlight. **R7/R8 landed** (company-plan checkout hook + Profile dead-row cut). R4 Pages URLs wired.
 
 **Cursor chat pick-up:** transcripts on KooDrive. Mount KooDrive **before** Cursor; open `/Volumes/KooDrive/InsiteApp` only.
 
 ## Next
 
-1. Immediate first action: **commit and push** the prepared corp + set-password + R5 batch
-2. **R4** store/legal gaps from audit (privacy URL, support, metadata — mostly human)
-3. Optional: Android local build (Tier B)
+1. **Human (ASC):** paste Privacy / Support URLs from `src/legal/legalLinks.ts`; fill App Review demo credentials
+2. Set `EXPO_PUBLIC_STRIPE_CHECKOUT_URL` when a Stripe Payment Link exists (mailto fallback until then)
+3. Optional: Android local `production-local` build
 
 Do **not** tick Public in ASC without explicit intent.
 
@@ -40,9 +40,9 @@ Do **not** tick Public in ASC without explicit intent.
 
 ```text
 Read documentation/NOW.md first.
-Immediate first action: commit and push the prepared corp+R5 batch.
-Then review overnight audit evidence in docs/superpowers/evidence/.
-R5 submitted build 181; it is already attached in TestFlight. Wave 2 parked.
+Corp+R5 on origin/master (576cc28). Build 181 in TestFlight.
+R4 in-app + GitHub Pages privacy/terms/support URLs. Paste those into ASC; fill demo credentials.
+Wave 2 parked. Do not tick Public in ASC.
 ```
 
 ---

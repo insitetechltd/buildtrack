@@ -1,5 +1,11 @@
 import { act, renderHook } from "@testing-library/react-native";
+import { Alert, Linking } from "react-native";
 
+import {
+  PRIVACY_POLICY_URL,
+  SUPPORT_URL,
+  TERMS_OF_SERVICE_URL,
+} from "@/legal/legalLinks";
 import { useProfileViewAdapter } from "../useProfileViewAdapter";
 
 jest.mock("@/state/authStore", () => ({
@@ -23,7 +29,7 @@ jest.mock("@/state/languageStore", () => ({
 jest.mock("@/utils/useTranslation", () => ({
   useTranslation: () => ({
     common: { cancel: "Cancel" },
-    phrases: { comingSoon: "Soon", comingSoonMessage: "Soon msg" },
+    phrases: { comingSoon: "Coming Soon", comingSoonMessage: "Soon msg" },
     profile: {
       deleteAccount: "Delete Account",
       helpSupport: "Help & Support",
@@ -67,27 +73,65 @@ jest.mock("@/api/supabase", () => ({
   checkSupabaseConnection: jest.fn().mockResolvedValue(true),
 }));
 
-describe("useProfileViewAdapter corp account model", () => {
-  it("does not expose Delete Account (org-managed seats)", () => {
-    const { result } = renderHook(() => useProfileViewAdapter({}));
-    const settingsItems =
-      result.current.output.sections.find((s) => s.id === "profile-section:settings")
-        ?.items ?? [];
-    expect(
-      settingsItems.some((item) => item.actionId === "delete-account"),
-    ).toBe(false);
+describe("useProfileViewAdapter legal / support links", () => {
+  const openURL = jest.spyOn(Linking, "openURL");
+  const alertSpy = jest.spyOn(Alert, "alert");
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    openURL.mockResolvedValue(undefined as never);
   });
 
-  it("still exposes help support in settings", () => {
-    const { result } = renderHook(() => useProfileViewAdapter({}));
+  afterAll(() => {
+    openURL.mockRestore();
+    alertSpy.mockRestore();
+  });
+
+  it("opens the privacy policy URL instead of Coming Soon", () => {
+    const { result } = renderHook(() =>
+      useProfileViewAdapter({ onNavigateBack: jest.fn() }),
+    );
+
     act(() => {
-      // no-op: ensure hook remains stable
+      result.current.actions.handleMenuAction("privacy-policy");
     });
-    const settingsItems =
-      result.current.output.sections.find((s) => s.id === "profile-section:settings")
-        ?.items ?? [];
-    expect(settingsItems.some((item) => item.actionId === "help-support")).toBe(
-      true,
+
+    expect(openURL).toHaveBeenCalledWith(PRIVACY_POLICY_URL);
+    expect(alertSpy).not.toHaveBeenCalledWith(
+      "Coming Soon",
+      expect.any(String),
+    );
+  });
+
+  it("opens the terms of service URL instead of Coming Soon", () => {
+    const { result } = renderHook(() =>
+      useProfileViewAdapter({ onNavigateBack: jest.fn() }),
+    );
+
+    act(() => {
+      result.current.actions.handleMenuAction("terms-of-service");
+    });
+
+    expect(openURL).toHaveBeenCalledWith(TERMS_OF_SERVICE_URL);
+    expect(alertSpy).not.toHaveBeenCalledWith(
+      "Coming Soon",
+      expect.any(String),
+    );
+  });
+
+  it("opens the public support page instead of Coming Soon", () => {
+    const { result } = renderHook(() =>
+      useProfileViewAdapter({ onNavigateBack: jest.fn() }),
+    );
+
+    act(() => {
+      result.current.actions.handleMenuAction("help-support");
+    });
+
+    expect(openURL).toHaveBeenCalledWith(SUPPORT_URL);
+    expect(alertSpy).not.toHaveBeenCalledWith(
+      "Help & Support",
+      expect.stringMatching(/system administrator/i),
     );
   });
 });

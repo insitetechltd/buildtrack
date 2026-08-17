@@ -1,34 +1,31 @@
 # R4 — store / legal gap audit (2026-08-17)
 
-Read-only audit against commercial-week R4 and App Store requirements.
-
-## ✅ Done / in flight
+## Engineering (this pass)
 
 | Item | Status |
 |------|--------|
-| iOS binary submitted | Build **181** VALID in ASC (`6754898737`) |
-| Bundle ID matches ASC | `com.buildtrack.app.local` |
-| Corp onboarding model | Create company + admin invite + set-password (live) |
-| Account deletion (individual) | `delete_own_account` RPC live; admin-only delete in corp model |
-| App Review notes draft | `docs/superpowers/evidence/2026-08-17-corp-app-review-notes.md` |
+| iOS binary | Build **181** VALID + attached TestFlight (`6754898737`) |
+| Bundle ID | `com.buildtrack.app.local` matches ASC |
+| Corp onboarding | Create company + invite link + set-password |
+| Account deletion | Org-managed seats; `delete_own_account` for eligible roles |
+| In-app Profile links | Privacy / Terms / Help open GitHub Pages HTTPS URLs (`src/legal/legalLinks.ts`) |
+| Hosted privacy | `https://insitetechltd.github.io/buildtrack/privacy-policy.html` (goes live after this commit deploys Pages) |
+| Hosted terms | `https://insitetechltd.github.io/buildtrack/terms-of-service.html` |
+| Hosted support | `https://insitetechltd.github.io/buildtrack/support.html` (already live) |
 
-## ❌ Gaps — need human / follow-up
+Draft copies also live under `docs/legal/` for later custom-domain hosting.
 
-| Item | Current state | Action |
-|------|---------------|--------|
-| **Privacy policy URL** | Profile → Privacy Policy shows **"Coming Soon"** alert | Host policy (see `HOST_PRIVACY_POLICY_GOOGLE.md`); wire URL in `useProfileViewAdapter` |
-| **Terms of service** | **"Coming Soon"** alert | Host + link or remove menu row until ready |
-| **Support URL / contact** | Generic alert: "contact your system administrator" | Add support email/URL for App Store Review + Profile |
-| **ASC metadata** | Not verified this pass | Confirm description, keywords, screenshots, age rating |
-| **Demo credentials for Review** | Placeholder in review notes | Fill `[provide admin credentials]` before submit for review |
-| **Android Play** | Not in tonight scope | Privacy URL + signing if Play track needed |
+## Still human (cannot finish without ASC / credentials)
+
+| Item | Action |
+|------|--------|
+| **ASC Privacy Policy URL** | Paste the GitHub Pages privacy URL into App Privacy / App Information |
+| **ASC Support URL** | `https://insitetechltd.github.io/buildtrack/support.html` |
+| **Listing metadata** | Screenshots, description, keywords, age rating |
+| **App Review demo account** | Fill real admin email/password in `docs/superpowers/evidence/2026-08-17-corp-app-review-notes.md` then paste into ASC |
+| **Custom domain** | Optional later: CNAME `insiteworks.co` → same HTML |
+| **Android Play** | Same URLs when that track is submitted |
 
 ## Not blockers for TestFlight internal
 
-TestFlight closed testing can proceed while privacy/terms URLs are finalized before **public** App Store review.
-
-## Priority on return
-
-1. Attach build **181** in ASC / TestFlight
-2. Host privacy policy + wire in app
-3. Fill App Review demo account + notes
+Internal TestFlight can stay as-is. Public App Store review needs the ASC URL fields + demo login.

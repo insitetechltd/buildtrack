@@ -291,6 +291,8 @@ export const en = {
     darkMode: "Dark Mode",
     lightMode: "Light Mode",
     reloadData: "Reload Data",
+    companyPlan: "Company plan",
+    continueToCheckout: "Continue to checkout",
     deleteAccount: "Delete Account",
     deleteAccountConfirm:
       "This permanently deletes your login and contact details. Your name stays on jobsite task history for the company record. This cannot be undone.",

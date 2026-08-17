@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 
 import { checkSupabaseConnection } from "@/api/supabase";
+import { buildOrgPlanSummary, resolveOrgCheckoutUrl } from "@/billing/orgPlans";
+import {
+  PRIVACY_POLICY_URL,
+  SUPPORT_EMAIL,
+  SUPPORT_URL,
+  TERMS_OF_SERVICE_URL,
+} from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
 import { useLanguageStore, type Language } from "@/state/languageStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
@@ -56,7 +63,7 @@ function toRoleLabel(role?: string): string {
 export function useProfileViewAdapter(
   props: ProfileScreenProps,
 ): ProfileViewAdapterHookResult {
-  const { onNavigateToDeveloperSettings, onNavigateToPendingUsers } = props;
+  const { onNavigateToDeveloperSettings } = props;
   const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
@@ -100,10 +107,6 @@ export function useProfileViewAdapter(
       isMounted = false;
     };
   }, []);
-
-  const pendingUsers =
-    canApproveUsers && user ? userStore.getPendingUsersByCompany(user.companyId) : [];
-  const pendingCount = pendingUsers.length;
 
   const resetPasswordState = useCallback(() => {
     setCurrentPassword("");
@@ -226,8 +229,21 @@ export function useProfileViewAdapter(
   const handleMenuAction = useCallback(
     (actionId: string) => {
       switch (actionId) {
-        case "pending-approvals":
-          onNavigateToPendingUsers?.();
+        case "company-plan":
+          Alert.alert(t.profile.companyPlan, buildOrgPlanSummary(), [
+            { text: t.common.cancel, style: "cancel" },
+            {
+              text: t.profile.continueToCheckout,
+              onPress: () => {
+                void Linking.openURL(resolveOrgCheckoutUrl()).catch(() => {
+                  Alert.alert(
+                    t.profile.companyPlan,
+                    `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
+                  );
+                });
+              },
+            },
+          ]);
           return;
         case "language":
           setShowLanguagePicker(true);
@@ -238,38 +254,41 @@ export function useProfileViewAdapter(
         case "refresh-data":
           void handleRefreshData();
           return;
-        case "edit-profile":
-          Alert.alert(t.phrases.comingSoon, t.phrases.comingSoonMessage);
-          return;
-        case "notifications":
-          Alert.alert(t.phrases.comingSoon, t.phrases.comingSoonMessage);
-          return;
-        case "privacy-security":
-          Alert.alert(t.phrases.comingSoon, t.phrases.comingSoonMessage);
-          return;
         case "change-password":
           setShowPasswordChange(true);
           return;
         case "help-support":
-          Alert.alert(
-            t.profile.helpSupport,
-            "For support, please contact your system administrator or project manager.",
-          );
+          void Linking.openURL(SUPPORT_URL).catch(() => {
+            Alert.alert(
+              t.profile.helpSupport,
+              `Unable to open this link.\n${SUPPORT_URL}\n\nOr email ${SUPPORT_EMAIL}.`,
+            );
+          });
           return;
         case "developer-settings":
           onNavigateToDeveloperSettings?.();
           return;
         case "about":
           Alert.alert(
-            "BuildTrack v1.0",
-            "Construction Task Management Application\n\nBuilt for efficient project coordination and progress tracking.",
+            "Taskr",
+            "Construction field app for company teams.\n\nPhoto evidence → task → review → complete.",
           );
           return;
         case "terms-of-service":
-          Alert.alert("Coming Soon", "Terms of service will be available in a future update.");
+          void Linking.openURL(TERMS_OF_SERVICE_URL).catch(() => {
+            Alert.alert(
+              "Terms of Service",
+              `Unable to open this link.\n${TERMS_OF_SERVICE_URL}\n\nOr email ${SUPPORT_EMAIL}.`,
+            );
+          });
           return;
         case "privacy-policy":
-          Alert.alert("Coming Soon", "Privacy policy will be available in a future update.");
+          void Linking.openURL(PRIVACY_POLICY_URL).catch(() => {
+            Alert.alert(
+              "Privacy Policy",
+              `Unable to open this link.\n${PRIVACY_POLICY_URL}\n\nOr email ${SUPPORT_EMAIL}.`,
+            );
+          });
           return;
         default:
           return;
@@ -278,9 +297,9 @@ export function useProfileViewAdapter(
     [
       handleRefreshData,
       onNavigateToDeveloperSettings,
-      onNavigateToPendingUsers,
-      t.phrases.comingSoon,
-      t.phrases.comingSoonMessage,
+      t.common.cancel,
+      t.profile.companyPlan,
+      t.profile.continueToCheckout,
       t.profile.helpSupport,
       toggleDarkMode,
     ],
@@ -291,13 +310,12 @@ export function useProfileViewAdapter(
 
     if (canApproveUsers) {
       settingsItems.push({
-        id: "profile-menu:pending-approvals",
-        actionId: "pending-approvals",
-        title: "Pending Approvals",
-        icon: "people-outline",
+        id: "profile-menu:company-plan",
+        actionId: "company-plan",
+        title: t.profile.companyPlan,
+        icon: "card-outline",
         showChevron: true,
         colorTone: "default",
-        badge: pendingCount,
         density: "standard",
         structuralState: "stale",
       });
@@ -337,36 +355,6 @@ export function useProfileViewAdapter(
         structuralState: "stale",
       },
       {
-        id: "profile-menu:edit-profile",
-        actionId: "edit-profile",
-        title: t.profile.editProfile,
-        icon: "person-outline",
-        showChevron: true,
-        colorTone: "default",
-        density: "standard",
-        structuralState: "stale",
-      },
-      {
-        id: "profile-menu:notifications",
-        actionId: "notifications",
-        title: t.profile.notifications,
-        icon: "notifications-outline",
-        showChevron: true,
-        colorTone: "default",
-        density: "standard",
-        structuralState: "stale",
-      },
-      {
-        id: "profile-menu:privacy-security",
-        actionId: "privacy-security",
-        title: t.profile.privacySecurity,
-        icon: "shield-outline",
-        showChevron: true,
-        colorTone: "default",
-        density: "standard",
-        structuralState: "stale",
-      },
-      {
         id: "profile-menu:change-password",
         actionId: "change-password",
         title: "Change Password",
@@ -392,7 +380,7 @@ export function useProfileViewAdapter(
       {
         id: "profile-menu:about",
         actionId: "about",
-        title: "About BuildTrack",
+        title: "About Taskr",
         icon: "information-circle-outline",
         showChevron: false,
         colorTone: "default",
@@ -436,16 +424,13 @@ export function useProfileViewAdapter(
   }, [
     isDarkMode,
     language,
-    pendingCount,
     canApproveUsers,
+    t.profile.companyPlan,
     t.profile.darkMode,
-    t.profile.editProfile,
     t.profile.english,
     t.profile.helpSupport,
     t.profile.language,
     t.profile.lightMode,
-    t.profile.notifications,
-    t.profile.privacySecurity,
     t.profile.reloadData,
     t.profile.settings,
     t.profile.theme,

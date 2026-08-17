@@ -291,6 +291,8 @@ export const zhTW = {
     darkMode: "深色模式",
     lightMode: "淺色模式",
     reloadData: "重新載入資料",
+    companyPlan: "公司方案",
+    continueToCheckout: "繼續結帳",
     deleteAccount: "刪除帳戶",
     deleteAccountConfirm:
       "這會永久刪除你的登入與聯絡資料。你的姓名會保留在工地任務紀錄中，供公司查核。此操作無法復原。",

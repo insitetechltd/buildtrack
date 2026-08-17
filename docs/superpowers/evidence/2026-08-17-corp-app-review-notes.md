@@ -11,6 +11,11 @@ Account model:
 - Workers do not self-delete company data. Company admins remove seat access; full tenant deletion (company + projects + tasks + photos) is reserved for the data owner (web admin / Wave 2). Jobsite history retains actor names for auditability.
 
 Demo access: [provide admin credentials]
+
+Privacy Policy: https://insitetechltd.github.io/buildtrack/privacy-policy.html
+Terms of Service: https://insitetechltd.github.io/buildtrack/terms-of-service.html
+Support: https://insitetechltd.github.io/buildtrack/support.html
+Support email: insite.tech.ltd@gmail.com
 ```
 
 Privacy policy should mirror: org owns project data; individual seat removal ≠ project wipe.

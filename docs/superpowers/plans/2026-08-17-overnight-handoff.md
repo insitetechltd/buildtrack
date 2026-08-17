@@ -52,14 +52,14 @@ Maestro `sprint7-*` flows remain for QA on dev builds.
 ### Still open (not overnight U/R1)
 
 - **R2 local iOS RC rebuild: DONE 2026-08-17** — evidence `docs/superpowers/evidence/2026-08-17-r2-rc-native-rebuild.md`
-- R3 core-loop smoke **on this RC binary**
-- R4–R5 store/env; then P1 R7/R8/R9
+- **R3 core-loop smoke on that RC: DONE 2026-08-17** — launch-smoke + P01 + U01 all rc=0; tsc rc=0; regression 36/37 (known TaskDetail header Jest). Evidence `docs/superpowers/evidence/2026-08-17-r3-core-loop-smoke.md`
+- Build channel: **local compile**; EAS **submit-only**
+- Next: R4 store/legal, R5 env harden; then P1 R7/R8/R9
 - `TaskDetailScreen.header.test.tsx` expects no back button (pre-existing vs `showBackButton={true}`)
 
 ## Next kickoff
 
 ```text
-R3: smoke core loop on rebuilt sim RC (login → photo → task → update).
-Compile locally; EAS submit-only.
-Commit docs when asked.
+R4 store/legal + R5 production env (no sandbox in release).
+Optional: full P/U Maestro suites as extra confidence, not blocking smoke close.
 ```

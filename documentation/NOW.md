@@ -1,6 +1,6 @@
 # NOW — session continuity
 
-**SOP:** git-tracked, **one path**, overwritten each teardown (do not create dated copies). Yesterday lives in `git log`. Clone + this file = pick up thinking. Chat is scratch until promoted here. Portable template: `~/.cursor/skills/solo-dev-harness/sop-session.md`.
+**SOP:** git-tracked NOW + **full cycle** in `~/.cursor/skills/solo-dev-harness/SOP.md`. Process changes: dual-write SOP.md + templates + this repo. Portable template for NOW: `templates/documentation/NOW.md`.
 
 **Who updates:** any agent on session teardown, or when a lock/park/next-action changes. Commit with the work that changed thinking (user-requested commit + default push).
 
@@ -14,16 +14,15 @@ Commercial **RC week** (week-rank R1–R5). Wave 2 (DMS/web) is parked.
 
 ## Next
 
-**R3:** smoke core loop on the rebuilt sim RC binary — login → photo → task → update.
+**R4** store/legal + **R5** production env (no sandbox in a store build). Then P1 R7 payment hook / R8 touchpoint cut / R9 first-tenant onboard if P0 holds.
 
-Then R4/R5 (store/env). Then P1 R7 payment hook / R8 touchpoint cut / R9 first-tenant onboard if P0 holds.
-
-Optional: EAS preview/production when user GOs version/submit. Commit `ios/Podfile.lock` + R2 evidence when asked.
+Compile locally; EAS **submit-only**. Optional: full P/U Maestro suites as extra confidence.
 
 ## Locked this week
 
 - **R1** — eng UI hidden unless `__DEV__` (Profile / Admin / Dashboard shortcut).
 - **R2** — local iOS RC native rebuild 2026-08-17 (IMGLY purged). Evidence: `docs/superpowers/evidence/2026-08-17-r2-rc-native-rebuild.md`.
+- **R3** — core-loop smoke on that RC: launch-smoke + P01 + U01 **rc=0**; tsc **rc=0**; regression 36/37 (known TaskDetail header Jest). Evidence: `docs/superpowers/evidence/2026-08-17-r3-core-loop-smoke.md`.
 - **U01–U12** Maestro GREEN (API seed). Detail: `docs/superpowers/plans/2026-08-17-overnight-handoff.md`.
 - **R6** — org subscription **paper** SoT in `docs/superpowers/plans/2026-08-16-commercial-release-week.md` (trial 1 month; Growth/Unlimited + worker/PM add-ons). Base list prices still prior lock until user overrides. Entry = task create + update.
 
@@ -37,7 +36,7 @@ Optional: EAS preview/production when user GOs version/submit. Commit `ios/Podfi
 
 ```text
 Read documentation/NOW.md first.
-This week = commercial RC. Next = R3 smoke on rebuilt sim RC.
+This week = commercial RC. Next = R4 store/legal + R5 env. R1–R3 locked.
 Do not start Wave 2 / DMS / RFInspection.
 ```
 

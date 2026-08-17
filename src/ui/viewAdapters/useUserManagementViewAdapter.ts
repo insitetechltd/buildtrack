@@ -1,6 +1,12 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
+import * as Clipboard from "expo-clipboard";
 
+import {
+  copyCompanyInviteLink,
+  inviteCompanyUser,
+  type InviteSeatType,
+} from "@/api/inviteUser";
 import { useAuthStore } from "@/state/authStore";
 import { useCompanyStore } from "@/state/companyStore";
 import {
@@ -17,6 +23,8 @@ import {
   type User,
 } from "@/types/buildtrack";
 import type {
+  UserManagementInviteFormModel,
+  UserManagementInviteResultModel,
   UserManagementProjectRoleOption,
   UserManagementScreenViewAdapterOutput,
   UserManagementSelectedUserSummary,
@@ -72,6 +80,10 @@ export interface UserManagementViewAdapterHookResult {
     setSearchQuery: (value: string) => void;
     handleRefresh: () => Promise<void>;
     openInviteModal: () => void;
+    setInviteName: (value: string) => void;
+    setInviteEmail: (value: string) => void;
+    setInviteSeatType: (value: InviteSeatType) => void;
+    submitInvite: () => Promise<void>;
     closeActiveModal: () => void;
     closeAssignmentFlow: () => void;
     openProjectPicker: () => void;
@@ -89,6 +101,7 @@ export interface UserManagementViewAdapterHookResult {
     confirmApproveUser: () => Promise<void>;
     confirmRejectUser: () => Promise<void>;
     confirmRemoveAssignment: () => Promise<void>;
+    copyInviteLink: (userId: string) => Promise<void>;
   };
 }
 
@@ -129,6 +142,16 @@ export function useUserManagementViewAdapter(
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteSeatType, setInviteSeatType] = useState<InviteSeatType>("worker");
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteResult, setInviteResult] =
+    useState<UserManagementInviteResultModel | null>(null);
+  const [copyingInviteUserId, setCopyingInviteUserId] = useState<string | null>(
+    null,
+  );
 
   const companyUsers = useMemo(
     () => (currentCompanyId ? getUsersByCompany(currentCompanyId) : []),
@@ -190,12 +213,107 @@ export function useUserManagementViewAdapter(
     setPendingApprovalUser(null);
     setPendingRemoval(null);
     setSuccessMessage("");
+    setInviteError(null);
+    setInviteResult(null);
+    setInviteName("");
+    setInviteEmail("");
+    setInviteSeatType("worker");
+    setInviteSubmitting(false);
   }, []);
 
-  const closeAssignmentFlow = useCallback(() => {
-    setActiveModal(null);
-    resetAssignmentFlow();
-  }, [resetAssignmentFlow]);
+  const openInviteModal = useCallback(() => {
+    setInviteName("");
+    setInviteEmail("");
+    setInviteSeatType("worker");
+    setInviteError(null);
+    setInviteResult(null);
+    setActiveModal("invite");
+  }, []);
+
+  const submitInvite = useCallback(async () => {
+    if (!currentCompanyId) {
+      setInviteError("No company on this account");
+      return;
+    }
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      setInviteError("Name and email are required");
+      return;
+    }
+
+    setInviteSubmitting(true);
+    setInviteError(null);
+
+    const result = await inviteCompanyUser({
+      companyId: currentCompanyId,
+      name: inviteName,
+      email: inviteEmail,
+      seatType: inviteSeatType,
+    });
+
+    setInviteSubmitting(false);
+
+    if (!result.success || !result.signInLink || !result.email) {
+      setInviteError(result.error || "Invite failed");
+      return;
+    }
+
+    setInviteResult({
+      email: result.email,
+      signInLink: result.signInLink,
+      seatType: result.seatType || inviteSeatType,
+    });
+    setActiveModal("inviteResult");
+    void fetchUsers();
+  }, [
+    currentCompanyId,
+    fetchUsers,
+    inviteEmail,
+    inviteName,
+    inviteSeatType,
+  ]);
+
+  const copyInviteLink = useCallback(
+    async (userId: string) => {
+      if (!currentCompanyId || copyingInviteUserId === userId) {
+        return;
+      }
+
+      const companyUser = companyUsers.find((candidate) => candidate.id === userId);
+      if (!companyUser?.email) {
+        Alert.alert("Copy failed", "This teammate has no email on file.");
+        return;
+      }
+
+      setCopyingInviteUserId(userId);
+      try {
+        const result = await copyCompanyInviteLink({
+          companyId: currentCompanyId,
+          email: companyUser.email,
+        });
+
+        if (!result.success || !result.signInLink) {
+          Alert.alert("Copy failed", result.error || "Could not create an invite link.");
+          return;
+        }
+
+        try {
+          await Clipboard.setStringAsync(result.signInLink);
+        } catch {
+          Alert.alert(
+            "Copy failed",
+            "Invite link was created but could not be copied. Try again.",
+          );
+          return;
+        }
+        Alert.alert("Copied", "Invite link copied. Send it to this teammate.");
+      } catch {
+        Alert.alert("Copy failed", "Could not create an invite link.");
+      } finally {
+        setCopyingInviteUserId(null);
+      }
+    },
+    [companyUsers, copyingInviteUserId, currentCompanyId],
+  );
 
   const requestAssignUser = useCallback(
     (userId: string) => {
@@ -261,9 +379,10 @@ export function useUserManagementViewAdapter(
     [companyUsers, projects],
   );
 
-  const openInviteModal = useCallback(() => {
-    setActiveModal("invite");
-  }, []);
+  const closeAssignmentFlow = useCallback(() => {
+    setActiveModal(null);
+    resetAssignmentFlow();
+  }, [resetAssignmentFlow]);
 
   const openProjectPicker = useCallback(() => {
     if (!selectedUser) {
@@ -477,6 +596,11 @@ export function useUserManagementViewAdapter(
           pendingMessage: isPending
             ? "Awaiting approval - cannot be assigned to projects yet"
             : null,
+          canCopyInviteLink: Boolean(
+            companyUser.email &&
+              companyUser.id !== currentUser?.id &&
+              !isPending,
+          ),
           assignmentCountLabel: assignmentRows.length
             ? `${assignmentRows.length} project assignment${assignmentRows.length === 1 ? "" : "s"}`
             : null,
@@ -499,7 +623,13 @@ export function useUserManagementViewAdapter(
           structuralState: "stale" as const,
         };
       }),
-    [filteredUsers, getAdminCountByCompany, getUserProjectAssignments, projects],
+    [
+      currentUser?.id,
+      filteredUsers,
+      getAdminCountByCompany,
+      getUserProjectAssignments,
+      projects,
+    ],
   );
 
   const output = useMemo<UserManagementScreenViewAdapterOutput>(() => {
@@ -538,6 +668,15 @@ export function useUserManagementViewAdapter(
       successMessage,
       pendingApprovalUser: getSelectedUserSummary(pendingApprovalUser),
       pendingRemoval,
+      inviteForm: {
+        name: inviteName,
+        email: inviteEmail,
+        seatType: inviteSeatType,
+        isSubmitting: inviteSubmitting,
+        error: inviteError,
+      } satisfies UserManagementInviteFormModel,
+      inviteResult,
+      copyingInviteUserId,
       refreshState: {
         isRefreshing,
       },
@@ -566,6 +705,13 @@ export function useUserManagementViewAdapter(
     availableProjects,
     currentCompany?.name,
     currentUser,
+    copyingInviteUserId,
+    inviteEmail,
+    inviteError,
+    inviteName,
+    inviteResult,
+    inviteSeatType,
+    inviteSubmitting,
     isProfileMenuVisible,
     isRefreshing,
     pendingApprovalUser,
@@ -587,6 +733,10 @@ export function useUserManagementViewAdapter(
       setSearchQuery,
       handleRefresh,
       openInviteModal,
+      setInviteName,
+      setInviteEmail,
+      setInviteSeatType,
+      submitInvite,
       closeActiveModal,
       closeAssignmentFlow,
       openProjectPicker,
@@ -604,6 +754,7 @@ export function useUserManagementViewAdapter(
       confirmApproveUser,
       confirmRejectUser,
       confirmRemoveAssignment,
+      copyInviteLink,
     },
   };
 }

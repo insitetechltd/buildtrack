@@ -59,6 +59,7 @@ describe('Authentication Workflow Tests', () => {
       }),
       signOut: jest.fn().mockResolvedValue({ error: null }),
       updateUser: jest.fn().mockResolvedValue({ data: { user: defaultAuthUser }, error: null }),
+      verifyOtp: jest.fn().mockResolvedValue({ data: { session: { access_token: 'invite-token' }, user: defaultAuthUser }, error: null }),
     } as any;
 
     const mockFrom = mockSupabase.from as unknown as jest.Mock;
@@ -66,6 +67,9 @@ describe('Authentication Workflow Tests', () => {
       if (table === 'users') {
         return {
           select: jest.fn().mockReturnThis(),
+          update: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+          }),
           eq: jest.fn(() => ({
             single: jest.fn().mockResolvedValue({
               data: defaultUsersTableRow,
@@ -436,6 +440,495 @@ describe('Authentication Workflow Tests', () => {
       // Should still clear local state even if API fails
       expect(result.current.user).toBeNull();
       expect(result.current.session).toBeNull();
+    });
+  });
+
+  describe('Delete account', () => {
+    it('deletes via RPC then signs out and clears local session', async () => {
+      mockSupabase.rpc = jest.fn().mockResolvedValue({ data: null, error: null });
+      (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'user-123', email: 'user@buildtrack.com' } as any,
+          session: { access_token: 'token-123' },
+          isAuthenticated: true,
+        });
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.deleteAccount();
+      });
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('delete_own_account');
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled();
+      expect(outcome).toEqual({ success: true });
+      expect(result.current.user).toBeNull();
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
+    it('does not sign out when RPC fails', async () => {
+      mockSupabase.rpc = jest.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'boom', code: 'XX000' },
+      });
+
+      act(() => {
+        useAuthStore.setState({
+          user: { id: 'user-123', email: 'user@buildtrack.com' } as any,
+          isAuthenticated: true,
+        });
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.deleteAccount();
+      });
+
+      expect(outcome?.success).toBe(false);
+      expect(result.current.user).not.toBeNull();
+      expect(mockSupabase.auth.signOut).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Create company account', () => {
+    it('signs up, calls create_company_for_self, and authenticates admin', async () => {
+      (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
+        data: {
+          user: { id: 'founder-1', email: 'admin@acme.com' },
+          session: { access_token: 'sess-1' },
+        },
+        error: null,
+      });
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: { access_token: 'sess-1' } },
+        error: null,
+      });
+      mockSupabase.rpc = jest.fn().mockResolvedValue({
+        data: 'company-uuid-1',
+        error: null,
+      });
+
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn(() => ({
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'founder-1' },
+            error: null,
+          }),
+          single: jest.fn().mockResolvedValue({
+            data: {
+              id: 'founder-1',
+              email: 'admin@acme.com',
+              name: 'Founder',
+              role: 'admin',
+              company_id: 'company-uuid-1',
+              is_pending: false,
+            },
+            error: null,
+          }),
+        })),
+      }));
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome:
+        | { success: boolean; error?: string; companyId?: string }
+        | undefined;
+      await act(async () => {
+        outcome = await result.current.createCompanyAccount({
+          companyName: 'Acme Construction',
+          name: 'Founder',
+          email: 'admin@acme.com',
+          password: 'Secure1!',
+        });
+      });
+
+      expect(mockSupabase.auth.signUp).toHaveBeenCalled();
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('create_company_for_self', {
+        company_name: 'Acme Construction',
+        company_type: 'general_contractor',
+      });
+      expect(outcome?.success).toBe(true);
+      expect(outcome?.companyId).toBe('company-uuid-1');
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.user?.companyId || (result.current.user as any)?.company_id).toBeTruthy();
+    });
+
+    it('returns missing-fn message when RPC is not deployed', async () => {
+      (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
+        data: {
+          user: { id: 'founder-1', email: 'admin@acme.com' },
+          session: { access_token: 'sess-1' },
+        },
+        error: null,
+      });
+      (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn(() => ({
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'founder-1' },
+            error: null,
+          }),
+        })),
+      }));
+      mockSupabase.rpc = jest.fn().mockResolvedValue({
+        data: null,
+        error: { message: 'Could not find the function create_company_for_self', code: 'PGRST202' },
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.createCompanyAccount({
+          companyName: 'Acme',
+          name: 'Founder',
+          email: 'admin@acme.com',
+          password: 'Secure1!',
+        });
+      });
+
+      expect(outcome?.success).toBe(false);
+      expect(outcome?.error).toMatch(/not enabled/i);
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled();
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+
+    it('rejects when RPC succeeds but profile has no company_id', async () => {
+      (mockSupabase.auth.signUp as jest.Mock).mockResolvedValue({
+        data: {
+          user: { id: 'founder-1', email: 'admin@acme.com' },
+          session: { access_token: 'sess-1' },
+        },
+        error: null,
+      });
+      (mockSupabase.auth.signOut as jest.Mock).mockResolvedValue({ error: null });
+      mockSupabase.rpc = jest.fn().mockResolvedValue({
+        data: null,
+        error: null,
+      });
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation(() => ({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn(() => ({
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: { id: 'founder-1' },
+            error: null,
+          }),
+          single: jest.fn().mockResolvedValue({
+            data: {
+              id: 'founder-1',
+              email: 'admin@acme.com',
+              name: 'Founder',
+              role: 'admin',
+              company_id: null,
+              is_pending: false,
+            },
+            error: null,
+          }),
+        })),
+      }));
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.createCompanyAccount({
+          companyName: 'Acme',
+          name: 'Founder',
+          email: 'admin@acme.com',
+          password: 'Secure1!',
+        });
+      });
+
+      expect(outcome?.success).toBe(false);
+      expect(outcome?.error).toMatch(/not linked/i);
+      expect(mockSupabase.auth.signOut).toHaveBeenCalled();
+      expect(result.current.isAuthenticated).toBe(false);
+    });
+  });
+
+  describe('Invite sign-in link', () => {
+    it('verifies magiclink token and authenticates', async () => {
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: { access_token: 'invite-token', user: defaultAuthUser } },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.signInWithInviteToken('hashed-token');
+      });
+
+      expect(mockSupabase.auth.verifyOtp).toHaveBeenCalledWith({
+        token_hash: 'hashed-token',
+        type: 'magiclink',
+      });
+      expect(outcome?.success).toBe(true);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+
+    it("exposes mustSetPassword from the users row after invite sign-in", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: true },
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: { access_token: "invite-token", user: defaultAuthUser } },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      await act(async () => {
+        await result.current.signInWithInviteToken("hashed-token");
+      });
+
+      expect(result.current.user?.mustSetPassword).toBe(true);
+      expect(result.current.isAuthenticated).toBe(true);
+    });
+  });
+
+  describe("First-login password", () => {
+    it("initialize rehydrates mustSetPassword from the session profile", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: { ...defaultUsersTableRow, must_set_password: true },
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+      (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({
+        data: { session: { access_token: "sess", user: defaultAuthUser } },
+        error: null,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      await act(async () => {
+        await result.current.initialize();
+      });
+
+      expect(result.current.isAuthenticated).toBe(true);
+      expect(result.current.user?.mustSetPassword).toBe(true);
+    });
+
+    it("completeFirstLoginPassword updates auth and clears the flag", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      const select = jest.fn().mockResolvedValue({
+        data: [{ id: "mock-user-id" }],
+        error: null,
+      });
+      const eq = jest.fn().mockReturnValue({ select });
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({ eq }),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: defaultUsersTableRow,
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+
+      useAuthStore.setState({
+        user: {
+          ...defaultUsersTableRow,
+          companyId: "company-123",
+          position: "Worker",
+          phone: "",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          mustSetPassword: true,
+        } as any,
+        isAuthenticated: true,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.completeFirstLoginPassword("newpass1");
+      });
+
+      expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({ password: "newpass1" });
+      expect(eq).toHaveBeenCalledWith("id", "mock-user-id");
+      expect(outcome?.success).toBe(true);
+      expect(result.current.user?.mustSetPassword).toBe(false);
+    });
+
+    it("keeps the gate when auth password update fails", async () => {
+      (mockSupabase.auth.updateUser as jest.Mock).mockResolvedValue({
+        data: { user: null },
+        error: { message: "Password is too weak" },
+      });
+
+      useAuthStore.setState({
+        user: {
+          ...defaultUsersTableRow,
+          companyId: "company-123",
+          position: "Worker",
+          phone: "",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          mustSetPassword: true,
+        } as any,
+        isAuthenticated: true,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.completeFirstLoginPassword("newpass1");
+      });
+
+      expect(outcome?.success).toBe(false);
+      expect(result.current.user?.mustSetPassword).toBe(true);
+    });
+
+    it("clears the flag when GoTrue says the password is already that value", async () => {
+      (mockSupabase.auth.updateUser as jest.Mock).mockResolvedValue({
+        data: { user: null },
+        error: { message: "New password should be different from the old password" },
+      });
+      const eq = jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({
+          data: [{ id: "mock-user-id" }],
+          error: null,
+        }),
+      });
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({ eq }),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: defaultUsersTableRow,
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+
+      useAuthStore.setState({
+        user: {
+          ...defaultUsersTableRow,
+          companyId: "company-123",
+          position: "Worker",
+          phone: "",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          mustSetPassword: true,
+        } as any,
+        isAuthenticated: true,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.completeFirstLoginPassword("newpass1");
+      });
+
+      expect(outcome?.success).toBe(true);
+      expect(result.current.user?.mustSetPassword).toBe(false);
+    });
+
+    it("keeps the gate when flag clear updates zero rows", async () => {
+      const mockFrom = mockSupabase.from as unknown as jest.Mock;
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "users") {
+          return {
+            select: jest.fn().mockReturnThis(),
+            update: jest.fn().mockReturnValue({
+              eq: jest.fn().mockReturnValue({
+                select: jest.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+            eq: jest.fn(() => ({
+              single: jest.fn().mockResolvedValue({
+                data: defaultUsersTableRow,
+                error: null,
+              }),
+            })),
+          };
+        }
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      });
+
+      useAuthStore.setState({
+        user: {
+          ...defaultUsersTableRow,
+          companyId: "company-123",
+          position: "Worker",
+          phone: "",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          mustSetPassword: true,
+        } as any,
+        isAuthenticated: true,
+      });
+
+      const { result } = renderHook(() => useAuthStore());
+      let outcome: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        outcome = await result.current.completeFirstLoginPassword("newpass1");
+      });
+
+      expect(outcome?.success).toBe(false);
+      expect(outcome?.error).toMatch(/Tap Continue again/i);
+      expect(result.current.user?.mustSetPassword).toBe(true);
     });
   });
 });

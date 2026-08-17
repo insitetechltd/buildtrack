@@ -7,6 +7,7 @@ import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserPreferencesStore } from "@/state/userPreferencesStore";
 import { useUserStore } from "@/state/userStore.supabase";
 import type { User } from "@/types/buildtrack";
+import { userAccountIsDeleted } from "@/types/userAccountRetention";
 import type { ReassignTaskScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
 export interface ReassignTaskScreenParams {
@@ -60,7 +61,9 @@ export function useReassignTaskViewAdapter(): ReassignTaskViewAdapterHookResult 
     return getProjectUserAssignments(task.projectId)
       .filter((assignment) => assignment.isActive)
       .map((assignment) => getUserById(assignment.userId))
-      .filter((projectUser): projectUser is User => Boolean(projectUser));
+      .filter((projectUser): projectUser is User =>
+        Boolean(projectUser) && !userAccountIsDeleted(projectUser),
+      );
   }, [getProjectUserAssignments, getUserById, task?.projectId]);
 
   const filteredUsers = useMemo(() => {

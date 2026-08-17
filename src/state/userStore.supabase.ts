@@ -5,6 +5,57 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../api/supabase";
 import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { User, UserRole, SystemPermission, getUserSystemPermission, hasSystemPermission } from "../types/buildtrack";
+import { userAccountIsDeleted } from "../types/userAccountRetention";
+
+function mapSupabaseUser(user: {
+  role?: string | null;
+  system_permission?: string | null;
+  company_id?: string;
+  companyId?: string;
+  last_selected_project_id?: string | null;
+  is_pending?: boolean;
+  isPending?: boolean;
+  approved_by?: string | null;
+  approvedBy?: string | null;
+  approved_at?: string | null;
+  approvedAt?: string | null;
+  deleted_at?: string | null;
+  deletedAt?: string | null;
+  invite_sign_in_link?: string | null;
+  inviteSignInLink?: string | null;
+  must_set_password?: boolean;
+  mustSetPassword?: boolean;
+}): User {
+  const dbRoleRaw = user.role || user.system_permission || "worker";
+  const dbRole =
+    dbRoleRaw === "company_admin"
+      ? "admin"
+      : dbRoleRaw === "member"
+        ? "worker"
+        : dbRoleRaw;
+  const systemPermission: SystemPermission =
+    user.system_permission === "admin" ||
+    user.system_permission === "manager" ||
+    user.system_permission === "member"
+      ? user.system_permission
+      : dbRole === "worker"
+        ? "member"
+        : (dbRole as SystemPermission);
+
+  return {
+    ...(user as User),
+    role: dbRole as UserRole,
+    systemPermission,
+    companyId: user.company_id || user.companyId || "",
+    lastSelectedProjectId: user.last_selected_project_id || null,
+    isPending: user.is_pending ?? user.isPending ?? false,
+    approvedBy: user.approved_by || user.approvedBy || null,
+    approvedAt: user.approved_at || user.approvedAt || null,
+    deletedAt: user.deleted_at ?? user.deletedAt ?? null,
+    inviteSignInLink: user.invite_sign_in_link ?? user.inviteSignInLink ?? null,
+    mustSetPassword: user.mustSetPassword === true || user.must_set_password === true,
+  };
+}
 
 interface UserStore {
   users: User[];
@@ -72,22 +123,7 @@ export const useUserStore = create<UserStore>()(
 
           if (error) throw error;
 
-          // Transform Supabase data to match local interface
-          const transformedUsers = (data || []).map(user => {
-            const dbRole = user.role || 'worker';
-            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
-            
-            return {
-              ...user,
-              role: dbRole as UserRole, // Keep for backward compatibility
-              systemPermission, // New field
-              companyId: user.company_id || user.companyId, // Handle both field names
-              lastSelectedProjectId: user.last_selected_project_id || null,
-              isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
-              approvedBy: user.approved_by || user.approvedBy || null,
-              approvedAt: user.approved_at || user.approvedAt || null,
-            };
-          });
+          const transformedUsers = (data || []).map(mapSupabaseUser);
 
           set({ 
             users: transformedUsers, 
@@ -126,22 +162,7 @@ export const useUserStore = create<UserStore>()(
 
           if (error) throw error;
 
-          // Transform Supabase data to match local interface
-          const transformedUsers = (data || []).map(user => {
-            const dbRole = user.role || 'worker';
-            const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
-            
-            return {
-              ...user,
-              role: dbRole as UserRole, // Keep for backward compatibility
-              systemPermission, // New field
-              companyId: user.company_id || user.companyId, // Handle both field names
-              lastSelectedProjectId: user.last_selected_project_id || null,
-              isPending: user.is_pending ?? user.isPending ?? false, // Transform snake_case to camelCase
-              approvedBy: user.approved_by || user.approvedBy || null,
-              approvedAt: user.approved_at || user.approvedAt || null,
-            };
-          });
+          const transformedUsers = (data || []).map(mapSupabaseUser);
 
           set({ 
             users: transformedUsers, 
@@ -177,22 +198,8 @@ export const useUserStore = create<UserStore>()(
 
           if (error) throw error;
           
-          // Transform Supabase data to match local interface
           if (!data) return null;
-          
-          const dbRole = data.role || 'worker';
-          const systemPermission: SystemPermission = dbRole === 'worker' ? 'member' : (dbRole as SystemPermission);
-          
-          return {
-            ...data,
-            role: dbRole as UserRole, // Keep for backward compatibility
-            systemPermission, // New field
-            companyId: data.company_id || data.companyId,
-            lastSelectedProjectId: data.last_selected_project_id || null,
-            isPending: data.is_pending ?? data.isPending ?? false, // Transform snake_case to camelCase
-            approvedBy: data.approved_by || data.approvedBy || null,
-            approvedAt: data.approved_at || data.approvedAt || null,
-          };
+          return mapSupabaseUser(data);
         } catch (error: any) {
           console.error('Error fetching user:', error);
           return null;
@@ -201,7 +208,7 @@ export const useUserStore = create<UserStore>()(
 
       // LOCAL getters (work with cached data)
       getAllUsers: () => {
-        return get().users;
+        return get().users.filter((user) => !userAccountIsDeleted(user));
       },
 
       getUserById: (id) => {
@@ -212,12 +219,16 @@ export const useUserStore = create<UserStore>()(
         // Support both old (UserRole) and new (SystemPermission) types
         // Map "worker" to "member" for backward compatibility
         const targetPermission: SystemPermission = role === 'worker' ? 'member' : (role as SystemPermission);
-        return get().users.filter(user => getUserSystemPermission(user) === targetPermission);
+        return get().users.filter(user =>
+          !userAccountIsDeleted(user) && getUserSystemPermission(user) === targetPermission
+        );
       },
 
       getUsersByCompany: (companyId) => {
         const users = get().users;
-        const filteredUsers = users.filter(user => user.companyId === companyId);
+        const filteredUsers = users.filter(user =>
+          user.companyId === companyId && !userAccountIsDeleted(user)
+        );
         
         // Debug logging
         console.log('=== getUsersByCompany Debug ===');
@@ -242,11 +253,13 @@ export const useUserStore = create<UserStore>()(
       searchUsers: (query) => {
         const { users } = get();
         const lowercaseQuery = query.toLowerCase();
-        return users.filter(user => 
+        return users.filter(user =>
+          !userAccountIsDeleted(user) && (
           user.name.toLowerCase().includes(lowercaseQuery) ||
           user.email?.toLowerCase().includes(lowercaseQuery) ||
           user.phone.includes(query) ||
           user.position.toLowerCase().includes(lowercaseQuery)
+          )
         );
       },
 
@@ -270,6 +283,10 @@ export const useUserStore = create<UserStore>()(
         const user = get().getUserById(userId);
         if (!user) {
           return { canDelete: false, reason: 'User not found' };
+        }
+
+        if (userAccountIsDeleted(user)) {
+          return { canDelete: false, reason: 'User already deleted' };
         }
 
         const adminCount = get().getAdminCountByCompany(user.companyId);

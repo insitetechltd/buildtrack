@@ -10,11 +10,38 @@ import {
 } from "../types/buildtrack";
 import { useUserStore } from "./userStore.supabase";
 
+export function readMustSetPassword(
+  user: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!user) {
+    return false;
+  }
+  return user.mustSetPassword === true || user.must_set_password === true;
+}
+
+const SAME_PASSWORD_ERROR = /different from the old password|same as the old|should be different/i;
+
 export function normalizeAuthUser<T extends Record<string, any>>(user: T) {
-  const normalizedRole: UserRole = (user.role || "worker") as UserRole;
+  const rawPermission =
+    user.systemPermission ||
+    user.system_permission ||
+    null;
+  const rawRole = user.role || "worker";
+  const normalizedRole: UserRole =
+    rawRole === "company_admin" ? "admin" : (rawRole as UserRole);
+  const mustSetPassword = readMustSetPassword(user);
+
   const normalizedUser = {
     ...user,
     role: normalizedRole,
+    mustSetPassword,
+    must_set_password: mustSetPassword,
+    ...(rawPermission
+      ? {
+          systemPermission:
+            rawPermission === "company_admin" ? "admin" : rawPermission,
+        }
+      : {}),
   };
 
   return {
@@ -57,6 +84,15 @@ interface AuthStore extends AuthState {
   }) => Promise<{ success: boolean; error?: string }>;
   updateUser: (updates: Partial<User>) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; error?: string }>;
+  createCompanyAccount: (data: {
+    companyName: string;
+    name: string;
+    email: string;
+    password: string;
+  }) => Promise<{ success: boolean; error?: string; companyId?: string }>;
+  signInWithInviteToken: (tokenHash: string) => Promise<{ success: boolean; error?: string }>;
+  completeFirstLoginPassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   refreshUser: () => Promise<void>;
   // Test-compatible method names
   signUp: (email: string, password: string, fullName?: string) => Promise<void>;
@@ -501,6 +537,219 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      deleteAccount: async () => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: "Not signed in" };
+        }
+
+        if (!supabase) {
+          return { success: false, error: "Supabase not configured" };
+        }
+
+        set({ isLoading: true });
+
+        try {
+          const { error } = await supabase.rpc("delete_own_account");
+          if (error) {
+            set({ isLoading: false });
+            const missingFn =
+              error.code === "PGRST202" ||
+              error.code === "42883" ||
+              /delete_own_account/i.test(error.message || "");
+            return {
+              success: false,
+              error: missingFn
+                ? "Account deletion is not enabled on this server yet."
+                : error.message || "Failed to delete account",
+            };
+          }
+
+          try {
+            await supabase.auth.signOut();
+          } catch {
+            // Auth user is already gone; still clear local session.
+          }
+
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return { success: true };
+        } catch (error: any) {
+          set({ isLoading: false });
+          return { success: false, error: error.message || "Failed to delete account" };
+        }
+      },
+
+      createCompanyAccount: async (data) => {
+        if (!supabase) {
+          return { success: false, error: "Supabase not configured" };
+        }
+
+        const companyName = data.companyName.trim();
+        const name = data.name.trim();
+        const email = data.email.trim().toLowerCase();
+        const password = data.password;
+
+        if (!companyName || !name || !email || !password) {
+          return { success: false, error: "All fields are required" };
+        }
+
+        if (password.length < 6) {
+          return { success: false, error: "Password must be at least 6 characters" };
+        }
+
+        set({ isLoading: true, error: null });
+
+        try {
+          const { data: authData, error: authError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                name,
+                system_permission: "admin",
+                role: "admin",
+                is_pending: false,
+              },
+            },
+          });
+
+          if (authError) {
+            set({ isLoading: false, error: authError.message });
+            return { success: false, error: authError.message };
+          }
+
+          if (!authData.user) {
+            set({ isLoading: false });
+            return { success: false, error: "Could not create account" };
+          }
+
+          if (!authData.session) {
+            const { data: signInData, error: signInError } =
+              await supabase.auth.signInWithPassword({ email, password });
+            if (signInError || !signInData.session) {
+              set({ isLoading: false });
+              return {
+                success: false,
+                error:
+                  signInError?.message ||
+                  "Account created but sign-in failed. Confirm email if required, then sign in.",
+              };
+            }
+          }
+
+          // Profile row comes from handle_new_user trigger; brief retry if race.
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            const { data: profile } = await supabase
+              .from("users")
+              .select("id")
+              .eq("id", authData.user.id)
+              .maybeSingle();
+            if (profile?.id) {
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+
+          const { data: companyId, error: rpcError } = await supabase.rpc(
+            "create_company_for_self",
+            {
+              company_name: companyName,
+              company_type: "general_contractor",
+            },
+          );
+
+          if (rpcError) {
+            // Sign-up may have left a session; do not leave the app in an
+            // authenticated state without a company (Invite → "No company…").
+            await supabase.auth.signOut().catch(() => undefined);
+            set({
+              user: null,
+              session: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: rpcError.message,
+            });
+            const missingFn =
+              rpcError.code === "PGRST202" ||
+              rpcError.code === "42883" ||
+              /create_company_for_self/i.test(rpcError.message || "");
+            return {
+              success: false,
+              error: missingFn
+                ? "Company setup is not enabled on this server yet."
+                : rpcError.message || "Failed to create company",
+            };
+          }
+
+          const { data: userData, error: userError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", authData.user.id)
+            .single();
+
+          const resolvedCompanyId =
+            (typeof companyId === "string" && companyId) ||
+            userData?.company_id ||
+            userData?.companyId ||
+            "";
+
+          if (userError || !userData || !resolvedCompanyId) {
+            await supabase.auth.signOut().catch(() => undefined);
+            set({
+              user: null,
+              session: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return {
+              success: false,
+              error:
+                userError?.message ||
+                "Company was not linked to this account. Try Create company again, or sign in after support repairs the profile.",
+            };
+          }
+
+          const session = (await supabase.auth.getSession()).data.session;
+          const transformedUser = normalizeAuthUser({
+            ...userData,
+            companyId: resolvedCompanyId,
+            lastSelectedProjectId: userData.last_selected_project_id || null,
+          });
+
+          set({
+            user: transformedUser as any,
+            session,
+            isAuthenticated: true,
+            isLoading: false,
+            isInitialized: true,
+            error: null,
+          });
+
+          return {
+            success: true,
+            companyId: String(resolvedCompanyId),
+          };
+        } catch (error: any) {
+          await supabase?.auth.signOut().catch(() => undefined);
+          set({
+            user: null,
+            session: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: error?.message || "Failed to create company",
+          });
+          return {
+            success: false,
+            error: error?.message || "Failed to create company",
+          };
+        }
+      },
+
       refreshUser: async () => {
         const currentUser = get().user;
         if (!currentUser || !supabase) return;
@@ -758,6 +1007,102 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
+      signInWithInviteToken: async (tokenHash) => {
+        if (!supabase) {
+          return { success: false, error: "Supabase not configured" };
+        }
+
+        set({ isLoading: true, error: null });
+
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: "magiclink",
+          });
+
+          if (error) {
+            set({ isLoading: false, error: error.message });
+            return { success: false, error: error.message };
+          }
+
+          await get().initialize();
+          if (!get().isAuthenticated) {
+            return { success: false, error: "Invite signed in but profile could not load" };
+          }
+          const signedInId = get().user?.id;
+          if (signedInId) {
+            try {
+              await supabase
+                .from("users")
+                .update({ invite_sign_in_link: null })
+                .eq("id", signedInId);
+            } catch {
+              // Column may not exist until invite-link migration is applied.
+            }
+          }
+          return { success: true };
+        } catch (error: any) {
+          const message = error?.message || "Invite sign-in failed";
+          set({ isLoading: false, error: message });
+          return { success: false, error: message };
+        }
+      },
+
+      completeFirstLoginPassword: async (newPassword) => {
+        const currentUser = get().user;
+        if (!currentUser) {
+          return { success: false, error: "Not signed in" };
+        }
+        if (!supabase) {
+          return { success: false, error: "Supabase not configured" };
+        }
+
+        const trimmed = (newPassword || "").trim();
+        if (trimmed.length < 6) {
+          return { success: false, error: "New password must be at least 6 characters long" };
+        }
+
+        set({ isLoading: true, error: null });
+
+        try {
+          const { error: updateError } = await supabase.auth.updateUser({
+            password: trimmed,
+          });
+
+          const authAlreadyMatches =
+            Boolean(updateError) && SAME_PASSWORD_ERROR.test(updateError?.message || "");
+          if (updateError && !authAlreadyMatches) {
+            set({ isLoading: false, error: updateError.message });
+            return { success: false, error: updateError.message };
+          }
+
+          const { data: flagRows, error: flagError } = await supabase
+            .from("users")
+            .update({ must_set_password: false })
+            .eq("id", currentUser.id)
+            .select("id");
+
+          if (flagError || !flagRows?.length) {
+            const retryMessage =
+              "Password saved. Tap Continue again to finish.";
+            set({ isLoading: false, error: retryMessage });
+            return { success: false, error: retryMessage };
+          }
+
+          const updatedUser = normalizeAuthUser({
+            ...currentUser,
+            mustSetPassword: false,
+            must_set_password: false,
+          });
+          set({ user: updatedUser, isLoading: false, error: null });
+          return { success: true };
+        } catch (error: any) {
+          const message = error?.message || "Failed to set password";
+          set({ isLoading: false, error: message });
+          return { success: false, error: message };
+        }
+      },
+
       initialize: async () => {
         set({ isLoading: true });
         
@@ -845,8 +1190,10 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         console.log('🔄 AuthStore rehydration callback fired');
         if (state) {
-          state.isInitialized = true;
-          console.log('✅ AuthStore initialized:', { 
+          // Do not set isInitialized here — AppNavigator would otherwise
+          // mount MainTabs from a persisted user before initialize() loads
+          // must_set_password from the server.
+          console.log('✅ AuthStore rehydration:', { 
             isAuthenticated: state.isAuthenticated, 
             hasUser: !!state.user,
             userName: state.user?.name 

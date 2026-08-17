@@ -17,7 +17,6 @@ import AdminOverviewHero from "../components/admin/AdminOverviewHero";
 import ModalHandle from "../components/ModalHandle";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
-import ScreenSection from "../components/ui/ScreenSection";
 import { cn } from "../utils/cn";
 import type {
   AdminDashboardBannerSettingsModel,
@@ -31,17 +30,43 @@ import {
 
 type AdminDashboardScreenProps = AdminDashboardViewAdapterProps;
 
-function StatCard({ card }: { card: AdminDashboardStatCard }) {
-  return (
-    <View className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}>
+function StatCard({
+  card,
+  onPress,
+}: {
+  card: AdminDashboardStatCard;
+  onPress?: () => void;
+}) {
+  const content = (
+    <>
       <View className="flex-row items-center justify-between mb-2">
         <Ionicons name={card.icon as any} size={22} color={card.iconColor} />
-        <Text className={cn("text-3xl font-bold", card.textColor)}>{card.value}</Text>
+        <View className="flex-row items-center">
+          <Text className={cn("text-3xl font-bold", card.textColor)}>{card.value}</Text>
+          {onPress ? (
+            <Ionicons name="chevron-forward" size={16} color="#9ca3af" style={{ marginLeft: 4 }} />
+          ) : null}
+        </View>
       </View>
       <Text className="text-base font-semibold text-gray-900">{card.label}</Text>
       {card.subtitle ? <Text className="text-sm text-gray-600 mt-1">{card.subtitle}</Text> : null}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        testID={`admin-stat-${card.statId}`}
+        onPress={onPress}
+        accessibilityRole="button"
+        className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}>{content}</View>;
 }
 
 function QuickActionCard({
@@ -288,6 +313,7 @@ function BannerSettingsModal({
 export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
   const { output, actions } = useAdminDashboardViewAdapter(props);
   const RefreshControlComponent = RefreshControl;
+  const visibleQuickActions = output.quickActions.filter((action) => action.isVisible);
 
   if (!output.readiness.hasUsableData) {
     return null;
@@ -335,60 +361,65 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
       >
         <View className="py-4">
           <AdminOverviewHero
-            title="Admin Dashboard"
+            title="Company Overview"
             companyName={output.companyScope.companyName}
-            summaryLabel={
-              output.companyScope.subtitle ??
-              `${output.topLevelStats.length} summary cards ready for review`
-            }
+            summaryLabel="Tap to edit the company banner"
+            onPress={() => actions.pressQuickAction("company_banner")}
           />
 
-          <ScreenSection
-            title="Company Overview"
-            subtitle="Monitor the latest company-wide health at a glance."
-          >
+          <View className="mb-5 px-4">
             <View className="rounded-2xl border border-gray-200 bg-white p-4">
               {output.companyScope.companyName ? (
-                <View className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <Pressable
+                  testID="admin-company-overview-banner"
+                  onPress={() => actions.pressQuickAction("company_banner")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Edit company banner"
+                  className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3"
+                >
                   <View className="flex-row items-center">
                     <Ionicons name="business" size={16} color="#3b82f6" />
                     <Text className="ml-2 flex-1 font-medium text-blue-900">
                       {output.companyScope.companyName}
                     </Text>
+                    <Text className="mr-1 text-sm text-blue-700">Banner</Text>
+                    <Ionicons name="chevron-forward" size={18} color="#3b82f6" />
                   </View>
                   {output.companyScope.subtitle ? (
                     <Text className="mt-1 text-sm text-blue-700">
                       {output.companyScope.subtitle}
                     </Text>
                   ) : null}
-                </View>
+                </Pressable>
               ) : null}
 
               <View className="flex-row flex-wrap justify-between">
                 {output.topLevelStats.map((card) => (
-                  <StatCard key={card.id} card={card} />
+                  <StatCard
+                    key={card.id}
+                    card={card}
+                    onPress={
+                      card.actionId
+                        ? () => actions.pressQuickAction(card.actionId!)
+                        : undefined
+                    }
+                  />
                 ))}
               </View>
             </View>
-          </ScreenSection>
+          </View>
 
-          <ScreenSection
-            title="Administrative Actions"
-            subtitle="Jump into the management workflows that need attention."
-            className="mb-0"
-          >
-            <View>
-              {output.quickActions
-                .filter((action) => action.isVisible)
-                .map((action) => (
-                  <QuickActionCard
-                    key={action.id}
-                    action={action}
-                    onPress={() => actions.pressQuickAction(action.actionId)}
-                  />
-                ))}
+          {visibleQuickActions.length > 0 ? (
+            <View className="mx-4 mb-2">
+              {visibleQuickActions.map((action) => (
+                <QuickActionCard
+                  key={action.id}
+                  action={action}
+                  onPress={() => actions.pressQuickAction(action.actionId)}
+                />
+              ))}
             </View>
-          </ScreenSection>
+          ) : null}
         </View>
       </ScrollView>
 

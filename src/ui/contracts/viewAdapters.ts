@@ -663,6 +663,8 @@ export interface AdminDashboardStatCard extends PrimitiveReadyItemBase {
   color: string;
   iconColor: string;
   textColor: string;
+  /** When set, tapping the stat navigates via pressQuickAction. */
+  actionId?: AdminDashboardQuickActionId;
 }
 
 export interface AdminDashboardQuickActionItem extends PrimitiveReadyItemBase {
@@ -840,6 +842,7 @@ export type UserManagementActiveModal =
   | "success"
   | "removeConfirm"
   | "invite"
+  | "inviteResult"
   | "approveConfirm"
   | "rejectConfirm"
   | null;
@@ -893,6 +896,7 @@ export interface UserManagementUserCard extends PrimitiveReadyItemBase {
   isProtected: boolean;
   isPending: boolean;
   pendingMessage: string | null;
+  canCopyInviteLink: boolean;
   assignmentCountLabel: string | null;
   assignmentRows: UserManagementAssignmentRow[];
   primaryAction: UserManagementCardAction;
@@ -933,6 +937,20 @@ export interface UserManagementEmptyStateModel {
   showInviteAction: boolean;
 }
 
+export interface UserManagementInviteFormModel {
+  name: string;
+  email: string;
+  seatType: "pm" | "worker";
+  isSubmitting: boolean;
+  error: string | null;
+}
+
+export interface UserManagementInviteResultModel {
+  email: string;
+  signInLink: string;
+  seatType: "pm" | "worker";
+}
+
 export interface UserManagementScreenViewAdapterOutput {
   screenId: "UserManagementScreen";
   readiness: NavigationScreenReadiness;
@@ -946,6 +964,9 @@ export interface UserManagementScreenViewAdapterOutput {
   successMessage: string;
   pendingApprovalUser: UserManagementSelectedUserSummary | null;
   pendingRemoval: UserManagementPendingRemovalModel | null;
+  inviteForm: UserManagementInviteFormModel;
+  inviteResult: UserManagementInviteResultModel | null;
+  copyingInviteUserId: string | null;
   refreshState: UserManagementRefreshState;
   profileMenu: UserManagementProfileMenuModel;
   selectedUserSummary: UserManagementSelectedUserSummary | null;

@@ -160,6 +160,7 @@ jest.mock("../../utils/RealtimeSyncManager", () => ({
 }));
 
 jest.mock("../../screens/LoginScreen", () => "LoginScreen");
+jest.mock("../../screens/SetPasswordScreen", () => "SetPasswordScreen");
 jest.mock("../../screens/CreateTaskScreen", () => "CreateTaskScreen");
 jest.mock("../../screens/ProfileScreen", () => "ProfileScreen");
 jest.mock("../../screens/TaskDetailScreen", () => "TaskDetailScreen");

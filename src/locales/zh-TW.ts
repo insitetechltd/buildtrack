@@ -291,6 +291,10 @@ export const zhTW = {
     darkMode: "深色模式",
     lightMode: "淺色模式",
     reloadData: "重新載入資料",
+    deleteAccount: "刪除帳戶",
+    deleteAccountConfirm:
+      "這會永久刪除你的登入與聯絡資料。你的姓名會保留在工地任務紀錄中，供公司查核。此操作無法復原。",
+    deleteAccountFailed: "無法刪除帳戶",
   },
 
   // User Management
@@ -629,6 +633,44 @@ export const zhTW = {
     invalidEmailOrPhone: "請輸入有效的電子郵件或電話號碼",
     approvalPending: "等待審批",
     approvalPendingMessage: "您的帳號正在等待公司管理員審批。審批通過後會通知您。",
+    createCompany: "建立公司",
+  },
+
+  createCompany: {
+    title: "建立公司",
+    subtitle: "建立公司帳號。你將成為公司管理員。",
+    companyName: "公司名稱",
+    companyNamePlaceholder: "公司名稱",
+    companyNameRequired: "公司名稱為必填",
+    yourName: "你的姓名",
+    yourNamePlaceholder: "全名",
+    nameRequired: "姓名為必填",
+    workEmail: "工作電子郵件",
+    workEmailPlaceholder: "you@company.com",
+    emailRequired: "電子郵件為必填",
+    invalidEmail: "請輸入有效的電子郵件",
+    submit: "建立公司",
+    creating: "建立中…",
+    backToLogin: "已有帳號？登入",
+    failedTitle: "無法建立公司",
+    failedMessage: "請重試。",
+  },
+
+  setPassword: {
+    title: "設定密碼",
+    subtitle: "請設定密碼，以便下次登入。",
+    password: "新密碼",
+    passwordPlaceholder: "至少 6 個字元",
+    confirmPassword: "確認密碼",
+    confirmPasswordPlaceholder: "再輸入一次密碼",
+    submit: "繼續",
+    submitting: "儲存中…",
+    passwordRequired: "請輸入密碼",
+    passwordTooShort: "密碼至少需要 6 個字元",
+    confirmPasswordRequired: "請確認密碼",
+    passwordsDoNotMatch: "兩次輸入的密碼不一致",
+    failedTitle: "無法儲存密碼",
+    retryAfterAuth: "密碼已儲存。請再按一次繼續以完成設定。",
   },
 
   // Registration

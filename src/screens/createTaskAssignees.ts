@@ -1,4 +1,5 @@
 import type { User, UserProjectAssignment } from "@/types/buildtrack";
+import { userAccountIsDeleted } from "@/types/userAccountRetention";
 
 interface GetAssignableProjectUsersArgs {
   projectId: string;
@@ -29,5 +30,7 @@ export function getAssignableProjectUsers({
     return [];
   }
 
-  return users.filter((user) => activeProjectUserIds.has(user.id));
+  return users.filter(
+    (user) => activeProjectUserIds.has(user.id) && !userAccountIsDeleted(user),
+  );
 }

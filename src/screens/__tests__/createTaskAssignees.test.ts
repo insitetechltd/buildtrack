@@ -33,6 +33,17 @@ describe("getAssignableProjectUsers", () => {
       phone: "333-333-3333",
       createdAt: "2026-01-01T00:00:00.000Z",
     },
+    {
+      id: "user-4",
+      name: "Former Worker",
+      email: "deleted-user-4@invalid.local",
+      role: "worker",
+      companyId: "company-1",
+      position: "Electrician",
+      phone: "",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      deletedAt: "2026-08-17T00:00:00.000Z",
+    },
   ];
 
   it("returns each active project member once and excludes users outside the selected project", () => {
@@ -101,5 +112,36 @@ describe("getAssignableProjectUsers", () => {
         users,
       }),
     ).toEqual([]);
+  });
+
+  it("keeps deleted accounts out of the live assignee picker", () => {
+    const assignments: UserProjectAssignment[] = [
+      {
+        id: "assignment-6",
+        userId: "user-4",
+        projectId: "project-1",
+        category: "worker",
+        assignedAt: "2026-01-07T00:00:00.000Z",
+        assignedBy: "admin-1",
+        isActive: true,
+      },
+      {
+        id: "assignment-7",
+        userId: "user-2",
+        projectId: "project-1",
+        category: "worker",
+        assignedAt: "2026-01-08T00:00:00.000Z",
+        assignedBy: "admin-1",
+        isActive: true,
+      },
+    ];
+
+    expect(
+      getAssignableProjectUsers({
+        projectId: "project-1",
+        assignments,
+        users,
+      }).map((user) => user.id),
+    ).toEqual(["user-2"]);
   });
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   CommonActions,
   NavigationContainer,
@@ -38,7 +38,9 @@ import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
 import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
 import LoginScreen from "../screens/LoginScreen";
-// Registration temporarily disabled for App Store submission
+import CreateCompanyScreen from "../screens/CreateCompanyScreen";
+import SetPasswordScreen from "../screens/SetPasswordScreen";
+// Legacy RegisterScreen kept in tree; corp Create Company is the RC path.
 // import RegisterScreen from "../screens/RegisterScreen";
 import { DashboardRoute, TasksRoute } from "./uiModeRoutes";
 import { buildDefaultStackScreenOptions, buildTaskDetailStackScreenOptions } from "./nativeStackOptions";
@@ -252,6 +254,7 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
   },
   getStateFromPath(path, options) {
     const automationMatch = parseSprint7AutomationLink(path);
+    const inviteMatch = path.includes("auth/invite");
     void (async () => {
       if (automationMatch) {
         try {
@@ -261,6 +264,19 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
         }
       }
     })();
+
+    if (inviteMatch) {
+      return {
+        routes: [
+          {
+            name: "MainTabs",
+            state: {
+              routes: [{ name: "Activity" }],
+            },
+          },
+        ],
+      };
+    }
 
     if (automationMatch) {
       return {
@@ -703,22 +719,16 @@ function RootTabButton({
 }
 
 function AuthScreens() {
-  // Registration temporarily disabled for App Store submission
-  // const [showRegister, setShowRegister] = useState(false);
+  const [showCreateCompany, setShowCreateCompany] = useState(false);
 
-  // if (showRegister) {
-  //   return (
-  //     <RegisterScreen
-  //       onToggleLogin={() => setShowRegister(false)}
-  //     />
-  //   );
-  // }
+  if (showCreateCompany) {
+    return (
+      <CreateCompanyScreen onToggleLogin={() => setShowCreateCompany(false)} />
+    );
+  }
 
   return (
-    <LoginScreen
-      // Registration is hidden - accounts are created by administrators
-      // onToggleRegister={() => setShowRegister(true)}
-    />
+    <LoginScreen onToggleCreateCompany={() => setShowCreateCompany(true)} />
   );
 }
 
@@ -2264,16 +2274,24 @@ export function WorkspaceBootstrapGate({
 export default function AppNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isInitialized = useAuthStore((state) => state.isInitialized);
-  const isLoading = useAuthStore((state) => state.isLoading);
+  const authUser = useAuthStore((state) => state.user);
+  const mustSetPassword = authUser?.mustSetPassword === true;
 
-  // Cold start only. Never unmount the authenticated shell when login/updateUser
-  // flips auth isLoading — that remounted Realtime in a loop and OOMed Hermes.
-  if (!isAuthenticated && !isInitialized && isLoading) {
+  // Cold start only. Wait for initialize() so a persisted session cannot
+  // open MainTabs before must_set_password is loaded. Never use isLoading
+  // here — login/updateUser flipping it used to remount Realtime and OOM.
+  if (!isInitialized) {
     return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
     return <AuthScreens />;
+  }
+
+  // Outside NavigationContainer so invite deep links cannot land on MainTabs first.
+  // Realtime stays unmounted until the invitee has a reusable password.
+  if (mustSetPassword) {
+    return <SetPasswordScreen />;
   }
 
   // Keep Realtime/NetworkSync outside WorkspaceBootstrapGate so flipping

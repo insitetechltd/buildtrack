@@ -194,18 +194,33 @@ describe("AdminDashboardScreen", () => {
             textColor: "text-blue-600",
             density: "standard",
             structuralState: "stale",
+            actionId: "projects",
+          },
+          {
+            id: "admin-stat:team",
+            statId: "team",
+            label: "Team Members",
+            value: 4,
+            subtitle: "3 assigned",
+            icon: "people-outline",
+            color: "bg-purple-50",
+            iconColor: "#7c3aed",
+            textColor: "text-purple-600",
+            density: "standard",
+            structuralState: "stale",
+            actionId: "user_management",
           },
         ],
         quickActions: [
           {
-            id: "admin-action:projects",
-            actionId: "projects",
-            label: "Projects",
-            description: "Create, edit, and oversee all construction projects",
-            icon: "folder-open-outline",
-            color: "bg-blue-50",
-            iconColor: "#3b82f6",
-            borderColor: "border-blue-300",
+            id: "admin-action:dev_admin",
+            actionId: "dev_admin",
+            label: "Dev Admin Tools",
+            description: "Database management, testing scripts, and environment control",
+            icon: "code-slash-outline",
+            color: "bg-red-50",
+            iconColor: "#ef4444",
+            borderColor: "border-red-300",
             isVisible: true,
             density: "standard",
             structuralState: "stale",
@@ -258,12 +273,17 @@ describe("AdminDashboardScreen", () => {
       />,
     );
 
-    expect(screen.getAllByText("Admin Dashboard").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Company Overview").length).toBeGreaterThan(0);
     expect(screen.getAllByText("BuildCo").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
 
-    screen.getByTestId("admin-quick-action-trigger-projects").props.onPress();
-
+    fireEvent.press(screen.getByTestId("admin-stat-projects"));
     expect(mockPressQuickAction).toHaveBeenCalledWith("projects");
+
+    fireEvent.press(screen.getByTestId("admin-stat-team"));
+    expect(mockPressQuickAction).toHaveBeenCalledWith("user_management");
+
+    fireEvent.press(screen.getByTestId("admin-company-overview-banner"));
+    expect(mockPressQuickAction).toHaveBeenCalledWith("company_banner");
   });
 });

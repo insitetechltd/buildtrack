@@ -28,7 +28,7 @@ import {
 } from "../utils/formNavigation";
 
 interface LoginScreenProps {
-  onToggleRegister?: () => void; // Optional - registration is hidden
+  onToggleCreateCompany?: () => void;
 }
 
 function isPhoneNumber(value: string) {
@@ -36,7 +36,7 @@ function isPhoneNumber(value: string) {
   return phoneRegex.test(value.trim());
 }
 
-export default function LoginScreen(_props: LoginScreenProps) {
+export default function LoginScreen({ onToggleCreateCompany }: LoginScreenProps) {
   const t = useTranslation();
   const { output, actions } = useLoginViewAdapter();
   const emailInputRef = useRef<TextInput>(null);
@@ -245,6 +245,18 @@ export default function LoginScreen(_props: LoginScreenProps) {
                   {output.isLoading ? t.login.signingIn : t.login.signIn}
                 </Text>
               </Pressable>
+
+              {onToggleCreateCompany ? (
+                <Pressable
+                  testID="login-create-company"
+                  onPress={onToggleCreateCompany}
+                  className="py-4 items-center mt-2"
+                >
+                  <Text className="text-blue-600 font-medium text-base">
+                    {t.login.createCompany}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         </ScrollView>

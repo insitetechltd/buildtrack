@@ -391,7 +391,15 @@ export interface User {
   is_pending?: boolean; // Legacy compatibility
   approvedBy?: string | null;
   approvedAt?: string | null;
-  
+  /** Set when login/contact were deleted; name stays for jobsite history. */
+  deletedAt?: string | null;
+  deleted_at?: string | null;
+  /** HTTPS invite landing URL; shown on User Management until first sign-in. */
+  inviteSignInLink?: string | null;
+  /** Invitees must choose a password after first magic-link sign-in. */
+  mustSetPassword?: boolean;
+  must_set_password?: boolean;
+
   // Project assignments (with PROJECT ROLES) are handled separately 
   // in UserProjectRole or UserProjectAssignment tables
 }

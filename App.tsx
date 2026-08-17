@@ -5,6 +5,8 @@ import AppNavigator from "./src/navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "./src/state/authStore";
 import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
+import { parseInviteSignInUrl } from "./src/auth/inviteSignInLink";
+import { Linking } from "react-native";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.1";
@@ -65,6 +67,52 @@ export default function App() {
 
     return () => {
       clearTimeout(timeoutId);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const waitForAuthInit = async () => {
+      if (useAuthStore.getState().isInitialized) {
+        return;
+      }
+      await new Promise<void>((resolve) => {
+        const unsub = useAuthStore.subscribe((state) => {
+          if (state.isInitialized) {
+            unsub();
+            resolve();
+          }
+        });
+        if (useAuthStore.getState().isInitialized) {
+          unsub();
+          resolve();
+        }
+      });
+    };
+
+    const consumeInviteUrl = (url: string | null) => {
+      const parsed = parseInviteSignInUrl(url);
+      if (!parsed) {
+        return;
+      }
+      void (async () => {
+        await waitForAuthInit();
+        if (cancelled) {
+          return;
+        }
+        await useAuthStore.getState().signInWithInviteToken(parsed.tokenHash);
+      })();
+    };
+
+    void Linking.getInitialURL().then((url) => consumeInviteUrl(url));
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      consumeInviteUrl(url);
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.remove();
     };
   }, []);
 

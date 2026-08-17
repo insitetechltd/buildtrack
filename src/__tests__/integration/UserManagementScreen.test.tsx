@@ -144,6 +144,7 @@ jest.mock("react-native/Libraries/Components/RefreshControl/RefreshControl", () 
 
 describe("UserManagementScreen", () => {
   const mockRequestApproveUser = jest.fn();
+  const mockCopyInviteLink = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -181,6 +182,15 @@ describe("UserManagementScreen", () => {
         successMessage: "",
         pendingApprovalUser: null,
         pendingRemoval: null,
+        inviteForm: {
+          name: "",
+          email: "",
+          seatType: "worker",
+          isSubmitting: false,
+          error: null,
+        },
+        inviteResult: null,
+        copyingInviteUserId: null,
         refreshState: {
           isRefreshing: false,
         },
@@ -208,6 +218,7 @@ describe("UserManagementScreen", () => {
             isProtected: false,
             isPending: true,
             pendingMessage: "Awaiting approval - cannot be assigned to projects yet",
+            canCopyInviteLink: false,
             assignmentCountLabel: null,
             assignmentRows: [],
             primaryAction: {
@@ -234,6 +245,7 @@ describe("UserManagementScreen", () => {
             isProtected: false,
             isPending: false,
             pendingMessage: null,
+            canCopyInviteLink: true,
             assignmentCountLabel: "1 project assignment",
             assignmentRows: [
               {
@@ -281,6 +293,7 @@ describe("UserManagementScreen", () => {
         confirmApproveUser: jest.fn(),
         confirmRejectUser: jest.fn(),
         confirmRemoveAssignment: jest.fn(),
+        copyInviteLink: mockCopyInviteLink,
       },
     });
   });
@@ -292,9 +305,13 @@ describe("UserManagementScreen", () => {
     expect(screen.getByText("BuildCo")).toBeTruthy();
     expect(screen.getByText("Pending Person")).toBeTruthy();
     expect(screen.getByText("Assigned Member")).toBeTruthy();
+    expect(screen.getByText("Copy invite link")).toBeTruthy();
+    expect(screen.queryByTestId("user-management__copy-invite-pending-user")).toBeNull();
 
     fireEvent.press(screen.getByTestId("user-management__approve-user-pending-user"));
 
     expect(mockRequestApproveUser).toHaveBeenCalledWith("pending-user");
+    fireEvent.press(screen.getByTestId("user-management__copy-invite-assigned-user"));
+    expect(mockCopyInviteLink).toHaveBeenCalledWith("assigned-user");
   });
 });

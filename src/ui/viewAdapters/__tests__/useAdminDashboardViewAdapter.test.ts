@@ -111,4 +111,67 @@ describe("useAdminDashboardViewAdapter", () => {
 
     expect(completedTasksCard?.value).toBe(1);
   });
+
+  it("wires overview taps and keeps only Dev Admin in quickActions", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    const { useCompanyStore } = require("@/state/companyStore");
+    const { useProjectStoreWithCompanyInit } = require("@/state/projectStore.supabase");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const { useUserStoreWithInit } = require("@/state/userStore.supabase");
+
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "admin-1",
+        name: "Ada Admin",
+        companyId: "company-1",
+        role: "admin",
+        systemPermission: "admin",
+      },
+      logout: jest.fn(),
+    });
+    useCompanyStore.mockReturnValue({
+      getCompanyById: jest.fn().mockReturnValue({ id: "company-1", name: "Acme" }),
+      getCompanyBanner: jest.fn(),
+      updateCompanyBanner: jest.fn(),
+    });
+    useProjectStoreWithCompanyInit.mockReturnValue({
+      userAssignments: [],
+      fetchProjects: jest.fn(),
+      getProjectsByCompany: jest.fn().mockReturnValue([]),
+    });
+    useUserStoreWithInit.mockReturnValue({
+      fetchUsers: jest.fn(),
+      getUsersByCompany: jest.fn().mockReturnValue([]),
+    });
+    useTaskStore.mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({ tasks: [], fetchTasks: jest.fn() }),
+    );
+
+    const onNavigateToProjects = jest.fn();
+    const onNavigateToUserManagement = jest.fn();
+    const onNavigateToDevAdmin = jest.fn();
+
+    const { result } = renderHook(() =>
+      useAdminDashboardViewAdapter({
+        onNavigateToProjects,
+        onNavigateToUserManagement,
+        onNavigateToProfile: jest.fn(),
+        onNavigateToDevAdmin,
+      }),
+    );
+
+    expect(result.current.output.topLevelStats.find((c) => c.statId === "projects")?.actionId).toBe(
+      "projects",
+    );
+    expect(result.current.output.topLevelStats.find((c) => c.statId === "team")?.actionId).toBe(
+      "user_management",
+    );
+    expect(result.current.output.quickActions.map((a) => a.actionId)).toEqual(["dev_admin"]);
+    expect(result.current.output.quickActions[0]?.isVisible).toBe(true);
+
+    result.current.actions.pressQuickAction("projects");
+    result.current.actions.pressQuickAction("user_management");
+    expect(onNavigateToProjects).toHaveBeenCalled();
+    expect(onNavigateToUserManagement).toHaveBeenCalled();
+  });
 });

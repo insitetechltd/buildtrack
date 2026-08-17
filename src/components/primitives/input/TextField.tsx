@@ -46,6 +46,8 @@ interface TextFieldProps {
   autoComplete?: TextInputProps["autoComplete"];
   autoCorrect?: boolean;
   spellCheck?: boolean;
+  textContentType?: TextInputProps["textContentType"];
+  passwordRules?: TextInputProps["passwordRules"];
   returnKeyType?: TextInputProps["returnKeyType"];
   blurOnSubmit?: boolean;
   maxLength?: number;
@@ -85,6 +87,8 @@ export default function TextField({
   autoComplete,
   autoCorrect,
   spellCheck,
+  textContentType,
+  passwordRules,
   returnKeyType,
   blurOnSubmit,
   maxLength,
@@ -218,6 +222,8 @@ export default function TextField({
             autoComplete={autoComplete}
             autoCorrect={autoCorrect}
             spellCheck={spellCheck}
+            textContentType={textContentType}
+            passwordRules={passwordRules}
             returnKeyType={returnKeyType}
             blurOnSubmit={blurOnSubmit}
             maxLength={maxLength}

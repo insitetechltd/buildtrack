@@ -6,14 +6,17 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  Share,
   Text,
   TextInput,
   TextInputKeyPressEventData,
   View,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import * as Clipboard from "expo-clipboard";
 
 import ModalHandle from "../components/ModalHandle";
 import ModernScreenHeader from "../components/ModernScreenHeader";
@@ -77,16 +80,20 @@ function getProjectRoleClasses(role: UserManagementProjectRoleOption["role"]) {
 
 function UserCard({
   card,
+  isCopyingInvite,
   onAssign,
   onApprove,
   onReject,
   onRemoveAssignment,
+  onCopyInviteLink,
 }: {
   card: UserManagementUserCard;
+  isCopyingInvite: boolean;
   onAssign: (userId: string) => void;
   onApprove: (userId: string) => void;
   onReject: (userId: string) => void;
   onRemoveAssignment: (userId: string, projectId: string) => void;
+  onCopyInviteLink: (userId: string) => void;
 }) {
   return (
     <View className="bg-white border border-gray-200 rounded-xl p-4 mb-3">
@@ -216,6 +223,22 @@ function UserCard({
           </View>
         </View>
       ) : null}
+
+      {card.canCopyInviteLink ? (
+        <Pressable
+          testID={`user-management__copy-invite-${card.userId}`}
+          disabled={isCopyingInvite}
+          onPress={() => onCopyInviteLink(card.userId)}
+          className={`mt-3 flex-row items-center justify-center rounded-lg py-3 ${
+            isCopyingInvite ? "bg-[#9BB9C2]" : "bg-[#08576E]"
+          }`}
+        >
+          <Ionicons name="copy-outline" size={16} color="#ffffff" />
+          <Text className="text-white text-sm font-semibold ml-2">
+            {isCopyingInvite ? "Copying…" : "Copy invite link"}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -268,17 +291,21 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
     ({ item }: { item: UserManagementUserCard }) => (
       <UserCard
         card={item}
+        isCopyingInvite={output.copyingInviteUserId === item.userId}
         onAssign={actions.requestAssignUser}
         onApprove={actions.requestApproveUser}
         onReject={actions.requestRejectUser}
         onRemoveAssignment={actions.requestRemoveAssignment}
+        onCopyInviteLink={actions.copyInviteLink}
       />
     ),
     [
+      actions.copyInviteLink,
       actions.requestApproveUser,
       actions.requestAssignUser,
       actions.requestRejectUser,
       actions.requestRemoveAssignment,
+      output.copyingInviteUserId,
     ]
   );
 
@@ -322,6 +349,7 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
         showBackButton={true}
         onBackPress={onNavigateBack}
         className="border-b-0 bg-[#08576E] pb-2"
+        onProfilePress={actions.toggleProfileMenu}
         rightElement={
           <Pressable onPress={actions.toggleProfileMenu} className="flex-row items-center">
             <View className="mr-2">
@@ -331,9 +359,6 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
               <Text className="text-sm text-[#B9D9E4] text-right capitalize">
                 {output.profileMenu.roleLabel}
               </Text>
-            </View>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]">
-              <Text className="text-lg font-bold text-[#F8FCFF]">{output.profileMenu.avatarInitial}</Text>
             </View>
           </Pressable>
         }
@@ -742,20 +767,168 @@ export default function UserManagementScreen(props: UserManagementScreenProps) {
       >
         <View className="flex-1 bg-black/50 items-center justify-center p-6">
           <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mb-3">
-                <Ionicons name="mail-open-outline" size={34} color="#2563eb" />
-              </View>
-              <Text className="text-2xl font-bold text-gray-900 mb-2">Invite Users</Text>
-              <Text className="text-center text-gray-600">
-                Invite flow remains available for the next modernization step.
+            <Text className="text-2xl font-bold text-gray-900 mb-2" testID="invite-modal-title">
+              Invite team member
+            </Text>
+            <Text className="text-gray-600 mb-4">
+              Creates a shareable link. They download Taskr if needed, then open the link to sign in
+              the first time — no password.
+            </Text>
+
+            <Text className="text-sm font-medium text-gray-700 mb-1">Name</Text>
+            <TextInput
+              testID="invite-name"
+              value={output.inviteForm.name}
+              onChangeText={actions.setInviteName}
+              placeholder="Full name"
+              className="border border-gray-300 rounded-lg px-3 py-3 mb-3 text-base text-gray-900"
+              autoCapitalize="words"
+              editable={!output.inviteForm.isSubmitting}
+            />
+
+            <Text className="text-sm font-medium text-gray-700 mb-1">Email</Text>
+            <TextInput
+              testID="invite-email"
+              value={output.inviteForm.email}
+              onChangeText={actions.setInviteEmail}
+              placeholder="name@company.com"
+              className="border border-gray-300 rounded-lg px-3 py-3 mb-3 text-base text-gray-900"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!output.inviteForm.isSubmitting}
+            />
+
+            <Text className="text-sm font-medium text-gray-700 mb-2">Seat</Text>
+            <View className="flex-row mb-4">
+              <Pressable
+                testID="invite-seat-worker"
+                onPress={() => actions.setInviteSeatType("worker")}
+                className={`flex-1 py-3 rounded-lg mr-2 items-center ${
+                  output.inviteForm.seatType === "worker" ? "bg-blue-600" : "bg-gray-100"
+                }`}
+              >
+                <Text
+                  className={
+                    output.inviteForm.seatType === "worker"
+                      ? "text-white font-semibold"
+                      : "text-gray-700 font-medium"
+                  }
+                >
+                  Worker
+                </Text>
+              </Pressable>
+              <Pressable
+                testID="invite-seat-pm"
+                onPress={() => actions.setInviteSeatType("pm")}
+                className={`flex-1 py-3 rounded-lg items-center ${
+                  output.inviteForm.seatType === "pm" ? "bg-blue-600" : "bg-gray-100"
+                }`}
+              >
+                <Text
+                  className={
+                    output.inviteForm.seatType === "pm"
+                      ? "text-white font-semibold"
+                      : "text-gray-700 font-medium"
+                  }
+                >
+                  PM
+                </Text>
+              </Pressable>
+            </View>
+
+            {output.inviteForm.error ? (
+              <Text className="text-red-600 mb-3" testID="invite-error">
+                {output.inviteForm.error}
+              </Text>
+            ) : null}
+
+            <View className="flex-row">
+              <Pressable
+                onPress={actions.closeActiveModal}
+                className="flex-1 bg-gray-100 rounded-lg py-3 items-center mr-2"
+                disabled={output.inviteForm.isSubmitting}
+              >
+                <Text className="text-gray-800 font-semibold">Cancel</Text>
+              </Pressable>
+              <Pressable
+                testID="invite-submit"
+                onPress={() => void actions.submitInvite()}
+                className={`flex-1 bg-blue-600 rounded-lg py-3 items-center ${
+                  output.inviteForm.isSubmitting ? "opacity-50" : ""
+                }`}
+                disabled={output.inviteForm.isSubmitting}
+              >
+                <Text className="text-white font-semibold">
+                  {output.inviteForm.isSubmitting ? "Creating…" : "Create invite"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </ModalComponent>
+
+      <ModalComponent
+        visible={output.activeModal === "inviteResult"}
+        transparent
+        animationType="fade"
+        onRequestClose={actions.closeActiveModal}
+      >
+        <View className="flex-1 bg-black/50 items-center justify-center p-6">
+          <View className="bg-white rounded-2xl p-6 w-full max-w-sm">
+            <Text className="text-2xl font-bold text-gray-900 mb-2" testID="invite-result-title">
+              Share this sign-in link
+            </Text>
+            <Text className="text-gray-600 mb-4">
+              Send this to {output.inviteResult?.email}. If they don’t have Taskr yet, the page
+              sends them to download it. Then they tap Open to sign in. It works once.
+            </Text>
+            <View className="bg-gray-100 rounded-lg p-4 mb-4">
+              <Text
+                selectable
+                testID="invite-sign-in-link"
+                className="text-sm text-gray-900"
+              >
+                {output.inviteResult?.signInLink}
               </Text>
             </View>
             <Pressable
-              onPress={actions.closeActiveModal}
-              className="bg-blue-600 rounded-lg py-3 items-center"
+              testID="invite-copy-link"
+              onPress={() => {
+                const link = output.inviteResult?.signInLink;
+                if (!link) {
+                  return;
+                }
+                void Clipboard.setStringAsync(link).then(() => {
+                  Alert.alert("Copied", "Sign-in link copied.");
+                });
+              }}
+              className="bg-[#08576E] rounded-lg py-3 items-center mb-2"
             >
-              <Text className="text-white font-semibold">Close</Text>
+              <Text className="text-white font-semibold">Copy link</Text>
+            </Pressable>
+            <Pressable
+              testID="invite-share-link"
+              onPress={() => {
+                const link = output.inviteResult?.signInLink;
+                if (!link) {
+                  return;
+                }
+                void Share.share({
+                  message: `Join Taskr. Download the app if you need it, then open this invite to sign in:\n${link}`,
+                  url: link,
+                });
+              }}
+              className="bg-blue-600 rounded-lg py-3 items-center mb-2"
+            >
+              <Text className="text-white font-semibold">Share…</Text>
+            </Pressable>
+            <Pressable
+              testID="invite-result-done"
+              onPress={actions.closeActiveModal}
+              className="bg-gray-200 rounded-lg py-3 items-center"
+            >
+              <Text className="text-gray-800 font-semibold">Done</Text>
             </Pressable>
           </View>
         </View>

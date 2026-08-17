@@ -291,6 +291,10 @@ export const en = {
     darkMode: "Dark Mode",
     lightMode: "Light Mode",
     reloadData: "Reload Data",
+    deleteAccount: "Delete Account",
+    deleteAccountConfirm:
+      "This permanently deletes your login and contact details. Your name stays on jobsite task history for the company record. This cannot be undone.",
+    deleteAccountFailed: "Could not delete account",
   },
 
   // User Management
@@ -629,6 +633,44 @@ export const en = {
     invalidEmailOrPhone: "Please enter a valid email or phone number",
     approvalPending: "Approval Pending",
     approvalPendingMessage: "Your account is pending approval from your company administrator. You will be notified once your account is approved.",
+    createCompany: "Create company",
+  },
+
+  createCompany: {
+    title: "Create company",
+    subtitle: "Start your company account. You will be the company admin.",
+    companyName: "Company name",
+    companyNamePlaceholder: "Acme Construction",
+    companyNameRequired: "Company name is required",
+    yourName: "Your name",
+    yourNamePlaceholder: "Full name",
+    nameRequired: "Your name is required",
+    workEmail: "Work email",
+    workEmailPlaceholder: "you@company.com",
+    emailRequired: "Email is required",
+    invalidEmail: "Enter a valid email",
+    submit: "Create company",
+    creating: "Creating…",
+    backToLogin: "Already have an account? Sign in",
+    failedTitle: "Could not create company",
+    failedMessage: "Please try again.",
+  },
+
+  setPassword: {
+    title: "Set your password",
+    subtitle: "Choose a password so you can sign in next time.",
+    password: "New password",
+    passwordPlaceholder: "At least 6 characters",
+    confirmPassword: "Confirm password",
+    confirmPasswordPlaceholder: "Re-enter your password",
+    submit: "Continue",
+    submitting: "Saving…",
+    passwordRequired: "Password is required",
+    passwordTooShort: "Password must be at least 6 characters",
+    confirmPasswordRequired: "Please confirm your password",
+    passwordsDoNotMatch: "Passwords do not match",
+    failedTitle: "Could not save password",
+    retryAfterAuth: "Password saved. Tap Continue again to finish.",
   },
 
   // Registration

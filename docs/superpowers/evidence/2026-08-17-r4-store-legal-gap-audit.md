@@ -15,16 +15,18 @@
 
 Draft copies also live under `docs/legal/` for later custom-domain hosting.
 
-## Still human (cannot finish without ASC / credentials)
+## Still human (cannot finish without ASC web UI)
+
+Submit API key **reads** listing but **cannot PATCH** (403). Exact paste card: `docs/superpowers/evidence/2026-08-17-r4-asc-human-paste.md`.
 
 | Item | Action |
 |------|--------|
-| **ASC Privacy Policy URL** | Paste the GitHub Pages privacy URL into App Privacy / App Information |
-| **ASC Support URL** | `https://insitetechltd.github.io/buildtrack/support.html` |
-| **Listing metadata** | Screenshots, description, keywords, age rating |
-| **App Review demo account** | Fill real admin email/password in `docs/superpowers/evidence/2026-08-17-corp-app-review-notes.md` then paste into ASC |
-| **Custom domain** | Optional later: CNAME `insiteworks.co` → same HTML |
-| **Android Play** | Same URLs when that track is submitted |
+| **ASC Privacy Policy URL** | Replace GitHub `policy.pdf` blob with Pages privacy HTML |
+| **ASC Support URL** | Already Pages `support.html` |
+| **Demo account** | **Already filled** in App Review Information — do not put passwords in git |
+| **Review notes** | Paste corp notes (URLs included); notes field was empty |
+| **Version 1.1.3** | Optional: create iOS version 1.1.3 and attach TestFlight build **183** (store listing is still **1.0**) |
+| **Public / Submit for Review** | Manual only |
 
 ## Not blockers for TestFlight internal
 

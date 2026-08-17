@@ -2,8 +2,9 @@
 
 This file is the repository-local inventory of the SOLO delivery roles for **Cursor**.
 Operational methodology lives in the personal skill `solo-dev-harness`
-(`~/.cursor/skills/solo-dev-harness/`). Project law lives in `.cursor/rules/`
+(`~/.cursor/skills/solo-dev-harness/SOP.md` — whole cycle). Project law lives in `.cursor/rules/`
 and the project overlay skill `.cursor/skills/insite-dev/`.
+Process improvements dual-write: SOP.md + harness `templates/` + this repo’s matching files.
 
 Machine readiness: `npm run dev:doctor` (`scripts/dev/doctor.sh`).
 Harness runbook: `documentation/CURSOR_DEV_HARNESS.md` (includes § Terminology — smoke / suite / RC / week-rank R# / Wave 2).
@@ -11,7 +12,7 @@ Harness runbook: `documentation/CURSOR_DEV_HARNESS.md` (includes § Terminology 
 Source of truth scanned for this inventory:
 - `.cursor/rules/*.mdc` (project constitution — **canonical**)
 - `.cursor/skills/insite-dev/SKILL.md`
-- `~/.cursor/skills/solo-dev-harness/SKILL.md` (+ workflows/autonomy/handoffs/bootstrap)
+- `~/.cursor/skills/solo-dev-harness/SOP.md` (+ SKILL.md, workflows/autonomy/handoffs/bootstrap)
 - `SOLO_OPERATING_PROCEDURE.md`
 - `TESTING_STRATEGY.md`
 - `documentation/ROADMAP.md`
@@ -23,9 +24,9 @@ Source of truth scanned for this inventory:
   - `~/.trae/skills/solo-agents/` (Trae picker YAMLs)
 
 Dual-loader convention (Cursor):
-- **Methodology** (reusable across projects) = `~/.cursor/skills/solo-dev-harness/`
+- **Methodology** (reusable across projects) = `~/.cursor/skills/solo-dev-harness/SOP.md` + `templates/`
 - **Project law** (versioned with Insite) = `.cursor/rules/` + this `AGENTS.md` + `.cursor/skills/insite-dev/`
-- When updating delivery behavior: edit the Cursor skill/rules first. Leave `.trae/` untouched unless deleting after migration complete.
+- When updating **portable** delivery behavior: dual-write SOP.md + `templates/` + this repo. Leave `.trae/` untouched unless deleting after migration complete.
 
 ## Current Delivery Status
 

@@ -1,5 +1,7 @@
 # Workflow: Bugfix (SOLO-style for Cursor)
 
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Dual-write process changes to SOP.md + `templates/` + this file.
+
 Use this rule file when the user request is a bug fix.
 
 ## 1. Milestone Gate (MANDATORY first action)

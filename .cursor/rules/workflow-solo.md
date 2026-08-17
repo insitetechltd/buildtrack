@@ -1,5 +1,7 @@
 # Workflow: SOLO Orchestrator (Default for Non-Trivial Work)
 
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Process changes dual-write SOP.md + `templates/` + this file. Insite overlays (Maestro, Supabase) stay in `insite-dev`.
+
 Use this rule file for any non-trivial task that doesn't fit feature/bugfix/release/docs-only narrow scopes, or for the default kickoff when the user request is open-ended.
 
 ## 1. Milestone Gate (MANDATORY first action — BEFORE ANYTHING ELSE)

@@ -46,7 +46,7 @@
 | **R6** | **Business model decision (written)** | User #4; unlocks payment SKUs | **LOCKED** (org tiers; amended **2026-08-17** — see § R6) |
 | **R7** | **Payment hook** | User #3 | Must match R6: org subscription + card-at-trial + post-trial charge; Stripe Checkout/Subscriptions preferred |
 | **R8** | **UI simplify pass (touchpoint cut)** | User #2 | **Not** full Phase C. Cut/hide: nested admin chrome, duplicate entry points, fat Create Task optional blocks behind progressive disclosure already started. Cap scope to **field core loop** |
-| **R9** | **Onboarding for first commercial tenant** | Without invite/approve path clarity, sales cannot land | Pending users already exist; verify admin→approve→worker login once on RC |
+| **R9** | **Onboarding for first commercial tenant** | Without invite/approve path clarity, sales cannot land | **Corp RC:** in-app Create Company + admin Invite (temp password). Pending-user path secondary. |
 
 ### P2 — Strongly recommended before public store (can slip to week+1)
 
@@ -86,7 +86,7 @@ Colloquial “R2” for that intent maps here — **do not** use **R2** in chat/
 | Wave | Scope | Roadmap |
 |------|-------|---------|
 | **This week → first commercial** | R1 strip → RC → smoke / store / payment hook | R1–R9 (R10–R13 if time) |
-| **Wave 2** | Web admin + DMS on Supabase (`buildtrack-documents`); company data pool with Taskr | M-WEB-01/02, M-DMS-01..04, M-WEB-03, M-QA-04, M-DMS-DATA (Order 15.1–15.9). Kickoff Closed: M-DMS-00 |
+| **Wave 2** | Web admin + DMS on Supabase (`buildtrack-documents`); company data pool with Taskr; **data-owner tenant wipe** (company + users + projects + tasks + photos + docs) | M-WEB-01/02, M-DMS-01..04, M-WEB-03, M-QA-04, M-DMS-DATA (Order 15.1–15.9). Kickoff Closed: M-DMS-00. **URL locked:** `https://app.insiteworks.co` |
 
 Do not schedule 15.x as active focus until the first commercial RC is out. Live DMS DDL still Human Gate.
 
@@ -105,7 +105,7 @@ Do not schedule 15.x as active focus until the first commercial RC is out. Live 
 
 ## What else you need (beyond the 4)
 
-1. **Legal:** privacy policy hosted URL; terms if charging; App Store “sign in with …” / delete account if required  
+1. **Legal:** privacy policy hosted URL; terms if charging; App Store individual delete-account (login + contact; name stays on jobsite history). **Org wipe** (whole company + encapsulated data) = data owner on web admin, Wave 2 — not field Profile this RC. Privacy policy may already promise the owner can request full tenant deletion.  
 2. **Identity:** production Apple/Google signing; release bundle id ≠ `.local` if that is only for sim  
 3. **Ops:** how a paying company gets provisioned (manual admin vs self-serve)  
 4. **Support:** who answers pilot tickets  

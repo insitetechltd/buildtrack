@@ -9,7 +9,7 @@ Use [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) to understand documentation gover
 For repository-wide orientation, read these in order:
 
 1. [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md)
-2. [NOW.md](./NOW.md) — pick up thinking (overwrite each teardown)
+2. [NOW.md](./NOW.md) — pick up thinking (overwrite each teardown). Whole cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`
 3. [ROADMAP.md](./ROADMAP.md)
 4. [AGENTS.md](../AGENTS.md)
 5. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
@@ -27,7 +27,7 @@ For repository-wide orientation, read these in order:
 
 - [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) - Master documentation governance and classification rules
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
-- [NOW.md](./NOW.md) - Session continuity: doing / next / locked / parked (SOP: overwrite same file; git-tracked)
+- [NOW.md](./NOW.md) - Session continuity: doing / next / locked / parked (overwrite same file; git-tracked). Whole cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`
 - [AGENTS.md](../AGENTS.md) - Repository-local agent inventory and workflow context
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
 - [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md) - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse

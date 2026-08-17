@@ -1,5 +1,7 @@
 # Workflow: Release / Deploy / Build-Readiness (SOLO-style for Cursor)
 
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Dual-write process changes to SOP.md + `templates/` + this file.
+
 Use this rule file when the task touches: build, deployment, environment, versioning, store submission, release readiness.
 
 ## 1. Milestone Gate (MANDATORY first action)

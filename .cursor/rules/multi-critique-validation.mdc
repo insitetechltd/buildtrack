@@ -1,5 +1,7 @@
 # Multi-critique + validation robustness (orchestrator)
 
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §6. Dual-write process changes to SOP.md + `templates/` + this file.
+
 User mandate (2026-08-17): planning and testing must be stress-tested by **more than one model/agent** before claiming ship-ready code. Solo self-review alone is insufficient for user-visible / shared-primitive work.
 
 ## Why (this repo’s lesson)

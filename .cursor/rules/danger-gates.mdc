@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Danger Gates (Insite)
 
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §4. Dual-write portable gates to SOP.md + `templates/` + this file. Insite-specific items (6-col, EAS IDs) stay here.
+
 Ask the user before:
 
 - Supabase schema / 6-col task metadata migrations / RLS policy applies

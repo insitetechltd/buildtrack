@@ -791,7 +791,7 @@ This section explicitly flags decisions not yet locked. Each should be resolved 
 
 | # | Question / assumption | Risk if wrong | Recommended resolution owner |
 |---|---|---|---|
-| Q1 | Web bundle deployment target: **Vercel** (preferred) vs. Supabase Storage static hosting | Different build scripts, env handling, preview URLs | Platform engineer, before M-WEB-01 |
+| Q1 | Web bundle **platform**: EAS Hosting vs Vercel (Storage hosting rejected). **URL locked 2026-08-17:** `https://app.insiteworks.co` (CNAME to chosen host; Auth redirect allowlist) | Wrong host = extra DNS/env work; wrong URL = Auth/store mismatch | Platform engineer, before M-WEB-01 |
 | Q2 | Email provider for DMS/RFI notifications: SendGrid vs. Resend vs. Supabase in-product | Different pricing, templates, deliverability | Infra/security, before M-DMS-03 |
 | Q3 | Full-text search engine for documents: Postgres `tsvector` + pg_trgm (Phase 2) vs. pgvector + embeddings (skip to Phase 3) | Search quality, infra complexity | Engineering lead + product, before M-DMS-02 |
 | Q4 | Drawing compare / DWG support: explicitly Phase 3 (as stated) — confirm no client demands pull it forward | Scope creep, 2–4 weeks of unplanned work | Product + sales, before kickoff |

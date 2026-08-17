@@ -276,9 +276,9 @@ When a document should stay active:
 - [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
   - single canonical WS/M/S milestone inventory and execution order
 - [NOW.md](file:///Volumes/KooDrive/Insite%20App/documentation/NOW.md)
-  - session continuity (doing / next / locked / parked); overwrite in place; git-tracked
+  - session continuity (doing / next / locked / parked); overwrite in place; git-tracked; whole cycle SoT is `~/.cursor/skills/solo-dev-harness/SOP.md`
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
-  - canonical operator workflow reference
+  - Insite-flavored operator workflow; portable SoT is harness SOP.md; dual-write process changes to SOP.md + templates + this repo
 - [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)
   - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse
 

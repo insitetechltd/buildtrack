@@ -1,5 +1,13 @@
 # SOLO Operating Procedure
 
+**Portable cycle SoT:** `~/.cursor/skills/solo-dev-harness/SOP.md` (whole cycle: session, roles, autonomy, gates, dispatch, quality, commit, seed).
+
+**Dual-write:** when the process improves, update SOP.md + harness `templates/` + this file / `.cursor/rules/workflow-*.md` as applicable. Do not refine Insite only. Insite overlays (Maestro, Supabase Human Gates, Taskr SoT) stay in `.cursor/skills/insite-dev/` and Insite-specific rule files.
+
+The sections below are the Insite-flavored operating model (roles, Trae-exit notes, workflow templates). If they conflict with SOP.md on portable rules, **SOP.md wins**; keep overlays here.
+
+---
+
 ## Objective
 
 This procedure defines a reusable multi-role operating model for **Cursor** solo delivery. It is designed to work across projects by combining:

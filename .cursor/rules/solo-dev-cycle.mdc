@@ -5,9 +5,10 @@ alwaysApply: true
 
 # Solo Dev Cycle (Insite)
 
-- Follow personal skill `solo-dev-harness` for workflows, autonomy, and handoffs.
+- Follow personal skill `solo-dev-harness` **SOP.md** for the whole cycle (not NOW-only).
 - Milestone gate: read `documentation/NOW.md`, then `AGENTS.md` § Current Delivery Status and `documentation/ROADMAP.md` before planning.
 - Session continuity: `documentation/NOW.md` is the git-tracked pick-up file — overwrite at teardown; do not rely on Cursor chat.
+- **Dual-write:** SOP improvements update (1) `~/.cursor/skills/solo-dev-harness/SOP.md`, (2) `templates/`, (3) this repo’s matching files. Insite-only law stays in `.cursor/skills/insite-dev/`.
 - Cursor SoT for project law: `.cursor/rules/`. `.trae/` is legacy read-only during migration.
 - Testing mindset: read `TESTING_STRATEGY.md`; Maestro via `scripts/maestro/run-local.sh` only.
 - User-visible mobile/nav/upload/task changes require QA path; logic-only may stop at Test Engineer.

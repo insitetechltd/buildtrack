@@ -8,7 +8,11 @@ description: >-
 
 # Insite Dev Overlay
 
-Use with personal skill `solo-dev-harness` (`sop-session.md`, `capabilities.md`).
+Use with personal skill `solo-dev-harness` (`SOP.md` = whole portable cycle, `capabilities.md`). Insite-only law stays here (Maestro, Supabase gates, Taskr SoT). Process improvements dual-write to SOP.md + harness `templates/` + matching Insite files — never Insite-only.
+
+## Dual-write (process, not overlay)
+
+Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templates/` + this repo. Do not encode Maestro UDID caps or Supabase Human Gates into the portable templates.
 
 ## Session kickoff
 

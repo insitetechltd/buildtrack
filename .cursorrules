@@ -14,6 +14,10 @@
 - Navigation integration point: src/navigation/AppNavigator.tsx
 - Extend current modules over new architecture layers
 
+## Cycle SoT + dual-write
+- Whole cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` (not NOW-only).
+- Process improvements: update SOP.md + harness `templates/` + this repo. Insite-only law stays in `.cursor/skills/insite-dev/`.
+
 ## Mandatory Pre-kickoff (every workflow)
 
 ### Milestone Gate — DO NOT SKIP

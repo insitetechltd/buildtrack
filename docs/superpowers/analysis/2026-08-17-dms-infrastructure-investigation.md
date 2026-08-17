@@ -76,7 +76,7 @@ From the product spec — approximate tables:
 ### E. Edge / ops
 
 - Edge Function for email digest (Resend/SendGrid TBD) — M-WEB / M-DMS-02+
-- Hosted web deploy target (Vercel recommended in spec) — not required for schema spike
+- Hosted web URL **locked:** `https://app.insiteworks.co`. Deploy target = EAS Hosting or Vercel (not Supabase Storage) — not required for schema spike
 - Runbook: bucket create, RLS, size limits, backup posture (hot retain aligns with 04c; cold = 04e later)
 - Observability: upload failure rates, signed-URL errors, quota near-limit
 

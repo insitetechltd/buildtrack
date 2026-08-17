@@ -8,7 +8,7 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 
 | Layer | Location | Role |
 |---|---|---|
-| Methodology (portable) | `~/.cursor/skills/solo-dev-harness/` | Workflows, autonomy, handoffs, seed script |
+| Methodology (portable) | `~/.cursor/skills/solo-dev-harness/SOP.md` | Whole cycle SoT + workflows, autonomy, handoffs, seed |
 | Project law | `.cursor/rules/*.mdc` | Always-on / glob rules for Insite |
 | Project overlay | `.cursor/skills/insite-dev/` | Kickoff, doctor, Maestro preflight, SoT paths |
 | Inventory | `AGENTS.md` | Milestones, stack, role inventory |
@@ -21,7 +21,7 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 
 1. Open Cursor on this repo.
 2. Kickoff: read `documentation/NOW.md`, then `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
-3. For non-trivial work, follow `solo-dev-harness` workflows (Planner → Builder → Reviewer → Test → QA/Release as needed).
+3. For non-trivial work, follow `solo-dev-harness` **SOP.md** (Planner → Builder → Reviewer → Test → QA/Release as needed). Process changes: dual-write SOP.md + `templates/` + this repo.
 4. Confidence ladder: Jest (`TESTING_STRATEGY.md`) → Maestro via `scripts/maestro/run-local.sh` → human accept.
 5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 UDIDs; one-shot case runs while developing; full suite = final gate.
 6. Commit only when you ask; never before Reviewer clears Critical/High.
@@ -90,7 +90,7 @@ Then customize:
 5. `package.json` — `"dev:doctor": "bash ./scripts/dev/doctor.sh"`
 6. Rename/customize `.cursor/skills/project-dev/` overlay
 
-Portable SOP: `~/.cursor/skills/solo-dev-harness/sop-session.md`. Seed also copies NOW + sessionStart hook.
+Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md`. Seed copies the full cycle (NOW, workflows, multi-critique, hooks, doctor).
 
 Details: `~/.cursor/skills/solo-dev-harness/bootstrap.md`.
 

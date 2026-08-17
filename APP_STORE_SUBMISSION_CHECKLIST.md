@@ -2,34 +2,15 @@
 
 Based on your current configuration files, here's what you need to do:
 
-## 🔴 CRITICAL Issues to Fix
+## Bundle identifier (2026-08-17 — verified live)
 
-### 1. Bundle Identifier - **NEEDS CHANGE**
+**Current (correct for this App Store app):** `com.buildtrack.app.local`
 
-**Current**: `com.buildtrack.app.local`  
-**Problem**: The `.local` suffix is typically for development builds  
-**Action Required**:
+**App Store Connect:** Insite Trackr — app id `6754898737` — bundle **`com.buildtrack.app.local`**.
 
-In `app.json`, change:
-```json
-"ios": {
-  "bundleIdentifier": "com.buildtrack.app.local",  // ❌ Change this
-  ...
-}
-```
+Do **not** change `app.json` to `com.buildtrack.app` for store submits unless you intentionally create a **new** App Store listing. That identifier is not registered on the team; EAS failed when trying to register it (2026-08-17).
 
-To:
-```json
-"ios": {
-  "bundleIdentifier": "com.buildtrack.app",  // ✅ Use production bundle ID
-  ...
-}
-```
-
-**⚠️ Important**: 
-- This bundle ID must match what's configured in App Store Connect
-- Check App Store Connect: https://appstoreconnect.apple.com
-- App ID: `6754898737` should have the correct bundle identifier
+Sim/Maestro daily builds and production store builds both use `com.buildtrack.app.local` today.
 
 ---
 

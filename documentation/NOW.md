@@ -1,6 +1,6 @@
 # NOW — session continuity
 
-**SOP:** git-tracked NOW + **full cycle** in `~/.cursor/skills/solo-dev-harness/SOP.md`. Process changes: dual-write SOP.md + templates + this repo. Portable template for NOW: `templates/documentation/NOW.md`.
+**SOP:** git-tracked NOW + **full cycle** in `~/.cursor/skills/solo-dev-harness/SOP.md`. Process changes: dual-write SOP.md + harness `templates/` + this repo. Portable NOW template: `~/.cursor/skills/solo-dev-harness/templates/documentation/NOW.md`.
 
 **Who updates:** any agent on session teardown, or when a lock/park/next-action changes. Commit with the work that changed thinking (user-requested commit + default push).
 
@@ -10,34 +10,39 @@
 
 ## Doing
 
-Commercial **RC week** (week-rank R1–R5). Wave 2 (DMS/web) is parked.
+Commercial **RC week**. **R5 Closed (2026-08-17):** production env hardened; local IPA **build 181** submitted to ASC (`com.buildtrack.app.local`). Overnight: docs/validation/audit pass (A1–A9, B1–B2).
+
+**Cursor chat pick-up:** transcripts on KooDrive. Mount KooDrive **before** Cursor; open `/Volumes/KooDrive/InsiteApp` only.
 
 ## Next
 
-**R4** store/legal + **R5** production env (no sandbox in a store build). Then P1 R7 payment hook / R8 touchpoint cut / R9 first-tenant onboard if P0 holds.
+1. Immediate first action: **commit and push** the prepared corp + set-password + R5 batch
+2. **R4** store/legal gaps from audit (privacy URL, support, metadata — mostly human)
+3. Optional: Android local build (Tier B)
 
-Compile locally; EAS **submit-only**. Optional: full P/U Maestro suites as extra confidence.
+Do **not** tick Public in ASC without explicit intent.
 
 ## Locked this week
 
-- **R1** — eng UI hidden unless `__DEV__` (Profile / Admin / Dashboard shortcut).
-- **R2** — local iOS RC native rebuild 2026-08-17 (IMGLY purged). Evidence: `docs/superpowers/evidence/2026-08-17-r2-rc-native-rebuild.md`.
-- **R3** — core-loop smoke on that RC: launch-smoke + P01 + U01 **rc=0**; tsc **rc=0**; regression 36/37 (known TaskDetail header Jest). Evidence: `docs/superpowers/evidence/2026-08-17-r3-core-loop-smoke.md`.
-- **U01–U12** Maestro GREEN (API seed). Detail: `docs/superpowers/plans/2026-08-17-overnight-handoff.md`.
-- **R6** — org subscription **paper** SoT in `docs/superpowers/plans/2026-08-16-commercial-release-week.md` (trial 1 month; Growth/Unlimited + worker/PM add-ons). Base list prices still prior lock until user overrides. Entry = task create + update.
+- **R1–R3** — R2/R3 evidence on file; R1 eng UI `__DEV__`-only
+- **Corp model (2026-08-17):** org-owned seats; invite sign-in link; blocking Set password; no worker Delete Account
+- **`must_set_password` LIVE** + invite smoke PASS. Evidence: `docs/superpowers/evidence/2026-08-17-corp-must-set-password-live.md`
+- **Store bundle ID = `com.buildtrack.app.local`** (matches ASC app `6754898737`) — not `com.buildtrack.app`
+- **R6** — org subscription paper SoT unchanged
 
 ## Parked (do not schedule this week)
 
-- **Wave 2** (Order 15.x, after first commercial ship): web admin + DMS on Supabase. Kickoff Closed: M-DMS-00. Investigation: `docs/superpowers/analysis/2026-08-17-dms-infrastructure-investigation.md`.
-- **Product framing (not spec-locked):** register ≠ task; all task photos kept; docs may exist with zero tasks; AI propose-only; worker/foreman **proof of performance** (last entry must have photos) → auto **RFInspection** → PM/manager **approve** marks last photos **proposed** for register (not published). **RFInformation** stays a separate manual RFI. Spec still 6 Aug information-RFI only.
-- LLM feature line; 04b until ~2026-09-07; 04e cold archive.
+- **Wave 2** (Order 15.x): web admin + DMS + tenant wipe
+- Email + temp-password invite UI
+- Bundle ID rename to `com.buildtrack.app` (new App Store app)
 
 ## Kickoff prompt (paste)
 
 ```text
 Read documentation/NOW.md first.
-This week = commercial RC. Next = R4 store/legal + R5 env. R1–R3 locked.
-Do not start Wave 2 / DMS / RFInspection.
+Immediate first action: commit and push the prepared corp+R5 batch.
+Then review overnight audit evidence in docs/superpowers/evidence/.
+R5 submitted build 181; it is already attached in TestFlight. Wave 2 parked.
 ```
 
 ---

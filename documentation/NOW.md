@@ -10,17 +10,14 @@
 
 ## Doing
 
-Commercial **RC week**. **R5 Closed:** build **181** in TestFlight. **R7/R8 landed** (company-plan checkout hook + Profile dead-row cut). R4 Pages URLs wired.
-
-**Cursor chat pick-up:** transcripts on KooDrive. Mount KooDrive **before** Cursor; open `/Volumes/KooDrive/InsiteApp` only.
+Commercial **RC week**. GitHub Pages legal URLs + ASC paste card. API key cannot PATCH listing (403). Demo account **already on file** in ASC. TestFlight **183 VALID**. Drafts follow-up still uncommitted.
 
 ## Next
 
-1. **Human (ASC):** paste Privacy / Support URLs from `src/legal/legalLinks.ts`; fill App Review demo credentials
-2. Set `EXPO_PUBLIC_STRIPE_CHECKOUT_URL` when a Stripe Payment Link exists (mailto fallback until then)
-3. Optional: Android local `production-local` build
-
-Do **not** tick Public in ASC without explicit intent.
+1. Confirm Pages privacy/terms return 200 after deploy
+2. **Human ASC (5 min):** replace Privacy Policy URL with Pages HTML; paste review notes; optionally create version **1.1.3** and attach build **183**. Do **not** tick Public
+3. Smoke drafts if you want that follow-up in the next IPA
+4. **Tue — Stripe:** Payment Link + `EXPO_PUBLIC_STRIPE_CHECKOUT_URL`
 
 ## Locked this week
 
@@ -28,21 +25,21 @@ Do **not** tick Public in ASC without explicit intent.
 - **Corp model (2026-08-17):** org-owned seats; invite sign-in link; blocking Set password; no worker Delete Account
 - **`must_set_password` LIVE** + invite smoke PASS. Evidence: `docs/superpowers/evidence/2026-08-17-corp-must-set-password-live.md`
 - **Store bundle ID = `com.buildtrack.app.local`** (matches ASC app `6754898737`) — not `com.buildtrack.app`
-- **R6** — org subscription paper SoT unchanged
+- **R6** — org subscription paper SoT unchanged (Growth $19.99 / Unlimited $199.99 / add-ons)
 
 ## Parked (do not schedule this week)
 
 - **Wave 2** (Order 15.x): web admin + DMS + tenant wipe
 - Email + temp-password invite UI
 - Bundle ID rename to `com.buildtrack.app` (new App Store app)
+- Stripe Connect / webhooks / in-app Apple IAP
 
 ## Kickoff prompt (paste)
 
 ```text
 Read documentation/NOW.md first.
-Corp+R5 on origin/master (576cc28). Build 181 in TestFlight.
-R4 in-app + GitHub Pages privacy/terms/support URLs. Paste those into ASC; fill demo credentials.
-Wave 2 parked. Do not tick Public in ASC.
+Pages legal URLs + ASC paste card: docs/superpowers/evidence/2026-08-17-r4-asc-human-paste.md
+Demo account already in ASC. Build 183 VALID. Do not tick Public.
 ```
 
 ---

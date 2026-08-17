@@ -10,7 +10,7 @@ Account model:
 - Additional seats (PM / worker) are provisioned only by the company admin via User Management → Invite (temporary password shared out-of-band). There is no public self-serve “join any company” registration.
 - Workers do not self-delete company data. Company admins remove seat access; full tenant deletion (company + projects + tasks + photos) is reserved for the data owner (web admin / Wave 2). Jobsite history retains actor names for auditability.
 
-Demo access: [provide admin credentials]
+Demo access: already stored in App Store Connect App Review Information (do not duplicate passwords in git). If ASC prompts again, use a company-admin Taskr login.
 
 Privacy Policy: https://insitetechltd.github.io/buildtrack/privacy-policy.html
 Terms of Service: https://insitetechltd.github.io/buildtrack/terms-of-service.html

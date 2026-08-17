@@ -1,0 +1,26 @@
+# U02 — Two in first picker → submit (maps P02)
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - u02
+---
+- evalScript: ${output.permutation = "U02"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-slot-0.yaml
+- extendedWaitUntil:
+    visible: ".*1 selected.*"
+    timeout: 8000
+- runFlow: ../create-task-photo/_pick-slot-1.yaml
+- extendedWaitUntil:
+    visible: ".*2 selected.*"
+    timeout: 8000
+- takeScreenshot: "up-U02-picker-two"
+- runFlow: ../create-task-photo/_accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_1"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-update.yaml
+- takeScreenshot: "up-U02-done"

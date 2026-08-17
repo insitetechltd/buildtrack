@@ -1,0 +1,5 @@
+# Headed demo: shared create-task-photo boot only (same path U/P use).
+appId: com.buildtrack.app.local
+---
+- runFlow: ../create-task-photo/_boot.yaml
+- takeScreenshot: "shared-boot-landed-or-failed"

@@ -6,6 +6,7 @@ import {
   TextInput,
   TextInputKeyPressEventData,
   Pressable,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -89,11 +90,55 @@ export default function LoginScreen(_props: LoginScreenProps) {
     [moveFormFocus],
   );
 
+  const handleSubmitPress = useCallback(() => {
+    Keyboard.dismiss();
+    emailInputRef.current?.blur?.();
+    passwordInputRef.current?.blur?.();
+    void actions.submitLogin();
+  }, [actions]);
+
+  const emailContract = useMemo(
+    () =>
+      buildFormTextFieldContract({
+        id: "login-emailOrPhone",
+        label: t.login.emailOrPhone,
+        value: output.emailOrPhone,
+        placeholder: t.login.emailOrPhonePlaceholder,
+        error: output.validationErrors.emailOrPhone,
+        required: true,
+        testId: "login-emailOrPhone",
+      }),
+    [
+      output.emailOrPhone,
+      output.validationErrors.emailOrPhone,
+      t.login.emailOrPhone,
+      t.login.emailOrPhonePlaceholder,
+    ],
+  );
+
+  const passwordContract = useMemo(
+    () =>
+      buildFormTextFieldContract({
+        id: "login-password",
+        label: t.auth.password,
+        value: output.password,
+        placeholder: t.login.passwordPlaceholder,
+        error: output.validationErrors.password,
+        required: true,
+        testId: "login-password",
+      }),
+    [
+      output.password,
+      output.validationErrors.password,
+      t.auth.password,
+      t.login.passwordPlaceholder,
+    ],
+  );
+
   return (
     <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
       <StatusBar style="dark" />
-      
-      {/* Build Identifier */}
+
       <View className="absolute top-12 right-4 z-10">
         <Text className="text-sm text-gray-400 font-mono">
           {output.buildIdentifierLabel}
@@ -106,38 +151,28 @@ export default function LoginScreen(_props: LoginScreenProps) {
       >
         <ScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
+          keyboardDismissMode="on-drag"
         >
           <View className="flex-1 px-6 py-8 justify-center">
-            {/* Logo and Title */}
             <View className="items-center mb-12">
-              <Image 
-                source={require('../../assets/icon.png')}
+              <Image
+                source={require("../../assets/icon.png")}
                 style={{ width: 80, height: 80 }}
                 className="mb-6 rounded-2xl"
               />
-              <Text className="text-4xl font-bold text-gray-900 mb-2">
-                Taskr
-              </Text>
+              <Text className="text-4xl font-bold text-gray-900 mb-2">Taskr</Text>
               <Text className="text-gray-600 text-center">
                 {t.login.constructionTaskManagement}
               </Text>
             </View>
 
-            {/* Login Form */}
             <View className="space-y-4 mb-6">
               <TextField
-                contract={buildFormTextFieldContract({
-                  id: "login-emailOrPhone",
-                  label: t.login.emailOrPhone,
-                  value: output.emailOrPhone,
-                  placeholder: t.login.emailOrPhonePlaceholder,
-                  error: output.validationErrors.emailOrPhone,
-                  required: true,
-                  testId: "login-emailOrPhone",
-                })}
+                contract={emailContract}
                 inputTestId="login-emailOrPhone"
                 inputRef={emailInputRef}
+                collapseEmptyChrome
                 leftSlot={
                   <Ionicons
                     name={isPhoneNumber(output.emailOrPhone) ? "call-outline" : "mail-outline"}
@@ -160,17 +195,10 @@ export default function LoginScreen(_props: LoginScreenProps) {
               />
 
               <TextField
-                contract={buildFormTextFieldContract({
-                  id: "login-password",
-                  label: t.auth.password,
-                  value: output.password,
-                  placeholder: t.login.passwordPlaceholder,
-                  error: output.validationErrors.password,
-                  required: true,
-                  testId: "login-password",
-                })}
+                contract={passwordContract}
                 inputTestId="login-password"
                 inputRef={passwordInputRef}
+                collapseEmptyChrome
                 leftSlot={
                   <Ionicons
                     name="lock-closed-outline"
@@ -197,38 +225,26 @@ export default function LoginScreen(_props: LoginScreenProps) {
                 autoComplete="password"
                 autoCorrect={false}
                 spellCheck={false}
-                returnKeyType="done"
+                returnKeyType="go"
                 onKeyPress={(event) => handleFieldKeyPress("password", event)}
-                onSubmitEditing={() => {
-                  passwordInputRef.current?.blur();
-                }}
+                onSubmitEditing={handleSubmitPress}
               />
 
-              {/* Login Button */}
               <Pressable
                 testID="login-submit"
-                onPress={() => {
-                  void actions.submitLogin();
-                }}
+                accessibilityRole="button"
+                accessibilityLabel={t.login.signIn}
+                onPress={handleSubmitPress}
                 disabled={output.isLoading}
                 className={cn(
                   "bg-blue-600 py-4 rounded-lg items-center mt-6",
-                  output.isLoading && "opacity-50"
+                  output.isLoading && "opacity-50",
                 )}
               >
                 <Text className="text-white font-semibold text-xl">
                   {output.isLoading ? t.login.signingIn : t.login.signIn}
                 </Text>
               </Pressable>
-
-              {/* Registration is temporarily disabled - accounts are created by administrators */}
-              {/* Register Link - Hidden for App Store submission */}
-              {/* <View className="flex-row justify-center mt-6">
-                <Text className="text-gray-600">{t.login.dontHaveAccount} </Text>
-                <Pressable onPress={onToggleRegister}>
-                  <Text className="text-blue-600 font-semibold">{t.login.signUp}</Text>
-                </Pressable>
-              </View> */}
             </View>
           </View>
         </ScrollView>

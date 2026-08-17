@@ -10,6 +10,8 @@ import type { InputPrimitiveContract } from "@/ui/contracts/primitives";
 import { cn } from "@/utils/cn";
 import {
   INPUT_DENSITY_CLASS_MAP,
+  INPUT_DENSITY_FONT_SIZE,
+  INPUT_DENSITY_INPUT_MIN_HEIGHT,
   INPUT_STRUCTURAL_STATE_CLASS_MAP,
   INPUT_VALIDATION_CLASS_MAP,
   resolveInputStructuralState,
@@ -93,8 +95,15 @@ export default function TextField({
   const stateClasses = INPUT_STRUCTURAL_STATE_CLASS_MAP[structuralState];
   const validationClasses = INPUT_VALIDATION_CLASS_MAP[contract.validation.severity];
   const resolvedTestId = contract.testId ?? contract.primitiveId;
+  // When inputTestId equals the public testId, avoid `${testId}__field` wrappers that
+  // unanchored Maestro `id: testId` selectors can match instead of the TextInput.
   const resolvedFieldTestId =
-    fieldTestId ?? (inputTestId ? `${resolvedTestId}__field` : resolvedTestId);
+    fieldTestId ??
+    (inputTestId
+      ? inputTestId === resolvedTestId
+        ? `${resolvedTestId}--field`
+        : `${resolvedTestId}__field`
+      : resolvedTestId);
   const resolvedInputTestId = inputTestId ?? `${resolvedTestId}__input`;
 
   const helperText = resolveHelperText(contract);
@@ -105,8 +114,13 @@ export default function TextField({
   const hasLabel = (contract.label ?? "").trim().length > 0;
   const hasAffixes = Boolean(contract.content.prefixText || contract.content.suffixText);
   const shouldRenderLabel = !collapseEmptyChrome || hasLabel;
-  const shouldRenderAffixRow = !collapseEmptyChrome || hasAffixes;
-  const shouldRenderHelperSlot = !collapseEmptyChrome || helperText.length > 0;
+  // Affix row is a no-op when empty — skip mounting it entirely.
+  const shouldRenderAffixRow = hasAffixes;
+  // collapseEmptyChrome: omit empty helper chrome (Login — keeps Sign In above keyboard).
+  // Default: keep helper slot for stable form layout when validation appears.
+  const shouldRenderHelperSlot = collapseEmptyChrome
+    ? helperText.length > 0
+    : true;
 
   return (
     <View
@@ -141,9 +155,25 @@ export default function TextField({
           multiline ? "items-start" : "",
         )}
       >
-        <View className={cn("flex-row", multiline ? "items-start" : "items-center")}>
+        {/*
+          Padding/min-height live on this container. Without stretching the TextInput,
+          taps on empty chrome miss the input (feels “dead”). pointerEvents box-none on
+          the row lets touches fall through to the TextInput hit target.
+        */}
+        <View
+          pointerEvents="box-none"
+          className={cn(
+            "flex-row",
+            multiline ? "items-start" : "items-center",
+            "min-h-[inherit] w-full",
+          )}
+        >
           {leftSlot ? (
-            <View testID={`${resolvedFieldTestId}__left-slot`} className="mr-2">
+            <View
+              testID={`${resolvedFieldTestId}__left-slot`}
+              className="mr-2"
+              pointerEvents="box-none"
+            >
               {leftSlot}
             </View>
           ) : null}
@@ -157,11 +187,23 @@ export default function TextField({
             accessibilityHint={contract.accessibilityHint}
             accessibilityState={accessibilityState}
             className={cn(
-              "min-w-0 flex-1",
+              "min-w-0 flex-1 self-stretch",
               densityClasses.inputText,
               stateClasses.inputText,
               inputClassName,
             )}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              // Single-line only: stretch hit target to density min-height.
+              // Multiline must grow with content (Create Task Description).
+              ...(multiline
+                ? {}
+                : { minHeight: INPUT_DENSITY_INPUT_MIN_HEIGHT[contract.density] }),
+              // Pin native fontSize — iOS TextInput often ignores NativeWind text-* classes.
+              fontSize: INPUT_DENSITY_FONT_SIZE[contract.density],
+              lineHeight: INPUT_DENSITY_FONT_SIZE[contract.density] + 6,
+            }}
             onChangeText={onChangeText}
             onFocus={onFocus}
             onBlur={onBlur}
@@ -170,7 +212,7 @@ export default function TextField({
             secureTextEntry={secureTextEntry}
             multiline={multiline}
             numberOfLines={numberOfLines}
-            textAlignVertical={textAlignVertical}
+            textAlignVertical={textAlignVertical ?? (multiline ? "top" : "center")}
             keyboardType={keyboardType}
             autoCapitalize={autoCapitalize}
             autoComplete={autoComplete}

@@ -173,32 +173,35 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
 
         {/* Update Description */}
         <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
+          <Text className="text-lg font-semibold text-slate-900 mb-3">
             {t.taskDetail.updateDescription}
           </Text>
-          <TextInput
-            testID="update-progress__description--preview"
-            ref={descriptionInputRef}
-            className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-            placeholder={t.taskDetail.updateDescriptionPlaceholder}
-            value={output.form.description}
-            onChangeText={actions.setDescription}
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-            maxLength={500}
-            style={{ height: 120 }}
-            returnKeyType="done"
-            onKeyPress={handleDescriptionKeyPress}
-            onSubmitEditing={() => {
-              descriptionInputRef.current?.blur();
-            }}
-            blurOnSubmit={false}
-          />
+          <View testID="update-progress__description--preview">
+            <TextInput
+              testID="update-progress__description"
+              accessibilityLabel="Update description"
+              ref={descriptionInputRef}
+              className="border border-gray-300 rounded-lg px-4 py-3 text-lg text-gray-900 bg-white"
+              placeholder={t.taskDetail.updateDescriptionPlaceholder}
+              value={output.form.description}
+              onChangeText={actions.setDescription}
+              multiline
+              numberOfLines={5}
+              textAlignVertical="top"
+              maxLength={500}
+              style={{ height: 120, fontSize: 18, lineHeight: 24 }}
+              returnKeyType="done"
+              onKeyPress={handleDescriptionKeyPress}
+              onSubmitEditing={() => {
+                descriptionInputRef.current?.blur();
+              }}
+              blurOnSubmit={false}
+            />
+          </View>
         </View>
 
         <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
+          <Text className="text-lg font-semibold text-slate-900 mb-3">
             {t.taskDetail.completionPercentage}
           </Text>
           <CompletionPercentageDialer
@@ -210,6 +213,8 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
       </ScrollView>
 
       <PrimaryActionBar
+        testID="update-progress__action_bar"
+        primaryTestID="update-progress__submit"
         primaryLabel={output.form.isSubmitting ? t.common.loading : t.taskDetail.submitUpdate}
         onPrimaryPress={actions.handleSubmitUpdate}
         isPrimaryDisabled={output.form.isSubmitting}

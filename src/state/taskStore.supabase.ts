@@ -4394,22 +4394,14 @@ export const useTaskStore = create<TaskStore>()(
         };
       },
       partialize: (state) => ({
-        tasks: state.tasks,
-        archivedTasks: state.archivedTasks,
+        // Persist read-state only. Full task/archived payloads + queryMeta maps were
+        // JSON.stringified on every write; Hermes OOM'd the JS heap after login under
+        // Maestro (Object.entries → JSON.stringify in crash stacks). Refetch from Supabase.
+        tasks: [],
+        archivedTasks: [],
         taskReadStatuses: state.taskReadStatuses,
         allTasksFetchTimestamp: state.allTasksFetchTimestamp,
-        taskQueryMeta: Object.fromEntries(
-          Object.entries(state.taskQueryMeta).map(([key, meta]) => [
-            key,
-            {
-              ...meta,
-              isInitialLoading: false,
-              isBackgroundRefreshing: false,
-              isManualRefreshing: false,
-              error: null,
-            },
-          ])
-        ),
+        taskQueryMeta: {},
       }),
     }
   )

@@ -1,0 +1,35 @@
+# U08 — Draw bake then submit (maps P12)
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - u08
+---
+- evalScript: ${output.permutation = "U08"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- tapOn:
+    id: "photo-selection__tile_0"
+- assertVisible:
+    id: "photo-selection__preview"
+- tapOn:
+    id: "photo-selection__tool_draw"
+- assertVisible:
+    id: "photo-selection__draw_overlay"
+- swipe:
+    start: 30%, 45%
+    end: 70%, 55%
+    duration: 600
+- tapOn:
+    id: "photo-selection__tool_draw_done"
+- extendedWaitUntil:
+    visible:
+      id: "photo-selection__tool_draw"
+    timeout: 12000
+- tapOn:
+    id: "photo-selection__preview_confirm"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-update.yaml
+- takeScreenshot: "up-U08-done"

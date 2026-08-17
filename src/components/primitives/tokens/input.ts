@@ -42,10 +42,11 @@ export const INPUT_DENSITY_CLASS_MAP: Record<PrimitiveDensityMode, InputDensityC
       helperSlot: "min-h-5",
       helperText: "text-xs leading-4 text-slate-600",
     },
+    // Form-adjacent / general fields: readable on jobsite (was text-sm / text-base).
     standard: {
       field: "gap-2",
-      label: "text-sm leading-5 font-semibold text-slate-900",
-      requiredMarker: "text-sm leading-5 font-semibold text-red-600",
+      label: "text-base leading-6 font-semibold text-slate-900",
+      requiredMarker: "text-base leading-6 font-semibold text-red-600",
       affixRow: "min-h-5",
       affixText: "text-sm leading-5 text-slate-600",
       inputContainer: "min-h-12 rounded-lg px-3.5 py-2.5",
@@ -53,10 +54,11 @@ export const INPUT_DENSITY_CLASS_MAP: Record<PrimitiveDensityMode, InputDensityC
       helperSlot: "min-h-5",
       helperText: "text-sm leading-5 text-slate-600",
     },
+    // Default for buildFormTextFieldContract — matches Create/Project row values (text-lg).
     expanded: {
       field: "gap-2.5",
-      label: "text-base leading-6 font-semibold text-slate-900",
-      requiredMarker: "text-base leading-6 font-semibold text-red-600",
+      label: "text-lg leading-7 font-semibold text-slate-900",
+      requiredMarker: "text-lg leading-7 font-semibold text-red-600",
       affixRow: "min-h-6",
       affixText: "text-base leading-6 text-slate-600",
       inputContainer: "min-h-14 rounded-xl px-4 py-3",
@@ -65,6 +67,19 @@ export const INPUT_DENSITY_CLASS_MAP: Record<PrimitiveDensityMode, InputDensityC
       helperText: "text-base leading-6 text-slate-600",
     },
   };
+
+/** Native fontSize fallback — TextInput className font sizes are unreliable on iOS. */
+export const INPUT_DENSITY_FONT_SIZE: Record<PrimitiveDensityMode, number> = {
+  compact: 14,
+  standard: 16,
+  expanded: 18,
+};
+
+export const INPUT_DENSITY_INPUT_MIN_HEIGHT: Record<PrimitiveDensityMode, number> = {
+  compact: 28,
+  standard: 32,
+  expanded: 40,
+};
 
 export const INPUT_VALIDATION_CLASS_MAP: Record<
   InputValidationSeverity,

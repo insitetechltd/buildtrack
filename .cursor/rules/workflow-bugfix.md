@@ -12,7 +12,15 @@ Ask ONLY if: bug repro is missing critical info, fix requires schema change, fix
 
 **Phase A — Plan + Root Cause**
 Output: failure mode description, likely root cause, affected files, reproduction steps, proposed fix scope, validation plan.
-- Inspect first: taskStore.supabase.ts, supabase.ts, AppNavigator.tsx, affected screen
+
+**Delta elimination (mandatory before broad hypotheses):**
+1. Identify **last known success** (commit, Maestro log, green suite run) and **first ongoing failure**.
+2. List the **diff between those two points only** (commits + uncommitted work that touches the failing surface).
+3. **Eliminate from that set** — prefer A/B (revert one delta, re-run the same repro) over inventing new causes outside the window.
+4. Do **not** treat YAML/boot tweaks as the primary suspect when the failure is a **runtime** crash/hang after a product UI/state change in the same window.
+5. Broad stacks (OOM, remount loops) are **symptoms** until the delta that introduced them is isolated.
+
+- Inspect first: the changed files in the success→failure window, then taskStore.supabase.ts / supabase.ts / AppNavigator only if the delta points there.
 - If runtime-only evidence needed: add instrumentation, reproduce, THEN fix.
 - Prefer smallest safe fix over broad cleanup. Avoid unrelated refactors unless required.
 

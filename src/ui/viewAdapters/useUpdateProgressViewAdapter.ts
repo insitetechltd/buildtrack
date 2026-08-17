@@ -16,7 +16,7 @@ import type {
 export interface SelectedPhoto {
   uri: string;
   fileName: string;
-  isAnnotated: boolean;
+  isAnnotated?: boolean;
   annotatedUri?: string;
 }
 
@@ -123,45 +123,124 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
   const handleAddPhotos = (source?: "camera" | "library") => {
     if (!user || !task) return;
 
-    showPhotoSelectionDialog({
-      onPhotosSelected: (selected) => {
-        const serializablePhotos = selected.map(photo => ({
+    const goToPhotoSelection = (selected: SelectedPhoto[]) => {
+      const serializablePhotos = selected.map((photo) => ({
+        uri: photo.uri,
+        fileName: photo.fileName,
+        isAnnotated: photo.isAnnotated || false,
+        annotatedUri: (photo as { annotatedUri?: string }).annotatedUri,
+        mediaLibraryAssetId: (photo as { mediaLibraryAssetId?: string }).mediaLibraryAssetId,
+      }));
+
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          try {
+            if (!navigation || !navigation.navigate) {
+              Alert.alert("Error", "Navigation is not available. Please try again.");
+              return;
+            }
+
+            navigation.navigate("PhotoSelection", {
+              taskId: task.id,
+              subTaskId: subTaskId,
+              companyId: user.companyId,
+              userId: user.id,
+              initialCompletionPercentage: task.completionPercentage || 0,
+              initialPhotos: serializablePhotos,
+              returnScreen: "UpdateProgress",
+              uploadImmediately: false,
+              sourceScreen: sourceScreen,
+              sourceTaskId: sourceTaskId || task.id,
+              sourceSubTaskId: sourceSubTaskId || subTaskId,
+            });
+          } catch (error: any) {
+            Alert.alert(
+              "Navigation Error",
+              `Failed to open photo selection: ${error.message || "Unknown error"}\n\nPlease try again.`,
+            );
+          }
+        }, 100);
+      });
+    };
+
+    const openInAppLibrary = () => {
+      if (!user || !task) return;
+
+      const libraryParams = {
+        taskId: task.id,
+        subTaskId: subTaskId,
+        companyId: user.companyId,
+        userId: user.id,
+        initialCompletionPercentage: task.completionPercentage || 0,
+        returnScreen: "UpdateProgress" as const,
+        uploadImmediately: false,
+        existingPhotos: photoObjects.map((photo) => ({
           uri: photo.uri,
           fileName: photo.fileName,
-          isAnnotated: photo.isAnnotated || false,
-        }));
+          isAnnotated: Boolean(photo.isAnnotated),
+          annotatedUri: (photo as { annotatedUri?: string }).annotatedUri,
+          mediaLibraryAssetId: (photo as { mediaLibraryAssetId?: string })
+            .mediaLibraryAssetId,
+        })),
+        sourceScreen: sourceScreen,
+        sourceTaskId: sourceTaskId || task.id,
+        sourceSubTaskId: sourceSubTaskId || subTaskId,
+      };
 
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            try {
-              if (!navigation || !navigation.navigate) {
-                Alert.alert("Error", "Navigation is not available. Please try again.");
-                return;
-              }
+      try {
+        // Same SoT as Create Task: in-app MediaLibrary gallery (not Apple PHPicker).
+        // Prefer push so we never silently no-op if a prior library route is stuck.
+        if (typeof navigation.push === "function") {
+          navigation.push("InAppLibraryPicker", libraryParams);
+          return;
+        }
+        navigation.navigate("InAppLibraryPicker", libraryParams);
+      } catch (error: any) {
+        const parent = navigation.getParent?.();
+        if (parent?.navigate) {
+          parent.navigate("InAppLibraryPicker", libraryParams);
+          return;
+        }
+        Alert.alert(
+          "Navigation Error",
+          `Failed to open photo library: ${error.message || "Unknown error"}\n\nPlease try again.`,
+        );
+      }
+    };
 
-              navigation.navigate("PhotoSelection", {
-                taskId: task.id,
-                subTaskId: subTaskId,
-                companyId: user.companyId,
-                userId: user.id,
-                initialCompletionPercentage: task.completionPercentage || 0,
-                initialPhotos: serializablePhotos,
-                returnScreen: 'UpdateProgress',
-                uploadImmediately: false,
-                sourceScreen: sourceScreen,
-                sourceTaskId: sourceTaskId || task.id,
-                sourceSubTaskId: sourceSubTaskId || subTaskId,
-              });
-            } catch (error: any) {
-              Alert.alert("Navigation Error", `Failed to open photo selection: ${error.message || 'Unknown error'}\n\nPlease try again.`);
-            }
-          }, 100);
-        });
+    if (source === "library") {
+      openInAppLibrary();
+      return;
+    }
+
+    if (source === "camera") {
+      showPhotoSelectionDialog({
+        onPhotosSelected: goToPhotoSelection,
+        allowClipboard: false,
+        allowMultiple: false,
+        source: "camera",
+      });
+      return;
+    }
+
+    Alert.alert("Add Photos", "Choose how you want to add photos", [
+      {
+        text: "Take Photo",
+        onPress: () => {
+          showPhotoSelectionDialog({
+            onPhotosSelected: goToPhotoSelection,
+            allowClipboard: false,
+            allowMultiple: false,
+            source: "camera",
+          });
+        },
       },
-      allowClipboard: true,
-      allowMultiple: true,
-      source,
-    });
+      {
+        text: "Choose from Library",
+        onPress: openInAppLibrary,
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
   };
 
   const handleRetryUpload = async (failedUpload: { fileName: string; error: string; originalFile: any }) => {

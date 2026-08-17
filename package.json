@@ -37,6 +37,8 @@
     "test:e2e:maestro:qa01": "bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-a-rejection-loop.yaml && bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-b-overdue-crunch.yaml && bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-c-isolation-wall.yaml && bash ./scripts/maestro/run-local.sh test maestro/flows/qa01-scenario-d-iphone17-viewport.yaml",
     "test:e2e:maestro:create-task-photo": "bash ./scripts/maestro/run-create-task-photo-suite.sh",
     "test:e2e:maestro:create-task-photo:one": "bash ./scripts/maestro/run-create-task-photo-one.sh",
+    "test:e2e:maestro:update-progress-photo": "bash ./scripts/maestro/run-update-progress-photo-suite.sh",
+    "test:e2e:maestro:update-progress-photo:one": "bash ./scripts/maestro/run-update-progress-photo-one.sh",
     "test:e2e:maestro:critical": "bash ./scripts/maestro/run-local.sh test maestro/flows",
     "test:e2e:maestro:journeys": "bash ./scripts/maestro/run-local.sh test maestro/flows/journey-projectswitch-create-taskdetail-update.yaml && bash ./scripts/maestro/run-local.sh test maestro/flows/journey-login-switch-projects.yaml",
     "test:confidence": "npm run test:regression && npm run test:e2e:journeys",

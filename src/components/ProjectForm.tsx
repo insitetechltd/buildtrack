@@ -251,7 +251,7 @@ export default function ProjectForm({
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       className="flex-1"
     >
-      <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="handled">
+      <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="always">
         {/* Project Information */}
         <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
           <Text className="text-2xl font-bold text-gray-900 mb-4">Project Information</Text>
@@ -269,6 +269,7 @@ export default function ProjectForm({
               })}
               inputTestId="project-form-clientName"
               inputRef={clientNameInputRef}
+              collapseEmptyChrome
               onChangeText={(text) => handleClientChange("name", text)}
               maxLength={100}
               returnKeyType="next"
@@ -291,6 +292,7 @@ export default function ProjectForm({
               })}
               inputTestId="project-form-name"
               inputRef={projectNameInputRef}
+              collapseEmptyChrome
               onChangeText={handleNameChange}
               maxLength={100}
               returnKeyType="next"
@@ -313,6 +315,7 @@ export default function ProjectForm({
               })}
               inputTestId="project-form-description"
               inputRef={descriptionInputRef}
+              collapseEmptyChrome
               inputClassName="min-h-[90px]"
               onChangeText={handleDescriptionChange}
               multiline
@@ -329,7 +332,7 @@ export default function ProjectForm({
 
             {/* Status */}
             <View className="relative" style={{ zIndex: showStatusPicker ? 1000 : 1 }}>
-              <Text className="text-lg font-medium text-gray-700 mb-2">Status</Text>
+                  <Text className="text-lg font-medium text-slate-900 mb-2">Status</Text>
               
               {/* Custom Status Dropdown */}
               <Pressable
@@ -403,9 +406,9 @@ export default function ProjectForm({
               required: true,
               testId: "project-form-location",
             })}
-            collapseEmptyChrome
             inputTestId="project-form-location"
             inputRef={locationInputRef}
+            collapseEmptyChrome
             inputClassName="min-h-[130px]"
             onChangeText={handleLocationChange}
             multiline
@@ -434,6 +437,7 @@ export default function ProjectForm({
               })}
               inputTestId="project-form-clientEmail"
               inputRef={clientEmailInputRef}
+              collapseEmptyChrome
               onChangeText={(text) => handleClientChange("email", text)}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -456,6 +460,7 @@ export default function ProjectForm({
               })}
               inputTestId="project-form-clientPhone"
               inputRef={clientPhoneInputRef}
+              collapseEmptyChrome
               onChangeText={(text) => handleClientChange("phone", text)}
               keyboardType="phone-pad"
               returnKeyType="done"
@@ -473,7 +478,7 @@ export default function ProjectForm({
           
           <View className="flex-row space-x-4">
             <View className="flex-1">
-              <Text className="text-lg font-medium text-gray-700 mb-2">Start Date</Text>
+              <Text className="text-lg font-semibold text-slate-900 mb-2">Start Date</Text>
               <Pressable
                 onPress={() => setShowStartDatePicker(true)}
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
@@ -486,7 +491,7 @@ export default function ProjectForm({
             </View>
 
             <View className="flex-1">
-              <Text className="text-lg font-medium text-gray-700 mb-2">Estimated End Date</Text>
+              <Text className="text-lg font-semibold text-slate-900 mb-2">Estimated End Date</Text>
               <Pressable
                 onPress={() => setShowEndDatePicker(true)}
                 className={cn(

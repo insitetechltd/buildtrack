@@ -1,0 +1,14 @@
+# Confirm Select Photos → back on Update Progress form with a preview tile.
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    id: "photo-selection__confirm"
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__screen_title"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__photo_preview_tile_0"
+    timeout: 8000
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml

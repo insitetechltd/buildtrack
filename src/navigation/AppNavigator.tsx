@@ -1634,7 +1634,11 @@ function ProfileMainScreen({
           },
         });
       }}
-      onNavigateToDeveloperSettings={() => navigation.navigate("DeveloperSettings")}
+      onNavigateToDeveloperSettings={
+        typeof __DEV__ !== "undefined" && __DEV__
+          ? () => navigation.navigate("DeveloperSettings")
+          : undefined
+      }
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
       onNavigateToProfile={() => {}} // Already on profile screen
       onNavigateToProjectPicker={(allowBack?: boolean) => {
@@ -1926,7 +1930,11 @@ function AdminDashboardMainScreen({
       onNavigateToProjects={() => navigation.navigate("ProjectsList")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
       onNavigateToProfile={() => navigateToRootProfile(navigation)}
-      onNavigateToDevAdmin={() => navigation.navigate("DevAdmin")}
+      onNavigateToDevAdmin={
+        typeof __DEV__ !== "undefined" && __DEV__
+          ? () => navigation.navigate("DevAdmin")
+          : undefined
+      }
     />
   );
 }
@@ -2231,8 +2239,20 @@ export function WorkspaceBootstrapGate({
       return;
     }
 
+    // Skip re-init when already ready for this user — re-entry sets workspaceReady
+    // false and unmounts NavigationContainer (Realtime/NetworkSync thrash → Hermes OOM).
+    if (workspaceReady && workspaceReadyUserId === currentUserId) {
+      return;
+    }
+
     void initializeWorkspaceProject(currentUserId);
-  }, [currentUserId, initializeWorkspaceProject, isAuthenticated]);
+  }, [
+    currentUserId,
+    initializeWorkspaceProject,
+    isAuthenticated,
+    workspaceReady,
+    workspaceReadyUserId,
+  ]);
 
   if (!hasWorkspaceReadyForCurrentUser) {
     return <LoadingScreen />;
@@ -2242,9 +2262,13 @@ export function WorkspaceBootstrapGate({
 }
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
-  if (isLoading) {
+  // Cold start only. Never unmount the authenticated shell when login/updateUser
+  // flips auth isLoading — that remounted Realtime in a loop and OOMed Hermes.
+  if (!isAuthenticated && !isInitialized && isLoading) {
     return <LoadingScreen />;
   }
 
@@ -2252,15 +2276,19 @@ export default function AppNavigator() {
     return <AuthScreens />;
   }
 
+  // Keep Realtime/NetworkSync outside WorkspaceBootstrapGate so flipping
+  // workspaceReady→false does not tear down channels (Hermes OOM under Maestro).
   return (
-    <WorkspaceBootstrapGate>
-      <NavigationContainer linking={appLinking}>
-        <DataRefreshManager />
-        <NetworkSyncManager />
-        <RealtimeSyncManager />
-        <AppRootStack />
-      </NavigationContainer>
-    </WorkspaceBootstrapGate>
+    <>
+      <NetworkSyncManager />
+      <RealtimeSyncManager />
+      <WorkspaceBootstrapGate>
+        <NavigationContainer linking={appLinking}>
+          <DataRefreshManager />
+          <AppRootStack />
+        </NavigationContainer>
+      </WorkspaceBootstrapGate>
+    </>
   );
 }
 

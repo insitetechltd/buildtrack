@@ -7,7 +7,7 @@ import { useAuthStore } from "./src/state/authStore";
 import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
 
 // VERSION CONTROL - Increment this to force a fresh app state
-const APP_VERSION = "93.0";
+const APP_VERSION = "93.1";
 const VERSION_KEY = "@app_version";
 
 /*

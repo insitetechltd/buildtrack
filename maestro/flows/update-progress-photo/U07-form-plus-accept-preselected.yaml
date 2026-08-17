@@ -1,0 +1,23 @@
+# U07 — Form + Accept preselected only (maps P09)
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - u07
+---
+- evalScript: ${output.permutation = "U07"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- runFlow: _confirm-selection.yaml
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+- runFlow: ../create-task-photo/_accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_0"
+- assertNotVisible:
+    id: "photo-selection__tile_1"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-update.yaml
+- takeScreenshot: "up-U07-done"

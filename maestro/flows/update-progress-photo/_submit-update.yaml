@@ -1,0 +1,25 @@
+# Description + submit Update Progress; assert success alert.
+appId: com.buildtrack.app.local
+---
+- evalScript: ${output.progressNote = "Maestro UP photo " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__description"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__description"
+- inputText: ${output.progressNote}
+- tapOn:
+    point: "50%, 12%"
+- tapOn:
+    id: "update-progress__submit"
+- extendedWaitUntil:
+    visible: ".*Progress update added successfully!.*"
+    timeout: 25000
+- tapOn: "OK"
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"

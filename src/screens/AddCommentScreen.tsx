@@ -117,17 +117,18 @@ export default function AddCommentScreen({
 
         {/* Comment Text */}
         <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            Comment <Text className="text-red-500">*</Text>
+          <Text className="text-lg font-semibold text-slate-900 mb-3">
+            Comment <Text className="text-red-600">*</Text>
           </Text>
           <TextInput
             ref={commentInputRef}
-            className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
+            className="bg-white border border-gray-300 rounded-lg p-4 text-lg min-h-[120]"
             placeholder="Add your comment here..."
             value={output.commentForm.description}
             onChangeText={actions.setCommentDescription}
             multiline
             textAlignVertical="top"
+            style={{ fontSize: 18, lineHeight: 24 }}
             returnKeyType="done"
             onKeyPress={handleCommentKeyPress}
             onSubmitEditing={() => {

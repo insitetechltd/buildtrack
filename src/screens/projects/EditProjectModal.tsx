@@ -288,7 +288,7 @@ export function EditProjectModal({
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           className="flex-1"
         >
-          <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="handled">
+          <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="always">
             <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
               <Text className="mb-4 text-2xl font-bold text-gray-900">Project Information</Text>
 
@@ -304,6 +304,7 @@ export function EditProjectModal({
                   })}
                   inputTestId="edit-project-name"
                   inputRef={nameInputRef}
+                  collapseEmptyChrome
                   onChangeText={(text) => setFormData((prev) => ({ ...prev, name: text }))}
                   maxLength={100}
                   returnKeyType="next"
@@ -324,6 +325,7 @@ export function EditProjectModal({
                   })}
                   inputTestId="edit-project-description"
                   inputRef={descriptionInputRef}
+                  collapseEmptyChrome
                   onChangeText={(text) =>
                     setFormData((prev) => ({ ...prev, description: text }))
                   }
@@ -340,7 +342,7 @@ export function EditProjectModal({
                 />
 
                 <View>
-                  <Text className="mb-2 text-base font-medium text-gray-700">Status</Text>
+                  <Text className="mb-2 text-lg font-semibold text-slate-900">Status</Text>
 
                   <Pressable
                     onPress={() => setShowStatusPicker(!showStatusPicker)}
@@ -406,9 +408,9 @@ export function EditProjectModal({
                     "Enter full address (street, city, state/province, postal code, country)",
                   testId: "edit-project-location",
                 })}
-                collapseEmptyChrome
                 inputTestId="edit-project-location"
                 inputRef={locationInputRef}
+                collapseEmptyChrome
                 onChangeText={(text) => setFormData((prev) => ({ ...prev, location: text }))}
                 multiline
                 numberOfLines={5}
@@ -427,7 +429,7 @@ export function EditProjectModal({
 
               <View className="flex-row space-x-4">
                 <View className="flex-1">
-                  <Text className="mb-2 text-base font-medium text-gray-700">Start Date</Text>
+                  <Text className="mb-2 text-lg font-semibold text-slate-900">Start Date</Text>
                   <Pressable
                     onPress={() => setShowStartDatePicker(true)}
                     className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3"
@@ -440,7 +442,7 @@ export function EditProjectModal({
                 </View>
 
                 <View className="flex-1">
-                  <Text className="mb-2 text-base font-medium text-gray-700">
+                  <Text className="mb-2 text-lg font-semibold text-slate-900">
                     Estimated End Date
                   </Text>
                   <Pressable

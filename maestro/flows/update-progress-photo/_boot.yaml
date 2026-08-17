@@ -1,0 +1,4 @@
+# Reuse Create Task photo boot (manager login + photos permission).
+appId: com.buildtrack.app.local
+---
+- runFlow: ../create-task-photo/_boot.yaml

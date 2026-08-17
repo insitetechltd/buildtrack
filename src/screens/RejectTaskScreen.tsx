@@ -119,17 +119,18 @@ export default function RejectTaskScreen({
 
         {/* Rejection Reason Text */}
         <View className="mb-6">
-          <Text className="text-xl font-semibold text-gray-900 mb-3">
-            Reason for Rejection <Text className="text-red-500">*</Text>
+          <Text className="text-lg font-semibold text-slate-900 mb-3">
+            Reason for Rejection <Text className="text-red-600">*</Text>
           </Text>
           <TextInput
             ref={rejectReasonInputRef}
-            className="bg-white border border-gray-300 rounded-lg p-4 text-base min-h-[120]"
+            className="bg-white border border-gray-300 rounded-lg p-4 text-lg min-h-[120]"
             placeholder="Please provide a reason for rejecting this task..."
             value={output.rejectForm.reason}
             onChangeText={actions.setRejectReason}
             multiline
             textAlignVertical="top"
+            style={{ fontSize: 18, lineHeight: 24 }}
             returnKeyType="done"
             onKeyPress={handleReasonKeyPress}
             onSubmitEditing={() => {

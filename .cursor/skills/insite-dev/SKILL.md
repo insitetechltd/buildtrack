@@ -34,6 +34,14 @@ Use with personal skill `solo-dev-harness`.
 
 Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAESTRO_LOCAL_SETUP.md`.
 
+## Multi-critique (orchestrator)
+
+For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/multi-critique-validation.mdc`:
+
+- **Plan:** ≥2 parallel critiques (prefer different models) before Builder
+- **Validation:** ≥1 independent critique before “done”; prove focus/keyboard/submit for form primitives
+- Jest `changeText` alone ≠ tap/focus proof
+
 ## SoT paths
 
 - Tasks: `src/state/taskStore.supabase.ts`
@@ -57,8 +65,18 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 - Each `P##-*.yaml` is **independent** (`_boot` clearState). Develop/fix with one-shot runs — not full sequential loops.
 - One-shot: `bash scripts/maestro/run-create-task-photo-one.sh P04` (or `FORCE_PURGE=1 …`).
+- npm: `npm run test:e2e:maestro:create-task-photo:one -- P04`
 - Full sequential suite (`run-create-task-photo-suite.sh`) = **final gate only** after all cases pass alone.
 - Partition P-ranges across concurrent agents (e.g. A: P01–P11, B: P12–P22). Do not co-edit the same `P##` file.
+
+### Update Progress photo cases (U01–U12)
+
+- Same model as P: each `U##-*.yaml` is **independent** (shared `_boot` clearState + API seed task — no Create Task UI).
+- One-shot while developing/fixing: `bash scripts/maestro/run-update-progress-photo-one.sh U05` (or `FORCE_PURGE=1 …`).
+- npm: `npm run test:e2e:maestro:update-progress-photo:one -- U05`
+- Full sequential suite (`run-update-progress-photo-suite.sh`) = **final gate only**.
+- Partition U-ranges across concurrent agents (e.g. A: U01–U06, B: U07–U12). Do not co-edit the same `U##` file.
+- Shared helpers under `maestro/flows/update-progress-photo/_*.yaml` + seed script = **single-writer**.
 
 ### Machine / sim caps (this host profile)
 
@@ -71,9 +89,9 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Orchestrator sync checklist
 
-1. Assign UDID + P-range (or file paths) per track before launch.
+1. Assign UDID + P-range and/or U-range (or file paths) per track before launch.
 2. List single-writer files up front.
-3. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## → final suite gate.
+3. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## / U## → final suite gate.
 
 ## Trae migration
 

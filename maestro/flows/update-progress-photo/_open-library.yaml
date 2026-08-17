@@ -1,0 +1,54 @@
+# From Update Progress: Add photos → Choose from Library → in-app gallery.
+# Photos seeded by ensure-create-task-photo-media.sh (same as Create Task suite).
+# Product SoT: InAppLibraryPicker (not Apple PHPicker / ImagePicker.launchImageLibraryAsync).
+appId: com.buildtrack.app.local
+---
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__take_photo"
+    direction: UP
+- tapOn:
+    id: "update-progress__take_photo"
+- assertVisible: "Add Photos"
+- tapOn: "Choose from Library"
+- runFlow:
+    when:
+      visible: "Allow Full Access"
+    commands:
+      - tapOn: "Allow Full Access"
+- runFlow:
+    when:
+      visible: "Allow Access to All Photos"
+    commands:
+      - tapOn: "Allow Access to All Photos"
+- runFlow:
+    when:
+      visible: "Allow.*Photos.*"
+    commands:
+      - tapOn: "Allow.*Photos.*"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 15000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 10000
+- runFlow:
+    when:
+      visible: "Allow Full Access"
+    commands:
+      - tapOn: "Allow Full Access"
+- waitForAnimationToEnd:
+    timeout: 1000
+- assertNotVisible: "No Photos"
+- assertNotVisible:
+    id: "in-app-library__permission_denied"
+# Guard: Apple PHPicker chrome must not appear
+- assertNotVisible: "Collections"

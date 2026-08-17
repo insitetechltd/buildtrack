@@ -156,6 +156,7 @@ describe("WorkspaceBootstrapGate", () => {
 
     expect(screen.getByText("activity shell")).toBeTruthy();
     expect(screen.queryByText("Loading...")).toBeNull();
+    expect(mockInitializeWorkspaceProject).not.toHaveBeenCalled();
   });
 
   it("keeps the gate closed while auth is true but the user id is not ready yet", () => {

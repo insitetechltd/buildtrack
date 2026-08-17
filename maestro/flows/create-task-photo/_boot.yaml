@@ -17,17 +17,32 @@ appId: com.buildtrack.app.local
       id: "login-submit"
     timeout: 25000
 - tapOn:
-    id: "login-emailOrPhone"
+    id: "^login-emailOrPhone$"
 - inputText: "john.managera@test.com"
 - tapOn:
-    id: "login-password"
+    id: "^login-password$"
 - inputText: "password123"
+# Submit immediately (LoginScreen dismisses keyboard on press).
 - tapOn:
     id: "login-submit"
+# iOS password autofill sheet can block dashboard assert after Sign In.
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 20000
+    timeout: 45000
 - runFlow: _assert-no-logbox.yaml
 # Prefer icon surface (more reliable than Pressable wrapper under XCTest flake)
 - extendedWaitUntil:

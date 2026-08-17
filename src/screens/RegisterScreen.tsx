@@ -275,7 +275,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
             <View className="space-y-4">
               {/* Name Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.fullName}
                 </Text>
                 <View
@@ -293,7 +293,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-name"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.enterFullName}
                     value={formData.name}
                     onChangeText={handleNameChange}
@@ -309,7 +310,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Phone Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.phoneNumber} <Text className="text-red-500">*</Text>
                 </Text>
                 <View
@@ -327,7 +328,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-phone"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.phoneNumberPlaceholder}
                     value={formData.phone}
                     onChangeText={handlePhoneChange}
@@ -346,7 +348,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Email Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.emailAddress} <Text className="text-gray-400">({t.registration.optional})</Text>
                 </Text>
                 <View
@@ -364,7 +366,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-email"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.enterEmailOptional}
                     value={formData.email}
                     onChangeText={handleEmailChange}
@@ -383,7 +386,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Password Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.auth.password}
                 </Text>
                 <View
@@ -401,7 +404,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-password"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.enterPassword}
                     value={formData.password}
                     onChangeText={handlePasswordChange}
@@ -433,7 +437,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Confirm Password Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.confirmPassword}
                 </Text>
                 <View
@@ -451,7 +455,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-confirmPassword"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.confirmPasswordPlaceholder}
                     value={formData.confirmPassword}
                     onChangeText={handleConfirmPasswordChange}
@@ -483,7 +488,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Promo Code Input */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.promoCode} <Text className="text-red-500">*</Text>
                 </Text>
                 <View
@@ -503,7 +508,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                   />
                   <TextInput
                     testID="register-promoCode"
-                    className="flex-1 ml-3 text-gray-900"
+                    className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                     placeholder={t.registration.enterPromoCode}
                     value={formData.promoCode}
                     onChangeText={handlePromoCodeChange}
@@ -527,7 +533,7 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
 
               {/* Company Selection */}
               <View>
-                <Text className="text-base font-medium text-gray-700 mb-2">
+                <Text className="text-lg font-semibold text-slate-900 mb-2">
                   {t.registration.company} <Text className="text-red-500">*</Text>
                 </Text>
                 
@@ -629,7 +635,8 @@ export default function RegisterScreen({ onToggleLogin }: RegisterScreenProps) {
                       />
                       <TextInput
                         testID="register-newCompanyName"
-                        className="flex-1 ml-3 text-gray-900"
+                        className="flex-1 ml-3 text-lg text-gray-900"
+                    style={{ fontSize: 18 }}
                         placeholder={t.registration.enterCompanyName}
                         value={formData.newCompanyName}
                         onChangeText={handleNewCompanyNameChange}

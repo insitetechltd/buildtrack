@@ -107,6 +107,11 @@ describe("auth bootstrap authority", () => {
 
     expect(fetchProjects).toHaveBeenCalledWith(true);
     expect(fetchUserProjectAssignments).toHaveBeenCalledWith("user-1", true);
+    expect(fetchTasks).not.toHaveBeenCalled();
+    expect(fetchUsers).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(1500);
+
     expect(fetchTasks).toHaveBeenCalledWith(true);
     expect(fetchUsers).toHaveBeenCalledTimes(1);
     expect(legacyInitializeUserData).not.toHaveBeenCalled();

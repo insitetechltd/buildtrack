@@ -266,7 +266,13 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
 
       initializeWorkspaceProject: async (userId: string) => {
         const requestId = ++workspaceBootstrapRequestId;
-        set({ workspaceReady: false, workspaceReadyUserId: null });
+        const alreadyReady =
+          get().workspaceReady && get().workspaceReadyUserId === userId;
+        // Avoid flipping workspaceReady→false when already bootstrapped for this
+        // user (unmounts AppNavigator children / Realtime and can OOM under Maestro).
+        if (!alreadyReady) {
+          set({ workspaceReady: false, workspaceReadyUserId: null });
+        }
 
         try {
           const restoredProjectId = await get().getLastSelectedProject(userId);

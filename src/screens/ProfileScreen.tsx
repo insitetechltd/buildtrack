@@ -279,10 +279,10 @@ export default function ProfileScreen({
 
             <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
               <View className="mb-4">
-                <Text className="mb-2 text-base font-medium text-gray-700">Current Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900">Current Password</Text>
                 <TextInput
                   ref={currentPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
                   placeholder="Enter your current password"
                   value={output.passwordChange.currentPassword}
                   onChangeText={actions.setCurrentPassword}
@@ -290,6 +290,7 @@ export default function ProfileScreen({
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
                   returnKeyType="next"
+                  style={{ fontSize: 18 }}
                   onKeyPress={(event) => handlePasswordFieldKeyPress("currentPassword", event)}
                   onSubmitEditing={() => {
                     movePasswordFieldFocus("currentPassword");
@@ -299,10 +300,10 @@ export default function ProfileScreen({
               </View>
 
               <View className="mb-4">
-                <Text className="mb-2 text-base font-medium text-gray-700">New Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900">New Password</Text>
                 <TextInput
                   ref={newPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
                   placeholder="Enter new password (min. 6 characters)"
                   value={output.passwordChange.newPassword}
                   onChangeText={actions.setNewPassword}
@@ -310,6 +311,7 @@ export default function ProfileScreen({
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
                   returnKeyType="next"
+                  style={{ fontSize: 18 }}
                   onKeyPress={(event) => handlePasswordFieldKeyPress("newPassword", event)}
                   onSubmitEditing={() => {
                     movePasswordFieldFocus("newPassword");
@@ -319,14 +321,15 @@ export default function ProfileScreen({
               </View>
 
               <View className="mb-6">
-                <Text className="mb-2 text-base font-medium text-gray-700">Confirm New Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900">Confirm New Password</Text>
                 <TextInput
                   ref={confirmPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
                   placeholder="Confirm new password"
                   value={output.passwordChange.confirmPassword}
                   onChangeText={actions.setConfirmPassword}
                   secureTextEntry
+                  style={{ fontSize: 18 }}
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
                   returnKeyType="done"

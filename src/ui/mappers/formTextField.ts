@@ -18,20 +18,26 @@ export function buildFormTextFieldContract(
 ): InputPrimitiveContract {
   const isDisabled = Boolean(input.disabled);
   const hasError = Boolean(input.error?.trim());
+  const isEmpty = input.value.trim().length === 0;
   const primitiveId = `form:input:${input.id}`;
+  // Do NOT mark normal editable fields as stale — that forces amber "stale" chrome
+  // (and was applied to every Login/CreateTask field after C2).
+  const structuralState: InputPrimitiveContract["structuralState"] = isDisabled
+    ? "disabled"
+    : "empty";
 
   return {
     primitiveId,
     family: "input",
-    density: input.density ?? "standard",
-    structuralState: isDisabled ? "disabled" : "stale",
+    density: input.density ?? "expanded",
+    structuralState,
     accessibilityLabel: input.label,
     accessibilityHint: `Input ${input.label}`,
     analyticsId: primitiveId,
     testId: input.testId ?? primitiveId,
     isLoading: false,
-    isEmpty: input.value.trim().length === 0,
-    isStale: !isDisabled,
+    isEmpty,
+    isStale: false,
     isDisabled,
     label: input.label,
     helperText: undefined,

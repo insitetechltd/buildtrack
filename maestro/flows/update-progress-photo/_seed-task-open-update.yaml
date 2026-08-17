@@ -1,0 +1,82 @@
+# Open API-seeded task → Task Detail → Update Progress.
+# Prerequisite: scripts/maestro/ensure-update-progress-seed-task.mjs
+# Runner must pass -e UP_SEED_TITLE=... (and optionally UP_SEED_TASK_ID).
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+# Land on Tasks (search works from list)
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__task_list"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+          delay: 2000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 15000
+# Pull-ish: open search and type seeded title (API insert may need list refetch)
+- tapOn:
+    id: "text-field:tasks-search__input"
+- eraseText
+- inputText: ${UP_SEED_TITLE}
+- hideKeyboard
+# Wait for row (realtime / refetch). Retry search once if needed.
+- runFlow:
+    when:
+      notVisible: ${".*" + UP_SEED_TITLE + ".*NEW"}
+    commands:
+      - tapOn:
+          id: "text-field:tasks-search__input"
+      - eraseText
+      - inputText: ${UP_SEED_TITLE}
+      - hideKeyboard
+      - waitForAnimationToEnd:
+          timeout: 2500
+- hideKeyboard
+- extendedWaitUntil:
+    visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
+    timeout: 20000
+# Search field also contains the title — index 1 targets the task row (0 = search).
+- tapOn:
+    text: ${".*" + UP_SEED_TITLE + ".*"}
+    index: 1
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - tapOn:
+          text: ${".*" + UP_SEED_TITLE + ".*NEW"}
+          delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 12000
+# Camera-from-task-detail → Update Progress (C3)
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__screen_title"
+    timeout: 12000
+- assertVisible:
+    id: "update-progress__take_photo"

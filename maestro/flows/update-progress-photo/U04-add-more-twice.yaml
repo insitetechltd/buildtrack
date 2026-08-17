@@ -1,0 +1,26 @@
+# U04 — Add more twice (maps P05)
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - u04
+---
+- evalScript: ${output.permutation = "U04"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- runFlow: ../create-task-photo/_reopen-library-from-selection.yaml
+- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+- runFlow: ../create-task-photo/_pick-second-keep-first.yaml
+- runFlow: ../create-task-photo/_reopen-library-from-selection.yaml
+- runFlow: ../create-task-photo/_assert-prior-selected-2.yaml
+- runFlow: ../create-task-photo/_pick-slot-2.yaml
+- assertVisible: ".*3 selected.*"
+- runFlow: ../create-task-photo/_accept-library.yaml
+- assertVisible:
+    id: "photo-selection__tile_2"
+- takeScreenshot: "up-U04-three"
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-update.yaml
+- takeScreenshot: "up-U04-done"

@@ -114,12 +114,12 @@ const InputField = ({
   children: React.ReactNode;
 }) => (
   <View testID="create-task__input-field">
-    <Text className="mb-2 text-base font-semibold text-gray-700">
-      {label} {required && <Text className="text-red-500">*</Text>}
+    <Text className="mb-2 text-lg font-semibold text-slate-900">
+      {label} {required && <Text className="text-red-600">*</Text>}
     </Text>
     {children}
     {error && (
-      <Text className="mt-1 text-sm text-red-500">{error}</Text>
+      <Text className="mt-1 text-base text-red-500">{error}</Text>
     )}
   </View>
 );
@@ -641,7 +641,7 @@ function CreateTaskEditorScreen({
         <ScrollView 
           ref={scrollViewRef}
           className="flex-1 py-4"
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           contentContainerStyle={{ paddingBottom: 32 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
@@ -666,12 +666,12 @@ function CreateTaskEditorScreen({
           {/* Text Input for Manual Entry - HIDDEN FOR NOW */}
           {false && (
             <View className="mb-4">
-              <Text className="text-base font-semibold text-gray-700 mb-2">
+              <Text className="text-lg font-semibold text-slate-900 mb-2">
                 {t.createTask.textInput}
               </Text>
               <View className="flex-row gap-2">
                 <TextInput
-                  className="flex-1 border rounded-lg px-3 py-3 text-base text-gray-900 bg-white border-gray-300"
+                  className="flex-1 border rounded-lg px-3 py-3 text-lg text-gray-900 bg-white border-gray-300"
                   placeholder={t.createTask.textInputPlaceholder}
                   value={textInput}
                   onChangeText={setTextInput}
@@ -833,6 +833,7 @@ function CreateTaskEditorScreen({
                   })}
                   inputTestId="createTask-title"
                   inputRef={titleInputRef}
+                  collapseEmptyChrome
                   onChangeText={handleTitleChange}
                   maxLength={100}
                   autoCorrect={false}
@@ -859,6 +860,7 @@ function CreateTaskEditorScreen({
                 })}
                 inputTestId="createTask-description"
                 inputRef={descriptionInputRef}
+                collapseEmptyChrome
                 onChangeText={handleDescriptionChange}
                 multiline
                 numberOfLines={4}
@@ -990,10 +992,10 @@ function CreateTaskEditorScreen({
                   testID="create-task__container_organization"
                   className="rounded-xl border border-slate-200 bg-white p-3"
                 >
-                  <Text className="mb-1 text-sm font-semibold uppercase tracking-[1.2px] text-slate-500">
+                  <Text className="mb-1 text-base font-semibold uppercase tracking-[1.2px] text-slate-500">
                     Area
                   </Text>
-                  <Text className="mb-3 text-sm text-slate-600">
+                  <Text className="mb-3 text-base text-slate-600">
                     Optional. Tags stay for flexible labels; use areas only for stable browse groups.
                   </Text>
                   <View className="flex-row flex-wrap gap-2 mb-3">
@@ -1028,7 +1030,7 @@ function CreateTaskEditorScreen({
                   </View>
                   {containerOrganization.selectedContainerId ? (
                     <View className="mb-3">
-                      <Text className="mb-2 text-sm text-slate-600">Sub-area (optional)</Text>
+                      <Text className="mb-2 text-base font-semibold text-slate-900">Sub-area (optional)</Text>
                       <View className="flex-row flex-wrap gap-2">
                         {containerOrganization.containers
                           .filter(
@@ -1137,10 +1139,10 @@ function CreateTaskEditorScreen({
                   testID="create-task__selected_assignees"
                   className="rounded-xl border border-gray-200 bg-gray-50 p-3"
                 >
-                  <Text className="mb-2 text-sm font-medium text-gray-700">
+                  <Text className="mb-2 text-base font-semibold text-slate-900">
                     {t.createTask.selectedUsers}
                   </Text>
-                  <Text className="mb-2 text-xs text-gray-500">
+                  <Text className="mb-2 text-sm text-gray-500">
                     Tap a name to set Primary. Other selected users save as Delegates.
                   </Text>
                   <View className="flex-row flex-wrap">
@@ -1289,6 +1291,7 @@ function CreateTaskEditorScreen({
                 })}
                 inputTestId="createTask-taskReference"
                 inputRef={taskReferenceInputRef}
+                collapseEmptyChrome
                 onChangeText={handleTaskReferenceChange}
                 maxLength={50}
                 autoCorrect={false}
@@ -1892,7 +1895,8 @@ function CreateTaskEditorScreen({
             <View className="flex-row items-center bg-gray-100 rounded-lg px-3 py-2">
               <Ionicons name="search" size={20} color="#6b7280" />
               <TextInput
-                className="flex-1 ml-2 text-lg text-gray-900"
+                className="flex-1 ml-2 text-base text-gray-900"
+                style={{ fontSize: 16 }}
                 placeholder={t.createTask.searchPlaceholder}
                 placeholderTextColor="#9ca3af"
                 value={assigneePicker.userSearchQuery}

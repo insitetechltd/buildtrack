@@ -1,0 +1,23 @@
+appId: com.buildtrack.app.local
+---
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__take_photo"
+    direction: UP
+- tapOn:
+    id: "update-progress__take_photo"
+- tapOn: "Choose from Library"
+- extendedWaitUntil:
+    visible:
+      id: "in-app-library__screen"
+    timeout: 8000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__loading"
+    commands:
+      - extendedWaitUntil:
+          notVisible:
+            id: "in-app-library__loading"
+          timeout: 5000

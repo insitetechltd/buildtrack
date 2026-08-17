@@ -244,15 +244,51 @@ export function useCreateTaskViewAdapter({
 
   // 1. AsyncStorage Persistence Logic
   const persistDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+  const persistDraftDisabledRef = useRef(false);
+  const persistDraftWarnedRef = useRef(false);
+
   const persistDraft = useCallback(async (data: CreateTaskFormModel) => {
+    if (persistDraftDisabledRef.current) {
+      return;
+    }
     try {
-      await AsyncStorage.setItem(FORM_DATA_STORAGE_KEY, JSON.stringify({
-        ...data,
-        dueDate: data.dueDate.toISOString()
-      }));
+      // Photos live on disk; persist URIs only so draft writes stay small and reliable.
+      const attachments = (data.attachments ?? []).map((attachment) => {
+        if (typeof attachment === 'string') {
+          return attachment;
+        }
+        if (attachment && typeof attachment === 'object' && 'uri' in attachment) {
+          const { uri, id, type, name } = attachment as {
+            uri?: string;
+            id?: string;
+            type?: string;
+            name?: string;
+          };
+          return { uri, id, type, name };
+        }
+        return attachment;
+      });
+
+      await AsyncStorage.setItem(
+        FORM_DATA_STORAGE_KEY,
+        JSON.stringify({
+          ...data,
+          attachments,
+          dueDate: data.dueDate.toISOString(),
+        }),
+      );
     } catch (e) {
-      console.error('Failed to persist draft', e);
+      const message = e instanceof Error ? e.message : String(e);
+      const isPermissionOrManifest =
+        /permission|manifest|Operation not permitted|Code=513/i.test(message);
+      if (isPermissionOrManifest) {
+        persistDraftDisabledRef.current = true;
+      }
+      if (!persistDraftWarnedRef.current) {
+        persistDraftWarnedRef.current = true;
+        // Warn once — LogBox ERROR toasts every keystroke freeze the UI when storage is broken.
+        console.warn('Failed to persist draft (further attempts suppressed)', message);
+      }
     }
   }, []);
 

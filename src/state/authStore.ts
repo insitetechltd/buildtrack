@@ -171,26 +171,37 @@ export const useAuthStore = create<AuthStore>()(
                   isInitialized: true  // Ensure initialized after login
                 });
                 
-                // Trigger data refresh after successful login
+                // Warm projects/assignments first; defer heavy task/user fetch so
+                // Hermes is not JSON-materializing ~150 tasks during the login
+                // navigation transition (SIGABRT OOM under Maestro clearState).
                 setTimeout(() => {
                   try {
                     const projectStore = require('./projectStore.supabase').useProjectStore.getState();
-                    const taskStore = require('./taskStore.supabase').useTaskStore.getState();
-                    const userStore = require('./userStore.supabase').useUserStore.getState();
-                    
-                    // Warm the authoritative stores immediately after login.
                     Promise.all([
                       projectStore.fetchProjects?.(true),
                       projectStore.fetchUserProjectAssignments?.(userData.id, true),
-                      taskStore.fetchTasks?.(true),
-                      userStore.fetchUsers?.()
-                    ]).catch(error => {
-                      console.error('Error initializing user data after login:', error);
+                    ]).catch((error) => {
+                      console.error('Error initializing project data after login:', error);
                     });
                   } catch (error) {
-                    console.error('Error triggering data refresh after login:', error);
+                    console.error('Error triggering project refresh after login:', error);
                   }
                 }, 100);
+
+                setTimeout(() => {
+                  try {
+                    const taskStore = require('./taskStore.supabase').useTaskStore.getState();
+                    const userStore = require('./userStore.supabase').useUserStore.getState();
+                    Promise.all([
+                      taskStore.fetchTasks?.(true),
+                      userStore.fetchUsers?.(),
+                    ]).catch((error) => {
+                      console.error('Error initializing task/user data after login:', error);
+                    });
+                  } catch (error) {
+                    console.error('Error triggering task/user refresh after login:', error);
+                  }
+                }, 1500);
                 
                 return true;
               }

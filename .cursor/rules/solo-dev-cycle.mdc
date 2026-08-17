@@ -13,13 +13,14 @@ alwaysApply: true
 - UI change reports: include visual artifacts + delta explanation (see `.cursor/rules/ui-visual-report.mdc`).
 - Before Maestro or release claims, run `npm run dev:doctor`.
 - Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
+- Multi-critique + form interaction gates: `.cursor/rules/multi-critique-validation.mdc` (plan ≥2 critiques; validation ≥1; headed TextField smoke).
 - Maestro 8-gate preflight: `.cursor/rules/maestro-preflight.md`.
 
 ## Concurrent development (default)
 
 - Orchestrator **prefers concurrent tracks** when ownership partitions (disjoint files / P## cases / idle-parallel milestones).
 - Cap Maestro at **≤2** distinct sim UDIDs on this machine; **1 job per UDID**.
-- Independent Maestro cases: `scripts/maestro/run-create-task-photo-one.sh P##` while iterating; full suite = final gate only.
+- Independent Maestro cases while iterating (not full suites): `scripts/maestro/run-create-task-photo-one.sh P##` and `scripts/maestro/run-update-progress-photo-one.sh U##`; full suites = final gate only.
 - Shared helpers / product SoT / Photos `FORCE_PURGE` = single-writer; sync then re-run affected cases.
 - Details: `.cursor/skills/insite-dev/SKILL.md` § Concurrent development + `solo-dev-harness` workflows.md.
 

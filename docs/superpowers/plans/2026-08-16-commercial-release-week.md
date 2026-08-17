@@ -41,8 +41,8 @@
 
 | Rank | Item | Why | Notes |
 |------|------|-----|-------|
-| **R6** | **Business model decision (written)** | User #4; unlocks payment SKUs | **LOCKED 2026-08-16** — see § R6 below (trial + 3 tiers + worker seats) |
-| **R7** | **Payment hook** | User #3 | Must match R6: card-at-trial + post-trial charge; Stripe Checkout/Subscriptions preferred over sales-only CTA |
+| **R6** | **Business model decision (written)** | User #4; unlocks payment SKUs | **LOCKED** (org tiers; amended **2026-08-17** — see § R6) |
+| **R7** | **Payment hook** | User #3 | Must match R6: org subscription + card-at-trial + post-trial charge; Stripe Checkout/Subscriptions preferred |
 | **R8** | **UI simplify pass (touchpoint cut)** | User #2 | **Not** full Phase C. Cut/hide: nested admin chrome, duplicate entry points, fat Create Task optional blocks behind progressive disclosure already started. Cap scope to **field core loop** |
 | **R9** | **Onboarding for first commercial tenant** | Without invite/approve path clarity, sales cannot land | Pending users already exist; verify admin→approve→worker login once on RC |
 
@@ -76,7 +76,7 @@
 | 1. Remove eng interface | **R1** | Must do |
 | 2. Simplify UI/touchpoints | **R8** (narrow) | Must do **bounded**; reject Phase C sprawl |
 | 3. Add payment hook | **R7** | Must do minimal; full billing = week+ |
-| 4. Finalize payment plans / business model | **R6** | **LOCKED** (monthly; trial; Growth/Unlimited + worker $9.99; entry = create+update) |
+| 4. Finalize payment plans / business model | **R6** | **LOCKED** (org/company SoT; amended 2026-08-17 — see § R6) |
 
 ---
 
@@ -103,30 +103,39 @@ Reject or reframe work that is P3 polish unless you explicitly override the nort
 
 ---
 
-## R6 — Business model (LOCKED 2026-08-16)
+## R6 — Business model (LOCKED; amended 2026-08-17)
 
-**Decision owner:** user (this session). Orchestrator treats this as SoT for R7 SKU copy and entitlement design.  
-**Cadence:** all paid prices are **per month** (confirmed).
+**Decision owner:** user. Orchestrator treats this as SoT for R7 SKU copy and entitlement design.  
+**Billing entity:** **organizational (company)** — not personal/individual subscriptions.  
+**Cadence:** all paid prices are **per month**.
 
 ### Trial
-- Duration: **1 week max**
-- Scope: **1 project only**
+- Duration: **1 month max**
+- Scope: **1 company** · **1 project** · **1 PM seat** · **5 worker seats**
+- Meter: **&lt; 100 entries total** over the trial
 - Billing: **credit card collected at trial start**
 - After trial: **auto-charge** to the paid plan chosen at signup (no ongoing free tier)
 
-### Three company / PM tiers (+ worker add-on)
+### Company plans (included seats)
 
-| Tier | Price | Who | Limits |
-|------|-------|-----|--------|
-| **Free (trial)** | $0 for ≤1 week | New accounts | **1 project**; then auto-charge |
-| **Growth** | **US$19.99 / month** | **PM + company admin** tier (not worker rate) | **5 projects**; **≤200 entries / week** |
-| **Unlimited** | **US$199.99 / month** | **PM + company admin** tier | **Unlimited projects** + **unlimited entries** for PMs/admins |
-| **Worker seat** | **US$9.99 / month** each | **Workers only** | **50 entries / week** per worker |
+| Tier | Price | Included | Limits |
+|------|-------|----------|--------|
+| **Free (trial)** | $0 for ≤1 month | 1 company · 1 PM · 5 workers | **1 project** · **&lt;100 entries total** · then auto-charge |
+| **Growth** | **US$19.99 / month** *(base price unchanged unless you override)* | 1 company · **1 PM** · **5 worker seats** | **5 projects** · **&lt;200 entries / month** |
+| **Unlimited** | **US$199.99 / month** *(base price unchanged unless you override)* | 1 company · **1 PM** · **5 worker seats** *(same included seat pack as Growth unless you override)* | **Unlimited projects** · **unlimited entries** · **max 5 GB** storage/usage |
+
+### Add-on packs (stack on Growth or Unlimited)
+
+| Add-on | Price | Grants |
+|--------|-------|--------|
+| **Additional worker pack** | **US$4.99 / month** | **+5 worker seats** |
+| **Additional PM seat** | **US$9.99 / month** | **+1 PM seat** |
 
 ### Billing roles
-- **Project managers** and **company admins** → Growth or Unlimited rates (never the worker SKU).
-- **Workers** → **$9.99/mo** seat add-on only.
-- Assumption (week-1): Growth/Unlimited are **company subscriptions** that cover PM/admin users; worker seats stack on top. Correct if you meant per-PM seat billing instead.
+- Subscription is always on the **company**.
+- **PM seats** (base + $9.99 add-ons) cover project-manager / company-admin class users.
+- **Worker seats** (base 5 + $4.99 packs of 5) cover workers / members only.
+- Supersedes prior personal / per-worker **$9.99 each** and **entries/week** metering.
 
 ### Entry (metering unit) — LOCKED
 An **entry** counts as either:
@@ -136,23 +145,25 @@ An **entry** counts as either:
 (Photo-only / non-task actions do **not** count unless they also create/update a task.)
 
 ### Implications for release week
-- R7: Stripe monthly subscriptions + trial with card-on-file + auto-convert after 7 days; SKUs = Growth, Unlimited, Worker seat.
-- R13: meter **projects** + **entries/week** (create+update); soft limits + upgrade CTA OK if hard block slips.
-- Map app roles → billable class: `company_admin` / manager-class PM → Growth|Unlimited; `worker` / member → Worker seat.
+- R7: Stripe **company** monthly subscriptions + trial with card-on-file + auto-convert after **30 days**; SKUs = Growth, Unlimited, Worker pack (+5), PM seat (+1).
+- R13: meter **projects** + **entries** (trial = total; Growth = /month) + **storage (5 GB on Unlimited)** + **seat counts** (PM / worker); soft limits + upgrade CTA OK if hard block slips.
+- Map app roles → seats: `company_admin` / manager-class PM → **PM seat**; `worker` / member → **worker seat**.
 
-### Clarifications closed
-1. Cadence → **month** (all prices)  
-2. Worker → **$9.99/mo** (not $10)  
-3. Entry → **task create + task update**  
-4. After trial → **auto-charge**  
-5. PM + company admin → **higher tiers**; workers only on **$9.99**
+### Amendment history
+- **2026-08-16:** initial lock (personal-leaning tiers; weekly entry caps; $9.99/worker).
+- **2026-08-17:** **organizational** SoT; trial **1 month**; Growth entries **per month**; Unlimited **5 GB**; worker pack **$4.99 / +5**; PM add-on **$9.99 / +1**.
+
+### Clarifications still open (non-blocking defaults)
+1. Growth/Unlimited **base list prices** stay **$19.99 / $199.99** until you change them.  
+2. Unlimited included worker pack = **5** (same as Growth) unless you specify otherwise.  
+3. “5 GB usage” = **hot storage under company** (align with 04c retention) unless you define bandwidth separately.
 
 ---
 
 ## Remaining GO (B–D still open)
 
 **B. Payment week-1:**  
-1. Stripe Checkout / Subscriptions hook + card-at-trial + auto-charge after 7d (matches R6)  
+1. Stripe Checkout / Subscriptions hook + card-at-trial + auto-charge after **30d** (matches R6)  
 2. “Request access / sales” CTA only (**conflicts** with card-at-trial — avoid)  
 3. Full Stripe + webhooks + hard metering (may slip week)
 

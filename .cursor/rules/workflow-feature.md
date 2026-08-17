@@ -26,11 +26,13 @@ Output: Scope, acceptance criteria, affected files list, validation plan, assump
 - Inspect: taskStore.supabase.ts, relevant screens in src/screens/, AppNavigator.tsx, supabase.ts, package.json scripts
 - Do NOT edit code here.
 - Classify tests per TESTING_STRATEGY.md: L1 unit / L2 regression / L3 journeys-simulation / L4 Maestro which flows.
+- **Multi-critique (orchestrator):** before Builder, run ≥2 parallel plan/validation critiques (prefer different models). See `.cursor/rules/multi-critique-validation.mdc`.
 
 **Phase B — Build**
 - Smallest change that meets acceptance criteria.
 - Follow existing patterns. No new architecture without Planner-approved justification.
 - Add tests for new branches if they materially reduce regression risk.
+- Shared form primitives: include Gate C interaction acceptance from `multi-critique-validation.mdc`.
 
 **Phase C — Review (Self-Review Checklist)**
 1. Navigation transitions: any new screen params safe? safe-area applied?
@@ -40,6 +42,7 @@ Output: Scope, acceptance criteria, affected files list, validation plan, assump
 5. Performance: FlatLists have keyExtractor, no unnecessary re-renders
 6. Stale data: after navigation back/forth, state refetch correct?
 7. Accessibility: testIDs added for new interactive elements (MAESTRO requirement)
+8. **Form/input primitives:** hit target fills chrome; keyboard + submit path; contract defaults not forcing stale/error chrome
 
 Mark findings C/H/M/L. Block if C/H open. Proceed only if 0 C/H.
 
@@ -51,9 +54,11 @@ Mark findings C/H/M/L. Block if C/H open. Proceed only if 0 C/H.
 - Smallest relevant Jest first.
 - Then test:regression if touching tasks/uploads/components/integration.
 - Maestro: ONLY if user-visible flows changed AND flow exists; preflight gates ON (see maestro-preflight.md).
+- **Validation critique:** independent agent/model challenges gaps; interaction proofs for forms before “done”.
 
 **Phase F — QA Validate (user-visible flows required)**
 - End-to-end user behavior check: transitions, loading, feedback, gating, form submit, update/review, upload, stale persistence.
+- Form/TextField changes: headed smoke — tap chrome to focus, type, submit with keyboard open.
 - Output: pass / issues list (return to Builder).
 
 ## 4. Feature-Specific Patterns

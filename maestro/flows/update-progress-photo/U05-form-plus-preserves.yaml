@@ -1,0 +1,21 @@
+# U05 — Form + preserves prior (maps P07)
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - u05
+---
+- evalScript: ${output.permutation = "U05"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "up-U05-form-one"
+- runFlow: _reopen-library-from-form.yaml
+- runFlow: ../create-task-photo/_assert-prior-selected-1.yaml
+- runFlow: _cancel-library-to-update.yaml
+- assertVisible:
+    id: "update-progress__take_photo"
+- runFlow: _submit-update.yaml
+- takeScreenshot: "up-U05-done"

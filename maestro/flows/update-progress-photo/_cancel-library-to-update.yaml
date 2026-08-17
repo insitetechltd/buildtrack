@@ -1,0 +1,36 @@
+# Cancel InAppLibrary → land on Update Progress (retry cancel / system back like P06/P07).
+# Add-more parent may briefly show Select Photos — back once if so.
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    id: "in-app-library__cancel"
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - tapOn:
+          id: "in-app-library__cancel"
+- runFlow:
+    when:
+      visible:
+        id: "in-app-library__screen"
+    commands:
+      - back
+- waitForAnimationToEnd:
+    timeout: 1000
+- runFlow:
+    when:
+      visible:
+        id: "photo-selection__confirm"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+      - waitForAnimationToEnd:
+          timeout: 1000
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__screen_title"
+    timeout: 15000

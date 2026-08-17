@@ -1,5 +1,7 @@
 # Overnight handoff — 2026-08-17 (updated morning)
 
+**Superseded as pick-up file.** Session continuity SOP is now `documentation/NOW.md` (overwrite in place). Keep this file for U-suite / R1 engineering detail only.
+
 ## Status: U01–U12 GREEN + R1 entry-point strip
 
 ### One-shot vs suite (same as P01–P22)
@@ -49,13 +51,15 @@ Maestro `sprint7-*` flows remain for QA on dev builds.
 
 ### Still open (not overnight U/R1)
 
-- R2 RC native rebuild, R3–R5 release week items
+- **R2 local iOS RC rebuild: DONE 2026-08-17** — evidence `docs/superpowers/evidence/2026-08-17-r2-rc-native-rebuild.md`
+- R3 core-loop smoke **on this RC binary**
+- R4–R5 store/env; then P1 R7/R8/R9
 - `TaskDetailScreen.header.test.tsx` expects no back button (pre-existing vs `showBackButton={true}`)
-- Commit only when asked
 
 ## Next kickoff
 
 ```text
-R2 RC rebuild + R3 smoke on RC; optional full U01–U12 re-run as confidence.
-Do not commit overnight tree unless asked.
+R3: smoke core loop on rebuilt sim RC (login → photo → task → update).
+Compile locally; EAS submit-only.
+Commit docs when asked.
 ```

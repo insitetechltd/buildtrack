@@ -8,20 +8,23 @@ description: >-
 
 # Insite Dev Overlay
 
-Use with personal skill `solo-dev-harness`.
+Use with personal skill `solo-dev-harness` (`sop-session.md`, `capabilities.md`).
 
 ## Session kickoff
 
-1. Read `AGENTS.md` § Current Delivery Status
-2. Skim active rows in `documentation/ROADMAP.md`
-3. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
-4. State pipeline focus in ≤5 lines (milestone + next proof)
+1. Read `documentation/NOW.md` (doing / next / locked / parked)
+2. Read `AGENTS.md` § Current Delivery Status
+3. Skim active rows in `documentation/ROADMAP.md`
+4. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
+5. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
+6. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
 
 ## Session teardown
 
 1. What shipped / what blocked
-2. Update ROADMAP / AGENTS status only if evidence changed
-3. Leave a next-session kickoff prompt (max 10 lines)
+2. **Overwrite** `documentation/NOW.md` (same file; next-action + new locks/parks). Do not create dated NOW copies.
+3. Update ROADMAP / AGENTS status only if evidence changed
+4. If thinking changed and the user asked to commit, include NOW in that commit (default push)
 
 ## Confidence ladder
 
@@ -48,6 +51,7 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 - Supabase client: `src/api/supabase.ts`
 - Nav: `src/navigation/AppNavigator.tsx`
 - Docs governance: `documentation/SOURCE_OF_TRUTH.md`
+- Session continuity: `documentation/NOW.md`
 
 ## Maestro preflight (mandatory before flow claims)
 

@@ -159,7 +159,7 @@ Commit Gate: between @reviewer (pass) and @test-engineer, ALWAYS run the `git-co
 
 ### Milestone Gate (applies to ALL workflows before @planner dispatch)
 
-Before running the workflow, read `AGENTS.md § Current Delivery Status` and `documentation/ROADMAP.md`. If the task falls inside an active milestone (WS-UX / M-UX-01 redesign, WS-QA / M-QA-03 hybrid QA, WS-SUPABASE / M-SUPABASE-01) or a pipeline milestone (WS-QA / M-QA-01, M-QA-02):
+Before running the workflow, read `documentation/NOW.md`, then `AGENTS.md § Current Delivery Status` and `documentation/ROADMAP.md`. If the task falls inside an active milestone (WS-UX / M-UX-01 redesign, WS-QA / M-QA-03 hybrid QA, WS-SUPABASE / M-SUPABASE-01) or a pipeline milestone (WS-QA / M-QA-01, M-QA-02):
 - The @planner must cite the milestone when writing scope
 - The @test-engineer must classify tests correctly per TESTING_STRATEGY.md layers
 - The @qa-validator (if called) must explicitly route Maestro scripts for the correct flow

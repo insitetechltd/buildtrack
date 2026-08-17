@@ -12,18 +12,39 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 | Project law | `.cursor/rules/*.mdc` | Always-on / glob rules for Insite |
 | Project overlay | `.cursor/skills/insite-dev/` | Kickoff, doctor, Maestro preflight, SoT paths |
 | Inventory | `AGENTS.md` | Milestones, stack, role inventory |
+| Session continuity | `documentation/NOW.md` | Doing / next / locked / parked — overwrite at teardown |
 | Procedure | `SOLO_OPERATING_PROCEDURE.md` | Detailed operator workflow |
 | Machine proof | `npm run dev:doctor` → `scripts/dev/doctor.sh` | Env ready before Maestro/release |
+| Terminology | this doc § Terminology | Smoke / suite / RC / week-rank R# / Wave 2 / Maestro |
 
 ## Daily loop (Insite)
 
 1. Open Cursor on this repo.
-2. Kickoff: read `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
+2. Kickoff: read `documentation/NOW.md`, then `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
 3. For non-trivial work, follow `solo-dev-harness` workflows (Planner → Builder → Reviewer → Test → QA/Release as needed).
 4. Confidence ladder: Jest (`TESTING_STRATEGY.md`) → Maestro via `scripts/maestro/run-local.sh` → human accept.
 5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 UDIDs; one-shot case runs while developing; full suite = final gate.
 6. Commit only when you ask; never before Reviewer clears Critical/High.
-7. Teardown: note shipped/blocked; leave a next-session kickoff prompt.
+7. Teardown: overwrite `documentation/NOW.md` (doing/next/locked/parked); update ROADMAP/AGENTS only if evidence changed. Include NOW in the next user-requested commit.
+
+## Terminology (plain language)
+
+Shop shorthand used in this harness and commercial release week. Prefer these labels in chat; ask if anything is unclear.
+
+| Term | Plain meaning |
+|------|----------------|
+| **Smoke** | Quick “is it on fire?” check — main path works, not every edge case |
+| **Suite** | Full set of automated UI tests (e.g. all U01–U12) |
+| **One-shot** | Run **one** of those tests alone while fixing |
+| **RC** | Release candidate — the build you might ship, not a random local experiment |
+| **Week-rank R1, R2…** | This week’s ordered ship checklist (**R2** = rebuild the native app) |
+| **Wave 2** | Next *product* release (DMS/web, Order 15.x) — **not** week-rank R2 |
+| **Native rebuild** | Recompile the real iOS/Android app (pods, Skia, etc.), not just refresh JS |
+| **Metro / Expo bundle** | The JavaScript the app loads while developing — can update without rebuilding native |
+| **Maestro** | Tool that taps the simulator like a person (our UI automation) |
+| **Gate / GO** | Stop and get your OK before risky steps (schema, store submit, version bump) |
+
+Also: **Cloudflare R2** = object storage (infra). Do not confuse with week-rank R2 or Wave 2.
 
 ## Insite `.cursor/rules`
 
@@ -62,11 +83,14 @@ bash ~/.cursor/skills/solo-dev-harness/scripts/seed-project.sh /path/to/new-repo
 
 Then customize:
 
-1. `AGENTS.md` — stack, SoT paths, milestone status
-2. `.cursor/rules/` — domain + stack rules (keep short; one concern each)
-3. `scripts/dev/doctor.sh` — stack-specific checks (env **names** only)
-4. `package.json` — `"dev:doctor": "bash ./scripts/dev/doctor.sh"`
-5. Rename/customize `.cursor/skills/project-dev/` overlay
+1. `documentation/NOW.md` — Doing / Next (session SOP)
+2. `AGENTS.md` — stack, SoT paths, milestone status
+3. `.cursor/rules/` — domain + stack rules (keep short; one concern each)
+4. `scripts/dev/doctor.sh` — stack-specific checks (env **names** only)
+5. `package.json` — `"dev:doctor": "bash ./scripts/dev/doctor.sh"`
+6. Rename/customize `.cursor/skills/project-dev/` overlay
+
+Portable SOP: `~/.cursor/skills/solo-dev-harness/sop-session.md`. Seed also copies NOW + sessionStart hook.
 
 Details: `~/.cursor/skills/solo-dev-harness/bootstrap.md`.
 

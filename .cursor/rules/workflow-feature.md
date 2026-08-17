@@ -4,6 +4,7 @@ Use this rule file when the user request is a new feature.
 
 ## 1. Milestone Gate (MANDATORY first action)
 Read:
+- documentation/NOW.md
 - AGENTS.md § Current Delivery Status
 - documentation/ROADMAP.md milestone ledger
 

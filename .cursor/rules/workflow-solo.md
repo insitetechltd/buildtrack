@@ -4,6 +4,7 @@ Use this rule file for any non-trivial task that doesn't fit feature/bugfix/rele
 
 ## 1. Milestone Gate (MANDATORY first action — BEFORE ANYTHING ELSE)
 ```
+Read documentation/NOW.md
 Read AGENTS.md § Current Delivery Status
 Read documentation/ROADMAP.md milestone ledger
 ```
@@ -45,6 +46,7 @@ Pick exactly ONE route from:
 - QA Validator for user-visible / nav / upload / task-flow
 - Release Manager only for build/store/env decisions
 - Review ALWAYS before commit. 0 Critical / 0 High findings mandatory.
+- User-visible or risky diffs: after Reviewer, run Bugbot (`review-bugbot`) unless user declined. Auth/RLS/secrets/payments: Security Review (`review-security`) unless declined.
 - Commit gate ordering: Build → Review 0 C/H → Conventional commit → Test → QA (if user-visible)
 - NEVER commit pre-review. NEVER commit with C/H open.
 - For task-domain work: inspect taskStore.supabase.ts + screens + AppNavigator.tsx

@@ -23,6 +23,8 @@
 
 **Assumption (default until you override):** “First commercial release” = **paid pilot / early access** on TestFlight + Play internal/closed testing — not full App Store feature-complete + automated billing for every tenant. Payment can ship as **hook + manual activation** week-1.
 
+**Build channel (LOCKED 2026-08-17):** Compile **locally** (`npx expo run:ios` / Android local). Use **EAS only for App Store / Play submission** — do **not** burn EAS cloud build minutes for day-to-day RC validation. R2/R3 proof = local native binary + Maestro/sim.
+
 ---
 
 ## Ranked backlog toward release (P0 → P3)
@@ -32,7 +34,7 @@
 | Rank | Item | Why release-critical | Roadmap / source | Est. |
 |------|------|----------------------|------------------|------|
 | **R1** | **Strip engineering UI** from production builds | User #1; cannot ship with Sprint7 sandbox / Dev Admin / Developer Settings visible to customers | Profile menu → Developer Settings; `DevAdminScreen`; Maestro `sprint7-*` flows stay for QA only | 0.5–1 d |
-| **R2** | **Release candidate build** (native rebuild after S-UX-01Q2 IMGLY uninstall) | App will not match repo without rebuild; Skia draw path needs fresh native | ROADMAP S-UX-01Q2 Notes | 0.5–1 d + CI |
+| **R2** | **Release candidate build** (native rebuild after S-UX-01Q2 IMGLY uninstall) | App will not match repo without rebuild; Skia draw path needs fresh native | ROADMAP S-UX-01Q2 Notes | 0.5–1 d |
 | **R3** | **Core loop freeze + smoke** | Commercial trust = photo→task→review→complete works on RC | Create-task-photo P01–P22 already green; re-run on RC + login/create/detail smoke | 0.5–1 d |
 | **R4** | **Store / legal prerequisites** | Privacy policy URL, account deletion path, data collection disclosures, support URL | `ANDROID_PLAY_STORE_CHECKLIST.md`, `HOST_PRIVACY_POLICY_GOOGLE.md`, ASC | 0.5–1 d (mostly you) |
 | **R5** | **Production env hardening** | No debug LogBox in release; correct `EXPO_PUBLIC_*`; no sandbox auto-init; bundle id / signing match release | Release Manager gate; danger-gates for version bumps | 0.5 d |
@@ -66,6 +68,27 @@
 | S-UX-01P typeahead | Deferred UX hygiene |
 | LLM / AI feature line | Explicitly paused |
 | M-CURSOR Trae delete | Tooling, not customer |
+| **WS-DMS / WS-WEB** (Order 15.x) | **Wave 2** — second product release (web admin + DMS). Not week-rank **R2** (RC rebuild). |
+
+---
+
+## Wave 2 (second product release)
+
+**Wave 2** = main feature set for the **second product release** (web admin + DMS).  
+Colloquial “R2” for that intent maps here — **do not** use **R2** in chat/docs for Wave 2, because week-rank **R2** already means **RC native rebuild** this commercial week.
+
+| Name | Meaning |
+|------|---------|
+| Week-rank **R1–R13** | This commercial ship checklist (R2 = RC rebuild) |
+| **Wave 2** | Next product release after first commercial ship (Order 15.x) |
+| Cloudflare R2 | Object storage (infra only) |
+
+| Wave | Scope | Roadmap |
+|------|-------|---------|
+| **This week → first commercial** | R1 strip → RC → smoke / store / payment hook | R1–R9 (R10–R13 if time) |
+| **Wave 2** | Web admin + DMS on Supabase (`buildtrack-documents`); company data pool with Taskr | M-WEB-01/02, M-DMS-01..04, M-WEB-03, M-QA-04, M-DMS-DATA (Order 15.1–15.9). Kickoff Closed: M-DMS-00 |
+
+Do not schedule 15.x as active focus until the first commercial RC is out. Live DMS DDL still Human Gate.
 
 ---
 

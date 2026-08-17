@@ -275,6 +275,8 @@ When a document should stay active:
   - documentation-governance authority
 - [ROADMAP.md](file:///Volumes/KooDrive/Insite%20App/documentation/ROADMAP.md)
   - single canonical WS/M/S milestone inventory and execution order
+- [NOW.md](file:///Volumes/KooDrive/Insite%20App/documentation/NOW.md)
+  - session continuity (doing / next / locked / parked); overwrite in place; git-tracked
 - [SOLO_OPERATING_PROCEDURE.md](file:///Volumes/KooDrive/Insite%20App/SOLO_OPERATING_PROCEDURE.md)
   - canonical operator workflow reference
 - [CURSOR_DEV_HARNESS.md](file:///Volumes/KooDrive/Insite%20App/documentation/CURSOR_DEV_HARNESS.md)

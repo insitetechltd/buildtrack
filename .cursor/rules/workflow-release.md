@@ -3,7 +3,7 @@
 Use this rule file when the task touches: build, deployment, environment, versioning, store submission, release readiness.
 
 ## 1. Milestone Gate (MANDATORY first action)
-Read AGENTS.md Current Delivery Status + documentation/ROADMAP.md milestone ledger. Cross-check milestone gate status BEFORE marking anything release-ready.
+Read documentation/NOW.md, then AGENTS.md Current Delivery Status + documentation/ROADMAP.md milestone ledger. Cross-check milestone gate status BEFORE marking anything release-ready.
 
 DO NOT close WS-QA/M-QA-02 or M-QA-03 as released just because local builds pass. Re-verify master-side bootstrap wrap-up status per AGENTS.md ledger first.
 

@@ -3,7 +3,7 @@
 Use this rule file when the user request is a bug fix.
 
 ## 1. Milestone Gate (MANDATORY first action)
-Read AGENTS.md Current Delivery Status + documentation/ROADMAP.md. Cite milestone if relevant.
+Read documentation/NOW.md, then AGENTS.md Current Delivery Status + documentation/ROADMAP.md. Cite milestone if relevant.
 
 ## 2. Autonomy Policy Assessment
 Ask ONLY if: bug repro is missing critical info, fix requires schema change, fix needs auth decisions, scope creep obvious.

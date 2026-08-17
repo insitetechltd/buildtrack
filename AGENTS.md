@@ -6,7 +6,7 @@ Operational methodology lives in the personal skill `solo-dev-harness`
 and the project overlay skill `.cursor/skills/insite-dev/`.
 
 Machine readiness: `npm run dev:doctor` (`scripts/dev/doctor.sh`).
-Harness runbook: `documentation/CURSOR_DEV_HARNESS.md`.
+Harness runbook: `documentation/CURSOR_DEV_HARNESS.md` (includes § Terminology — smoke / suite / RC / week-rank R# / Wave 2).
 
 Source of truth scanned for this inventory:
 - `.cursor/rules/*.mdc` (project constitution — **canonical**)
@@ -15,6 +15,7 @@ Source of truth scanned for this inventory:
 - `SOLO_OPERATING_PROCEDURE.md`
 - `TESTING_STRATEGY.md`
 - `documentation/ROADMAP.md`
+- `documentation/NOW.md` (session continuity SOP)
 - `documentation/SOURCE_OF_TRUTH.md`
 - Legacy (read-only during Trae exit — do not extend):
   - `.trae/agents/*.md`
@@ -54,7 +55,9 @@ Dual-loader convention (Cursor):
 - `WS-SUPABASE / M-SUPABASE-04e` **Pipeline (deferred)** — operator-owned cold archive (copy-out then delete hot; restore = copy-back after back-pay). Hosted Supabase cannot Glacier/lifecycle-transition. Not active focus.
 - `WS-UX / S-UX-01Q` **Pipeline (P0 + upload Phase 1+2 closed; Phase C C1–C4 delivered 2026-08-16; C5 Closed 2026-08-17)**: UI/UX consistency — audit `docs/superpowers/analysis/2026-08-14-ui-ux-consistency-audit.md`. Phase C: shells, TextField, TaskAction retirement, ActivityStyleRowCard SoT. **C5 Closed:** Insite=company, Taskr=app (no rename); attribution/Tailwind tokens tabled. **Still deferred:** C6/`S-UX-01P`; Option B; caption. Idle-parallel ok vs 04b.
 - `WS-UX / S-UX-01Q2` **Closed (2026-08-15)**: Uninstall `@imgly/editor-react-native` + dead `PhotoAnnotation` route/screen/adapter; drop static frameworks / img.ly Maven / EAS IMGLY pod patch. Select Photos remains edit SoT. Native rebuild required after pod refresh; `buildReactNativeFromSource` retained pending Skia-without-static proof.
-- Current pipeline focus precedence: (1) **Commercial release week** (R1 eng UI strip → RC). (2) **04b** after ~2026-09-07. (3) **S-UX-01Q** C6/`S-UX-01P` + Option B/caption when scheduled. **04e** cold archive Pipeline deferred.
+- Current pipeline focus precedence: (1) **Commercial release week** (R1 eng UI strip → week-rank R2 RC → …). (2) **04b** after ~2026-09-07. (3) **S-UX-01Q** C6/`S-UX-01P` + Option B/caption when scheduled. (4) **Wave 2** = second product release (WS-DMS / WS-WEB Order 15.x) after first commercial ship (M-DMS-00 Closed 2026-08-17 — stay on Supabase). **04e** cold archive Pipeline deferred.
+- Naming: week-rank **R2** = RC rebuild this ship week; **Wave 2** = next product release (DMS/web — what “release 2 / R2 features” meant colloquially). Do not overload R2.
+- `WS-DMS / M-DMS-00` **Closed (2026-08-17)**: DMS infra investigation — **continue Supabase** for document register (Postgres) + `buildtrack-documents` Storage; no second document DB for Phase 2. **Wave 2** (not week-rank R2/RC). Evidence: `docs/superpowers/analysis/2026-08-17-dms-infrastructure-investigation.md`. Spec: `docs/superpowers/specs/2026-08-06-web-admin-and-dms-product-spec.md`. Pipeline children: M-WEB-01/02, M-DMS-01..04, M-WEB-03, M-QA-04, M-DMS-DATA (Order 15.1–15.9). Live DDL still Human Gate.
 - `WS-TOOLING / M-CURSOR-01` **Active (2026-08-08)**: Trae → Cursor harness migration — personal skill `solo-dev-harness`, Insite `.cursor/rules` + `insite-dev` skill, `npm run dev:doctor`, runbook `documentation/CURSOR_DEV_HARNESS.md`. `.trae/` retained read-only until migration confirmed.
 
 ## Shared Repository Context
@@ -323,7 +326,7 @@ Default workflow expectations (Cursor roles via `solo-dev-harness` + `.cursor/ru
 - Documentation-only work: `@planner -> @docs-curator [→ defuddle] -> @reviewer [→ TRAE-code-review for technical accuracy]`
 
 Milestone Gate (mandatory pre-planner dispatch on all workflows):
-- Read AGENTS.md § Current Delivery Status + documentation/ROADMAP.md
+- Read documentation/NOW.md, then AGENTS.md § Current Delivery Status + documentation/ROADMAP.md
 - If task falls under WS-UX/M-UX-01, WS-QA/M-QA-01/02/03, or WS-SUPABASE/M-SUPABASE-01: Planner cites milestone; Test Engineer classifies tests per TESTING_STRATEGY.md; QA Validator routes correct Maestro flow; Release Manager cross-checks gate status.
 
 Autonomy Policy (ratified from SOLO_OPERATING_PROCEDURE.md §0):

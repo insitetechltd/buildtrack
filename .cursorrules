@@ -18,13 +18,14 @@
 
 ### Milestone Gate — DO NOT SKIP
 Before dispatching any workflow:
-1. Read AGENTS.md § Current Delivery Status
-2. Read documentation/ROADMAP.md milestone ledger
-3. If the task touches any active/pipeline milestone:
+1. Read documentation/NOW.md (session continuity — doing / next / locked / parked)
+2. Read AGENTS.md § Current Delivery Status
+3. Read documentation/ROADMAP.md milestone ledger
+4. If the task touches any active/pipeline milestone:
    - Cite milestone in scope
    - Route Maestro flows to the correct sprint-specific flow
    - Cross-check milestone gate status before marking anything closed
-4. Current milestone precedence priority queue (exact order 1..6):
+5. Current milestone precedence priority queue (exact order 1..6):
    1. UNBLOCK M-SUPABASE-02a/02b → resolve Rule 1
    2. Close M-SUPABASE-02a/02b → RLS + FK
    3. M-SUPABASE-03b Phase A only → NO LIVE WRITES → HUMAN GATE sign-off

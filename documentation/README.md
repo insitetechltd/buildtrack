@@ -9,23 +9,25 @@ Use [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) to understand documentation gover
 For repository-wide orientation, read these in order:
 
 1. [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md)
-2. [ROADMAP.md](./ROADMAP.md)
-3. [AGENTS.md](../AGENTS.md)
-4. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
-5. [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
-6. [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
-7. [maestro/README.md](../maestro/README.md)
-8. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
-9. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
-10. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
-11. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
-12. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
-13. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
+2. [NOW.md](./NOW.md) — pick up thinking (overwrite each teardown)
+3. [ROADMAP.md](./ROADMAP.md)
+4. [AGENTS.md](../AGENTS.md)
+5. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
+6. [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
+7. [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
+8. [maestro/README.md](../maestro/README.md)
+9. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
+10. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
+11. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+12. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
+13. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
+14. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
 
 ## Canonical References
 
 - [SOURCE_OF_TRUTH.md](./SOURCE_OF_TRUTH.md) - Master documentation governance and classification rules
 - [ROADMAP.md](./ROADMAP.md) - Single canonical WS/M/S milestone inventory and execution order
+- [NOW.md](./NOW.md) - Session continuity: doing / next / locked / parked (SOP: overwrite same file; git-tracked)
 - [AGENTS.md](../AGENTS.md) - Repository-local agent inventory and workflow context
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
 - [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md) - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse

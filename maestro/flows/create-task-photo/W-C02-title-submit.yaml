@@ -26,7 +26,12 @@ tags:
 - tapOn:
     id: "createTask-description"
 - inputText: "Maestro W-C02 title and submit without photo."
+- takeScreenshot: "rc-C02-after-text"
 - runFlow: ../_dismiss-keyboard.yaml
+- tapOn: "Medium"
+- assertVisible:
+    id: "create-task__continuous_form"
+- takeScreenshot: "rc-C02-keyboard-dismissed"
 - scrollUntilVisible:
     centerElement: true
     element:

@@ -1,22 +1,14 @@
 # Keyboard covers Submit. Do not use hideKeyboard (throws when there is no
-# system dismiss). Tap Done if shown, then tap header chrome twice.
+# system dismiss). Do not query "Done" — iOS keyboard hierarchy dumps crash
+# XCTest on this sim. Do not tap 50%, 8% — that hits Create Task back.
+# Tap below the header in form body instead.
 appId: com.buildtrack.app.local
 ---
-- runFlow:
-    when:
-      visible: "Done"
-    commands:
-      - tapOn: "Done"
 - tapOn:
-    point: "50%, 8%"
+    point: "50%, 22%"
 - waitForAnimationToEnd:
     timeout: 800
-- runFlow:
-    when:
-      visible: "Done"
-    commands:
-      - tapOn: "Done"
 - tapOn:
-    point: "50%, 8%"
+    point: "50%, 22%"
 - waitForAnimationToEnd:
     timeout: 1500

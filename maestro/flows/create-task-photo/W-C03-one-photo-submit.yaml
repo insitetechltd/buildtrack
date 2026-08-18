@@ -6,7 +6,6 @@ tags:
 - evalScript: ${output.permutation = "W-C03"}
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- runFlow: ../_dismiss-blocking-overlays.yaml
 - runFlow: _open-library.yaml
 - runFlow: _pick-first.yaml
 - takeScreenshot: "rc-C03-selection-one"

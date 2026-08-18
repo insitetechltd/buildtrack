@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 22:38 UTC+8
+Updated: 2026-08-18 22:51 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -34,8 +34,9 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 - `W-C01` **PASS** headed 2026-08-18 22:26 — Camera tab opened Create New Task (`create-task__continuous_form`). PNG shows Title, Description, Priority Medium, Location on Site, Organize by area, Assign To. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_222535/W-C01-camera-to-create-form/takeScreenshot/rc-C01-create-form.png`
 - `W-C02` **PASS** headed 2026-08-18 22:38 — Title + description + Create Task, no photo. Success modal "Task created successfully…"; landed Tasks tab. Keyboard dismiss now taps `50%, 22%` (not header `50%, 8%`, which hit Back). Artifacts: `.cache/maestro-home/.maestro/tests/2026-08-18_223713/W-C02-title-submit/takeScreenshot/rc-C02-submit-success.png`, `rc-C02-landed-tasks.png`
-- `W-C03` running next
-- `W-C04`–`W-C07` queued
+- `W-C03` **PASS** headed 2026-08-18 22:51 — One library photo (green "3") + title + submit. Form showed "1 file(s) added"; success modal; landed Tasks. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_224926/W-C03-one-photo-submit/takeScreenshot/`
+- `W-C04` running next
+- `W-C05`–`W-C07` queued
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 

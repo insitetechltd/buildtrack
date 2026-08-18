@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 09:18 UTC
+Updated: 2026-08-18 22:26 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -30,9 +30,15 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Latest known run status
 
-### Passed
+### Section C sequential (this chat)
 
-- `W-C01` Camera -> Create Task form
+- `W-C01` **PASS** headed 2026-08-18 22:26 — Camera tab opened Create New Task (`create-task__continuous_form`). PNG shows Title, Description, Priority Medium, Location on Site, Organize by area, Assign To. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_222535/W-C01-camera-to-create-form/takeScreenshot/rc-C01-create-form.png`
+- `W-C02` running next
+- `W-C03`–`W-C07` queued
+
+### Previously passed (earlier headed runs; not this sequential C ledger)
+
+- `W-C01` Camera -> Create Task form (re-proved above)
 - `W-C02` Title + submit
 - `W-C03` One photo + submit
 - `W-C04` Back / cancel
@@ -76,9 +82,13 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
   - `maestro` CLI unavailable
 - Until that environment is restored, this branch can still publish status-only commits, but it cannot advance headed simulator evidence from this VM.
 
+## Current run
+
+Section **C** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. Driver recovered with `MAESTRO_DRIVER_STARTUP_TIMEOUT=180000`.
+
 ## Next actions
 
-1. Restore a Maestro-capable environment for this branch (dependencies, env vars, simulator tooling).
-2. Wire `_dismiss-blocking-overlays.yaml` into the active sequential flows.
-3. Finish `W-D07` final review-state transition.
-4. Continue B -> E checklist runs sequentially and update this file after each run.
+1. Continue C: W-C02 → W-C07, PNG-read + status commit after each.
+2. Finish `W-D07` final review-state transition after C.
+3. Continue B, D remaining rows, then remaining E rows.
+4. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

@@ -5,6 +5,7 @@ tags:
 ---
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
 
 # Camera -> Create Task form
 - tapOn:

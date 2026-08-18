@@ -1,0 +1,18 @@
+# W-C01: Camera tab → Create Task form
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c01
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- assertVisible:
+    id: "createTask-title"
+- takeScreenshot: "rc-C01-create-form"

@@ -1,0 +1,14 @@
+# W-C07: Task Detail → center camera tab opens Update Progress.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c07
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: _seed-task-open-update.yaml
+- assertVisible:
+    id: "update-progress__screen_title"
+- assertVisible:
+    id: "update-progress__take_photo"
+- takeScreenshot: "rc-C07-update-from-task-detail"

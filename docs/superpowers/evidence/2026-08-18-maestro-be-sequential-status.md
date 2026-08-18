@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:12 UTC+8
+Updated: 2026-08-18 23:31 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -38,7 +38,9 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-C04` **PASS** headed 2026-08-18 22:59 — Empty Create Task form, header back, landed Activity (`dashboard-screen__root`). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_225746/W-C04-back-cancel-from-create-form/takeScreenshot/`
 - `W-C05` **PASS** headed 2026-08-18 23:10 — Location picker, tag `maestro-c05`, due-date wheel, Assign To sheet (0 project members on this seed). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_230852/W-C05-assignee-tags-location-due/takeScreenshot/`
 - `W-C06` **PASS** headed 2026-08-18 23:12 — Collapsed “Organize by area” expanded to container org + container input. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_231122/W-C06-container-area/takeScreenshot/`
-- `W-C07` running next
+- `W-C07` **PASS** headed 2026-08-18 23:31 — Tasks search `Maestro CT Photo` (no post-type header tap), row `.*Maestro CT Photo.*NEW` → Task Detail → center camera tab opened Update Progress (`update-progress__screen_title` + `update-progress__take_photo`). PNG: Progress Update form, 0% dialer, Submit Update. Flow no longer uses API-seed search (seed taps corrupted the query). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_232926/W-C07-task-detail-camera-update/takeScreenshot/rc-C07-update-from-task-detail.png`
+
+**Section C sequential ledger: W-C01–W-C07 all PASS.**
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -62,7 +64,6 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 ### Not yet fully artifact-verified in sequential ledger
 
 - `W-A01` through `W-A08`
-- `W-C05` through `W-C07` except the already-proved update shortcut path
 - `W-T04` through `W-T05`
 - `W-D01`, `W-D02`, `W-D05`, `W-D06`, `W-D08`, `W-D09`, `W-D10`
 
@@ -88,11 +89,10 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **C** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. Driver recovered with `MAESTRO_DRIVER_STARTUP_TIMEOUT=180000`.
+Section **C complete** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. W-C01–W-C07 PNG-backed PASS.
 
 ## Next actions
 
-1. Finish C: W-C07, then PNG-read + status commit.
-2. Finish `W-D07` final review-state transition after C.
-3. Continue B, D remaining rows, then remaining E rows.
-4. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.
+1. Finish `W-D07` final review-state transition (100% complete PNG exists; submitted-for-review still missing).
+2. Remaining D rows W-T04–W-T05, remaining E rows, remaining B rows W-A01–W-A08 as needed.
+3. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

@@ -10,14 +10,14 @@
 
 ## Doing
 
-Commercial **RC week**. GitHub Pages legal URLs + ASC paste card. API key cannot PATCH listing (403). Demo account **already on file** in ASC. TestFlight **183 VALID**. Drafts follow-up still uncommitted.
+Commercial **RC week**. MainTabs **Section C** headed sequential **PASS** (W-C01–W-C07) on iPhone 17 Pro. Save Draft on Create Task — **Gate A complete**, Builder **blocked** until Metro quiet. Cancel/back = no trace; only Save Draft creates an Activity draft.
 
 ## Next
 
-1. Confirm Pages privacy/terms return 200 after deploy
-2. **Human ASC (5 min):** replace Privacy Policy URL with Pages HTML; paste review notes; optionally create version **1.1.3** and attach build **183**. Do **not** tick Public
-3. Smoke drafts if you want that follow-up in the next IPA
-4. **Tue — Stripe:** Payment Link + `EXPO_PUBLIC_STRIPE_CHECKOUT_URL`
+1. W-D07 submitted-for-review after 100% complete, then remaining D/E and B W-A01–A08 as needed.
+2. Metro quiet window, then Builder for Save Draft (folded Gate A plan).
+3. Headed iPhone 16: Create → keyboard-open Save Draft → Activity exact-title draft → W-A05–A07.
+4. Do **not** Submit for Review / tick Public unless you mean to
 
 ## Locked this week
 
@@ -38,10 +38,10 @@ Commercial **RC week**. GitHub Pages legal URLs + ASC paste card. API key cannot
 
 ```text
 Read documentation/NOW.md first.
-Pages legal URLs + ASC paste card: docs/superpowers/evidence/2026-08-17-r4-asc-human-paste.md
-Demo account already in ASC. Build 183 VALID. Do not tick Public.
+ASC 1.1.3 / build 183 Prepare for Submission. Live 1.0 unchanged.
+Stripe test checkout PASS. Live keys + rebuild when charging for real. Do not Submit / Public.
 ```
 
 ---
 
-Updated: 2026-08-17
+Updated: 2026-08-18

@@ -3,6 +3,10 @@
 Updated: 2026-08-18 09:18 UTC
 Branch: `chore/maestro-be-status`
 
+## Important reminder
+
+When this B-E work is finished, close and merge `chore/maestro-be-status` back into `master`.
+
 ## Goal
 
 Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequentially on a headed simulator, with artifact-backed verification for every row and popup handling for blocking overlays.

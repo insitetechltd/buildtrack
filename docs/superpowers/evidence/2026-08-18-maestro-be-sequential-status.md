@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 17:14 UTC+8
+Updated: 2026-08-18 09:18 UTC
 Branch: `chore/maestro-be-status`
 
 ## Goal
@@ -59,8 +59,22 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
   - `up-D07-form-one.png`: Update Progress form before completion change
   - `step-146-assertCondition-Progress_update_added_su.png`: Task Detail shows `100% complete` and the success modal for reaching 100%
 
+## Current branch pickup
+
+- Branch checked out and resumed in Cursor Cloud at `2026-08-18 09:18 UTC`.
+- Remote branch confirmed: `origin/chore/maestro-be-status` @ `4006959`.
+- Existing status artifact preserved so remote phone checks can continue on the same file path.
+- Current cloud VM is not ready for additional local Maestro runs:
+  - `node_modules` missing
+  - `EXPO_PUBLIC_SUPABASE_URL` missing
+  - `EXPO_PUBLIC_SUPABASE_ANON_KEY` missing
+  - `xcrun` unavailable
+  - `maestro` CLI unavailable
+- Until that environment is restored, this branch can still publish status-only commits, but it cannot advance headed simulator evidence from this VM.
+
 ## Next actions
 
-1. Wire `_dismiss-blocking-overlays.yaml` into the active sequential flows.
-2. Finish `W-D07` final review-state transition.
-3. Continue B -> E checklist runs sequentially and update this file after each run.
+1. Restore a Maestro-capable environment for this branch (dependencies, env vars, simulator tooling).
+2. Wire `_dismiss-blocking-overlays.yaml` into the active sequential flows.
+3. Finish `W-D07` final review-state transition.
+4. Continue B -> E checklist runs sequentially and update this file after each run.

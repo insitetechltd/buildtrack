@@ -8,7 +8,8 @@ appId: com.buildtrack.app.local
     commands:
       - tapOn:
           id: "app-screen-header__profile-trigger"
-      - tapOn: "Change Project"
+      - tapOn:
+          id: "profile-menu-project_picker"
       - tapOn: ".*Project A - Commercial Building.*"
       - assertVisible:
           id: "dashboard-screen__root"
@@ -23,8 +24,7 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "createTask-description"
 - inputText: "Created from the real Supabase-backed task-core create slice."
-- tapOn:
-    point: "50%, 18%"
+- runFlow: _dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     element:
@@ -44,24 +44,15 @@ appId: com.buildtrack.app.local
           id: "create-task__submit-success-message"
       - tapOn:
           id: "create-task__submit-success-confirm"
-- assertVisible:
-    id: "dashboard-screen__root"
-- runFlow:
-    when:
-      visible: "Select a project to view the active project summary and queue overview."
-    commands:
-      - tapOn:
-          id: "app-screen-header__profile-trigger"
-      - tapOn: "Change Project"
-      - tapOn: ".*Project A - Commercial Building.*"
-      - assertVisible:
-          id: "dashboard-screen__root"
-- tapOn:
-    id: "root-tab__tasks_pressable"
+# Post-create lands on Tasks (not Activity).
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
 - assertVisible:
     id: "tasks-screen__task_list"
 - tapOn:
     id: "text-field:tasks-search__input"
 - inputText: ${output.taskTitle}
-- hideKeyboard
+- runFlow: _dismiss-keyboard.yaml
 - assertVisible: ${".*" + output.taskTitle + ".*"}

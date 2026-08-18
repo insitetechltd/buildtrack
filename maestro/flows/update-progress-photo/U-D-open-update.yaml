@@ -1,0 +1,10 @@
+# RC headed checkpoint D — open seeded task from Tasks into Update Progress.
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - rc-headed-d
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- takeScreenshot: "rc-D-open-update"

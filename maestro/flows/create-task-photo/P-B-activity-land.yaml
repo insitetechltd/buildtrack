@@ -1,0 +1,148 @@
+# RC headed checkpoint B — prove W-A01 to W-A08 on Activity.
+appId: com.buildtrack.app.local
+tags:
+  - create-task-photo
+  - rc-headed-b
+---
+# W-A01: Land Activity
+- runFlow: _boot.yaml
+# Seed Tristan overdue-crunch sandbox on a separate sim so Activity/Drafts exist.
+- runFlow: _bootstrap-tristan-overdue-sandbox.yaml
+- assertVisible:
+    id: "dashboard-screen__root"
+
+# W-A02: Project summary visible
+- assertVisible:
+    id: "dashboard-screen__project_summary_section"
+
+# W-A03: Queue tiles → Tasks
+- assertVisible:
+    id: "dashboard-screen__queue_dashboard"
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-screen__queue_cell_my_queue_new"
+    commands:
+      - tapOn:
+          id: "dashboard-screen__queue_cell_my_queue_new"
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-screen__queue_cell_team_queue_wip"
+    commands:
+      - tapOn:
+          id: "dashboard-screen__queue_cell_team_queue_wip"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 20000
+- tapOn:
+    id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 15000
+- runFlow: _ensure-project.yaml
+
+# W-A04: Activity row → Task Detail
+- scrollUntilVisible:
+    element:
+      text: "Recent Activity"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 20000
+- tapOn:
+    id: "dashboard-screen__activity_.*"
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 20000
+- tapOn:
+    id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 15000
+
+# W-A05: Drafts Show/Hide
+- assertVisible:
+    id: "dashboard-screen__drafts_toggle"
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 15000
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    notVisible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 15000
+
+# W-A06: Resume draft → Create Task
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 15000
+- tapOn:
+    id: "dashboard-screen__draft_item_[^:]+$"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- tapOn:
+    id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 15000
+
+# W-A07: Swipe-delete draft (Alert Exempt). Swipe to reveal delete-action, then confirm.
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 15000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "dashboard-screen__draft_item_[^:]+:swipeable"
+    direction: DOWN
+- swipe:
+    start: 90%, 72%
+    end: 10%, 72%
+    duration: 500
+- tapOn:
+    id: "dashboard-screen__draft_item_[^:]+:delete-action"
+- extendedWaitUntil:
+    visible: "Delete"
+    timeout: 10000
+- tapOn:
+    text: "Delete"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+
+# W-A08: Create FAB (camera) if present
+- tapOn:
+    id: "root-tab__camera_button"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- tapOn:
+    id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 15000
+
+- takeScreenshot: "rc-B-activity-wait-all-items"

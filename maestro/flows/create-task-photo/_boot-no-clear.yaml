@@ -1,0 +1,47 @@
+# Same login/landing as _boot.yaml but preserves simulator-local state
+# so Dashboard “Drafts In Progress” can exist for W-A05–W-A07.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow:
+    when:
+      visible: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+- runFlow:
+    when:
+      visible:
+        id: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible:
+        id: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- runFlow: _assert-no-logbox.yaml
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000
+

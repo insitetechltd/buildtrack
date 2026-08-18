@@ -1,0 +1,42 @@
+# Dismiss common blocking overlays that can cover controls during headed runs.
+# Use before major interactions, not as a substitute for specific success checks.
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- runFlow:
+    when:
+      visible: "Allow Full Access"
+    commands:
+      - tapOn: "Allow Full Access"
+- runFlow:
+    when:
+      visible: "Allow Access to All Photos"
+    commands:
+      - tapOn: "Allow Access to All Photos"
+- runFlow:
+    when:
+      visible: "Allow.*Photos.*"
+    commands:
+      - tapOn: "Allow.*Photos.*"
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- waitForAnimationToEnd:
+    timeout: 1000

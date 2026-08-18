@@ -20,7 +20,7 @@ appId: com.buildtrack.app.local
 - extendedWaitUntil:
     visible:
       id: "tasks-screen__root"
-    timeout: 15000
+    timeout: 25000
 - runFlow:
     when:
       notVisible:
@@ -32,13 +32,13 @@ appId: com.buildtrack.app.local
 - extendedWaitUntil:
     visible:
       id: "tasks-screen__task_list"
-    timeout: 15000
+    timeout: 25000
 # Pull-ish: open search and type seeded title (API insert may need list refetch)
 - tapOn:
     id: "text-field:tasks-search__input"
 - eraseText
 - inputText: ${UP_SEED_TITLE}
-- hideKeyboard
+- runFlow: ../_dismiss-keyboard.yaml
 # Wait for row (realtime / refetch). Retry search once if needed.
 - runFlow:
     when:
@@ -48,10 +48,10 @@ appId: com.buildtrack.app.local
           id: "text-field:tasks-search__input"
       - eraseText
       - inputText: ${UP_SEED_TITLE}
-      - hideKeyboard
+      - runFlow: ../_dismiss-keyboard.yaml
       - waitForAnimationToEnd:
           timeout: 2500
-- hideKeyboard
+- runFlow: ../_dismiss-keyboard.yaml
 - extendedWaitUntil:
     visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
     timeout: 20000

@@ -1,7 +1,12 @@
-# Description + submit Update Progress; assert success alert.
+# E — W-D03: Update text (no photo) on Update Progress, then submit.
+# Uses seeded task from run-update-progress-photo-one.sh.
 appId: com.buildtrack.app.local
 ---
-- evalScript: ${output.progressNote = "Maestro UP photo " + Date.now()}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+
+- evalScript: ${output.progressNote = "Maestro UP text-only " + Date.now()}
 - scrollUntilVisible:
     centerElement: true
     element:
@@ -10,13 +15,14 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "update-progress__description"
 - inputText: ${output.progressNote}
-# Keyboard covers Submit. Do not use hideKeyboard. Tap chrome that is not the
-# description field so XCTest is not tapping through the keyboard onto Submit.
 - runFlow: ../_dismiss-keyboard.yaml
+
+# Keyboard is stubborn on this form. Tap a non-description area
+# to guarantee the software keyboard collapses before submitting.
 - tapOn: "Photos & Files"
-- tapOn:
-    id: "update-progress__completion-value"
 - runFlow: ../_dismiss-keyboard.yaml
+
+# Submit
 - scrollUntilVisible:
     centerElement: true
     element:
@@ -27,22 +33,13 @@ appId: com.buildtrack.app.local
       visible: "Done"
     commands:
       - tapOn: "Done"
-      - tapOn:
-          point: "50%, 8%"
-      - tapOn: "Photos & Files"
-      - waitForAnimationToEnd:
-          timeout: 1500
 - tapOn:
     id: "update-progress__submit"
 - tapOn:
     id: "update-progress__submit"
-    delay: 2000
+    delay: 1500
+
 - extendedWaitUntil:
     visible: ".*Progress update added successfully!.*"
     timeout: 25000
 - tapOn: "OK"
-- runFlow:
-    when:
-      visible: "OK"
-    commands:
-      - tapOn: "OK"

@@ -1,0 +1,63 @@
+# D2 — Tasks row -> Task Detail (W-T02)
+# Uses seeded UP_SEED_TITLE / UP_SEED_TASK_ID from run-update-progress-photo-one.sh.
+appId: com.buildtrack.app.local
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+
+# Some boot paths can leave a “Choose how you want to add photos” modal active.
+# Dismiss it deterministically.
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+
+# Land on Tasks list
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 15000
+
+# Search for seeded title
+- tapOn:
+    id: "text-field:tasks-search__input"
+- eraseText
+- inputText: ${UP_SEED_TITLE}
+- runFlow: ../_dismiss-keyboard.yaml
+- extendedWaitUntil:
+    visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
+    timeout: 20000
+
+# Tap seeded row (index 1 targets row; 0 is the search string)
+- tapOn:
+    text: ${".*" + UP_SEED_TITLE + ".*"}
+    index: 1
+
+# W-T02: Row -> Task Detail
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - tapOn:
+          text: ${".*" + UP_SEED_TITLE + ".*NEW"}
+          delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 12000
+- takeScreenshot: "rc-D2-task-detail"

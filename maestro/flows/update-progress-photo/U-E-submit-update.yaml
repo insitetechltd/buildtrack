@@ -1,0 +1,16 @@
+# RC headed checkpoint E — add one photo to seeded task and submit update.
+appId: com.buildtrack.app.local
+tags:
+  - update-progress-photo
+  - rc-headed-e
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- takeScreenshot: "rc-E-selection-one"
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "rc-E-form-one"
+- runFlow: _submit-update.yaml
+- takeScreenshot: "rc-E-done"

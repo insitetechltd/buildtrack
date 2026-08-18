@@ -1,0 +1,22 @@
+# Keyboard covers Submit. Do not use hideKeyboard (throws when there is no
+# system dismiss). Tap Done if shown, then tap header chrome twice.
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- tapOn:
+    point: "50%, 8%"
+- waitForAnimationToEnd:
+    timeout: 800
+- runFlow:
+    when:
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- tapOn:
+    point: "50%, 8%"
+- waitForAnimationToEnd:
+    timeout: 1500

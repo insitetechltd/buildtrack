@@ -26,24 +26,49 @@ tags:
 
 - tapOn:
     id: "tasks-screen__filters_button"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      notVisible: "Apply Filters"
+    commands:
+      - tapOn: "Filters"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- runFlow:
+    when:
+      notVisible: "Apply Filters"
+    commands:
+      - tapOn:
+          point: "85%, 16%"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - extendedWaitUntil:
-    visible:
-      id: "tasks-filters-sheet"
+    visible: "Apply Filters"
     timeout: 10000
-- assertVisible:
-    id: "tasks-filters-sheet__apply"
+- assertVisible: "QUEUE"
 - takeScreenshot: "rc-D-T04-sheet-open"
 
 - tapOn:
     id: "tasks-filters-sheet__status_new"
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-filters-sheet__status_new"
+    commands:
+      - tapOn: "New"
 - waitForAnimationToEnd:
     timeout: 800
 - takeScreenshot: "rc-D-T04-status-new"
 - tapOn:
     id: "tasks-filters-sheet__apply"
+- runFlow:
+    when:
+      visible: "Apply Filters"
+    commands:
+      - tapOn: "Apply Filters"
 - extendedWaitUntil:
-    notVisible:
-      id: "tasks-filters-sheet"
+    notVisible: "Apply Filters"
     timeout: 10000
 - extendedWaitUntil:
     visible:

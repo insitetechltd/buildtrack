@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:43 UTC+8
+Updated: 2026-08-18 23:50 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -47,7 +47,8 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-T01` **PASS** headed 2026-08-18 23:37 — Tasks tab: search, Filters, count 148, overdue/NEW rows, Tasks tab selected. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233635/W-T01-tasks-list/takeScreenshot/rc-D-T01-tasks-list.png`
 - `W-T02` **PASS** headed 2026-08-18 23:40 — Search `Maestro CT Photo` → row tap → Task Detail (`MAESTRO CT PHO…` / TASK DETAILS). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233921/W-T02-row-to-task-detail/takeScreenshot/rc-D-T02-task-detail.png`
 - `W-T03` **PASS** headed 2026-08-18 23:43 — Before: 148 mixed tasks. After search `Maestro CT Photo`: matching NEW rows (count badge 58). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_234159/W-T03-search-on-tasks/takeScreenshot/rc-D-T03-search-results.png`
-- `W-T04` running next
+- `W-T04` **PASS** headed 2026-08-18 23:50 — Filters sheet (QUEUE/STATUS/OVERDUE WINDOW), staged New, Apply → chip `Status: New`, Filters badge 1, list filtered (148→128). First `filters_button` tap missed; retry tap `Filters` opened the sheet. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_234802/W-T04-filter-sheet/takeScreenshot/rc-D-T04-applied.png`
+- `W-T05` running next
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -71,7 +72,7 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 ### Not yet fully artifact-verified in sequential ledger
 
 - `W-A01` through `W-A08`
-- `W-T04` through `W-T05`
+- `W-T05`
 - `W-D01`, `W-D02`, `W-D05`, `W-D06`, `W-D08`, `W-D09`, `W-D10`
 
 ## Latest artifact notes
@@ -96,7 +97,7 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **D** on local headed iPhone 17 Pro. W-T01–W-T03 PASS; W-T04 next.
+Section **D** on local headed iPhone 17 Pro. W-T01–W-T04 PASS; W-T05 next.
 
 ## Next actions
 

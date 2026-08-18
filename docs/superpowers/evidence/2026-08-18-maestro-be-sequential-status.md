@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:10 UTC+8
+Updated: 2026-08-18 23:12 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -37,8 +37,8 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-C03` **PASS** headed 2026-08-18 22:51 — One library photo (green "3") + title + submit. Form showed "1 file(s) added"; success modal; landed Tasks. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_224926/W-C03-one-photo-submit/takeScreenshot/`
 - `W-C04` **PASS** headed 2026-08-18 22:59 — Empty Create Task form, header back, landed Activity (`dashboard-screen__root`). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_225746/W-C04-back-cancel-from-create-form/takeScreenshot/`
 - `W-C05` **PASS** headed 2026-08-18 23:10 — Location picker, tag `maestro-c05`, due-date wheel, Assign To sheet (0 project members on this seed). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_230852/W-C05-assignee-tags-location-due/takeScreenshot/`
-- `W-C06` running next
-- `W-C07` queued
+- `W-C06` **PASS** headed 2026-08-18 23:12 — Collapsed “Organize by area” expanded to container org + container input. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_231122/W-C06-container-area/takeScreenshot/`
+- `W-C07` running next
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -92,7 +92,7 @@ Section **C** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE6
 
 ## Next actions
 
-1. Continue C: W-C06 → W-C07, PNG-read + status commit after each.
+1. Finish C: W-C07, then PNG-read + status commit.
 2. Finish `W-D07` final review-state transition after C.
 3. Continue B, D remaining rows, then remaining E rows.
 4. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

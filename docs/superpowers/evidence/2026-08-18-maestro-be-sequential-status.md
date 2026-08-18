@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:37 UTC+8
+Updated: 2026-08-18 23:40 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -45,7 +45,8 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 ### Section D sequential (this chat)
 
 - `W-T01` **PASS** headed 2026-08-18 23:37 — Tasks tab: search, Filters, count 148, overdue/NEW rows, Tasks tab selected. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233635/W-T01-tasks-list/takeScreenshot/rc-D-T01-tasks-list.png`
-- `W-T02` running next
+- `W-T02` **PASS** headed 2026-08-18 23:40 — Search `Maestro CT Photo` → row tap → Task Detail (`MAESTRO CT PHO…` / TASK DETAILS). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233921/W-T02-row-to-task-detail/takeScreenshot/rc-D-T02-task-detail.png`
+- `W-T03` running next
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -94,7 +95,7 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **D** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. W-T01 PASS; W-T02 next.
+Section **D** on local headed iPhone 17 Pro. W-T01–W-T02 PASS; W-T03 next.
 
 ## Next actions
 

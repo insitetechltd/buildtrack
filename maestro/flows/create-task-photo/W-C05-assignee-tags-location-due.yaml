@@ -28,6 +28,11 @@ tags:
 - takeScreenshot: "rc-C05-location-picker"
 - runFlow:
     when:
+      visible: "Living room"
+    commands:
+      - tapOn: "Living room"
+- runFlow:
+    when:
       visible:
         id: "create-task__location-option-add-new"
     commands:
@@ -72,15 +77,18 @@ tags:
     commands:
       - tapOn:
           id: "create-task__due-date-done"
+- waitForAnimationToEnd:
+    timeout: 1500
 - takeScreenshot: "rc-C05-due-date"
 
-# Assignee picker
+# Assignee picker (no testID; placeholder may truncate with …)
 - scrollUntilVisible:
     centerElement: true
+    visibilityPercentage: 40
     element:
-      text: "Select users to assign"
+      text: "Assign To.*"
     direction: UP
-- tapOn: "Select users to assign"
+- tapOn: "Select users to assign.*"
 - extendedWaitUntil:
     visible: "Assign To"
     timeout: 12000

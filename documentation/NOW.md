@@ -10,11 +10,11 @@
 
 ## Doing
 
-Commercial **RC week**. MainTabs **Section C** headed sequential **PASS**. **Section D** running on iPhone 17 Pro (W-T01–W-T05). Save Draft Gate A complete; Builder blocked until Metro quiet.
+Commercial **RC week**. MainTabs **Section C** PASS. **Section D** W-T01–W-T04 PASS; **W-T05 FAIL** (Tasks has no pull-to-refresh). Save Draft Gate A complete; Builder blocked until Metro quiet.
 
 ## Next
 
-1. Finish D sequential (W-T01–W-T05), then W-D07 / remaining E, then B as needed.
+1. Section E sequential, or add Tasks RefreshControl if W-T05 must pass.
 2. Metro quiet window, then Builder for Save Draft (folded Gate A plan).
 3. Headed iPhone 16: Create → keyboard-open Save Draft → Activity exact-title draft → W-A05–A07.
 4. Do **not** Submit for Review / tick Public unless you mean to

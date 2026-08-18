@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:31 UTC+8
+Updated: 2026-08-18 23:37 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -41,6 +41,11 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-C07` **PASS** headed 2026-08-18 23:31 — Tasks search `Maestro CT Photo` (no post-type header tap), row `.*Maestro CT Photo.*NEW` → Task Detail → center camera tab opened Update Progress (`update-progress__screen_title` + `update-progress__take_photo`). PNG: Progress Update form, 0% dialer, Submit Update. Flow no longer uses API-seed search (seed taps corrupted the query). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_232926/W-C07-task-detail-camera-update/takeScreenshot/rc-C07-update-from-task-detail.png`
 
 **Section C sequential ledger: W-C01–W-C07 all PASS.**
+
+### Section D sequential (this chat)
+
+- `W-T01` **PASS** headed 2026-08-18 23:37 — Tasks tab: search, Filters, count 148, overdue/NEW rows, Tasks tab selected. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233635/W-T01-tasks-list/takeScreenshot/rc-D-T01-tasks-list.png`
+- `W-T02` running next
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -89,10 +94,10 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **C complete** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. W-C01–W-C07 PNG-backed PASS.
+Section **D** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE63A`). Metro `8081` HTTP 200. W-T01 PASS; W-T02 next.
 
 ## Next actions
 
-1. Finish `W-D07` final review-state transition (100% complete PNG exists; submitted-for-review still missing).
-2. Remaining D rows W-T04–W-T05, remaining E rows, remaining B rows W-A01–W-A08 as needed.
+1. Finish D: W-T02–W-T05 with PNG-read + status commit each.
+2. Then `W-D07` / remaining E, then remaining B.
 3. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

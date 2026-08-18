@@ -1,0 +1,33 @@
+# W-T05: Pull-down on the Tasks list (checklist “Pull to refresh”).
+# TasksScreen has no RefreshControl; this run proves the gesture and post-swipe list.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-d05
+---
+- runFlow: ../create-task-photo/_boot.yaml
+- runFlow: ../create-task-photo/_ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 25000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 25000
+- takeScreenshot: "rc-D-T05-before-pull"
+
+- swipe:
+    start: "50%, 32%"
+    end: "50%, 72%"
+    duration: 700
+- waitForAnimationToEnd:
+    timeout: 2500
+- takeScreenshot: "rc-D-T05-after-pull"
+- assertVisible:
+    id: "tasks-screen__task_list"
+- assertVisible:
+    id: "tasks-screen__search_section"

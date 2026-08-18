@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 22:51 UTC+8
+Updated: 2026-08-18 22:59 UTC+8
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -35,8 +35,9 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-C01` **PASS** headed 2026-08-18 22:26 — Camera tab opened Create New Task (`create-task__continuous_form`). PNG shows Title, Description, Priority Medium, Location on Site, Organize by area, Assign To. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_222535/W-C01-camera-to-create-form/takeScreenshot/rc-C01-create-form.png`
 - `W-C02` **PASS** headed 2026-08-18 22:38 — Title + description + Create Task, no photo. Success modal "Task created successfully…"; landed Tasks tab. Keyboard dismiss now taps `50%, 22%` (not header `50%, 8%`, which hit Back). Artifacts: `.cache/maestro-home/.maestro/tests/2026-08-18_223713/W-C02-title-submit/takeScreenshot/rc-C02-submit-success.png`, `rc-C02-landed-tasks.png`
 - `W-C03` **PASS** headed 2026-08-18 22:51 — One library photo (green "3") + title + submit. Form showed "1 file(s) added"; success modal; landed Tasks. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_224926/W-C03-one-photo-submit/takeScreenshot/`
-- `W-C04` running next
-- `W-C05`–`W-C07` queued
+- `W-C04` **PASS** headed 2026-08-18 22:59 — Empty Create Task form, header back, landed Activity (`dashboard-screen__root`). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_225746/W-C04-back-cancel-from-create-form/takeScreenshot/`
+- `W-C05` running next
+- `W-C06`–`W-C07` queued
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -90,7 +91,7 @@ Section **C** on local headed iPhone 17 Pro (`702680D5-A92E-4C56-BE55-731D424FE6
 
 ## Next actions
 
-1. Continue C: W-C03 → W-C07, PNG-read + status commit after each. Pro Max sim was shut down to isolate the Pro XCTest driver.
+1. Continue C: W-C05 → W-C07, PNG-read + status commit after each. Pro Max sim was shut down to isolate the Pro XCTest driver.
 2. Finish `W-D07` final review-state transition after C.
 3. Continue B, D remaining rows, then remaining E rows.
 4. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

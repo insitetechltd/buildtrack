@@ -10,6 +10,15 @@ tags:
 # Camera -> Create Task form
 - tapOn:
     id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      notVisible:
+        id: "create-task__continuous_form"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
 - extendedWaitUntil:
     visible:
       id: "create-task__continuous_form"

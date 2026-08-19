@@ -1,10 +1,12 @@
 # RC headed checkpoint E — add one photo to seeded task and submit update.
+# Login as alice.workera1 so a parallel John Manager sim does not share
+# the same user persist/realtime session.
 appId: com.buildtrack.app.local
 tags:
   - update-progress-photo
   - rc-headed-e
 ---
-- runFlow: _boot.yaml
+- runFlow: _boot-alice.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: _seed-task-open-update.yaml
 - runFlow: _open-library.yaml

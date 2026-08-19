@@ -1,0 +1,15 @@
+# Pull-to-refresh on Tasks list (sync retry helper).
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 25000
+- swipe:
+    start: "50%, 28%"
+    end: "50%, 78%"
+    duration: 1200
+- waitForAnimationToEnd:
+    timeout: 4000

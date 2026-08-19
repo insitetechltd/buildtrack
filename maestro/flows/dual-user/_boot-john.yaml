@@ -1,0 +1,6 @@
+# Assigner boot — clearState + live login (John) + shared Project A.
+appId: com.buildtrack.app.local
+---
+- runFlow: ../create-task-photo/_boot.yaml
+- runFlow: _ensure-project.yaml
+- takeScreenshot: "du-boot-john-home"

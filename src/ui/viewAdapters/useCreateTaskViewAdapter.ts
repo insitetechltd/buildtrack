@@ -37,6 +37,7 @@ import {
   type ProjectContainerRecord,
 } from '../contracts/taskContainers';
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
+import { getSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
 import { useTranslation } from '../../utils/useTranslation';
 import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
@@ -202,7 +203,7 @@ export function useCreateTaskViewAdapter({
     fetchProjectContainers = NOOP_FETCH_PROJECT_CONTAINERS,
     ensureProjectContainer = NOOP_ENSURE_PROJECT_CONTAINER,
   } = taskStore;
-  const { getAllUsers } = useUserStoreWithInit();
+  const { getAllUsers, fetchUsers, fetchUsersByCompany } = useUserStoreWithInit();
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
@@ -685,10 +686,60 @@ export function useCreateTaskViewAdapter({
   }, [editTaskId, formData.projectId, selectedProjectId, updateField]);
 
   useEffect(() => {
-    if (activeProjectId) {
-      void fetchProjectUserAssignments(activeProjectId);
+    if (!activeProjectId) {
+      setIsLoadingUsers(false);
+      return;
     }
-  }, [activeProjectId, fetchProjectUserAssignments]);
+
+    let cancelled = false;
+    setIsLoadingUsers(true);
+
+    const waitForSession = async (timeoutMs = 20000) => {
+      const started = Date.now();
+      while (!cancelled && Date.now() - started < timeoutMs) {
+        const sessionClient = await getSessionScopedSupabase();
+        if (sessionClient) {
+          return sessionClient;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      return null;
+    };
+
+    void (async () => {
+      try {
+        const sessionClient = await waitForSession();
+        if (!sessionClient || cancelled) {
+          return;
+        }
+
+        // Assignee picker = local join(project assignments ∩ company users).
+        // Both must be fetched under JWT after login — service-role ensure scripts
+        // do not populate in-memory Zustand stores.
+        const userFetch = user?.companyId
+          ? fetchUsersByCompany(user.companyId)
+          : fetchUsers();
+        await Promise.all([
+          userFetch,
+          fetchProjectUserAssignments(activeProjectId, true),
+        ]);
+      } finally {
+        if (!cancelled) {
+          setIsLoadingUsers(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeProjectId,
+    fetchProjectUserAssignments,
+    fetchUsers,
+    fetchUsersByCompany,
+    user?.companyId,
+  ]);
 
   useEffect(() => {
     let cancelled = false;

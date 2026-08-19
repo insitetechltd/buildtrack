@@ -1,0 +1,6 @@
+# Assignee boot — clearState + live login (Alice) + shared Project A.
+appId: com.buildtrack.app.local
+---
+- runFlow: ../update-progress-photo/_boot-alice.yaml
+- runFlow: _ensure-project.yaml
+- takeScreenshot: "du-boot-alice-home"

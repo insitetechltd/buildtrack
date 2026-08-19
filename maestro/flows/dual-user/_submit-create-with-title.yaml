@@ -1,0 +1,41 @@
+# Fill title/description from DU_TASK_TITLE and submit Create Task.
+appId: com.buildtrack.app.local
+---
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${DU_TASK_TITLE}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Dual-user Maestro gate — assigner creates and assigns Alice."
+- runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__submit-inline"
+    direction: DOWN
+- tapOn:
+    id: "create-task__submit-inline"
+- tapOn:
+    id: "create-task__submit-inline"
+    delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 20000
+- assertVisible:
+    id: "create-task__submit-success-message"
+- takeScreenshot: "du-create-submit-success"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml

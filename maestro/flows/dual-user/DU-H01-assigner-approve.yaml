@@ -1,0 +1,25 @@
+# DU-H01 phase 4 — John approves Alice's submitted task.
+appId: com.buildtrack.app.local
+tags:
+  - dual-user
+  - du-h01
+---
+- runFlow: _resume-john.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-task-by-title.yaml
+- takeScreenshot: "du-h01-10-john-review"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__quick-action-approve_task"
+    direction: DOWN
+- assertVisible:
+    id: "task-detail__quick-action-approve_task"
+- tapOn:
+    id: "task-detail__quick-action-approve_task"
+- waitForAnimationToEnd:
+    timeout: 4000
+- assertNotVisible:
+    id: "task-detail__quick-action-approve_task"
+- assertVisible: ".*Approved.*"
+- takeScreenshot: "du-h01-11-john-approved"

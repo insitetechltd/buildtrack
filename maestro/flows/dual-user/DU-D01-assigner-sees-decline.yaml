@@ -1,0 +1,13 @@
+# DU-D01 phase 4 — John sees declined task (no Accept for assignee path).
+appId: com.buildtrack.app.local
+tags:
+  - dual-user
+  - du-d01
+---
+- runFlow: _resume-john.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-task-by-title.yaml
+- assertNotVisible:
+    id: "task-detail__quick-action-accept_task"
+- assertVisible: ".*Declined.*"
+- takeScreenshot: "du-d01-04-john-sees-declined"

@@ -13,6 +13,10 @@ The 295-minute false-success lesson:
 
 ## 8 Mandatory Preflight Gates (before ANY `maestro test`)
 
+### Gate 0 — SIM + RESOURCE COORDINATION (before device assignment)
+
+Read SOP §10. Run `bash scripts/maestro/sim-lock.sh status` **and** `bash scripts/maestro/resource-lock.sh status`. Check `documentation/NOW.md` for sims, users, projects, and seed namespaces already owned by another chat. If the full bundle is free → claim sim UDIDs via `sim-lock.sh` and runtime resources via `resource-lock.sh` before any flow. If any required sim/resource is locked or `maestro` is already running on that UDID → **stop**; do not share the sim, user, project, task/seed namespace, or force-purge lane with another session. Release both lock families on teardown (`sim-lock.sh release-all`, `resource-lock.sh release-all`).
+
 ### Gate 1 — LOGBOX FAMILY AUDIT
 Open `index.ts` (or entry file calling `LogBox.ignoreLogs`). If the RED "Failed to open debugger…" banner is suppressed, the GRAY sibling "Open debugger to view warnings." banner MUST be suppressed alongside it. Any unstipulated bottom ~10% banner z-overlaps iPhone 17 Pro Max bottom-tab Pressables, causing XCTest SILENT TAP INTERCEPTION with rc=0. Cherry-picking = bug. This single issue produced >30% of the 5-hour debugging on M-QA-01.
 
@@ -100,6 +104,7 @@ Parallel Maestro is allowed only on **two distinct simulator UDIDs**, **1 job pe
 
 ## Pre-Run Checklist (print before any maestro invocation)
 ```
+[ ] G0: SIM + RESOURCE lock status + claim free UDIDs/accounts/projects (SOP §10)
 [ ] G1: LOGBOX family both banners audited
 [ ] G2: UNIQUE LANDING testID present in asserts
 [ ] G3: BOTTOM-TAB taps, no pressKey back

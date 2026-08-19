@@ -42,19 +42,18 @@ export function useProjectPickerViewAdapter(
         return;
       }
 
-      if (projectFilterStore.selectedProjectId === projectId) {
-        onNavigateBack();
-        return;
-      }
-
       setIsProjectSwitching(true);
 
       try {
+        // Always refresh — even when re-tapping the already-selected project.
+        // Otherwise Create Task Assign To stays empty after clearState login when
+        // the default project is already correct (users never fetched).
         await projectFilterStore.setSelectedProject(projectId, user.id);
         await Promise.all([
           taskStore.fetchTasks(),
           projectStore.fetchProjects(),
           projectStore.fetchUserProjectAssignments(user.id),
+          projectStore.fetchProjectUserAssignments(projectId, true),
           userStore.fetchUsers(),
         ]);
         onNavigateBack();

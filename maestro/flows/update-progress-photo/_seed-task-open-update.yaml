@@ -1,5 +1,5 @@
 # Open API-seeded task → Task Detail → Update Progress.
-# Prerequisite: scripts/maestro/ensure-update-progress-seed-task.mjs
+# Prerequisite: scripts/maestro/ensure-update-progress-seed-task.cjs
 # Runner must pass -e UP_SEED_TITLE=... (and optionally UP_SEED_TASK_ID).
 appId: com.buildtrack.app.local
 ---
@@ -33,44 +33,61 @@ appId: com.buildtrack.app.local
     visible:
       id: "tasks-screen__task_list"
     timeout: 25000
-# Pull-ish: open search and type seeded title (API insert may need list refetch)
+# Pull-ish: search once, then open the seeded row by testID (not text index).
+# Do not erase+retype — iOS concatenates leftover search text.
 - tapOn:
     id: "text-field:tasks-search__input"
-- eraseText
 - inputText: ${UP_SEED_TITLE}
-- runFlow: ../_dismiss-keyboard.yaml
-# Wait for row (realtime / refetch). Retry search once if needed.
-- runFlow:
-    when:
-      notVisible: ${".*" + UP_SEED_TITLE + ".*NEW"}
-    commands:
-      - tapOn:
-          id: "text-field:tasks-search__input"
-      - eraseText
-      - inputText: ${UP_SEED_TITLE}
-      - runFlow: ../_dismiss-keyboard.yaml
-      - waitForAnimationToEnd:
-          timeout: 2500
-- runFlow: ../_dismiss-keyboard.yaml
-- extendedWaitUntil:
-    visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
-    timeout: 20000
-# Search field also contains the title — index 1 targets the task row (0 = search).
 - tapOn:
-    text: ${".*" + UP_SEED_TITLE + ".*"}
-    index: 1
+    point: "50%, 8%"
+- waitForAnimationToEnd:
+    timeout: 800
 - runFlow:
     when:
-      notVisible:
-        id: "task-detail__header_title"
+      visible:
+        id: "tasks-screen__root"
     commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          commands:
+            - tapOn:
+                id: "tasks-screen__header_reset_filters"
+                optional: true
+            - waitForAnimationToEnd:
+                timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          timeout: 25000
       - tapOn:
-          text: ${".*" + UP_SEED_TITLE + ".*NEW"}
-          delay: 1500
+          id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title-pressable"}
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - runFlow:
+          when:
+            visible:
+              id: "tasks-screen__root"
+          commands:
+            - tapOn:
+                id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title"}
+            - waitForAnimationToEnd:
+                timeout: 1500
 - extendedWaitUntil:
     visible:
       id: "task-detail__header_title"
     timeout: 12000
+# Worker assignee may still need Accept before Update.
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-accept_task"
+    commands:
+      - tapOn:
+          id: "task-detail__quick-action-accept_task"
+      - waitForAnimationToEnd:
+          timeout: 2000
 # Camera-from-task-detail → Update Progress (C3)
 - tapOn:
     id: "root-tab__camera_icon_surface"

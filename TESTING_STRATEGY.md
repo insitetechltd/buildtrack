@@ -104,6 +104,7 @@ Use this layer when a change is user-visible and you need proof that the install
 
 - `npm run test:e2e:maestro:smoke`
 - `npm run test:e2e:maestro:rc-worker-be` — **RC required** field operator sections B–E (see `documentation/MAINTABS_UX_CHECKLIST.md`)
+- `npm run test:e2e:maestro:dual-user` — **RC required** dual-user interaction gate (John assigner + Alice assignee on two sims; fully automated conductor)
 - `npm run test:e2e:maestro:task-core`
 - `npm run test:e2e:maestro:qa01`
 - `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
@@ -113,6 +114,7 @@ Use this layer when a change is user-visible and you need proof that the install
 
 - launch smoke for the installed iOS dev client
 - **RC worker B–E** (Activity, Camera/create+photo, Tasks, Task Detail update+photo) via `test:e2e:maestro:rc-worker-be`
+- **RC dual-user interaction** (create+assign → accept/decline → update → review) via `test:e2e:maestro:dual-user` — automated, no manual input
 - `Profile -> Developer Settings` entry
 - Sprint 7 sandbox bootstrap
 - live Supabase-backed Task Core create, assign, progress, completion, and photo-upload flows

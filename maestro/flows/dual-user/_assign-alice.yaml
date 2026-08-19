@@ -1,0 +1,37 @@
+# Pick Alice Worker A1 on Create Task assignee picker.
+appId: com.buildtrack.app.local
+---
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__assignee-picker-trigger"
+- extendedWaitUntil:
+    visible: "Assign To"
+    timeout: 12000
+- extendedWaitUntil:
+    notVisible: "Fetching project team members"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: ".*users available.*"
+    timeout: 45000
+- takeScreenshot: "du-assignee-picker-open"
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-option-alice-workera1-at-test-com"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "create-task__assignee-option-alice-workera1-at-test-com"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__selected_assignees"
+    timeout: 12000
+- takeScreenshot: "du-assignee-alice-selected"

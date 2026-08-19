@@ -145,9 +145,15 @@ export const useUserStore = create<UserStore>()(
           return;
         }
 
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [users] Skipping fetchUsersByCompany — no Supabase session');
+          return;
+        }
+
         set({ isLoading: true, error: null });
         try {
-          const { data, error } = await supabase
+          const { data, error } = await sessionClient
             .from('users')
             .select(`
               *,

@@ -1,0 +1,28 @@
+# DU-D01 phase 3 — Alice declines the assigned task.
+appId: com.buildtrack.app.local
+tags:
+  - dual-user
+  - du-d01
+---
+- runFlow: _resume-alice.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-task-by-title.yaml
+- assertVisible:
+    id: "task-detail__quick-action-decline_task"
+- tapOn:
+    id: "task-detail__quick-action-decline_task"
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "du-d01-02-alice-decline-prompt"
+- runFlow:
+    when:
+      visible: "Decline Task"
+    commands:
+      - inputText: "Cannot staff this scope this week"
+      - tapOn: "OK"
+- tapOn:
+    text: "OK"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "du-d01-03-alice-after-decline"

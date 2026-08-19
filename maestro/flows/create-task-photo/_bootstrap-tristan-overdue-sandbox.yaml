@@ -1,0 +1,148 @@
+# Boot visible sim into Sprint7 Tristan preset B (overdue crunch),
+# matching the QA01 B setup path.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    appId: "com.buildtrack.app.local"
+- extendedWaitUntil:
+    visible:
+      id: "app-screen-header__profile-trigger"
+    timeout: 90000
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+      - waitForAnimationToEnd:
+          timeout: 2500
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-developer_settings"
+    timeout: 20000
+- tapOn:
+    id: "profile-menu-developer_settings"
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings-screen__root"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 2000
+- scrollUntilVisible:
+    element:
+      id: "developer-settings-action_initialize-sprint7-sandbox"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 15000
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    id: "developer-settings-action_initialize-sprint7-sandbox"
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings__preset_b"
+    timeout: 25000
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_confirm-sprint7"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+          timeout: 15000
+      - tapOn:
+          id: "developer-settings-sheet_confirm-sprint7_initialize-tristan"
+      - waitForAnimationToEnd:
+          timeout: 4000
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_info-sprint7"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings-sheet_info-sprint7_ok"
+          timeout: 15000
+      - tapOn:
+          id: "developer-settings-sheet_info-sprint7_ok"
+      - waitForAnimationToEnd:
+          timeout: 5000
+- scrollUntilVisible:
+    element:
+      id: "developer-settings__preset_b"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "developer-settings__preset_b"
+    timeout: 15000
+- tapOn:
+    id: "developer-settings__preset_b"
+- waitForAnimationToEnd:
+    timeout: 3500
+- runFlow:
+    when:
+      visible:
+        id: "developer-settings-sheet_info-sprint7"
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: "developer-settings-sheet_info-sprint7_ok"
+          timeout: 20000
+      - tapOn:
+          id: "developer-settings-sheet_info-sprint7_ok"
+      - waitForAnimationToEnd:
+          timeout: 4500
+- launchApp:
+    appId: "com.buildtrack.app.local"
+    clearState: true
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "app-screen-header__profile-trigger"
+    timeout: 180000
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__activity"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
+      - waitForAnimationToEnd:
+          timeout: 3000
+- assertVisible:
+    id: "dashboard-screen__root"

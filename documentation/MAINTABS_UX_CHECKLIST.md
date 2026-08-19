@@ -24,10 +24,29 @@ Profile is a **root overlay** (header avatar), not a tab.
 
 - **Discovery:** walk every row once; Skip only with reason.  
 - **RC human:** field operator **B–E** (required) + admin **G–J** (org) + header **A**.  
-- **RC Maestro (required before release):** field operator **B–E** only — `npm run test:e2e:maestro:rc-worker-be`. Human still signs off PNGs / device.  
+- **RC Maestro (required before release):** field operator **B–E** only — `npm run test:e2e:maestro:rc-worker-be`. **Dual-user interaction (required):** `npm run test:e2e:maestro:dual-user` (John + Alice, two sims, fully automated). Human still signs off PNGs / device optional.  
 - **UI consistency:** section **L** while on each screen. No code change from that list until a screen is scoped.
 
-Legend — **Maestro:** Covered / Partial / Gap / Exempt / Dev-only.
+Legend — **Maestro (RC):** Covered / Partial / Gap / Exempt / Dev-only.
+
+### Two Maestro ledgers (do not conflate)
+
+| Ledger | File | Job |
+|--------|------|-----|
+| **RC map** | This checklist — Maestro (RC) column | Maps each journey to *any* flow that proves the behavior for release min (e.g. U01 covers W-D04). “Covered” ≠ headed sequential PASS. |
+| **B–E sequential** | `docs/superpowers/evidence/2026-08-18-maestro-be-sequential-status.md` | Merge gate on `chore/maestro-be-status`: dedicated `W-*` one-shot, headed sim, PNG under `docs/superpowers/evidence/`. |
+
+RC can ship on the RC map (P01+U01 min). Closing the sequential ledger is a separate artifact-backed walk of B–E.
+
+**Account partition (concurrent Maestro):**
+
+| Track | Sim | Login | Seed creator (when needed) |
+|-------|-----|-------|----------------------------|
+| Dual-user gate | 17 Pro Max + iPhone 16 | John + Alice | (flow-created) |
+| Solo Section E sequential | iPhone 17 Pro | **Bob** `bob.workera2@test.com` | Sarah `sarah.managerb@test.com` |
+| RC min / U-suite | default runner | John `_boot.yaml` | John |
+
+Do not run John or Alice on 17 Pro while dual-user is active.
 
 ---
 
@@ -50,14 +69,14 @@ Menu rows must match: Profile & Settings, Change Project, Logout (`__DEV__`: + D
 
 | ID | Journey | Manual | Maestro (RC) |
 |----|---------|--------|----------------|
-| W-A01 | Land Activity (`dashboard-screen__root`) | ☐ | **Covered** P01 `_boot` + `launch-smoke.yaml` |
-| W-A02 | Project summary visible | ☐ | Partial |
-| W-A03 | Queue tiles → Tasks | ☐ | Partial `qa01-scenario-b-overdue-crunch.yaml` |
-| W-A04 | Activity row → Task Detail | ☐ | Gap |
+| W-A01 | Land Activity (`dashboard-screen__root`) | ☐ | **Covered** `P-B-W-A01.yaml` headed PASS 2026-08-19 — Activity land + queue + camera FAB |
+| W-A02 | Project summary visible | ☐ | **Covered** `P-B-W-A02.yaml` headed PASS 2026-08-19 — Project A summary section |
+| W-A03 | Queue tiles → Tasks | ☐ | **Covered** `P-B-W-A03.yaml` headed PASS 2026-08-19 — queue tile + Tasks tab → list |
+| W-A04 | Activity row → Task Detail | ☐ | **Covered** `P-B-W-A04.yaml` headed PASS 2026-08-19 — Recent Activity outer card → Task Detail |
 | W-A05 | Drafts Show/Hide | ☐ | **Covered** `P-B-W-A05.yaml` headed PASS 2026-08-19 — Show list then Hide |
 | W-A06 | Resume draft → Create Task | ☐ | **Covered** `P-B-W-A06.yaml` headed PASS 2026-08-19 — tap draft opens Create form |
 | W-A07 | Swipe-delete draft | ☐ | **Covered** `P-B-W-A07.yaml` headed PASS 2026-08-19 — swipe + native Alert Delete |
-| W-A08 | Create FAB (if shown) | ☐ | Partial (Camera tab is SoT) |
+| W-A08 | Create FAB (if shown) | ☐ | **Covered** `P-B-W-A08.yaml` headed PASS 2026-08-19 — camera FAB → Create Task form (17 Pro) |
 
 ---
 
@@ -91,16 +110,16 @@ Menu rows must match: Profile & Settings, Change Project, Logout (`__DEV__`: + D
 
 | ID | Journey | Manual | Maestro (RC) |
 |----|---------|--------|----------------|
-| W-D01 | Accept | ☐ | Gap |
-| W-D02 | Decline | ☐ | Partial qa01-a (Sprint7) |
-| W-D03 | Update text | ☐ | **Covered** `task-core-live-progress.yaml` |
-| W-D04 | Update + photo | ☐ | **Covered** **U01** |
-| W-D05 | Add comment | ☐ | Gap |
-| W-D06 | Add subtask | ☐ | Gap |
-| W-D07 | Submit for review | ☐ | **Covered** `task-core-live-completion.yaml` (seeded live task; not P01) |
-| W-D08 | Edit (creator) | ☐ | Gap |
-| W-D09 | Photo viewer | ☐ | Gap |
-| W-D10 | Archive (completed only) | ☐ | **Covered** `W-D10-archive.yaml` headed PASS 2026-08-19 — Tasks → Filters → QUEUE → Archived |
+| W-D01 | Accept | ☐ | **PASS** `W-D01-accept.yaml` headed 2026-08-19 Bob — `docs/superpowers/evidence/2026-08-19-w-d01-accepted.png` |
+| W-D02 | Decline | ☐ | **PASS** `W-D02-decline.yaml` headed 2026-08-19 Bob |
+| W-D03 | Update text | ☐ | **PASS** `E-D03-update-text-only.yaml` headed 2026-08-19 Bob |
+| W-D04 | Update + photo | ☐ | **PASS** `W-D04-update-photo.yaml` headed 2026-08-19 Bob |
+| W-D05 | Add comment | ☐ | **Exempt** — retired UX (2026-07 photo-centric simplification). Field narrative → **Update Description** on Update Progress (`W-D03` / `W-C07`). No Task Detail chip by design. Evidence: `2026-08-19-w-d05-gap-no-comment-chip.png` |
+| W-D06 | Add subtask | ☐ | **PASS** `W-D06-add-subtask.yaml` headed 2026-08-19 Bob — evidence `2026-08-19-w-d06-create-subtask.png` |
+| W-D07 | Submit for review | ☐ | **PASS** `W-D07-submit-review.yaml` headed 2026-08-19 Bob |
+| W-D08 | Edit (creator) | ☐ | **PASS** `W-D08-edit.yaml` headed 2026-08-19 Bob |
+| W-D09 | Photo viewer | ☐ | **PASS** `W-D09-photo-viewer.yaml` headed 2026-08-19 Bob |
+| W-D10 | Archive (completed only) | ☐ | **PASS** `W-D10-archive.yaml` headed 2026-08-19 Bob |
 
 RC Maestro min for E is **U01** (update+photo). W-D07 is Task Core, not the P/U one-shots.
 

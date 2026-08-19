@@ -1,0 +1,19 @@
+# W-D05: Add comment — EXEMPT (retired UX)
+#
+# Field-worker narrative moved to Update Progress → Update Description (W-D03 / W-C07).
+# TaskDetailScreen filters add_comment from Other actions by design.
+# This flow only captures evidence that the chip is absent; rc=0 = ledger Exempt, not PASS.
+appId: com.buildtrack.app.local
+tags:
+  - w-d05
+  - exempt
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-seeded-task-detail.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__activity_thread"
+    direction: DOWN
+- takeScreenshot: "rc-E-W-D05-retired-no-comment-chip"

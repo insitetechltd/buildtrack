@@ -1,0 +1,29 @@
+# W-D06: Add subtask from Task Detail Other actions.
+appId: com.buildtrack.app.local
+tags:
+  - w-d06
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-seeded-task-detail.yaml
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-accept_task"
+    commands:
+      - tapOn:
+          id: "task-detail__quick-action-accept_task"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__secondary-actions"
+    direction: DOWN
+- tapOn:
+    id: "task-detail__quick-action-add_subtask"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 15000
+- takeScreenshot: "rc-E-W-D06-create-subtask"

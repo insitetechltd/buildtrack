@@ -61,27 +61,46 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-T01` Tasks list
 - `W-T02` Row -> Task Detail
 - `W-T03` Search
-- `W-D03` Update text
-- `W-D04` Update + photo
 
-### In progress
+### Section E sequential (2026-08-19 — Bob on 17 Pro, dual-user on Max+16)
 
-- `W-D07` Submit for review
-  - Fixed the completion interaction to use `update-progress__completion-preset-100`.
-  - Latest artifact proves the task reached `100% complete`.
-  - Remaining failure is after dismissing the `100%` success modal and attempting the final review-state transition.
+Account: **Bob** `bob.workera2@test.com` login; **Sarah** `sarah.managerb@test.com` API seed creator when assignee ≠ creator. Not John/Alice (dual-user).
 
-### Not yet fully artifact-verified in sequential ledger
+- `W-D01` **PASS** headed 2026-08-19 14:27 — Accept quick action. Artifact: `docs/superpowers/evidence/2026-08-19-w-d01-accepted.png`
+- `W-D02` **PASS** headed 2026-08-19 14:29 — Decline + prompt. Artifact: `docs/superpowers/evidence/2026-08-19-w-d02-decline.png`
+- `W-D03` **PASS** headed 2026-08-19 14:31 — Text-only update (`E-D03-update-text-only.yaml`). Artifact: `docs/superpowers/evidence/2026-08-19-w-d03-text-update.png`
+- `W-D04` **PASS** headed 2026-08-19 14:43 — Update + photo (`W-D04-update-photo.yaml`). Artifact: `docs/superpowers/evidence/2026-08-19-w-d04-update-photo.png`
+- `W-D05` **EXEMPT** (retired UX) headed 2026-08-19 — `add_comment` removed from Task Detail intentionally; Update Description on Update Progress is the field-worker narrative path (`E-D03` / center camera → Update). Post-RC cleanup: **S-UX-01R**. Artifact: `docs/superpowers/evidence/2026-08-19-w-d05-gap-no-comment-chip.png`
+- `W-D06` **PASS** headed 2026-08-19 16:10 — Tap “Add Subtask” opens nested Create Task form. Artifact: `docs/superpowers/evidence/2026-08-19-w-d06-create-subtask.png`
+- `W-D07` **PASS** headed 2026-08-19 14:48 — 100% update + Submit for Review. Artifact: `docs/superpowers/evidence/2026-08-19-w-d07-submitted.png`
+- `W-D08` **PASS** headed 2026-08-19 14:50 — Edit (Bob creator). Artifact: `docs/superpowers/evidence/2026-08-19-w-d08-edit-task.png`
+- `W-D09` **PASS** headed 2026-08-19 14:54 — Photo viewer from work thread. Artifact: `docs/superpowers/evidence/2026-08-19-w-d09-photo-viewer.png`
+- `W-D10` **PASS** headed 2026-08-19 14:56 — Archive + Filters → Archived queue (Bob). Artifact: `docs/superpowers/evidence/2026-08-19-w-d10-archived-queue.png`
 
-- `W-A01` through `W-A08`
-- `W-D01`, `W-D02`, `W-D05`, `W-D06`, `W-D08`, `W-D09`, `W-D10`
+**Section E sequential ledger: 9/10 PASS, 1 EXEMPT (W-D05 retired UX).**
+
+### Section B drafts (this chat)
+
+- `W-A05` **PASS** headed 2026-08-19 12:55 — Show: Drafts In Progress list with `Maestro Draft A05 1787114246` first. Hide: list gone, Recent Activity visible, toggle back to Show. Artifacts: `docs/superpowers/evidence/2026-08-19-w-a05-drafts-show.png`, `2026-08-19-w-a05-drafts-hide.png`
+- `W-A06` **PASS** headed 2026-08-19 12:58 — Tap draft row → Create New Task with title/description prefilled. Artifact: `docs/superpowers/evidence/2026-08-19-w-a06-resume-draft.png`
+- `W-A07` **PASS** headed 2026-08-19 13:01 — Swipe left, tap delete, Alert Delete. Seed title gone; remaining drafts start at `Maestro UP Photo 1787043416309`. Artifact: `docs/superpowers/evidence/2026-08-19-w-a07-swipe-delete.png`
+
+Drafts SoT: originator `in_progress` (API seed `MAESTRO_UP_SEED_STATUS=in_progress`), not a Create Task Save Draft button. Drafts section sits above Recent Activity so the toggle is reachable.
+
+**Section B drafts ledger: W-A05–W-A07 all PASS.** W-A08 closed (other chat) — Section B complete.
+
+### Section B land / summary / queue (this chat)
+
+- `W-A01` **PASS** headed 2026-08-19 13:47 — Dedicated `P-B-W-A01.yaml` (was only indirect via P01/launch-smoke; not in sequential ledger until now). Activity land, queue dashboard, camera FAB. Artifact: `docs/superpowers/evidence/2026-08-19-w-a01-activity-land.png`
+- `W-A02` **PASS** headed 2026-08-19 13:42 — Project A summary (`dashboard-screen__project_summary_section`). Artifact: `docs/superpowers/evidence/2026-08-19-w-a02-project-summary.png`
+- `W-A03` **PASS** headed 2026-08-19 13:46 — Queue tile touch + Tasks tab → `tasks-screen__root` (151 tasks). Artifact: `docs/superpowers/evidence/2026-08-19-w-a03-queue-to-tasks.png`
+- `W-A08` **PASS** headed 2026-08-19 13:58 — Camera FAB → Create New Task form. Sim: 17 Pro (dual-user pair untouched). Artifact: `docs/superpowers/evidence/2026-08-19-w-a08-camera-create.png`
+
+**Section B sequential ledger: W-A01–W-A08 all PASS.**
 
 ## Latest artifact notes
 
-- `W-D07` latest headed run:
-  - `up-D07-selection-one.png`: one photo selected
-  - `up-D07-form-one.png`: Update Progress form before completion change
-  - `step-146-assertCondition-Progress_update_added_su.png`: Task Detail shows `100% complete` and the success modal for reaching 100%
+- `W-D07` closed with `update-progress__completion-preset-100` + `task-detail__quick-action-submit_review` (Bob assignee / Sarah creator seed).
 
 ## Current branch pickup
 
@@ -98,10 +117,10 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **D** on local headed iPhone 17 Pro. W-T01–W-T05 PASS.
+Local headed **iPhone 17 Pro** (`702680D5-…`) for solo Section E. **John + Alice reserved for dual-user on Max + 16.** Section E login: **Bob** (`_boot-bob.yaml`). Section B: **W-A01–W-A08 all PASS**.
 
 ## Next actions
 
-1. Section E sequential (W-D01…).
-2. Then remaining B.
-3. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.
+1. Rerun **W-D06** when Metro healthy.
+2. Product decision on **W-D05** — **closed as Exempt** (Update Description replaces Add Comment).
+3. Merge `chore/maestro-be-status` → `master` when W-D06 closed (or accept 9/10 + documented gap).

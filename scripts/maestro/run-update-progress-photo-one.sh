@@ -22,6 +22,8 @@ WRAPPER="${ROOT}/scripts/maestro/run-local.sh"
 ENSURE="${ROOT}/scripts/maestro/ensure-create-task-photo-media.sh"
 SEED_JS="${ROOT}/scripts/maestro/ensure-update-progress-seed-task.cjs"
 SEED_ENV="${ROOT}/.cache/maestro-up-seed.env"
+SIM_LOCK="${ROOT}/scripts/maestro/sim-lock.sh"
+RESOURCE_LOCK="${ROOT}/scripts/maestro/resource-lock.sh"
 
 export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-90000}"
 export MAESTRO_0CLICK_DISABLE=1
@@ -50,6 +52,20 @@ fi
 
 FLOW_NAME="$(basename "${FLOW_PATH}")"
 
+resource_claims=(
+  "user:bob.workera2"
+  "seed:update-progress"
+)
+if [[ "${FORCE_PURGE:-0}" == "1" ]]; then
+  resource_claims+=("photos:force-purge")
+fi
+
+cleanup() {
+  bash "${RESOURCE_LOCK}" release-all >/dev/null 2>&1 || true
+  bash "${SIM_LOCK}" release-all >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
 if ! curl -sf "http://127.0.0.1:8081/status" >/dev/null 2>&1; then
   echo "FAIL: Metro /status not healthy on :8081"
   exit 97
@@ -59,13 +75,55 @@ chmod +x "${ENSURE}" 2>/dev/null || true
 
 echo "=== Update Progress photo ONE: ${FLOW_NAME} ==="
 echo "UDID=${UDID}"
+echo "----- CLAIM sim + resources -----"
+bash "${SIM_LOCK}" claim "${UDID}" --purpose "update-progress-photo-one:${FLOW_NAME}"
 
 echo "----- API SEED task (skip Create Task UI) -----"
-if [[ "${FLOW_NAME}" == "W-D10-archive.yaml" ]]; then
-  export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-approved}"
-  export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-alice.workera1@test.com}"
-  export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-john.managera@test.com}"
-fi
+# Account partition (2026-08-19):
+#   dual-user gate → john.managera + alice.workera1 on Max+16 (do NOT use here)
+#   solo Section E sequential → bob.workera2 login (_boot-bob.yaml) on 17 Pro
+#   creator (when assignee != creator) → sarah.managerb@test.com
+BOB="bob.workera2@test.com"
+SARAH="sarah.managerb@test.com"
+case "${FLOW_NAME}" in
+  W-D10-archive.yaml)
+    export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-approved}"
+    export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-${BOB}}"
+    export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-${BOB}}"
+    resource_claims+=("project:project-a")
+    ;;
+  W-D01-accept.yaml|W-D02-decline.yaml)
+    export MAESTRO_UP_SEED_STATUS=new
+    export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-${BOB}}"
+    export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-${SARAH}}"
+    resource_claims+=("user:sarah.managerb" "project:project-a")
+    ;;
+  W-D07-submit-review.yaml|W-D07-submit-review-from-seed.yaml)
+    unset MAESTRO_UP_SEED_STATUS 2>/dev/null || true
+    export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-accepted}"
+    export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-${BOB}}"
+    export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-${SARAH}}"
+    resource_claims+=("user:sarah.managerb" "project:project-a")
+    ;;
+  W-D08-edit.yaml)
+    export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-new}"
+    export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-${BOB}}"
+    export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-${BOB}}"
+    resource_claims+=("project:project-a")
+    ;;
+  W-D03-update-text.yaml|W-D04-update-photo.yaml|W-D05-add-comment.yaml|W-D06-add-subtask.yaml|W-D09-photo-viewer.yaml|E-D03-update-text-only.yaml)
+    unset MAESTRO_UP_SEED_STATUS 2>/dev/null || true
+    export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-accepted}"
+    export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-${BOB}}"
+    export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-${SARAH}}"
+    resource_claims+=("user:sarah.managerb" "project:project-a")
+    ;;
+  U*.yaml)
+    unset MAESTRO_UP_SEED_STATUS 2>/dev/null || true
+    resource_claims+=("project:project-a")
+    ;;
+esac
+bash "${RESOURCE_LOCK}" claim "${resource_claims[@]}" --purpose "update-progress-photo-one:${FLOW_NAME}"
 node "${SEED_JS}"
 # shellcheck disable=SC1090
 source "${SEED_ENV}"
@@ -73,6 +131,7 @@ if [[ -z "${UP_SEED_TITLE:-}" || -z "${UP_SEED_TASK_ID:-}" ]]; then
   echo "FAIL: seed env missing UP_SEED_TITLE / UP_SEED_TASK_ID"
   exit 3
 fi
+bash "${RESOURCE_LOCK}" claim "task:${UP_SEED_TASK_ID}" "title-prefix:${UP_SEED_TITLE}" --purpose "update-progress-photo-one:${FLOW_NAME}"
 echo "UP_SEED_TITLE=${UP_SEED_TITLE}"
 echo "UP_SEED_TASK_ID=${UP_SEED_TASK_ID}"
 

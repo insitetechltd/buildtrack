@@ -1,11 +1,11 @@
-# E — W-D03: Update text (no photo) on Update Progress, then submit.
-# Uses seeded task from run-update-progress-photo-one.sh.
+# W-D03: Update text only (no photo).
 appId: com.buildtrack.app.local
+tags:
+  - w-d03
 ---
 - runFlow: _boot-bob.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: _seed-task-open-update.yaml
-
 - evalScript: ${output.progressNote = "Maestro UP text-only " + Date.now()}
 - scrollUntilVisible:
     centerElement: true
@@ -16,13 +16,8 @@ appId: com.buildtrack.app.local
     id: "update-progress__description"
 - inputText: ${output.progressNote}
 - runFlow: ../_dismiss-keyboard.yaml
-
-# Keyboard is stubborn on this form. Tap a non-description area
-# to guarantee the software keyboard collapses before submitting.
 - tapOn: "Photos & Files"
 - runFlow: ../_dismiss-keyboard.yaml
-
-# Submit
 - scrollUntilVisible:
     centerElement: true
     element:
@@ -38,7 +33,6 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "update-progress__submit"
     delay: 1500
-
 - extendedWaitUntil:
     visible: ".*Progress update added successfully!.*"
     timeout: 25000

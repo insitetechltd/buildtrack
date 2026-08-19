@@ -214,6 +214,20 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           );
         }
         break;
+      case 'add_subtask':
+        // UI shows "+ Add Subtask" as an "other actions" chip, but the screen
+        // must explicitly route it into CreateTaskScreen in nested mode by
+        // providing the parentTaskId.
+        if (props.onNavigateToCreateTask) {
+          props.onNavigateToCreateTask(
+            props.taskId,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+          );
+        }
+        break;
     }
   };
 

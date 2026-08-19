@@ -1,11 +1,14 @@
 # Headed W-A04 — Activity row → Task Detail.
-# Prefer no-clear so the visible Project A session stays selected.
+# Persist writes tasks: []; boot + wait for post-login fetch before tapping a row.
+# Tap outer card testIDs only — nested :title-pressable does not receive Maestro taps.
 appId: com.buildtrack.app.local
 tags:
   - rc-headed-b
   - w-a04
 ---
-- runFlow: _boot-no-clear.yaml
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__activity"
     optional: true
@@ -13,14 +16,61 @@ tags:
     visible:
       id: "dashboard-screen__root"
     timeout: 20000
-
-# Persist writes tasks: []. Wait for refetch, then tap the row title (not meta text).
 - extendedWaitUntil:
-    visible: "Due this week"
+    visible:
+      id: "dashboard-screen__queue_dashboard"
     timeout: 25000
-- tapOn:
-    id: "dashboard-screen__critical_task_.*:title-pressable"
-
+- extendedWaitUntil:
+    notVisible: "Refreshing..."
+    timeout: 20000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: "Recent Activity"
+    direction: DOWN
+    speed: 80
+    visibilityPercentage: 40
+    timeout: 25000
+- takeScreenshot: "rc-B-W-A04-activity-list"
+# Checklist SoT: Recent Activity row (outer card only — not :title-pressable children).
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-screen__activity_(activity-task:[^:]+|[0-9a-f-]+)$"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "dashboard-screen__activity_(activity-task:[^:]+|[0-9a-f-]+)$"
+          direction: DOWN
+          speed: 80
+          visibilityPercentage: 40
+          timeout: 15000
+      - tapOn:
+          id: "dashboard-screen__activity_(activity-task:[^:]+|[0-9a-f-]+)$"
+      - extendedWaitUntil:
+          visible:
+            id: "task-detail__header_title"
+          timeout: 20000
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "dashboard-screen__critical_task_critical-date:.*"
+          direction: UP
+          speed: 80
+          visibilityPercentage: 40
+          timeout: 20000
+      - tapOn:
+          id: "dashboard-screen__critical_task_critical-date:.*"
+      - extendedWaitUntil:
+          visible:
+            id: "task-detail__header_title"
+          timeout: 20000
 - extendedWaitUntil:
     visible:
       id: "task-detail__header_title"

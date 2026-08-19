@@ -33,11 +33,14 @@ const SEED_IS_APPROVED =
   SEED_STATUS === "completed" ||
   SEED_STATUS === "done";
 const SEED_IS_IN_PROGRESS = SEED_STATUS === "in_progress";
+const SEED_IS_ACCEPTED = SEED_STATUS === "accepted";
 const SEED_CURRENT_STATUS = SEED_IS_APPROVED
   ? "approved"
   : SEED_IS_IN_PROGRESS
     ? "in_progress"
-    : "new";
+    : SEED_IS_ACCEPTED
+      ? "accepted"
+      : "new";
 
 function loadDotEnv() {
   const envPath = path.join(ROOT, ".env");
@@ -152,9 +155,9 @@ async function main() {
     tags: [],
     location_on_site: null,
     attachments: [],
-    accepted: SEED_IS_APPROVED,
-    accepted_by: SEED_IS_APPROVED ? user.id : null,
-    accepted_at: SEED_IS_APPROVED ? new Date().toISOString() : null,
+    accepted: SEED_IS_APPROVED || SEED_IS_ACCEPTED,
+    accepted_by: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? user.id : null,
+    accepted_at: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? new Date().toISOString() : null,
   };
 
   let { data: task, error: insertErr } = await supabase

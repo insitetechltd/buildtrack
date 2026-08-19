@@ -1,0 +1,44 @@
+# Solo Section E boot — bob.workera2@test.com (not John/Alice; dual-user owns those).
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: true
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- extendedWaitUntil:
+    visible:
+      id: "login-submit"
+    timeout: 25000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- inputText: "bob.workera2@test.com"
+- tapOn:
+    id: "^login-password$"
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 10000

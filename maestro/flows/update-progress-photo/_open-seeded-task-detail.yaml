@@ -1,0 +1,75 @@
+# Open API-seeded task to Task Detail only (no Accept, no Update).
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- repeat:
+    times: 4
+    commands:
+      - tapOn:
+          text: "Dismiss"
+          optional: true
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 45000
+- runFlow:
+    when:
+      notVisible:
+        id: "tasks-screen__task_list"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+          delay: 2000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 25000
+- tapOn:
+    id: "text-field:tasks-search__input"
+- inputText: ${UP_SEED_TITLE}
+- tapOn:
+    point: "50%, 8%"
+- waitForAnimationToEnd:
+    timeout: 800
+- runFlow:
+    when:
+      visible:
+        id: "tasks-screen__root"
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          commands:
+            - tapOn:
+                id: "tasks-screen__header_reset_filters"
+                optional: true
+            - waitForAnimationToEnd:
+                timeout: 2500
+      - extendedWaitUntil:
+          visible:
+            id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          timeout: 25000
+      - tapOn:
+          id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title-pressable"}
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - runFlow:
+          when:
+            visible:
+              id: "tasks-screen__root"
+          commands:
+            - tapOn:
+                id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title"}
+            - waitForAnimationToEnd:
+                timeout: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 12000

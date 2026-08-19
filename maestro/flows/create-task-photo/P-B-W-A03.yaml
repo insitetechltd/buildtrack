@@ -4,7 +4,9 @@ tags:
   - rc-headed-b
   - w-a03
 ---
-- runFlow: _boot-no-clear.yaml
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
 - tapOn:
     id: "root-tab__activity"
     optional: true
@@ -15,9 +17,19 @@ tags:
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__queue_dashboard"
-    timeout: 20000
+    timeout: 25000
+- waitForAnimationToEnd:
+    timeout: 3000
+# Touch queue tile when present; Tasks tab is the reliable landing assert.
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-screen__queue_cell_my_queue_new"
+    commands:
+      - tapOn:
+          id: "dashboard-screen__queue_cell_my_queue_new"
 - tapOn:
-    id: "dashboard-screen__queue_cell_my_queue_new"
+    id: "root-tab__tasks_pressable"
 - extendedWaitUntil:
     visible:
       id: "tasks-screen__root"

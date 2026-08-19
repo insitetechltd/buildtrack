@@ -1,4 +1,4 @@
-# Headed W-A02 only — Project summary visible on Activity.
+# Headed W-A02 — Project summary visible on Activity.
 appId: com.buildtrack.app.local
 tags:
   - rc-headed-b
@@ -6,8 +6,21 @@ tags:
 ---
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
-- assertVisible:
-    id: "dashboard-screen__root"
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__queue_dashboard"
+    timeout: 25000
+- extendedWaitUntil:
+    notVisible: "Refreshing..."
+    timeout: 20000
 - assertVisible:
     id: "dashboard-screen__project_summary_section"
 - takeScreenshot: "rc-B-W-A02-project-summary"

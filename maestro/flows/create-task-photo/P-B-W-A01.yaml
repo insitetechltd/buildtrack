@@ -1,8 +1,8 @@
-# Headed W-A08 — Camera FAB from Activity → Create Task form.
+# Headed W-A01 — Land Activity (dashboard-screen__root).
 appId: com.buildtrack.app.local
 tags:
   - rc-headed-b
-  - w-a08
+  - w-a01
 ---
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
@@ -20,10 +20,6 @@ tags:
     timeout: 25000
 - waitForAnimationToEnd:
     timeout: 3000
-- tapOn:
-    id: "root-tab__camera_button"
-- extendedWaitUntil:
-    visible:
-      id: "create-task__continuous_form"
-    timeout: 20000
-- takeScreenshot: "rc-B-W-A08-camera-create"
+- assertVisible:
+    id: "root-tab__camera_icon_surface"
+- takeScreenshot: "rc-B-W-A01-activity-land"

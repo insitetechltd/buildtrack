@@ -1,11 +1,11 @@
 # W-D10: Archive completed task from Other actions; prove it in Filters → QUEUE → Archived.
 # In-app confirm (not native Alert). Never tapOn "Archive" by text — it matches the Other actions chip.
-# Seed: approved + Alice assignee via run-update-progress-photo-one.sh.
+# Seed: approved + Bob assignee via run-update-progress-photo-one.sh.
 appId: com.buildtrack.app.local
 tags:
   - w-d10
 ---
-- runFlow: _boot-alice.yaml
+- runFlow: _boot-bob.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: _open-seeded-task-detail.yaml
 - scrollUntilVisible:

@@ -1,5 +1,6 @@
-# W-T05: Pull-down on the Tasks list (checklist “Pull to refresh”).
-# TasksScreen has no RefreshControl; this run proves the gesture and post-swipe list.
+# W-T05: Pull-to-refresh on the Tasks list (operator pull only).
+# Native RefreshControl only fires from the top of the list ScrollView.
+# Do not tap after landing — stay at y=0. Header refresh icon is filter-reset, not this.
 appId: com.buildtrack.app.local
 tags:
   - rc-headed-d05
@@ -20,14 +21,19 @@ tags:
     timeout: 25000
 - takeScreenshot: "rc-D-T05-before-pull"
 
+# Pull from the list body (below search), not the header.
+# Vertical-only: row Swipeable fails Y so RefreshControl can rubber-band.
 - swipe:
-    start: "50%, 32%"
-    end: "50%, 72%"
-    duration: 700
+    start: "50%, 28%"
+    end: "50%, 78%"
+    duration: 1200
+- takeScreenshot: "rc-D-T05-refreshing"
 - waitForAnimationToEnd:
-    timeout: 2500
-- takeScreenshot: "rc-D-T05-after-pull"
-- assertVisible:
-    id: "tasks-screen__task_list"
+    timeout: 4000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 15000
 - assertVisible:
     id: "tasks-screen__search_section"
+- takeScreenshot: "rc-D-T05-after-pull"

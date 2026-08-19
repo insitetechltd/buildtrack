@@ -1,10 +1,14 @@
 import React from "react";
-import { render, fireEvent, within } from "@testing-library/react-native";
+import { render, fireEvent, within, act } from "@testing-library/react-native";
 
 import TasksScreen from "../../../src/screens/TasksScreen";
 import { useTasksViewAdapter } from "../../../src/ui/viewAdapters/useTasksViewAdapter";
+import { triggerRefresh } from "../../../src/utils/DataRefreshManager";
 
 jest.mock("../../../src/ui/viewAdapters/useTasksViewAdapter");
+jest.mock("../../../src/utils/DataRefreshManager", () => ({
+  triggerRefresh: jest.fn(() => Promise.resolve()),
+}));
 const mockUseTasksViewAdapter = useTasksViewAdapter as jest.Mock;
 
 jest.mock("react-native-modal", () => {
@@ -190,5 +194,22 @@ describe("TasksScreen Interactions", () => {
     expect(queryByText("Mine")).toBeNull();
     expect(queryByText("Bucket")).toBeNull();
     expect(queryByText("Sort by")).toBeNull();
+  });
+
+  it("wires Tasks pull-to-refresh to a forced triggerRefresh and keeps header reset-filters", async () => {
+    const { getByTestId } = render(
+      <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
+    );
+
+    const list = getByTestId("tasks-screen__task_list");
+    expect(list.props.refreshControl).toBeTruthy();
+    expect(list.props.refreshControl.props.refreshing).toBe(false);
+    expect(getByTestId("tasks-screen__header_reset_filters")).toBeTruthy();
+
+    await act(async () => {
+      await list.props.refreshControl.props.onRefresh();
+    });
+
+    expect(triggerRefresh).toHaveBeenCalledWith({ force: true });
   });
 });

@@ -155,6 +155,9 @@ jest.mock("react-native-gesture-handler", () => {
   };
 });
 
+jest.mock("@/utils/DataRefreshManager", () => ({
+  triggerRefresh: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
   let overrideOutput: Partial<TasksScreenViewAdapterOutput> | null = null;

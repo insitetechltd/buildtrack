@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, Text, View, ScrollView } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
@@ -11,6 +11,7 @@ import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
+import { usePullToRefresh } from "@/utils/usePullToRefresh";
 import { cn } from "@/utils/cn";
 
 interface TasksScreenProps {
@@ -121,6 +122,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
+  const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
   const [swipeBlockedTaskIds, setSwipeBlockedTaskIds] = useState<
     Record<string, "active" | "dismissed">
   >({});
@@ -333,6 +335,15 @@ export default function TasksScreen(props: TasksScreenProps) {
           testID="tasks-screen__task_list"
           className="flex-1 bg-slate-50 px-4"
           showsVerticalScrollIndicator={false}
+          alwaysBounceVertical
+          refreshControl={
+            <RefreshControl
+              testID="tasks-screen__refresh_control"
+              refreshing={isPullRefreshing}
+              onRefresh={() => void handlePullRefresh()}
+              tintColor="#0D6E87"
+            />
+          }
         >
           {output.taskRowItems.length > 0 ? (
             output.taskRowItems.map((row) => (
@@ -349,6 +360,8 @@ export default function TasksScreen(props: TasksScreenProps) {
                   enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
                   overshootLeft={false}
                   overshootRight={false}
+                  activeOffsetX={[-20, 20]}
+                  failOffsetY={[-12, 12]}
                   onSwipeableOpenStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}

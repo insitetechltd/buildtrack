@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
+import { usePullToRefresh } from "@/utils/usePullToRefresh";
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -18,6 +19,7 @@ interface DashboardScreenProps {
 
 export default function DashboardScreen(props: DashboardScreenProps) {
   const { output, visibility } = useDashboardViewAdapter();
+  const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
   const [isDraftsExpanded, setIsDraftsExpanded] = useState(false);
 
   return (
@@ -37,7 +39,19 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           }
           className="border-b-0 bg-[#08576E] pb-2"
         />
-        <ScrollView contentContainerStyle={{ paddingTop: 15 }} className="flex-1 px-4">
+        <ScrollView
+          contentContainerStyle={{ paddingTop: 15 }}
+          className="flex-1 px-4"
+          alwaysBounceVertical
+          refreshControl={
+            <RefreshControl
+              testID="dashboard-screen__refresh_control"
+              refreshing={isPullRefreshing}
+              onRefresh={() => void handlePullRefresh()}
+              tintColor="#0D6E87"
+            />
+          }
+        >
 
           {output.projectSummaryCard ? (
             <View className="mb-5" testID="dashboard-screen__project_summary_section">

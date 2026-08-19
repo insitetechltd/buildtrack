@@ -90,6 +90,143 @@ describe('sync manager regression tests', () => {
     expect(fetchUsers).toHaveBeenCalledTimes(2);
   });
 
+  it('force-refetches on operator pull even when the 30s hash skip would apply', async () => {
+    let now = 1000;
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+
+    const taskStoreState = {
+      tasks: [{ id: 'task-1' }],
+      taskQueryMeta: {},
+      fetchTasks,
+    };
+    const projectStoreState = {
+      projects: [{ id: 'project-1' }],
+      userAssignments: [{ userId: 'user-1', projectId: 'project-1' }],
+      fetchProjects,
+      fetchUserProjectAssignments,
+    };
+    const userStoreState = {
+      users: [{ id: 'user-1' }],
+      fetchUsers,
+    };
+    const authStoreState = {
+      user: { id: 'user-1' },
+    };
+
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+    jest.doMock('../../state/userStore.supabase', () => {
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      useUserStore.setState = jest.fn();
+      return { useUserStore };
+    });
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+    jest.doMock('../../api/supabase', () => ({
+      invalidateResourceKeys: jest.fn(),
+    }));
+
+    const { triggerRefresh } = require('../../utils/DataRefreshManager');
+
+    now = 2000;
+    await triggerRefresh();
+    expect(fetchTasks).toHaveBeenCalledTimes(1);
+
+    now = 4000;
+    await triggerRefresh();
+    expect(fetchTasks).toHaveBeenCalledTimes(1);
+
+    now = 4200;
+    await triggerRefresh({ force: true });
+    expect(fetchTasks).toHaveBeenCalledTimes(2);
+    expect(fetchTasks).toHaveBeenLastCalledWith(true);
+  });
+
+  it('refetches empty persisted tasks on warm start instead of waiting 30s', async () => {
+    let now = 1000;
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+
+    const taskStoreState = {
+      tasks: [],
+      taskQueryMeta: {},
+      fetchTasks,
+    };
+    const projectStoreState = {
+      projects: [{ id: 'project-1' }],
+      userAssignments: [{ userId: 'user-1', projectId: 'project-1' }],
+      fetchProjects,
+      fetchUserProjectAssignments,
+    };
+    const userStoreState = {
+      users: [{ id: 'user-1' }],
+      fetchUsers,
+    };
+    const authStoreState = {
+      user: { id: 'user-1' },
+    };
+
+    jest.spyOn(Date, 'now').mockImplementation(() => now);
+
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+    jest.doMock('../../state/userStore.supabase', () => {
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      useUserStore.setState = jest.fn();
+      return { useUserStore };
+    });
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+    jest.doMock('../../api/supabase', () => ({
+      invalidateResourceKeys: jest.fn(),
+    }));
+
+    const { triggerRefresh } = require('../../utils/DataRefreshManager');
+
+    // Persist partialize writes tasks: []. Warm JS restart must refetch immediately;
+    // lastRefreshTime = Date.now() at import skipped this window (<500ms / <30s).
+    now = 1200;
+    await triggerRefresh();
+
+    expect(fetchTasks).toHaveBeenCalledWith(true);
+    expect(fetchProjects).toHaveBeenCalledTimes(1);
+  });
+
   it('invalidates related task resource keys before refetching a realtime-updated task', async () => {
     let tasksChangeHandler:
       | ((payload: {

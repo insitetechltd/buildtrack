@@ -4,6 +4,9 @@ import DashboardScreen from "../DashboardScreen";
 import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
 jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
+jest.mock("@/utils/DataRefreshManager", () => ({
+  triggerRefresh: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("@/components/AppScreenHeader", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");

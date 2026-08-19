@@ -1,6 +1,6 @@
 # Maestro B-E Sequential Status
 
-Updated: 2026-08-18 23:53 UTC+8
+Updated: 2026-08-19
 Branch: `chore/maestro-be-status`
 
 ## Important reminder
@@ -48,9 +48,9 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 - `W-T02` **PASS** headed 2026-08-18 23:40 — Search `Maestro CT Photo` → row tap → Task Detail (`MAESTRO CT PHO…` / TASK DETAILS). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_233921/W-T02-row-to-task-detail/takeScreenshot/rc-D-T02-task-detail.png`
 - `W-T03` **PASS** headed 2026-08-18 23:43 — Before: 148 mixed tasks. After search `Maestro CT Photo`: matching NEW rows (count badge 58). Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_234159/W-T03-search-on-tasks/takeScreenshot/rc-D-T03-search-results.png`
 - `W-T04` **PASS** headed 2026-08-18 23:50 — Filters sheet (QUEUE/STATUS/OVERDUE WINDOW), staged New, Apply → chip `Status: New`, Filters badge 1, list filtered (148→128). First `filters_button` tap missed; retry tap `Filters` opened the sheet. Artifact: `.cache/maestro-home/.maestro/tests/2026-08-18_234802/W-T04-filter-sheet/takeScreenshot/rc-D-T04-applied.png`
-- `W-T05` **FAIL (product gap)** headed 2026-08-18 23:53 — Swipe-down on the Tasks list ran (rc=0) but before/after PNGs are the same: no spinner, list unchanged. `TasksScreen` `ScrollView` has no `RefreshControl`. Header circular icon is `tasks-screen__header_reset_filters` (clears filters), not data refresh. Artifacts: `.cache/maestro-home/.maestro/tests/2026-08-18_235208/W-T05-pull-to-refresh/takeScreenshot/rc-D-T05-before-pull.png`, `rc-D-T05-after-pull.png`
+- `W-T05` **PASS** headed 2026-08-19 10:22 — Operator pull on Tasks list shows native spinner under search (not the header reset icon). List stays populated. Product: `RefreshControl` + `triggerRefresh({ force: true })`. Flow no longer asserts 0-height markers. Artifacts: `docs/superpowers/evidence/2026-08-19-w-t05-before-pull.png`, `2026-08-19-w-t05-refreshing.png`, `2026-08-19-w-t05-after-pull.png`
 
-**Section D sequential ledger: W-T01–W-T04 PASS; W-T05 FAIL (no pull-to-refresh on Tasks).**
+**Section D sequential ledger: W-T01–W-T05 all PASS.**
 
 ### Previously passed (earlier headed runs; not this sequential C ledger)
 
@@ -74,7 +74,6 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 ### Not yet fully artifact-verified in sequential ledger
 
 - `W-A01` through `W-A08`
-- `W-T05` pull-to-refresh (product: no RefreshControl on Tasks)
 - `W-D01`, `W-D02`, `W-D05`, `W-D06`, `W-D08`, `W-D09`, `W-D10`
 
 ## Latest artifact notes
@@ -99,10 +98,10 @@ Run `documentation/MAINTABS_UX_CHECKLIST.md` sections `B` through `E` sequential
 
 ## Current run
 
-Section **D** on local headed iPhone 17 Pro. W-T01–W-T04 PASS; W-T05 FAIL (no Tasks pull-to-refresh).
+Section **D** on local headed iPhone 17 Pro. W-T01–W-T05 PASS.
 
 ## Next actions
 
-1. Section E sequential (W-D01…) or add Tasks `RefreshControl` if W-T05 must pass.
+1. Section E sequential (W-D01…).
 2. Then remaining B.
 3. When done: merge `chore/maestro-be-status` into `master` and point remote HEAD to `master`.

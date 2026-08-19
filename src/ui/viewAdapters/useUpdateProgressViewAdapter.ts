@@ -35,6 +35,7 @@ export interface UpdateProgressScreenParams {
 export interface UpdateProgressScreenProps {
   uploadedPhotoUrls?: string[]; 
   selectedPhotos?: SelectedPhoto[]; 
+  onNavigateBack?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }

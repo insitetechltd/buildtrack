@@ -1,0 +1,19 @@
+# Headed W-A06 — Resume draft → Create Task.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a06
+---
+- runFlow: _open-activity-drafts.yaml
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 8000
+- tapOn: ".*Maestro Draft A05.*"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 15000
+- takeScreenshot: "rc-B-W-A06-resume-draft"

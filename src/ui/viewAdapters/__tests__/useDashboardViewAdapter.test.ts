@@ -1179,7 +1179,7 @@ describe("useDashboardViewAdapter", () => {
           category: "general",
           attachments: [],
           assignedTo: ["user-1"],
-          assignedBy: "user-2",
+          assignedBy: "user-1",
           createdAt: "2026-01-01T00:00:00.000Z",
           updates: [
             {
@@ -1242,6 +1242,197 @@ describe("useDashboardViewAdapter", () => {
     });
   });
 
+  it("excludes teammate in-progress work from dashboard drafts", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-mine",
+          projectId: "project-1",
+          title: "My unfinished create",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+        },
+        {
+          id: "task-teammate",
+          projectId: "project-1",
+          title: "Teammate WIP",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+        },
+        {
+          id: "task-accepted",
+          projectId: "project-1",
+          title: "Accepted live work",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "accepted",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.draftItems.map((item: { taskId: string }) => item.taskId)).toEqual([
+      "task-mine",
+    ]);
+  });
+
+  it("omits soft-deleted tasks from dashboard drafts", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-live",
+          projectId: "project-1",
+          title: "Live draft",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+        },
+        {
+          id: "task-deleted",
+          projectId: "project-1",
+          title: "Deleted draft",
+          description: "",
+          priority: "medium",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          updates: [],
+          status: "in_progress",
+          deletedAt: "2026-07-04T08:00:00.000Z",
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.draftItems.map((item: { taskId: string }) => item.taskId)).toEqual([
+      "task-live",
+    ]);
+  });
+
+  it("deletes a dashboard draft through deleteTaskById", async () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const deleteTaskById = jest.fn().mockResolvedValue(undefined);
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-draft-1",
+          projectId: "project-1",
+          title: "My draft",
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          status: "in_progress",
+        },
+      ],
+      deleteTaskById,
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    await result.current.actions.deleteDraftTask("task-draft-1");
+
+    expect(deleteTaskById).toHaveBeenCalledWith("task-draft-1", "user-1");
+  });
+
+  it("refuses to delete a teammate draft from the dashboard", async () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const deleteTaskById = jest.fn().mockResolvedValue(undefined);
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-teammate",
+          projectId: "project-1",
+          title: "Teammate WIP",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          status: "in_progress",
+        },
+      ],
+      deleteTaskById,
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    await expect(result.current.actions.deleteDraftTask("task-teammate")).rejects.toThrow(
+      "You can only delete drafts you created.",
+    );
+    expect(deleteTaskById).not.toHaveBeenCalled();
+  });
+
   it("sorts draft items by newest relevant update first", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
@@ -1266,7 +1457,7 @@ describe("useDashboardViewAdapter", () => {
           category: "general",
           attachments: [],
           assignedTo: ["user-1"],
-          assignedBy: "user-2",
+          assignedBy: "user-1",
           createdAt: "2026-01-01T00:00:00.000Z",
           updates: [
             {
@@ -1292,7 +1483,7 @@ describe("useDashboardViewAdapter", () => {
           category: "general",
           attachments: [],
           assignedTo: ["user-1"],
-          assignedBy: "user-2",
+          assignedBy: "user-1",
           createdAt: "2026-01-01T00:00:00.000Z",
           updates: [
             {
@@ -1362,6 +1553,26 @@ describe("useDashboardViewAdapter", () => {
     expect(synthetic.subtitle).toBe("Main entry progress");
     expect(synthetic.statusLabel).toBe("Saved to project");
     expect(synthetic.previewPhotoUri).toBe("https://cdn.example.com/fresh-1.jpg");
+  });
+
+  it("refetches tasks on Activity mount when the user is signed in", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({ tasks: [], fetchTasks });
+
+    renderHook(() => useDashboardViewAdapter());
+
+    expect(fetchTasks).toHaveBeenCalled();
   });
 
   it("excludes unattached batches older than 5 days from activity items", () => {

@@ -54,9 +54,9 @@ Menu rows must match: Profile & Settings, Change Project, Logout (`__DEV__`: + D
 | W-A02 | Project summary visible | ☐ | Partial |
 | W-A03 | Queue tiles → Tasks | ☐ | Partial `qa01-scenario-b-overdue-crunch.yaml` |
 | W-A04 | Activity row → Task Detail | ☐ | Gap |
-| W-A05 | Drafts Show/Hide | ☐ | Gap |
-| W-A06 | Resume draft → Create Task | ☐ | Gap |
-| W-A07 | Swipe-delete draft | ☐ | Gap + Alert Exempt |
+| W-A05 | Drafts Show/Hide | ☐ | **Covered** `P-B-W-A05.yaml` headed PASS 2026-08-19 — Show list then Hide |
+| W-A06 | Resume draft → Create Task | ☐ | **Covered** `P-B-W-A06.yaml` headed PASS 2026-08-19 — tap draft opens Create form |
+| W-A07 | Swipe-delete draft | ☐ | **Covered** `P-B-W-A07.yaml` headed PASS 2026-08-19 — swipe + native Alert Delete |
 | W-A08 | Create FAB (if shown) | ☐ | Partial (Camera tab is SoT) |
 
 ---

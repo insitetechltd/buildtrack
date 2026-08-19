@@ -4,6 +4,7 @@ appId: com.buildtrack.app.local
 ---
 - launchApp:
     clearState: false
+    stopApp: true
     permissions:
       photos: allow
       medialibrary: allow
@@ -11,7 +12,8 @@ appId: com.buildtrack.app.local
       notifications: deny
 - runFlow:
     when:
-      visible: "login-submit"
+      visible:
+        id: "login-submit"
     commands:
       - tapOn:
           id: "^login-emailOrPhone$"
@@ -23,18 +25,12 @@ appId: com.buildtrack.app.local
           id: "login-submit"
 - runFlow:
     when:
-      visible:
-        id: "Save Password?"
+      visible: "Save Password?"
     commands:
       - tapOn: "Not Now"
-- runFlow:
-    when:
-      visible:
-        id: "Save Password?"
-    commands:
-      - tapOn: "Not Now"
-      - waitForAnimationToEnd:
-          timeout: 1500
+- tapOn:
+    text: "Not Now"
+    optional: true
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"

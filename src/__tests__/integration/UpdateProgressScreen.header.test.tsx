@@ -10,6 +10,9 @@ jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
     goBack: mockGoBack,
   }),
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    callback();
+  },
 }));
 
 jest.mock("../../ui/viewAdapters/useUpdateProgressViewAdapter", () => ({
@@ -119,7 +122,8 @@ describe("UpdateProgressScreen header regression", () => {
       },
     } as ReturnType<typeof useUpdateProgressViewAdapter>);
 
-    const screen = render(<UpdateProgressScreen />);
+    const onNavigateBack = jest.fn();
+    const screen = render(<UpdateProgressScreen onNavigateBack={onNavigateBack} />);
 
     expect(screen.getByText("Progress Update")).toBeTruthy();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
@@ -128,6 +132,7 @@ describe("UpdateProgressScreen header regression", () => {
 
     fireEvent.press(screen.getByTestId("app-screen-header__back"));
 
-    expect(mockGoBack).toHaveBeenCalledTimes(1);
+    expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    expect(mockGoBack).not.toHaveBeenCalled();
   });
 });

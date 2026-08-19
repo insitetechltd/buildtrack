@@ -124,6 +124,9 @@ describe("DashboardScreen Interactions", () => {
         showDeveloperSettingsShortcut: false,
         showCreateTaskFab: false,
       },
+      actions: {
+        deleteDraftTask: jest.fn(),
+      },
     });
   });
 
@@ -172,7 +175,7 @@ describe("DashboardScreen Interactions", () => {
   });
 
   it("wires Activity pull-to-refresh to a forced triggerRefresh", async () => {
-    const { UNSAFE_getByType } = render(
+    const { UNSAFE_getByType, getByTestId } = render(
       <DashboardScreen
         onNavigateToTasks={mockOnNavigateToTasks}
         onNavigateToCreateTask={jest.fn()}

@@ -467,6 +467,76 @@ describe("useCreateTaskViewAdapter", () => {
     expect(result.current.output.context.activeProjectName).toBe("Project Alpha");
   });
 
+  it("resumes a draft as an unfinished create form and updates instead of duplicating", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-1", name: "Project Alpha", location: "Tower A" },
+    ]);
+    mockUseTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          title: "Draft inspection",
+          description: "Unfinished notes",
+          taskReference: "REF-DRAFT",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "Level 2",
+          assignedTo: ["user-2"],
+          assignedBy: "user-1",
+          attachments: [],
+          status: "in_progress",
+        },
+      ],
+      fetchTaskById: mockFetchTaskById,
+      createTask: mockCreateTask,
+      createSubTask: mockCreateSubTask,
+      updateTask: mockUpdateTask,
+      fetchProjectLocations: mockFetchProjectLocations,
+      ensureProjectLocation: mockEnsureProjectLocation,
+    });
+
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({
+        editTaskId: "task-1",
+        resumeAsCreate: true,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.output.formData.title).toBe("Draft inspection");
+    });
+
+    expect(result.current.output.context.headerTitle).toBe("Create New Task");
+    expect(result.current.output.context.isResumeAsCreate).toBe(true);
+    expect(result.current.output.context.assigneesLocked).toBe(false);
+    expect(result.current.output.context.requiresEditReason).toBe(false);
+
+    await act(async () => {
+      await result.current.actions.submit();
+    });
+
+    expect(mockUpdateTask).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        title: "Draft inspection",
+        description: "Unfinished notes",
+        projectId: "project-1",
+      }),
+    );
+    expect(mockCreateTask).not.toHaveBeenCalled();
+
+    const AsyncStorage = require("@react-native-async-storage/async-storage");
+    jest.useFakeTimers();
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
   it("submits create and edit modes with stable payloads", async () => {
     const { result: createResult } = renderHook(() =>
       useCreateTaskViewAdapter({}),

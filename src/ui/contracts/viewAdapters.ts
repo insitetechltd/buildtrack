@@ -1403,6 +1403,7 @@ export interface CreateTaskContextModel {
   activeProjectName?: string;
   assigneesLocked: boolean;
   requiresEditReason: boolean;
+  isResumeAsCreate: boolean;
   parentBanner: {
     label: string;
     title: string;

@@ -36,6 +36,8 @@ if [[ -f "${TARGET}" ]]; then
   FLOW_PATH="$(cd "$(dirname "${TARGET}")" && pwd)/$(basename "${TARGET}")"
 elif [[ -f "${FLOW_DIR}/${TARGET}" ]]; then
   FLOW_PATH="${FLOW_DIR}/${TARGET}"
+elif [[ -f "${FLOW_DIR}/${TARGET}.yaml" ]]; then
+  FLOW_PATH="${FLOW_DIR}/${TARGET}.yaml"
 else
   match="$(ls -1 "${FLOW_DIR}"/${TARGET}*.yaml 2>/dev/null | head -1 || true)"
   if [[ -z "${match}" ]]; then

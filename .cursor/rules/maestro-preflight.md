@@ -90,6 +90,9 @@ Skip 0-click automation that triggers applesimutils crash on 2024+ iOS simulator
 Baseline target UDID from M-QA-02/03: `B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`
 Use: `bash scripts/maestro/run-local.sh --udid B7B2640C-4738-4F8A-AEEE-5DF3D21D2533 test …`
 
+## Two-sim SOP (mandatory)
+Parallel Maestro is allowed only on **two distinct simulator UDIDs**, **1 job per UDID**. Export `MAESTRO_UDID` (or pass `--udid`) per track before launch. Two jobs on the same UDID kill the XCTest/FlyingFox listener (`Connection refused` / `DeviceUnreachableException`). Fall back to a single sim when UDIDs are not assigned or a human is watching one headed window.
+
 ## run-local.sh Wrapper Conventions
 - 10s heartbeat messages (PHASE, FINISHED rc/elapsed)
 - MAESTRO_LOCAL_HOME = project-local `.cache/maestro-home` (not user-wide `~/.maestro`)

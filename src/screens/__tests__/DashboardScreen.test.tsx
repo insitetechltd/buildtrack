@@ -1,5 +1,6 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { fireEvent, render, within } from "@testing-library/react-native";
 import DashboardScreen from "../DashboardScreen";
 import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
@@ -7,6 +8,63 @@ jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
 jest.mock("@/utils/DataRefreshManager", () => ({
   triggerRefresh: jest.fn(() => Promise.resolve()),
 }));
+jest.mock("react-native-gesture-handler", () => {
+  const React = require("react");
+  const { Pressable, Text, View } = require("react-native");
+
+  return {
+    Swipeable: ({
+      children,
+      renderRightActions,
+      overshootLeft,
+      overshootRight,
+      onSwipeableOpenStartDrag,
+      onSwipeableWillOpen,
+      onSwipeableCloseStartDrag,
+      onSwipeableClose,
+      testID,
+    }: {
+      children: React.ReactNode;
+      renderRightActions?: () => React.ReactNode;
+      overshootLeft?: boolean;
+      overshootRight?: boolean;
+      onSwipeableOpenStartDrag?: (direction: "left" | "right") => void;
+      onSwipeableWillOpen?: (direction: "left" | "right") => void;
+      onSwipeableCloseStartDrag?: (direction: "left" | "right") => void;
+      onSwipeableClose?: (direction: "left" | "right") => void;
+      testID?: string;
+    }) => (
+      <View testID={testID ?? "mock-swipeable"}>
+        <Text testID={`${testID ?? "mock-swipeable"}__overshoot-left`}>
+          {String(overshootLeft ?? "")}
+        </Text>
+        <Text testID={`${testID ?? "mock-swipeable"}__overshoot-right`}>
+          {String(overshootRight ?? "")}
+        </Text>
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__open-start`}
+          onPress={() => onSwipeableOpenStartDrag?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__will-open`}
+          onPress={() => onSwipeableWillOpen?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__close-start`}
+          onPress={() => onSwipeableCloseStartDrag?.("right")}
+        />
+        <Pressable
+          testID={`${testID ?? "mock-swipeable"}__close`}
+          onPress={() => onSwipeableClose?.("right")}
+        />
+        {renderRightActions ? (
+          <View testID={`${testID ?? "mock-swipeable"}__right-actions`}>{renderRightActions()}</View>
+        ) : null}
+        {children}
+      </View>
+    ),
+  };
+});
 jest.mock("@/components/AppScreenHeader", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
@@ -211,6 +269,9 @@ describe("DashboardScreen", () => {
         showProjectPickerShortcut: true,
         showDeveloperSettingsShortcut: true,
       },
+      actions: {
+        deleteDraftTask: jest.fn(),
+      },
     });
 
     const onNavigateToCreateTask = jest.fn();
@@ -270,12 +331,18 @@ describe("DashboardScreen", () => {
 
     fireEvent.press(screen.getByTestId("dashboard-screen__drafts_toggle"));
     fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
-    expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-draft-1");
+    expect(onNavigateToCreateTask).toHaveBeenCalledWith({
+      editTaskId: "task-draft-1",
+      resumeAsCreate: true,
+      sourceScreen: "dashboard",
+      clearForm: false,
+      _timestamp: expect.any(Number),
+    });
+    expect(onNavigateToTaskDetail).not.toHaveBeenCalledWith("task-draft-1");
 
     expect(onNavigateToProfile).not.toHaveBeenCalled();
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();
     expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
-    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
   });
 
   it("falls back to the shared placeholder rail when the preview image cannot load", () => {
@@ -355,6 +422,9 @@ describe("DashboardScreen", () => {
         showProjectPickerShortcut: false,
         showDeveloperSettingsShortcut: false,
       },
+      actions: {
+        deleteDraftTask: jest.fn(),
+      },
     });
 
     const screen = render(
@@ -373,5 +443,125 @@ describe("DashboardScreen", () => {
     expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail-image")).toBeNull();
     expect(screen.getByText("Photo-backed activity")).toBeTruthy();
     expect(screen.getByText("Has a preview image")).toBeTruthy();
+  });
+
+  it("shows swipe-left delete on draft rows and confirms before deleting", () => {
+    const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
+    const deleteDraftTask = jest.fn().mockResolvedValue(undefined);
+    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+
+    useDashboardViewAdapter.mockReturnValue({
+      output: {
+        screenId: "DashboardScreen",
+        readiness: {
+          hasInitialFrame: true,
+          hasUsableData: true,
+          isBackgroundRefreshing: false,
+          isNavigationTransitionActive: false,
+        },
+        continuity: {
+          isInitialLoading: false,
+          isBackgroundRefreshing: false,
+          hasCachedFrame: true,
+          shouldRenderSkeletonShell: false,
+          shouldRenderEmptyState: false,
+          freshnessLabel: "Ready",
+        },
+        activeProject: { id: "project-1", title: "North Tower" },
+        projectSummaryCard: null,
+        queueDashboard: null,
+        summaryPills: [],
+        draftItems: [
+          {
+            id: "draft:task-draft-1",
+            taskId: "task-draft-1",
+            title: "Draft inspection",
+            subtitle: "Pending notes",
+            timestampLabel: "Jul 4 at 8:30 AM",
+            statusLabel: "in progress",
+            density: "standard",
+            structuralState: "stale",
+          },
+        ],
+        activityItems: [],
+        taskShortcut: null,
+        projectSummaryItems: [],
+        highlightedTaskItems: [],
+        quickActionItems: [],
+        scalarMetrics: {
+          openTaskCount: 0,
+          overdueTaskCount: 0,
+          projectCount: 1,
+          hasSelectedProject: true,
+          actionRequiredCount: 0,
+          inProgressSentCount: 0,
+          awaitingApprovalCount: 0,
+          actionRequiredOverdueCount: 0,
+          inProgressSentOverdueCount: 0,
+          awaitingApprovalOverdueCount: 0,
+          inboxNewCount: 0,
+          inboxNewOverdueCount: 0,
+          inboxWipCount: 0,
+          inboxWipOverdueCount: 0,
+          inboxReviewingCount: 0,
+          inboxReviewingOverdueCount: 0,
+          outboxNewCount: 0,
+          outboxNewOverdueCount: 0,
+          outboxWipCount: 0,
+          outboxWipOverdueCount: 0,
+          outboxReviewingCount: 0,
+          outboxReviewingOverdueCount: 0,
+        },
+      },
+      visibility: {
+        showCreateTaskFab: false,
+        showProfileShortcut: true,
+        showProjectPickerShortcut: false,
+        showDeveloperSettingsShortcut: false,
+      },
+      actions: { deleteDraftTask },
+    });
+
+    const onNavigateToCreateTask = jest.fn();
+    const screen = render(
+      <DashboardScreen
+        onNavigateToTasks={jest.fn()}
+        onNavigateToCreateTask={onNavigateToCreateTask}
+        onNavigateToProfile={jest.fn()}
+      />,
+    );
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__drafts_toggle"));
+    expect(
+      within(screen.getByTestId("dashboard-screen__draft_item_task-draft-1:swipeable__right-actions")).getByTestId(
+        "dashboard-screen__draft_item_task-draft-1:delete-action",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId("dashboard-screen__draft_item_task-draft-1:swipeable__overshoot-left").children.join(""),
+    ).toBe("false");
+    expect(
+      screen.getByTestId("dashboard-screen__draft_item_task-draft-1:swipeable__overshoot-right").children.join(""),
+    ).toBe("false");
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1:delete-action"));
+    expect(alertSpy).toHaveBeenCalled();
+    const alertButtons = alertSpy.mock.calls[0]?.[2] ?? [];
+    const deleteButton = alertButtons.find((button: { text?: string }) => button.text === "Delete");
+    deleteButton?.onPress?.();
+    expect(deleteDraftTask).toHaveBeenCalledWith("task-draft-1");
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1:swipeable__open-start"));
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1:swipeable__close"));
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
+    expect(onNavigateToCreateTask).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
+    expect(onNavigateToCreateTask).toHaveBeenCalledTimes(1);
+
+    alertSpy.mockRestore();
   });
 });

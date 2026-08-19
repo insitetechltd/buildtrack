@@ -8,6 +8,12 @@ export const PHOTO_FLOW_ROUTE_NAMES = new Set([
   "InAppLibraryPicker",
 ]);
 
+/** Update Progress back should never land on photo picking again. */
+export const UPDATE_PROGRESS_EXIT_ROUTE_NAMES = new Set([
+  ...PHOTO_FLOW_ROUTE_NAMES,
+  "UpdateProgress",
+]);
+
 export type PhotoFlowStackNav = {
   getState?: () =>
     | { index: number; routes: Array<{ key: string; name: string }> }
@@ -42,6 +48,44 @@ export function dismissPhotoFlowScreens(navigation: PhotoFlowStackNav) {
 
   const popCount = keepUntil >= 0 ? state.routes.length - 1 - keepUntil : 0;
   if (popCount > 0) {
+    navigation.dispatch(StackActions.pop(popCount));
+    return;
+  }
+
+  if (navigation.canGoBack?.() !== false) {
+    navigation.goBack();
+  }
+}
+
+/**
+ * Back from Update Progress = exit the whole progress + photo-pick flow.
+ * Never return to PhotoSelection / InAppLibraryPicker after the user chose to leave.
+ */
+export function exitUpdateProgressScreen(navigation: PhotoFlowStackNav) {
+  const state = navigation.getState?.();
+  if (!state?.routes?.length) {
+    if (navigation.canGoBack?.() !== false) {
+      navigation.goBack();
+    }
+    return;
+  }
+
+  const currentIndex =
+    typeof state.index === "number" ? state.index : state.routes.length - 1;
+
+  let anchorIndex = -1;
+  for (let i = currentIndex; i >= 0; i -= 1) {
+    const routeName = state.routes[i]?.name;
+    if (routeName && !UPDATE_PROGRESS_EXIT_ROUTE_NAMES.has(routeName)) {
+      anchorIndex = i;
+      break;
+    }
+  }
+
+  const popCount =
+    anchorIndex >= 0 ? currentIndex - anchorIndex : currentIndex + 1;
+
+  if (popCount > 0 && navigation.dispatch) {
     navigation.dispatch(StackActions.pop(popCount));
     return;
   }

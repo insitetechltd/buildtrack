@@ -1,6 +1,7 @@
 import {
   dismissPhotoFlowScreens,
   cancelInAppLibraryPicker,
+  exitUpdateProgressScreen,
   returnToPhotoSelectionFlat,
 } from "../photoFlowNavigation";
 
@@ -161,5 +162,52 @@ describe("photoFlowNavigation", () => {
       }),
     );
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it("exitUpdateProgressScreen pops Update Progress and photo picking back to the anchor screen", () => {
+    const dispatch = jest.fn();
+    const goBack = jest.fn();
+    exitUpdateProgressScreen({
+      getState: () => ({
+        index: 4,
+        routes: [
+          { key: "a", name: "TasksList" },
+          { key: "b", name: "TaskDetail" },
+          { key: "c", name: "UpdateProgress" },
+          { key: "d", name: "InAppLibraryPicker" },
+          { key: "e", name: "UpdateProgress" },
+        ],
+      }),
+      dispatch,
+      goBack,
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 3 }),
+      }),
+    );
+    expect(goBack).not.toHaveBeenCalled();
+  });
+
+  it("exitUpdateProgressScreen pops a lone Update Progress screen back to the tab root", () => {
+    const dispatch = jest.fn();
+    exitUpdateProgressScreen({
+      getState: () => ({
+        index: 1,
+        routes: [
+          { key: "a", name: "TasksList" },
+          { key: "b", name: "UpdateProgress" },
+        ],
+      }),
+      dispatch,
+      goBack: jest.fn(),
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
   });
 });

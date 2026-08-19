@@ -5,6 +5,7 @@ This file is the canonical repository-level runbook for Maestro-specific testing
 Use this document together with:
 
 - [`../TESTING_STRATEGY.md`](../TESTING_STRATEGY.md) for the overall testing ladder, command intent, and policy
+- [`../documentation/MAINTABS_UX_CHECKLIST.md`](../documentation/MAINTABS_UX_CHECKLIST.md) for MainTabs function discovery and the **RC worker B–E** Maestro min gate
 - [`../documentation/SOURCE_OF_TRUTH.md`](../documentation/SOURCE_OF_TRUTH.md) for documentation-governance rules
 
 ## Foundation Surface
@@ -72,6 +73,17 @@ Run the `M-QA-03` live Task Core bundle:
 ```bash
 npm run test:e2e:maestro:task-core
 ```
+
+**Two-sim SOP:** two Maestro jobs only on **two distinct** simulator UDIDs (`export MAESTRO_UDID` per track). Never two jobs on the same sim — that kills the XCTest driver. One sim is the default when UDIDs are not claimed.
+
+**RC before release** — field operator Activity / Camera / Tasks / Task Detail (checklist B–E). Company admin is **not** in this gate (org-only; no project day-to-day). Set `MAESTRO_UDID` to the booted sim:
+
+```bash
+export MAESTRO_UDID="<booted UDID>"
+npm run test:e2e:maestro:rc-worker-be
+```
+
+That is P01 then U01. Read PNGs before treating rc=0 as pass.
 
 ```bash
 bash ./scripts/maestro/run-create-task-photo-suite.sh

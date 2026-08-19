@@ -86,6 +86,7 @@ interface CreateTaskScreenProps {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
+  resumeAsCreate?: boolean;
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
   cameraLaunchContext?: CameraLaunchContext;
   postCaptureDefault?: CameraPostCaptureDefault;
@@ -130,6 +131,7 @@ export default function CreateTaskScreen({
   parentTaskId,
   parentSubTaskId,
   editTaskId,
+  resumeAsCreate,
   actionType,
   cameraLaunchContext,
   postCaptureDefault,
@@ -149,7 +151,8 @@ export default function CreateTaskScreen({
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
-      actionType={actionType || (editTaskId ? "edit" : undefined)}
+      resumeAsCreate={resumeAsCreate}
+      actionType={resumeAsCreate ? undefined : (actionType || (editTaskId ? "edit" : undefined))}
       cameraLaunchContext={cameraLaunchContext}
       postCaptureDefault={postCaptureDefault}
       updateTargetSubTaskId={updateTargetSubTaskId}
@@ -170,6 +173,7 @@ function CreateTaskEditorScreen({
   parentTaskId,
   parentSubTaskId,
   editTaskId,
+  resumeAsCreate,
   actionType,
   cameraLaunchContext,
   postCaptureDefault,
@@ -216,6 +220,7 @@ function CreateTaskEditorScreen({
 
   const { output, actions } = useCreateTaskViewAdapter({
     editTaskId,
+    resumeAsCreate,
     parentTaskId,
     parentSubTaskId,
     clearForm,
@@ -385,6 +390,7 @@ function CreateTaskEditorScreen({
             parentTaskId,
             parentSubTaskId,
             editTaskId,
+            resumeAsCreate,
           });
         }, 100);
       });
@@ -432,6 +438,7 @@ function CreateTaskEditorScreen({
             parentTaskId,
             parentSubTaskId,
             editTaskId,
+            resumeAsCreate,
             existingPhotos: existingPhotos.map((photo) => ({
               uri: photo.uri,
               fileName: photo.fileName,
@@ -490,14 +497,16 @@ function CreateTaskEditorScreen({
     }
   };
 
-  const headerSubtitle = editTaskId
+  const isExistingEdit = Boolean(editTaskId) && !resumeAsCreate;
+
+  const headerSubtitle = isExistingEdit
     ? t.createTask.headerEditSubtitle
     : t.createTask.headerCreateSubtitle;
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
     if (wasSuccessful) {
-      if (editTaskId) {
+      if (isExistingEdit || resumeAsCreate) {
         onNavigateBack();
       } else if (parentTaskId && parentSubTaskId) {
         setSubmitSuccessState({
@@ -534,6 +543,7 @@ function CreateTaskEditorScreen({
         parentTaskId,
         parentSubTaskId,
         editTaskId,
+        resumeAsCreate,
         updateTargetSubTaskId,
       });
       return;
@@ -1354,7 +1364,7 @@ function CreateTaskEditorScreen({
                   )}
                 >
                   <Text className="text-base font-semibold text-white">
-                    {editTaskId ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
+                    {isExistingEdit ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
                   </Text>
                 </Pressable>
               </View>

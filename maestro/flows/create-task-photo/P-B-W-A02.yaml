@@ -1,0 +1,13 @@
+# Headed W-A02 only — Project summary visible on Activity.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a02
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- assertVisible:
+    id: "dashboard-screen__root"
+- assertVisible:
+    id: "dashboard-screen__project_summary_section"
+- takeScreenshot: "rc-B-W-A02-project-summary"

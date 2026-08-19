@@ -28,6 +28,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentTaskId: "task-1",
       parentSubTaskId: "subtask-1",
       editTaskId: undefined,
+      resumeAsCreate: undefined,
       actionType: undefined,
       cameraLaunchContext: undefined,
       postCaptureDefault: undefined,
@@ -53,6 +54,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: "task-2",
+      resumeAsCreate: undefined,
       actionType: "edit",
       cameraLaunchContext: undefined,
       postCaptureDefault: undefined,
@@ -77,6 +79,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: undefined,
+      resumeAsCreate: undefined,
       actionType: "photos",
       cameraLaunchContext: "global",
       postCaptureDefault: "create_task",
@@ -84,6 +87,29 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       uploadedPhotoUrls: ["https://example.com/photo-2.jpg"],
       clearForm: undefined,
       _timestamp: undefined,
+    });
+  });
+
+  it("preserves resumeAsCreate when returning photos to an unfinished draft", () => {
+    expect(
+      buildCreateTaskPhotoReturnParams({
+        routeParams: {
+          editTaskId: "draft-1",
+          resumeAsCreate: true,
+          sourceScreen: "dashboard",
+        },
+        selectedPhotos: [
+          {
+            uri: "file:///draft.jpg",
+            fileName: "draft.jpg",
+            isAnnotated: false,
+          },
+        ],
+      }),
+    ).toMatchObject({
+      editTaskId: "draft-1",
+      resumeAsCreate: true,
+      sourceScreen: "dashboard",
     });
   });
 });
@@ -115,6 +141,7 @@ describe("resolveCreateTaskEntryParams", () => {
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: undefined,
+      resumeAsCreate: undefined,
       actionType: undefined,
       updateTargetSubTaskId: undefined,
       sourceTaskId: undefined,

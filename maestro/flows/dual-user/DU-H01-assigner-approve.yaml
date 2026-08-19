@@ -5,21 +5,30 @@ tags:
   - du-h01
 ---
 - runFlow: _resume-john.yaml
-- runFlow: _ensure-project.yaml
 - runFlow: _open-task-by-title.yaml
 - takeScreenshot: "du-h01-10-john-review"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-approve_task"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "task-detail__quick-action-approve_task"
+          direction: DOWN
+      - assertVisible:
+          id: "task-detail__quick-action-approve_task"
+      - tapOn:
+          id: "task-detail__quick-action-approve_task"
+      - waitForAnimationToEnd:
+          timeout: 4000
+- assertNotVisible:
+    id: "task-detail__quick-action-approve_task"
 - scrollUntilVisible:
     centerElement: true
     element:
-      id: "task-detail__quick-action-approve_task"
-    direction: DOWN
-- assertVisible:
-    id: "task-detail__quick-action-approve_task"
-- tapOn:
-    id: "task-detail__quick-action-approve_task"
-- waitForAnimationToEnd:
-    timeout: 4000
-- assertNotVisible:
-    id: "task-detail__quick-action-approve_task"
+      text: ".*Approved.*"
+    direction: UP
 - assertVisible: ".*Approved.*"
 - takeScreenshot: "du-h01-11-john-approved"

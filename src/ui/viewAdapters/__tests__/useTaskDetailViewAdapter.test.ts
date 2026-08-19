@@ -570,6 +570,65 @@ describe("useTaskDetailViewAdapter", () => {
     );
 
     expect(result.current.output.quickActions).toBeUndefined();
+    expect(
+      result.current.output.actionItems.find((action) => action.actionId === "update_progress")?.isDisabled,
+    ).toBe(false);
+    expect(
+      result.current.output.actionItems.find((action) => action.actionId === "submit_review"),
+    ).toBeTruthy();
+  });
+
+  it("disables assignee update once a task is submitted for review", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-submitted-for-review",
+          title: "Submitted for Review Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          primaryAssigneeId: "user-1",
+          assignedBy: "manager-1",
+          dueDate,
+          status: "submitted_for_review",
+          priority: "medium",
+          category: "general",
+          description: "Waiting on reviewer decision.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 100,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-submitted-for-review",
+      }),
+    );
+
+    expect(result.current.output.quickActions).toBeUndefined();
+    expect(
+      result.current.output.actionItems.find((action) => action.actionId === "update_progress")?.isDisabled,
+    ).toBe(true);
+    expect(
+      result.current.output.actionItems.find((action) => action.actionId === "submit_review"),
+    ).toBeUndefined();
   });
 
   it("excludes add_subtask on subtask detail active work", () => {

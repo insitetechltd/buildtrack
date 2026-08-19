@@ -5,7 +5,6 @@ tags:
   - du-h01
 ---
 - runFlow: _resume-alice.yaml
-- runFlow: _ensure-project.yaml
 - runFlow: _open-task-by-title.yaml
 - takeScreenshot: "du-h01-06-alice-inbox"
 - runFlow:
@@ -27,75 +26,71 @@ tags:
     commands:
       # Retries can re-open an already-accepted task; in that case the accept CTA is absent.
       - takeScreenshot: "du-h01-07-alice-already-accepted"
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__screen_title"
+    timeout: 12000
+- runFlow: ../update-progress-photo/_open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- runFlow: ../update-progress-photo/_confirm-selection.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__completion-preset-100"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__completion-preset-100"
+- tapOn:
+    id: "update-progress__description"
+- inputText: "Dual-user gate assignee update with photo at 100%."
+- runFlow: ../_dismiss-keyboard.yaml
+- tapOn: "Photos & Files"
+- runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+    delay: 1500
+- runFlow:
+    when:
+      visible: "Success"
+    commands:
+      - tapOn:
+          text: "OK"
+- runFlow:
+    when:
+      visible: ".*Progress update added successfully!.*"
+    commands:
+      - tapOn: "OK"
 - runFlow:
     when:
       visible:
-        id: "task-detail__quick-action-submit_review"
+        id: "update-progress__screen_title"
     commands:
       - tapOn:
-          id: "root-tab__camera_icon_surface"
-      - extendedWaitUntil:
-          visible:
-            id: "update-progress__screen_title"
-          timeout: 12000
-      - runFlow: ../update-progress-photo/_open-library.yaml
-      - runFlow: ../create-task-photo/_pick-first.yaml
-      - runFlow: ../update-progress-photo/_confirm-selection.yaml
-      - scrollUntilVisible:
-          centerElement: true
-          element:
-            id: "update-progress__completion-preset-100"
-          direction: DOWN
-      - tapOn:
-          id: "update-progress__completion-preset-100"
-      - tapOn:
-          id: "update-progress__description"
-      - inputText: "Dual-user gate assignee update with photo at 100%."
-      - runFlow: ../_dismiss-keyboard.yaml
-      - tapOn: "Photos & Files"
-      - runFlow: ../_dismiss-keyboard.yaml
-      - scrollUntilVisible:
-          centerElement: true
-          element:
-            id: "update-progress__submit"
-          direction: DOWN
-      - tapOn:
-          id: "update-progress__submit"
-      - tapOn:
-          id: "update-progress__submit"
-          delay: 1500
-      - runFlow:
-          when:
-            visible: ".*Task marked as 100% complete!.*"
-          commands:
-            - tapOn: "OK"
-      - runFlow:
-          when:
-            visible: ".*Progress update added successfully!.*"
-          commands:
-            - tapOn: "OK"
-      - extendedWaitUntil:
-          visible:
-            id: "task-detail__header_title"
-          timeout: 15000
-      - takeScreenshot: "du-h01-08-alice-updated"
-      - scrollUntilVisible:
-          centerElement: true
-          element:
-            id: "task-detail__quick-action-submit_review"
-          direction: DOWN
-      - tapOn:
-          id: "task-detail__quick-action-submit_review"
-      - waitForAnimationToEnd:
-          timeout: 2500
-      - runFlow: _open-task-by-title.yaml
-      - assertNotVisible:
-          id: "task-detail__quick-action-submit_review"
-      - takeScreenshot: "du-h01-09-alice-submitted"
-- runFlow:
-    when:
-      notVisible:
-        id: "task-detail__quick-action-submit_review"
-    commands:
-      # Retries can re-open an already-submitted task; in that case the submit CTA is absent.
-      - takeScreenshot: "du-h01-09-alice-already-submitted"
+          id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 15000
+- takeScreenshot: "du-h01-08-alice-updated"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__quick-action-submit_review"
+    direction: DOWN
+- tapOn:
+    id: "task-detail__quick-action-submit_review"
+- waitForAnimationToEnd:
+    timeout: 2500
+- runFlow: _open-task-by-title.yaml
+- assertNotVisible:
+    id: "task-detail__quick-action-submit_review"
+- takeScreenshot: "du-h01-09-alice-submitted"

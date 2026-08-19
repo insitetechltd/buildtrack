@@ -287,8 +287,9 @@ describe("AppNavigator bottom-tab spacing", () => {
     ).toBe(false);
   });
 
-  it("hides the root tab bar on Create Task, Select Photos, and in-app library routes", () => {
+  it("hides the root tab bar on Create Task, Update Progress, Select Photos, and in-app library routes", () => {
     expect(shouldHideTabBarOnCreateTaskRoute("CreateTaskMain")).toBe(true);
+    expect(shouldHideTabBarOnCreateTaskRoute("UpdateProgress")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("InAppLibraryPicker")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoViewer")).toBe(false);

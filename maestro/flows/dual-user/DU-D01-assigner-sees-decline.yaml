@@ -5,7 +5,6 @@ tags:
   - du-d01
 ---
 - runFlow: _resume-john.yaml
-- runFlow: _ensure-project.yaml
 - runFlow: _open-task-by-title.yaml
 - assertNotVisible:
     id: "task-detail__quick-action-accept_task"

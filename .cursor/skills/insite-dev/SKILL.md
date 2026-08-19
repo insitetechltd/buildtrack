@@ -22,6 +22,8 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 4. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
 5. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
 6. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
+7. **Before Maestro:** SOP §10 — `bash scripts/maestro/sim-lock.sh status` + `bash scripts/maestro/resource-lock.sh status`; check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
+8. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock; append addenda when the user revisits.
 
 ## Session teardown
 
@@ -56,6 +58,7 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 - Nav: `src/navigation/AppNavigator.tsx`
 - Docs governance: `documentation/SOURCE_OF_TRUTH.md`
 - Session continuity: `documentation/NOW.md`
+- **Roadmap discussion lock (2026-08-19):** `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — read before changing Wave 2 / AI / DMS / post-RC order
 
 ## Maestro preflight (mandatory before flow claims)
 
@@ -88,18 +91,21 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Machine / sim caps (this host profile)
 
-- Typical Insite laptop: **≤2** concurrent Maestro jobs (distinct iPhone 17 Pro Max UDIDs).
-- Primary UDID: `B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`. Spare Pro Max: `3B152AF5-DA35-4E1A-B30D-11201518E0E0`.
-- **1** Maestro job per UDID. Never two suite/one-shot processes on the same UDID.
-- Shared helpers (`_boot`, `_open-library`, `_accept-library`, `_submit-*`, `ensure-*.sh`, `run-local.sh`) = **single-writer**; other track re-runs after.
-- Prefer Photos **REUSE**; only one track may `FORCE_PURGE` at a time.
-- Serialize when editing Create Task / library / Select Photos product code; both tracks re-verify after.
+- **Sim/resource coordination:** SOP §10 — `bash scripts/maestro/sim-lock.sh status` + `bash scripts/maestro/resource-lock.sh status` before Maestro; claim if free; release both on teardown.
+- **RC dual-user pair (when free):** assigner = iPhone **17 Pro Max** `B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`; assignee = **iPhone 16** `F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA`. **Avoid** iPhone **17 Pro** `702680D5-A92E-4C56-BE55-731D424FE63A` when another chat is headed there.
+- Typical Insite laptop: **≤2** concurrent Maestro jobs on **distinct** UDIDs only.
+- **Two-sim SOP:** assign one UDID per track **before** launch (`export MAESTRO_UDID=<that sim>`). Do not rely on script defaults when multiple sims are booted.
+- **1** Maestro job per UDID. Never two processes on the same UDID (XCTest/FlyingFox death).
+- Shared helpers = **single-writer**; prefer Photos **REUSE**; one `FORCE_PURGE` owner at a time.
+- No `src/` land while Maestro is running on shared Metro `:8081`.
 
 ### Orchestrator sync checklist
 
-1. Assign UDID + P-range and/or U-range (or file paths) per track before launch.
-2. List single-writer files up front.
-3. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## / U## → final suite gate.
+1. **Sim/resource lock preflight** (SOP §10): `sim-lock.sh status` + `resource-lock.sh status` + NOW; claim UDIDs plus `user:*`, `project:*`, and when needed `task:*` / `seed:*`; refuse if another chat holds any required lock.
+2. Assign UDID + seat/account + project scope + P-range and/or U-range (or file paths) per track before launch.
+3. List single-writer files and shared mutators up front (`photos:force-purge`, seed scripts, shared `_*.yaml`).
+4. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## / U## → final suite gate.
+5. **Teardown:** `sim-lock.sh release-all` + `resource-lock.sh release-all`.
 
 ## Trae migration
 

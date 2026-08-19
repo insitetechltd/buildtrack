@@ -843,6 +843,12 @@ export const useProjectStore = create<ProjectStore>()(
           return;
         }
 
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [assignments] Skipping fetchUserProjectAssignments — no Supabase session');
+          return;
+        }
+
         const resourceKey = buildResourceKey("assignments", "user", userId);
         const cachedIds = get().assignmentIdsByUser[userId] || [];
         const hasCachedData = cachedIds.length > 0;
@@ -860,7 +866,7 @@ export const useProjectStore = create<ProjectStore>()(
         }
 
         try {
-          const supabaseClient = supabase;
+          const supabaseClient = sessionClient;
           get().setAssignmentQueryMeta(resourceKey, {
             hasHydratedData: hasCachedData,
             hasFetchedOnce: hasCachedData,
@@ -929,12 +935,18 @@ export const useProjectStore = create<ProjectStore>()(
           return;
         }
 
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn('📊 [assignments] Skipping fetchProjectUserAssignments — no Supabase session');
+          return;
+        }
+
         const resourceKey = buildResourceKey("assignments", "project", projectId);
         const cachedIds = get().assignmentIdsByProject[projectId] || [];
         const hasCachedData = cachedIds.length > 0;
 
         try {
-          const supabaseClient = supabase;
+          const supabaseClient = sessionClient;
           get().setAssignmentQueryMeta(resourceKey, {
             hasHydratedData: hasCachedData,
             hasFetchedOnce: hasCachedData,

@@ -20,6 +20,8 @@ UDID="${MAESTRO_UDID:-B7B2640C-4738-4F8A-AEEE-5DF3D21D2533}"
 FLOW_DIR="${ROOT}/maestro/flows/create-task-photo"
 WRAPPER="${ROOT}/scripts/maestro/run-local.sh"
 ENSURE="${ROOT}/scripts/maestro/ensure-create-task-photo-media.sh"
+SIM_LOCK="${ROOT}/scripts/maestro/sim-lock.sh"
+RESOURCE_LOCK="${ROOT}/scripts/maestro/resource-lock.sh"
 
 export MAESTRO_DRIVER_STARTUP_TIMEOUT="${MAESTRO_DRIVER_STARTUP_TIMEOUT:-90000}"
 export MAESTRO_0CLICK_DISABLE=1
@@ -49,6 +51,20 @@ fi
 
 FLOW_NAME="$(basename "${FLOW_PATH}")"
 
+resource_claims=(
+  "user:john.managera"
+  "project:project-a"
+)
+if [[ "${FORCE_PURGE:-0}" == "1" ]]; then
+  resource_claims+=("photos:force-purge")
+fi
+
+cleanup() {
+  bash "${RESOURCE_LOCK}" release-all >/dev/null 2>&1 || true
+  bash "${SIM_LOCK}" release-all >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
 if ! curl -sf "http://127.0.0.1:8081/status" >/dev/null 2>&1; then
   echo "FAIL: Metro /status not healthy on :8081"
   exit 97
@@ -58,6 +74,9 @@ chmod +x "${ENSURE}" 2>/dev/null || true
 
 echo "=== Create Task photo ONE: ${FLOW_NAME} ==="
 echo "UDID=${UDID}"
+echo "----- CLAIM sim + resources -----"
+bash "${SIM_LOCK}" claim "${UDID}" --purpose "create-task-photo-one:${FLOW_NAME}"
+bash "${RESOURCE_LOCK}" claim "${resource_claims[@]}" --purpose "create-task-photo-one:${FLOW_NAME}"
 echo "----- ENSURE sim Photos -----"
 set +e
 ENSURE_OUT="$(FORCE_PURGE="${FORCE_PURGE:-0}" MAESTRO_UDID="${UDID}" NEED=3 bash "${ENSURE}" 2>&1)"

@@ -1,0 +1,15 @@
+# Pull-to-refresh on the Activity dashboard.
+appId: com.buildtrack.app.local
+---
+- tapOn:
+    id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 25000
+- swipe:
+    start: "50%, 26%"
+    end: "50%, 78%"
+    duration: 1200
+- waitForAnimationToEnd:
+    timeout: 4000

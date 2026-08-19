@@ -1,0 +1,72 @@
+# Open DU_TASK_TITLE on Tasks via DU_TASK_ID.
+# Keep this helper short for troubleshooting: if we're already on the right detail
+# screen, do nothing; otherwise refresh once in place and open by row testID.
+appId: com.buildtrack.app.local
+---
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - tapOn:
+          id: "root-tab__tasks_pressable"
+      - extendedWaitUntil:
+          visible:
+            id: "tasks-screen__root"
+          timeout: 25000
+      - extendedWaitUntil:
+          visible:
+            id: "tasks-screen__task_list"
+          timeout: 25000
+      - runFlow: _pull-to-refresh-tasks.yaml
+      - tapOn:
+          id: "tasks-screen__header_reset_filters"
+          optional: true
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - tapOn:
+          id: "text-field:tasks-search__input"
+      - inputText: ${DU_TASK_TITLE}
+      - tapOn:
+          point: "50%, 8%"
+      - waitForAnimationToEnd:
+          timeout: 800
+      - runFlow:
+          when:
+            notVisible:
+              id: ${"tasks-screen__row_" + DU_TASK_ID}
+          commands:
+            - runFlow: _pull-to-refresh-tasks.yaml
+            - tapOn:
+                id: "text-field:tasks-search__input"
+                optional: true
+            - inputText: ${DU_TASK_TITLE}
+            - tapOn:
+                point: "50%, 8%"
+            - waitForAnimationToEnd:
+                timeout: 800
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: ${"tasks-screen__row_" + DU_TASK_ID}
+          direction: DOWN
+          speed: 60
+          visibilityPercentage: 40
+          timeout: 12000
+      - tapOn:
+          id: ${"tasks-screen__row_" + DU_TASK_ID + ":title-pressable"}
+      - runFlow:
+          when:
+            notVisible:
+              id: "task-detail__header_title"
+          commands:
+            - tapOn:
+                id: ${"tasks-screen__row_" + DU_TASK_ID}
+      - waitForAnimationToEnd:
+          timeout: 2500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 25000
+- assertVisible: ${".*" + DU_TASK_TITLE + ".*"}

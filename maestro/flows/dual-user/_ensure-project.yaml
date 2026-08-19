@@ -1,0 +1,50 @@
+# Dual-user: make sure both users are on shared Project A.
+# Keep this helper cheap for retries: prove current project from the header,
+# switch only if wrong, then pull-to-refresh in place.
+appId: com.buildtrack.app.local
+---
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- runFlow:
+    when:
+      notVisible: ".*Project A - Commercial Building.*"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - waitForAnimationToEnd:
+          timeout: 1500
+      - extendedWaitUntil:
+          visible:
+            id: "profile-menu-project_picker"
+          timeout: 12000
+      - tapOn:
+          id: "profile-menu-project_picker"
+      - extendedWaitUntil:
+          visible:
+            id: "projectPicker-scroll"
+          timeout: 12000
+      - tapOn:
+          id: "project-picker__row-d032c44b-3146-4c3b-8ba3-46a3091dca1e"
+      - extendedWaitUntil:
+          visible:
+            id: "dashboard-screen__root"
+          timeout: 45000
+- extendedWaitUntil:
+    visible: ".*Project A - Commercial Building.*"
+    timeout: 20000
+- runFlow: _pull-to-refresh-activity.yaml
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__project_summary_section"
+    timeout: 20000
+- assertVisible: ".*Project A - Commercial Building.*"
+- takeScreenshot: "du-active-project-project-a"
+- assertVisible:
+    id: "dashboard-screen__root"
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml

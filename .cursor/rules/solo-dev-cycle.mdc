@@ -22,7 +22,9 @@ alwaysApply: true
 
 - Orchestrator **prefers concurrent tracks** when ownership partitions (disjoint files / P## cases / idle-parallel milestones).
 - Cap Maestro at **≤2** distinct sim UDIDs on this machine; **1 job per UDID**.
-- **Two-sim SOP:** parallel Maestro is allowed only on **two different UDIDs** (export `MAESTRO_UDID` per track before launch). Same UDID + two jobs = XCTest/FlyingFox death. One sim is the default when UDIDs are not claimed.
+- **Two-sim SOP:** parallel Maestro only on **two different UDIDs** (`MAESTRO_UDID` per track before launch). Same UDID + two jobs = XCTest/FlyingFox death. One sim is the default when UDIDs are not claimed.
+- **Sim coordination (SOP §10):** before Maestro — `bash scripts/maestro/sim-lock.sh status`; check `documentation/NOW.md` for sims locked by other work; if free → `claim` / `claim-pair`, release on teardown. Never run on a UDID another chat locked or is headed on.
+- **RC dual-user gate:** `npm run test:e2e:maestro:dual-user` on **17 Pro Max (assigner) + iPhone 16 (assignee)** when free; avoid iPhone 17 Pro if another chat is using it.
 - Independent Maestro cases while iterating (not full suites): `scripts/maestro/run-create-task-photo-one.sh P##` and `scripts/maestro/run-update-progress-photo-one.sh U##`; full suites = final gate only.
 - Shared helpers / product SoT / Photos `FORCE_PURGE` = single-writer; sync then re-run affected cases.
 - Details: `.cursor/skills/insite-dev/SKILL.md` § Concurrent development + `solo-dev-harness` workflows.md.

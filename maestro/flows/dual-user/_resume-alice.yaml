@@ -1,0 +1,37 @@
+# Resume Alice session without clearState (between conductor phases).
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- extendedWaitUntil:
+    visible:
+      id: "app-screen-header__profile-trigger"
+    timeout: 90000
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "alice.workera1@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
+      - runFlow:
+          when:
+            visible: "Save Password?"
+          commands:
+            - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- runFlow: ../create-task-photo/_assert-no-logbox.yaml

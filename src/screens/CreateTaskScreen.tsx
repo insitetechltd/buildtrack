@@ -1109,6 +1109,7 @@ function CreateTaskEditorScreen({
 
                   return (
                     <Pressable
+                      testID="create-task__assignee-picker-trigger"
                       onPress={handleOpenUserPicker}
                       disabled={isDisabled}
                       className={cn(
@@ -1951,6 +1952,7 @@ function CreateTaskEditorScreen({
                 return (
                   <Pressable
                     key={assignableUser.id}
+                    testID={`create-task__assignee-option-${(assignableUser.email || assignableUser.id).replace(/@/g, "-at-").replace(/\./g, "-")}`}
                     onPress={() => toggleUserSelection(assignableUser.id)}
                     className={cn(
                       "bg-white border rounded-lg px-4 py-3 mb-3 flex-row items-center",
@@ -2046,6 +2048,7 @@ function CreateTaskEditorScreen({
           {/* Footer - Done Button */}
           <View className="bg-white border-t border-gray-200 px-6 py-4">
             <Pressable
+              testID="create-task__assignee-picker-done"
               onPress={() => {
                 setShowUserPicker(false);
                 setUserSearchQuery("");

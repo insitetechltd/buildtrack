@@ -85,6 +85,16 @@ npm run test:e2e:maestro:rc-worker-be
 
 That is P01 then U01. Read PNGs before treating rc=0 as pass.
 
+**RC dual-user interaction gate** (final release demo — two sims, zero manual input):
+
+```bash
+npm run test:e2e:maestro:dual-user
+```
+
+Conductor: `scripts/maestro/run-dual-user-gate.sh`. Auto-picks **17 Pro Max + iPhone 16** when booted; claims pair via `sim-lock.sh`. Plan: `docs/superpowers/plans/2026-08-19-maestro-dual-user-release-gate.md`.
+
+**Sim coordination (SOP §10):** before any Maestro run — `npm run maestro:sim-status`; do not use UDIDs locked by another chat. See `.cursor/rules/maestro-preflight.md` Gate 0.
+
 ```bash
 bash ./scripts/maestro/run-create-task-photo-suite.sh
 ```

@@ -43,6 +43,7 @@ Pick exactly ONE route from:
 - Use Build ONLY after plan exists
 - Prefer **concurrent tracks** when ownership partitions (disjoint files / independent Maestro cases); serialize shared helpers, product SoT, schema/auth/release, same sim UDID
 - Cap Maestro ≤2 UDIDs on this host; 1 job per UDID; one-shot case runs while developing; full suite = final gate
+- **Sim coordination (SOP §10):** `bash scripts/maestro/sim-lock.sh status` before Maestro; claim if free; release on teardown; never two Maestro jobs on one UDID
 - Two-sim SOP: parallel Maestro only on **distinct** UDIDs (`MAESTRO_UDID` per track). Never two jobs on the same simulator.
 - Reviewer before COMMIT GATE
 - Test Engineer after commit (or after Reviewer if no commit requested)

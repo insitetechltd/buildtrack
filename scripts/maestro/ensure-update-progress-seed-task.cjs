@@ -23,8 +23,24 @@ const ENV_OUT = path.join(CACHE, "maestro-up-seed.env");
 const JSON_OUT = path.join(CACHE, "maestro-up-seed.json");
 
 const ACTOR_EMAIL = process.env.MAESTRO_UP_SEED_EMAIL || "john.managera@test.com";
+const ASSIGNED_BY_EMAIL =
+  process.env.MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL || ACTOR_EMAIL;
 const PROJECT_NAME =
   process.env.MAESTRO_UP_SEED_PROJECT || "Project A - Commercial Building";
+const SEED_STATUS = (process.env.MAESTRO_UP_SEED_STATUS || "new").toLowerCase();
+const SEED_IS_APPROVED =
+  SEED_STATUS === "approved" ||
+  SEED_STATUS === "completed" ||
+  SEED_STATUS === "done";
+const SEED_IS_IN_PROGRESS = SEED_STATUS === "in_progress";
+const SEED_IS_ACCEPTED = SEED_STATUS === "accepted";
+const SEED_CURRENT_STATUS = SEED_IS_APPROVED
+  ? "approved"
+  : SEED_IS_IN_PROGRESS
+    ? "in_progress"
+    : SEED_IS_ACCEPTED
+      ? "accepted"
+      : "new";
 
 function loadDotEnv() {
   const envPath = path.join(ROOT, ".env");
@@ -78,6 +94,24 @@ async function main() {
     process.exit(3);
   }
 
+  let creator = user;
+  if (ASSIGNED_BY_EMAIL !== ACTOR_EMAIL) {
+    const { data: creatorHit, error: creatorErr } = await supabase
+      .from("users")
+      .select("id, company_id, name, email")
+      .eq("email", ASSIGNED_BY_EMAIL)
+      .maybeSingle();
+    if (creatorErr || !creatorHit?.id) {
+      console.error(
+        "FAIL: lookup assigned_by",
+        ASSIGNED_BY_EMAIL,
+        creatorErr?.message || "not found",
+      );
+      process.exit(3);
+    }
+    creator = creatorHit;
+  }
+
   const { data: projectHit, error: projectErr } = await supabase
     .from("projects")
     .select("id, name, company_id")
@@ -112,18 +146,18 @@ async function main() {
     priority: "medium",
     category: "general",
     due_date: due,
-    current_status: "new",
-    completion_percentage: 0,
+    current_status: SEED_CURRENT_STATUS,
+    completion_percentage: SEED_IS_APPROVED ? 100 : 0,
     assigned_to: [user.id],
     primary_assignee_id: user.id,
     delegated_user_ids: [],
-    assigned_by: user.id,
+    assigned_by: creator.id,
     tags: [],
     location_on_site: null,
     attachments: [],
-    accepted: false,
-    accepted_by: null,
-    accepted_at: null,
+    accepted: SEED_IS_APPROVED || SEED_IS_ACCEPTED,
+    accepted_by: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? user.id : null,
+    accepted_at: SEED_IS_APPROVED || SEED_IS_ACCEPTED ? new Date().toISOString() : null,
   };
 
   let { data: task, error: insertErr } = await supabase
@@ -168,6 +202,7 @@ async function main() {
         taskId: task.id,
         projectId: project.id,
         actorEmail: ACTOR_EMAIL,
+        assignedByEmail: ASSIGNED_BY_EMAIL,
         seededAt: new Date().toISOString(),
       },
       null,
@@ -176,7 +211,9 @@ async function main() {
   );
 
   // Machine-readable single line for runners (no secrets)
-  console.log(`SEED_OK title=${task.title} taskId=${task.id}`);
+  console.log(
+    `SEED_OK title=${task.title} taskId=${task.id} actor=${ACTOR_EMAIL} assignedBy=${ASSIGNED_BY_EMAIL} status=${SEED_CURRENT_STATUS}`,
+  );
   console.log(`WROTE ${ENV_OUT}`);
 }
 

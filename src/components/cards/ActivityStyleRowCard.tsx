@@ -60,7 +60,6 @@ export default function ActivityStyleRowCard({
   disabled,
 }: ActivityStyleRowCardProps) {
   const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
-  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
 
   useEffect(() => {
     setHasUsableImage(Boolean(imageUri));
@@ -177,15 +176,13 @@ export default function ActivityStyleRowCard({
           <View className="min-w-0">
             <Pressable
               testID={`${testID}:title-pressable`}
-              onPress={(event) => {
-                event?.stopPropagation?.();
-                setIsTitleExpanded((current) => !current);
-              }}
+              onPress={onPress}
+              disabled={disabled}
             >
               <Text
                 testID={`${testID}:title`}
                 className={titleClassName ?? recipeClasses.title}
-                numberOfLines={isTitleExpanded ? undefined : 2}
+                numberOfLines={2}
               >
                 {title}
               </Text>

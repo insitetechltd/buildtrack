@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { Alert, Pressable, Text, View, ScrollView } from "react-native";
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
 import AppScreenHeader from "@/components/AppScreenHeader";
+import ArchiveConfirmSheet from "@/components/ArchiveConfirmSheet";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import TasksFiltersBottomSheet from "@/components/tasks/TasksFiltersBottomSheet";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
@@ -11,6 +12,7 @@ import TextField from "@/components/primitives/input/TextField";
 import { mapTaskInputToTextFieldProps } from "@/ui/mappers/tasksMappers";
 import type { CreateTaskParams } from "@/navigation/navigationTypes";
 import { useTasksViewAdapter } from "@/ui/viewAdapters/useTasksViewAdapter";
+import { usePullToRefresh } from "@/utils/usePullToRefresh";
 import { cn } from "@/utils/cn";
 
 interface TasksScreenProps {
@@ -121,9 +123,12 @@ export default function TasksScreen(props: TasksScreenProps) {
   const { output, searchInput, setSearchQuery, visibility, actions } = useTasksViewAdapter({
     onNavigateToTaskDetail: props.onNavigateToTaskDetail,
   });
+  const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
   const [swipeBlockedTaskIds, setSwipeBlockedTaskIds] = useState<
     Record<string, "active" | "dismissed">
   >({});
+  const [pendingArchiveTaskId, setPendingArchiveTaskId] = useState<string | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const searchContract = useMemo(() => {
     const contract = mapTaskInputToTextFieldProps(searchInput);
@@ -153,28 +158,28 @@ export default function TasksScreen(props: TasksScreenProps) {
   };
 
   const handleArchivePress = (taskId: string) => {
-    Alert.alert(
-      "Archive task?",
-      "This task will move to the Archived queue.",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Archive",
-          style: "destructive",
-          onPress: () => {
-            void actions.archiveTask(taskId).catch((error) => {
-              Alert.alert(
-                "Unable to archive task",
-                error instanceof Error ? error.message : "Please try again.",
-              );
-            });
-          },
-        },
-      ],
-    );
+    setPendingArchiveTaskId(taskId);
+  };
+
+  const handleConfirmArchive = () => {
+    if (!pendingArchiveTaskId) {
+      return;
+    }
+
+    setIsArchiving(true);
+    void actions
+      .archiveTask(pendingArchiveTaskId)
+      .then(() => {
+        setIsArchiving(false);
+        setPendingArchiveTaskId(null);
+      })
+      .catch((error) => {
+        setIsArchiving(false);
+        Alert.alert(
+          "Unable to archive task",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      });
   };
 
   const setTaskSwipeBlockState = useCallback(
@@ -222,6 +227,7 @@ export default function TasksScreen(props: TasksScreenProps) {
   );
 
   return (
+    <>
     <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-[#E7F4F8]" edges={["left", "right", "bottom"]}>
         <AppScreenHeader
           title="Tasks"
@@ -333,6 +339,15 @@ export default function TasksScreen(props: TasksScreenProps) {
           testID="tasks-screen__task_list"
           className="flex-1 bg-slate-50 px-4"
           showsVerticalScrollIndicator={false}
+          alwaysBounceVertical
+          refreshControl={
+            <RefreshControl
+              testID="tasks-screen__refresh_control"
+              refreshing={isPullRefreshing}
+              onRefresh={() => void handlePullRefresh()}
+              tintColor="#0D6E87"
+            />
+          }
         >
           {output.taskRowItems.length > 0 ? (
             output.taskRowItems.map((row) => (
@@ -349,6 +364,8 @@ export default function TasksScreen(props: TasksScreenProps) {
                   enabled={Boolean(row.canShowTaskUpdateAction || row.canShowArchiveAction)}
                   overshootLeft={false}
                   overshootRight={false}
+                  activeOffsetX={[-20, 20]}
+                  failOffsetY={[-12, 12]}
                   onSwipeableOpenStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}
@@ -428,5 +445,17 @@ export default function TasksScreen(props: TasksScreenProps) {
           onStageOverdueWindow={actions.stageOverdueWindowFilter}
         />
     </SafeAreaView>
+      <ArchiveConfirmSheet
+        visible={pendingArchiveTaskId !== null}
+        testIDPrefix="tasks-screen"
+        isConfirming={isArchiving}
+        onCancel={() => {
+          if (!isArchiving) {
+            setPendingArchiveTaskId(null);
+          }
+        }}
+        onConfirm={handleConfirmArchive}
+      />
+    </>
   );
 }

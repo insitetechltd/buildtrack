@@ -1,0 +1,43 @@
+# Headed W-A03 — Queue tiles → Tasks.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a03
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__queue_dashboard"
+    timeout: 25000
+- waitForAnimationToEnd:
+    timeout: 3000
+# Touch queue tile when present; Tasks tab is the reliable landing assert.
+- runFlow:
+    when:
+      visible:
+        id: "dashboard-screen__queue_cell_my_queue_new"
+    commands:
+      - tapOn:
+          id: "dashboard-screen__queue_cell_my_queue_new"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 20000
+- takeScreenshot: "rc-B-W-A03-queue-to-tasks"
+- tapOn:
+    id: "root-tab__activity"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 15000

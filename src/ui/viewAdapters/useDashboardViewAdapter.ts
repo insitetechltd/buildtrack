@@ -272,6 +272,9 @@ export interface DashboardViewAdapterHookResult {
     showProjectPickerShortcut: boolean;
     showDeveloperSettingsShortcut: boolean;
   };
+  actions: {
+    deleteDraftTask: (taskId: string) => Promise<void>;
+  };
 }
 
 export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
@@ -289,6 +292,14 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const isLoadingProjects = Boolean(projectStore.isLoading);
 
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+    // Persist does not keep task payloads. Landing Activity must refetch.
+    void taskStore.fetchTasks?.();
+  }, [taskStore.fetchTasks, user]);
 
   useEffect(() => {
     const refs = tasks.flatMap((task) => collectTaskPhotoRefs(task));
@@ -533,7 +544,12 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
 
     const mappedDraftItems: DashboardActivityItem[] = activeProjectTasks
-      .filter((task) => task.status === "in_progress" || task.status === "accepted")
+      .filter(
+        (task) =>
+          !task.deletedAt &&
+          task.assignedBy === currentUserId &&
+          task.status === "in_progress",
+      )
       .map((task) => {
         const updates = Array.isArray(task.updates) ? task.updates : [];
         const latestUpdate = [...updates].sort(
@@ -829,6 +845,24 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       showProfileShortcut: Boolean(user),
       showProjectPickerShortcut: Boolean(user),
       showDeveloperSettingsShortcut: __DEV__,
+    },
+    actions: {
+      deleteDraftTask: async (taskId: string) => {
+        if (!currentUserId) {
+          throw new Error("Sign in to delete a draft.");
+        }
+        const task = taskStore.tasks.find((candidate) => candidate.id === taskId);
+        if (!task || task.deletedAt) {
+          throw new Error("Draft not found.");
+        }
+        if (task.assignedBy !== currentUserId) {
+          throw new Error("You can only delete drafts you created.");
+        }
+        if (task.status !== "in_progress") {
+          throw new Error("Only unfinished drafts can be deleted here.");
+        }
+        await taskStore.deleteTaskById(taskId, currentUserId);
+      },
     },
   };
 }

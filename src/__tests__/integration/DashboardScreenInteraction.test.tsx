@@ -1,10 +1,14 @@
 import React from "react";
-import { render, fireEvent } from "@testing-library/react-native";
+import { render, fireEvent, act } from "@testing-library/react-native";
 import DashboardScreen from "../../../src/screens/DashboardScreen";
 import { useDashboardViewAdapter } from "../../../src/ui/viewAdapters/useDashboardViewAdapter";
+import { triggerRefresh } from "../../../src/utils/DataRefreshManager";
 
 // Mock the view adapter
 jest.mock("../../../src/ui/viewAdapters/useDashboardViewAdapter");
+jest.mock("../../../src/utils/DataRefreshManager", () => ({
+  triggerRefresh: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("../../../src/components/AppScreenHeader", () => {
   const React = require("react");
   const { Pressable, Text, View } = require("react-native");
@@ -120,6 +124,9 @@ describe("DashboardScreen Interactions", () => {
         showDeveloperSettingsShortcut: false,
         showCreateTaskFab: false,
       },
+      actions: {
+        deleteDraftTask: jest.fn(),
+      },
     });
   });
 
@@ -165,5 +172,25 @@ describe("DashboardScreen Interactions", () => {
       launchBucket: "review",
       launchSource: "activity_dashboard",
     });
+  });
+
+  it("wires Activity pull-to-refresh to a forced triggerRefresh", async () => {
+    const { UNSAFE_getByType, getByTestId } = render(
+      <DashboardScreen
+        onNavigateToTasks={mockOnNavigateToTasks}
+        onNavigateToCreateTask={jest.fn()}
+        onNavigateToProfile={jest.fn()}
+      />,
+    );
+
+    const { ScrollView } = require("react-native");
+    const scrollView = UNSAFE_getByType(ScrollView);
+    expect(scrollView.props.refreshControl).toBeTruthy();
+
+    await act(async () => {
+      await scrollView.props.refreshControl.props.onRefresh();
+    });
+
+    expect(triggerRefresh).toHaveBeenCalledWith({ force: true });
   });
 });

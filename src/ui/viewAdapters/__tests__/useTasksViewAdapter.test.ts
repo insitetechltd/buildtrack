@@ -320,6 +320,13 @@ describe("useTasksViewAdapter", () => {
           assignedBy: "user-2",
         }),
         makeTask({
+          id: "task-created-approved",
+          title: "Assigner closeout",
+          status: "approved",
+          assignedTo: ["user-9"],
+          assignedBy: "user-1",
+        }),
+        makeTask({
           id: "task-child",
           title: "Nested closeout note",
           status: "approved",
@@ -339,14 +346,20 @@ describe("useTasksViewAdapter", () => {
 
     const inProgressRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-in-progress");
     const approvedRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-approved");
+    const createdApprovedRow = result.current.output.taskRowItems.find(
+      (row) => row.taskId === "task-created-approved",
+    );
     const childRow = result.current.output.taskRowItems.find((row) => row.taskId === "task-child");
 
     expect(inProgressRow).toMatchObject({
       canShowTaskUpdateAction: true,
-      canShowArchiveAction: true,
+      canShowArchiveAction: false,
     });
     expect(approvedRow).toMatchObject({
       canShowTaskUpdateAction: true,
+      canShowArchiveAction: true,
+    });
+    expect(createdApprovedRow).toMatchObject({
       canShowArchiveAction: true,
     });
     expect(childRow).toMatchObject({

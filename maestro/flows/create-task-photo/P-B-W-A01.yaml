@@ -1,0 +1,25 @@
+# Headed W-A01 — Land Activity (dashboard-screen__root).
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a01
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__queue_dashboard"
+    timeout: 25000
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertVisible:
+    id: "root-tab__camera_icon_surface"
+- takeScreenshot: "rc-B-W-A01-activity-land"

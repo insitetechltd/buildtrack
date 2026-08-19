@@ -10,10 +10,33 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "update-progress__description"
 - inputText: ${output.progressNote}
+# Keyboard covers Submit. Do not use hideKeyboard. Tap chrome that is not the
+# description field so XCTest is not tapping through the keyboard onto Submit.
+- runFlow: ../_dismiss-keyboard.yaml
+- tapOn: "Photos & Files"
 - tapOn:
-    point: "50%, 12%"
+    id: "update-progress__completion-value"
+- runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+- runFlow:
+    when:
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+      - tapOn:
+          point: "50%, 8%"
+      - tapOn: "Photos & Files"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - tapOn:
     id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+    delay: 2000
 - extendedWaitUntil:
     visible: ".*Progress update added successfully!.*"
     timeout: 25000

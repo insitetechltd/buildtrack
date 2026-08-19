@@ -1,0 +1,102 @@
+# W-C05: Assignee, tags, location on site, and due date are reachable on Create Task.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c05
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+
+# Location on Site
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__location-picker-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__location-picker-trigger"
+- extendedWaitUntil:
+    visible: "Location on Site"
+    timeout: 10000
+- takeScreenshot: "rc-C05-location-picker"
+- runFlow:
+    when:
+      visible: "Living room"
+    commands:
+      - tapOn: "Living room"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__location-option-add-new"
+    commands:
+      - tapOn:
+          id: "create-task__location-option-add-new"
+      - tapOn:
+          id: "create-task__location-input"
+      - inputText: "Maestro C05 Bay 1"
+      - tapOn:
+          id: "create-task__location-save"
+- runFlow:
+    when:
+      visible: "Location on Site"
+    commands:
+      - tapOn:
+          point: "8%, 12%"
+
+# Tags
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__tag_input"
+    direction: DOWN
+- tapOn:
+    id: "create-task__tag_input"
+- inputText: "maestro-c05"
+- runFlow: ../_dismiss-keyboard.yaml
+- takeScreenshot: "rc-C05-tags"
+
+# Due date
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__due-date-trigger"
+    direction: DOWN
+- tapOn:
+    id: "create-task__due-date-trigger"
+- runFlow:
+    when:
+      visible:
+        id: "create-task__due-date-done"
+    commands:
+      - tapOn:
+          id: "create-task__due-date-done"
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "rc-C05-due-date"
+
+# Assignee picker (no testID; placeholder may truncate with …)
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      text: "Assign To.*"
+    direction: UP
+- tapOn: "Select users to assign.*"
+- extendedWaitUntil:
+    visible: "Assign To"
+    timeout: 12000
+- takeScreenshot: "rc-C05-assignee-picker"
+- tapOn:
+    point: "8%, 12%"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 12000
+- takeScreenshot: "rc-C05-form-after-pickers"

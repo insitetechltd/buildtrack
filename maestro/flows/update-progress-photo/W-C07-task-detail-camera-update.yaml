@@ -1,0 +1,64 @@
+# W-C07: Task Detail → center camera tab opens Update Progress.
+# Uses a create-task photo title from this session (no API seed / NEW matcher).
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c07
+---
+- runFlow: ../create-task-photo/_boot.yaml
+- runFlow: ../create-task-photo/_ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 25000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 25000
+
+- tapOn:
+    id: "tasks-screen__header_reset_filters"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: "text-field:tasks-search__input"
+- eraseText
+- inputText: "Maestro CT Photo"
+# Do not tap after typing — header/list taps edit the search field.
+# Wait for NEW on the row (search input itself does not contain NEW).
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "rc-C07-search-typed"
+- extendedWaitUntil:
+    visible: ".*Maestro CT Photo.*NEW"
+    timeout: 20000
+- takeScreenshot: "rc-C07-search-hit"
+- tapOn:
+    text: ".*Maestro CT Photo.*NEW"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - tapOn:
+          text: ".*Maestro CT Photo.*NEW"
+          delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 12000
+- takeScreenshot: "rc-C07-task-detail"
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "update-progress__screen_title"
+    timeout: 15000
+- assertVisible:
+    id: "update-progress__take_photo"
+- takeScreenshot: "rc-C07-update-from-task-detail"

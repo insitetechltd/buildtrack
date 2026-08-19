@@ -14,9 +14,8 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "createTask-description"
 - inputText: "Maestro create-task photo suite attachment coverage."
-# Dismiss keyboard via header chrome (hideKeyboard flakes on this sim)
-- tapOn:
-    point: "50%, 12%"
+# Keyboard covers Submit. Do not use hideKeyboard.
+- runFlow: ../_dismiss-keyboard.yaml
 - scrollUntilVisible:
     centerElement: true
     element:

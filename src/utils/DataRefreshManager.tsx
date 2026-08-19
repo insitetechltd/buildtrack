@@ -47,15 +47,19 @@ const generateDataHash = () => {
 };
 
 // Export triggerRefresh function for use by NetworkSyncManager
-let lastRefreshTime = Date.now();
+// 0 so the first post-JS-restart sync always runs. Persist writes tasks: []
+// (Hermes OOM); Activity would otherwise stay empty until the 30s/60s poll.
+let lastRefreshTime = 0;
 
 // Function to force a re-render of all components using these stores
-export const triggerRefresh = async () => {
+export const triggerRefresh = async (options?: { force?: boolean }) => {
   const now = Date.now();
   const previousRefreshTime = lastRefreshTime;
+  const force = options?.force === true;
   
-  // Prevent too frequent refreshes (minimum 500ms between refreshes)
-  if (now - previousRefreshTime < 500) {
+  // Prevent too frequent refreshes (minimum 500ms between refreshes).
+  // Operator pull bypasses this so the native spinner is never a no-op.
+  if (!force && now - previousRefreshTime < 500) {
     return;
   }
   
@@ -65,7 +69,7 @@ export const triggerRefresh = async () => {
   const currentHash = generateDataHash();
   const hasDataChanged = currentHash !== lastDataHash;
   
-  if (hasDataChanged || now - previousRefreshTime > 30000) {
+  if (force || hasDataChanged || now - previousRefreshTime > 30000) {
     lastDataHash = currentHash;
     
     // Actually fetch fresh data from Supabase instead of just re-rendering

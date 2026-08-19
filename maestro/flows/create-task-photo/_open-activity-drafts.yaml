@@ -1,0 +1,31 @@
+# Land Activity and wait until Drafts In Progress exists.
+# Requires env DRAFT_TITLE (unique originator in_progress seed).
+# Persist writes tasks: []; wait for the post-login fetch before looking for drafts.
+appId: com.buildtrack.app.local
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__queue_dashboard"
+    timeout: 25000
+- extendedWaitUntil:
+    notVisible: "Refreshing..."
+    timeout: 20000
+# Drafts sit after queues (above Recent Activity). Scroll if the week strip is tall.
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "dashboard-screen__drafts_toggle"
+    direction: DOWN
+    speed: 80
+    visibilityPercentage: 40
+    timeout: 25000

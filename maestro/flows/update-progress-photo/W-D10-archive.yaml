@@ -1,0 +1,82 @@
+# W-D10: Archive completed task from Other actions; prove it in Filters → QUEUE → Archived.
+# In-app confirm (not native Alert). Never tapOn "Archive" by text — it matches the Other actions chip.
+# Seed: approved + Bob assignee via run-update-progress-photo-one.sh.
+appId: com.buildtrack.app.local
+tags:
+  - w-d10
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-seeded-task-detail.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__quick-action-archive_task"
+    direction: DOWN
+- tapOn:
+    id: "task-detail__quick-action-archive_task"
+- waitForAnimationToEnd:
+    timeout: 1500
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__archive-confirm"
+    timeout: 8000
+- takeScreenshot: "rc-E-W-D10-archive-confirm"
+- tapOn:
+    id: "task-detail__archive-confirm-archive"
+- waitForAnimationToEnd:
+    timeout: 2500
+- extendedWaitUntil:
+    notVisible:
+      id: "task-detail__header_title"
+    timeout: 12000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- takeScreenshot: "rc-E-W-D10-after-archive"
+- tapOn:
+    id: "tasks-screen__filters_button"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      notVisible: "Apply Filters"
+    commands:
+      - tapOn: "Filters"
+      - waitForAnimationToEnd:
+          timeout: 1500
+- extendedWaitUntil:
+    visible: "Apply Filters"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "tasks-filters-sheet__queue_archived"
+    direction: DOWN
+- tapOn:
+    id: "tasks-filters-sheet__queue_archived"
+- waitForAnimationToEnd:
+    timeout: 800
+- tapOn:
+    id: "tasks-filters-sheet__apply"
+- runFlow:
+    when:
+      visible: "Apply Filters"
+    commands:
+      - tapOn: "Apply Filters"
+- extendedWaitUntil:
+    notVisible: "Apply Filters"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__chip_remove_queue"
+    timeout: 8000
+- takeScreenshot: "rc-E-W-D10-archived-filter"
+- extendedWaitUntil:
+    visible:
+      id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+    timeout: 25000
+- assertVisible:
+    id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+- takeScreenshot: "rc-E-W-D10-archived-queue"

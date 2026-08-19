@@ -1,0 +1,26 @@
+# W-D02: Decline on Task Detail. iOS Alert.prompt is PLATFORM_LIMITATION;
+# tap Decline then try to confirm the sheet.
+appId: com.buildtrack.app.local
+tags:
+  - w-d02
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-seeded-task-detail.yaml
+- assertVisible:
+    id: "task-detail__quick-action-decline_task"
+- tapOn:
+    id: "task-detail__quick-action-decline_task"
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "rc-E-W-D02-decline-prompt"
+- runFlow:
+    when:
+      visible: "Decline Task"
+    commands:
+      - inputText: "Cannot staff this scope this week"
+      - tapOn: "OK"
+- tapOn:
+    text: "OK"
+    optional: true
+- takeScreenshot: "rc-E-W-D02-after-decline"

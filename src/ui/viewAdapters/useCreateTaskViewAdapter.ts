@@ -43,6 +43,7 @@ import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
 
 export interface UseCreateTaskViewAdapterProps {
   editTaskId?: string;
+  resumeAsCreate?: boolean;
   parentTaskId?: string;
   parentSubTaskId?: string;
   clearForm?: boolean;
@@ -181,6 +182,7 @@ function appendUniqueLocationLabel(currentLabels: string[], nextLabel: string) {
 
 export function useCreateTaskViewAdapter({
   editTaskId,
+  resumeAsCreate = false,
   parentTaskId,
   parentSubTaskId,
   clearForm,
@@ -366,6 +368,9 @@ export function useCreateTaskViewAdapter({
   }, [clearFormRequestKey]);
 
   useEffect(() => {
+    if (editTaskId || resumeAsCreate) {
+      return;
+    }
     if (persistDraftTimeoutRef.current) {
       clearTimeout(persistDraftTimeoutRef.current);
     }
@@ -375,7 +380,7 @@ export function useCreateTaskViewAdapter({
     return () => {
       if (persistDraftTimeoutRef.current) clearTimeout(persistDraftTimeoutRef.current);
     };
-  }, [formData, persistDraft]);
+  }, [editTaskId, formData, persistDraft, resumeAsCreate]);
 
   // 2. Validation Logic
   const validateForm = useCallback(() => {
@@ -452,18 +457,20 @@ export function useCreateTaskViewAdapter({
     actorUserId: user?.id,
     taskAssignedBy: editTask?.assignedBy,
     taskStatus: editTask?.status as TaskStatus | undefined,
-    isCreateFlow: !editTask,
+    isCreateFlow: resumeAsCreate || !editTask,
   });
-  const requiresEditReason = requiresEditReasonForStatus(editTask?.status as TaskStatus | undefined);
+  const requiresEditReason =
+    resumeAsCreate ? false : requiresEditReasonForStatus(editTask?.status as TaskStatus | undefined);
 
   const context = useMemo(() => {
-    const headerTitle = editTaskId
-      ? t.createTask.editTask
-      : parentTaskId
-        ? parentSubTaskId && parentSubTask
-          ? t.createTask.nestedSubTask
-          : t.createTask.createSubTask
-        : t.createTask.createNewTask;
+    const headerTitle =
+      editTaskId && !resumeAsCreate
+        ? t.createTask.editTask
+        : parentTaskId
+          ? parentSubTaskId && parentSubTask
+            ? t.createTask.nestedSubTask
+            : t.createTask.createSubTask
+          : t.createTask.createNewTask;
 
     const parentBanner =
       parentTask && (parentSubTask || parentTask)
@@ -479,6 +486,7 @@ export function useCreateTaskViewAdapter({
       activeProjectName: activeProject?.name,
       assigneesLocked,
       requiresEditReason,
+      isResumeAsCreate: resumeAsCreate,
       parentBanner,
     };
   }, [
@@ -491,6 +499,7 @@ export function useCreateTaskViewAdapter({
     parentTask,
     parentTaskId,
     requiresEditReason,
+    resumeAsCreate,
     t.createTask.createNewTask,
     t.createTask.createSubTask,
     t.createTask.editTask,

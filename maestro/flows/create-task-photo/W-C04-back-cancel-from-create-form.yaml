@@ -1,0 +1,36 @@
+# W-C04: Back/cancel from the Create Task form returns to Activity (dashboard root).
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c04
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+# Camera -> Create Task form
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      notVisible:
+        id: "create-task__continuous_form"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+
+- takeScreenshot: "rc-C04-create-form"
+
+# Tap header back without entering data.
+- tapOn:
+    id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000
+- takeScreenshot: "rc-C04-back-to-activity"

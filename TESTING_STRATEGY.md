@@ -5,6 +5,7 @@ This repository uses a 4-layer testing strategy designed to keep the developer l
 ## Canonical Testing Docs
 
 - `TESTING_STRATEGY.md` is the canonical repository-wide testing strategy and confidence-ladder reference.
+- `documentation/MAINTABS_UX_CHECKLIST.md` is the canonical MainTabs **function-discovery** checklist (admin vs field operator, human + Maestro IDs).
 - `maestro/README.md` is the canonical Maestro-specific runtime, operator, and troubleshooting runbook.
 
 ## Dev-Cycle Rule
@@ -102,6 +103,7 @@ Use this layer when a change is user-visible and you need proof that the install
 ### Primary Commands
 
 - `npm run test:e2e:maestro:smoke`
+- `npm run test:e2e:maestro:rc-worker-be` — **RC required** field operator sections B–E (see `documentation/MAINTABS_UX_CHECKLIST.md`)
 - `npm run test:e2e:maestro:task-core`
 - `npm run test:e2e:maestro:qa01`
 - `bash ./scripts/maestro/run-local.sh test maestro/flows/sprint7-open-developer-settings.yaml`
@@ -110,11 +112,13 @@ Use this layer when a change is user-visible and you need proof that the install
 ### Scope
 
 - launch smoke for the installed iOS dev client
+- **RC worker B–E** (Activity, Camera/create+photo, Tasks, Task Detail update+photo) via `test:e2e:maestro:rc-worker-be`
 - `Profile -> Developer Settings` entry
 - Sprint 7 sandbox bootstrap
 - live Supabase-backed Task Core create, assign, progress, completion, and photo-upload flows
 - Sprint 7 based M-QA-01 rubric automation (Rejection Loop, Overdue Crunch, Isolation Wall, iPhone 17 Viewport Audit) with screenshot evidence capture for final human sign-off
 - local Maestro environment validation
+- Company **admin** org journeys (Dashboard, projects, seats, billing) are **human** on the MainTabs checklist — they are not day-to-day task operations and are not in the RC B–E Maestro min gate
 
 ### Boundary
 
@@ -225,6 +229,11 @@ Use this section when you need to answer a practical question:
   - does not prove: app workflows by itself
 
 ### Maestro Runtime Gates
+
+- `npm run test:e2e:maestro:rc-worker-be`
+  - proves: RC field-operator MainTabs B–E on a **worker/manager tab shell** (`isAdmin` false): Activity land, create-task one photo (P01), Tasks + update-progress one photo (U01)
+  - does not prove: company-admin Dashboard, invite, Company plan / Stripe, accept/approve, drafts, or full P/U suites
+  - human still walks `documentation/MAINTABS_UX_CHECKLIST.md`; PNG evidence before treating rc=0 as pass
 
 - `npm run test:e2e:maestro:smoke`
   - proves: the root Maestro foundation is runnable from this repository against the installed iOS dev client
@@ -455,7 +464,8 @@ Use this table to pick the smallest effective check that matches your change siz
 | Tier | Speed (approx) | Runs | When |
 |---|---|---|---|
 | Fast Regression | < 5 min | `npm run test:regression` | every feature commit, every focused bug-fix commit, before opening a draft PR |
-| Slow Confidence | 5 – 30 min | `npm run validate:local:confidence && npm run test:e2e:maestro:journeys` | before opening a non-draft PR, before release tagging, and at every `WS-QA / M-QA-03` milestone gate |
+| Slow Confidence | 5 – 30 min | `npm run validate:local:confidence && npm run test:e2e:maestro:journeys` | before opening a non-draft PR, and at every `WS-QA / M-QA-03` milestone gate |
+| RC worker B–E | ~5 – 20 min | `npm run test:e2e:maestro:rc-worker-be` | **before commercial release / TestFlight ship binary**; plus human MainTabs checklist B–E (and admin G–J on device) |
 
 ### Fast Regression
 

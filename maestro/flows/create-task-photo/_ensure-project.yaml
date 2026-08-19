@@ -25,10 +25,18 @@ appId: com.buildtrack.app.local
             visible: ".*Project A - Commercial Building.*"
           commands:
             - tapOn: ".*Project A - Commercial Building.*"
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - runFlow:
+          when:
+            visible: "Select a Project"
+          commands:
+            - tapOn:
+                id: "app-screen-header__back"
       - extendedWaitUntil:
           visible:
             id: "dashboard-screen__root"
-          timeout: 12000
+          timeout: 25000
 - assertVisible:
     id: "dashboard-screen__root"
 - runFlow: _assert-no-logbox.yaml

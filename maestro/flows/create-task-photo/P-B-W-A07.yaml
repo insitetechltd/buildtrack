@@ -1,0 +1,31 @@
+# Headed W-A07 — Swipe-delete draft (Alert is native chrome).
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a07
+---
+- runFlow: _open-activity-drafts.yaml
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 8000
+- extendedWaitUntil:
+    visible: ".*Maestro Draft A05.*"
+    timeout: 8000
+- swipe:
+    from:
+      text: ".*Maestro Draft A05.*"
+    direction: LEFT
+    duration: 500
+- tapOn:
+    id: "dashboard-screen__draft_item_[^:]+:delete-action"
+- extendedWaitUntil:
+    visible: "Delete"
+    timeout: 8000
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: ".*Maestro Draft A05.*"
+    timeout: 15000
+- takeScreenshot: "rc-B-W-A07-swipe-delete"

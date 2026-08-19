@@ -1,0 +1,25 @@
+# D3 — Search works (W-T03)
+# Uses seeded UP_SEED_TITLE from run-update-progress-photo-one.sh.
+appId: com.buildtrack.app.local
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 15000
+
+- tapOn:
+    id: "text-field:tasks-search__input"
+- eraseText
+- inputText: ${UP_SEED_TITLE}
+- runFlow: ../_dismiss-keyboard.yaml
+- extendedWaitUntil:
+    visible: ${".*" + UP_SEED_TITLE + ".*NEW"}
+    timeout: 20000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- takeScreenshot: "rc-D3-search-results"

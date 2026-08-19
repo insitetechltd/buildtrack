@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useRef } from "react";
 import {
+  BackHandler,
   NativeSyntheticEvent,
   View,
   Text,
@@ -11,7 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import CompletionPercentageDialer from "../components/ui/CompletionPercentageDialer";
@@ -67,6 +68,28 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
     },
     [moveFormFocus],
   );
+  const handleNavigateBack = useCallback(() => {
+    if (props.onNavigateBack) {
+      props.onNavigateBack();
+      return;
+    }
+    navigation.goBack();
+  }, [navigation, props.onNavigateBack]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!props.onNavigateBack) {
+        return undefined;
+      }
+
+      const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+        props.onNavigateBack?.();
+        return true;
+      });
+
+      return () => subscription.remove();
+    }, [props.onNavigateBack]),
+  );
 
   if (!output.readiness.hasUsableData || !task) {
     return (
@@ -80,7 +103,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
             </Text>
           )}
           showBackButton={true}
-          onBackPress={() => navigation.goBack()}
+          onBackPress={handleNavigateBack}
           onNavigateToProfile={props.onNavigateToProfile}
           onNavigateToProjectPicker={props.onNavigateToProjectPicker}
         />
@@ -106,7 +129,7 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
           </Text>
         )}
         showBackButton={true}
-        onBackPress={() => navigation.goBack()}
+        onBackPress={handleNavigateBack}
         onNavigateToProfile={props.onNavigateToProfile}
         onNavigateToProjectPicker={props.onNavigateToProjectPicker}
       />

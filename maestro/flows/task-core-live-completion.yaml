@@ -16,7 +16,7 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "text-field:tasks-search__input"
 - inputText: "Safety Equipment Check"
-- hideKeyboard
+- runFlow: _dismiss-keyboard.yaml
 - assertVisible: ".*Safety Equipment Check.*"
 - tapOn: ".*Safety Equipment Check My Queue.*IN PROGRESS"
 - runFlow:
@@ -49,11 +49,23 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "update-progress__description"
 - inputText: "Completed the final site safety pass and all assigned checks are now fully complete."
-- hideKeyboard
-- assertVisible:
+- runFlow: _dismiss-keyboard.yaml
+- tapOn: "Photos & Files"
+- tapOn:
+    id: "update-progress__completion-value"
+- runFlow: _dismiss-keyboard.yaml
+- tapOn:
+    id: "update-progress__screen_title"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+- tapOn:
     id: "update-progress__submit"
 - tapOn:
     id: "update-progress__submit"
+    delay: 1500
 - assertVisible: ".*Task marked as 100% complete!.*"
 - tapOn: "OK"
 - runFlow:
@@ -70,7 +82,7 @@ appId: com.buildtrack.app.local
       - tapOn:
           id: "text-field:tasks-search__input"
       - inputText: "Safety Equipment Check"
-      - hideKeyboard
+      - runFlow: _dismiss-keyboard.yaml
       - tapOn: ".*Safety Equipment Check My Queue.*IN PROGRESS"
 - assertVisible:
     id: "task-detail__quick-action-submit_review"

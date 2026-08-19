@@ -1,6 +1,5 @@
 import React from "react";
-import { Alert } from "react-native";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import TaskDetailScreen from "../TaskDetailScreen";
 import { useTaskDetailViewAdapter } from "../../ui/viewAdapters/useTaskDetailViewAdapter";
@@ -270,7 +269,6 @@ describe("TaskDetailScreen sticky layout", () => {
   });
 
   it("shows archive in other actions and runs the archive flow after confirmation", async () => {
-    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
     const archiveTask = jest.fn().mockResolvedValue(undefined);
     const onNavigateBack = jest.fn();
 
@@ -296,17 +294,16 @@ describe("TaskDetailScreen sticky layout", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={onNavigateBack} />);
 
-    fireEvent.press(screen.getByText("Archive"));
-    expect(alertSpy).toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId("task-detail__quick-action-archive_task"));
+    expect(screen.getByTestId("task-detail__archive-confirm")).toBeTruthy();
+    expect(screen.getByText("This task will move to the Archived queue.")).toBeTruthy();
 
-    const alertButtons = alertSpy.mock.calls[0]?.[2] ?? [];
-    const archiveButton = alertButtons.find((button: any) => button.text === "Archive");
+    fireEvent.press(screen.getByTestId("task-detail__archive-confirm-archive"));
 
-    await archiveButton?.onPress?.();
-
-    expect(archiveTask).toHaveBeenCalledTimes(1);
-    expect(onNavigateBack).toHaveBeenCalledTimes(1);
-    alertSpy.mockRestore();
+    await waitFor(() => {
+      expect(archiveTask).toHaveBeenCalledTimes(1);
+      expect(onNavigateBack).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("keeps accept and decline in the scroll region instead of a competing bottom action bar", () => {

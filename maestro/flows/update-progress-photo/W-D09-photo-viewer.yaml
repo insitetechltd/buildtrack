@@ -1,0 +1,28 @@
+# W-D09: Photo viewer from Task Detail work thread.
+appId: com.buildtrack.app.local
+tags:
+  - w-d09
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- runFlow: _confirm-selection.yaml
+- runFlow: _submit-update.yaml
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 15000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__activity_thread"
+    direction: DOWN
+- tapOn:
+    id: ".*lead-photo-pressable.*"
+- extendedWaitUntil:
+    visible:
+      id: "task-activity-timeline__photo_viewer"
+    timeout: 12000
+- takeScreenshot: "rc-E-W-D09-photo-viewer"

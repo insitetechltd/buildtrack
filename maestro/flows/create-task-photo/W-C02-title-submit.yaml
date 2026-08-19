@@ -1,0 +1,56 @@
+# W-C02: Title + description + submit (no photo required)
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c02
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+
+- evalScript: ${output.taskTitle = "Maestro C02 Title " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.taskTitle}
+- tapOn:
+    id: "createTask-description"
+- inputText: "Maestro W-C02 title and submit without photo."
+- takeScreenshot: "rc-C02-after-text"
+- runFlow: ../_dismiss-keyboard.yaml
+- tapOn: "Medium"
+- assertVisible:
+    id: "create-task__continuous_form"
+- takeScreenshot: "rc-C02-keyboard-dismissed"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__submit-inline"
+    direction: DOWN
+- tapOn:
+    id: "create-task__submit-inline"
+- tapOn:
+    id: "create-task__submit-inline"
+    delay: 1500
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit-success-confirm"
+    timeout: 20000
+- takeScreenshot: "rc-C02-submit-success"
+- tapOn:
+    id: "create-task__submit-success-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 15000
+- takeScreenshot: "rc-C02-landed-tasks"

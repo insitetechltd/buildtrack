@@ -1,0 +1,39 @@
+# W-T03: Tasks search filters the list.
+# Do not tap after typing — header/list taps edit the search field.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-d03
+---
+- runFlow: ../create-task-photo/_boot.yaml
+- runFlow: ../create-task-photo/_ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 25000
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__task_list"
+    timeout: 25000
+
+- tapOn:
+    id: "tasks-screen__header_reset_filters"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 800
+- takeScreenshot: "rc-D-T03-before-search"
+- tapOn:
+    id: "text-field:tasks-search__input"
+- eraseText
+- inputText: "Maestro CT Photo"
+- waitForAnimationToEnd:
+    timeout: 1500
+- extendedWaitUntil:
+    visible: ".*Maestro CT Photo.*NEW"
+    timeout: 20000
+- assertVisible:
+    id: "tasks-screen__task_list"
+- takeScreenshot: "rc-D-T03-search-results"

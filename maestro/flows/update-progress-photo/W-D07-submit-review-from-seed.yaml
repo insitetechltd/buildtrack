@@ -1,0 +1,77 @@
+# W-D07: Submit for review (use API-seeded Update Progress task)
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-d07
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+
+- runFlow: _open-library.yaml
+- runFlow: ../create-task-photo/_pick-first.yaml
+- takeScreenshot: "up-D07-selection-one"
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "up-D07-form-one"
+
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__completion-value"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__completion-preset-100"
+- assertVisible:
+    id: "update-progress__completion-value"
+- assertVisible: "100%"
+
+- tapOn:
+    id: "update-progress__description"
+- inputText: "Completed the final site safety pass and all assigned checks are now fully complete."
+- runFlow: ../_dismiss-keyboard.yaml
+
+- tapOn: "Photos & Files"
+- tapOn:
+    id: "update-progress__completion-value"
+- runFlow: ../_dismiss-keyboard.yaml
+
+- tapOn:
+    id: "update-progress__screen_title"
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+
+- tapOn:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+    delay: 1500
+
+- runFlow:
+    when:
+      visible: ".*Task marked as 100% complete!.*"
+    commands:
+      - tapOn: "OK"
+- runFlow:
+    when:
+      visible: ".*Progress update added successfully!.*"
+    commands:
+      - tapOn: "OK"
+
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 15000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__quick-action-submit_review"
+    direction: DOWN
+- tapOn:
+    id: "task-detail__quick-action-submit_review"
+- waitForAnimationToEnd:
+    timeout: 2500
+- assertVisible: ".*Submitted For Review.*"
+- takeScreenshot: "rc-E-W-D07-submitted"
+

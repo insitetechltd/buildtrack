@@ -15,13 +15,14 @@ For repository-wide orientation, read these in order:
 5. [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md)
 6. [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md)
 7. [TESTING_STRATEGY.md](../TESTING_STRATEGY.md)
-8. [maestro/README.md](../maestro/README.md)
-9. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
-10. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
-11. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
-12. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
-13. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
-14. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
+8. [MAINTABS_UX_CHECKLIST.md](./MAINTABS_UX_CHECKLIST.md)
+9. [maestro/README.md](../maestro/README.md)
+10. [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md)
+11. [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md)
+12. [INSITE_UI_UX_SOURCE_OF_TRUTH.md](../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md)
+13. [UI_ARCHITECTURE.md](./UI_ARCHITECTURE.md)
+14. [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md)
+15. [BUG_INVENTORY.md](./BUG_INVENTORY.md)
 
 ## Canonical References
 
@@ -32,6 +33,7 @@ For repository-wide orientation, read these in order:
 - [SOLO_OPERATING_PROCEDURE.md](../SOLO_OPERATING_PROCEDURE.md) - Canonical operator workflow reference
 - [CURSOR_DEV_HARNESS.md](./CURSOR_DEV_HARNESS.md) - Cursor-native solo harness, doctor, Trae exit, seed-for-reuse
 - [TESTING_STRATEGY.md](../TESTING_STRATEGY.md) - Canonical repository testing strategy, confidence ladder, validation matrix, and command-selection cheat sheet
+- [MAINTABS_UX_CHECKLIST.md](./MAINTABS_UX_CHECKLIST.md) - Canonical MainTabs function discovery (admin vs field) and RC human/Maestro B–E gate
 - [maestro/README.md](../maestro/README.md) - Canonical Maestro-specific testing and runtime-alignment runbook
 - [SOFTWARE_ARCHITECTURE.md](./SOFTWARE_ARCHITECTURE.md) - Canonical system-level architecture reference
 - [DATABASE_ARCHITECTURE.md](./DATABASE_ARCHITECTURE.md) - Canonical Supabase, schema, and persistence architecture reference

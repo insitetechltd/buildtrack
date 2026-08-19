@@ -23,7 +23,7 @@ AI cockpit; `.trae/` remains legacy read-only until migration is confirmed.
 2. Kickoff: read `documentation/NOW.md`, then `AGENTS.md` status + `documentation/ROADMAP.md`; run `npm run dev:doctor`.
 3. For non-trivial work, follow `solo-dev-harness` **SOP.md** (Planner → Builder → Reviewer → Test → QA/Release as needed). Process changes: dual-write SOP.md + `templates/` + this repo.
 4. Confidence ladder: Jest (`TESTING_STRATEGY.md`) → Maestro via `scripts/maestro/run-local.sh` → human accept.
-5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 UDIDs; one-shot case runs while developing; full suite = final gate.
+5. Concurrent by default when ownership partitions (see `solo-dev-harness` workflows.md + `insite-dev` § Concurrent); Maestro ≤2 **distinct** UDIDs, 1 job per UDID (never two Maestro jobs on the same sim); one-shot case runs while developing; full suite = final gate.
 6. Commit only when you ask; never before Reviewer clears Critical/High.
 7. Teardown: overwrite `documentation/NOW.md` (doing/next/locked/parked); update ROADMAP/AGENTS only if evidence changed. Include NOW in the next user-requested commit.
 

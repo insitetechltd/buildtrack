@@ -1225,6 +1225,104 @@ describe('taskStore.supabase unit tests', () => {
     expect((fetchedTask as any)?.tags).toEqual(['electrical', 'priority']);
   });
 
+  it('treats fetchTaskById PGRST116 as a missing active task instead of a store error', async () => {
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({
+            data: null,
+            error: {
+              code: 'PGRST116',
+              details: 'The result contains 0 rows',
+              message: 'JSON object requested, multiple (or no) rows returned',
+            },
+          }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let fetchedTask: Task | null = null;
+    await act(async () => {
+      fetchedTask = await result.current.fetchTaskById('task-archived-refresh', true);
+    });
+
+    expect(fetchedTask).toBeNull();
+    expect(result.current.error).toBeNull();
+  });
+
+  it('moves an archived task into archivedTasks even when that list was already cached', async () => {
+    const existingArchived = createTaskState({
+      id: 'task-old-archived',
+      title: 'Already archived',
+      status: 'approved',
+      archivedAt: '2026-07-01T12:00:00.000Z',
+      archivedBy: managerId,
+    });
+    const completable = createTaskState({
+      id: 'task-to-archive',
+      title: 'Ready to archive',
+      status: 'approved',
+      completionPercentage: 100,
+      assignedTo: [workerId],
+      assignedBy: managerId,
+    });
+
+    useTaskStore.setState({
+      tasks: [completable],
+      archivedTasks: [existingArchived],
+    });
+
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+    const fetchArchivedTasks = jest.fn().mockResolvedValue(undefined);
+    useTaskStore.setState({ fetchTasks, fetchArchivedTasks } as any);
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'users') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: { name: 'Alice Worker' }, error: null }),
+        };
+      }
+
+      if (table === 'tasks') {
+        return {
+          update: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          insert: jest.fn().mockResolvedValue({ data: null, error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.archiveTask('task-to-archive', workerId);
+    });
+
+    expect(result.current.tasks.find((task) => task.id === 'task-to-archive')).toBeUndefined();
+    expect(result.current.archivedTasks.map((task) => task.id)).toEqual([
+      'task-to-archive',
+      'task-old-archived',
+    ]);
+    expect(fetchTasks).toHaveBeenCalled();
+    expect(fetchArchivedTasks).toHaveBeenCalled();
+  });
+
   it('defaults missing redesign tags during persisted store normalization', () => {
     const merge = useTaskStore.persist.getOptions().merge;
     expect(merge).toBeDefined();

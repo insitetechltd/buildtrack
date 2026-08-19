@@ -148,6 +148,7 @@ These are active design and planning artifacts, not implementation truth:
 
 - `docs/superpowers/specs/`
 - `docs/superpowers/plans/`
+- **Roadmap discussion lock (revisit, do not silently replace):** `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md`
 
 Rules:
 
@@ -310,6 +311,8 @@ When a document should stay active:
 
 - [TESTING_STRATEGY.md](file:///Volumes/KooDrive/Insite%20App/TESTING_STRATEGY.md)
   - testing strategy reference
+- [MAINTABS_UX_CHECKLIST.md](file:///Volumes/KooDrive/Insite%20App/documentation/MAINTABS_UX_CHECKLIST.md)
+  - canonical MainTabs function-discovery + RC human/Maestro checklist (admin = org only; field B–E = day-to-day)
 - [maestro/README.md](file:///Volumes/KooDrive/Insite%20App/maestro/README.md)
   - canonical Maestro-specific testing and runtime-alignment runbook
 - [CI_WORKFLOWS.md](file:///Volumes/KooDrive/Insite%20App/CI_WORKFLOWS.md)

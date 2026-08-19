@@ -1,0 +1,15 @@
+# W-C03: One photo + title + submit
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c03
+---
+- evalScript: ${output.permutation = "W-C03"}
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _open-library.yaml
+- runFlow: _pick-first.yaml
+- takeScreenshot: "rc-C03-selection-one"
+- runFlow: _confirm-selection.yaml
+- takeScreenshot: "rc-C03-form-one"
+- runFlow: _submit-create-task.yaml
+- takeScreenshot: "rc-C03-done"

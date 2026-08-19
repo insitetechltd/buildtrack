@@ -1,0 +1,40 @@
+# W-D03: Update text only (no photo).
+appId: com.buildtrack.app.local
+tags:
+  - w-d03
+---
+- runFlow: _boot-bob.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: _seed-task-open-update.yaml
+- evalScript: ${output.progressNote = "Maestro UP text-only " + Date.now()}
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__description"
+    direction: DOWN
+- tapOn:
+    id: "update-progress__description"
+- inputText: ${output.progressNote}
+- runFlow: ../_dismiss-keyboard.yaml
+- tapOn: "Photos & Files"
+- runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "update-progress__submit"
+    direction: DOWN
+- runFlow:
+    when:
+      visible: "Done"
+    commands:
+      - tapOn: "Done"
+- tapOn:
+    id: "update-progress__submit"
+- tapOn:
+    id: "update-progress__submit"
+    delay: 1500
+- extendedWaitUntil:
+    visible: ".*Progress update added successfully!.*"
+    timeout: 25000
+- tapOn: "OK"
+- takeScreenshot: "rc-E-W-D03-text-update"

@@ -1,0 +1,22 @@
+# Headed W-A05 — Drafts Show/Hide on Activity.
+# Seed an originator in_progress row first (DRAFT_TITLE). Section starts collapsed.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-b
+  - w-a05
+---
+- runFlow: _open-activity-drafts.yaml
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 10000
+- takeScreenshot: "rc-B-W-A05-drafts-show"
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    notVisible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 10000
+- takeScreenshot: "rc-B-W-A05-drafts-hide"

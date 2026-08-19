@@ -24,11 +24,14 @@ jest.mock("@/utils/useTranslation", () => ({
 
 describe("useTaskDetailViewAdapter archive actions", () => {
   const mockArchiveTask = jest.fn();
+  const mockFetchArchivedTasks = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockArchiveTask.mockReset();
     mockArchiveTask.mockResolvedValue(undefined);
+    mockFetchArchivedTasks.mockReset();
+    mockFetchArchivedTasks.mockResolvedValue(undefined);
 
     const { useAuthStore } = require("@/state/authStore");
     const { useTaskStore } = require("@/state/taskStore.supabase");
@@ -108,6 +111,7 @@ describe("useTaskDetailViewAdapter archive actions", () => {
       acceptSubTask: jest.fn(),
       declineSubTask: jest.fn(),
       archiveTask: mockArchiveTask,
+      fetchArchivedTasks: mockFetchArchivedTasks,
       cancelTask: jest.fn(),
       updateTask: jest.fn(),
     });
@@ -127,5 +131,55 @@ describe("useTaskDetailViewAdapter archive actions", () => {
     });
 
     expect(mockArchiveTask).toHaveBeenCalledWith("task-parent", "user-1");
+    expect(mockFetchArchivedTasks).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not offer archive on in-progress work", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1", "user-2"],
+          primaryAssigneeId: "user-2",
+          assignedBy: "manager-1",
+          dueDate: "2026-10-10T08:00:00.000Z",
+          status: "in_progress",
+          priority: "medium",
+          category: "general",
+          description: "Install the final light fixtures in the lobby.",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 40,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      archiveTask: mockArchiveTask,
+      cancelTask: jest.fn(),
+      updateTask: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.actionItems.map((item) => item.actionId)).not.toContain(
+      "archive_task",
+    );
   });
 });

@@ -1,0 +1,31 @@
+# W-C06: Optional container / area organization on Create Task.
+appId: com.buildtrack.app.local
+tags:
+  - rc-headed-c06
+---
+- runFlow: _boot.yaml
+- runFlow: _ensure-project.yaml
+- runFlow: ../_dismiss-blocking-overlays.yaml
+
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__expand_container_organization"
+    direction: DOWN
+- takeScreenshot: "rc-C06-area-collapsed"
+- tapOn:
+    id: "create-task__expand_container_organization"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__container_organization"
+    timeout: 12000
+- assertVisible:
+    id: "create-task__container_input"
+- takeScreenshot: "rc-C06-area-expanded"

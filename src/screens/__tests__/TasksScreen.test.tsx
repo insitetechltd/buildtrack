@@ -1,6 +1,6 @@
 import React from "react";
-import { Alert, Text, TextInput, View } from "react-native";
-import { fireEvent, render, within } from "@testing-library/react-native";
+import { Text, TextInput, View } from "react-native";
+import { fireEvent, render, waitFor, within } from "@testing-library/react-native";
 
 import TasksScreen from "../TasksScreen";
 import type {
@@ -155,6 +155,9 @@ jest.mock("react-native-gesture-handler", () => {
   };
 });
 
+jest.mock("@/utils/DataRefreshManager", () => ({
+  triggerRefresh: jest.fn(() => Promise.resolve()),
+}));
 jest.mock("@/ui/viewAdapters/useTasksViewAdapter", () => {
   const React = require("react");
   let overrideOutput: Partial<TasksScreenViewAdapterOutput> | null = null;
@@ -588,8 +591,7 @@ describe("TasksScreen", () => {
     expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
   });
 
-  it("shows archive on right swipe, update on left swipe, and renders icon-only row actions", () => {
-    const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(jest.fn());
+  it("shows archive on right swipe, update on left swipe, and renders icon-only row actions", async () => {
     const onNavigateToCreateTask = jest.fn();
     const onNavigateToUpdateProgress = jest.fn();
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
@@ -678,15 +680,14 @@ describe("TasksScreen", () => {
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:archive-action"));
-    expect(alertSpy).toHaveBeenCalled();
+    expect(screen.getByTestId("tasks-screen__archive-confirm")).toBeTruthy();
 
     const actions = mockedModule.__getTasksScreenActions();
-    const alertButtons = alertSpy.mock.calls[0]?.[2] ?? [];
-    const archiveButton = alertButtons.find((button: any) => button.text === "Archive");
-    archiveButton?.onPress?.();
+    fireEvent.press(screen.getByTestId("tasks-screen__archive-confirm-archive"));
 
-    expect(actions.archiveTask).toHaveBeenCalledWith("task-1");
-    alertSpy.mockRestore();
+    await waitFor(() => {
+      expect(actions.archiveTask).toHaveBeenCalledWith("task-1");
+    });
   });
 
   it("does not open task details while a row swipe interaction is active or immediately after dismissing the tray", () => {

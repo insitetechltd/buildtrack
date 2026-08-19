@@ -46,6 +46,7 @@ import type {
 } from '../contracts/viewAdapters';
 import type { Task, TaskActivity, TaskStatus } from '../../types/buildtrack';
 import type { StatusSemanticToken } from '../contracts/primitives';
+import { isCompletedLifecycleStatus } from '../../utils/taskLifecycleStatus';
 
 export interface UseTaskDetailViewAdapterProps {
   taskId: string;
@@ -62,7 +63,7 @@ function isPreAcceptanceTaskStatus(status: TaskStatus): boolean {
 }
 
 function isApprovedTaskStatus(status: TaskStatus): boolean {
-  return status === 'approved' || status === 'completed' || status === 'done';
+  return isCompletedLifecycleStatus(status);
 }
 
 function isActiveWorkTaskStatus(status: TaskStatus): boolean {
@@ -456,7 +457,7 @@ export function useTaskDetailViewAdapter({
   const t = useTranslation();
   const dateFormatter = useDateFormatter();
   const { user } = useAuthStore();
-  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation } = useTaskStore();
+  const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation, fetchArchivedTasks } = useTaskStore();
   const { getUserById } = useUserStore();
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
 
@@ -632,7 +633,7 @@ export function useTaskDetailViewAdapter({
   const canArchiveTask =
     !isViewingSubTask &&
     !task.archivedAt &&
-    task.status !== 'cancelled' &&
+    isCompletedLifecycleStatus(task.status) &&
     (isAssignedToMe || isTaskCreator);
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
@@ -1309,6 +1310,9 @@ export function useTaskDetailViewAdapter({
       },
       archiveTask: async () => {
         await archiveTask(task.id, user.id);
+        if (typeof fetchArchivedTasks === "function") {
+          await fetchArchivedTasks();
+        }
       },
       cancelTask: async () => {
         await cancelTask(task.id, user.id);

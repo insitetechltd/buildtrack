@@ -16,6 +16,7 @@ import TaskDetailInfoCard from "@/components/taskDetail/TaskDetailInfoCard";
 import TaskDetailQuickActions from "@/components/taskDetail/TaskDetailQuickActions";
 import TaskActivityTimeline from "@/components/taskDetail/TaskActivityTimeline";
 import { cn } from "@/utils/cn";
+import ArchiveConfirmSheet from "@/components/ArchiveConfirmSheet";
 import { mapBannerModelToBannerProps } from "@/ui/mappers/taskDetailMappers";
 import type { BannerPrimitiveContract } from "@/ui/contracts/primitives";
 import type { TaskDetailActionItem } from "@/ui/contracts/viewAdapters";
@@ -122,6 +123,26 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     subTaskId: props.subTaskId
   });
   const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = useState(false);
+  const [isArchiveConfirmVisible, setIsArchiveConfirmVisible] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  const handleConfirmArchive = () => {
+    setIsArchiving(true);
+    void actions
+      .archiveTask()
+      .then(() => {
+        setIsArchiving(false);
+        setIsArchiveConfirmVisible(false);
+        props.onNavigateBack?.();
+      })
+      .catch((error) => {
+        setIsArchiving(false);
+        Alert.alert(
+          "Unable to archive task",
+          error instanceof Error ? error.message : "Please try again.",
+        );
+      });
+  };
 
   const handleActionPress = (actionId: string) => {
     switch (actionId) {
@@ -143,33 +164,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
         actions.toggleCriticalThisWeek();
         break;
       case 'archive_task':
-        Alert.alert(
-          "Archive task?",
-          "This task will move to the Archived queue.",
-          [
-            {
-              text: "Cancel",
-              style: "cancel",
-            },
-            {
-              text: "Archive",
-              style: "destructive",
-              onPress: () => {
-                void actions
-                  .archiveTask()
-                  .then(() => {
-                    props.onNavigateBack?.();
-                  })
-                  .catch((error) => {
-                    Alert.alert(
-                      "Unable to archive task",
-                      error instanceof Error ? error.message : "Please try again.",
-                    );
-                  });
-              },
-            },
-          ],
-        );
+        setIsArchiveConfirmVisible(true);
         break;
       case 'reject_task':
         if (props.onNavigateToRejectTask) {
@@ -278,6 +273,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     : undefined;
 
   return (
+    <>
     <SafeAreaView edges={['left', 'right']} className="flex-1 bg-gray-50">
       <StatusBar style="dark" />
       
@@ -343,6 +339,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
                       key={action.id}
                       testID={`task-detail__quick-action-${action.actionId}`}
                       accessibilityRole="button"
+                      accessibilityLabel={action.label}
                       accessibilityState={{ disabled: action.isDisabled }}
                       disabled={action.isDisabled}
                       onPress={() => handleActionPress(action.actionId)}
@@ -399,5 +396,17 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       </View>
 
     </SafeAreaView>
+      <ArchiveConfirmSheet
+        visible={isArchiveConfirmVisible}
+        testIDPrefix="task-detail"
+        isConfirming={isArchiving}
+        onCancel={() => {
+          if (!isArchiving) {
+            setIsArchiveConfirmVisible(false);
+          }
+        }}
+        onConfirm={handleConfirmArchive}
+      />
+    </>
   );
 }

@@ -37,6 +37,8 @@ if [[ -f "${TARGET}" ]]; then
   FLOW_PATH="$(cd "$(dirname "${TARGET}")" && pwd)/$(basename "${TARGET}")"
 elif [[ -f "${FLOW_DIR}/${TARGET}" ]]; then
   FLOW_PATH="${FLOW_DIR}/${TARGET}"
+elif [[ -f "${FLOW_DIR}/${TARGET}.yaml" ]]; then
+  FLOW_PATH="${FLOW_DIR}/${TARGET}.yaml"
 else
   match="$(ls -1 "${FLOW_DIR}"/${TARGET}*.yaml 2>/dev/null | head -1 || true)"
   if [[ -z "${match}" ]]; then
@@ -59,6 +61,11 @@ echo "=== Update Progress photo ONE: ${FLOW_NAME} ==="
 echo "UDID=${UDID}"
 
 echo "----- API SEED task (skip Create Task UI) -----"
+if [[ "${FLOW_NAME}" == "W-D10-archive.yaml" ]]; then
+  export MAESTRO_UP_SEED_STATUS="${MAESTRO_UP_SEED_STATUS:-approved}"
+  export MAESTRO_UP_SEED_EMAIL="${MAESTRO_UP_SEED_EMAIL:-alice.workera1@test.com}"
+  export MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL="${MAESTRO_UP_SEED_ASSIGNED_BY_EMAIL:-john.managera@test.com}"
+fi
 node "${SEED_JS}"
 # shellcheck disable=SC1090
 source "${SEED_ENV}"

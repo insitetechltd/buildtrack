@@ -5,6 +5,8 @@ import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
+import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
+import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
 import {
   extractBuildtrackStoragePath,
   getFileUrl,
@@ -813,8 +815,18 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       const isArchivedTask = Boolean(task.archivedAt);
       const canShowTaskUpdateAction =
         isTopLevelTask && !isArchivedTask && task.status !== "cancelled";
+      const assignedIds = mergeAssignedToIds({
+        assignedTo: task.assignedTo || [],
+        primaryAssigneeId: task.primaryAssigneeId,
+        delegatedUserIds: task.delegatedUserIds || [],
+      });
+      const isAssignedToMe = assignedIds.some((id) => String(id) === String(currentUserId));
+      const isTaskCreator = String(task.assignedBy) === String(currentUserId);
       const canShowArchiveAction =
-        isTopLevelTask && !isArchivedTask && task.status !== "cancelled";
+        isTopLevelTask &&
+        !isArchivedTask &&
+        isCompletedLifecycleStatus(task.status) &&
+        (isAssignedToMe || isTaskCreator);
       const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);

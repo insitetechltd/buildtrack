@@ -15,6 +15,7 @@ import {
 import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
+import { isCompletedLifecycleStatus } from "../utils/taskLifecycleStatus";
 
 export type { QueryMeta } from "../api/supabase";
 
@@ -1384,6 +1385,12 @@ export const useTaskStore = create<TaskStore>()(
             .is('deleted_at', null) // Only fetch non-deleted tasks (maintains audit trail)
             .single();
 
+          // Archived/cancelled/deleted rows are excluded, so .single() returns PGRST116.
+          // That is expected after archive — do not surface it as a user-visible fetch error.
+          if (taskError?.code === 'PGRST116' || !taskData) {
+            return null;
+          }
+
           if (taskError) throw taskError;
 
           // Fetch task activities (unified table)
@@ -2472,7 +2479,8 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      // ARCHIVE task (both assigner and assignee can archive when task is approved)
+      // ARCHIVE: hide signed-off work from default lists (Filters → Archived).
+      // Not cancel/delete. Only assigner or assignee, and only after approve/complete.
       archiveTask: async (taskId, userId) => {
         if (!supabase) {
           console.error('Supabase not configured');
@@ -2490,6 +2498,10 @@ export const useTaskStore = create<TaskStore>()(
           // Cancelled tasks are already terminal and do not need a separate archive transition.
           if (task.status === 'cancelled') {
             throw new Error('Cancelled tasks cannot be archived');
+          }
+
+          if (!isCompletedLifecycleStatus(task.status)) {
+            throw new Error('Only completed tasks can be archived');
           }
 
           // Check if user is assigner or assignee
@@ -2519,13 +2531,15 @@ export const useTaskStore = create<TaskStore>()(
             }
           })();
 
+          const archivedAt = new Date().toISOString();
+
           // Update task with archived_at timestamp
           const { error } = await supabase
             .from('tasks')
             .update({
-              archived_at: new Date().toISOString(),
+              archived_at: archivedAt,
               archived_by: userId,
-              updated_at: new Date().toISOString(),
+              updated_at: archivedAt,
             })
             .eq('id', taskId);
 
@@ -2538,25 +2552,32 @@ export const useTaskStore = create<TaskStore>()(
               task_id: taskId,
               user_id: userId,
               activity_type: 'cancellation' as ActivityType, // Using cancellation type for archive
-              timestamp: new Date().toISOString(),
+              timestamp: archivedAt,
               data: { reason: `Task archived by ${archivingUser}` },
               description: `Task archived by ${archivingUser}`,
               completion_percentage: task.completionPercentage,
               status: task.status,
             });
 
-          // Update local state
-          set(state => ({
-            tasks: state.tasks.map(t =>
-              t.id === taskId
-                ? { ...t, archivedAt: new Date().toISOString(), archivedBy: userId }
-                : t
-            ),
+          const archivedTask = {
+            ...task,
+            archivedAt,
+            archivedBy: userId,
+          };
+
+          // Keep the row in archivedTasks immediately so Filters → Archived
+          // still shows it when that list was already cached.
+          set((state) => ({
+            tasks: state.tasks.filter((t) => t.id !== taskId),
+            archivedTasks: [
+              archivedTask,
+              ...(state.archivedTasks ?? []).filter((t) => t.id !== taskId),
+            ],
             isLoading: false,
           }));
 
-          // Refresh tasks to get updated data
           await get().fetchTasks();
+          await get().fetchArchivedTasks();
         } catch (error: any) {
           console.error('Error archiving task:', error);
           set({

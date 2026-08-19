@@ -10,38 +10,40 @@
 
 ## Doing
 
-Commercial **RC week**. MainTabs **Section C** PASS. **Section D** W-T01–W-T04 PASS; **W-T05 FAIL** (Tasks has no pull-to-refresh). Save Draft Gate A complete; Builder blocked until Metro quiet.
+Commercial **RC week** — ship the field loop you can defend (photo → task → review). Strategy: `docs/superpowers/plans/2026-08-19-post-rc-boring-loop.md`. Discussion lock: `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` (revisit when talking ROADMAP/AI/Wave 2).
 
 ## Next
 
-1. Section E sequential, or add Tasks RefreshControl if W-T05 must pass.
-2. Metro quiet window, then Builder for Save Draft (folded Gate A plan).
-3. Headed iPhone 16: Create → keyboard-open Save Draft → Activity exact-title draft → W-A05–A07.
-4. Do **not** Submit for Review / tick Public unless you mean to
+1. Finish remaining headed RC (remaining B). No new product surfaces.
+2. PTR / W-T05 **closed** (headed PASS ×2 on 17 Pro). Commit when asked.
+3. Do **not** Submit for Review / tick Public unless you mean to
+4. After RC: **M-OPS-01 → M-OPS-02 → M-AI-01**, then DMS then cost (do not start this week)
 
 ## Locked this week
 
-- **R1–R3** — R2/R3 evidence on file; R1 eng UI `__DEV__`-only
-- **Corp model (2026-08-17):** org-owned seats; invite sign-in link; blocking Set password; no worker Delete Account
-- **`must_set_password` LIVE** + invite smoke PASS. Evidence: `docs/superpowers/evidence/2026-08-17-corp-must-set-password-live.md`
-- **Store bundle ID = `com.buildtrack.app.local`** (matches ASC app `6754898737`) — not `com.buildtrack.app`
-- **R6** — org subscription paper SoT unchanged (Growth $19.99 / Unlimited $199.99 / add-ons)
+- **Sequence:** RC → M-OPS-01 → M-OPS-02 → high-certainty AI only (dataset Q&A; barcode spec-check; drawing cite/abstain — no inferred geometry)
+- **R1–R3** — as before
+- **Corp model / must_set_password / bundle `com.buildtrack.app.local` / R6 paper** — as before
+- Save Draft as unassigned `in_progress` stays rejected
 
 ## Parked (do not schedule this week)
 
-- **Wave 2** (Order 15.x): web admin + DMS + tenant wipe
+- **Wave 2 OS:** document control (`M-DMS-01`) then jobsite cost (`M-COST-01`) — after M-OPS-02
+- **M-AI-01** dataset Q&A; **M-AI-02** drawings; **M-AI-03** material spec-check (after submittals) — not this week
 - Email + temp-password invite UI
-- Bundle ID rename to `com.buildtrack.app` (new App Store app)
+- Bundle ID rename to `com.buildtrack.app`
 - Stripe Connect / webhooks / in-app Apple IAP
+- **M-OPS-01 / M-OPS-02** until RC ships
 
 ## Kickoff prompt (paste)
 
 ```text
 Read documentation/NOW.md first.
-ASC 1.1.3 / build 183 Prepare for Submission. Live 1.0 unchanged.
-Stripe test checkout PASS. Live keys + rebuild when charging for real. Do not Submit / Public.
+If discussing ROADMAP / AI / Wave 2, also read docs/superpowers/analysis/2026-08-19-roadmap-clarification.md.
+Ship field-loop RC only. After RC: M-OPS-01 then M-OPS-02. Wave 2 parked.
+Do not Submit / Public unless you mean to.
 ```
 
 ---
 
-Updated: 2026-08-18
+Updated: 2026-08-19

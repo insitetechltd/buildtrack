@@ -137,6 +137,69 @@ export function shouldCollapseRootSideTabsOnTaskDetailRoute(routeName?: string) 
   return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
 }
 
+function isApprovedLifecycleStatus(status?: string | null) {
+  return status === "approved" || status === "completed" || status === "done";
+}
+
+function isTaskDetailUpdateLockedForAssignee(args: {
+  task?:
+    | {
+        assignedTo?: string[] | null;
+        primaryAssigneeId?: string | null;
+        delegatedUserIds?: string[] | null;
+        assignedBy?: string | null;
+        status?: string | null;
+        completionPercentage?: number | null;
+      }
+    | null;
+  userId?: string | null;
+}) {
+  const task = args.task;
+  const userId = args.userId == null ? "" : String(args.userId);
+  if (!task || !userId) {
+    return false;
+  }
+
+  const assignedIds = new Set(
+    [
+      ...(Array.isArray(task.assignedTo) ? task.assignedTo : []),
+      ...(Array.isArray(task.delegatedUserIds) ? task.delegatedUserIds : []),
+      task.primaryAssigneeId ?? undefined,
+    ]
+      .filter(Boolean)
+      .map((id) => String(id)),
+  );
+  const isAssignedToUser = assignedIds.has(userId);
+  const isTaskCreator = String(task.assignedBy ?? "") === userId;
+  if (!isAssignedToUser || isTaskCreator) {
+    return false;
+  }
+
+  return task.status === "submitted_for_review" || isApprovedLifecycleStatus(task.status);
+}
+
+function resolveTaskDetailUpdateLockState(args: {
+  tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0];
+  userId?: string | null;
+  tasksById?: Record<string, any>;
+  tasks?: Array<any>;
+}) {
+  const shortcut = resolveTaskDetailUpdateShortcut(args.tabState);
+  if (!shortcut?.params?.taskId) {
+    return { shortcut, isLocked: false };
+  }
+
+  const taskId = String(shortcut.params.taskId);
+  const task = args.tasksById?.[taskId] ?? args.tasks?.find((candidate) => candidate?.id === taskId);
+  return {
+    shortcut,
+    isLocked: isTaskDetailUpdateLockedForAssignee({
+      task,
+      userId: args.userId,
+    }),
+  };
+}
+
 export function shouldHideRootSideTabsForTabState(
   tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
 ) {
@@ -146,6 +209,7 @@ export function shouldHideRootSideTabsForTabState(
 export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
   return (
     routeName === "CreateTaskMain" ||
+    routeName === "UpdateProgress" ||
     routeName === "PhotoSelection" ||
     routeName === "InAppLibraryPicker"
   );
@@ -591,13 +655,20 @@ export function handleCameraTabPress({
     navigate: (screen: string, params?: unknown) => void;
   };
 }) {
-  const updateShortcut = resolveTaskDetailUpdateShortcut(
-    navigation.getState() as Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
-  );
+  const taskStoreState = useTaskStore.getState() as {
+    tasksById?: Record<string, any>;
+    tasks?: Array<any>;
+  };
+  const { shortcut: updateShortcut, isLocked } = resolveTaskDetailUpdateLockState({
+    tabState: navigation.getState() as Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
+    userId: useAuthStore.getState().user?.id,
+    tasksById: taskStoreState.tasksById,
+    tasks: taskStoreState.tasks,
+  });
 
   event.preventDefault();
 
-  if (updateShortcut) {
+  if (updateShortcut && !isLocked) {
     navigation.navigate(updateShortcut.tabName, {
       screen: "UpdateProgress",
       params: updateShortcut.params,
@@ -615,11 +686,12 @@ function CenterCameraTabButton({
   accessibilityLabel,
   accessibilityState,
   children,
+  disabled = false,
   onLongPress,
   onPress,
   icon,
   style,
-}: BottomTabBarButtonProps & { icon: React.ReactNode }) {
+}: BottomTabBarButtonProps & { icon: React.ReactNode; disabled?: boolean }) {
   const isFocused = accessibilityState?.selected === true;
   const tabButtonStyle = style as StyleProp<ViewStyle>;
 
@@ -637,13 +709,15 @@ function CenterCameraTabButton({
         <Pressable
           accessibilityLabel={accessibilityLabel}
           accessibilityRole="button"
-          accessibilityState={accessibilityState}
+          accessibilityState={{ ...accessibilityState, disabled }}
+          disabled={disabled}
           onLongPress={onLongPress}
           onPress={onPress}
           testID="root-tab__camera_button"
           style={[
             styles.centerCameraTabButton,
             isFocused ? styles.centerCameraTabButtonFocused : null,
+            disabled ? { opacity: 0.5 } : null,
           ]}
         >
           <View
@@ -2075,6 +2149,8 @@ function AppRootStack() {
 function MainTabs() {
   const { user } = useAuthStore();
   const getUnreadTaskCount = useTaskStore(state => state.getUnreadTaskCount);
+  const tasksById = useTaskStore((state) => state.tasksById);
+  const tasks = useTaskStore((state) => state.tasks);
   
   // Get unread task count for badge
   const unreadCount = user ? getUnreadTaskCount(user.id) : 0;
@@ -2173,15 +2249,19 @@ function MainTabs() {
             },
           })}
           options={({ route, navigation }) => {
-            const isTaskDetailUpdate = Boolean(
-              resolveTaskDetailUpdateShortcut(
-                typeof navigation?.getState === "function"
-                  ? (navigation.getState() as Parameters<
-                      typeof resolveTaskDetailUpdateShortcut
-                    >[0])
-                  : undefined,
-              ),
-            );
+            const { shortcut: updateShortcut, isLocked: isTaskDetailUpdateLocked } =
+              resolveTaskDetailUpdateLockState({
+                tabState:
+                  typeof navigation?.getState === "function"
+                    ? (navigation.getState() as Parameters<
+                        typeof resolveTaskDetailUpdateShortcut
+                      >[0])
+                    : undefined,
+                userId: user?.id,
+                tasksById,
+                tasks,
+              });
+            const isTaskDetailUpdate = Boolean(updateShortcut);
             return {
             tabBarLabel: isTaskDetailUpdate ? "Update" : "Camera",
             tabBarActiveTintColor: "#ffffff",
@@ -2189,6 +2269,7 @@ function MainTabs() {
             tabBarButton: (props) => (
               <CenterCameraTabButton
                 {...props}
+                disabled={isTaskDetailUpdateLocked}
                 accessibilityLabel={isTaskDetailUpdate ? "Update" : props.accessibilityLabel}
                 icon={
                   <Ionicons

@@ -629,6 +629,10 @@ export function useTaskDetailViewAdapter({
     task.status !== 'cancelled' &&
     !isApprovedTaskStatus(task.status) &&
     !isPreAcceptanceTaskStatus(task.status);
+  const isContributorUpdateLocked =
+    isAssignedToMe &&
+    !isTaskCreator &&
+    (task.status === 'submitted_for_review' || isApprovedTaskStatus(task.status));
   const isActiveWorkState = isActiveWorkTaskStatus(task.status) && !isContributorReviewState;
   const canArchiveTask =
     !isViewingSubTask &&
@@ -964,10 +968,12 @@ export function useTaskDetailViewAdapter({
     actionId,
     label,
     icon,
+    isDisabled = false,
   }: {
     actionId: string;
     label: string;
     icon?: string;
+    isDisabled?: boolean;
   }) => {
     if (actionItems.some((item) => item.actionId === actionId)) {
       return;
@@ -980,7 +986,7 @@ export function useTaskDetailViewAdapter({
       structuralState: 'stale',
       label,
       icon,
-      isDisabled: false,
+      isDisabled,
     });
   };
 
@@ -1026,12 +1032,18 @@ export function useTaskDetailViewAdapter({
     });
   }
 
-  if (isActiveWorkState || isContributorReviewState || isReviewerApprovalState) {
+  if (
+    isActiveWorkState ||
+    isContributorReviewState ||
+    isReviewerApprovalState ||
+    isContributorUpdateLocked
+  ) {
     if (isAssignedToMe || isReviewerApprovalState) {
       addActionItem({
         actionId: 'update_progress',
         label: 'Update',
         icon: 'create-outline',
+        isDisabled: isContributorUpdateLocked,
       });
     }
 

@@ -9,8 +9,16 @@ appId: com.buildtrack.app.local
       notVisible:
         id: "task-detail__header_title"
     commands:
-      - tapOn:
-          id: "root-tab__tasks_pressable"
+      - runFlow:
+          when:
+            notVisible:
+              id: "tasks-screen__root"
+          commands:
+            - tapOn:
+                id: "root-tab__tasks_pressable"
+            - tapOn:
+                id: "root-tab__tasks"
+                optional: true
       - extendedWaitUntil:
           visible:
             id: "tasks-screen__root"
@@ -27,6 +35,9 @@ appId: com.buildtrack.app.local
           timeout: 1500
       - tapOn:
           id: "text-field:tasks-search__input"
+      - tapOn:
+          id: "text-field:tasks-search__right-slot"
+          optional: true
       - inputText: ${DU_TASK_TITLE}
       - tapOn:
           point: "50%, 8%"
@@ -40,6 +51,9 @@ appId: com.buildtrack.app.local
             - runFlow: _pull-to-refresh-tasks.yaml
             - tapOn:
                 id: "text-field:tasks-search__input"
+                optional: true
+            - tapOn:
+                id: "text-field:tasks-search__right-slot"
                 optional: true
             - inputText: ${DU_TASK_TITLE}
             - tapOn:

@@ -1,6 +1,5 @@
 # Dual-user: make sure both users are on shared Project A.
-# Keep this helper cheap for retries: prove current project from the header,
-# switch only if wrong, then pull-to-refresh in place.
+# If already there, avoid extra picker hops and just refresh in place.
 appId: com.buildtrack.app.local
 ---
 - runFlow: ../_dismiss-blocking-overlays.yaml

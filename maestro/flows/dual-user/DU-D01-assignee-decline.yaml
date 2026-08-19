@@ -5,7 +5,6 @@ tags:
   - du-d01
 ---
 - runFlow: _resume-alice.yaml
-- runFlow: _ensure-project.yaml
 - runFlow: _open-task-by-title.yaml
 - assertVisible:
     id: "task-detail__quick-action-decline_task"

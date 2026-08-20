@@ -6,12 +6,12 @@
 
 ## Doing
 
-Commercial **RC week**. TF **188** submitted (photo layout + app-side worker visibility). **No DB / policy applies this week.**
+Commercial **RC week**. TF **189** built + uploaded to ASC (Realtime dampening). EAS submit wait hung; Apple confirmed bundle **189** present (altool duplicate).
 
 ## Next
 
-1. Install TF **188** on both devices
-2. Verify Task Detail photos load; Bob no longer sees John→John rows
+1. Install TF **189** when processing → Ready to Test
+2. M-DATA-04 gate: idle devices + airplane reconnect
 3. Do not tick App Store Public
 
 ## Locked this week

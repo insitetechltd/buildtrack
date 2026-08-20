@@ -1,0 +1,11 @@
+---
+description: Treat user interruptions as useful in-flight guidance
+alwaysApply: true
+---
+
+# User Interruptions
+
+- When the user interrupts an ongoing action, treat the interruption as potentially useful new information for that action.
+- Incorporate the new information into the current work instead of treating the interruption as a stop signal by default.
+- After answering the interruption, continue the underlying task unless the user explicitly changes scope or asks to stop.
+- For active troubleshooting, prefer updating the current plan/run with the new information over restarting from scratch.

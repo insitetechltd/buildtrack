@@ -19,10 +19,15 @@ appId: com.buildtrack.app.local
       - tapOn:
           text: "Dismiss"
           optional: true
-- tapOn:
-    id: "root-tab__camera_icon_surface"
-- waitForAnimationToEnd:
-    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "root-tab__camera_icon_surface"
+    commands:
+      - tapOn:
+          id: "root-tab__camera_icon_surface"
+      - waitForAnimationToEnd:
+          timeout: 1500
 - tapOn:
     text: "Dismiss"
     optional: true

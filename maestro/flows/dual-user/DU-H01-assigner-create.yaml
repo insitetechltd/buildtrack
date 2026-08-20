@@ -7,6 +7,17 @@ tags:
 - runFlow: _resume-john.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: ../_dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    text: "Dismiss"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 25000
 - runFlow: ../create-task-photo/_open-library.yaml
 - runFlow: ../create-task-photo/_pick-first.yaml
 - runFlow: ../create-task-photo/_confirm-selection.yaml

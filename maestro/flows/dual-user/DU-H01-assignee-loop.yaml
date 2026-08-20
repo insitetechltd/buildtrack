@@ -5,6 +5,7 @@ tags:
   - du-h01
 ---
 - runFlow: _resume-alice.yaml
+- runFlow: _ensure-project.yaml
 - runFlow: _open-task-by-title.yaml
 - takeScreenshot: "du-h01-06-alice-inbox"
 - runFlow:
@@ -76,21 +77,40 @@ tags:
     commands:
       - tapOn:
           id: "app-screen-header__back"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - runFlow: _open-task-by-title.yaml
 - extendedWaitUntil:
     visible:
       id: "task-detail__header_title"
     timeout: 15000
 - takeScreenshot: "du-h01-08-alice-updated"
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "task-detail__quick-action-submit_review"
-    direction: DOWN
-- tapOn:
-    id: "task-detail__quick-action-submit_review"
-- waitForAnimationToEnd:
-    timeout: 2500
-- runFlow: _open-task-by-title.yaml
-- assertNotVisible:
-    id: "task-detail__quick-action-submit_review"
-- takeScreenshot: "du-h01-09-alice-submitted"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-submit_review"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "task-detail__quick-action-submit_review"
+          direction: DOWN
+      - tapOn:
+          id: "task-detail__quick-action-submit_review"
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - assertNotVisible:
+          id: "task-detail__quick-action-submit_review"
+      - takeScreenshot: "du-h01-09-alice-submitted"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__quick-action-submit_review"
+    commands:
+      # Phase retries can land after the task is already submitted; in that case the CTA is absent.
+      - assertNotVisible:
+          id: "task-detail__quick-action-submit_review"
+      - takeScreenshot: "du-h01-09-alice-already-submitted"

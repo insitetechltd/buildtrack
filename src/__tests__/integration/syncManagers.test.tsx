@@ -69,6 +69,9 @@ describe('sync manager regression tests', () => {
     jest.doMock('../../api/supabase', () => ({
       invalidateResourceKeys,
     }));
+    jest.doMock('../../api/supabaseSessionGate', () => ({
+      getSessionScopedSupabase: jest.fn().mockResolvedValue({}),
+    }));
 
     const { triggerRefresh } = require('../../utils/DataRefreshManager');
 
@@ -78,7 +81,7 @@ describe('sync manager regression tests', () => {
     expect(invalidateResourceKeys).not.toHaveBeenCalled();
     expect(fetchProjects).toHaveBeenCalledTimes(1);
     expect(fetchUserProjectAssignments).toHaveBeenCalledWith('user-1', true);
-    expect(fetchTasks).toHaveBeenCalledWith(true);
+    expect(fetchTasks).toHaveBeenCalledWith(false);
     expect(fetchUsers).toHaveBeenCalledTimes(1);
 
     now = 33050;
@@ -86,7 +89,7 @@ describe('sync manager regression tests', () => {
 
     expect(fetchProjects).toHaveBeenCalledTimes(2);
     expect(fetchUserProjectAssignments).toHaveBeenNthCalledWith(2, 'user-1', true);
-    expect(fetchTasks).toHaveBeenNthCalledWith(2, true);
+    expect(fetchTasks).toHaveBeenNthCalledWith(2, false);
     expect(fetchUsers).toHaveBeenCalledTimes(2);
   });
 
@@ -143,6 +146,9 @@ describe('sync manager regression tests', () => {
     });
     jest.doMock('../../api/supabase', () => ({
       invalidateResourceKeys: jest.fn(),
+    }));
+    jest.doMock('../../api/supabaseSessionGate', () => ({
+      getSessionScopedSupabase: jest.fn().mockResolvedValue({}),
     }));
 
     const { triggerRefresh } = require('../../utils/DataRefreshManager');
@@ -215,6 +221,9 @@ describe('sync manager regression tests', () => {
     jest.doMock('../../api/supabase', () => ({
       invalidateResourceKeys: jest.fn(),
     }));
+    jest.doMock('../../api/supabaseSessionGate', () => ({
+      getSessionScopedSupabase: jest.fn().mockResolvedValue({}),
+    }));
 
     const { triggerRefresh } = require('../../utils/DataRefreshManager');
 
@@ -223,8 +232,73 @@ describe('sync manager regression tests', () => {
     now = 1200;
     await triggerRefresh();
 
-    expect(fetchTasks).toHaveBeenCalledWith(true);
+    expect(fetchTasks).toHaveBeenCalledWith(false);
     expect(fetchProjects).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips refresh when there is no JWT session', async () => {
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+
+    const taskStoreState = {
+      tasks: [],
+      taskQueryMeta: {},
+      fetchTasks,
+    };
+    const projectStoreState = {
+      projects: [],
+      userAssignments: [],
+      fetchProjects,
+      fetchUserProjectAssignments,
+    };
+    const userStoreState = {
+      users: [],
+      fetchUsers,
+    };
+    const authStoreState = {
+      user: { id: 'user-1' },
+    };
+
+    jest.spyOn(Date, 'now').mockReturnValue(2000);
+
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+    jest.doMock('../../state/userStore.supabase', () => {
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      useUserStore.setState = jest.fn();
+      return { useUserStore };
+    });
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+    jest.doMock('../../api/supabase', () => ({
+      invalidateResourceKeys: jest.fn(),
+    }));
+    jest.doMock('../../api/supabaseSessionGate', () => ({
+      getSessionScopedSupabase: jest.fn().mockResolvedValue(null),
+    }));
+
+    const { triggerRefresh } = require('../../utils/DataRefreshManager');
+    await triggerRefresh({ force: true });
+
+    expect(fetchTasks).not.toHaveBeenCalled();
+    expect(fetchProjects).not.toHaveBeenCalled();
+    expect(taskStoreState.fetchTasks).not.toHaveBeenCalled();
   });
 
   it('invalidates related task resource keys before refetching a realtime-updated task', async () => {
@@ -1170,5 +1244,126 @@ describe('sync manager regression tests', () => {
     ]);
     expect(evictTaskFromCache).toHaveBeenCalledWith('task-soft-delete');
     expect(fetchTaskById).not.toHaveBeenCalled();
+  });
+
+  it('scopes users/projects realtime filters and avoids full-list refetches', async () => {
+    const channelFilters: Array<{ table?: string; filter?: string }> = [];
+    let projectsChangeHandler:
+      | ((payload: { eventType: string; new?: { id?: string } | null }) => Promise<void>)
+      | undefined;
+    let usersChangeHandler:
+      | ((payload: { new?: { id?: string } | null }) => Promise<void>)
+      | undefined;
+
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchProjectById = jest.fn().mockResolvedValue({ id: 'project-1' });
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+    const refreshUser = jest.fn().mockResolvedValue(undefined);
+    const fetchTaskById = jest.fn();
+
+    const authStoreState = {
+      user: {
+        id: 'user-1',
+        name: 'Test User',
+        companyId: 'company-1',
+      },
+      refreshUser,
+    };
+
+    const createChannel = () => {
+      const channel = {
+        on: jest.fn(
+          (
+            _event: string,
+            filter: { table?: string; filter?: string },
+            callback: (payload: {
+              eventType?: string;
+              new?: { id?: string } | null;
+            }) => Promise<void>
+          ) => {
+            channelFilters.push({ table: filter.table, filter: filter.filter });
+            if (filter.table === 'projects') {
+              projectsChangeHandler = callback;
+            }
+            if (filter.table === 'users') {
+              usersChangeHandler = callback;
+            }
+            return channel;
+          }
+        ),
+        subscribe: jest.fn((statusCallback?: (status: string) => void) => {
+          statusCallback?.('SUBSCRIBED');
+          return channel;
+        }),
+      };
+      return channel;
+    };
+
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const taskStoreState = { tasks: [], fetchTaskById, evictTaskFromCache: jest.fn() };
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const projectStoreState = {
+        fetchProjects,
+        fetchProjectById,
+        userAssignments: [],
+      };
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+    jest.doMock('../../state/userStore.supabase', () => {
+      const userStoreState = { fetchUsers };
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      return { useUserStore };
+    });
+    jest.doMock('../../api/supabase', () => ({
+      buildResourceKey: (...segments: Array<string | number | null | undefined | false>) =>
+        segments.filter(Boolean).map(String).join(':'),
+      invalidateResourceKeys: jest.fn(),
+      supabase: {
+        channel: jest.fn(() => createChannel()),
+        removeChannel: jest.fn(),
+      },
+    }));
+    jest.doMock('react', () => ({
+      __esModule: true,
+      useEffect: (effect: () => void) => effect(),
+      useRef: (value: unknown) => ({ current: value }),
+    }));
+
+    const { RealtimeSyncManager } = require('../../utils/RealtimeSyncManager');
+    expect(RealtimeSyncManager()).toBeNull();
+
+    expect(channelFilters.find((row) => row.table === 'projects')?.filter).toBe(
+      'company_id=eq.company-1',
+    );
+    expect(channelFilters.find((row) => row.table === 'users')?.filter).toBe(
+      'company_id=eq.company-1',
+    );
+    expect(channelFilters.find((row) => row.table === 'tasks')?.filter).toBeUndefined();
+
+    await projectsChangeHandler?.({ eventType: 'UPDATE', new: { id: 'project-1' } });
+    expect(fetchProjectById).toHaveBeenCalledWith('project-1', true);
+    expect(fetchProjects).not.toHaveBeenCalled();
+
+    await usersChangeHandler?.({ new: { id: 'user-1' } });
+    expect(refreshUser).toHaveBeenCalledTimes(1);
+    expect(fetchUsers).not.toHaveBeenCalled();
+
+    await usersChangeHandler?.({ new: { id: 'teammate-9' } });
+    expect(refreshUser).toHaveBeenCalledTimes(1);
+    expect(fetchUsers).not.toHaveBeenCalled();
   });
 });

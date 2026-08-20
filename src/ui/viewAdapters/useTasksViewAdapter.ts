@@ -612,6 +612,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const fetchArchivedTasks = taskStore.fetchArchivedTasks;
   const archiveTaskInStore = taskStore.archiveTask;
   const isLoadingTasks = Boolean(taskStore.isLoading);
+  const taskFetchError = taskStore.error;
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
@@ -627,26 +628,6 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const clearTasksLaunchPreset = projectFilterStore.clearTasksLaunchPreset;
 
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
-
-  useEffect(() => {
-    const activityAndUpdateRefs = [...tasks, ...archivedTasks].flatMap((task) => {
-      const activityPhotos =
-        task.activities?.flatMap((activity) => {
-          const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
-          return Array.isArray(photos) ? photos : [];
-        }) ?? [];
-      const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
-      return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos];
-    });
-    const refs = activityAndUpdateRefs.filter(
-      (value): value is string => typeof value === "string" && value.length > 0
-    );
-    if (refs.length === 0) {
-      return;
-    }
-    void prefetchSignedUrls(refs);
-  }, [archivedTasks, tasks]);
-
   void signedUrlEpoch;
 
   useEffect(() => {
@@ -719,6 +700,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     taskRowItems,
     scalarMetrics,
     continuity,
+    listFetchFailed,
     structuralState,
   } = useMemo(() => {
     const activeTasks = tasks.filter((task) => !task.archivedAt);
@@ -994,6 +976,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         shouldRenderEmptyState: !isInitialLoading && taskRowItems.length === 0,
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
+      listFetchFailed: Boolean(taskFetchError) && !isInitialLoading && tasks.length === 0,
       structuralState,
     };
   }, [
@@ -1009,8 +992,21 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     selectedProjectId,
     signedUrlEpoch,
     stagedFilters,
+    taskFetchError,
     tasks,
   ]);
+
+  useEffect(() => {
+    const refs = taskRowItems.flatMap((row) =>
+      [row.primaryPhotoUri, ...(row.attachmentUris ?? [])].filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      ),
+    );
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [taskRowItems]);
 
   const readiness = useMemo(() => {
     return {
@@ -1042,6 +1038,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     expandedTaskIds,
     taskRowItems,
     scalarMetrics,
+    listFetchFailed,
   };
 
   const searchInput: TasksSearchInputData = {

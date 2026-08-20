@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "@/utils/cn";
+import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 
 export type ActivityStyleRowVariant = "critical" | "activity" | "task";
 export type ActivityStyleRowMediaSize = "md" | "lg";
@@ -137,11 +139,13 @@ export default function ActivityStyleRowCard({
           style={{ width: media.widthPx }}
         >
           {hasUsableImage && imageUri ? (
-            <Image
+            <ExpoImage
               testID={`${testID}:thumbnail-image`}
               source={{ uri: imageUri }}
               style={StyleSheet.absoluteFillObject}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              cacheKey={extractBuildtrackStoragePath(imageUri) ?? imageUri}
               onError={() => setHasUsableImage(false)}
             />
           ) : (

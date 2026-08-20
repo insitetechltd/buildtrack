@@ -302,12 +302,14 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   }, [taskStore.fetchTasks, user]);
 
   useEffect(() => {
-    const refs = tasks.flatMap((task) => collectTaskPhotoRefs(task));
+    const refs = (
+      selectedProjectId ? tasks.filter((task) => task.projectId === selectedProjectId) : []
+    ).flatMap((task) => collectTaskPhotoRefs(task));
     if (refs.length === 0) {
       return;
     }
     void prefetchSignedUrls(refs);
-  }, [tasks]);
+  }, [tasks, selectedProjectId]);
 
   const {
     activeProject,

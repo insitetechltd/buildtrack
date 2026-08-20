@@ -68,6 +68,16 @@ export interface ProjectContainerRecord {
 
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
+
+function taskSnapshotsMatch(left: Task, right: Task): boolean {
+  const leftActivityTail = left.activities?.[left.activities.length - 1]?.id;
+  const rightActivityTail = right.activities?.[right.activities.length - 1]?.id;
+  return (
+    left.updatedAt === right.updatedAt &&
+    (left.activities?.length ?? 0) === (right.activities?.length ?? 0) &&
+    leftActivityTail === rightActivityTail
+  );
+}
 const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
   "primary_assignee_id",
   "delegated_user_ids",
@@ -428,6 +438,7 @@ interface TaskStore {
   shouldServeCachedTasks: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
   shouldRefreshTasksInBackground: (resourceKey: string, fallbackIds: string[], forceRefresh?: boolean) => boolean;
   replaceTasks: (tasks: Task[]) => void;
+  reconcileFetchedTasks: (tasks: Task[]) => void;
   upsertTasks: (tasks: Task[]) => void;
   mergeTask: (task: Task) => void;
   evictTaskFromCache: (taskId: string) => void;
@@ -633,6 +644,28 @@ export const useTaskStore = create<TaskStore>()(
           }, {}),
         });
       },
+      reconcileFetchedTasks: (tasks) => {
+        const normalizedTasks = tasks.map(normalizeTaskActivityCompatibility);
+        const now = Date.now();
+
+        set((state) => {
+          const existingById = new Map(state.tasks.map((task) => [task.id, task]));
+          const nextTasks = normalizedTasks.map((incoming) => {
+            const previous = existingById.get(incoming.id);
+            return previous && taskSnapshotsMatch(previous, incoming) ? previous : incoming;
+          });
+          const nextTaskFetchTimestamps = nextTasks.reduce<Record<string, number>>((accumulator, task) => {
+            accumulator[task.id] = now;
+            return accumulator;
+          }, {});
+
+          return {
+            tasks: nextTasks,
+            allTasksFetchTimestamp: now,
+            taskFetchTimestamps: nextTaskFetchTimestamps,
+          };
+        });
+      },
       upsertTasks: (tasks) => {
         if (tasks.length === 0) {
           return;
@@ -751,10 +784,15 @@ export const useTaskStore = create<TaskStore>()(
 
               if (tasksError) throw tasksError;
 
-              const { data: taskActivitiesData, error: taskActivitiesError } = await supabaseClient
-                .from('task_activities')
-                .select('*')
-                .order('timestamp', { ascending: true });
+              const fetchedTaskIds = (allTasksData || []).map((task: { id: string }) => task.id);
+              const { data: taskActivitiesData, error: taskActivitiesError } =
+                fetchedTaskIds.length > 0
+                  ? await supabaseClient
+                      .from('task_activities')
+                      .select('*')
+                      .in('task_id', fetchedTaskIds)
+                      .order('timestamp', { ascending: true })
+                  : { data: [], error: null };
 
               if (taskActivitiesError) throw taskActivitiesError;
 
@@ -887,8 +925,8 @@ export const useTaskStore = create<TaskStore>()(
                 }
               }
 
-              get().replaceTasks(transformedTasks);
-              return transformedTasks;
+              get().reconcileFetchedTasks(transformedTasks);
+              return get().tasks;
             },
             {
               staleMs: TASK_FRESH_MS,

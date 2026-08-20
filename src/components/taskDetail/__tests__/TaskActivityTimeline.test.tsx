@@ -127,7 +127,7 @@ describe("TaskActivityTimeline", () => {
 
     expect(screen.getByText("Subtask")).toBeTruthy();
     expect(screen.getByText("Install ceiling grid")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.resizeMode).toBe(
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.contentFit).toBe(
       "cover",
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className).toContain(
@@ -154,7 +154,7 @@ describe("TaskActivityTimeline", () => {
 
     fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
 
-    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.resizeMode).toBe(
+    expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.contentFit).toBe(
       "contain",
     );
   });

@@ -305,6 +305,7 @@ export interface TasksScreenViewAdapterOutput {
   expandedTaskIds: string[];
   taskRowItems: TasksScreenRowItem[];
   scalarMetrics: TasksScalarMetrics;
+  listFetchFailed?: boolean;
 }
 
 export interface TaskDetailHeaderModel {

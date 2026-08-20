@@ -150,6 +150,7 @@ describe('taskStore.supabase unit tests', () => {
       if (table === 'task_activities') {
         return {
           select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
@@ -182,6 +183,12 @@ describe('taskStore.supabase unit tests', () => {
     });
 
     expect(mockFrom).toHaveBeenCalledTimes(4);
+
+    const firstRef = result.current.tasks[0];
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+    expect(result.current.tasks[0]).toBe(firstRef);
   });
 
   it('fetches archived tasks into archivedTasks without merging them into the active task list', async () => {

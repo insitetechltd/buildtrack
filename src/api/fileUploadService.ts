@@ -1,5 +1,6 @@
 // Use legacy API to avoid deprecation warnings
 import * as FileSystem from 'expo-file-system/legacy';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decode } from 'base64-arraybuffer';
 import { supabase } from './supabase';
 
@@ -62,6 +63,59 @@ type SignedUrlCacheEntry = {
 const signedUrlCache = new Map<string, SignedUrlCacheEntry>();
 const inflightSignedUrls = new Map<string, Promise<string | null>>();
 const signedUrlListeners = new Set<() => void>();
+
+const SIGNED_URL_STORAGE_KEY = '@buildtrack/signed-url-cache-v1';
+const SIGNED_URL_PERSIST_MAX = 200;
+const SIGNED_URL_PERSIST_DEBOUNCE_MS = 400;
+let signedUrlPersistTimer: ReturnType<typeof setTimeout> | null = null;
+let signedUrlHydratePromise: Promise<void> | null = null;
+
+async function hydrateSignedUrlCache(): Promise<void> {
+  if (signedUrlHydratePromise) {
+    return signedUrlHydratePromise;
+  }
+
+  signedUrlHydratePromise = (async () => {
+    try {
+      const raw = await AsyncStorage.getItem(SIGNED_URL_STORAGE_KEY);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw) as Record<string, SignedUrlCacheEntry>;
+      const now = Date.now();
+      Object.entries(parsed).forEach(([path, entry]) => {
+        if (!entry?.url || typeof entry.expiresAtMs !== 'number') {
+          return;
+        }
+        if (entry.expiresAtMs <= now + SIGNED_URL_REFRESH_MARGIN_MS) {
+          return;
+        }
+        if (!signedUrlCache.has(path)) {
+          signedUrlCache.set(path, entry);
+        }
+      });
+    } catch {
+      // Ignore corrupt cache — next mint will refill.
+    }
+  })();
+
+  return signedUrlHydratePromise;
+}
+
+function persistSignedUrlCacheSoon(): void {
+  if (signedUrlPersistTimer) {
+    clearTimeout(signedUrlPersistTimer);
+  }
+  signedUrlPersistTimer = setTimeout(() => {
+    signedUrlPersistTimer = null;
+    const entries = Array.from(signedUrlCache.entries())
+      .sort((left, right) => right[1].expiresAtMs - left[1].expiresAtMs)
+      .slice(0, SIGNED_URL_PERSIST_MAX);
+    void AsyncStorage.setItem(SIGNED_URL_STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  }, SIGNED_URL_PERSIST_DEBOUNCE_MS);
+}
+
+void hydrateSignedUrlCache();
 
 function looksLikeJsonBlob(value: string): boolean {
   return (
@@ -191,6 +245,7 @@ function cacheSignedUrl(storagePath: string, signedUrl: string, expiresInSeconds
     url: signedUrl,
     expiresAtMs: Date.now() + expiresInSeconds * 1000,
   });
+  persistSignedUrlCacheSoon();
   notifySignedUrlCache();
 }
 
@@ -220,6 +275,8 @@ export async function createSignedFileUrl(
   if (!path || !isPlausibleStorageObjectKey(path)) {
     return null;
   }
+
+  await hydrateSignedUrlCache();
 
   const fresh = getFreshCachedSignedUrl(path);
   if (fresh) {
@@ -523,4 +580,9 @@ export async function uploadFileWithVerification(options: FileUploadOptions): Pr
 export function __resetSignedUrlCacheForTests(): void {
   signedUrlCache.clear();
   inflightSignedUrls.clear();
+  signedUrlHydratePromise = null;
+  if (signedUrlPersistTimer) {
+    clearTimeout(signedUrlPersistTimer);
+    signedUrlPersistTimer = null;
+  }
 }

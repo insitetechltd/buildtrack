@@ -1,8 +1,10 @@
 import React, { useMemo } from "react";
-import { Dimensions, Image, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
+import { Dimensions, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import { cn } from "@/utils/cn";
+import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
@@ -301,7 +303,7 @@ export default function TaskActivityTimeline({
                             style={{ width: containerWidths[activity.id] || Dimensions.get('window').width - 48 }}
                             onPress={() => openGallery(activity.photoUrls, photoIndex)}
                           >
-                            <Image
+                            <ExpoImage
                               testID={
                                 photoIndex === currentPhotoIndex
                                   ? `task-activity-timeline__lead-photo-${activity.id}`
@@ -309,7 +311,9 @@ export default function TaskActivityTimeline({
                               }
                               accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
                               source={{ uri: photoUri }}
-                              resizeMode="cover"
+                              contentFit="cover"
+                              cachePolicy="memory-disk"
+                              cacheKey={extractBuildtrackStoragePath(photoUri) ?? photoUri}
                               className="h-full w-full bg-slate-200"
                             />
                           </Pressable>
@@ -432,14 +436,16 @@ export default function TaskActivityTimeline({
                     key={`modal-photo-${index}`}
                     style={{ width: Dimensions.get("window").width, height: "100%" }}
                   >
-                    <Image
+                    <ExpoImage
                       testID={
                         index === selectedGallery.index
                           ? "task-activity-timeline__photo_viewer_image"
                           : undefined
                       }
                       source={{ uri: photoUri }}
-                      resizeMode="contain"
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
+                      cacheKey={extractBuildtrackStoragePath(photoUri) ?? photoUri}
                       className="h-full w-full"
                     />
                   </View>

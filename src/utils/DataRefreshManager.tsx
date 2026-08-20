@@ -4,13 +4,14 @@ import { useTaskStore } from '../state/taskStore.supabase';
 import { useProjectStore } from '../state/projectStore.supabase';
 import { useUserStore } from '../state/userStore.supabase';
 import { useAuthStore } from '../state/authStore';
+import { getSessionScopedSupabase } from '../api/supabaseSessionGate';
 
 /**
  * DataRefreshManager - Ensures data stays fresh and synchronized
  * 
  * Features:
  * 1. Refreshes when app comes to foreground
- * 2. Periodic polling every 5 seconds for new data
+ * 2. Periodic polling every 60 seconds as fallback
  * 3. Force refresh on user actions
  * 4. Tracks data mutations and notifies all users
  * 5. Ensures persistence layer stays in sync
@@ -50,6 +51,16 @@ const generateDataHash = () => {
 // 0 so the first post-JS-restart sync always runs. Persist writes tasks: []
 // (Hermes OOM); Activity would otherwise stay empty until the 30s/60s poll.
 let lastRefreshTime = 0;
+const SESSION_RETRY_MS = 250;
+
+async function resolveRefreshSession(force: boolean) {
+  let client = await getSessionScopedSupabase();
+  if (client || !force) {
+    return client;
+  }
+  await new Promise((resolve) => setTimeout(resolve, SESSION_RETRY_MS));
+  return getSessionScopedSupabase();
+}
 
 // Function to force a re-render of all components using these stores
 export const triggerRefresh = async (options?: { force?: boolean }) => {
@@ -82,6 +93,17 @@ export const triggerRefresh = async (options?: { force?: boolean }) => {
     try {
       // Fetch fresh data if user is logged in
       if (user) {
+        const sessionClient = await resolveRefreshSession(force);
+        if (!sessionClient) {
+          if (force && taskStore.tasks.length === 0) {
+            useTaskStore.setState({
+              isLoading: false,
+              error: 'Could not load tasks. Pull to retry.',
+            });
+          }
+          return;
+        }
+
         const startTime = Date.now();
         console.log('[DataSync] Starting parallel data fetch...');
 
@@ -89,7 +111,7 @@ export const triggerRefresh = async (options?: { force?: boolean }) => {
         await Promise.all([
           projectStore.fetchProjects(true),
           projectStore.fetchUserProjectAssignments(user.id, true),
-          taskStore.fetchTasks(true), // Fetch ALL tasks, not just user's tasks
+          taskStore.fetchTasks(force),
           userStore.fetchUsers()
         ]);
         
@@ -177,7 +199,7 @@ export const DataRefreshManager = () => {
         refreshInterval = null;
       }
     };
-  }, [user]);
+  }, [user?.id]);
 
   return null; // This is a logic-only component
 };

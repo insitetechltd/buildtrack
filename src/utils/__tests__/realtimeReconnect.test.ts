@@ -1,7 +1,10 @@
 import {
+  companyEqFilter,
   nextRealtimeReconnectDelayMs,
   REALTIME_RECONNECT_BASE_MS,
   REALTIME_RECONNECT_MAX_MS,
+  REALTIME_RECONNECT_PAUSE_AFTER_ATTEMPTS,
+  shouldPauseRealtimeReconnect,
   shouldScheduleRealtimeReconnect,
 } from "../realtimeReconnect";
 
@@ -23,5 +26,21 @@ describe("realtimeReconnect", () => {
     expect(shouldScheduleRealtimeReconnect("TIMED_OUT", false)).toBe(true);
     expect(shouldScheduleRealtimeReconnect("SUBSCRIBED", false)).toBe(false);
     expect(shouldScheduleRealtimeReconnect("CLOSED", true)).toBe(false);
+  });
+
+  it("pauses reconnect after the storm cap so CHANNEL_ERROR cannot loop forever", () => {
+    expect(shouldPauseRealtimeReconnect(0)).toBe(false);
+    expect(shouldPauseRealtimeReconnect(REALTIME_RECONNECT_PAUSE_AFTER_ATTEMPTS - 1)).toBe(
+      false,
+    );
+    expect(shouldPauseRealtimeReconnect(REALTIME_RECONNECT_PAUSE_AFTER_ATTEMPTS)).toBe(true);
+    expect(shouldPauseRealtimeReconnect(99)).toBe(true);
+  });
+
+  it("builds a company eq filter only for non-empty ids", () => {
+    expect(companyEqFilter("company-1")).toBe("company_id=eq.company-1");
+    expect(companyEqFilter("  ")).toBeNull();
+    expect(companyEqFilter(null)).toBeNull();
+    expect(companyEqFilter(undefined)).toBeNull();
   });
 });

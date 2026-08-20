@@ -1,6 +1,6 @@
 # Photo load + pull/sync resilience — investigation (2026-08-19)
 
-**Status:** Tabled on ROADMAP as **M-PERF-01** + **M-DATA-03**. No product code changes in this cycle.
+**Status:** App-side M-DATA-03 / M-PERF-01 landed 2026-08-20 (session gate, scoped activities, reconcile, expo-image, persisted signed URLs). Broader visibility hardening stays post-RC. **RC blocker remains M-DATA-04.**
 
 **Triggers:** Slow evidence thumbnails on device and sim; intermittent empty Tasks/Activity after pull-to-refresh (non-repeatable).
 
@@ -23,11 +23,11 @@ Private bucket (`buildtrack-files`) since M-SUPABASE-03c D2. Display path:
 
 | Cause | Mechanism | User-visible |
 |-------|-----------|--------------|
-| Session race | `fetchTasks` no-ops when `getSessionScopedSupabase()` null; `triggerRefresh({ force: true })` only checks `authStore.user` | Spinner completes; still empty; no toast |
+| Session race | `fetchTasks` no-ops when `getSessionScopedSupabase()` null; `triggerRefresh` now retries once on force then sets list error | Empty list copy is “Could not load tasks” when fetch failed |
 | No task persist | `taskStore` partialize writes `tasks: []` always — cold start has no offline fallback | Empty until first successful fetch |
-| Heavy fetch + 10s timeout | `fetchTasks` pulls **all** `tasks` + **all** `task_activities` unscoped; global Supabase fetch abort at 10s | First fetch fails on slow network; stays at 0 |
+| Heavy fetch + 10s timeout | `fetchTasks` still pulls **all** loaded `tasks`; activities scoped to those IDs | First fetch can still fail on huge tenants until deeper post-RC hardening |
 | Refresh debounce | Non-forced `triggerRefresh` skips if hash unchanged within 30s | Background sync appears stuck |
-| Filter vs fetch | UI empty copy = “No matching tasks” for both fetch failure and filter mismatch | Misleading |
+| Filter vs fetch | Tasks empty copy distinguishes fetch failure vs no matching filters | Honest empty |
 
 **Key files:** `DataRefreshManager.tsx`, `taskStore.supabase.ts` (`fetchTasks`), `supabaseSessionGate.ts`, `ActivityStyleRowCard.tsx`, `fileUploadService.ts`.
 

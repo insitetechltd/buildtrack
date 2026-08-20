@@ -6,23 +6,24 @@
 
 ## Doing
 
-Section E sequential **9/10 PASS + W-D05 Exempt** on 17 Pro (Bob). **W-D06** closed.
+Commercial **RC week**. TF **188** submitted (photo layout + app-side worker visibility). **No DB / policy applies this week.**
 
 ## Next
 
-1. **R5** Release binary
-2. (Post-RC) **S-UX-01R** — retire Add Comment dead code (`docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`)
+1. Install TF **188** on both devices
+2. Verify Task Detail photos load; Bob no longer sees John→John rows
+3. Do not tick App Store Public
 
 ## Locked this week
 
-- **Dual-user:** John (Max) + Alice (16) — do not use on 17 Pro
-- **Solo Section E:** Bob on 17 Pro `702680D5…`
-- B–E sequential: B/C/D PASS; E 9/10 + 1 EXEMPT (W-D05)
+- App-side visibility only; deeper access hardening stays post-RC
+- No parallel Maestro against prod until M-DATA-04 is quiet
 
 ## Parked
 
-- Wave 2, M-OPS, M-DATA-03, M-PERF-01 until RC ships
+- Wave 2, M-OPS, S-UX-01R until Realtime spike is gated
+- Broader visibility hardening after RC
 
 ---
 
-Updated: 2026-08-19
+Updated: 2026-08-20

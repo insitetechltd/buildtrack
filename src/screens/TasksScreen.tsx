@@ -424,9 +424,13 @@ export default function TasksScreen(props: TasksScreenProps) {
               testID="tasks-screen__empty_state"
               className="rounded-3xl bg-white px-4 py-5"
             >
-              <Text className="text-xl font-semibold text-slate-900">No matching tasks</Text>
+              <Text className="text-xl font-semibold text-slate-900">
+                {output.listFetchFailed ? "Could not load tasks" : "No matching tasks"}
+              </Text>
               <Text className="mt-1 text-lg text-slate-500">
-                Try a different queue, status, project, or search term.
+                {output.listFetchFailed
+                  ? "Pull to refresh and try again."
+                  : "Try a different queue, status, project, or search term."}
               </Text>
             </View>
           )}

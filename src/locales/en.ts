@@ -164,6 +164,8 @@ export const en = {
     noTasks: "No tasks yet",
     noTasksMessage: "You haven't been assigned any tasks yet",
     noMatchingTasks: "No matching tasks",
+    couldNotLoadTasks: "Could not load tasks",
+    couldNotLoadTasksMessage: "Pull to refresh and try again.",
     tryAdjustingFilters: "Try adjusting your filters",
     searchTasks: "Search tasks...",
     taskCreated: "Task Created",

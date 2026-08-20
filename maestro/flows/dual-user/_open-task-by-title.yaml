@@ -12,21 +12,20 @@ appId: com.buildtrack.app.local
       - runFlow:
           when:
             notVisible:
-              id: "tasks-screen__root"
+              id: "tasks-screen__task_list"
           commands:
-            - tapOn:
-                id: "root-tab__tasks_pressable"
             - tapOn:
                 id: "root-tab__tasks"
                 optional: true
-      - extendedWaitUntil:
-          visible:
-            id: "tasks-screen__root"
-          timeout: 25000
+            - tapOn:
+                id: "root-tab__tasks_pressable"
+                optional: true
+            - waitForAnimationToEnd:
+                timeout: 1500
       - extendedWaitUntil:
           visible:
             id: "tasks-screen__task_list"
-          timeout: 25000
+          timeout: 45000
       - runFlow: _pull-to-refresh-tasks.yaml
       - tapOn:
           id: "tasks-screen__header_reset_filters"

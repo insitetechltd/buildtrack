@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import {
@@ -177,6 +178,22 @@ describe('fileUploadService', () => {
 
     const result = getFileUrl('company-123/tasks/task-123/file.jpg');
     expect(result).toBe(signedUrl);
+  });
+
+  it('reuses a persisted signed URL without minting a new one', async () => {
+    const { createSignedUrl } = installStorageMocks();
+    (AsyncStorage.getItem as jest.Mock).mockResolvedValueOnce(
+      JSON.stringify({
+        'company-123/tasks/task-123/file.jpg': {
+          url: signedUrl,
+          expiresAtMs: Date.now() + 3_600_000,
+        },
+      })
+    );
+
+    const created = await createSignedFileUrl('company-123/tasks/task-123/file.jpg');
+    expect(created).toBe(signedUrl);
+    expect(createSignedUrl).not.toHaveBeenCalled();
   });
 
   it('verifies that an uploaded file is accessible via signed URL', async () => {

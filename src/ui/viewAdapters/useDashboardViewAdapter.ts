@@ -12,6 +12,7 @@ import {
   prefetchSignedUrls,
   subscribeSignedUrlCache,
 } from "@/api/fileUploadService";
+import { filterTasksForViewer } from "@/ui/contracts/taskVisibilityPermissions";
 import type {
   DashboardActivityItem,
   DashboardProjectSummaryItem,
@@ -287,7 +288,24 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
-  const tasks = taskStore.tasks ?? [];
+  const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
+  const projectsById = useMemo(() => {
+    const byId: Record<string, { id: string; companyId?: string | null }> = {};
+    for (const project of projectStore.projects ?? []) {
+      byId[project.id] = { id: project.id, companyId: project.companyId };
+    }
+    return byId;
+  }, [projectStore.projects]);
+  const tasks = useMemo(
+    () =>
+      filterTasksForViewer({
+        viewer: user,
+        tasks: taskStore.tasks ?? [],
+        projectsById,
+        viewerProjectIds,
+      }),
+    [projectsById, taskStore.tasks, user, viewerProjectIds],
+  );
   const unattachedBatches = unattachedBatchStore.batches ?? [];
   const isLoadingProjects = Boolean(projectStore.isLoading);
 
@@ -302,12 +320,14 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   }, [taskStore.fetchTasks, user]);
 
   useEffect(() => {
-    const refs = tasks.flatMap((task) => collectTaskPhotoRefs(task));
+    const refs = (
+      selectedProjectId ? tasks.filter((task) => task.projectId === selectedProjectId) : []
+    ).flatMap((task) => collectTaskPhotoRefs(task));
     if (refs.length === 0) {
       return;
     }
     void prefetchSignedUrls(refs);
-  }, [tasks]);
+  }, [tasks, selectedProjectId]);
 
   const {
     activeProject,

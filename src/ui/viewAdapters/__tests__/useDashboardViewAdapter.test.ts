@@ -80,6 +80,13 @@ describe("useDashboardViewAdapter", () => {
     useProjectStoreWithInit.mockReturnValue({
       isLoading: false,
       getProjectsByUser: jest.fn().mockReturnValue(visibleProjects),
+      projectIdsByUser: {
+        "user-1": visibleProjects.map((project) => project.id),
+      },
+      projects: visibleProjects.map((project) => ({
+        ...project,
+        companyId: "company-1",
+      })),
     });
 
     useProjectFilterStore.mockImplementation((selector: any) =>

@@ -30,6 +30,7 @@ module.exports = {
     '<rootDir>/.tmp/',
     '<rootDir>/.worktrees/',
     '<rootDir>/.eas/local-build/',
+    '<rootDir>/.cache/',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };

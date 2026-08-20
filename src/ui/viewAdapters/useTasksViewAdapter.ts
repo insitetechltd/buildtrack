@@ -7,6 +7,7 @@ import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buil
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
 import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
+import { filterTasksForViewer } from "@/ui/contracts/taskVisibilityPermissions";
 import {
   extractBuildtrackStoragePath,
   getFileUrl,
@@ -607,11 +608,38 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       ),
     [projectFilterStore.tasksLaunchPreset?.bucket, projectFilterStore.tasksLaunchPreset?.queue],
   );
-  const tasks = taskStore.tasks ?? [];
-  const archivedTasks = taskStore.archivedTasks ?? [];
+  const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
+  const projectsById = useMemo(() => {
+    const byId: Record<string, { id: string; companyId?: string | null }> = {};
+    for (const project of projectStore.projects ?? []) {
+      byId[project.id] = { id: project.id, companyId: project.companyId };
+    }
+    return byId;
+  }, [projectStore.projects]);
+  const tasks = useMemo(
+    () =>
+      filterTasksForViewer({
+        viewer: user,
+        tasks: taskStore.tasks ?? [],
+        projectsById,
+        viewerProjectIds,
+      }),
+    [projectsById, taskStore.tasks, user, viewerProjectIds],
+  );
+  const archivedTasks = useMemo(
+    () =>
+      filterTasksForViewer({
+        viewer: user,
+        tasks: taskStore.archivedTasks ?? [],
+        projectsById,
+        viewerProjectIds,
+      }),
+    [projectsById, taskStore.archivedTasks, user, viewerProjectIds],
+  );
   const fetchArchivedTasks = taskStore.fetchArchivedTasks;
   const archiveTaskInStore = taskStore.archiveTask;
   const isLoadingTasks = Boolean(taskStore.isLoading);
+  const taskFetchError = taskStore.error;
   const selectedProjectId = projectFilterStore.selectedProjectId ?? null;
   const [searchQuery, setSearchQuery] = useState("");
   const [isFiltersSheetOpen, setIsFiltersSheetOpen] = useState(false);
@@ -627,26 +655,6 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
   const clearTasksLaunchPreset = projectFilterStore.clearTasksLaunchPreset;
 
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
-
-  useEffect(() => {
-    const activityAndUpdateRefs = [...tasks, ...archivedTasks].flatMap((task) => {
-      const activityPhotos =
-        task.activities?.flatMap((activity) => {
-          const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
-          return Array.isArray(photos) ? photos : [];
-        }) ?? [];
-      const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
-      return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos];
-    });
-    const refs = activityAndUpdateRefs.filter(
-      (value): value is string => typeof value === "string" && value.length > 0
-    );
-    if (refs.length === 0) {
-      return;
-    }
-    void prefetchSignedUrls(refs);
-  }, [archivedTasks, tasks]);
-
   void signedUrlEpoch;
 
   useEffect(() => {
@@ -719,6 +727,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     taskRowItems,
     scalarMetrics,
     continuity,
+    listFetchFailed,
     structuralState,
   } = useMemo(() => {
     const activeTasks = tasks.filter((task) => !task.archivedAt);
@@ -994,6 +1003,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         shouldRenderEmptyState: !isInitialLoading && taskRowItems.length === 0,
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
+      listFetchFailed: Boolean(taskFetchError) && !isInitialLoading && tasks.length === 0,
       structuralState,
     };
   }, [
@@ -1009,8 +1019,21 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     selectedProjectId,
     signedUrlEpoch,
     stagedFilters,
+    taskFetchError,
     tasks,
   ]);
+
+  useEffect(() => {
+    const refs = taskRowItems.flatMap((row) =>
+      [row.primaryPhotoUri, ...(row.attachmentUris ?? [])].filter(
+        (value): value is string => typeof value === "string" && value.length > 0,
+      ),
+    );
+    if (refs.length === 0) {
+      return;
+    }
+    void prefetchSignedUrls(refs);
+  }, [taskRowItems]);
 
   const readiness = useMemo(() => {
     return {
@@ -1042,6 +1065,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     expandedTaskIds,
     taskRowItems,
     scalarMetrics,
+    listFetchFailed,
   };
 
   const searchInput: TasksSearchInputData = {

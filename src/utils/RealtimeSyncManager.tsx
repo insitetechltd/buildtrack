@@ -3,11 +3,14 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { useAuthStore } from '../state/authStore';
 import { useTaskStore } from '../state/taskStore.supabase';
 import { useProjectStore } from '../state/projectStore.supabase';
-import { useUserStore } from '../state/userStore.supabase';
 import { buildResourceKey, invalidateResourceKeys, supabase } from '../api/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import {
+  companyEqFilter,
   nextRealtimeReconnectDelayMs,
+  REALTIME_APPSTATE_RESUBSCRIBE_DEBOUNCE_MS,
+  REALTIME_RECONNECT_MAX_MS,
+  shouldPauseRealtimeReconnect,
   shouldScheduleRealtimeReconnect,
 } from './realtimeReconnect';
 
@@ -17,10 +20,10 @@ import {
  * Features:
  * 1. Subscribes to postgres_changes events for key tables
  * 2. Updates stores incrementally (not full refresh)
- * 3. Relies on RLS policies for security (no filters needed)
+ * 3. Company-scoped filters on users/projects when companyId is known (M-DATA-04)
  * 4. Handles subscription errors gracefully
  * 5. Exponential-backoff resubscribe on CHANNEL_ERROR / CLOSED / TIMED_OUT (M-SUPABASE-04a)
- * 6. Foreground AppState nudge after background (socket often dies silently)
+ * 6. Debounced foreground resubscribe; pause after repeated failures until foreground
  *
  * Works alongside DataRefreshManager (polling reduced to 60s as fallback)
  *
@@ -37,6 +40,10 @@ export function RealtimeSyncManager() {
   const intentionalTeardownRef = useRef(false);
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const foregroundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pausedUntilForegroundRef = useRef(false);
+  const replacingChannelsRef = useRef(false);
+  const subscribedNamesRef = useRef<Set<string>>(new Set());
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
   const getTaskResourceKeys = (
@@ -125,9 +132,18 @@ export function RealtimeSyncManager() {
       }
     };
 
+    const clearForegroundTimer = () => {
+      if (foregroundTimerRef.current) {
+        clearTimeout(foregroundTimerRef.current);
+        foregroundTimerRef.current = null;
+      }
+    };
+
     const removeAllChannels = () => {
       const supabaseClient = supabase;
       if (!supabaseClient) return;
+      replacingChannelsRef.current = true;
+      subscribedNamesRef.current = new Set();
       channelsRef.current.forEach((channel) => {
         supabaseClient.removeChannel(channel);
       });
@@ -146,7 +162,17 @@ export function RealtimeSyncManager() {
       if (reconnectTimerRef.current) return; // already scheduled
 
       const attempt = reconnectAttemptRef.current;
-      const delayMs = nextRealtimeReconnectDelayMs(attempt);
+      if (shouldPauseRealtimeReconnect(attempt) && AppState.currentState !== 'active') {
+        pausedUntilForegroundRef.current = true;
+        console.warn(
+          `⚠️ [Realtime] Pausing reconnect until foreground (attempt ${attempt}) — ${reason}`,
+        );
+        return;
+      }
+
+      const delayMs = shouldPauseRealtimeReconnect(attempt)
+        ? REALTIME_RECONNECT_MAX_MS
+        : nextRealtimeReconnectDelayMs(attempt);
       reconnectAttemptRef.current = attempt + 1;
 
       console.warn(
@@ -159,15 +185,26 @@ export function RealtimeSyncManager() {
         console.log('🔴 [Realtime] Reconnecting channels…');
         removeAllChannels();
         subscribeAll();
+        replacingChannelsRef.current = false;
       }, delayMs);
     };
 
     const onChannelStatus = (channelName: string, status: string) => {
-      if (status === 'SUBSCRIBED') {
-        console.log(`✅ [Realtime] ${channelName} channel subscribed`);
-        reconnectAttemptRef.current = 0;
+      if (replacingChannelsRef.current && status === 'CLOSED') {
         return;
       }
+
+      if (status === 'SUBSCRIBED') {
+        console.log(`✅ [Realtime] ${channelName} channel subscribed`);
+        subscribedNamesRef.current.add(channelName);
+        if (subscribedNamesRef.current.size >= 4) {
+          reconnectAttemptRef.current = 0;
+          pausedUntilForegroundRef.current = false;
+        }
+        return;
+      }
+
+      subscribedNamesRef.current.delete(channelName);
 
       if (status === 'CHANNEL_ERROR') {
         handleSubscriptionError(channelName, `Channel error (${status})`);
@@ -184,6 +221,9 @@ export function RealtimeSyncManager() {
 
     const subscribeAll = () => {
       if (!supabase || intentionalTeardownRef.current) return;
+      subscribedNamesRef.current = new Set();
+
+      const companyFilter = companyEqFilter(companyId);
 
       const tasksChannel = supabase
         .channel('tasks-changes')
@@ -263,13 +303,14 @@ export function RealtimeSyncManager() {
         .subscribe((status) => onChannelStatus('task_activities', status));
 
       const projectsChannel = supabase
-        .channel('projects-changes')
+        .channel(companyId ? `projects-changes:${companyId}` : 'projects-changes')
         .on(
           'postgres_changes',
           {
             event: '*',
             schema: 'public',
             table: 'projects',
+            ...(companyFilter ? { filter: companyFilter } : {}),
           },
           async (payload) => {
             const projectId = (payload.new as any)?.id || (payload.old as any)?.id;
@@ -278,7 +319,9 @@ export function RealtimeSyncManager() {
             const projectStore = useProjectStore.getState();
 
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              await projectStore.fetchProjects();
+              if (projectId) {
+                await projectStore.fetchProjectById(String(projectId), true);
+              }
             } else if (payload.eventType === 'DELETE') {
               const oldProjectId = (payload.old as any)?.id;
               if (oldProjectId) {
@@ -295,21 +338,20 @@ export function RealtimeSyncManager() {
         .subscribe((status) => onChannelStatus('projects', status));
 
       const usersChannel = supabase
-        .channel('users-changes')
+        .channel(companyId ? `users-changes:${companyId}` : 'users-changes')
         .on(
           'postgres_changes',
           {
             event: 'UPDATE',
             schema: 'public',
             table: 'users',
+            ...(companyFilter ? { filter: companyFilter } : {}),
           },
           async (payload) => {
-            console.log('🔴 [Realtime] User change detected:', payload.new?.id);
+            const changedUserId = payload.new?.id;
+            console.log('🔴 [Realtime] User change detected:', changedUserId);
 
-            const userStore = useUserStore.getState();
-            await userStore.fetchUsers();
-
-            if (payload.new?.id === userId) {
+            if (changedUserId && changedUserId === userId) {
               const authStore = useAuthStore.getState();
               await authStore.refreshUser();
             }
@@ -331,12 +373,19 @@ export function RealtimeSyncManager() {
         !intentionalTeardownRef.current &&
         supabase
       ) {
-        // Backgrounding often kills the WS without CLOSED — one soft resubscribe, no backoff stack.
-        clearReconnectTimer();
-        reconnectAttemptRef.current = 0;
-        removeAllChannels();
-        console.log('🔴 [Realtime] App foreground — soft resubscribe');
-        subscribeAll();
+        if (foregroundTimerRef.current) return;
+        foregroundTimerRef.current = setTimeout(() => {
+          foregroundTimerRef.current = null;
+          if (intentionalTeardownRef.current || !supabase) return;
+          if (AppState.currentState !== 'active') return;
+          clearReconnectTimer();
+          reconnectAttemptRef.current = 0;
+          pausedUntilForegroundRef.current = false;
+          removeAllChannels();
+          console.log('🔴 [Realtime] App foreground — debounced resubscribe');
+          subscribeAll();
+          replacingChannelsRef.current = false;
+        }, REALTIME_APPSTATE_RESUBSCRIBE_DEBOUNCE_MS);
       }
     };
     const appStateSub = AppState.addEventListener('change', onAppStateChange);
@@ -344,6 +393,7 @@ export function RealtimeSyncManager() {
     return () => {
       intentionalTeardownRef.current = true;
       clearReconnectTimer();
+      clearForegroundTimer();
       appStateSub.remove();
       console.log('🔴 [Realtime] Manager stopping - unsubscribing from channels');
       removeAllChannels();

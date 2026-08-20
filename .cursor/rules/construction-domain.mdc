@@ -10,4 +10,4 @@ alwaysApply: true
 - Core loop: capture evidence (photo) → task → review → reject/rework → complete
 - Field constraints: fat-finger UI, camera-first create, poor network, location_on_site when in scope
 - Do not invent SaaS dashboard patterns that fight mobile jobsite use
-- Upcoming gated slices (after M-SUPABASE-03b): tags/assignee, delegation, location, containers
+- Multi-company on one project (post-RC `M-AUTHZ-02`): partner liaison + project invite + optional host-absorb seats — never a global people directory. Pricing/authority law: `documentation/multi-company-project-membership.md`

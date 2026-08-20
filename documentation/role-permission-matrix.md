@@ -282,6 +282,21 @@ Until then:
 
 - do not treat the role store as an authorization source of truth
 
+## Multi-company project membership (target law — post-RC)
+
+**Canonical product SoT:** [multi-company-project-membership.md](./multi-company-project-membership.md)  
+**Milestone:** `WS-AUTHZ / M-AUTHZ-02` (after `M-OPS-02`; not commercial RC)
+
+Locked distinctions (implementation may lag):
+
+1. **Company admin ≠ project authority.** Org admin may need **roster knowledge** (who of ours is on which projects, including other companies’ projects) without gaining project manage rights.
+2. **Project membership** is via `user_project_assignments` (and project invites), not via browsing global `users`.
+3. **Partner liaison** is a project-scoped delegation: host appoints one person at a partner company to manage **same-company** inclusion on that project.
+4. **Seat billing:** default = member’s company; optional host-absorb path bills host seats explicitly.
+5. **Company seat invite** (`inviteCompanyUser`) remains “add teammate inside our company” — distinct from project invite.
+
+Until M-AUTHZ-02 ships, do not treat current admin `getAllUsers()` team pickers as approved product behavior.
+
 ## Recommended Relationship Going Forward
 
 1. `User.type` answers: what kind of company is this user from?
@@ -289,6 +304,7 @@ Until then:
 3. `ProjectRole` answers: what is this user on this project?
 4. legacy `role` and `category` remain storage-compatibility shims until migration completes
 5. the role catalog becomes optional metadata or future administration infrastructure only after it cleanly models `member` and stops mixing system and project concepts
+6. multi-company inclusion follows [multi-company-project-membership.md](./multi-company-project-membership.md) (liaison / project invite / host-absorb) — not a global directory
 
 ## Practical Reading Guide
 

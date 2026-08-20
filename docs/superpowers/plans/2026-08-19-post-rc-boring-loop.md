@@ -11,10 +11,11 @@
 1. **Ship RC** — field loop you can defend: photo → task → accept/decline → update → review. No new product surfaces this week except what RC already requires.
 2. **`WS-OPS / M-OPS-01`** — in-app owner console + workflow-gaps bin (illegal states visible to Tristan only).
 3. **`WS-OPS / M-OPS-02`** — shrink `taskStore.supabase.ts` / `CreateTaskScreen` / `AppNavigator`; enforce the intended status machine (stars match validation; no fake WIP; Assign To required for Create if that is the product).
-4. **`WS-AI / M-AI-01`** — field Q&A over the **project dataset** (tasks, photos, activity, later documents). Worker asks on site; answer cites records. Existing Create Task LLM is only a thin on-ramp, not the product.
-5. **`WS-AI / M-AI-02`** — **drawing intelligence** (the real roadblock). PDF sheets first, then CAD. **Blocked on document control** (`M-DMS-01`): current revision must be known or the answer is a safety defect. Do not custom-parse DWG in year one — convert/register sheets, retrieve current rev, vision-QA with citations + abstain. CAD/BIM likely a specialist API (Autodesk/ODA), not a second LLM SDK.
-6. **Wave 2 OS phase** — document control first (`M-DMS-01` …), then **jobsite cost** (`M-COST-01`). DMS is load-bearing for M-AI-02. Submittals (`M-DMS-04`) are load-bearing for M-AI-03.
-7. **`WS-AI / M-AI-03`** — photo a package/fastener → **is this approved for this location and sequence?** Pass only via barcode/label lookup against **approved submittals** (`M-DMS-04`). Unlabeled hardware is assist-only, never auto-pass. Not RAG over a spec PDF.
+4. **`WS-AUTHZ / M-AUTHZ-02`** — multi-company project membership (partner **liaison** + project invite + optional **host-absorb** seats). Pricing/privacy law: `documentation/multi-company-project-membership.md`. Not RC; Human Gate before invite/RLS DDL. May idle-parallel with early M-AI-01 prep after OPS-02.
+5. **`WS-AI / M-AI-01`** — field Q&A over the **project dataset** (tasks, photos, activity, later documents). Worker asks on site; answer cites records. Existing Create Task LLM is only a thin on-ramp, not the product.
+6. **`WS-AI / M-AI-02`** — **drawing intelligence** (the real roadblock). PDF sheets first, then CAD. **Blocked on document control** (`M-DMS-01`): current revision must be known or the answer is a safety defect. Do not custom-parse DWG in year one — convert/register sheets, retrieve current rev, vision-QA with citations + abstain. CAD/BIM likely a specialist API (Autodesk/ODA), not a second LLM SDK.
+7. **Wave 2 OS phase** — document control first (`M-DMS-01` …), then **jobsite cost** (`M-COST-01`). DMS is load-bearing for M-AI-02. Submittals (`M-DMS-04`) are load-bearing for M-AI-03.
+8. **`WS-AI / M-AI-03`** — photo a package/fastener → **is this approved for this location and sequence?** Pass only via barcode/label lookup against **approved submittals** (`M-DMS-04`). Unlabeled hardware is assist-only, never auto-pass. Not RAG over a spec PDF.
 
 ## AI policy (locked 2026-08-19)
 

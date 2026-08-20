@@ -2,7 +2,7 @@
 
 **Status:** Locked product sequence + AI policy. Revisit from time to time; do not silently replace.
 
-**When to reopen this file:** any discussion of ROADMAP, Wave 2, AI, DMS, drawings, cost, owner console, Save Draft, or “what we build after RC.”
+**When to reopen this file:** any discussion of ROADMAP, Wave 2, AI, DMS, drawings, cost, owner console, Save Draft, multi-company / project invite / partner liaison / seat billing, or “what we build after RC.”
 
 **How to reopen:** read this file **before** proposing new milestones or pulling Wave 2 / generic LLM work forward. Then update this file if the user changes the lock (date the addendum). Chat is scratch; this file + `documentation/ROADMAP.md` + `documentation/NOW.md` are the pick-up.
 
@@ -33,6 +33,7 @@ Honest assessment vs 1–2 person Expo+Supabase peers (judgment, 2026-08-19): di
 | Now | Commercial RC | Ship the field loop. No new product surfaces. |
 | 15.05 | `M-OPS-01` | In-app **owner command console** (allowlisted Tristan). Workflow-gaps bin. Not Activity, not Henry Admin, no extra web host. |
 | 15.06 | `M-OPS-02` | Shrink `taskStore.supabase.ts` / `CreateTaskScreen` / `AppNavigator`. Enforce intended states. |
+| 15.065 | `M-AUTHZ-02` | Multi-company membership: partner **liaison** + project invite + optional host-absorb seats. SoT: `documentation/multi-company-project-membership.md`. Not RC. |
 | 15.07 | `M-AI-01` | Field Q&A over **this project’s dataset** (tasks/photos/activity). Cite or abstain. Create Task LLM is on-ramp only. |
 | Wave 2 | `M-DMS-01` … | **Document control** (current revision). Unblocks drawing assist. |
 | 15.08 | `M-AI-02` | Drawing **assist** only: title block, current rev, quote a **crop**. Not infer geometry / 3D-as-truth. CAD = convert or specialist API. |
@@ -65,6 +66,7 @@ Claude/Sonnet: reasonable **document assistant** (describe, quote, abstain). Not
 - Hosting the owner console on a new web box **this week**; laptop `localhost` is not a product host.
 - Jumping Wave 2 / DMS / IAP / email-invite ahead of RC → OPS-01 → OPS-02.
 - Building an in-app DWG parser in year one.
+- Global user directory for project team pickers (any role). Multi-company join is liaison + project invite + optional host-absorb only (`M-AUTHZ-02`).
 
 ---
 
@@ -81,5 +83,19 @@ Activity **My Queue** = assigned to you; **Team Queue** = you sent it and you ar
 ### 2026-08-19 — Photo perf + pull/sync resilience (tabled)
 
 Device + sim investigation: slow evidence thumbnails (private bucket, in-memory signed URLs, RN `Image` on lists); intermittent empty Tasks after pull (session race, no task persist, heavy `task_activities` fetch + 10s timeout). **Not RC blockers.** ROADMAP **M-PERF-01** + **M-DATA-03** Pipeline idle-parallel after RC. Evidence: `docs/superpowers/analysis/2026-08-19-photo-sync-resilience-investigation.md`. Maestro headed work **parked** to focus RC ship.
+
+### 2026-08-21 — Multi-company project membership (locked product; post-RC)
+
+**Not RC.** New product surfaces after **M-OPS-02**. Canonical: `documentation/multi-company-project-membership.md`. ROADMAP: **`WS-AUTHZ / M-AUTHZ-02`** (Order 15.065).
+
+Locks:
+
+- **Pricing:** each company owns its employees by default; hosting a project does not auto-consume host headcount for partners; company admin is not field headcount.
+- **Authority vs knowledge:** company admin ≠ project manager; admin must **know** which of their people are on which projects (including outbound to other companies’ projects); knowledge ≠ manage rights.
+- **Path A — Partner liaison:** host appoints a responsible person at the partner company; that liaison manages who from their company is on the project (reduces host overhead).
+- **Path B — Project invite:** named outsider via project-scoped URL; seats stay on invitee’s company; no global directory.
+- **Path C — Host absorb:** host explicitly bills outsider to **host** seats when willing to pay.
+- Keep A+B+C. Distinct from company seat invite. Platform accounts required. Schema/RLS = Human Gate at build time.
+- Explicit reject still stands for jumping email-invite ahead of RC → OPS-01 → OPS-02; this addendum **schedules** invite/liaison **after** OPS-02, not during RC.
 
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

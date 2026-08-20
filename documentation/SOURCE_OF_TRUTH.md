@@ -125,6 +125,7 @@ These are the primary human-readable references for current implementation-align
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
 - [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
+- [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
 
 ### 4. Canonical Operational Documentation
@@ -299,6 +300,8 @@ When a document should stay active:
   - single canonical live bug tracker
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
   - current normalized role and permission reference
+- [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
+  - locked multi-company project join paths, pricing boundary, liaison, and admin knowledge vs authority (`M-AUTHZ-02`, post-RC)
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
   - current `WS-FND / M-FND-04` UI migration wave reference
 

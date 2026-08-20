@@ -139,6 +139,10 @@ RC Maestro min for E is **U01** (update+photo). W-D07 is Task Core, not the P/U 
 
 ## G–J. Company admin (org only — not project day-to-day)
 
+Org: company, projects-as-containers, seats, billing. **Not** automatic project manager.
+
+**Target (post-RC `M-AUTHZ-02`):** admin must be able to see which of **their** people are on which projects (including other companies’ projects). That is roster knowledge, not project authority. Join paths / pricing: `documentation/multi-company-project-membership.md`.
+
 Admin has **no** Activity / Camera / Tasks. Do **not** ask admin to create, update, or approve tasks.
 
 | ID | Journey | Manual | Maestro |

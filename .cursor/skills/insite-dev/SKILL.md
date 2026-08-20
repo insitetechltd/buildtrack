@@ -23,7 +23,7 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 5. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
 6. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
 7. **Before Maestro:** SOP §10 — `bash scripts/maestro/sim-lock.sh status` + `bash scripts/maestro/resource-lock.sh status`; check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
-8. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock; append addenda when the user revisits.
+8. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft / multi-company membership:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock (plus dated addenda); append addenda when the user revisits. Multi-company product SoT: `documentation/multi-company-project-membership.md`.
 
 ## Session teardown
 
@@ -58,6 +58,7 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 - Nav: `src/navigation/AppNavigator.tsx`
 - Docs governance: `documentation/SOURCE_OF_TRUTH.md`
 - Session continuity: `documentation/NOW.md`
+- Multi-company membership (post-RC): `documentation/multi-company-project-membership.md`
 - **Roadmap discussion lock (2026-08-19):** `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — read before changing Wave 2 / AI / DMS / post-RC order
 
 ## Maestro preflight (mandatory before flow claims)

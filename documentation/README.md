@@ -42,6 +42,7 @@ For repository-wide orientation, read these in order:
 - [BUG_INVENTORY.md](./BUG_INVENTORY.md) - Single canonical live bug tracker for open, active, fixed-local, verified, and deferred defects
 - [INSITE_APP_LATEST.md](./INSITE_APP_LATEST.md) - Consolidated current product description aligned to code and config
 - [role-permission-matrix.md](./role-permission-matrix.md) - Canonical role, permission, and transitional model reference
+- [multi-company-project-membership.md](./multi-company-project-membership.md) - Locked multi-company project membership (liaison + project invite + host-absorb seats; post-RC `M-AUTHZ-02`)
 - [m-fnd-04-ui-migration-wave-matrix.md](./m-fnd-04-ui-migration-wave-matrix.md) - `WS-FND / M-FND-04` UI migration wave reference (milestone closed; retained for ongoing migration context)
 
 ## Operational Runbooks

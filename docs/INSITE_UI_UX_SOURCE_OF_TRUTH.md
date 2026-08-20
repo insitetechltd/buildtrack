@@ -1,7 +1,7 @@
 # Insite UI/UX Source Of Truth
 
 **Status:** Canonical design reference  
-**Last updated:** 2026-07-06  
+**Last updated:** 2026-08-21  
 **Purpose:** Centralized UI/UX / product-design source of truth for the Insite redesign. This document aggregates the current approved design direction from earlier specs, gap analysis, execution slices, and the latest design discussions.
 
 ## Canonical Use
@@ -712,7 +712,31 @@ To keep this usable over time:
 This canonical doc should work together with:
 
 - `documentation/ROADMAP.md` for status and WS/M/S inventory
+- `documentation/multi-company-project-membership.md` for multi-company join paths, pricing, liaison, and admin knowledge vs authority
+- `documentation/role-permission-matrix.md` for system vs project authority
 - execution plans for implementation sequencing
 - narrower specs for slice-level detail
 
 But this file should remain the **single reference** for current approved UI/UX logic.
+
+## Project team & multi-company (approved target — post-RC)
+
+**Product SoT:** `documentation/multi-company-project-membership.md` (`WS-AUTHZ / M-AUTHZ-02`). Not commercial RC.
+
+### Team add / invite UX
+
+- **Add from company:** searchable list of **same-company** users (plus people already on this project). Never a cross-company global directory.
+- **Invite outsider (Path B):** email + project role → share project-scoped invite URL; seats stay on invitee’s company after accept.
+- **Host absorbs (Path C):** same invite flow with explicit “bill to our seats” — host headcount only when opted in.
+- **Partner liaison (Path A):** host appoints one person at a partner company; that person manages who from **their** company is on the project. Host is not the day-to-day roster clerk for that partner.
+- Pending invites are inviter-side state; outsiders appear on the team list **after accept**.
+
+### Company admin surfaces
+
+- Company admin sees **which of their people** are on which projects (including projects owned by other companies).
+- That surface is **knowledge / audit**, not a project management console and not an approve gate for Path B.
+- Company admin is **not** automatic project authority and is **not** field headcount pricing.
+
+### Distinct from company invite
+
+Company invite (existing) = add a seat **inside our company**. Project invite = access to **one project** (Path B/C). Do not merge the two flows in UI copy.

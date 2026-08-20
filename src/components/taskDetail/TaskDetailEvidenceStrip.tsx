@@ -1,6 +1,8 @@
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 
+import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import type { TaskDetailActiveStageModel } from "@/ui/contracts/viewAdapters";
 
 interface TaskDetailEvidenceStripProps {
@@ -19,20 +21,27 @@ export default function TaskDetailEvidenceStrip({
     >
       {model.stageMode === "photo" && model.photos.length > 0 ? (
         <View>
-          <Image
+          <ExpoImage
             key={`${model.id}-photo-featured`}
             testID="task-detail__active_stage_photo_featured"
             source={{ uri: model.photos[model.activePhotoIndex ?? 0] }}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            cacheKey={
+              extractBuildtrackStoragePath(model.photos[model.activePhotoIndex ?? 0]) ??
+              model.photos[model.activePhotoIndex ?? 0]
+            }
             className="h-52 w-full rounded-[28px] bg-slate-100"
           />
           <View className="mt-3 flex-row gap-3">
             {model.photos.slice(0, 3).map((photoUrl, index) => (
-              <Image
+              <ExpoImage
                 key={`${model.id}-photo-${index}`}
                 testID={`task-detail__active_stage_photo_${index}`}
                 source={{ uri: photoUrl }}
-                resizeMode="cover"
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                cacheKey={extractBuildtrackStoragePath(photoUrl) ?? photoUrl}
                 className="h-20 flex-1 rounded-2xl bg-slate-100"
               />
             ))}

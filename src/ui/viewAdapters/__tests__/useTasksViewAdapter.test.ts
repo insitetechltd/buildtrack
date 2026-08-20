@@ -67,7 +67,16 @@ describe("useTasksViewAdapter", () => {
 
     useProjectStoreWithInit.mockReturnValue({
       isLoading: false,
-      getProjectById: jest.fn().mockReturnValue({ name: "Project A" }),
+      getProjectById: jest.fn().mockReturnValue({ name: "Project A", companyId: "company-1" }),
+      projectIdsByUser: {
+        "user-1": ["project-1", "project-2", "project-a", "project-b"],
+      },
+      projects: [
+        { id: "project-1", companyId: "company-1" },
+        { id: "project-2", companyId: "company-1" },
+        { id: "project-a", companyId: "company-1" },
+        { id: "project-b", companyId: "company-1" },
+      ],
     });
 
     useProjectFilterStore.mockReturnValue({

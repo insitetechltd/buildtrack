@@ -2,6 +2,7 @@ import { useMemo, useEffect, useCallback, useState } from 'react';
 import { useTaskStore } from '../../state/taskStore.supabase';
 import { useAuthStore } from '../../state/authStore';
 import { useUserStore } from '../../state/userStore.supabase';
+import { useProjectStoreWithInit } from '../../state/projectStore.supabase';
 import { useDateFormatter } from '../../utils/dateFormatter';
 import { useTranslation } from '../../utils/useTranslation';
 import {
@@ -18,6 +19,7 @@ import {
   resolvePrimaryAssigneeId,
   withCriticalThisWeekTag,
 } from '../contracts/taskTags';
+import { canViewerSelectTask } from '../contracts/taskVisibilityPermissions';
 import {
   mergeAssignedToIds,
   normalizeDelegatedUserIds,
@@ -459,12 +461,28 @@ export function useTaskDetailViewAdapter({
   const { user } = useAuthStore();
   const { tasks, fetchTaskById, acceptTask, declineTask, submitTaskForReview, acceptTaskCompletion, acceptSubTaskCompletion, submitSubTaskForReview, acceptSubTask, declineSubTask, archiveTask, cancelTask, updateTask, ensureProjectLocation, fetchArchivedTasks } = useTaskStore();
   const { getUserById } = useUserStore();
+  const projectStore = useProjectStoreWithInit();
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
 
   const foundTask = tasks.find((t) => t.id === taskId);
   const subTask = subTaskId ? tasks.find((t) => t.id === subTaskId) : foundTask?.parentTaskId ? foundTask : null;
-  const task = subTask || foundTask;
-  const isViewingSubTask = !!subTask;
+  const candidateTask = subTask || foundTask;
+  const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
+  const taskProject = candidateTask?.projectId
+    ? projectStore.projects.find((project) => project.id === candidateTask.projectId)
+    : undefined;
+  const canViewCandidate = candidateTask
+    ? canViewerSelectTask({
+        viewer: user,
+        task: candidateTask,
+        project: taskProject
+          ? { id: taskProject.id, companyId: taskProject.companyId }
+          : null,
+        viewerProjectIds,
+      })
+    : false;
+  const task = canViewCandidate ? candidateTask : undefined;
+  const isViewingSubTask = Boolean(subTask && canViewCandidate);
 
   const childTasksData = useMemo(
     () => (task ? tasks.filter((t) => t.parentTaskId === task.id) : []),

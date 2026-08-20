@@ -7,6 +7,7 @@ import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buil
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
 import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
+import { filterTasksForViewer } from "@/ui/contracts/taskVisibilityPermissions";
 import {
   extractBuildtrackStoragePath,
   getFileUrl,
@@ -607,8 +608,34 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       ),
     [projectFilterStore.tasksLaunchPreset?.bucket, projectFilterStore.tasksLaunchPreset?.queue],
   );
-  const tasks = taskStore.tasks ?? [];
-  const archivedTasks = taskStore.archivedTasks ?? [];
+  const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
+  const projectsById = useMemo(() => {
+    const byId: Record<string, { id: string; companyId?: string | null }> = {};
+    for (const project of projectStore.projects ?? []) {
+      byId[project.id] = { id: project.id, companyId: project.companyId };
+    }
+    return byId;
+  }, [projectStore.projects]);
+  const tasks = useMemo(
+    () =>
+      filterTasksForViewer({
+        viewer: user,
+        tasks: taskStore.tasks ?? [],
+        projectsById,
+        viewerProjectIds,
+      }),
+    [projectsById, taskStore.tasks, user, viewerProjectIds],
+  );
+  const archivedTasks = useMemo(
+    () =>
+      filterTasksForViewer({
+        viewer: user,
+        tasks: taskStore.archivedTasks ?? [],
+        projectsById,
+        viewerProjectIds,
+      }),
+    [projectsById, taskStore.archivedTasks, user, viewerProjectIds],
+  );
   const fetchArchivedTasks = taskStore.fetchArchivedTasks;
   const archiveTaskInStore = taskStore.archiveTask;
   const isLoadingTasks = Boolean(taskStore.isLoading);

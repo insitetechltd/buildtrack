@@ -14,6 +14,10 @@ jest.mock("@/state/userStore.supabase", () => ({
   useUserStore: jest.fn(),
 }));
 
+jest.mock("@/state/projectStore.supabase", () => ({
+  useProjectStoreWithInit: jest.fn(),
+}));
+
 jest.mock("@/utils/dateFormatter", () => ({
   useDateFormatter: jest.fn(),
 }));
@@ -47,6 +51,7 @@ describe("useTaskDetailViewAdapter", () => {
     const { useAuthStore } = require("@/state/authStore");
     const { useTaskStore } = require("@/state/taskStore.supabase");
     const { useUserStore } = require("@/state/userStore.supabase");
+    const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
     const { useDateFormatter } = require("@/utils/dateFormatter");
     const { useTranslation } = require("@/utils/useTranslation");
 
@@ -54,7 +59,19 @@ describe("useTaskDetailViewAdapter", () => {
       user: {
         id: "user-1",
         name: "Test User",
+        role: "manager",
       },
+    });
+
+    useProjectStoreWithInit.mockReturnValue({
+      projectIdsByUser: {
+        "user-1": ["project-1", "project-2", "project-a"],
+      },
+      projects: [
+        { id: "project-1", companyId: "company-1" },
+        { id: "project-2", companyId: "company-1" },
+        { id: "project-a", companyId: "company-1" },
+      ],
     });
 
     useDateFormatter.mockReturnValue({

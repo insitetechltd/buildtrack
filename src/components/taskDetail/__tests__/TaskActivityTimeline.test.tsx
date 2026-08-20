@@ -134,8 +134,16 @@ describe("TaskActivityTimeline", () => {
       "rounded-3xl",
     );
     expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-2")).toBeTruthy();
-    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.className).not.toContain(
-      "h-44",
+    expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.style).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+        }),
+      ]),
     );
     await waitFor(() => {
       expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.style).toMatchObject({
@@ -193,6 +201,7 @@ describe("TaskActivityTimeline", () => {
 
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.source).toEqual({
       uri: "https://example.com/photo-2.jpg",
+      cacheKey: "https://example.com/photo-2.jpg",
     });
     expect(screen.getByTestId("task-activity-timeline__gallery_pager-activity-2")).toBeTruthy();
 
@@ -205,6 +214,7 @@ describe("TaskActivityTimeline", () => {
 
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.source).toEqual({
       uri: "https://example.com/photo-3.jpg",
+      cacheKey: "https://example.com/photo-3.jpg",
     });
 
     fireEvent.press(screen.getByTestId("task-activity-timeline__lead-photo-pressable-activity-2"));
@@ -212,6 +222,7 @@ describe("TaskActivityTimeline", () => {
     expect(screen.getByTestId("task-activity-timeline__photo_viewer")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
       uri: "https://example.com/photo-3.jpg",
+      cacheKey: "https://example.com/photo-3.jpg",
     });
     expect(screen.getByText("3 / 3")).toBeTruthy();
 
@@ -219,6 +230,7 @@ describe("TaskActivityTimeline", () => {
 
     expect(screen.getByTestId("task-activity-timeline__photo_viewer_image").props.source).toEqual({
       uri: "https://example.com/photo-2.jpg",
+      cacheKey: "https://example.com/photo-2.jpg",
     });
     expect(screen.getByText("2 / 3")).toBeTruthy();
   });

@@ -1,5 +1,13 @@
 import React, { useMemo } from "react";
-import { Dimensions, Modal as RNModal, Pressable, ScrollView, Text, View } from "react-native";
+import {
+  Dimensions,
+  Modal as RNModal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
@@ -9,6 +17,13 @@ import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
 } from "@/ui/contracts/viewAdapters";
+
+function buildCachedImageSource(photoUri: string) {
+  return {
+    uri: photoUri,
+    cacheKey: extractBuildtrackStoragePath(photoUri) ?? photoUri,
+  };
+}
 
 interface TaskActivityTimelineProps {
   activities?: TaskDetailActivityModel[];
@@ -300,7 +315,10 @@ export default function TaskActivityTimeline({
                             }
                             accessibilityRole="button"
                             className="h-full"
-                            style={{ width: containerWidths[activity.id] || Dimensions.get('window').width - 48 }}
+                            style={{
+                              width: containerWidths[activity.id] || Dimensions.get('window').width - 48,
+                              position: "relative",
+                            }}
                             onPress={() => openGallery(activity.photoUrls, photoIndex)}
                           >
                             <ExpoImage
@@ -310,11 +328,10 @@ export default function TaskActivityTimeline({
                                   : undefined
                               }
                               accessibilityLabel={`Lead photo for ${activity.eventLabel}`}
-                              source={{ uri: photoUri }}
+                              source={buildCachedImageSource(photoUri)}
                               contentFit="cover"
                               cachePolicy="memory-disk"
-                              cacheKey={extractBuildtrackStoragePath(photoUri) ?? photoUri}
-                              className="h-full w-full bg-slate-200"
+                              style={[StyleSheet.absoluteFillObject, { backgroundColor: "#e2e8f0" }]}
                             />
                           </Pressable>
                         ))}
@@ -434,7 +451,11 @@ export default function TaskActivityTimeline({
                 {selectedGallery.photos.map((photoUri, index) => (
                   <View
                     key={`modal-photo-${index}`}
-                    style={{ width: Dimensions.get("window").width, height: "100%" }}
+                    style={{
+                      width: Dimensions.get("window").width,
+                      height: "100%",
+                      position: "relative",
+                    }}
                   >
                     <ExpoImage
                       testID={
@@ -442,11 +463,10 @@ export default function TaskActivityTimeline({
                           ? "task-activity-timeline__photo_viewer_image"
                           : undefined
                       }
-                      source={{ uri: photoUri }}
+                      source={buildCachedImageSource(photoUri)}
                       contentFit="contain"
                       cachePolicy="memory-disk"
-                      cacheKey={extractBuildtrackStoragePath(photoUri) ?? photoUri}
-                      className="h-full w-full"
+                      style={StyleSheet.absoluteFillObject}
                     />
                   </View>
                 ))}

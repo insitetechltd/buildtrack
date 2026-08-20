@@ -29,11 +29,13 @@ describe("TaskDetailEvidenceStrip", () => {
     expect(screen.getByTestId("task-detail__active_stage_photo_featured").props.cachePolicy).toBe(
       "memory-disk",
     );
-    expect(screen.getByTestId("task-detail__active_stage_photo_featured").props.cacheKey).toBe(
-      "company-1/task-updates/update-1/photo-a.jpg",
-    );
-    expect(screen.getByTestId("task-detail__active_stage_photo_1").props.cacheKey).toBe(
-      "https://example.com/external.jpg",
-    );
+    expect(screen.getByTestId("task-detail__active_stage_photo_featured").props.source).toEqual({
+      uri: "company-1/task-updates/update-1/photo-a.jpg",
+      cacheKey: "company-1/task-updates/update-1/photo-a.jpg",
+    });
+    expect(screen.getByTestId("task-detail__active_stage_photo_1").props.source).toEqual({
+      uri: "https://example.com/external.jpg",
+      cacheKey: "https://example.com/external.jpg",
+    });
   });
 });

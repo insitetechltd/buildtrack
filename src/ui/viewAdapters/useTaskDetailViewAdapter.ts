@@ -488,13 +488,34 @@ export function useTaskDetailViewAdapter({
     }
     const activityPhotos =
       task.activities?.flatMap((activity) => {
-        const photos = (activity.data as { photos?: string[] } | undefined)?.photos;
+        const photos = (activity.data as { photos?: unknown[] } | undefined)?.photos;
         return Array.isArray(photos) ? photos : [];
       }) ?? [];
     const updatePhotos = task.updates?.flatMap((update) => update.photos ?? []) ?? [];
-    const refs = [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].filter(
-      (value): value is string => typeof value === 'string' && value.length > 0
-    );
+    const refs = [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos].flatMap((value) => {
+      if (typeof value === "string" && value.length > 0) {
+        return [value];
+      }
+      if (value && typeof value === "object") {
+        const attachment = value as {
+          uri?: string;
+          annotatedUri?: string;
+          public_url?: string;
+          publicUrl?: string;
+          storage_path?: string;
+          storagePath?: string;
+        };
+        return [
+          attachment.public_url,
+          attachment.publicUrl,
+          attachment.annotatedUri,
+          attachment.uri,
+          attachment.storage_path,
+          attachment.storagePath,
+        ].filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+      }
+      return [];
+    });
     if (refs.length === 0) {
       return;
     }

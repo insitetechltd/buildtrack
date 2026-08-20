@@ -141,11 +141,13 @@ export default function ActivityStyleRowCard({
           {hasUsableImage && imageUri ? (
             <ExpoImage
               testID={`${testID}:thumbnail-image`}
-              source={{ uri: imageUri }}
+              source={{
+                uri: imageUri,
+                cacheKey: extractBuildtrackStoragePath(imageUri) ?? imageUri,
+              }}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               cachePolicy="memory-disk"
-              cacheKey={extractBuildtrackStoragePath(imageUri) ?? imageUri}
               onError={() => setHasUsableImage(false)}
             />
           ) : (

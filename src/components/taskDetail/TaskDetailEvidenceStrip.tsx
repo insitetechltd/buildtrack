@@ -1,5 +1,5 @@
 import React from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
@@ -8,6 +8,13 @@ import type { TaskDetailActiveStageModel } from "@/ui/contracts/viewAdapters";
 interface TaskDetailEvidenceStripProps {
   model: TaskDetailActiveStageModel;
   testID?: string;
+}
+
+function buildCachedImageSource(photoUrl: string) {
+  return {
+    uri: photoUrl,
+    cacheKey: extractBuildtrackStoragePath(photoUrl) ?? photoUrl,
+  };
 }
 
 export default function TaskDetailEvidenceStrip({
@@ -21,29 +28,30 @@ export default function TaskDetailEvidenceStrip({
     >
       {model.stageMode === "photo" && model.photos.length > 0 ? (
         <View>
-          <ExpoImage
-            key={`${model.id}-photo-featured`}
-            testID="task-detail__active_stage_photo_featured"
-            source={{ uri: model.photos[model.activePhotoIndex ?? 0] }}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            cacheKey={
-              extractBuildtrackStoragePath(model.photos[model.activePhotoIndex ?? 0]) ??
-              model.photos[model.activePhotoIndex ?? 0]
-            }
-            className="h-52 w-full rounded-[28px] bg-slate-100"
-          />
+          <View className="h-52 w-full overflow-hidden rounded-[28px] bg-slate-100">
+            <ExpoImage
+              key={`${model.id}-photo-featured`}
+              testID="task-detail__active_stage_photo_featured"
+              source={buildCachedImageSource(model.photos[model.activePhotoIndex ?? 0])}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              style={StyleSheet.absoluteFillObject}
+            />
+          </View>
           <View className="mt-3 flex-row gap-3">
             {model.photos.slice(0, 3).map((photoUrl, index) => (
-              <ExpoImage
+              <View
                 key={`${model.id}-photo-${index}`}
-                testID={`task-detail__active_stage_photo_${index}`}
-                source={{ uri: photoUrl }}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                cacheKey={extractBuildtrackStoragePath(photoUrl) ?? photoUrl}
-                className="h-20 flex-1 rounded-2xl bg-slate-100"
-              />
+                className="h-20 flex-1 overflow-hidden rounded-2xl bg-slate-100"
+              >
+                <ExpoImage
+                  testID={`task-detail__active_stage_photo_${index}`}
+                  source={buildCachedImageSource(photoUrl)}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  style={StyleSheet.absoluteFillObject}
+                />
+              </View>
             ))}
           </View>
         </View>

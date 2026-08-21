@@ -750,6 +750,12 @@ export const useTaskStore = create<TaskStore>()(
         const sessionClient = await getSessionScopedSupabase();
         if (!sessionClient) {
           console.warn('📊 [tasks] Skipping fetchTasks — no Supabase session (avoids anon 42501)');
+          if (get().tasks.length === 0) {
+            set({
+              isLoading: false,
+              error: 'Could not load tasks. Pull to retry.',
+            });
+          }
           return;
         }
 

@@ -131,6 +131,7 @@ describe('taskStore.supabase unit tests', () => {
     });
 
     expect(result.current.tasks).toHaveLength(0);
+    expect(result.current.error).toBe('Could not load tasks. Pull to retry.');
     expect(mockFrom).not.toHaveBeenCalled();
   });
 

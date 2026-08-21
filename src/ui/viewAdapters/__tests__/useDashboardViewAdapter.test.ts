@@ -1579,7 +1579,7 @@ describe("useDashboardViewAdapter", () => {
 
     renderHook(() => useDashboardViewAdapter());
 
-    expect(fetchTasks).toHaveBeenCalled();
+    expect(fetchTasks).toHaveBeenCalledWith(true);
   });
 
   it("excludes unattached batches older than 5 days from activity items", () => {

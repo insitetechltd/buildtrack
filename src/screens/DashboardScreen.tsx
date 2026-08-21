@@ -243,17 +243,57 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </View>
           ) : null}
 
+          <View className="mb-4">
+            <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
+              Recent Activity
+            </Text>
+            <View className="gap-3">
+              {output.activityItems.length > 0 ? (
+                output.activityItems.map((item) => (
+                  <ActivityStyleRowCard
+                    key={item.id}
+                    testID={`dashboard-screen__activity_${item.id}`}
+                    variant="activity"
+                    title={item.title}
+                    subtitle={item.subtitle}
+                    metaLabel={item.timestampLabel}
+                    badgeLabel={item.statusLabel}
+                    imageUri={item.previewPhotoUri}
+                    disabled={item.taskId.startsWith("project:")}
+                    onPress={() => {
+                      props.onNavigateToTaskDetail?.(item.taskId);
+                    }}
+                  />
+                ))
+              ) : (
+                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
+                  <Text className="text-lg leading-6 text-[#577783]">
+                    {output.activeProject
+                      ? "No recent activity for the current project yet."
+                      : "Select a project to view recent activity."}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
           {output.draftItems.length > 0 ? (
             <View className="mb-4">
               <Pressable
                 testID="dashboard-screen__drafts_toggle"
+                accessibilityRole="button"
+                accessibilityLabel="Drafts In Progress"
                 onPress={() => setIsDraftsExpanded((current) => !current)}
                 className="mb-2 flex-row items-center justify-between"
+                hitSlop={12}
               >
                 <Text className="text-base font-semibold uppercase tracking-wider text-slate-500">
                   Drafts In Progress
                 </Text>
-                <Text className="text-base font-semibold text-slate-500">
+                <Text
+                  testID="dashboard-screen__drafts_show_hide"
+                  className="text-base font-semibold text-slate-500"
+                >
                   {isDraftsExpanded ? "Hide" : "Show"}
                 </Text>
               </Pressable>
@@ -292,40 +332,6 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               ) : null}
             </View>
           ) : null}
-
-          <View className="mb-4">
-            <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-              Recent Activity
-            </Text>
-            <View className="gap-3">
-              {output.activityItems.length > 0 ? (
-                output.activityItems.map((item) => (
-                  <ActivityStyleRowCard
-                    key={item.id}
-                    testID={`dashboard-screen__activity_${item.id}`}
-                    variant="activity"
-                    title={item.title}
-                    subtitle={item.subtitle}
-                    metaLabel={item.timestampLabel}
-                    badgeLabel={item.statusLabel}
-                    imageUri={item.previewPhotoUri}
-                    disabled={item.taskId.startsWith("project:")}
-                    onPress={() => {
-                      props.onNavigateToTaskDetail?.(item.taskId);
-                    }}
-                  />
-                ))
-              ) : (
-                <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
-                  <Text className="text-lg leading-6 text-[#577783]">
-                    {output.activeProject
-                      ? "No recent activity for the current project yet."
-                      : "Select a project to view recent activity."}
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
           <View className="h-24" />
         </ScrollView>
     </SafeAreaView>

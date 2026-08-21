@@ -241,6 +241,7 @@ describe('sync manager regression tests', () => {
     const fetchProjects = jest.fn().mockResolvedValue(undefined);
     const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
     const fetchUsers = jest.fn().mockResolvedValue(undefined);
+    const setTaskStoreState = jest.fn();
 
     const taskStoreState = {
       tasks: [],
@@ -259,6 +260,7 @@ describe('sync manager regression tests', () => {
     };
     const authStoreState = {
       user: { id: 'user-1' },
+      refreshSession: jest.fn().mockResolvedValue(undefined),
     };
 
     jest.spyOn(Date, 'now').mockReturnValue(2000);
@@ -266,7 +268,7 @@ describe('sync manager regression tests', () => {
     jest.doMock('../../state/taskStore.supabase', () => {
       const useTaskStore = jest.fn(() => taskStoreState);
       useTaskStore.getState = () => taskStoreState;
-      useTaskStore.setState = jest.fn();
+      useTaskStore.setState = setTaskStoreState;
       return { useTaskStore };
     });
     jest.doMock('../../state/projectStore.supabase', () => {
@@ -299,6 +301,86 @@ describe('sync manager regression tests', () => {
     expect(fetchTasks).not.toHaveBeenCalled();
     expect(fetchProjects).not.toHaveBeenCalled();
     expect(taskStoreState.fetchTasks).not.toHaveBeenCalled();
+    expect(setTaskStoreState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: 'Could not load tasks. Pull to retry.',
+      }),
+    );
+  });
+
+  it('retries session on force refresh then fetches (wake JWT lag)', async () => {
+    jest.useFakeTimers();
+    const fetchTasks = jest.fn().mockResolvedValue(undefined);
+    const fetchProjects = jest.fn().mockResolvedValue(undefined);
+    const fetchUserProjectAssignments = jest.fn().mockResolvedValue(undefined);
+    const fetchUsers = jest.fn().mockResolvedValue(undefined);
+    const getSessionScopedSupabase = jest
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue({});
+
+    const taskStoreState = {
+      tasks: [],
+      taskQueryMeta: {},
+      fetchTasks,
+    };
+    const projectStoreState = {
+      projects: [{ id: 'project-1' }],
+      userAssignments: [{ userId: 'user-1', projectId: 'project-1' }],
+      fetchProjects,
+      fetchUserProjectAssignments,
+    };
+    const userStoreState = {
+      users: [{ id: 'user-1' }],
+      fetchUsers,
+    };
+    const authStoreState = {
+      user: { id: 'user-1' },
+      refreshSession: jest.fn().mockResolvedValue(undefined),
+    };
+
+    jest.spyOn(Date, 'now').mockReturnValue(5000);
+
+    jest.doMock('../../state/taskStore.supabase', () => {
+      const useTaskStore = jest.fn(() => taskStoreState);
+      useTaskStore.getState = () => taskStoreState;
+      useTaskStore.setState = jest.fn();
+      return { useTaskStore };
+    });
+    jest.doMock('../../state/projectStore.supabase', () => {
+      const useProjectStore = jest.fn(() => projectStoreState);
+      useProjectStore.getState = () => projectStoreState;
+      useProjectStore.setState = jest.fn();
+      return { useProjectStore };
+    });
+    jest.doMock('../../state/userStore.supabase', () => {
+      const useUserStore = jest.fn(() => userStoreState);
+      useUserStore.getState = () => userStoreState;
+      useUserStore.setState = jest.fn();
+      return { useUserStore };
+    });
+    jest.doMock('../../state/authStore', () => {
+      const useAuthStore = jest.fn(() => authStoreState);
+      useAuthStore.getState = () => authStoreState;
+      return { useAuthStore };
+    });
+    jest.doMock('../../api/supabase', () => ({
+      invalidateResourceKeys: jest.fn(),
+    }));
+    jest.doMock('../../api/supabaseSessionGate', () => ({
+      getSessionScopedSupabase,
+    }));
+
+    const { triggerRefresh } = require('../../utils/DataRefreshManager');
+    const pending = triggerRefresh({ force: true });
+    await jest.runAllTimersAsync();
+    await pending;
+
+    expect(authStoreState.refreshSession).toHaveBeenCalled();
+    expect(fetchTasks).toHaveBeenCalledWith(true);
+    expect(fetchProjects).toHaveBeenCalledWith(true);
+    jest.useRealTimers();
   });
 
   it('invalidates related task resource keys before refetching a realtime-updated task', async () => {

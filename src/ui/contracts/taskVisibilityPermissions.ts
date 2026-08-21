@@ -7,6 +7,9 @@
  * - admin / company_admin: tasks on my company projects
  *
  * This keeps worker-facing lists focused without changing backend policy.
+ *
+ * Callers that need project/assignment maps must hold loading (not fail-open,
+ * not claim empty) until `isProjectScopeReady` is true for admin/manager bands.
  */
 
 export type TaskVisibilityViewer = {
@@ -79,6 +82,17 @@ export function canViewerSelectTask(args: {
   }
 
   return (args.task.assignedTo ?? []).map(String).includes(viewerId);
+}
+
+/**
+ * True once projects (or an empty fetch) are known — not mid-rehydrate.
+ * Admin/manager UIs must hold loading until this is true (never fail-open).
+ */
+export function isProjectScopeReady(args: {
+  projectCount: number;
+  hasFetchedProjectsOnce?: boolean;
+}): boolean {
+  return args.projectCount > 0 || args.hasFetchedProjectsOnce === true;
 }
 
 export function filterTasksForViewer<T extends TaskVisibilityTask>(args: {

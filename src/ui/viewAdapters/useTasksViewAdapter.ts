@@ -7,7 +7,11 @@ import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buil
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
 import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
-import { filterTasksForViewer } from "@/ui/contracts/taskVisibilityPermissions";
+import {
+  filterTasksForViewer,
+  isProjectScopeReady,
+  resolveTaskSelectRoleBand,
+} from "@/ui/contracts/taskVisibilityPermissions";
 import {
   extractBuildtrackStoragePath,
   getFileUrl,
@@ -616,6 +620,23 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     }
     return byId;
   }, [projectStore.projects]);
+  const projectScopeReady = useMemo(
+    () =>
+      isProjectScopeReady({
+        projectCount: projectStore.projects?.length ?? 0,
+        hasFetchedProjectsOnce: Boolean(
+          projectStore.projectQueryMeta?.["projects:all"]?.hasFetchedOnce,
+        ),
+      }),
+    [projectStore.projectQueryMeta, projectStore.projects],
+  );
+  const awaitingProjectScope = useMemo(() => {
+    if (!user) {
+      return false;
+    }
+    const band = resolveTaskSelectRoleBand(user);
+    return (band === "admin" || band === "manager") && !projectScopeReady;
+  }, [projectScopeReady, user]);
   const tasks = useMemo(
     () =>
       filterTasksForViewer({
@@ -733,8 +754,10 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     const activeTasks = tasks.filter((task) => !task.archivedAt);
     const allKnownTasks = [...activeTasks, ...archivedTasks];
     const hasTasks = allKnownTasks.length > 0;
-    const isInitialLoading = isLoadingTasks && !hasTasks;
-    const isBackgroundRefreshing = isLoadingTasks && hasTasks;
+    // Hold loading for admin/manager until projects hydrate — never claim empty
+    // and never fail-open the visibility filter.
+    const isInitialLoading = awaitingProjectScope || (isLoadingTasks && !hasTasks);
+    const isBackgroundRefreshing = !awaitingProjectScope && isLoadingTasks && hasTasks;
     const structuralState: TasksSearchInputData["structuralState"] = isInitialLoading
       ? "loading"
       : hasTasks
@@ -1011,6 +1034,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     expandedTaskIds,
     appliedFilters,
     archivedTasks,
+    awaitingProjectScope,
     isFiltersSheetOpen,
     isLoadingTasks,
     normalizedSearchQuery,

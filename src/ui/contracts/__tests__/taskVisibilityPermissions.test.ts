@@ -1,6 +1,7 @@
 import {
   canViewerSelectTask,
   filterTasksForViewer,
+  isProjectScopeReady,
   resolveTaskSelectRoleBand,
 } from "../taskVisibilityPermissions";
 
@@ -113,5 +114,46 @@ describe("taskVisibilityPermissions", () => {
         viewerProjectIds: [],
       }),
     ).toBe(false);
+  });
+
+  it("denies admin/manager when project scope is missing (callers must hold loading)", () => {
+    const peerSelfAssign = {
+      id: "self",
+      projectId: "proj-a",
+      assignedBy: "john",
+      assignedTo: ["john"],
+    };
+
+    expect(
+      canViewerSelectTask({
+        viewer: { id: "henry", systemPermission: "admin", companyId: "co-a" },
+        task: peerSelfAssign,
+        project: null,
+      }),
+    ).toBe(false);
+
+    expect(
+      canViewerSelectTask({
+        viewer: { id: "sarah", role: "manager", companyId: "co-a" },
+        task: peerSelfAssign,
+        project: null,
+        viewerProjectIds: [],
+      }),
+    ).toBe(false);
+
+    expect(
+      canViewerSelectTask({
+        viewer: bob,
+        task: peerSelfAssign,
+        project: null,
+        viewerProjectIds: [],
+      }),
+    ).toBe(false);
+  });
+
+  it("isProjectScopeReady is false until projects exist or fetched once", () => {
+    expect(isProjectScopeReady({ projectCount: 0 })).toBe(false);
+    expect(isProjectScopeReady({ projectCount: 0, hasFetchedProjectsOnce: true })).toBe(true);
+    expect(isProjectScopeReady({ projectCount: 2 })).toBe(true);
   });
 });

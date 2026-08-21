@@ -51,15 +51,36 @@ const generateDataHash = () => {
 // 0 so the first post-JS-restart sync always runs. Persist writes tasks: []
 // (Hermes OOM); Activity would otherwise stay empty until the 30s/60s poll.
 let lastRefreshTime = 0;
-const SESSION_RETRY_MS = 250;
+const SESSION_RETRY_MS = 300;
+const SESSION_FORCE_ATTEMPTS = 4;
 
 async function resolveRefreshSession(force: boolean) {
   let client = await getSessionScopedSupabase();
   if (client || !force) {
     return client;
   }
-  await new Promise((resolve) => setTimeout(resolve, SESSION_RETRY_MS));
-  return getSessionScopedSupabase();
+
+  // iOS wake: persisted auth user can be present before AuthStorage finishes
+  // restoring the JWT. Nudge refresh, then retry getSession briefly.
+  try {
+    await useAuthStore.getState().refreshSession?.();
+  } catch {
+    // refreshSession logs out on invalid refresh token; treat as no session.
+  }
+
+  client = await getSessionScopedSupabase();
+  if (client) {
+    return client;
+  }
+
+  for (let attempt = 1; attempt < SESSION_FORCE_ATTEMPTS; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, SESSION_RETRY_MS));
+    client = await getSessionScopedSupabase();
+    if (client) {
+      return client;
+    }
+  }
+  return null;
 }
 
 // Function to force a re-render of all components using these stores
@@ -151,6 +172,7 @@ export const triggerRefresh = async (options?: { force?: boolean }) => {
 export const DataRefreshManager = () => {
   const appState = useRef(AppState.currentState);
   const lastRefresh = useRef(Date.now());
+  const foregroundTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuthStore();
 
   // Internal refresh function that uses the exported triggerRefresh
@@ -168,8 +190,19 @@ export const DataRefreshManager = () => {
         appState.current.match(/inactive|background/) &&
         nextAppState === 'active'
       ) {
-        console.log('[DataSync] App foregrounded - syncing data...');
-        handleRefresh();
+        // Debounce AppState flicker (permission sheets / Maestro) so wake
+        // force-refresh does not stack with Realtime resubscribe storms.
+        if (foregroundTimerRef.current) {
+          clearTimeout(foregroundTimerRef.current);
+        }
+        foregroundTimerRef.current = setTimeout(() => {
+          foregroundTimerRef.current = null;
+          if (AppState.currentState !== 'active') {
+            return;
+          }
+          console.log('[DataSync] App foregrounded - force syncing data...');
+          void triggerRefresh({ force: true });
+        }, 750);
       }
       appState.current = nextAppState;
     };
@@ -193,6 +226,10 @@ export const DataRefreshManager = () => {
     return () => {
       if (subscription) {
         subscription.remove();
+      }
+      if (foregroundTimerRef.current) {
+        clearTimeout(foregroundTimerRef.current);
+        foregroundTimerRef.current = null;
       }
       if (refreshInterval) {
         clearInterval(refreshInterval);

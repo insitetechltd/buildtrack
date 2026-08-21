@@ -12,7 +12,11 @@ import {
   prefetchSignedUrls,
   subscribeSignedUrlCache,
 } from "@/api/fileUploadService";
-import { filterTasksForViewer } from "@/ui/contracts/taskVisibilityPermissions";
+import {
+  filterTasksForViewer,
+  isProjectScopeReady,
+  resolveTaskSelectRoleBand,
+} from "@/ui/contracts/taskVisibilityPermissions";
 import type {
   DashboardActivityItem,
   DashboardProjectSummaryItem,
@@ -296,6 +300,23 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     }
     return byId;
   }, [projectStore.projects]);
+  const projectScopeReady = useMemo(
+    () =>
+      isProjectScopeReady({
+        projectCount: projectStore.projects?.length ?? 0,
+        hasFetchedProjectsOnce: Boolean(
+          projectStore.projectQueryMeta?.["projects:all"]?.hasFetchedOnce,
+        ),
+      }),
+    [projectStore.projectQueryMeta, projectStore.projects],
+  );
+  const awaitingProjectScope = useMemo(() => {
+    if (!user) {
+      return false;
+    }
+    const band = resolveTaskSelectRoleBand(user);
+    return (band === "admin" || band === "manager") && !projectScopeReady;
+  }, [projectScopeReady, user]);
   const tasks = useMemo(
     () =>
       filterTasksForViewer({
@@ -307,7 +328,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     [projectsById, taskStore.tasks, user, viewerProjectIds],
   );
   const unattachedBatches = unattachedBatchStore.batches ?? [];
-  const isLoadingProjects = Boolean(projectStore.isLoading);
+  const isLoadingProjects = Boolean(projectStore.isLoading) || awaitingProjectScope;
 
   useEffect(() => subscribeSignedUrlCache(() => bumpSignedUrlEpoch((n) => n + 1)), []);
 
@@ -315,19 +336,21 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     if (!user) {
       return;
     }
-    // Persist does not keep task payloads. Landing Activity must refetch.
-    void taskStore.fetchTasks?.();
+    // Persist does not keep task payloads. Landing Activity must force-refetch.
+    void taskStore.fetchTasks?.(true);
   }, [taskStore.fetchTasks, user]);
 
   useEffect(() => {
+    const prefetchProjectId =
+      selectedProjectId ?? (projects.length === 1 ? projects[0]?.id ?? null : null);
     const refs = (
-      selectedProjectId ? tasks.filter((task) => task.projectId === selectedProjectId) : []
+      prefetchProjectId ? tasks.filter((task) => task.projectId === prefetchProjectId) : []
     ).flatMap((task) => collectTaskPhotoRefs(task));
     if (refs.length === 0) {
       return;
     }
     void prefetchSignedUrls(refs);
-  }, [tasks, selectedProjectId]);
+  }, [tasks, selectedProjectId, projects]);
 
   const {
     activeProject,
@@ -343,9 +366,10 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   } = useMemo(() => {
     const hasProjects = projects.length > 0;
     const visibleProjectIds = new Set(projects.map((project) => project.id));
-    const resolvedActiveProject = selectedProjectId
-      ? projects.find((project) => project.id === selectedProjectId) ?? null
-      : null;
+    const resolvedActiveProject =
+      (selectedProjectId
+        ? projects.find((project) => project.id === selectedProjectId) ?? null
+        : null) ?? (projects.length === 1 ? projects[0] ?? null : null);
     const isInitialLoading = isLoadingProjects && !hasProjects;
     const isBackgroundRefreshing = isLoadingProjects && hasProjects;
     const structuralState: PrimitiveStructuralState = isInitialLoading

@@ -38,8 +38,9 @@ export function NetworkSyncManager() {
     
     console.log('📡 [NetworkSync] Network reconnected - syncing all data...', new Date().toLocaleTimeString());
     
-    // Use the exported triggerRefresh function from DataRefreshManager
-    await triggerRefresh();
+    // Force: reconnect after airplane/offline often coincides with empty
+    // in-memory tasks (not persisted) and a soft refresh would skip.
+    await triggerRefresh({ force: true });
     
     console.log('✅ [NetworkSync] Sync completed successfully after reconnect');
   };

@@ -248,13 +248,6 @@ a {
   object-fit: cover;
 }
 
-.tablet-caption {
-  margin: 0.75rem 0 0;
-  font-weight: 500;
-  font-size: 1rem;
-  color: var(--teal-700);
-}
-
 /* —— Sections —— */
 .section {
   padding-block: clamp(3rem, 6vw, 4.5rem);
@@ -379,8 +372,9 @@ a {
 
 .signup {
   display: grid;
-  gap: 2.5rem;
+  gap: 2rem;
   align-items: start;
+  justify-items: stretch;
 }
 
 .signup-phone {
@@ -391,14 +385,13 @@ a {
   width: min(300px, 78vw);
 }
 
-.signup-main {
-  display: grid;
-  gap: 2rem;
-  align-content: start;
+.signup-copy {
+  max-width: 36rem;
 }
 
 .signup-copy .lede {
   margin-bottom: 1.25rem;
+  max-width: 36rem;
 }
 
 .signup-copy h2 {
@@ -407,21 +400,20 @@ a {
 
 .signup-tablet {
   margin: 0;
-  max-width: 420px;
-  width: 100%;
-  justify-self: start;
+  width: min(400px, 100%);
+  justify-self: center;
 }
 
 .signup-tablet .tablet {
   width: 100%;
-  max-width: 420px;
 }
 
 .signup-tablet .tablet img {
   width: 100%;
   height: auto;
-  aspect-ratio: 432 / 576;
+  aspect-ratio: 3 / 4;
   object-fit: cover;
+  object-position: top center;
 }
 
 .tablet-caption {
@@ -429,6 +421,7 @@ a {
   font-weight: 500;
   font-size: 1rem;
   color: var(--teal-700);
+  text-align: left;
 }
 
 .bullets {
@@ -457,32 +450,60 @@ a {
   background: var(--teal-600);
 }
 
-@media (min-width: 900px) {
+/* Phone + copy on tablet-ish widths; tablet mock below */
+@media (min-width: 800px) and (max-width: 1099px) {
   .signup {
-    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
-    gap: 3rem;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 2rem 2.5rem;
+  }
+
+  .signup-phone {
+    justify-self: start;
+    grid-row: 1 / span 2;
+  }
+
+  .signup-copy {
+    grid-column: 2;
+  }
+
+  .signup-tablet {
+    grid-column: 2;
+    justify-self: start;
+    width: min(360px, 100%);
+  }
+}
+
+/* Figma match: phone | copy | tablet */
+@media (min-width: 1100px) {
+  .signup {
+    grid-template-columns: 300px minmax(280px, 1fr) 400px;
+    gap: 2rem 2.5rem;
     align-items: start;
   }
 
   .signup-phone {
     justify-self: start;
-    position: sticky;
-    top: 1.5rem;
   }
 
-  .signup-main {
-    gap: 2.25rem;
+  .signup-phone .phone {
+    width: 300px;
+  }
+
+  .signup-copy {
+    max-width: 28rem;
+    padding-top: 0.5rem;
   }
 
   .signup-tablet {
     justify-self: end;
-    max-width: 380px;
+    width: 400px;
+    margin-top: 1.5rem;
   }
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1280px) {
   .signup {
-    grid-template-columns: 320px minmax(0, 1fr);
+    grid-template-columns: 320px minmax(300px, 1fr) 420px;
   }
 
   .signup-phone .phone {
@@ -490,7 +511,7 @@ a {
   }
 
   .signup-tablet {
-    max-width: 420px;
+    width: 420px;
   }
 }
 
@@ -652,27 +673,6 @@ a {
   }
 
   .use-band.reverse .use-copy {
-    order: 2;
-  }
-
-  .signup {
-    grid-template-columns: auto 1fr auto;
-    align-items: center;
-  }
-
-  .signup-devices {
-    display: contents;
-  }
-
-  .signup-phone {
-    order: 0;
-  }
-
-  .signup-copy {
-    order: 1;
-  }
-
-  .signup-tablet {
     order: 2;
   }
 

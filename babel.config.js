@@ -8,6 +8,8 @@ module.exports = function (api) {
         'babel-preset-expo',
         {
           ...(isTest ? {} : { jsxImportSource: 'nativewind' }),
+          // Legacy architecture (newArchEnabled: false) → Reanimated 3.x.
+          // worklets stays installed for NativeWind/css-interop Babel only; native autolinking disabled in react-native.config.js.
           worklets: false,
           reanimated: true,
         },

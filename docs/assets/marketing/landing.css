@@ -379,12 +379,56 @@ a {
 
 .signup {
   display: grid;
-  gap: 2rem;
+  gap: 2.5rem;
   align-items: start;
+}
+
+.signup-phone {
+  justify-self: center;
+}
+
+.signup-phone .phone {
+  width: min(300px, 78vw);
+}
+
+.signup-main {
+  display: grid;
+  gap: 2rem;
+  align-content: start;
+}
+
+.signup-copy .lede {
+  margin-bottom: 1.25rem;
 }
 
 .signup-copy h2 {
   font-size: clamp(1.6rem, 3vw, 2.125rem);
+}
+
+.signup-tablet {
+  margin: 0;
+  max-width: 420px;
+  width: 100%;
+  justify-self: start;
+}
+
+.signup-tablet .tablet {
+  width: 100%;
+  max-width: 420px;
+}
+
+.signup-tablet .tablet img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 432 / 576;
+  object-fit: cover;
+}
+
+.tablet-caption {
+  margin: 0.75rem 0 0;
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--teal-700);
 }
 
 .bullets {
@@ -413,10 +457,41 @@ a {
   background: var(--teal-600);
 }
 
-.signup-devices {
-  display: grid;
-  gap: 1.5rem;
-  justify-items: center;
+@media (min-width: 900px) {
+  .signup {
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+    gap: 3rem;
+    align-items: start;
+  }
+
+  .signup-phone {
+    justify-self: start;
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  .signup-main {
+    gap: 2.25rem;
+  }
+
+  .signup-tablet {
+    justify-self: end;
+    max-width: 380px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .signup {
+    grid-template-columns: 320px minmax(0, 1fr);
+  }
+
+  .signup-phone .phone {
+    width: 320px;
+  }
+
+  .signup-tablet {
+    max-width: 420px;
+  }
 }
 
 .pricing {

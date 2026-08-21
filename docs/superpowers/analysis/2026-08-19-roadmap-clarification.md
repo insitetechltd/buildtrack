@@ -2,7 +2,7 @@
 
 **Status:** Locked product sequence + AI policy. Revisit from time to time; do not silently replace.
 
-**When to reopen this file:** any discussion of ROADMAP, Wave 2, AI, DMS, drawings, cost, owner console, Save Draft, multi-company / project invite / partner liaison / seat billing, or “what we build after RC.”
+**When to reopen this file:** any discussion of ROADMAP, Wave 2, AI, DMS, drawings, cost, owner console, Save Draft, multi-company / project invite / partner liaison / seat billing, customer-managed / BYO storage, or “what we build after RC.”
 
 **How to reopen:** read this file **before** proposing new milestones or pulling Wave 2 / generic LLM work forward. Then update this file if the user changes the lock (date the addendum). Chat is scratch; this file + `documentation/ROADMAP.md` + `documentation/NOW.md` are the pick-up.
 
@@ -35,7 +35,8 @@ Honest assessment vs 1–2 person Expo+Supabase peers (judgment, 2026-08-19): di
 | 15.06 | `M-OPS-02` | Shrink `taskStore.supabase.ts` / `CreateTaskScreen` / `AppNavigator`. Enforce intended states. |
 | 15.065 | `M-AUTHZ-02` | Multi-company membership: partner **liaison** + project invite + optional host-absorb seats. SoT: `documentation/multi-company-project-membership.md`. Not RC. |
 | 15.07 | `M-AI-01` | Field Q&A over **this project’s dataset** (tasks/photos/activity). Cite or abstain. Create Task LLM is on-ramp only. |
-| Wave 2 | `M-DMS-01` … | **Document control** (current revision). Unblocks drawing assist. |
+| Wave 2 | `M-DMS-01` … | **Document control** (current revision). Unblocks drawing assist. Opens window for **`WS-STORAGE`** (customer-managed storage) — Deferred until then. |
+| After DMS start | `M-STORAGE-01`… | Enterprise privacy storage discovery → abstraction → pilot → export → DMS converge. Must not jump OPS/AI. |
 | 15.08 | `M-AI-02` | Drawing **assist** only: title block, current rev, quote a **crop**. Not infer geometry / 3D-as-truth. CAD = convert or specialist API. |
 | 15.6 → 15.11 | `M-DMS-04` → `M-AI-03` | Approved submittals, then **barcode** material spec-check for this location/sequence. Unlabeled hardware never auto-pass. |
 | 15.10 | `M-COST-01` | Jobsite cost after DMS. Not R6 SKUs, not storage-GB metering. |
@@ -65,6 +66,7 @@ Claude/Sonnet: reasonable **document assistant** (describe, quote, abstain). Not
 - Workflow-gaps on Activity / Tasks / company Admin (confuses workers). Owner-only.
 - Hosting the owner console on a new web box **this week**; laptop `localhost` is not a product host.
 - Jumping Wave 2 / DMS / IAP / email-invite ahead of RC → OPS-01 → OPS-02.
+- Customer-managed / BYO storage ahead of RC → OPS-01 → OPS-02 → `M-AI-01` → Wave 2 / `M-DMS-01` (parked as `WS-STORAGE`; see 2026-08-21 addendum).
 - Building an in-app DWG parser in year one.
 - Global user directory for project team pickers (any role). Multi-company join is liaison + project invite + optional host-absorb only (`M-AUTHZ-02`).
 
@@ -97,5 +99,16 @@ Locks:
 - **Path C — Host absorb:** host explicitly bills outsider to **host** seats when willing to pay.
 - Keep A+B+C. Distinct from company seat invite. Platform accounts required. Schema/RLS = Human Gate at build time.
 - Explicit reject still stands for jumping email-invite ahead of RC → OPS-01 → OPS-02; this addendum **schedules** invite/liaison **after** OPS-02, not during RC.
+
+### 2026-08-21 — Customer-managed storage (parked; enterprise track)
+
+**Not RC. Not immediate post-RC.** Slotting plan: `docs/superpowers/plans/2026-08-21-customer-managed-storage-slotting.md`. ROADMAP: **`WS-STORAGE / M-STORAGE-01`…`05`** (Deferred, Order 15.31–15.35).
+
+Locks:
+
+- Do **not** open BYO / customer-managed storage during RC, Tier 1 pre-RC, or `M-OPS-01` / `M-OPS-02` / `M-AI-01`.
+- Attach the track **after Wave 2 / `M-DMS-01` begins** so evidence + documents share one portability model.
+- Standard product path stays **Insite-managed** Supabase Storage. BYO is a **premium Enterprise Privacy** solution (pilot → productize), not the default SKU.
+- Jumping storage portability ahead of OPS or DMS requires an intentional lock change in this file.
 
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

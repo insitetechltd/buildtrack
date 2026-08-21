@@ -6,26 +6,30 @@
 
 ## Doing
 
-Commercial **RC week**. TF **189** installed. M-DATA-04 idle sample quiet. Wake-empty fix: force foreground refresh + session retry; **hold/loading** (not fail-open) until project scope ready; honest fetch error.
+**Marketing site:** almost ready — Hybrid v4 static under `docs/` (`index.html` + `assets/marketing/*`). Uncommitted; next = commit + push for GitHub Pages.
+
+**M-DATA-04:** **30s idle gate PASS** (2026-08-21). RC dampened; formal close optional (airplane / longer idle).
+
+**Figma:** CHOSEN Hybrid v4 `44:2` — https://www.figma.com/design/gTKeArmzmI3DOCz6RlHxhq?node-id=44-2
+
+**Android RC:** AAB **40** Play internal draft.
+
+**iOS:** 1.1.3 build **190** Waiting for Review.
 
 ## Next
 
-1. Airplane reconnect → re-run M-DATA-04 query B (confirm no subscribe stampede)
-2. Smoke TF / local: background app ≥1 min → foreground → tasks still visible (no relogin)
-3. Ship wake fix in next TF build when ready
-4. Do not tick App Store Public
+1. Commit + push `docs/` landing (Pages live)
+2. Store URLs when RC listings live (Human GO)
+3. Optional: `www.insiteworks.co` custom domain
 
 ## Locked this week
 
-- App-side visibility only; deeper access hardening stays post-RC
-- No parallel Maestro against prod until M-DATA-04 is quiet
-- **Multi-company membership (`M-AUTHZ-02`) is post-RC** — product locked in `documentation/multi-company-project-membership.md` (liaison + project invite + host-absorb); do not build in RC week
+- M-AUTHZ-02 post-RC
+- Play production rollout = Human GO
 
 ## Parked
 
-- Wave 2, M-OPS, S-UX-01R until Realtime spike is gated
-- Broader visibility hardening after RC
-- **M-AUTHZ-02** multi-company project membership (after M-OPS-02)
+- Wave 2, M-OPS, S-UX-01R
 
 ---
 

@@ -9,9 +9,23 @@
         h1 { font-size: 1.6rem; }
         h2 { font-size: 1.15rem; margin-top: 1.75rem; }
         .note { background: #f4f4f5; padding: 0.75rem 1rem; border-radius: 6px; }
+        .site-nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1.25rem; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb; font-size: 0.95rem; }
+        .site-nav a { color: #08576e; text-decoration: none; font-weight: 500; }
+        .site-nav a:hover { text-decoration: underline; }
+        .site-nav a[aria-current="page"] { color: #0d2630; font-weight: 700; }
+        .site-footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; font-size: 0.95rem; color: #555; }
+        .site-footer a { color: #08576e; }
     </style>
 </head>
 <body>
+    <nav class="site-nav" aria-label="Site">
+        <a href="index.html">Home</a>
+        <a href="privacy-policy.html" aria-current="page">Privacy</a>
+        <a href="terms-of-service.html">Terms</a>
+        <a href="support.html">Support</a>
+        <a href="https://apps.apple.com/app/id6754898737" target="_blank" rel="noopener noreferrer">App Store</a>
+    </nav>
+
     <h1>Privacy Policy for Taskr</h1>
     <p><strong>Last updated:</strong> 17 August 2026</p>
     <p class="note">This is a short RC draft for App Store review, not a complete legal opinion. Insite may later host a canonical copy on insiteworks.co.</p>
@@ -33,5 +47,10 @@
 
     <h2>Contact</h2>
     <p>Questions about this draft: <a href="mailto:insite.tech.ltd@gmail.com">insite.tech.ltd@gmail.com</a>.</p>
+
+    <footer class="site-footer">
+        <p><a href="index.html">Taskr home</a> · <a href="privacy-policy.html">Privacy</a> · <a href="terms-of-service.html">Terms</a> · <a href="support.html">Support</a></p>
+        <p>© 2026 Insite Works Limited · Taskr</p>
+    </footer>
 </body>
 </html>

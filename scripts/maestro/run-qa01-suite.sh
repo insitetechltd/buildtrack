@@ -7,7 +7,8 @@
 #        - Metro health-check before EVERY scenario; auto-restart if dead.
 #        - Auto-retry ONCE with --reinstall-driver on XCTest transport-crash
 #          (exit code 5999 / "Transport unreachable" class of failures that
-#          happen after 20+ clearState restarts corrupt the FlyingFox listener).
+#          happen after 20+ intentional QA01 clearState restarts corrupt the FlyingFox listener).
+#          Ordinary P/U boots are no-clear resume and should not hit this path.
 #        - Stop-on-first-failure rule enforced (A fail → stop; do not silently
 #          run B/C/D against dead state — token burn).
 #   2. MAX VERBOSITY: heartbeat line every 10s, named PHASE lines with

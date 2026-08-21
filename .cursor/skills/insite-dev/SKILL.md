@@ -75,7 +75,7 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Create Task photo cases (P01–P22)
 
-- Each `P##-*.yaml` is **independent** (`_boot` clearState). Develop/fix with one-shot runs — not full sequential loops.
+- Each `P##-*.yaml` uses ordinary no-clear `_boot` (resume session). Develop/fix with one-shot runs — not full sequential loops.
 - One-shot: `bash scripts/maestro/run-create-task-photo-one.sh P04` (or `FORCE_PURGE=1 …`).
 - npm: `npm run test:e2e:maestro:create-task-photo:one -- P04`
 - Full sequential suite (`run-create-task-photo-suite.sh`) = **final gate only** after all cases pass alone.
@@ -83,7 +83,7 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Update Progress photo cases (U01–U12)
 
-- Same model as P: each `U##-*.yaml` is **independent** (shared `_boot` clearState + API seed task — no Create Task UI).
+- Same model as P: each `U##-*.yaml` uses ordinary no-clear `_boot` + API seed task — no Create Task UI.
 - One-shot while developing/fixing: `bash scripts/maestro/run-update-progress-photo-one.sh U05` (or `FORCE_PURGE=1 …`).
 - npm: `npm run test:e2e:maestro:update-progress-photo:one -- U05`
 - Full sequential suite (`run-update-progress-photo-suite.sh`) = **final gate only**.

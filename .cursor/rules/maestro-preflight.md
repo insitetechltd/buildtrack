@@ -43,13 +43,18 @@ Maestro v2 artifacts ONLY live under:
 ```
 Do NOT search `/`, `$HOME`, or repo-wide `.maestro/` for screenshots; findings there are STALE.
 
-### Gate 7 — DASHBOARD RETURN
-From DevSettings or any non-root screen back to Dashboard home, use:
+### Gate 7 — DASHBOARD RETURN (prefer day-to-day, not wipe)
+From DevSettings or any non-root screen back to Dashboard home, prefer:
+```yaml
+- tapOn:
+    id: "root-tab__activity"
+```
+or relaunch without wipe:
 ```yaml
 - launchApp:
-    clearState: true
+    clearState: false
 ```
-JS restart; Zustand persist preserved; cost ~90s, 100% reliable. Chevron/back chains are unreliable and leave a 10–20% wrong-state surface.
+**Do not** default to `clearState: true`. Ordinary boots model real phone reuse (session + caches stay). Use clearState only for intentional first-install / TCC / sandbox-reset flows (document in the YAML header). Identity switch: `maestro/flows/_logout.yaml` then login — never kill while subscribed.
 
 ### Gate 8 — VISUAL PNG EVIDENCE FIRST BEFORE rc=0 ACCEPTED
 First action after ANY Maestro run (rc=0 OR rc=1) is to VISUALLY READ screenshot PNG bytes of tab-landing and actor-switch screenshots. Compare title text / list content to filename intent. rc=0 ALONE IS MEANINGLESS. False rc=0 due to banner intercepts produced 5 wasted hours.
@@ -79,7 +84,7 @@ This is the AUTOMATED version of Gate #8 above that would have FAILED all 4 fals
 First failing scenario → DO NOT run remaining scenarios against dead state; saves expensive tokens.
 
 ### Layer 6 — INTER-SCENARIO COOL-DOWN 8s
-After `clearState: true` JS restart, PAUSE 8s before next confirmation-sheet tap to avoid race between JS bundle reload + XCTest tap dispatch.
+After an **intentional** `clearState: true` JS restart (QA01 / sandbox hard-reset only), PAUSE 8s before next confirmation-sheet tap to avoid race between JS bundle reload + XCTest tap dispatch. Ordinary no-clear boots do not need this cool-down.
 
 ---
 
@@ -111,7 +116,7 @@ Parallel Maestro is allowed only on **two distinct simulator UDIDs**, **1 job pe
 [ ] G4: PRESET-vs-ACTOR cross-checked
 [ ] G5: FLAG ORDER correct (--reinstall-driver after test)
 [ ] G6: ARTIFACTS in /tmp/maestro-tmp-home only
-[ ] G7: DASHBOARD RETURN via launchApp clearState
+[ ] G7: DASHBOARD RETURN via tab tap or no-clear relaunch (clearState only if intentional hard-reset)
 [ ] G8: PNGs VISUALLY read after run
 [ ] L1-L6: Runner wrapper layers ON (if using custom runner)
 [ ] MAESTRO_0CLICK_DISABLE=1 EXPORTED

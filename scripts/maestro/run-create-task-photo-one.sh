@@ -29,7 +29,7 @@ export MAESTRO_0CLICK_DISABLE=1
 TARGET="${1:-${ONLY:-}}"
 if [[ -z "${TARGET}" ]]; then
   echo "Usage: $0 P04   OR   ONLY=P04 $0"
-  echo "Each P## flow is independent (clearState boot). Prefer this over full suite while developing."
+  echo "Each P## flow uses ordinary no-clear boot (resume session). Prefer this over full suite while developing."
   exit 2
 fi
 

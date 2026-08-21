@@ -152,6 +152,31 @@ release_sim_locks() {
   bash "${SIM_LOCK}" release-all 2>/dev/null || true
 }
 
+# M-DATA-04: close Realtime on both sims before dropping locks / ending the suite.
+# Ordinary boots are no-clear resume; teardown logout still required so sockets hang up.
+logout_both_sims() {
+  mkdir -p "${ARTIFACT_DIR}"
+  local logout_flow="${ROOT}/maestro/flows/_logout.yaml"
+  [[ -f "${logout_flow}" ]] || return 0
+  set +e
+  if [[ -n "${MAESTRO_UDID_ASSIGNER:-}" ]]; then
+    log "Teardown logout John UDID=${MAESTRO_UDID_ASSIGNER:0:8}…"
+    bash "${WRAPPER}" --udid "${MAESTRO_UDID_ASSIGNER}" test "${logout_flow}" \
+      >>"${ARTIFACT_DIR}/teardown-logout-john.log" 2>&1 || true
+  fi
+  if [[ -n "${MAESTRO_UDID_ASSIGNEE:-}" ]]; then
+    log "Teardown logout Alice UDID=${MAESTRO_UDID_ASSIGNEE:0:8}…"
+    bash "${WRAPPER}" --udid "${MAESTRO_UDID_ASSIGNEE}" test "${logout_flow}" \
+      >>"${ARTIFACT_DIR}/teardown-logout-alice.log" 2>&1 || true
+  fi
+  set -e
+}
+
+dual_user_teardown() {
+  logout_both_sims
+  release_sim_locks
+}
+
 metro_health_check() {
   local url="http://127.0.0.1:8081/status"
   local attempt=1
@@ -401,7 +426,7 @@ run_d01() {
 main() {
   log "===== DUAL-USER GATE START ====="
   resolve_udids
-  trap release_sim_locks EXIT INT TERM
+  trap dual_user_teardown EXIT INT TERM
   coordination_preflight
   log "Assigner (John)  UDID=${MAESTRO_UDID_ASSIGNER}"
   log "Assignee (Alice) UDID=${MAESTRO_UDID_ASSIGNEE}"

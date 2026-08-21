@@ -6,12 +6,7 @@ tags:
   - w-a05
 ---
 - runFlow: _open-activity-drafts.yaml
-- tapOn:
-    id: "dashboard-screen__drafts_toggle"
-- extendedWaitUntil:
-    visible:
-      id: "dashboard-screen__drafts_list"
-    timeout: 10000
+- runFlow: _expand-drafts.yaml
 - takeScreenshot: "rc-B-W-A05-drafts-show"
 - tapOn:
     id: "dashboard-screen__drafts_toggle"

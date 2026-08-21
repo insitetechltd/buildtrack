@@ -1,3 +1,5 @@
+# INTENTIONAL HARD RESET lane (QA01 rubric): mid-flow clearState between actor/preset
+# segments is deliberate. Ordinary product boots use clearState: false.
 appId: com.buildtrack.app.local
 ---
 - launchApp:

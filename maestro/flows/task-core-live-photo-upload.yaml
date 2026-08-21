@@ -64,8 +64,10 @@ appId: com.buildtrack.app.local
     id: "create-task__submit-success-confirm"
 - assertVisible:
     id: "dashboard-screen__root"
+# Identity switch John → Alice: logout (closes Realtime), then login. No clearState.
+- runFlow: _logout.yaml
 - launchApp:
-    clearState: true
+    clearState: false
 - openLink:
     link: "exp+buildtrack://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A8081"
 - runFlow:
@@ -78,16 +80,19 @@ appId: com.buildtrack.app.local
       visible: 'Open in “Taskr”?'
     commands:
       - tapOn: "Open"
-- assertVisible:
-    id: "login-submit"
-- tapOn:
-    id: "login-emailOrPhone"
-- inputText: "alice.workera1@test.com"
-- tapOn:
-    id: "login-password"
-- inputText: "password123"
-- tapOn:
-    id: "login-submit"
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "login-emailOrPhone"
+      - inputText: "alice.workera1@test.com"
+      - tapOn:
+          id: "login-password"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
 - assertVisible:
     id: "dashboard-screen__root"
 - runFlow:

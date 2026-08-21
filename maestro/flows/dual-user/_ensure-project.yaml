@@ -1,5 +1,6 @@
-# Dual-user: make sure both users are on shared Project A.
-# If already there, avoid extra picker hops and just refresh in place.
+# Dual-user: land on shared Project A before any create/assign.
+# REQUIRED: Project A active (team roster depends on it — empty assignee list = wrong/no project).
+# REMOVED: pull-to-refresh after login (unnecessary; churns Realtime).
 appId: com.buildtrack.app.local
 ---
 - runFlow: ../_dismiss-blocking-overlays.yaml
@@ -10,6 +11,7 @@ appId: com.buildtrack.app.local
     visible:
       id: "dashboard-screen__root"
     timeout: 20000
+# If Project A is not the active project, open picker and select by stable row id.
 - runFlow:
     when:
       notVisible: ".*Project A - Commercial Building.*"
@@ -34,16 +36,14 @@ appId: com.buildtrack.app.local
           visible:
             id: "dashboard-screen__root"
           timeout: 45000
+# Hard gate: wrong project → fail here (do not skip).
 - extendedWaitUntil:
     visible: ".*Project A - Commercial Building.*"
     timeout: 20000
-- runFlow: _pull-to-refresh-activity.yaml
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__project_summary_section"
     timeout: 20000
 - assertVisible: ".*Project A - Commercial Building.*"
 - takeScreenshot: "du-active-project-project-a"
-- assertVisible:
-    id: "dashboard-screen__root"
 - runFlow: ../create-task-photo/_assert-no-logbox.yaml

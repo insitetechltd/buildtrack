@@ -67,7 +67,14 @@ tags:
       id: "dashboard-screen__root"
     timeout: 15000
 
-# W-A05: Drafts Show/Hide
+# W-A05: Drafts Show/Hide (last section — below Recent Activity)
+- scrollUntilVisible:
+    element:
+      id: "dashboard-screen__drafts_toggle"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 50
+    timeout: 20000
 - assertVisible:
     id: "dashboard-screen__drafts_toggle"
 - tapOn:

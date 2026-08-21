@@ -1,0 +1,56 @@
+# Sign out so Realtime channels close cleanly.
+# Use for identity switches or before an intentional hard-reset flow — NOT ordinary boots.
+# Ordinary day-to-day boots should resume with clearState: false (see create-task-photo/_boot.yaml).
+# M-DATA-04: never clearState or stopApp while a live Supabase session is open.
+appId: com.buildtrack.app.local
+---
+- runFlow: _dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      visible: "Are you sure you want to logout?"
+    commands:
+      # Alert already open (retry / prior partial logout). Prefer the destructive button,
+      # not the title "Logout" (index 0 is often the title).
+      - tapOn:
+          text: "Logout"
+          index: 1
+      - extendedWaitUntil:
+          visible:
+            id: "login-submit"
+          timeout: 45000
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      notVisible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - extendedWaitUntil:
+          visible:
+            id: "profile-menu-logout"
+          timeout: 12000
+      - tapOn:
+          id: "profile-menu-logout"
+      # Native Alert: title "Logout" + destructive button "Logout" (PLATFORM_LIMITATION).
+      - extendedWaitUntil:
+          visible: "Are you sure you want to logout?"
+          timeout: 8000
+      - tapOn:
+          text: "Logout"
+          index: 1
+      - runFlow:
+          when:
+            visible: "Are you sure you want to logout?"
+          commands:
+            # Fallback if index miss: right-hand destructive button on iPhone alert.
+            - tapOn:
+                point: "70%, 52%"
+      - extendedWaitUntil:
+          visible:
+            id: "login-submit"
+          timeout: 45000
+      # Brief settle so client teardown can drop Realtime subscriptions.
+      - waitForAnimationToEnd:
+          timeout: 2000

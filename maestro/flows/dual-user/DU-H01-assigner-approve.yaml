@@ -1,4 +1,10 @@
 # DU-H01 phase 4 — John approves Alice's submitted task.
+#
+# Optimal path:
+#   1. resume John stopApp:false     REQUIRED (do NOT kill/relaunch John's session)
+#   2. open task via Tasks search    REQUIRED (pull-to-refresh Tasks is OK here)
+#   3. scroll + approve              REQUIRED
+# NOT here: clearState / stopApp:true / re-login / Activity pull after login.
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -7,28 +13,29 @@ tags:
 - runFlow: _resume-john.yaml
 - runFlow: _open-task-by-title.yaml
 - takeScreenshot: "du-h01-10-john-review"
-- runFlow:
-    when:
-      visible:
-        id: "task-detail__quick-action-approve_task"
-    commands:
-      - scrollUntilVisible:
-          centerElement: true
-          element:
-            id: "task-detail__quick-action-approve_task"
-          direction: DOWN
-      - assertVisible:
-          id: "task-detail__quick-action-approve_task"
-      - tapOn:
-          id: "task-detail__quick-action-approve_task"
-      - waitForAnimationToEnd:
-          timeout: 4000
-- assertNotVisible:
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "task-detail__quick-action-approve_task"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 40
+    timeout: 25000
+- tapOn:
     id: "task-detail__quick-action-approve_task"
+- waitForAnimationToEnd:
+    timeout: 4000
+- extendedWaitUntil:
+    notVisible:
+      id: "task-detail__quick-action-approve_task"
+    timeout: 15000
 - scrollUntilVisible:
     centerElement: true
     element:
       text: ".*Approved.*"
     direction: UP
+    speed: 40
+    visibilityPercentage: 40
+    timeout: 20000
 - assertVisible: ".*Approved.*"
 - takeScreenshot: "du-h01-11-john-approved"

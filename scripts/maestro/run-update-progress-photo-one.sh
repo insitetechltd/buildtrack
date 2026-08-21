@@ -8,7 +8,7 @@
 #   npm run test:e2e:maestro:update-progress-photo:one -- U05
 #
 # Same development model as Create Task photo (P01–P22):
-# - Each U## flow is independent (_boot clearState + fresh API seed). Prefer one-shot
+# - Each U## uses ordinary no-clear _boot + fresh API seed. Prefer one-shot
 #   while developing/fixing — not the full sequential suite.
 # - Full suite (run-update-progress-photo-suite.sh) = final gate only.
 # - Concurrent tracks: partition U-ranges; 1 Maestro job per UDID; shared helpers /
@@ -31,7 +31,7 @@ export MAESTRO_0CLICK_DISABLE=1
 TARGET="${1:-${ONLY:-}}"
 if [[ -z "${TARGET}" ]]; then
   echo "Usage: $0 U05   OR   ONLY=U05 $0"
-  echo "Each U## flow is independent (clearState boot + API seed). Prefer this over full suite while developing."
+  echo "Each U## flow uses ordinary no-clear boot + API seed. Prefer this over full suite while developing."
   exit 2
 fi
 

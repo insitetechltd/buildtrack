@@ -1,12 +1,32 @@
 # Dismiss common blocking overlays that can cover controls during headed runs.
 # Use before major interactions, not as a substitute for specific success checks.
+# Note: macOS host alerts (e.g. "SafariViewService quit unexpectedly") are outside
+# the sim UI tree — Maestro cannot dismiss them; human Ignore only.
 appId: com.buildtrack.app.local
 ---
 - runFlow:
     when:
       visible: "Save Password?"
     commands:
-      - tapOn: "Not Now"
+      - tapOn:
+          text: "Not Now"
+          optional: true
+      - tapOn:
+          text: "Don't Save"
+          optional: true
+      - tapOn:
+          text: "Never for This Website"
+          optional: true
+- runFlow:
+    when:
+      visible: "Save Password"
+    commands:
+      - tapOn:
+          text: "Not Now"
+          optional: true
+      - tapOn:
+          text: "Don't Save"
+          optional: true
 - runFlow:
     when:
       visible: "Choose how you want to add photos"

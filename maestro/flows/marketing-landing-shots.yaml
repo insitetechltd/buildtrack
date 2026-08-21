@@ -1,0 +1,59 @@
+# Marketing landing screenshots — iPhone 16
+# Prereq: node scripts/maestro/prepare-marketing-landing-tasks.cjs
+# Run: MAESTRO_UDID=<iPhone-16-UDID> bash scripts/maestro/run-local.sh test maestro/flows/marketing-landing-shots.yaml
+appId: com.buildtrack.app.local
+---
+- runFlow: create-task-photo/_boot.yaml
+- runFlow: dual-user/_ensure-project.yaml
+- swipe:
+    start: 50%, 28%
+    end: 50%, 72%
+    duration: 900
+- waitForAnimationToEnd:
+    timeout: 10000
+- swipe:
+    start: 50%, 28%
+    end: 50%, 72%
+    duration: 900
+- waitForAnimationToEnd:
+    timeout: 8000
+- extendedWaitUntil:
+    visible: ".*fire-stop|.*HVAC make-good|.*Handoff: EL|.*door hardware|.*ceiling joints.*"
+    timeout: 25000
+- takeScreenshot: "mkt-01-activity"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- takeScreenshot: "mkt-02-tasks"
+- runFlow:
+    when:
+      visible:
+        id: "tasks-screen__task_title_.*"
+    commands:
+      - tapOn:
+          id: "tasks-screen__task_title_.*"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "task-detail__header_title"
+          timeout: 25000
+      - takeScreenshot: "mkt-03-task-detail"
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 4000
+- runFlow:
+    when:
+      visible:
+        id: "create-task__root"
+    commands:
+      - takeScreenshot: "mkt-04-create"
+- runFlow:
+    when:
+      notVisible:
+        id: "create-task__root"
+    commands:
+      - takeScreenshot: "mkt-04-capture-entry"

@@ -302,6 +302,8 @@ NAV_BACK_TO_DASHBOARD = """\
           id: "profile-menu__backdrop"
       - waitForAnimationToEnd:
           timeout: 1500
+# INTENTIONAL HARD RESET (QA01 rubric): wipe between actor/preset segments.
+# Ordinary product boots use clearState: false — see maestro-preflight Gate 7.
 - launchApp:
     appId: "com.buildtrack.app.local"
     clearState: true

@@ -1,4 +1,4 @@
-# Assigner boot — clearState + live login (John) + shared Project A.
+# Assigner ordinary boot — John + shared Project A. No clearState.
 appId: com.buildtrack.app.local
 ---
 - runFlow: ../create-task-photo/_boot.yaml

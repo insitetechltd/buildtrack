@@ -1,27 +1,29 @@
-# Field worker boot for concurrent sims — do not share john.managera
-# with another Maestro job (same-user persist/realtime fights).
-# Account: alice.workera1@test.com (same password as live worker-a1).
+# Field worker ordinary boot — alice.workera1@test.com.
+# No clearState. Resume if already Alice; login only if on Login.
+# If this sim must switch away from another user, call ../_logout.yaml first.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
-    clearState: true
+    clearState: false
     permissions:
       photos: allow
       medialibrary: allow
       camera: allow
       notifications: deny
-- extendedWaitUntil:
-    visible:
-      id: "login-submit"
-    timeout: 25000
-- tapOn:
-    id: "^login-emailOrPhone$"
-- inputText: "alice.workera1@test.com"
-- tapOn:
-    id: "^login-password$"
-- inputText: "password123"
-- tapOn:
-    id: "login-submit"
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "alice.workera1@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
 - runFlow:
     when:
       visible: "Save Password?"

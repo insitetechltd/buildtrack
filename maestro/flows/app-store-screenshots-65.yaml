@@ -1,0 +1,57 @@
+# Capture 4 App Store screenshots on a 6.5" sim (iPhone 14 Plus = 1284×2778).
+# Run: MAESTRO_UDID=<14-Plus-UDID> bash scripts/maestro/run-local.sh test maestro/flows/app-store-screenshots-65.yaml
+appId: com.buildtrack.app.local
+---
+- runFlow: create-task-photo/_boot.yaml
+- runFlow: dual-user/_ensure-project.yaml
+# 1 — Activity / home
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 30000
+- takeScreenshot: "asc65-01-activity"
+# 2 — Tasks
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- takeScreenshot: "asc65-02-tasks"
+# 3 — Task detail (first row title if present; else Tasks again)
+- runFlow:
+    when:
+      visible:
+        id: "tasks-screen__task_title_.*"
+    commands:
+      - tapOn:
+          id: "tasks-screen__task_title_.*"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "task-detail__header_title"
+          timeout: 25000
+      - takeScreenshot: "asc65-03-task-detail"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__header_title"
+    commands:
+      - takeScreenshot: "asc65-03-tasks-fallback"
+# 4 — Create / capture entry (floating camera)
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 3000
+- runFlow:
+    when:
+      visible:
+        id: "create-task__root"
+    commands:
+      - takeScreenshot: "asc65-04-create"
+- runFlow:
+    when:
+      notVisible:
+        id: "create-task__root"
+    commands:
+      - takeScreenshot: "asc65-04-capture-entry"

@@ -1,15 +1,15 @@
-# Same login/landing as _boot.yaml but preserves simulator-local state
-# so Dashboard “Drafts In Progress” can exist for W-A05–W-A07.
+# Preserve simulator-local state (Drafts In Progress for W-A05–W-A07).
+# No clearState and no forced logout — same day-to-day resume as _boot.yaml.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
     clearState: false
-    stopApp: true
     permissions:
       photos: allow
       medialibrary: allow
       camera: allow
       notifications: deny
+- runFlow: ../_dismiss-blocking-overlays.yaml
 - runFlow:
     when:
       visible:
@@ -40,4 +40,3 @@ appId: com.buildtrack.app.local
     visible:
       id: "root-tab__camera_icon_surface"
     timeout: 10000
-

@@ -1,4 +1,5 @@
-# Assignee boot — clearState + live login (Alice) + shared Project A.
+# Assignee ordinary boot — Alice + shared Project A. No clearState.
+# Runs on a dedicated Alice sim; do not reuse John's sim without ../_logout.yaml first.
 appId: com.buildtrack.app.local
 ---
 - runFlow: ../update-progress-photo/_boot-alice.yaml

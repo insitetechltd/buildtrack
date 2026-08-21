@@ -1,26 +1,28 @@
+# Probe / smoke login (John): ordinary no-clear boot.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
-    clearState: true
+    clearState: false
     permissions:
       photos: allow
       medialibrary: allow
       camera: allow
       notifications: deny
-- extendedWaitUntil:
-    visible:
-      id: "login-submit"
-    timeout: 25000
-- tapOn:
-    id: "^login-emailOrPhone$"
-- inputText: "john.managera@test.com"
-- tapOn:
-    id: "^login-password$"
-- inputText: "password123"
-- tapOn:
-    text: "Done"
-    optional: true
-- tapOn: "Sign In"
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "john.managera@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          text: "Done"
+          optional: true
+      - tapOn: "Sign In"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"

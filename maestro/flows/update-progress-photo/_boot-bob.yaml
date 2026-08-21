@@ -1,25 +1,29 @@
-# Solo Section E boot — bob.workera2@test.com (not John/Alice; dual-user owns those).
+# Solo Section E ordinary boot — bob.workera2@test.com.
+# No clearState. Resume if already Bob; login only if on Login.
+# If this sim must switch away from another user, call ../_logout.yaml first.
 appId: com.buildtrack.app.local
 ---
 - launchApp:
-    clearState: true
+    clearState: false
     permissions:
       photos: allow
       medialibrary: allow
       camera: allow
       notifications: deny
-- extendedWaitUntil:
-    visible:
-      id: "login-submit"
-    timeout: 25000
-- tapOn:
-    id: "^login-emailOrPhone$"
-- inputText: "bob.workera2@test.com"
-- tapOn:
-    id: "^login-password$"
-- inputText: "password123"
-- tapOn:
-    id: "login-submit"
+- runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow:
+    when:
+      visible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "^login-emailOrPhone$"
+      - inputText: "bob.workera2@test.com"
+      - tapOn:
+          id: "^login-password$"
+      - inputText: "password123"
+      - tapOn:
+          id: "login-submit"
 - runFlow:
     when:
       visible: "Save Password?"

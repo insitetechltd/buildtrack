@@ -110,6 +110,10 @@ appId: com.buildtrack.app.local
           id: "developer-settings-sheet_info-sprint7_ok"
       - waitForAnimationToEnd:
           timeout: 4500
+# INTENTIONAL HARD RESET: after Sprint7 sandbox reseed, wipe container so the
+# post-reset landing is validated from a clean sleeve (first-install-like).
+# Logout first so Realtime channels close before clearState (M-DATA-04).
+- runFlow: ../_logout.yaml
 - launchApp:
     appId: "com.buildtrack.app.local"
     clearState: true

@@ -1,0 +1,44 @@
+---
+description: When dispatching work to multiple models for evaluation, draft one shared brief first so every model receives identical context and instructions.
+alwaysApply: true
+---
+
+# Multi-model evaluation — shared prompt first
+
+When the user asks to send information to **other models** for critique, analysis, or evaluation:
+
+## Required sequence
+
+1. **Draft one shared evaluation brief** (orchestrator writes this first — do not dispatch yet).
+2. **Send the identical brief** to every model/subagent (same question, context, constraints, file paths, output format).
+3. **Synthesize** after all responses: consensus, disagreements, recommendation, and whether the brief was ambiguous.
+
+Do **not** fire ad-hoc Task prompts with different lenses, partial context, or unequal detail per model unless the user explicitly requests separate roles **and** each role still starts from the same written brief.
+
+## Shared brief template
+
+Include these sections in every multi-model dispatch:
+
+| Section | Content |
+|---|---|
+| **Objective** | One clear question or decision (GO/NO-GO, architecture, plan review, etc.) |
+| **Context** | Stack, scale, audience, milestone, locked constraints |
+| **Inputs** | Same file paths / artifacts every model must read |
+| **Out of scope** | What evaluators must not assume or recommend |
+| **Output format** | Fixed structure (verdict, findings table with severity, top N must-fix, etc.) |
+| **Rules** | No code unless asked; be adversarial; solo-dev / scale-aware |
+
+Prefer **different models** when the session allows (see `multi-critique-validation.mdc` Gate A/B).
+
+## After responses
+
+- Report which models ran and link subagent IDs when available.
+- Fold Critical/High findings into plans before Builder kickoff when applicable.
+- If models diverge, note whether the brief lacked clarity — do not treat one model as authoritative.
+
+## Relation to other gates
+
+- **Gate A (plan critique):** use this brief process before parallel plan critiques.
+- **Gate B (validation critique):** same brief discipline; validation agents see change summary + acceptance + commands run, not unequal context.
+
+If the user asks to **review the brief before send**, show the draft prompt and wait for GO.

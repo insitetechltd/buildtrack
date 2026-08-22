@@ -15,6 +15,7 @@ import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useThemeStore } from "@/state/themeStore";
 import { useUserStore } from "@/state/userStore.supabase";
+import { isPlatformSuperuser } from "@/config/platformSuperusers";
 import { isAdmin } from "@/types/buildtrack";
 import type {
   ProfileScreenMenuItem,
@@ -28,6 +29,7 @@ export interface ProfileScreenProps {
   onNavigateBack: () => void;
   onNavigateToCreateTask?: () => void;
   onNavigateToDeveloperSettings?: () => void;
+  onNavigateToOwnerConsole?: () => void;
   onNavigateToPendingUsers?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
@@ -63,7 +65,7 @@ function toRoleLabel(role?: string): string {
 export function useProfileViewAdapter(
   props: ProfileScreenProps,
 ): ProfileViewAdapterHookResult {
-  const { onNavigateToDeveloperSettings } = props;
+  const { onNavigateToDeveloperSettings, onNavigateToOwnerConsole } = props;
   const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
@@ -268,6 +270,9 @@ export function useProfileViewAdapter(
         case "developer-settings":
           onNavigateToDeveloperSettings?.();
           return;
+        case "owner-console":
+          onNavigateToOwnerConsole?.();
+          return;
         case "about":
           Alert.alert(
             "Taskr",
@@ -297,6 +302,7 @@ export function useProfileViewAdapter(
     [
       handleRefreshData,
       onNavigateToDeveloperSettings,
+      onNavigateToOwnerConsole,
       t.common.cancel,
       t.profile.companyPlan,
       t.profile.continueToCheckout,
@@ -314,6 +320,19 @@ export function useProfileViewAdapter(
         actionId: "company-plan",
         title: t.profile.companyPlan,
         icon: "card-outline",
+        showChevron: true,
+        colorTone: "default",
+        density: "standard",
+        structuralState: "stale",
+      });
+    }
+
+    if (isPlatformSuperuser(user) && onNavigateToOwnerConsole) {
+      settingsItems.push({
+        id: "profile-menu:owner-console",
+        actionId: "owner-console",
+        title: "Owner Console",
+        icon: "construct-outline",
         showChevron: true,
         colorTone: "default",
         density: "standard",
@@ -425,6 +444,7 @@ export function useProfileViewAdapter(
     isDarkMode,
     language,
     canApproveUsers,
+    onNavigateToOwnerConsole,
     t.profile.companyPlan,
     t.profile.darkMode,
     t.profile.english,
@@ -435,6 +455,7 @@ export function useProfileViewAdapter(
     t.profile.settings,
     t.profile.theme,
     t.profile.traditionalChinese,
+    user,
   ]);
 
   const environmentStyles = getEnvironmentStyles(environmentInfo);

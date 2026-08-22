@@ -21,11 +21,12 @@ Those are **runtime interaction** failures. Unit tests that only fire `changeTex
 For non-trivial features/refactors (shared UI primitives, forms, navigation, uploads, auth surfaces):
 
 1. Produce Planner plan (acceptance + validation plan).
-2. Launch **≥2 parallel critiques** via Task subagents (prefer **different models** when the user/session allows), each with a fixed brief:
+2. **Draft one shared evaluation brief first** — see `multi-model-evaluation-prompt.mdc`. Every model gets the **same** prompt (equal footing); lens differences (risks vs validation) are sections inside that brief, not ad-hoc per-model prompts.
+3. Launch **≥2 parallel critiques** via Task subagents (prefer **different models** when the user/session allows). Typical lenses inside the shared brief:
    - **Critique A (risks):** what can fail at runtime that Jest won’t see?
    - **Critique B (validation):** is the test plan sufficient? what manual/Maestro/smoke is missing?
-3. Fold Critical/High critique findings into the plan **before** Builder starts.
-4. Do not treat “I reviewed my own plan” as Gate A.
+4. Fold Critical/High critique findings into the plan **before** Builder starts.
+5. Do not treat “I reviewed my own plan” as Gate A.
 
 ### Gate B — Validation critique (before “done”)
 

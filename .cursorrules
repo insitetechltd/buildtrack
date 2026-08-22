@@ -157,3 +157,4 @@ F-003 ROLLOUT WARNING VERBATIM (from findings backlog): The deferred-schema comp
 @.cursor/rules/workflow-ms02-unblock.md
 @.cursor/rules/maestro-preflight.md
 @.cursor/rules/multi-critique-validation.mdc
+@.cursor/rules/multi-model-evaluation-prompt.mdc

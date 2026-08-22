@@ -166,6 +166,11 @@ export type TasksStackParamList = {
 export type ProfileStackParamList = {
   ProfileMain: undefined;
   DeveloperSettings: undefined;
+  OwnerConsole: undefined;
+  OwnerMonitoring: undefined;
+  OwnerEconomics: undefined;
+  OwnerTenantOps: undefined;
+  WorkflowGaps: undefined;
   PendingUsers: undefined;
 };
 

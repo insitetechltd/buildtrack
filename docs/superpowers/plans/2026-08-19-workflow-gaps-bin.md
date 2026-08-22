@@ -60,11 +60,41 @@ Today `company_admin` maps to RLS `admin` and can already read broadly. That is 
 
 ### Phase A (no schema, RC) — recommended next
 
+- **Owner Console harness** (`OwnerConsoleScreen`) — Profile entry **only** if `isPlatformSuperuser(user)`. Modules plug in here; do not add parallel Profile deep-links per module.
 - Classifier `src/utils/taskWorkflowGaps.ts` + Jest (every code + intended negatives + deletedAt + whitespace assignees).
-- **Superuser home** screen, Profile entry **only** if `isPlatformSuperuser(user)` — allowlist of auth user id(s) in a non-`EXPO_PUBLIC` config if possible; otherwise a committed allowlist of **your** user UUID is still extractable from the binary. Accept that for RC “don’t confuse users.”
-- Bin lists gaps in the **loaded task store** (RLS-visible). Label the screen: “Loaded tasks only — not a full-table audit.”
-- Actions v1: inspect (Task Detail read-only as much as practical). **No swipe-delete** on this slice (H1: draft delete guard would kill real WIP).
-- **Do not create a new Auth user** until you name the email and give Human GO. Prefer tagging **your existing** login as the allowlist.
+- **Module 1 — Workflow Gaps** — lists gaps in the **loaded task store** (RLS-visible). Label: “Loaded tasks only — not a full-table audit.” Actions v1: inspect (Task Detail). **No swipe-delete**.
+- **Module slots (planned, not built):** under **Tenant operations** — Plans & entitlements; **Users & companies** (bind at create only — **no company switch**); Usage vs caps. Under **System monitoring** — KPI, Reliability, Data integrity (Gaps live). Under **Economics** — Revenue, Platform costs, Unit economics. Full tree: `2026-08-22-owner-console-modules-complete.md`.
+- Allowlist of auth user id(s); committed Tristan UUID OK for “don’t confuse users.”
+- **Do not create a new Auth user** until you name the email and give Human GO.
+
+### Phase A harness shape (locked 2026-08-22; IA update same day)
+
+Full module tree: `2026-08-22-owner-console-modules-complete.md`.
+
+```
+Profile → Owner Console (OPS-01 shell)
+│
+├─ System monitoring
+│     ├─ KPI dashboard                    [planned]
+│     ├─ Reliability & incidents          [planned]
+│     └─ Data integrity
+│           ├─ Workflow Gaps              [live]
+│           ├─ Platform audit / SQL twin  [Phase B — Human Gate]
+│           └─ Deferred-schema counter   [F-003]
+│
+├─ Economics
+│     ├─ Revenue                          [planned]
+│     ├─ Platform costs                   [planned]
+│     └─ Unit economics                   [planned]
+│
+└─ Tenant operations
+      ├─ Plans & entitlements             [planned]
+      ├─ Users & companies                [planned — no company switch]
+      ├─ Usage vs caps                    [planned]
+      └─ Owner audit log                  [planned]
+```
+
+Build the three-section shell first; Workflow Gaps under **Monitoring → Data integrity**. v1/v2/v3: `2026-08-22-owner-monitoring-architecture.md`.
 
 ### Phase B (Human Gate) — real “monitor the whole app”
 

@@ -55,6 +55,11 @@ import ProjectDetailScreen from "../screens/ProjectDetailScreen";
 import DevAdminScreen from "../screens/DevAdminScreen";
 import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
+import OwnerConsoleScreen from "../screens/OwnerConsoleScreen";
+import OwnerMonitoringScreen from "../screens/OwnerMonitoringScreen";
+import OwnerEconomicsScreen from "../screens/OwnerEconomicsScreen";
+import OwnerTenantOpsScreen from "../screens/OwnerTenantOpsScreen";
+import WorkflowGapsScreen from "../screens/WorkflowGapsScreen";
 import PendingUsersScreen from "../screens/PendingUsersScreen";
 import PhotoViewerScreen from "../screens/PhotoViewerScreen";
 import PhotoSelectionScreen from "../screens/PhotoSelectionScreen";
@@ -1705,6 +1710,26 @@ function ProfileStack() {
         name="DeveloperSettings"
         component={DeveloperSettingsScreenWrapper}
       />
+      <ProfileStackNavigator.Screen
+        name="OwnerConsole"
+        component={OwnerConsoleScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen
+        name="OwnerMonitoring"
+        component={OwnerMonitoringScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen
+        name="OwnerEconomics"
+        component={OwnerEconomicsScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen
+        name="OwnerTenantOps"
+        component={OwnerTenantOpsScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen
+        name="WorkflowGaps"
+        component={WorkflowGapsScreenWrapper}
+      />
       <ProfileStackNavigator.Screen name="PendingUsers" component={PendingUsersScreenWrapper} />
     </ProfileStackNavigator.Navigator>
   );
@@ -1734,6 +1759,7 @@ function ProfileMainScreen({
           ? () => navigation.navigate("DeveloperSettings")
           : undefined
       }
+      onNavigateToOwnerConsole={() => navigation.navigate("OwnerConsole")}
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
       onNavigateToProfile={() => {}} // Already on profile screen
       onNavigateToProjectPicker={(allowBack?: boolean) => {
@@ -1743,12 +1769,68 @@ function ProfileMainScreen({
   );
 }
 
+function OwnerConsoleScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "OwnerConsole">) {
+  return (
+    <OwnerConsoleScreen
+      onNavigateBack={() => navigation.goBack()}
+      onOpenMonitoring={() => navigation.navigate("OwnerMonitoring")}
+      onOpenEconomics={() => navigation.navigate("OwnerEconomics")}
+      onOpenTenantOps={() => navigation.navigate("OwnerTenantOps")}
+    />
+  );
+}
+
+function OwnerMonitoringScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "OwnerMonitoring">) {
+  return (
+    <OwnerMonitoringScreen
+      onNavigateBack={() => navigation.goBack()}
+      onOpenWorkflowGaps={() => navigation.navigate("WorkflowGaps")}
+    />
+  );
+}
+
+function OwnerEconomicsScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "OwnerEconomics">) {
+  return (
+    <OwnerEconomicsScreen onNavigateBack={() => navigation.goBack()} />
+  );
+}
+
+function OwnerTenantOpsScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "OwnerTenantOps">) {
+  return (
+    <OwnerTenantOpsScreen onNavigateBack={() => navigation.goBack()} />
+  );
+}
+
 function PendingUsersScreenWrapper({
   navigation,
 }: NativeStackScreenProps<ProfileStackParamList, "PendingUsers">) {
   return (
     <PendingUsersScreen
       onNavigateBack={() => navigation.goBack()}
+    />
+  );
+}
+
+function WorkflowGapsScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "WorkflowGaps">) {
+  return (
+    <WorkflowGapsScreen
+      onNavigateBack={() => navigation.goBack()}
+      onInspectTask={(taskId) => {
+        navigateToRootTabScreen(navigation, "Tasks", {
+          screen: "TaskDetail",
+          params: { taskId },
+        });
+      }}
     />
   );
 }

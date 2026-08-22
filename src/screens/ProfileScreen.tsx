@@ -92,6 +92,7 @@ function getSystemStatusTextClassName(item: ProfileSystemStatusItem): string {
 export default function ProfileScreen({
   onNavigateBack,
   onNavigateToDeveloperSettings,
+  onNavigateToOwnerConsole,
   onNavigateToPendingUsers,
   onNavigateToProfile,
   onNavigateToProjectPicker,
@@ -100,6 +101,7 @@ export default function ProfileScreen({
   const { output, actions } = useProfileViewAdapter({
     onNavigateBack,
     onNavigateToDeveloperSettings,
+    onNavigateToOwnerConsole,
     onNavigateToPendingUsers,
     onNavigateToProfile,
     onNavigateToProjectPicker,

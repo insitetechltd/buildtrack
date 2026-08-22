@@ -83,7 +83,7 @@ export function handleTasksTaskDetailBack(
 }
 
 export function handleUpdateProgressBack(navigation: StackBackNavigation) {
-  exitUpdateProgressScreen(navigation as PhotoFlowStackNav);
+  exitUpdateProgressScreen(navigation as unknown as PhotoFlowStackNav);
 }
 
 export function handleCameraTabPress({

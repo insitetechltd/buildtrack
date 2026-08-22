@@ -6,7 +6,7 @@
 
 ## Doing
 
-**M-BILL-01 BILL-A** — Draft SQL + Human Gate checklist ready. Trial = **regular list price + Stripe native trial**. **Awaiting your Human Gate review** before BILL-B apply.
+**M-BILL-01 BILL-C** — Stripe webhook Edge (in progress). **BILL-B parity closed** — `20260823000100_mbill01_entitlements.sql` applied; 7 companies backfilled.
 
 **Marketing site:** almost ready — uncommitted separately.
 

@@ -1,15 +1,11 @@
--- DRAFT — M-BILL-01 BILL-A entitlements schema (DO NOT APPLY WITHOUT HUMAN GATE)
--- Milestone: WS-BILL / M-BILL-01 Phase BILL-B
+-- M-BILL-01 BILL-B — entitlements schema (parity apply — test catalog)
+-- Milestone: WS-BILL / M-BILL-01
 -- Checklist: docs/superpowers/checklists/m-bill-01-human-gate.md
+-- Stripe test catalog mapped: 2026-08-23 (see .dbg/mbill01-stripe-test-catalog.json)
 --
--- Trial model: REGULAR LIST PRICE + STRIPE NATIVE TRIAL (trial_end / trial_period_days).
---   locked_plan_price_id always references paid Growth/Unlimited plan_prices row.
---   No lockable $0 trial SKU. Subscription status trialing; caps in billing_phase=trial revision.
---   trial_stripe_coupon_id is optional — marketing promos only, not the standard free trial.
---
--- ROLLOUT: parity/sandbox first (v_apply_livemode = false in §14). Production requires
---   explicit written Human GO and v_apply_livemode = true.
--- Replace all stripe_* placeholder values before any apply that runs §14 pilot backfill.
+-- PARITY: v_apply_livemode=false, test Price ids seeded. Live Price rows remain
+--   REPLACE_AT_HUMAN_GATE_* until production Human GO + live catalog.
+-- Production apply: replace live placeholders, set v_apply_livemode=true, second GO.
 
 -- ---------------------------------------------------------------------------
 -- 1. Catalog: flexible N tiers
@@ -315,7 +311,7 @@ CREATE TRIGGER billing_webhook_events_deny_mutation
   BEFORE UPDATE OR DELETE ON public.billing_webhook_events
   FOR EACH ROW EXECUTE FUNCTION public.billing_deny_row_mutation();
 
-CREATE OR REPLACE FUNCTION public.mbill01_assert_no_stripe_placeholders()
+CREATE OR REPLACE FUNCTION public.mbill01_assert_no_stripe_placeholders(p_livemode boolean DEFAULT true)
 RETURNS void
 LANGUAGE plpgsql
 STABLE
@@ -326,19 +322,26 @@ BEGIN
     SELECT 1
     FROM public.plan_prices
     WHERE stripe_price_id LIKE 'REPLACE_AT_HUMAN_GATE%'
-  ) OR EXISTS (
+      AND livemode = p_livemode
+  ) THEN
+    RAISE EXCEPTION
+      'stripe_price_placeholders_remain for livemode=%: replace REPLACE_AT_HUMAN_GATE_* before pilot backfill',
+      p_livemode;
+  END IF;
+
+  IF EXISTS (
     SELECT 1
     FROM public.plan_tiers
     WHERE stripe_product_id LIKE 'REPLACE_AT_HUMAN_GATE%'
   ) THEN
     RAISE EXCEPTION
-      'stripe_placeholders_remain: replace REPLACE_AT_HUMAN_GATE_* with real Stripe ids before pilot backfill';
+      'stripe_product_placeholders_remain on plan_tiers: replace REPLACE_AT_HUMAN_GATE_* product ids';
   END IF;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.mbill01_assert_no_stripe_placeholders() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.mbill01_assert_no_stripe_placeholders() TO service_role;
+REVOKE ALL ON FUNCTION public.mbill01_assert_no_stripe_placeholders(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.mbill01_assert_no_stripe_placeholders(boolean) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.build_entitlements_snapshot_from_price(
   p_plan_price_id uuid,
@@ -583,7 +586,7 @@ VALUES
     'Growth',
     '5 projects, under 200 entries/month, 1 PM + 5 workers.',
     10,
-    'REPLACE_AT_HUMAN_GATE_product_growth'
+    'prod_V7WM7G6owPkrHl'
   ),
   (
     'unlimited',
@@ -591,7 +594,7 @@ VALUES
     'Unlimited',
     'Unlimited projects/entries, max 5 GB storage, 1 PM + 5 workers.',
     20,
-    'REPLACE_AT_HUMAN_GATE_product_unlimited'
+    'prod_V7WMiGARYY3zQr'
   ),
   (
     'addon_worker_pack',
@@ -599,7 +602,7 @@ VALUES
     'Worker pack (+5)',
     'Add-on: +5 worker seats per month.',
     30,
-    'REPLACE_AT_HUMAN_GATE_product_worker_pack'
+    'prod_V7WM2tNen1AAJ4'
   ),
   (
     'addon_pm_seat',
@@ -607,7 +610,7 @@ VALUES
     'PM seat (+1)',
     'Add-on: +1 PM seat per month.',
     40,
-    'REPLACE_AT_HUMAN_GATE_product_pm_seat'
+    'prod_V7WMSeWFzLuYIB'
   )
 ON CONFLICT (slug) DO NOTHING;
 
@@ -649,13 +652,13 @@ BEGIN
   )
   VALUES
     (v_growth_tier, 'REPLACE_AT_HUMAN_GATE_price_growth_v1_live', true, 1999, true, '{}'::jsonb),
-    (v_growth_tier, 'REPLACE_AT_HUMAN_GATE_price_growth_v1_test', false, 1999, true, '{}'::jsonb),
+    (v_growth_tier, 'price_1U7HJkDDDvw16uUvOR2iu4vY', false, 1999, true, '{}'::jsonb),
     (v_unlimited_tier, 'REPLACE_AT_HUMAN_GATE_price_unlimited_v1_live', true, 19999, true, '{}'::jsonb),
-    (v_unlimited_tier, 'REPLACE_AT_HUMAN_GATE_price_unlimited_v1_test', false, 19999, true, '{}'::jsonb),
+    (v_unlimited_tier, 'price_1U7HJlDDDvw16uUvfOYPwX2A', false, 19999, true, '{}'::jsonb),
     (v_worker_tier, 'REPLACE_AT_HUMAN_GATE_price_worker_pack_v1_live', true, 499, true, '{}'::jsonb),
-    (v_worker_tier, 'REPLACE_AT_HUMAN_GATE_price_worker_pack_v1_test', false, 499, true, '{}'::jsonb),
+    (v_worker_tier, 'price_1U7HJlDDDvw16uUvc5H4mNCC', false, 499, true, '{}'::jsonb),
     (v_pm_tier, 'REPLACE_AT_HUMAN_GATE_price_pm_seat_v1_live', true, 999, true, '{}'::jsonb),
-    (v_pm_tier, 'REPLACE_AT_HUMAN_GATE_price_pm_seat_v1_test', false, 999, true, '{}'::jsonb)
+    (v_pm_tier, 'price_1U7HJmDDDvw16uUvQA9UvcHZ', false, 999, true, '{}'::jsonb)
   ON CONFLICT (stripe_price_id, livemode) DO NOTHING;
 
   SELECT id INTO v_growth_live
@@ -664,7 +667,7 @@ BEGIN
 
   SELECT id INTO v_growth_test
   FROM public.plan_prices
-  WHERE stripe_price_id = 'REPLACE_AT_HUMAN_GATE_price_growth_v1_test' AND livemode = false;
+  WHERE stripe_price_id = 'price_1U7HJkDDDvw16uUvOR2iu4vY' AND livemode = false;
 
   SELECT id INTO v_unlimited_live
   FROM public.plan_prices
@@ -672,7 +675,7 @@ BEGIN
 
   SELECT id INTO v_unlimited_test
   FROM public.plan_prices
-  WHERE stripe_price_id = 'REPLACE_AT_HUMAN_GATE_price_unlimited_v1_test' AND livemode = false;
+  WHERE stripe_price_id = 'price_1U7HJlDDDvw16uUvfOYPwX2A' AND livemode = false;
 
   SELECT id INTO v_worker_live
   FROM public.plan_prices
@@ -680,7 +683,7 @@ BEGIN
 
   SELECT id INTO v_worker_test
   FROM public.plan_prices
-  WHERE stripe_price_id = 'REPLACE_AT_HUMAN_GATE_price_worker_pack_v1_test' AND livemode = false;
+  WHERE stripe_price_id = 'price_1U7HJlDDDvw16uUvc5H4mNCC' AND livemode = false;
 
   SELECT id INTO v_pm_live
   FROM public.plan_prices
@@ -688,7 +691,7 @@ BEGIN
 
   SELECT id INTO v_pm_test
   FROM public.plan_prices
-  WHERE stripe_price_id = 'REPLACE_AT_HUMAN_GATE_price_pm_seat_v1_test' AND livemode = false;
+  WHERE stripe_price_id = 'price_1U7HJmDDDvw16uUvQA9UvcHZ' AND livemode = false;
 
   IF v_growth_live IS NULL OR v_growth_test IS NULL
     OR v_unlimited_live IS NULL OR v_unlimited_test IS NULL
@@ -776,7 +779,7 @@ ON CONFLICT (role_key) DO NOTHING;
 
 DO $$
 DECLARE
-  v_run_pilot_backfill boolean := false;
+  v_run_pilot_backfill boolean := true;
   v_apply_livemode boolean := false;
   v_default_price uuid;
   v_company record;
@@ -788,7 +791,7 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM public.mbill01_assert_no_stripe_placeholders();
+  PERFORM public.mbill01_assert_no_stripe_placeholders(v_apply_livemode);
 
   SELECT pp.id INTO v_default_price
   FROM public.plan_prices pp
@@ -908,5 +911,5 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------
--- END DRAFT — verify with Human Gate checklist before renomination to live migration
+-- END M-BILL-01 BILL-B parity migration
 -- ---------------------------------------------------------------------------

@@ -557,6 +557,50 @@ describe("useCreateTaskViewAdapter", () => {
     expect(result.current.output.errors.title).toBe("Title is required to save a draft");
   });
 
+  it("deletes the persisted local draft when clearDraftPayloads runs", async () => {
+    mockGetLocalTaskDraft.mockResolvedValue({
+      id: "local-draft-1",
+      savedAt: "2026-08-22T00:00:00.000Z",
+      expiresAt: "2026-08-29T00:00:00.000Z",
+      titlePreview: "Draft inspection",
+      projectId: "project-1",
+      form: {
+        title: "Draft inspection",
+        description: "",
+        taskReference: "",
+        projectId: "project-1",
+        priority: "medium",
+        category: "general",
+        billingStatus: "non_billable",
+        dueDate: "2026-08-23T00:00:00.000Z",
+        locationOnSite: "",
+        assignedTo: ["user-2"],
+        attachments: [],
+        customTags: [],
+        isCriticalThisWeek: false,
+        primaryAssigneeId: "user-2",
+        containerId: "",
+        subContainerId: "",
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useCreateTaskViewAdapter({
+        localDraftId: "local-draft-1",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.output.formData.title).toBe("Draft inspection");
+    });
+
+    await act(async () => {
+      await result.current.actions.clearDraftPayloads();
+    });
+
+    expect(mockDeleteLocalTaskDraft).toHaveBeenCalledWith("local-draft-1");
+  });
+
   it("submits create and edit modes with stable payloads", async () => {
     const { result: createResult } = renderHook(() =>
       useCreateTaskViewAdapter({}),

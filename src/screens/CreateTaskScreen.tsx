@@ -57,6 +57,7 @@ import type {
   PhotoSelectionParams,
 } from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
+import CreateTaskInputField from "./createTask/CreateTaskInputField";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
 import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import {
@@ -103,29 +104,6 @@ interface CreateTaskScreenProps {
 }
 
 type CreateTaskFormFieldId = "title" | "description" | "taskReference" | "submit";
-
-// InputField component defined outside to prevent re-creation
-const InputField = ({ 
-  label, 
-  required = true, 
-  error, 
-  children 
-}: { 
-  label: string; 
-  required?: boolean; 
-  error?: string; 
-  children: React.ReactNode;
-}) => (
-  <View testID="create-task__input-field">
-    <Text className="mb-2 text-lg font-semibold text-slate-900">
-      {label} {required && <Text className="text-red-600">*</Text>}
-    </Text>
-    {children}
-    {error && (
-      <Text className="mt-1 text-base text-red-500">{error}</Text>
-    )}
-  </View>
-);
 
 export default function CreateTaskScreen({
   onNavigateBack,
@@ -470,15 +448,28 @@ function CreateTaskEditorScreen({
   };
 
   const asyncStoragePhotoCount = 0;
+  const allowNavigationExitRef = useRef(false);
 
-  const handleCancel = () => {
-    // If the form has any user-entered data, prompt before discarding
-    const hasData =
+  const hasUnsavedFormData = useCallback(() => {
+    return (
       Boolean(formData.title.trim()) ||
       Boolean(formData.description.trim()) ||
-      formData.attachments.length > 0;
+      formData.attachments.length > 0
+    );
+  }, [formData.attachments.length, formData.description, formData.title]);
 
-    if (hasData) {
+  const discardFormState = useCallback(async () => {
+    await actions.clearDraftPayloads?.();
+    onClearDraftPayloads?.();
+  }, [actions, onClearDraftPayloads]);
+
+  const promptDiscardIfNeeded = useCallback(
+    (onDiscard: () => void) => {
+      if (!hasUnsavedFormData()) {
+        void discardFormState().finally(onDiscard);
+        return;
+      }
+
       Alert.alert(
         "Discard Task?",
         "You have unsaved changes. Are you sure you want to discard them?",
@@ -491,17 +482,55 @@ function CreateTaskEditorScreen({
             text: "Discard",
             style: "destructive",
             onPress: () => {
-              actions.clearDraftPayloads?.();
-              onNavigateBack();
+              void discardFormState().finally(onDiscard);
             },
           },
         ],
       );
-    } else {
-      actions.clearDraftPayloads?.();
-      onNavigateBack();
-    }
+    },
+    [discardFormState, hasUnsavedFormData],
+  );
+
+  const handleCancel = () => {
+    promptDiscardIfNeeded(() => onNavigateBack());
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (event) => {
+      if (allowNavigationExitRef.current) {
+        return;
+      }
+
+      if (!hasUnsavedFormData()) {
+        void discardFormState();
+        return;
+      }
+
+      event.preventDefault();
+      Alert.alert(
+        "Discard Task?",
+        "You have unsaved changes. Are you sure you want to discard them?",
+        [
+          {
+            text: "Keep Editing",
+            style: "cancel",
+          },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              allowNavigationExitRef.current = true;
+              void discardFormState().finally(() => {
+                navigation.dispatch(event.data.action);
+              });
+            },
+          },
+        ],
+      );
+    });
+
+    return unsubscribe;
+  }, [discardFormState, hasUnsavedFormData, navigation]);
 
   const isExistingEdit = Boolean(editTaskId);
 
@@ -515,6 +544,7 @@ function CreateTaskEditorScreen({
     const wasSuccessful = await submit(options);
     if (wasSuccessful) {
       if (isExistingEdit) {
+        allowNavigationExitRef.current = true;
         onNavigateBack();
       } else if (parentTaskId && parentSubTaskId) {
         setSubmitSuccessState({
@@ -570,6 +600,7 @@ function CreateTaskEditorScreen({
     if (!saved) {
       return;
     }
+    allowNavigationExitRef.current = true;
     if (onDraftSaved) {
       onDraftSaved();
       return;
@@ -589,6 +620,7 @@ function CreateTaskEditorScreen({
   };
   const handleSubmitSuccessConfirm = useCallback(() => {
     setSubmitSuccessState(null);
+    allowNavigationExitRef.current = true;
     actions.clearDraftPayloads?.();
     onClearDraftPayloads?.();
     onCreateSuccess?.();
@@ -911,7 +943,7 @@ function CreateTaskEditorScreen({
                 blurOnSubmit={false}
               />
 
-              <InputField label={t.tasks.priority}>
+              <CreateTaskInputField label={t.tasks.priority}>
                 <View className="flex-row flex-wrap gap-2">
                   {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
                     const isSelected = formData.priority === priority;
@@ -970,9 +1002,9 @@ function CreateTaskEditorScreen({
                     </Text>
                   </Pressable>
                 </View>
-              </InputField>
+              </CreateTaskInputField>
 
-              <InputField label={t.createTask.locationOnSite}>
+              <CreateTaskInputField label={t.createTask.locationOnSite}>
                 <Pressable
                   testID="create-task__location-picker-trigger"
                   onPress={() => {
@@ -1001,7 +1033,7 @@ function CreateTaskEditorScreen({
                     {t.createTask.selectLocationOnSiteFirstProject}
                   </Text>
                 ) : null}
-              </InputField>
+              </CreateTaskInputField>
 
               {!containerOrganization.isVisible ? (
                 <Pressable
@@ -1127,7 +1159,7 @@ function CreateTaskEditorScreen({
                 </View>
               )}
 
-              <InputField label={t.tasks.assignTo} error={errors.assignedTo}>
+              <CreateTaskInputField label={t.tasks.assignTo} error={errors.assignedTo}>
                 {(() => {
                   const isDisabled = isLoadingUsers || context.assigneesLocked;
 
@@ -1167,7 +1199,7 @@ function CreateTaskEditorScreen({
                     </Pressable>
                   );
                 })()}
-              </InputField>
+              </CreateTaskInputField>
 
               {selectedUsers.length > 0 && (
                 <View
@@ -1228,7 +1260,7 @@ function CreateTaskEditorScreen({
                 </View>
               )}
 
-              <InputField label="Tags">
+              <CreateTaskInputField label="Tags">
                 <View testID="create-task__tags_editor">
                   <View className="flex-row flex-wrap mb-2">
                     {formData.customTags.map((tag) => (
@@ -1261,11 +1293,11 @@ function CreateTaskEditorScreen({
                     }}
                   />
                 </View>
-              </InputField>
+              </CreateTaskInputField>
             </View>
 
             <View className="border-t border-gray-100 pt-4 gap-4">
-              <InputField label={t.tasks.dueDate} error={errors.dueDate}>
+              <CreateTaskInputField label={t.tasks.dueDate} error={errors.dueDate}>
               <Pressable
                 testID="create-task__due-date-trigger"
                 onPress={() => {
@@ -1285,7 +1317,7 @@ function CreateTaskEditorScreen({
                   color={showDatePicker ? "#3b82f6" : "#6b7280"}
                 />
               </Pressable>
-              </InputField>
+              </CreateTaskInputField>
 
               {showDatePicker && (
                 <View className="bg-white border-2 border-blue-600 rounded-lg overflow-hidden">
@@ -1340,7 +1372,7 @@ function CreateTaskEditorScreen({
                 blurOnSubmit={true}
               />
 
-              <InputField label={t.createTask.billingStatus}>
+              <CreateTaskInputField label={t.createTask.billingStatus}>
                 <Pressable
                   onPress={() => setShowBillingStatusPicker(true)}
                   className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
@@ -1354,9 +1386,9 @@ function CreateTaskEditorScreen({
                   </Text>
                   <Ionicons name="chevron-forward" size={20} color="#6b7280" />
                 </Pressable>
-              </InputField>
+              </CreateTaskInputField>
 
-              <InputField label={t.tasks.category}>
+              <CreateTaskInputField label={t.tasks.category}>
                 <Pressable
                   onPress={() => {
                     setShowCategoryPicker(true);
@@ -1368,7 +1400,7 @@ function CreateTaskEditorScreen({
                   </Text>
                   <Ionicons name="chevron-down" size={20} color="#6b7280" />
                 </Pressable>
-              </InputField>
+              </CreateTaskInputField>
             </View>
           </View>
         </ScrollView>

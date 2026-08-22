@@ -1,8 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  CommonActions,
   NavigationContainer,
-  StackActions,
   getFocusedRouteNameFromRoute,
   type LinkingOptions,
 } from "@react-navigation/native";
@@ -77,11 +75,44 @@ import {
 import { resolveStandaloneTaskAction } from "./taskActionRouting";
 import {
   buildCreateTaskPhotoReturnParams,
+  normalizeCreateTaskSelectedPhotos,
   resolveCreateTaskEntryParams,
 } from "./createTaskRouteParams";
 import {
+  navigateToCreateTaskRoute,
+  navigateToProjectPicker,
+  navigateToRootProfile,
+  navigateToRootTabScreen,
+} from "./rootNavigationHelpers";
+import {
+  ROOT_TAB_BAR_STYLE,
+  buildRootTabBarStyleForRoute,
+  resolveTaskDetailUpdateLockState,
+  shouldCollapseRootSideTabsOnTaskDetailRoute,
+  shouldHideRootSideTabsForTabState,
+} from "./rootTabVisibility";
+import {
+  handleCameraTabPress,
+  handleDashboardTaskDetailBack,
+  handleTasksTaskDetailBack,
+  handleUpdateProgressBack,
+  returnToCreateTaskRoute,
+} from "./taskDetailBackNavigation";
+
+export {
+  shouldCollapseRootSideTabsOnTaskDetailRoute,
+  shouldHideRootSideTabsForTabState,
+  shouldHideTabBarOnCreateTaskRoute,
+} from "./rootTabVisibility";
+export {
+  handleCameraTabPress,
+  handleDashboardTaskDetailBack,
+  handleTasksTaskDetailBack,
+  handleUpdateProgressBack,
+  returnToCreateTaskRoute,
+} from "./taskDetailBackNavigation";
+import {
   cancelInAppLibraryPicker,
-  exitUpdateProgressScreen,
   returnToPhotoSelectionFlat,
 } from "./photoFlowNavigation";
 import {
@@ -124,118 +155,10 @@ const ProfileStackNavigator = createNativeStackNavigator<ProfileStackParamList>(
 const CreateTaskStackNavigator = createNativeStackNavigator<CreateTaskStackParamList>();
 const AdminDashboardStackNavigator = createNativeStackNavigator<AdminDashboardStackParamList>();
 
-const ROOT_TAB_BAR_STYLE: ViewStyle = {
-  height: 76,
-  overflow: "visible",
-  paddingTop: 8,
-  paddingBottom: 10,
-  borderTopColor: "#e5e7eb",
-  backgroundColor: "#ffffff",
-};
-
 // Bottom-tab geometry is intentionally tuned and should only change with
 // matching test updates plus simulator verification.
 const ROOT_TAB_CAMERA_TOP_OFFSET = -16;
 const ROOT_TAB_SIDE_CENTER_OFFSET = Dimensions.get("window").width / 12;
-
-export function shouldCollapseRootSideTabsOnTaskDetailRoute(routeName?: string) {
-  return routeName === "TaskDetail" || routeName === "TaskDetailFromDashboard";
-}
-
-function isApprovedLifecycleStatus(status?: string | null) {
-  return status === "approved" || status === "completed" || status === "done";
-}
-
-function isTaskDetailUpdateLockedForAssignee(args: {
-  task?:
-    | {
-        assignedTo?: string[] | null;
-        primaryAssigneeId?: string | null;
-        delegatedUserIds?: string[] | null;
-        assignedBy?: string | null;
-        status?: string | null;
-        completionPercentage?: number | null;
-      }
-    | null;
-  userId?: string | null;
-}) {
-  const task = args.task;
-  const userId = args.userId == null ? "" : String(args.userId);
-  if (!task || !userId) {
-    return false;
-  }
-
-  const assignedIds = new Set(
-    [
-      ...(Array.isArray(task.assignedTo) ? task.assignedTo : []),
-      ...(Array.isArray(task.delegatedUserIds) ? task.delegatedUserIds : []),
-      task.primaryAssigneeId ?? undefined,
-    ]
-      .filter(Boolean)
-      .map((id) => String(id)),
-  );
-  const isAssignedToUser = assignedIds.has(userId);
-  const isTaskCreator = String(task.assignedBy ?? "") === userId;
-  if (!isAssignedToUser || isTaskCreator) {
-    return false;
-  }
-
-  return task.status === "submitted_for_review" || isApprovedLifecycleStatus(task.status);
-}
-
-function resolveTaskDetailUpdateLockState(args: {
-  tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0];
-  userId?: string | null;
-  tasksById?: Record<string, any>;
-  tasks?: Array<any>;
-}) {
-  const shortcut = resolveTaskDetailUpdateShortcut(args.tabState);
-  if (!shortcut?.params?.taskId) {
-    return { shortcut, isLocked: false };
-  }
-
-  const taskId = String(shortcut.params.taskId);
-  const task = args.tasksById?.[taskId] ?? args.tasks?.find((candidate) => candidate?.id === taskId);
-  return {
-    shortcut,
-    isLocked: isTaskDetailUpdateLockedForAssignee({
-      task,
-      userId: args.userId,
-    }),
-  };
-}
-
-export function shouldHideRootSideTabsForTabState(
-  tabState?: Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
-) {
-  return Boolean(resolveTaskDetailUpdateShortcut(tabState));
-}
-
-export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
-  return (
-    routeName === "CreateTaskMain" ||
-    routeName === "UpdateProgress" ||
-    routeName === "PhotoSelection" ||
-    routeName === "InAppLibraryPicker"
-  );
-}
-
-function buildRootTabBarStyleForRoute(
-  routeName?: string,
-  initialRouteName?: string,
-): ViewStyle {
-  const resolvedRouteName = routeName ?? initialRouteName;
-  const shouldHideTabBar = shouldHideTabBarOnCreateTaskRoute(resolvedRouteName);
-
-  if (!shouldHideTabBar) {
-    return ROOT_TAB_BAR_STYLE;
-  }
-
-  return {
-    ...ROOT_TAB_BAR_STYLE,
-    display: "none",
-  };
-}
 
 const SPRINT7_AUTOMATION_PATH_RE =
   /^automation\/sprint7\/(tristan|herman)(?:\/preset\/([abcABC])?)?$/;
@@ -366,326 +289,6 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
     return defaultGetStateFromPath(path, appLinking.config);
   },
 };
-
-type RouteStateLike = {
-  index?: number;
-  routeNames?: string[];
-  routes?: Array<{ key: string; name?: string }>;
-};
-type RootTabLikeNavigation = {
-  navigate: (...args: unknown[]) => void;
-};
-type RootStackLikeNavigation = Pick<
-  NativeStackNavigationProp<RootStackParamList>,
-  "navigate"
->;
-type ParentNavigationLike = {
-  getParent?: () => ParentNavigationLike | undefined;
-  getState?: () => RouteStateLike;
-  navigate?: (...args: unknown[]) => void;
-};
-
-type ProjectPickerNavigation = {
-  navigate:
-    | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
-    | NativeStackNavigationProp<TasksStackParamList>["navigate"];
-  getParent?: () => ParentNavigationLike | undefined;
-  getState?: () => RouteStateLike;
-};
-
-type CreateTaskRouteNavigation = {
-  navigate:
-    | NativeStackNavigationProp<DashboardStackParamList>["navigate"]
-    | NativeStackNavigationProp<TasksStackParamList>["navigate"]
-    | NativeStackNavigationProp<CreateTaskStackParamList>["navigate"];
-  canGoBack?: () => boolean;
-  dispatch?: (action: any) => void;
-  getParent?: () => ParentNavigationLike | undefined;
-  goBack: () => void;
-  getState?: () => RouteStateLike;
-  setParams?: (params: CreateTaskParams) => void;
-};
-
-type DashboardTaskDetailBackNavigation = Pick<
-  NativeStackNavigationProp<DashboardStackParamList>,
-  "canGoBack" | "getParent" | "getState" | "goBack" | "pop"
->;
-
-type TasksTaskDetailBackNavigation = Pick<
-  NativeStackNavigationProp<TasksStackParamList>,
-  "canGoBack" | "getState" | "goBack" | "navigate" | "pop"
->;
-
-type StackBackNavigation = {
-  canGoBack: () => boolean;
-  getState?: () => RouteStateLike;
-  goBack: () => void;
-  pop: (count?: number) => void;
-};
-
-function hasCurrentStackHistory(state?: RouteStateLike) {
-  if (!state) {
-    return false;
-  }
-
-  if (typeof state.index === "number") {
-    return state.index > 0;
-  }
-
-  return Array.isArray(state.routes) && state.routes.length > 1;
-}
-
-function popCurrentStack(navigation: StackBackNavigation) {
-  if (navigation.canGoBack()) {
-    navigation.pop(1);
-    return true;
-  }
-
-  const state = navigation.getState?.() as RouteStateLike | undefined;
-
-  if (hasCurrentStackHistory(state)) {
-    navigation.pop(1);
-    return true;
-  }
-
-  return false;
-}
-
-function hasAnyRoute(
-  navigation: ParentNavigationLike | undefined,
-  routeNames: string[],
-) {
-  const currentRouteNames = navigation?.getState?.()?.routeNames || [];
-  return routeNames.some((routeName) => currentRouteNames.includes(routeName));
-}
-
-function getRootTabsNavigation(
-  navigation: { getParent?: () => ParentNavigationLike | undefined },
-) {
-  const parentNav = navigation.getParent?.();
-  if (hasAnyRoute(parentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])) {
-    return parentNav as RootTabLikeNavigation;
-  }
-
-  const grandParentNav = parentNav?.getParent?.();
-  if (
-    hasAnyRoute(grandParentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])
-  ) {
-    return grandParentNav as RootTabLikeNavigation;
-  }
-
-  return undefined;
-}
-
-function getRootStackNavigation(
-  navigation: { getParent?: () => ParentNavigationLike | undefined },
-) {
-  const parentNav = navigation.getParent?.();
-  if (hasAnyRoute(parentNav, ["MainTabs", "Profile"])) {
-    return parentNav as RootStackLikeNavigation;
-  }
-
-  const grandParentNav = parentNav?.getParent?.();
-  if (hasAnyRoute(grandParentNav, ["MainTabs", "Profile"])) {
-    return grandParentNav as RootStackLikeNavigation;
-  }
-
-  return undefined;
-}
-
-function navigateToRootProfile(
-  navigation: { getParent?: () => ParentNavigationLike | undefined },
-  screen: keyof ProfileStackParamList = "ProfileMain",
-) {
-  const rootNav = getRootStackNavigation(navigation);
-  if (!rootNav) {
-    return;
-  }
-
-  if (screen === "ProfileMain") {
-    rootNav.navigate("Profile");
-    return;
-  }
-
-  rootNav.navigate("Profile", { screen });
-}
-
-function navigateToRootTabScreen<T extends keyof RootTabParamList>(
-  navigation: { getParent?: () => ParentNavigationLike | undefined },
-  screen: T,
-  params?: RootTabParamList[T],
-) {
-  const tabsNav = getRootTabsNavigation(navigation);
-  if (tabsNav) {
-    tabsNav.navigate(screen as never, params as never);
-    return;
-  }
-
-  const rootNav = getRootStackNavigation(navigation);
-  if (!rootNav) {
-    return;
-  }
-
-  if (params === undefined) {
-    rootNav.navigate("MainTabs", { screen } as RootStackParamList["MainTabs"]);
-    return;
-  }
-
-  rootNav.navigate("MainTabs", { screen, params } as RootStackParamList["MainTabs"]);
-}
-
-function navigateToProjectPicker(
-  navigation: ProjectPickerNavigation,
-  allowBack?: boolean,
-) {
-  const currentRouteNames = navigation.getState?.()?.routeNames || [];
-  if (currentRouteNames.includes("ProjectPicker")) {
-    (
-      navigation as NativeStackNavigationProp<DashboardStackParamList>
-    ).navigate("ProjectPicker", { allowBack });
-    return;
-  }
-
-  navigateToRootTabScreen(navigation, "Activity", {
-    screen: "ProjectPicker",
-    params: { allowBack },
-  });
-}
-
-function navigateToCreateTaskRoute(
-  navigation: CreateTaskRouteNavigation,
-  params: CreateTaskParams,
-) {
-  const currentRouteNames = navigation.getState?.()?.routeNames || [];
-  if (currentRouteNames.includes("CreateTask")) {
-    (
-      navigation as NativeStackNavigationProp<
-        DashboardStackParamList | TasksStackParamList
-      >
-    ).navigate("CreateTask", params);
-    return;
-  }
-
-  if (currentRouteNames.includes("CreateTaskMain")) {
-    (
-      navigation as NativeStackNavigationProp<CreateTaskStackParamList>
-    ).navigate("CreateTaskMain", params);
-    return;
-  }
-
-  navigateToRootTabScreen(navigation, "Camera", {
-    screen: "CreateTaskMain",
-    params,
-  });
-}
-
-export function returnToCreateTaskRoute(
-  navigation: CreateTaskRouteNavigation,
-  params: CreateTaskParams,
-) {
-  const navigationState = navigation.getState?.();
-  const currentRoutes = navigationState?.routes || [];
-  const currentIndex =
-    typeof navigationState?.index === "number"
-      ? navigationState.index
-      : currentRoutes.length - 1;
-
-  let createTaskIndex = -1;
-  for (let i = currentIndex - 1; i >= 0; i -= 1) {
-    const name = currentRoutes[i]?.name;
-    if (name === "CreateTask" || name === "CreateTaskMain") {
-      createTaskIndex = i;
-      break;
-    }
-  }
-
-  if (createTaskIndex < 0 || navigation.canGoBack?.() === false) {
-    navigateToCreateTaskRoute(navigation, params);
-    return;
-  }
-
-  const createTaskKey = currentRoutes[createTaskIndex]?.key;
-  const popCount = currentIndex - createTaskIndex;
-  if (popCount > 0 && navigation.dispatch) {
-    navigation.dispatch(StackActions.pop(popCount) as any);
-  } else {
-    navigation.goBack();
-  }
-
-  setTimeout(() => {
-    if (createTaskKey && navigation.dispatch) {
-      navigation.dispatch({
-        ...CommonActions.setParams(params),
-        source: createTaskKey,
-      });
-      return;
-    }
-
-    navigation.setParams?.(params);
-  }, 150);
-}
-
-export function handleDashboardTaskDetailBack(
-  navigation: DashboardTaskDetailBackNavigation,
-) {
-  if (popCurrentStack(navigation)) {
-    return;
-  }
-
-  const parentNav = navigation.getParent?.() as RootTabLikeNavigation | undefined;
-  parentNav?.navigate("Activity");
-}
-
-export function handleTasksTaskDetailBack(
-  navigation: TasksTaskDetailBackNavigation,
-) {
-  if (popCurrentStack(navigation)) {
-    return;
-  }
-
-  navigation.navigate("TasksList");
-}
-
-export function handleUpdateProgressBack(navigation: StackBackNavigation) {
-  exitUpdateProgressScreen(navigation);
-}
-
-export function handleCameraTabPress({
-  event,
-  navigation,
-}: {
-  event: { preventDefault: () => void };
-  navigation: {
-    getState: () => Parameters<typeof resolveTaskDetailUpdateShortcut>[0];
-    navigate: (screen: string, params?: unknown) => void;
-  };
-}) {
-  const taskStoreState = useTaskStore.getState() as {
-    tasksById?: Record<string, any>;
-    tasks?: Array<any>;
-  };
-  const { shortcut: updateShortcut, isLocked } = resolveTaskDetailUpdateLockState({
-    tabState: navigation.getState() as Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
-    userId: useAuthStore.getState().user?.id,
-    tasksById: taskStoreState.tasksById,
-    tasks: taskStoreState.tasks,
-  });
-
-  event.preventDefault();
-
-  if (updateShortcut && !isLocked) {
-    navigation.navigate(updateShortcut.tabName, {
-      screen: "UpdateProgress",
-      params: updateShortcut.params,
-    });
-    return;
-  }
-
-  navigation.navigate("Camera", {
-    screen: "CreateTaskMain",
-    params: undefined,
-  });
-}
 
 function CenterCameraTabButton({
   accessibilityLabel,
@@ -1906,24 +1509,6 @@ function CreateTaskMainScreen({
   const [uploadedPhotoUrlsState, setUploadedPhotoUrlsState] = React.useState<string[] | undefined>(undefined);
   
   // Try both direct params and nested params (for tab navigation)
-  const normalizeSelectedPhotos = (photos: unknown): CreateTaskParams["selectedPhotos"] => {
-    if (!Array.isArray(photos)) {
-      return undefined;
-    }
-
-    return photos.map((photo) => {
-      const candidate = photo as SelectedPhoto;
-      return {
-        uri: candidate.uri,
-        fileName: candidate.fileName,
-        isAnnotated: Boolean(candidate.isAnnotated),
-        annotatedUri: candidate.annotatedUri,
-        caption: candidate.caption,
-        mediaLibraryAssetId: candidate.mediaLibraryAssetId,
-      };
-    });
-  };
-
   const rawParams = (route.params || {}) as CreateTaskParams;
   const params = resolveCreateTaskEntryParams(rawParams);
   const parentTaskId = params.parentTaskId;
@@ -1937,7 +1522,7 @@ function CreateTaskMainScreen({
   const sourceTaskId = params.sourceTaskId; // TaskId from the source TaskDetail screen
   const sourceSubTaskId = params.sourceSubTaskId; // SubTaskId from the source TaskDetail screen
   const sourceScreen = params.sourceScreen; // 'dashboard' or 'tasks' to know which navigator to use
-  const selectedPhotosFromParams = normalizeSelectedPhotos(params.selectedPhotos); // Photos selected from PhotoSelectionScreen
+  const selectedPhotosFromParams = normalizeCreateTaskSelectedPhotos(params.selectedPhotos); // Photos selected from PhotoSelectionScreen
   const uploadedPhotoUrlsFromParams = params.uploadedPhotoUrls; // Uploaded URLs returned from PhotoSelectionScreen
   const clearForm = params.clearForm; // Flag to clear form when "Create New Task" is pressed
   const clearFormTimestamp = params._timestamp; // Timestamp to track when clearForm was set
@@ -1989,7 +1574,7 @@ function CreateTaskMainScreen({
     const unsubscribe = navigation.addListener('focus', () => {
       // Check params again on focus
       const currentParams = (route.params || {}) as CreateTaskParams;
-      const currentSelectedPhotos = normalizeSelectedPhotos(currentParams.selectedPhotos);
+      const currentSelectedPhotos = normalizeCreateTaskSelectedPhotos(currentParams.selectedPhotos);
       const currentUploadedPhotoUrls = currentParams.uploadedPhotoUrls;
       if (currentSelectedPhotos && Array.isArray(currentSelectedPhotos) && currentSelectedPhotos.length > 0) {
         setSelectedPhotosState(currentSelectedPhotos);

@@ -21,36 +21,27 @@ import {
   resolveInitialTaskCreateStatus,
 } from "../utils/taskCreateValidation";
 import { assertValidTaskUpdate } from "../utils/taskUpdateValidation";
+import {
+  buildSupabaseTaskInsertPayload,
+  getDeferredTaskSchemaField,
+  stripDeferredTaskRuntimeFields,
+  stripDeferredTaskSchemaFields,
+} from "./taskDeferredSchemaCompat";
+import {
+  buildTaskDerivedState,
+  type TaskDerivedState,
+  type TaskPreview,
+} from "./taskDerivedState";
+import {
+  isMissingProjectContainersRelation,
+  normalizePersistedTasks,
+  normalizeProjectLocationLabel,
+  normalizeTaskActivityCompatibility,
+} from "./taskNormalization";
 
 export type { QueryMeta } from "../api/supabase";
-
-export interface TaskPreview {
-  id: string;
-  projectId: string;
-  parentTaskId?: string;
-  rootTaskId?: string;
-  title: string;
-  status: TaskStatus;
-  priority: Priority;
-  completionPercentage: number;
-  dueDate?: string;
-  assignedTo: string[];
-  assignedBy: string;
-  leadingAttachmentUri?: string;
-  previewHash: string;
-  entityVersion: number;
-}
-
-export interface TaskDerivedState {
-  tasksById: Record<string, Task>;
-  taskPreviewById: Record<string, TaskPreview>;
-  taskIdsByProject: Record<string, string[]>;
-  topLevelTaskIdsByProject: Record<string, string[]>;
-  childTaskIdsByParent: Record<string, string[]>;
-  taskIdsByUser: Record<string, string[]>;
-  taskIdsAssignedByUser: Record<string, string[]>;
-  queryTaskIds: Record<string, string[]>;
-}
+export type { TaskDerivedState, TaskPreview } from "./taskDerivedState";
+export { buildTaskDerivedState } from "./taskDerivedState";
 
 export interface ProjectLocationRecord {
   id: string;
@@ -83,340 +74,6 @@ function taskSnapshotsMatch(left: Task, right: Task): boolean {
     leftActivityTail === rightActivityTail
   );
 }
-const DEFERRED_TASK_CREATE_SCHEMA_FIELDS = [
-  "primary_assignee_id",
-  "delegated_user_ids",
-  "container_id",
-  "sub_container_id",
-  "tags",
-  "location_on_site",
-] as const;
-const DEFERRED_TASK_RUNTIME_FIELDS = [
-  "primaryAssigneeId",
-  "delegatedUserIds",
-  "containerId",
-  "subContainerId",
-  "tags",
-  "locationOnSite",
-] as const;
-
-function buildSupabaseTaskInsertPayload(
-  taskData: Omit<Task, "id" | "createdAt" | "updates" | "status" | "completionPercentage">,
-  initialStatus: TaskStatus,
-  isCreatorAssigned: boolean
-) {
-  return {
-    project_id: taskData.projectId,
-    title: taskData.title,
-    description: taskData.description,
-    task_reference: taskData.taskReference || null,
-    billing_status: taskData.billingStatus || "non_billable",
-    priority: taskData.priority,
-    category: taskData.category,
-    due_date: taskData.dueDate,
-    current_status: initialStatus,
-    completion_percentage: 0,
-    assigned_to: taskData.assignedTo,
-    primary_assignee_id: taskData.primaryAssigneeId || null,
-    delegated_user_ids: taskData.delegatedUserIds || null,
-    assigned_by: taskData.assignedBy,
-    container_id: taskData.containerId || null,
-    sub_container_id: taskData.subContainerId || null,
-    tags: taskData.tags || [],
-    location_on_site: taskData.locationOnSite || null,
-    attachments: taskData.attachments || [],
-    accepted: isCreatorAssigned ? true : false,
-    accepted_by: isCreatorAssigned ? taskData.assignedBy : null,
-    accepted_at: isCreatorAssigned ? new Date().toISOString() : null,
-  };
-}
-
-function stripDeferredTaskSchemaFields<T extends Record<string, unknown>>(
-  payload: T
-) {
-  const compatibilityPayload = { ...payload };
-
-  DEFERRED_TASK_CREATE_SCHEMA_FIELDS.forEach((fieldName) => {
-    delete compatibilityPayload[fieldName];
-  });
-
-  return compatibilityPayload;
-}
-
-function stripDeferredTaskRuntimeFields<T extends Record<string, unknown>>(
-  payload: T
-) {
-  const compatibilityPayload = { ...payload };
-
-  DEFERRED_TASK_RUNTIME_FIELDS.forEach((fieldName) => {
-    delete compatibilityPayload[fieldName];
-  });
-
-  return compatibilityPayload;
-}
-
-function getDeferredTaskSchemaField(error: unknown) {
-  if (!error || typeof error !== "object") {
-    return null;
-  }
-
-  const errorCode = "code" in error ? String((error as { code?: unknown }).code || "") : "";
-  const isColumnNotExistsCode =
-    errorCode === "PGRST204" ||
-    errorCode === "42703";
-  if (!isColumnNotExistsCode) {
-    return null;
-  }
-
-  const errorMessage = "message" in error
-    ? String((error as { message?: unknown }).message || "")
-    : "";
-  const errorDetails = "details" in error
-    ? String((error as { details?: unknown }).details || "")
-    : "";
-  const errorText = `${errorMessage} ${errorDetails} ${errorCode}`;
-
-  return (
-    DEFERRED_TASK_CREATE_SCHEMA_FIELDS.find((fieldName) => errorText.includes(fieldName)) || null
-  );
-}
-
-function createActivityFromLegacyUpdate(taskId: string, update: TaskUpdate): TaskActivity {
-  return {
-    id: update.id,
-    taskId,
-    userId: update.userId,
-    activityType: "progress_update",
-    timestamp: update.timestamp,
-    data: {
-      description: update.description,
-      photos: update.photos || [],
-      completionPercentage: update.completionPercentage,
-      status: update.status,
-    },
-    description: update.description,
-    completionPercentage: update.completionPercentage,
-    status: update.status,
-    createdAt: update.timestamp,
-  };
-}
-
-function normalizeTaskActivityCompatibility(task: Task): Task {
-  const normalizedAssignedTo = Array.isArray(task.assignedTo)
-    ? task.assignedTo.map((assigneeId) => String(assigneeId))
-    : [];
-  const normalizedDelegatedUserIds = Array.isArray(task.delegatedUserIds)
-    ? task.delegatedUserIds.map((userId) => String(userId))
-    : undefined;
-  const updates = Array.isArray(task.updates) ? task.updates : [];
-  const activities = Array.isArray(task.activities) ? task.activities : [];
-  const normalizedTask = {
-    ...task,
-    assignedTo: normalizedAssignedTo,
-    assignedBy: task.assignedBy ? String(task.assignedBy) : "",
-    primaryAssigneeId: task.primaryAssigneeId
-      ? String(task.primaryAssigneeId)
-      : normalizedAssignedTo[0],
-    delegatedUserIds:
-      normalizedDelegatedUserIds !== undefined
-        ? normalizedDelegatedUserIds
-        : normalizedAssignedTo.slice(1),
-    containerId: task.containerId ? String(task.containerId) : undefined,
-    subContainerId: task.subContainerId ? String(task.subContainerId) : undefined,
-    tags: Array.isArray(task.tags) ? task.tags.map((tag) => String(tag)) : [],
-    updates,
-  };
-
-  if (activities.length > 0) {
-    return {
-      ...normalizedTask,
-      activities,
-    };
-  }
-
-  return {
-    ...normalizedTask,
-    activities: updates.map((update) => createActivityFromLegacyUpdate(task.id, update)),
-  };
-}
-
-function normalizePersistedTasks(tasks: Task[] | undefined): Task[] {
-  if (!Array.isArray(tasks)) {
-    return [];
-  }
-
-  return tasks.map(normalizeTaskActivityCompatibility);
-}
-
-function pushUnique(target: Record<string, string[]>, key: string, value: string) {
-  if (!key) {
-    return;
-  }
-
-  if (!target[key]) {
-    target[key] = [];
-  }
-
-  if (!target[key].includes(value)) {
-    target[key].push(value);
-  }
-}
-
-function createTaskPreview(task: Task): TaskPreview {
-  const leadingAttachment = Array.isArray(task.attachments) && task.attachments.length > 0
-    ? task.attachments[0]
-    : undefined;
-
-  const leadingAttachmentUri =
-    typeof leadingAttachment === "string"
-      ? leadingAttachment
-      : leadingAttachment && typeof leadingAttachment === "object"
-        ? ((leadingAttachment as any).annotatedUri || (leadingAttachment as any).uri)
-        : undefined;
-
-  const updatedAt = (task as any).updatedAt || task.createdAt || "";
-
-  return {
-    id: task.id,
-    projectId: task.projectId,
-    parentTaskId: task.parentTaskId || undefined,
-    rootTaskId: task.rootTaskId || undefined,
-    title: task.title,
-    status: task.status,
-    priority: task.priority,
-    completionPercentage: task.completionPercentage,
-    dueDate: task.dueDate,
-    assignedTo: task.assignedTo || [],
-    assignedBy: task.assignedBy,
-    leadingAttachmentUri,
-    previewHash: [
-      task.id,
-      task.title,
-      task.status,
-      task.priority,
-      task.completionPercentage,
-      task.dueDate || "",
-      leadingAttachmentUri || "",
-      updatedAt,
-    ].join("|"),
-    entityVersion: updatedAt ? new Date(updatedAt).getTime() : 0,
-  };
-}
-
-function normalizeProjectLocationLabel(label: string | undefined | null) {
-  if (!label) {
-    return "";
-  }
-
-  return label.replace(/\s+/g, " ").trim();
-}
-
-function isMissingProjectContainersRelation(error: { code?: string; message?: string } | null | undefined) {
-  if (!error) {
-    return false;
-  }
-  const code = String(error.code || "");
-  const message = String(error.message || "").toLowerCase();
-  return (
-    code === "42P01" ||
-    code === "PGRST205" ||
-    (message.includes("project_containers") &&
-      (message.includes("does not exist") ||
-        message.includes("could not find") ||
-        message.includes("schema cache")))
-  );
-}
-
-function deriveTaskIdsForQuery(
-  resourceKey: string,
-  allTaskIds: string[],
-  tasksById: Record<string, Task>,
-  taskIdsByProject: Record<string, string[]>,
-  taskIdsByUser: Record<string, string[]>,
-  taskIdsAssignedByUser: Record<string, string[]>
-): string[] {
-  const parts = resourceKey.split(":");
-
-  if (resourceKey === buildResourceKey("tasks", "all")) {
-    return allTaskIds;
-  }
-
-  if (parts[0] === "tasks" && parts[1] === "project" && parts[2]) {
-    return taskIdsByProject[parts[2]] || [];
-  }
-
-  if (parts[0] === "tasks" && parts[1] === "user" && parts[2]) {
-    return taskIdsByUser[parts[2]] || [];
-  }
-
-  if (parts[0] === "tasks" && parts[1] === "assignedBy" && parts[2]) {
-    return taskIdsAssignedByUser[parts[2]] || [];
-  }
-
-  if ((parts[0] === "task" || (parts[0] === "tasks" && parts[1] === "id")) && parts[parts.length - 1]) {
-    const taskId = parts[parts.length - 1];
-    return tasksById[taskId] ? [taskId] : [];
-  }
-
-  return [];
-}
-
-export function buildTaskDerivedState(
-  tasks: Task[],
-  _taskReadStatuses: TaskReadStatus[],
-  taskQueryMeta: Record<string, QueryMeta> = {}
-): TaskDerivedState {
-  const tasksById: Record<string, Task> = {};
-  const taskPreviewById: Record<string, TaskPreview> = {};
-  const taskIdsByProject: Record<string, string[]> = {};
-  const topLevelTaskIdsByProject: Record<string, string[]> = {};
-  const childTaskIdsByParent: Record<string, string[]> = {};
-  const taskIdsByUser: Record<string, string[]> = {};
-  const taskIdsAssignedByUser: Record<string, string[]> = {};
-  const queryTaskIds: Record<string, string[]> = {};
-  const allTaskIds: string[] = [];
-
-  tasks.forEach((task) => {
-    tasksById[task.id] = task;
-    taskPreviewById[task.id] = createTaskPreview(task);
-    allTaskIds.push(task.id);
-    pushUnique(taskIdsByProject, task.projectId, task.id);
-    pushUnique(taskIdsAssignedByUser, task.assignedBy, task.id);
-
-    if (task.parentTaskId) {
-      pushUnique(childTaskIdsByParent, task.parentTaskId, task.id);
-    } else {
-      pushUnique(topLevelTaskIdsByProject, task.projectId, task.id);
-    }
-
-    (task.assignedTo || []).forEach((userId) => {
-      pushUnique(taskIdsByUser, String(userId), task.id);
-    });
-  });
-
-  Object.keys(taskQueryMeta).forEach((resourceKey) => {
-    queryTaskIds[resourceKey] = deriveTaskIdsForQuery(
-      resourceKey,
-      allTaskIds,
-      tasksById,
-      taskIdsByProject,
-      taskIdsByUser,
-      taskIdsAssignedByUser
-    );
-  });
-
-  return {
-    tasksById,
-    taskPreviewById,
-    taskIdsByProject,
-    topLevelTaskIdsByProject,
-    childTaskIdsByParent,
-    taskIdsByUser,
-    taskIdsAssignedByUser,
-    queryTaskIds,
-  };
-}
-
 interface TaskStore {
   tasks: Task[];
   archivedTasks: Task[];
@@ -4566,50 +4223,21 @@ function syncTaskDerivedState() {
 
 syncTaskDerivedState();
 
-export const selectTaskIdsByProject = (projectId: string) => (state: TaskStore) =>
-  state.taskIdsByProject[projectId] || [];
-
-export const selectTopLevelTaskIdsByProject = (projectId: string) => (state: TaskStore) =>
-  state.topLevelTaskIdsByProject[projectId] || [];
-
-export const selectChildTaskIds = (parentTaskId: string) => (state: TaskStore) =>
-  state.childTaskIdsByParent[parentTaskId] || [];
-
-export const selectTaskPreview = (taskId: string) => (state: TaskStore) =>
-  state.taskPreviewById[taskId] || null;
-
-export const selectTaskEntity = (taskId: string) => (state: TaskStore) =>
-  state.tasksById[taskId] || null;
-
-export const selectTaskIdsByUser = (userId: string) => (state: TaskStore) =>
-  state.taskIdsByUser[userId] || [];
-
-export const selectTaskIdsAssignedByUser = (userId: string) => (state: TaskStore) =>
-  state.taskIdsAssignedByUser[userId] || [];
-
-export const selectTaskQueryMeta = (resourceKey: string) => (state: TaskStore) =>
-  state.taskQueryMeta[resourceKey] || createQueryMeta(resourceKey);
-
-export const useTaskIdsByProject = (projectId: string) =>
-  useTaskStore(selectTaskIdsByProject(projectId));
-
-export const useTopLevelTaskIdsByProject = (projectId: string) =>
-  useTaskStore(selectTopLevelTaskIdsByProject(projectId));
-
-export const useChildTaskIds = (parentTaskId: string) =>
-  useTaskStore(selectChildTaskIds(parentTaskId));
-
-export const useTaskPreview = (taskId: string) =>
-  useTaskStore(selectTaskPreview(taskId));
-
-export const useTaskEntity = (taskId: string) =>
-  useTaskStore(selectTaskEntity(taskId));
-
-export const useTaskIdsByUser = (userId: string) =>
-  useTaskStore(selectTaskIdsByUser(userId));
-
-export const useTaskIdsAssignedByUser = (userId: string) =>
-  useTaskStore(selectTaskIdsAssignedByUser(userId));
-
-export const useTaskQueryMeta = (resourceKey: string) =>
-  useTaskStore(selectTaskQueryMeta(resourceKey));
+export {
+  selectChildTaskIds,
+  selectTaskEntity,
+  selectTaskIdsAssignedByUser,
+  selectTaskIdsByProject,
+  selectTaskIdsByUser,
+  selectTaskPreview,
+  selectTaskQueryMeta,
+  selectTopLevelTaskIdsByProject,
+  useChildTaskIds,
+  useTaskEntity,
+  useTaskIdsAssignedByUser,
+  useTaskIdsByProject,
+  useTaskIdsByUser,
+  useTaskPreview,
+  useTaskQueryMeta,
+  useTopLevelTaskIdsByProject,
+} from "./taskStore.selectors";

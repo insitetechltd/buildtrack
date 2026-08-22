@@ -1018,6 +1018,16 @@ export function useCreateTaskViewAdapter({
   const isInitialLoading = !hasUsableData;
 
   const clearDraftPayloads = useCallback(async () => {
+    const draftIdToClear = activeLocalDraftId ?? localDraftId;
+    if (draftIdToClear) {
+      try {
+        await deleteLocalTaskDraft(draftIdToClear);
+      } catch {
+        // Discard or post-submit cleanup is best-effort.
+      }
+      setActiveLocalDraftId(undefined);
+    }
+
     try {
       await AsyncStorage.multiRemove([
         "draftCreateTask",
@@ -1026,11 +1036,10 @@ export function useCreateTaskViewAdapter({
         "createTask_camera_return_timestamp",
       ]);
       setFormData(createEmptyFormData());
-      setActiveLocalDraftId(undefined);
     } catch (e) {
       console.error("Failed to clear task draft payloads", e);
     }
-  }, []);
+  }, [activeLocalDraftId, localDraftId]);
 
   const outputGenerateSuggestionFromText = useCallback(async () => {
     await generateSuggestionFromText();

@@ -145,7 +145,9 @@ const mockAuthState = {
 };
 
 jest.mock("../../state/authStore", () => ({
-  useAuthStore: () => mockAuthState,
+  useAuthStore: Object.assign(() => mockAuthState, {
+    getState: () => mockAuthState,
+  }),
 }));
 
 const mockProjectFilterState = {
@@ -159,10 +161,23 @@ jest.mock("../../state/projectFilterStore", () => ({
     selector ? selector(mockProjectFilterState) : mockProjectFilterState,
 }));
 
-jest.mock("../../state/taskStore.supabase", () => ({
-  useTaskStore: (selector: (state: { getUnreadTaskCount: () => number }) => unknown) =>
-    selector({ getUnreadTaskCount: () => 0 }),
-}));
+jest.mock("../../state/taskStore.supabase", () => {
+  const taskStoreState = {
+    getUnreadTaskCount: () => 0,
+    tasksById: {},
+    tasks: [],
+  };
+
+  const useTaskStore = Object.assign(
+    (selector?: (state: typeof taskStoreState) => unknown) =>
+      selector ? selector(taskStoreState) : taskStoreState,
+    {
+      getState: () => taskStoreState,
+    },
+  );
+
+  return { useTaskStore };
+});
 
 jest.mock("../../types/buildtrack", () => ({
   isAdmin: () => false,

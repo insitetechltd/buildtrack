@@ -160,9 +160,7 @@ appId: com.buildtrack.app.local
           id: "profile-menu__backdrop"
       - waitForAnimationToEnd:
           timeout: 1500
-- launchApp:
-    appId: "com.buildtrack.app.local"
-    clearState: true
+- runFlow: _hard-reset-launch.yaml
 - extendedWaitUntil:
     visible:
       id: "app-screen-header__profile-trigger"
@@ -374,9 +372,7 @@ appId: com.buildtrack.app.local
           id: "profile-menu__backdrop"
       - waitForAnimationToEnd:
           timeout: 1500
-- launchApp:
-    appId: "com.buildtrack.app.local"
-    clearState: true
+- runFlow: _hard-reset-launch.yaml
 - extendedWaitUntil:
     visible:
       id: "app-screen-header__profile-trigger"

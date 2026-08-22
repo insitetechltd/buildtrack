@@ -118,7 +118,21 @@ if [[ "${FORCE_PURGE}" != "1" && "${UNIQUE}" -eq "${NEED}" && "${TOTAL}" -eq "${
   exit 0
 fi
 
-echo "  PURGE+SEED: shutdown → clear DCIM/PhotoData → boot → addmedia ${NEED}"
+echo "  PURGE+SEED: logout → shutdown → clear DCIM/PhotoData → boot → addmedia ${NEED}"
+
+# M-DATA-04: sign out before terminate/shutdown so Supabase Realtime channels close cleanly.
+if xcrun simctl list devices | grep "${UDID}" | grep -q "(Booted)"; then
+  WRAPPER="${ROOT}/scripts/maestro/run-local.sh"
+  LOGOUT_FLOW="${ROOT}/maestro/flows/_logout.yaml"
+  if [[ -x "${WRAPPER}" || -f "${WRAPPER}" ]] && [[ -f "${LOGOUT_FLOW}" ]]; then
+    if curl -sf "http://127.0.0.1:8081/status" >/dev/null 2>&1; then
+      set +e
+      MAESTRO_UDID="${UDID}" bash "${WRAPPER}" --udid "${UDID}" test "${LOGOUT_FLOW}" >/dev/null 2>&1
+      set -e
+      sleep 2
+    fi
+  fi
+fi
 
 xcrun simctl terminate "${UDID}" com.buildtrack.app.local >/dev/null 2>&1 || true
 xcrun simctl shutdown "${UDID}" >/dev/null 2>&1 || true

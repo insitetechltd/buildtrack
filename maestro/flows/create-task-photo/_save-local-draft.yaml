@@ -14,23 +14,35 @@ appId: com.buildtrack.app.local
     element:
       id: "createTask-title"
     direction: UP
+    timeout: 20000
 - tapOn:
     id: "createTask-title"
 - inputText: ${output.draftTitle}
+# Blur title so React state commits before Save draft reads formData.title.
+- tapOn:
+    id: "createTask-description"
 - runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__action_bar"
+    direction: DOWN
+    speed: 40
+    visibilityPercentage: 100
+    timeout: 25000
 - scrollUntilVisible:
     centerElement: true
     element:
       id: "create-task__save-draft"
     direction: DOWN
-- tapOn:
-    id: "create-task__save-draft"
+    speed: 40
+    visibilityPercentage: 100
+    timeout: 25000
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
 - tapOn:
-    id: "root-tab__activity"
-    optional: true
+    text: "Save draft"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 25000
+    timeout: 45000

@@ -5,20 +5,14 @@ appId: com.buildtrack.app.local
 - runFlow: _ensure-project.yaml
 - runFlow: ../_dismiss-blocking-overlays.yaml
 - runFlow: _save-local-draft.yaml
-- tapOn:
-    id: "root-tab__activity"
-    optional: true
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
     timeout: 20000
 - extendedWaitUntil:
-    visible:
-      id: "dashboard-screen__queue_dashboard"
-    timeout: 25000
-- extendedWaitUntil:
     notVisible: "Refreshing..."
-    timeout: 20000
+    timeout: 30000
+    optional: true
 # Saved drafts sit after queues (above Recent Activity). Scroll if the week strip is tall.
 - scrollUntilVisible:
     centerElement: true

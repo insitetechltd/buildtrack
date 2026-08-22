@@ -472,12 +472,6 @@ function CreateTaskEditorScreen({
   const asyncStoragePhotoCount = 0;
 
   const handleCancel = () => {
-    // Saved local drafts are persisted — leaving is not a discard.
-    if (context.isLocalDraft) {
-      onNavigateBack();
-      return;
-    }
-
     // If the form has any user-entered data, prompt before discarding
     const hasData =
       Boolean(formData.title.trim()) ||

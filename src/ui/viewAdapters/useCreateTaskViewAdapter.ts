@@ -39,19 +39,26 @@ import {
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
-import { useTranslation } from '../../utils/useTranslation';
+import { useTranslation, getNestedTranslation } from '../../utils/useTranslation';
 import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
+import { taskRequiresAssignees } from '../../utils/taskUpdateValidation';
+import {
+  deleteLocalTaskDraft,
+  deserializeCreateTaskForm,
+  draftTitleValidationMessage,
+  getLocalTaskDraft,
+  isDraftTitleValid,
+  saveLocalTaskDraft,
+} from '../../utils/localTaskDraftStore';
 
 export interface UseCreateTaskViewAdapterProps {
   editTaskId?: string;
-  resumeAsCreate?: boolean;
+  localDraftId?: string;
   parentTaskId?: string;
   parentSubTaskId?: string;
   clearForm?: boolean;
   clearFormTimestamp?: number;
 }
-
-const FORM_DATA_STORAGE_KEY = '@createTask_formData';
 const ADD_NEW_LOCATION_OPTION_VALUE = '__add_new_location__';
 const NOOP_FETCH_PROJECT_LOCATIONS = async () => [];
 const NOOP_ENSURE_PROJECT_LOCATION = async () => undefined;
@@ -183,7 +190,7 @@ function appendUniqueLocationLabel(currentLabels: string[], nextLabel: string) {
 
 export function useCreateTaskViewAdapter({
   editTaskId,
-  resumeAsCreate = false,
+  localDraftId,
   parentTaskId,
   parentSubTaskId,
   clearForm,
@@ -243,112 +250,11 @@ export function useCreateTaskViewAdapter({
   const [projectContainers, setProjectContainers] = useState<ProjectContainerRecord[]>([]);
   const [containerOrganizationExpanded, setContainerOrganizationExpanded] = useState(false);
   const [containerDraft, setContainerDraft] = useState('');
+  const [activeLocalDraftId, setActiveLocalDraftId] = useState<string | undefined>(
+    localDraftId,
+  );
   const handledClearFormRequestRef = useRef<string | null>(null);
-
-  // 1. AsyncStorage Persistence Logic
-  const persistDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const persistDraftDisabledRef = useRef(false);
-  const persistDraftWarnedRef = useRef(false);
-
-  const persistDraft = useCallback(async (data: CreateTaskFormModel) => {
-    if (persistDraftDisabledRef.current) {
-      return;
-    }
-    try {
-      // Photos live on disk; persist URIs only so draft writes stay small and reliable.
-      const attachments = (data.attachments ?? []).map((attachment) => {
-        if (typeof attachment === 'string') {
-          return attachment;
-        }
-        if (attachment && typeof attachment === 'object' && 'uri' in attachment) {
-          const { uri, id, type, name } = attachment as {
-            uri?: string;
-            id?: string;
-            type?: string;
-            name?: string;
-          };
-          return { uri, id, type, name };
-        }
-        return attachment;
-      });
-
-      await AsyncStorage.setItem(
-        FORM_DATA_STORAGE_KEY,
-        JSON.stringify({
-          ...data,
-          attachments,
-          dueDate: data.dueDate.toISOString(),
-        }),
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      const isPermissionOrManifest =
-        /permission|manifest|Operation not permitted|Code=513/i.test(message);
-      if (isPermissionOrManifest) {
-        persistDraftDisabledRef.current = true;
-      }
-      if (!persistDraftWarnedRef.current) {
-        persistDraftWarnedRef.current = true;
-        // Warn once — LogBox ERROR toasts every keystroke freeze the UI when storage is broken.
-        console.warn('Failed to persist draft (further attempts suppressed)', message);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    if (clearForm || editTaskId) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    void (async () => {
-      try {
-        const storedDraft = await AsyncStorage.getItem(FORM_DATA_STORAGE_KEY);
-        if (!storedDraft) {
-          return;
-        }
-
-        const parsedDraft = JSON.parse(storedDraft) as Partial<CreateTaskFormModel> & {
-          dueDate?: string;
-        };
-
-        if (cancelled) {
-          return;
-        }
-
-        setFormData((previous) => {
-          const isPristine =
-            !previous.title &&
-            !previous.description &&
-            !previous.taskReference &&
-            !previous.projectId &&
-            previous.assignedTo.length === 0 &&
-            previous.attachments.length === 0;
-
-          if (!isPristine) {
-            return previous;
-          }
-
-          const nextDueDate = parsedDraft.dueDate ? new Date(parsedDraft.dueDate) : previous.dueDate;
-
-          return {
-            ...previous,
-            ...parsedDraft,
-            dueDate: nextDueDate,
-          };
-        });
-      } catch (e) {
-        console.error('Failed to hydrate draft', e);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [clearForm, editTaskId]);
+  const handledLocalDraftLoadRef = useRef<string | null>(null);
 
   const clearFormRequestKey = clearForm
     ? String(clearFormTimestamp ?? "__legacy_clear_form__")
@@ -364,24 +270,35 @@ export function useCreateTaskViewAdapter({
     }
 
     handledClearFormRequestRef.current = clearFormRequestKey;
-    AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
     setFormData(createEmptyFormData());
+    setActiveLocalDraftId(undefined);
   }, [clearFormRequestKey]);
 
   useEffect(() => {
-    if (editTaskId || resumeAsCreate) {
+    if (!localDraftId) {
       return;
     }
-    if (persistDraftTimeoutRef.current) {
-      clearTimeout(persistDraftTimeoutRef.current);
+
+    if (handledLocalDraftLoadRef.current === localDraftId) {
+      return;
     }
-    persistDraftTimeoutRef.current = setTimeout(() => {
-      persistDraft(formData);
-    }, 1000);
+
+    let cancelled = false;
+    void (async () => {
+      const draft = await getLocalTaskDraft(localDraftId);
+      if (!draft || cancelled) {
+        return;
+      }
+
+      handledLocalDraftLoadRef.current = localDraftId;
+      setActiveLocalDraftId(draft.id);
+      setFormData(deserializeCreateTaskForm(draft.form));
+    })();
+
     return () => {
-      if (persistDraftTimeoutRef.current) clearTimeout(persistDraftTimeoutRef.current);
+      cancelled = true;
     };
-  }, [editTaskId, formData, persistDraft, resumeAsCreate]);
+  }, [localDraftId]);
 
   // 2. Validation Logic
   const validateForm = useCallback(() => {
@@ -389,10 +306,22 @@ export function useCreateTaskViewAdapter({
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
     if (!formData.projectId) newErrors.projectId = 'Project is required';
-    
+
+    if (!editTaskId) {
+      const { assignedTo } = buildRedesignMetadataPayload(formData);
+      if (assignedTo.length === 0) {
+        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+      }
+    } else if (editTask && taskRequiresAssignees(editTask.status)) {
+      const { assignedTo } = buildRedesignMetadataPayload(formData);
+      if (assignedTo.length === 0) {
+        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [formData]);
+  }, [editTask, editTaskId, formData, t]);
 
   // 3. Actions
   const updateField = useCallback((field: keyof CreateTaskFormModel, value: any) => {
@@ -458,20 +387,22 @@ export function useCreateTaskViewAdapter({
     actorUserId: user?.id,
     taskAssignedBy: editTask?.assignedBy,
     taskStatus: editTask?.status as TaskStatus | undefined,
-    isCreateFlow: resumeAsCreate || !editTask,
+    isCreateFlow: !editTaskId,
   });
-  const requiresEditReason =
-    resumeAsCreate ? false : requiresEditReasonForStatus(editTask?.status as TaskStatus | undefined);
+  const requiresEditReason = requiresEditReasonForStatus(
+    editTask?.status as TaskStatus | undefined,
+  );
+  const resolvedLocalDraftId = activeLocalDraftId ?? localDraftId;
+  const isLocalDraft = Boolean(resolvedLocalDraftId);
 
   const context = useMemo(() => {
-    const headerTitle =
-      editTaskId && !resumeAsCreate
-        ? t.createTask.editTask
-        : parentTaskId
-          ? parentSubTaskId && parentSubTask
-            ? t.createTask.nestedSubTask
-            : t.createTask.createSubTask
-          : t.createTask.createNewTask;
+    const headerTitle = editTaskId
+      ? t.createTask.editTask
+      : parentTaskId
+        ? parentSubTaskId && parentSubTask
+          ? t.createTask.nestedSubTask
+          : t.createTask.createSubTask
+        : t.createTask.createNewTask;
 
     const parentBanner =
       parentTask && (parentSubTask || parentTask)
@@ -487,7 +418,9 @@ export function useCreateTaskViewAdapter({
       activeProjectName: activeProject?.name,
       assigneesLocked,
       requiresEditReason,
-      isResumeAsCreate: resumeAsCreate,
+      isLocalDraft,
+      localDraftId: resolvedLocalDraftId,
+      draftBadgeLabel: isLocalDraft ? "Draft — not submitted" : undefined,
       parentBanner,
     };
   }, [
@@ -495,12 +428,13 @@ export function useCreateTaskViewAdapter({
     activeProjectId,
     assigneesLocked,
     editTaskId,
+    isLocalDraft,
     parentSubTask,
     parentSubTaskId,
     parentTask,
     parentTaskId,
     requiresEditReason,
-    resumeAsCreate,
+    resolvedLocalDraftId,
     t.createTask.createNewTask,
     t.createTask.createSubTask,
     t.createTask.editTask,
@@ -650,7 +584,7 @@ export function useCreateTaskViewAdapter({
   }, [editTask, suggestTaskFromText, textInput]);
 
   useEffect(() => {
-    if (editTask) {
+    if (editTaskId && !localDraftId) {
       const mergedAssignedTo = mergeAssignedToIds({
         assignedTo: editTask.assignedTo || [],
         primaryAssigneeId: editTask.primaryAssigneeId,
@@ -677,7 +611,7 @@ export function useCreateTaskViewAdapter({
         projectId: editTask.projectId || '',
       });
     }
-  }, [editTask]);
+  }, [editTask, editTaskId, localDraftId]);
 
   useEffect(() => {
     if (!editTaskId && !formData.projectId && selectedProjectId) {
@@ -945,6 +879,38 @@ export function useCreateTaskViewAdapter({
     };
   }, [user?.companyId, user?.id]);
 
+  const saveDraft = useCallback(async (): Promise<boolean> => {
+    if (editTaskId) {
+      return false;
+    }
+
+    const title = formData.title.trim();
+    if (!isDraftTitleValid(title)) {
+      setErrors((previous) => ({
+        ...previous,
+        title: draftTitleValidationMessage(),
+      }));
+      return false;
+    }
+
+    try {
+      const saved = await saveLocalTaskDraft({
+        id: activeLocalDraftId ?? localDraftId,
+        form: formData,
+      });
+      setActiveLocalDraftId(saved.id);
+      setErrors((previous) => {
+        const next = { ...previous };
+        delete next.title;
+        return next;
+      });
+      return true;
+    } catch (error) {
+      console.error("Failed to save local task draft", error);
+      return false;
+    }
+  }, [activeLocalDraftId, editTaskId, formData, localDraftId]);
+
   const submit = async (options?: { editReason?: string }) => {
     if (!validateForm()) return false;
     setIsSubmitting(true);
@@ -1029,7 +995,16 @@ export function useCreateTaskViewAdapter({
           } as Partial<any>);
         }
       }
-      await AsyncStorage.removeItem(FORM_DATA_STORAGE_KEY);
+
+      const draftIdToClear = activeLocalDraftId ?? localDraftId;
+      if (draftIdToClear) {
+        try {
+          await deleteLocalTaskDraft(draftIdToClear);
+        } catch {
+          // Promoted successfully; stale local draft cleanup is best-effort.
+        }
+        setActiveLocalDraftId(undefined);
+      }
       return true;
     } catch (e) {
       console.error(e);
@@ -1051,8 +1026,9 @@ export function useCreateTaskViewAdapter({
         "createTask_camera_return_timestamp",
       ]);
       setFormData(createEmptyFormData());
+      setActiveLocalDraftId(undefined);
     } catch (e) {
-      console.error("Failed to clear task drafts", e);
+      console.error("Failed to clear task draft payloads", e);
     }
   }, []);
 
@@ -1140,6 +1116,7 @@ export function useCreateTaskViewAdapter({
       updateField,
       togglePicker,
       submit,
+      saveDraft,
       setUserSearchQuery,
       toggleUserSelection,
       setPrimaryAssignee,

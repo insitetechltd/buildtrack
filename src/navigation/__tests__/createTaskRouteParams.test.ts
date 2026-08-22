@@ -28,7 +28,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentTaskId: "task-1",
       parentSubTaskId: "subtask-1",
       editTaskId: undefined,
-      resumeAsCreate: undefined,
+      localDraftId: undefined,
       actionType: undefined,
       cameraLaunchContext: undefined,
       postCaptureDefault: undefined,
@@ -79,7 +79,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: undefined,
-      resumeAsCreate: undefined,
+      localDraftId: undefined,
       actionType: "photos",
       cameraLaunchContext: "global",
       postCaptureDefault: "create_task",
@@ -90,12 +90,11 @@ describe("buildCreateTaskPhotoReturnParams", () => {
     });
   });
 
-  it("preserves resumeAsCreate when returning photos to an unfinished draft", () => {
+  it("preserves localDraftId when returning photos to a saved local draft", () => {
     expect(
       buildCreateTaskPhotoReturnParams({
         routeParams: {
-          editTaskId: "draft-1",
-          resumeAsCreate: true,
+          localDraftId: "local-draft-1",
           sourceScreen: "dashboard",
         },
         selectedPhotos: [
@@ -107,8 +106,7 @@ describe("buildCreateTaskPhotoReturnParams", () => {
         ],
       }),
     ).toMatchObject({
-      editTaskId: "draft-1",
-      resumeAsCreate: true,
+      localDraftId: "local-draft-1",
       sourceScreen: "dashboard",
     });
   });
@@ -141,7 +139,7 @@ describe("resolveCreateTaskEntryParams", () => {
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: undefined,
-      resumeAsCreate: undefined,
+      localDraftId: undefined,
       actionType: undefined,
       updateTargetSubTaskId: undefined,
       sourceTaskId: undefined,

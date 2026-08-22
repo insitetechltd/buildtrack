@@ -1,5 +1,27 @@
-import { renderHook } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
 import { useDashboardViewAdapter } from "../useDashboardViewAdapter";
+
+const mockListLocalTaskDrafts = jest.fn().mockResolvedValue([]);
+const mockPurgeExpiredLocalTaskDrafts = jest.fn().mockResolvedValue(0);
+const mockDeleteLocalTaskDraft = jest.fn().mockResolvedValue(undefined);
+
+jest.mock("@react-navigation/native", () => ({
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    callback();
+  },
+}));
+
+jest.mock("@/utils/localTaskDraftStore", () => ({
+  listLocalTaskDrafts: (...args: unknown[]) => mockListLocalTaskDrafts(...args),
+  purgeExpiredLocalTaskDrafts: (...args: unknown[]) =>
+    mockPurgeExpiredLocalTaskDrafts(...args),
+  deleteLocalTaskDraft: (...args: unknown[]) => mockDeleteLocalTaskDraft(...args),
+  LOCAL_TASK_DRAFT_TTL_MS: 604800000,
+}));
+
+jest.mock("@/utils/reconcileUnrecoverableWipTasks", () => ({
+  reconcileUnrecoverableWipTasks: jest.fn().mockResolvedValue(undefined),
+}));
 
 jest.mock("@/state/authStore", () => ({
   useAuthStore: jest.fn(),
@@ -53,6 +75,9 @@ describe("useDashboardViewAdapter", () => {
     jest.clearAllMocks();
     jest.useFakeTimers();
     jest.setSystemTime(new Date("2026-07-04T09:00:00.000Z"));
+    mockListLocalTaskDrafts.mockResolvedValue([]);
+    mockPurgeExpiredLocalTaskDrafts.mockResolvedValue(0);
+    mockDeleteLocalTaskDraft.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -866,6 +891,12 @@ describe("useDashboardViewAdapter", () => {
         location: "Site A",
         status: "active",
       },
+      {
+        id: "project-2",
+        name: "South Annex",
+        location: "Site B",
+        status: "active",
+      },
     ]);
 
     useProjectFilterStore.mockImplementation((selector: any) =>
@@ -1162,7 +1193,7 @@ describe("useDashboardViewAdapter", () => {
     ]);
   });
 
-  it("builds draft items from current task state without duplicating historical in-progress updates", () => {
+  it("builds draft items from local drafts only (not in_progress tasks)", async () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -1188,70 +1219,57 @@ describe("useDashboardViewAdapter", () => {
           assignedTo: ["user-1"],
           assignedBy: "user-1",
           createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
-            {
-              id: "update-1",
-              description: "Started pour",
-              photos: [],
-              completionPercentage: 20,
-              status: "in_progress",
-              timestamp: "2026-07-04T08:00:00.000Z",
-              userId: "user-1",
-            },
-            {
-              id: "update-2",
-              description: "Continuing pour",
-              photos: [],
-              completionPercentage: 60,
-              status: "in_progress",
-              timestamp: "2026-07-04T09:00:00.000Z",
-              userId: "user-1",
-            },
-          ],
+          updates: [],
           status: "in_progress",
           completionPercentage: 60,
         },
-        {
-          id: "task-stale",
-          projectId: "project-1",
-          title: "Old draft should not persist",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
-            {
-              id: "update-3",
-              description: "Previously in progress",
-              photos: [],
-              completionPercentage: 50,
-              status: "in_progress",
-              timestamp: "2026-07-04T07:00:00.000Z",
-              userId: "user-1",
-            },
-          ],
-          status: "submitted_for_review",
-          completionPercentage: 100,
-        },
       ],
+      cancelTask: jest.fn(),
     });
+
+    mockListLocalTaskDrafts.mockResolvedValue([
+      {
+        id: "local-draft-1",
+        savedAt: "2026-07-04T09:00:00.000Z",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        titlePreview: "Saved local draft",
+        projectId: "project-1",
+        form: {
+          title: "Saved local draft",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "",
+          assignedTo: [],
+          attachments: [],
+          tags: [],
+          primaryAssigneeId: undefined,
+          delegatedUserIds: [],
+          containerId: undefined,
+          subContainerId: undefined,
+        },
+      },
+    ]);
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.draftItems).toHaveLength(1);
+    await waitFor(() => {
+      expect(result.current.output.draftItems).toHaveLength(1);
+    });
+
     expect(result.current.output.draftItems[0]).toMatchObject({
-      taskId: "task-current",
-      subtitle: "Continuing pour",
+      localDraftId: "local-draft-1",
+      title: "Saved local draft",
+      subtitle: "Draft — not submitted",
+      statusLabel: "Draft",
     });
   });
 
-  it("excludes teammate in-progress work from dashboard drafts", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
+  it("deletes a local draft through deleteLocalTaskDraft", async () => {
     setupBaseMocks([
       {
         id: "project-1",
@@ -1261,257 +1279,123 @@ describe("useDashboardViewAdapter", () => {
       },
     ]);
 
+    const { useTaskStore } = require("@/state/taskStore.supabase");
     useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-mine",
-          projectId: "project-1",
-          title: "My unfinished create",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [],
-          status: "in_progress",
-        },
-        {
-          id: "task-teammate",
-          projectId: "project-1",
-          title: "Teammate WIP",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [],
-          status: "in_progress",
-        },
-        {
-          id: "task-accepted",
-          projectId: "project-1",
-          title: "Accepted live work",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-2"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [],
-          status: "accepted",
-        },
-      ],
+      tasks: [],
+      cancelTask: jest.fn(),
     });
 
-    const { result } = renderHook(() => useDashboardViewAdapter());
-
-    expect(result.current.output.draftItems.map((item: { taskId: string }) => item.taskId)).toEqual([
-      "task-mine",
-    ]);
-  });
-
-  it("omits soft-deleted tasks from dashboard drafts", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks([
+    mockListLocalTaskDrafts.mockResolvedValue([
       {
-        id: "project-1",
-        name: "North Tower",
-        location: "Site A",
-        status: "active",
-      },
-    ]);
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-live",
-          projectId: "project-1",
-          title: "Live draft",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [],
-          status: "in_progress",
-        },
-        {
-          id: "task-deleted",
-          projectId: "project-1",
-          title: "Deleted draft",
-          description: "",
-          priority: "medium",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [],
-          status: "in_progress",
-          deletedAt: "2026-07-04T08:00:00.000Z",
-        },
-      ],
-    });
-
-    const { result } = renderHook(() => useDashboardViewAdapter());
-
-    expect(result.current.output.draftItems.map((item: { taskId: string }) => item.taskId)).toEqual([
-      "task-live",
-    ]);
-  });
-
-  it("deletes a dashboard draft through deleteTaskById", async () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-    const deleteTaskById = jest.fn().mockResolvedValue(undefined);
-
-    setupBaseMocks([
-      {
-        id: "project-1",
-        name: "North Tower",
-        location: "Site A",
-        status: "active",
-      },
-    ]);
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-draft-1",
-          projectId: "project-1",
+        id: "local-draft-1",
+        savedAt: "2026-07-04T08:00:00.000Z",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        titlePreview: "My draft",
+        form: {
           title: "My draft",
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          status: "in_progress",
-        },
-      ],
-      deleteTaskById,
-    });
-
-    const { result } = renderHook(() => useDashboardViewAdapter());
-    await result.current.actions.deleteDraftTask("task-draft-1");
-
-    expect(deleteTaskById).toHaveBeenCalledWith("task-draft-1", "user-1");
-  });
-
-  it("refuses to delete a teammate draft from the dashboard", async () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-    const deleteTaskById = jest.fn().mockResolvedValue(undefined);
-
-    setupBaseMocks([
-      {
-        id: "project-1",
-        name: "North Tower",
-        location: "Site A",
-        status: "active",
-      },
-    ]);
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-teammate",
-          projectId: "project-1",
-          title: "Teammate WIP",
-          assignedTo: ["user-1"],
-          assignedBy: "user-2",
-          status: "in_progress",
-        },
-      ],
-      deleteTaskById,
-    });
-
-    const { result } = renderHook(() => useDashboardViewAdapter());
-    await expect(result.current.actions.deleteDraftTask("task-teammate")).rejects.toThrow(
-      "You can only delete drafts you created.",
-    );
-    expect(deleteTaskById).not.toHaveBeenCalled();
-  });
-
-  it("sorts draft items by newest relevant update first", () => {
-    const { useTaskStore } = require("@/state/taskStore.supabase");
-
-    setupBaseMocks([
-      {
-        id: "project-1",
-        name: "North Tower",
-        location: "Site A",
-        status: "active",
-      },
-    ]);
-
-    useTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-older",
-          projectId: "project-1",
-          title: "Older draft",
           description: "",
-          priority: "high",
-          dueDate: "2099-01-01T00:00:00.000Z",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
           category: "general",
-          attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
-            {
-              id: "update-older",
-              description: "Older in-progress update",
-              photos: [],
-              completionPercentage: 20,
-              status: "in_progress",
-              timestamp: "2026-07-04T08:00:00.000Z",
-              userId: "user-1",
-            },
-          ],
-          status: "in_progress",
-          completionPercentage: 20,
-        },
-        {
-          id: "task-newer",
+          dueDate: "2099-01-01T00:00:00.000Z",
           projectId: "project-1",
+          locationOnSite: "",
+          assignedTo: [],
+          attachments: [],
+          tags: [],
+          primaryAssigneeId: undefined,
+          delegatedUserIds: [],
+          containerId: undefined,
+          subContainerId: undefined,
+        },
+      },
+    ]);
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    await waitFor(() => {
+      expect(result.current.output.draftItems).toHaveLength(1);
+    });
+
+    await result.current.actions.deleteDraftTask("local-draft-1");
+
+    expect(mockDeleteLocalTaskDraft).toHaveBeenCalledWith("local-draft-1");
+  });
+
+  it("sorts local draft items by newest savedAt first", async () => {
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+    useTaskStore.mockReturnValue({
+      tasks: [],
+      cancelTask: jest.fn(),
+    });
+
+    mockListLocalTaskDrafts.mockResolvedValue([
+      {
+        id: "draft-newer",
+        savedAt: "2026-07-04T09:00:00.000Z",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        titlePreview: "Newer draft",
+        form: {
           title: "Newer draft",
           description: "",
-          priority: "high",
-          dueDate: "2099-01-01T00:00:00.000Z",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
           category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "",
+          assignedTo: [],
           attachments: [],
-          assignedTo: ["user-1"],
-          assignedBy: "user-1",
-          createdAt: "2026-01-01T00:00:00.000Z",
-          updates: [
-            {
-              id: "update-newer",
-              description: "Newest in-progress update",
-              photos: [],
-              completionPercentage: 80,
-              status: "in_progress",
-              timestamp: "2026-07-04T09:00:00.000Z",
-              userId: "user-1",
-            },
-          ],
-          status: "in_progress",
-          completionPercentage: 80,
+          tags: [],
+          primaryAssigneeId: undefined,
+          delegatedUserIds: [],
+          containerId: undefined,
+          subContainerId: undefined,
         },
-      ],
-    });
+      },
+      {
+        id: "draft-older",
+        savedAt: "2026-07-04T08:00:00.000Z",
+        expiresAt: "2099-01-01T00:00:00.000Z",
+        titlePreview: "Older draft",
+        form: {
+          title: "Older draft",
+          description: "",
+          taskReference: "",
+          billingStatus: "non_billable",
+          priority: "medium",
+          category: "general",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          projectId: "project-1",
+          locationOnSite: "",
+          assignedTo: [],
+          attachments: [],
+          tags: [],
+          primaryAssigneeId: undefined,
+          delegatedUserIds: [],
+          containerId: undefined,
+          subContainerId: undefined,
+        },
+      },
+    ]);
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.draftItems.map((item: any) => item.title)).toEqual([
+    await waitFor(() => {
+      expect(result.current.output.draftItems).toHaveLength(2);
+    });
+
+    expect(result.current.output.draftItems.map((item: { title: string }) => item.title)).toEqual([
       "Newer draft",
       "Older draft",
     ]);

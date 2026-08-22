@@ -1,12 +1,10 @@
-# Land Activity and wait until Drafts In Progress exists.
-# Requires env DRAFT_TITLE (unique originator in_progress seed).
-# Persist writes tasks: []; wait for the post-login fetch before looking for drafts.
-# Drafts are the last section on Activity (below Recent Activity) — scroll down to reach them.
+# Land Activity with at least one saved local draft (creates one in-flow).
 appId: com.buildtrack.app.local
 ---
 - runFlow: _boot.yaml
 - runFlow: _ensure-project.yaml
 - runFlow: ../_dismiss-blocking-overlays.yaml
+- runFlow: _save-local-draft.yaml
 - tapOn:
     id: "root-tab__activity"
     optional: true
@@ -21,20 +19,12 @@ appId: com.buildtrack.app.local
 - extendedWaitUntil:
     notVisible: "Refreshing..."
     timeout: 20000
-- runFlow:
-    when:
-      notVisible:
-        id: "dashboard-screen__drafts_toggle"
-    commands:
-      - scrollUntilVisible:
-          element:
-            id: "dashboard-screen__drafts_toggle"
-          direction: DOWN
-          speed: 40
-          visibilityPercentage: 50
-          timeout: 20000
-          waitToSettleTimeoutMs: 600
-- extendedWaitUntil:
-    visible:
+# Saved drafts sit after queues (above Recent Activity). Scroll if the week strip is tall.
+- scrollUntilVisible:
+    centerElement: true
+    element:
       id: "dashboard-screen__drafts_toggle"
-    timeout: 8000
+    direction: DOWN
+    speed: 80
+    visibilityPercentage: 40
+    timeout: 25000

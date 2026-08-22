@@ -630,6 +630,12 @@ export const en = {
     signUp: "Sign Up",
     loginFailed: "Login Failed",
     invalidCredentials: "Invalid email or password. Please try again.",
+    emailNotConfirmed:
+      "This email is not confirmed yet. Open the confirmation link from your invite email, or ask your admin to resend the invite.",
+    profileMissing:
+      "Password was accepted but this account has no Taskr profile. Ask your admin to re-invite the seat, or contact support.",
+    phoneLookupFailed:
+      "Phone sign-in could not find that number. Sign in with the email from your invite instead.",
     quickLoginFailed: "Quick Login Failed",
     failedToLogin: "Failed to login with",
     pleaseTryAgain: "Please try again.",

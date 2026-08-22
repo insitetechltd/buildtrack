@@ -5,7 +5,12 @@ tags:
   - w-a06
 ---
 - runFlow: _open-activity-drafts.yaml
-- runFlow: _expand-drafts.yaml
+- tapOn:
+    id: "dashboard-screen__drafts_toggle"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__drafts_list"
+    timeout: 8000
 - tapOn: ".*Maestro Draft A05.*"
 - extendedWaitUntil:
     visible:

@@ -14,6 +14,7 @@ interface PrimaryActionBarProps {
   absolute?: boolean;
   testID?: string;
   primaryTestID?: string;
+  secondaryTestID?: string;
   /** Destructive primary (e.g. reject) — red instead of blue. */
   destructive?: boolean;
 }
@@ -31,6 +32,7 @@ export default function PrimaryActionBar({
   absolute = true,
   testID,
   primaryTestID,
+  secondaryTestID,
   destructive = false,
 }: PrimaryActionBarProps) {
   const insets = useSafeAreaInsets();
@@ -49,6 +51,7 @@ export default function PrimaryActionBar({
       <View className="flex-row gap-3">
         {showSecondaryAction ? (
           <Pressable
+            testID={secondaryTestID}
             accessibilityRole="button"
             onPress={onSecondaryPress}
             className="flex-1 items-center justify-center rounded-xl border border-gray-300 bg-white py-3"

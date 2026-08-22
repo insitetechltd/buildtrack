@@ -114,35 +114,38 @@ export const useAuthStore = create<AuthStore>()(
       error: null,
 
       login: async (username: string, password: string) => {
-        console.log('🔐 Login attempt:', username);
+        const identifier = (username || "").trim();
+        console.log('🔐 Login attempt:', identifier);
         set({ isLoading: true });
         
         try {
           // Always try Supabase Auth first if available
           if (supabase) {
             try {
-              let email = username;
-              
-              // Check if username is a phone number (contains only digits, spaces, dashes, parentheses, plus)
+              // Match create-company: emails are stored lowercased. Trailing
+              // spaces from paste otherwise look like "wrong password".
               const phoneRegex = /^[\d\s\-\(\)\+]+$/;
-              const isPhoneNumber = phoneRegex.test(username.trim());
+              const isPhoneNumber = phoneRegex.test(identifier);
+              let email = isPhoneNumber ? identifier : identifier.toLowerCase();
               
               // If it's a phone number, look up the email from the users table
               if (isPhoneNumber) {
                 console.log('📱 Phone number login detected, looking up email...');
+                // Requires a prior authenticated session to read public.users
+                // (anon is blocked). Prefer email from the invite for first login.
                 const { data: phoneUserData, error: phoneError } = await supabase
                   .from('users')
                   .select('email')
-                  .eq('phone', username.trim())
+                  .eq('phone', identifier)
                   .single();
                 
                 if (phoneError || !phoneUserData || !phoneUserData.email) {
                   console.error('Phone number not found or has no email:', phoneError);
                   set({ isLoading: false });
-                  return false;
+                  throw new Error('PHONE_LOOKUP_FAILED');
                 }
                 
-                email = phoneUserData.email;
+                email = String(phoneUserData.email).trim().toLowerCase();
                 console.log('✅ Found email for phone number:', email);
               }
               
@@ -154,7 +157,11 @@ export const useAuthStore = create<AuthStore>()(
               if (error) {
                 console.error('Login error:', error.message);
                 set({ isLoading: false });
-                return false;
+                const msg = (error.message || "").toLowerCase();
+                if (msg.includes("email not confirmed")) {
+                  throw new Error("EMAIL_NOT_CONFIRMED");
+                }
+                throw new Error("INVALID_CREDENTIALS");
               }
 
               if (data.user) {
@@ -174,8 +181,14 @@ export const useAuthStore = create<AuthStore>()(
 
                 if (userError || !userData) {
                   console.error('Error fetching user data:', userError);
-                  set({ isLoading: false });
-                  return false;
+                  await supabase.auth.signOut();
+                  set({
+                    user: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                    isInitialized: true,
+                  });
+                  throw new Error("PROFILE_MISSING");
                 }
 
                 if (userData.is_pending) {
@@ -242,7 +255,16 @@ export const useAuthStore = create<AuthStore>()(
                 return true;
               }
             } catch (supabaseError) {
-              if (supabaseError instanceof Error && supabaseError.message === 'PENDING_APPROVAL') {
+              if (
+                supabaseError instanceof Error &&
+                [
+                  "PENDING_APPROVAL",
+                  "INVALID_CREDENTIALS",
+                  "EMAIL_NOT_CONFIRMED",
+                  "PROFILE_MISSING",
+                  "PHONE_LOOKUP_FAILED",
+                ].includes(supabaseError.message)
+              ) {
                 set({ isLoading: false });
                 throw supabaseError;
               }
@@ -263,7 +285,16 @@ export const useAuthStore = create<AuthStore>()(
           set({ isLoading: false });
           return false;
         } catch (error) {
-          if (error instanceof Error && error.message === 'PENDING_APPROVAL') {
+          if (
+            error instanceof Error &&
+            [
+              "PENDING_APPROVAL",
+              "INVALID_CREDENTIALS",
+              "EMAIL_NOT_CONFIRMED",
+              "PROFILE_MISSING",
+              "PHONE_LOOKUP_FAILED",
+            ].includes(error.message)
+          ) {
             set({ isLoading: false });
             throw error;
           }

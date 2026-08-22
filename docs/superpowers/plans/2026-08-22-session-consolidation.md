@@ -1,7 +1,22 @@
 # Session consolidation — 2026-08-22
 
-**Purpose:** Single outline of today’s plans, decisions, slices, surfaces, estimates, and execution order.  
+**Purpose:** Slice catalog + estimates.  
+**Locked sequence & actions:** `2026-08-22-master-plan-parallel.md` (**authoritative**).  
 **Pick-up:** `documentation/NOW.md`
+
+---
+
+## LOCKED — read this first
+
+| Item | Decision |
+|---|---|
+| **Sequence** | OPS-01 v1 ✓ → **OPS-02 MVP** → **M-BILL-01 MVP** → AUTHZ-02 → AI-01 → Wave 2 |
+| **OPS-02 today** | A+B ✅ done (parallel chat); **C+D remain** to close milestone |
+| **Parallel now** | BILL-A draft, marketing GHPages, idle P1s only |
+| **Frozen** | KPI v2 apply, BILL live apply, Wave 2 web |
+| **Definitive next** | OPS02-C → OPS02-D → M-BILL-01 BILL-A |
+
+Do not reprioritize without updating the master plan + user GO.
 
 ---
 
@@ -14,7 +29,7 @@
 | 3 | **M-OPS-01 v1 closed** — smoke OK (Profile → Owner Console → Monitoring → Gaps) |
 | 4 | Platform KPI = **v2** (`owner_kpi_snapshot` RPC), not v1 |
 | 5 | Commercial E2E **not hooked today** — R7 checkout CTA only |
-| 6 | **User GO:** **M-BILL-01 billing E2E ASAP** — revenue priority overrides boring-loop default (OPS-02 first) |
+| 6 | **Technical default (2026-08-22 final):** **M-OPS-02 before M-BILL-01** — enforce status machine at source; billing infra after OPS-02 MVP |
 | 7 | Multi-model eval: **shared brief first** — `.cursor/rules/multi-model-evaluation-prompt.mdc` |
 | 8 | Henry web (M-WEB-01) stays **Wave 2** — not parallel with billing |
 
@@ -36,17 +51,19 @@ With **idle-parallel** options: KPI v2 spec, marketing GitHub Pages.
 
 So **default recommendation was:** close v1 → **M-OPS-02** (core-loop / fewer garbage states), KPI v2 in parallel if desired, **billing not scheduled**.
 
-### 2. User override — billing ASAP
+### 2. Business override (2026-08-22) — superseded
 
-**Effective order after this session:**
+**Earlier session:** M-BILL-01 before M-OPS-02 (revenue priority).
+
+**Final (2026-08-22):** **Technical default wins** — core-loop validation and hot-file shrink first; billing E2E after OPS-02 MVP.
+
+**Effective order:**
 
 ```
-M-OPS-01 v1 ✓ → M-BILL-01 (commercial E2E MVP) → M-OPS-02 → …rest unchanged
+M-OPS-01 v1 ✓ → M-OPS-02 → M-BILL-01 (infra BILL-A–E) → M-BILL-F (gates) → M-AUTHZ-02 → M-AI-01 → Wave 2
 ```
 
-**Rationale:** R7 hook exists but payment does not flow back to entitlements; manual ops do not scale for revenue. Billing MVP unblocks paid pilots without waiting for Owner KPI or OPS-02.
-
-**M-OPS-02** may **idle-parallel** on disjoint files (taskStore / CreateTask) once M-BILL schema Human Gate is drafted — but **single-writer** on entitlements schema + Stripe webhook.
+**Rationale:** OPS-02 blocks illegal task states at create (unassigned open/WIP, UI stars that lie) with no Human Gate. Billing needs schema + Stripe webhook sign-off; safer after create-path guards land. BILL ERD may **idle-parallel** during OPS02-C file shrink only.
 
 ### 3. Commit + push
 
@@ -84,7 +101,21 @@ Estimates = **solo-dev focused days**.
 
 ---
 
-### 🔥 S-M-BILL-01 — Commercial E2E MVP (NEXT — user priority)
+### 🔥 S-OPS02 — Core-loop tightness (NEXT — technical default)
+
+| Field | Detail |
+|---|---|
+| **Milestone** | `WS-OPS / M-OPS-02` |
+| **When** | **Now** — after M-OPS-01 v1 |
+| **Scope** | Shrink hot files; enforce status machine at create/update |
+| **Phase A (active)** | `taskCreateValidation.ts`; store + CreateTask assignee required |
+| **Estimate** | 1–2wk total |
+| **Kickoff** | `2026-08-22-m-ops-02-kickoff.md` |
+| **Surfaces** | `taskStore.supabase.ts`, `useCreateTaskViewAdapter`, CreateTask |
+
+---
+
+### S-M-BILL-01 — Commercial E2E MVP (after M-OPS-02 MVP)
 
 | Field | Detail |
 |---|---|
@@ -125,7 +156,7 @@ Estimates = **solo-dev focused days**.
 
 | Field | Detail |
 |---|---|
-| **When** | After BILL MVP **or** idle-parallel during BILL-A draft |
+| **When** | After M-OPS-02 MVP (BILL-A ERD may idle-parallel during OPS02-C) |
 | **Scope** | `platform_owners`, `owner_kpi_snapshot` RPC, mobile KPI panel |
 | **Estimate** | 2–4d |
 | **Human Gate** | Yes |
@@ -138,18 +169,11 @@ Estimates = **solo-dev focused days**.
 |---|---|
 | **Scope** | `owner_workflow_gaps` RPC, exception events, Gaps Loaded/Database toggle |
 | **Estimate** | 3–5d |
-| **When** | After V2A or BILL-C |
+| **When** | After V2A or M-BILL-C |
 
 ---
 
-### S-OPS02 — Core-loop tightness
-
-| Field | Detail |
-|---|---|
-| **When** | **After M-BILL-01 MVP** (revised) or idle-parallel |
-| **Scope** | Shrink hot files; enforce status machine |
-| **Estimate** | 1–2wk |
-| **Surfaces** | Mobile task domain |
+### ~~S-OPS02~~ — see NEXT above
 
 ---
 
@@ -184,15 +208,14 @@ Estimates = **solo-dev focused days**.
 
 ## Revised execution order
 
-| Priority | Slice | Est. | Owner |
+| Priority | Slice | Est. | Status |
 |---|---|---|---|
-| 0 | ~~S-OPS01-V1~~ | Done | — |
-| **1** | **S-M-BILL-01 MVP** (BILL-A→E) | **5–8d** | **User GO** |
-| 2 | S-OPS02 | 1–2wk | idle-parallel OK on disjoint files after BILL-B |
-| 3 | S-OPS01-V2A KPI | 2–4d | optional parallel |
-| 4 | S-M-BILL-01 hard enforcement (BILL-F) | 2–3d | |
-| 5 | S-OPS01-V2B / v3 | 3–8d | |
-| 6 | Wave 2 web | 2–3wk+ | |
+| 0 | ~~S-OPS01-V1~~ | Done | ✅ Closed |
+| **1** | **S-OPS02 OPS02-C+D** | 3–7d | 🔥 **A+B done; C+D active** |
+| 2 | S-M-BILL-01 MVP (BILL-A→E) | 5–8d | After OPS-02 close |
+| 3 | S-OPS01-V2A KPI | 2–4d | Optional; frozen until OPS-02 close |
+| 4 | S-M-BILL-01 BILL-F | 2–3d | Optional |
+| 5 | Wave 2 web | 2–3wk+ | Parked |
 
 ---
 
@@ -212,12 +235,14 @@ CreateCompany → Stripe Checkout → webhook → company_entitlements
 
 | Topic | Path |
 |---|---|
+| **Master plan (parallel)** | `2026-08-22-master-plan-parallel.md` |
 | This consolidation | `2026-08-22-session-consolidation.md` |
 | Owner modules | `2026-08-22-owner-console-modules-complete.md` |
 | Monitoring architecture | `2026-08-22-owner-monitoring-architecture.md` |
 | Users & companies | `2026-08-22-owner-console-user-management.md` |
 | Web kickoff | `2026-08-22-web-normal-users-kickoff.md` |
 | Hosting | `2026-08-22-web-hosting-remote-test.md` |
+| M-OPS-02 kickoff | `2026-08-22-m-ops-02-kickoff.md` |
 | Post-RC sequence | `2026-08-19-post-rc-boring-loop.md` |
 | Multi-model rule | `.cursor/rules/multi-model-evaluation-prompt.mdc` |
 

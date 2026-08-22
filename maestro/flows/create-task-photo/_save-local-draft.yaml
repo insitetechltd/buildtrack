@@ -1,0 +1,36 @@
+# Create Task → fill title → Save draft → return to Activity.
+# Sets output.draftTitle for downstream draft-item taps.
+appId: com.buildtrack.app.local
+---
+- evalScript: ${output.draftTitle = "Maestro draft " + Date.now()}
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 20000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "createTask-title"
+    direction: UP
+- tapOn:
+    id: "createTask-title"
+- inputText: ${output.draftTitle}
+- runFlow: ../_dismiss-keyboard.yaml
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      id: "create-task__save-draft"
+    direction: DOWN
+- tapOn:
+    id: "create-task__save-draft"
+- tapOn:
+    text: "OK"
+    optional: true
+- tapOn:
+    id: "app-screen-header__back"
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 20000

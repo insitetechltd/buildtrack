@@ -893,7 +893,7 @@ function DashboardMainScreen({
             parentTaskId: params?.parentTaskId,
             parentSubTaskId: params?.parentSubTaskId,
             editTaskId: params?.editTaskId,
-            resumeAsCreate: params?.resumeAsCreate,
+            localDraftId: params?.localDraftId,
             actionType: params?.actionType,
             updateTargetSubTaskId: params?.updateTargetSubTaskId,
             sourceTaskId: params?.sourceTaskId,
@@ -903,7 +903,7 @@ function DashboardMainScreen({
             uploadedPhotoUrls: params?.uploadedPhotoUrls,
             cameraLaunchContext: params?.cameraLaunchContext,
             postCaptureDefault: params?.postCaptureDefault,
-            clearForm: params?.clearForm ?? !(params?.editTaskId || params?.resumeAsCreate),
+            clearForm: params?.clearForm ?? !(params?.editTaskId || params?.localDraftId),
             _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
@@ -1078,7 +1078,7 @@ function ProjectsTasksListScreen({
             parentTaskId: params?.parentTaskId,
             parentSubTaskId: params?.parentSubTaskId,
             editTaskId: params?.editTaskId,
-            resumeAsCreate: params?.resumeAsCreate,
+            localDraftId: params?.localDraftId,
             actionType: params?.actionType,
             updateTargetSubTaskId: params?.updateTargetSubTaskId,
             sourceTaskId: params?.sourceTaskId,
@@ -1088,7 +1088,7 @@ function ProjectsTasksListScreen({
             uploadedPhotoUrls: params?.uploadedPhotoUrls,
             cameraLaunchContext: params?.cameraLaunchContext,
             postCaptureDefault: params?.postCaptureDefault,
-            clearForm: params?.clearForm ?? !(params?.editTaskId || params?.resumeAsCreate),
+            clearForm: params?.clearForm ?? !(params?.editTaskId || params?.localDraftId),
             _timestamp: params?._timestamp ?? Date.now(), // Force navigation by adding unique param
           },
         });
@@ -1244,7 +1244,7 @@ function InAppLibraryPickerScreenWrapper({
           parentTaskId: params.parentTaskId,
           parentSubTaskId: params.parentSubTaskId,
           editTaskId: params.editTaskId,
-          resumeAsCreate: params.resumeAsCreate,
+          localDraftId: params.localDraftId,
           entityType: params.entityType,
           uploadImmediately: params.uploadImmediately ?? false,
           sourceScreen: params.sourceScreen,
@@ -1577,7 +1577,7 @@ function CreateTaskScreenWrapper({
     parentTaskId,
     parentSubTaskId,
     editTaskId,
-    resumeAsCreate,
+    localDraftId,
     actionType,
     cameraLaunchContext,
     postCaptureDefault,
@@ -1612,7 +1612,7 @@ function CreateTaskScreenWrapper({
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
-      resumeAsCreate={resumeAsCreate}
+      localDraftId={localDraftId}
       actionType={actionType}
       cameraLaunchContext={cameraLaunchContext}
       postCaptureDefault={postCaptureDefault}
@@ -1922,11 +1922,8 @@ function CreateTaskMainScreen({
   const parentTaskId = params.parentTaskId;
   const parentSubTaskId = params.parentSubTaskId;
   const editTaskId = params.editTaskId;
-  const resumeAsCreate = Boolean(params.resumeAsCreate);
-  // Only default to 'edit' if editTaskId is provided, otherwise it's a new task
-  const actionType = resumeAsCreate
-    ? undefined
-    : params.actionType || (editTaskId ? "edit" : undefined);
+  const localDraftId = params.localDraftId;
+  const actionType = params.actionType || (editTaskId ? "edit" : undefined);
   const cameraLaunchContext = params.cameraLaunchContext;
   const postCaptureDefault = params.postCaptureDefault;
   const updateTargetSubTaskId = params.updateTargetSubTaskId;
@@ -1949,7 +1946,7 @@ function CreateTaskMainScreen({
       parentTaskId: undefined,
       parentSubTaskId: undefined,
       editTaskId: undefined,
-      resumeAsCreate: undefined,
+      localDraftId: undefined,
       actionType: undefined,
       updateTargetSubTaskId: undefined,
       sourceTaskId: undefined,
@@ -2015,7 +2012,7 @@ function CreateTaskMainScreen({
     const parentNav = navigation.getParent();
 
     if (parentNav) {
-      if (resumeAsCreate && sourceScreen === "dashboard") {
+      if (localDraftId && sourceScreen === "dashboard") {
         parentNav.navigate("Activity", {
           screen: "DashboardMain",
         });
@@ -2028,14 +2025,14 @@ function CreateTaskMainScreen({
     }
 
     navigation.goBack();
-  }, [clearDraftPayloads, navigation, resumeAsCreate, sourceScreen]);
+  }, [clearDraftPayloads, localDraftId, navigation, sourceScreen]);
 
   // Also listen for navigation focus to catch params that arrive late (already handled above)
   
   // Handle back navigation - if editing, navigate back to TaskDetail screen
   const handleNavigateBack = React.useCallback(() => {
     const parentNav = navigation.getParent();
-    if (resumeAsCreate) {
+    if (localDraftId) {
       if (parentNav && sourceScreen === "dashboard") {
         parentNav.navigate("Activity", { screen: "DashboardMain" });
         return;
@@ -2068,7 +2065,7 @@ function CreateTaskMainScreen({
     } else {
       navigation.goBack();
     }
-  }, [editTaskId, resumeAsCreate, sourceScreen, sourceTaskId, sourceSubTaskId, navigation]);
+  }, [editTaskId, localDraftId, sourceScreen, sourceTaskId, sourceSubTaskId, navigation]);
   
   // Route to appropriate screen based on actionType
   // For now, all actions go through CreateTaskScreen which will handle them
@@ -2080,7 +2077,7 @@ function CreateTaskMainScreen({
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
-      resumeAsCreate={resumeAsCreate}
+      localDraftId={localDraftId}
       actionType={actionType}
       cameraLaunchContext={cameraLaunchContext}
       postCaptureDefault={postCaptureDefault}

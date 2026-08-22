@@ -628,6 +628,12 @@ export const zhTW = {
     signUp: "註冊",
     loginFailed: "登入失敗",
     invalidCredentials: "電子郵件或密碼無效。請重試。",
+    emailNotConfirmed:
+      "此電子郵件尚未確認。請開啟邀請信中的確認連結，或請管理員重新發送邀請。",
+    profileMissing:
+      "密碼正確，但此帳號沒有 Taskr 個人資料。請管理員重新邀請，或聯絡支援。",
+    phoneLookupFailed:
+      "找不到此電話號碼。請改用邀請信中的電子郵件登入。",
     quickLoginFailed: "快速登入失敗",
     failedToLogin: "登入失敗，使用者：",
     pleaseTryAgain: "請重試。",

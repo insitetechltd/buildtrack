@@ -16,6 +16,11 @@ import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { recordDeferredFallbackFire } from "../api/deferredSchemaObservability";
 import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, BillingStatus, TaskEditHistory, TaskActivity, ActivityType } from "../types/buildtrack";
 import { isCompletedLifecycleStatus } from "../utils/taskLifecycleStatus";
+import {
+  assertValidTaskCreateInput,
+  resolveInitialTaskCreateStatus,
+} from "../utils/taskCreateValidation";
+import { assertValidTaskUpdate } from "../utils/taskUpdateValidation";
 
 export type { QueryMeta } from "../api/supabase";
 
@@ -1615,6 +1620,18 @@ export const useTaskStore = create<TaskStore>()(
 
       // CREATE task in Supabase
       createTask: async (taskData) => {
+        assertValidTaskCreateInput({
+          title: taskData.title,
+          projectId: taskData.projectId,
+          assignedBy: taskData.assignedBy,
+          assignedTo: taskData.assignedTo,
+        });
+
+        const initialStatus = resolveInitialTaskCreateStatus(
+          taskData.assignedBy,
+          taskData.assignedTo,
+        );
+
         if (!supabase) {
           // Fallback to local creation
           const newTask: Task = normalizeTaskActivityCompatibility({
@@ -1623,7 +1640,7 @@ export const useTaskStore = create<TaskStore>()(
             createdAt: new Date().toISOString(),
             activities: [],
             updates: [], // New task has no updates yet
-            status: "new" as TaskStatus,
+            status: initialStatus,
             completionPercentage: 0,
             delegationHistory: [],
             originalAssignedBy: taskData.assignedBy,
@@ -1638,9 +1655,8 @@ export const useTaskStore = create<TaskStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          // Check if creator is assigned to the task
-          const isCreatorAssigned = taskData.assignedTo && taskData.assignedTo.includes(taskData.assignedBy);
-          
+          const isCreatorAssigned = initialStatus === "in_progress";
+
           console.log('📋 [createTask] Creating task with data:', {
             project_id: taskData.projectId,
             title: taskData.title,
@@ -1648,10 +1664,7 @@ export const useTaskStore = create<TaskStore>()(
             assigned_by: taskData.assignedBy,
             billing_status: taskData.billingStatus || "non_billable",
           });
-          
-          // For self-assigned tasks, set status to "in_progress" immediately (auto-accepted)
-          const initialStatus = isCreatorAssigned ? 'in_progress' : 'new';
-          
+
           const fullInsertPayload = buildSupabaseTaskInsertPayload(
             taskData,
             initialStatus,
@@ -1981,6 +1994,27 @@ export const useTaskStore = create<TaskStore>()(
 
       // UPDATE task in Supabase
       updateTask: async (id, updates) => {
+        const currentTask = get().tasks.find((t) => t.id === id);
+
+        if (currentTask) {
+          assertValidTaskUpdate(
+            {
+              title: currentTask.title,
+              projectId: currentTask.projectId,
+              assignedBy: currentTask.assignedBy,
+              assignedTo: currentTask.assignedTo,
+              status: currentTask.status,
+            },
+            {
+              title: updates.title,
+              projectId: updates.projectId,
+              assignedBy: updates.assignedBy,
+              assignedTo: updates.assignedTo,
+              status: updates.status,
+            },
+          );
+        }
+
         if (!supabase) {
           // Fallback to local update
           set(state => ({
@@ -1997,9 +2031,6 @@ export const useTaskStore = create<TaskStore>()(
         const originalTasks = get().tasks;
         
         try {
-          // Get current task to check if it's self-assigned
-          const currentTask = get().tasks.find(t => t.id === id);
-          
           // VALIDATION: Prevent changing assignees once task is accepted
           // Once a task is accepted (status is "accepted" or "in_progress"), 
           // the assignees cannot be changed to maintain workflow integrity
@@ -3365,16 +3396,27 @@ export const useTaskStore = create<TaskStore>()(
 
       // Subtask management methods
       createSubTask: async (taskId, subTaskData) => {
+        assertValidTaskCreateInput({
+          title: subTaskData.title,
+          projectId: subTaskData.projectId,
+          assignedBy: subTaskData.assignedBy,
+          assignedTo: subTaskData.assignedTo,
+        });
+
+        const initialStatus = resolveInitialTaskCreateStatus(
+          subTaskData.assignedBy,
+          subTaskData.assignedTo,
+        );
+        const isCreatorAssigned = initialStatus === "in_progress";
+
         if (!supabase) {
           // Fallback to local creation
-          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
-          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
           const newSubTask: SubTask = {
             ...subTaskData,
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            status: initialStatus as TaskStatus,
+            status: initialStatus,
             completionPercentage: 0,
             activities: [],
             updates: [], // New subtask has no updates yet
@@ -3411,10 +3453,6 @@ export const useTaskStore = create<TaskStore>()(
             assigned_to: subTaskData.assignedTo,
             assigned_by: subTaskData.assignedBy,
           });
-
-          // Check if creator is assigned to the subtask
-          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
-          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
 
           const { data, error } = await supabase
             .from('tasks')  // ✅ Changed to unified tasks table
@@ -3596,16 +3634,27 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       createNestedSubTask: async (taskId, parentSubTaskId, subTaskData) => {
+        assertValidTaskCreateInput({
+          title: subTaskData.title,
+          projectId: subTaskData.projectId,
+          assignedBy: subTaskData.assignedBy,
+          assignedTo: subTaskData.assignedTo,
+        });
+
+        const initialStatus = resolveInitialTaskCreateStatus(
+          subTaskData.assignedBy,
+          subTaskData.assignedTo,
+        );
+        const isCreatorAssigned = initialStatus === "in_progress";
+
         // Similar to createSubTask but with parent_sub_task_id
         if (!supabase) {
-          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
-          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
           const newSubTask: SubTask = {
             ...subTaskData,
             id: `subtask-${Date.now()}`,
             parentTaskId: taskId,
             createdAt: new Date().toISOString(),
-            status: initialStatus as TaskStatus,
+            status: initialStatus,
             completionPercentage: 0,
             activities: [],
             updates: [], // New nested subtask has no updates yet
@@ -3632,11 +3681,7 @@ export const useTaskStore = create<TaskStore>()(
           const parentTask = get().tasks.find(t => t.id === parentSubTaskId);
           const nestingLevel = (parentTask?.nestingLevel || 0) + 1;
           const rootTaskId = parentTask?.rootTaskId || parentTask?.id || taskId;
-          
-          // Check if creator is assigned to the nested subtask
-          const isCreatorAssigned = subTaskData.assignedTo.includes(subTaskData.assignedBy);
-          const initialStatus = isCreatorAssigned ? "in_progress" : "new";
-          
+
           const { data, error } = await supabase
             .from('tasks')  // ✅ Changed to unified tasks table
             .insert({
@@ -3815,6 +3860,27 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       updateSubTask: async (taskId, subTaskId, updates) => {
+        const currentSubTask = get().tasks.find((t) => t.id === subTaskId);
+
+        if (currentSubTask) {
+          assertValidTaskUpdate(
+            {
+              title: currentSubTask.title,
+              projectId: currentSubTask.projectId,
+              assignedBy: currentSubTask.assignedBy,
+              assignedTo: currentSubTask.assignedTo,
+              status: currentSubTask.status,
+            },
+            {
+              title: updates.title,
+              projectId: updates.projectId,
+              assignedBy: updates.assignedBy,
+              assignedTo: updates.assignedTo,
+              status: updates.status,
+            },
+          );
+        }
+
         if (!supabase) {
           const updateNestedChildren = (children: Task[] | undefined): Task[] | undefined => {
             if (!children) {
@@ -3848,9 +3914,6 @@ export const useTaskStore = create<TaskStore>()(
         }
 
         try {
-          // Get current subtask (now just a task with parentTaskId)
-          const currentSubTask = get().tasks.find(t => t.id === subTaskId);
-          
           // Auto-accept self-assigned subtasks when they reach 100%
           // IMPORTANT: Only auto-accept if subtask is TRULY self-assigned (creator = assignee)
           // Use String() comparison to handle type mismatches

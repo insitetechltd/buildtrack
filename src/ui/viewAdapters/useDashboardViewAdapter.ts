@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
@@ -23,6 +24,13 @@ import type {
   DashboardScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
 import type { PrimitiveStructuralState, StatusSemanticToken } from "@/ui/contracts/primitives";
+import {
+  deleteLocalTaskDraft,
+  listLocalTaskDrafts,
+  purgeExpiredLocalTaskDrafts,
+  type LocalTaskDraft,
+} from "@/utils/localTaskDraftStore";
+import { reconcileUnrecoverableWipTasks } from "@/utils/reconcileUnrecoverableWipTasks";
 
 function formatProjectStatusLabel(status: Project["status"]): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -278,7 +286,8 @@ export interface DashboardViewAdapterHookResult {
     showDeveloperSettingsShortcut: boolean;
   };
   actions: {
-    deleteDraftTask: (taskId: string) => Promise<void>;
+    deleteDraftTask: (localDraftId: string) => Promise<void>;
+    refreshLocalDrafts: () => Promise<void>;
   };
 }
 
@@ -290,6 +299,18 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const unattachedBatchStore = useUnattachedPhotoBatchStore();
   const currentUserId = user?.id ?? "";
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
+  const [localDrafts, setLocalDrafts] = useState<LocalTaskDraft[]>([]);
+
+  const refreshLocalDrafts = useCallback(async () => {
+    await purgeExpiredLocalTaskDrafts();
+    setLocalDrafts(await listLocalTaskDrafts());
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshLocalDrafts();
+    }, [refreshLocalDrafts]),
+  );
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
   const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
@@ -341,6 +362,17 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   }, [taskStore.fetchTasks, user]);
 
   useEffect(() => {
+    if (!currentUserId) {
+      return;
+    }
+    void reconcileUnrecoverableWipTasks({
+      tasks: taskStore.tasks,
+      userId: currentUserId,
+      cancelTask: taskStore.cancelTask,
+    });
+  }, [currentUserId, taskStore.cancelTask, taskStore.tasks]);
+
+  useEffect(() => {
     const prefetchProjectId =
       selectedProjectId ?? (projects.length === 1 ? projects[0]?.id ?? null : null);
     const refs = (
@@ -358,7 +390,6 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     scalarMetrics,
     continuity,
     summaryPills,
-    draftItems,
     activityItems,
     taskShortcut,
     projectSummaryCard,
@@ -587,48 +618,6 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       )
       .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
 
-    const mappedDraftItems: DashboardActivityItem[] = activeProjectTasks
-      .filter(
-        (task) =>
-          !task.deletedAt &&
-          task.assignedBy === currentUserId &&
-          task.status === "in_progress",
-      )
-      .map((task) => {
-        const updates = Array.isArray(task.updates) ? task.updates : [];
-        const latestUpdate = [...updates].sort(
-          (left, right) =>
-            new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
-        )[0];
-
-        return {
-          id: `draft:${task.id}`,
-          taskId: task.id,
-          title: task.title,
-          subtitle:
-            latestUpdate?.description || task.description || resolvedActiveProject?.name || "In progress",
-          timestampLabel: latestUpdate
-            ? new Date(latestUpdate.timestamp).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-              })
-            : "In progress",
-          statusLabel: task.status.replace(/_/g, " "),
-          previewPhotoUri: resolveImageUri(latestUpdate?.photos?.[0]) || collectTaskPhotoUris(task)[0],
-          density: "standard",
-          structuralState,
-          sortTimestamp: latestUpdate?.timestamp || task.createdAt,
-        };
-      })
-      .sort(
-        (left, right) =>
-          new Date((right as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime() -
-          new Date((left as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime(),
-      )
-      .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
-
     const queueCounts = {
       my_queue: {
         new: 0,
@@ -785,7 +774,6 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             { id: "review", label: "Review", value: String(activeProjectReviewTasks.length) },
           ]
         : [],
-      draftItems: mappedDraftItems,
       activityItems: [
         ...(resolvedActiveProject
           ? unattachedBatchStore
@@ -865,6 +853,25 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     };
   }, [continuity.isBackgroundRefreshing, projectSummaryItems.length]);
 
+  const draftItems = useMemo((): DashboardActivityItem[] => {
+    const structuralState: PrimitiveStructuralState = "ready";
+    return localDrafts.map((draft) => ({
+      id: `draft:${draft.id}`,
+      localDraftId: draft.id,
+      title: draft.titlePreview,
+      subtitle: "Draft — not submitted",
+      timestampLabel: new Date(draft.savedAt).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+      statusLabel: "Draft",
+      density: "standard",
+      structuralState,
+    }));
+  }, [localDrafts]);
+
   const output: DashboardScreenViewAdapterOutput = {
     screenId: "DashboardScreen",
     readiness,
@@ -891,21 +898,13 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       showDeveloperSettingsShortcut: __DEV__,
     },
     actions: {
-      deleteDraftTask: async (taskId: string) => {
+      refreshLocalDrafts,
+      deleteDraftTask: async (localDraftId: string) => {
         if (!currentUserId) {
           throw new Error("Sign in to delete a draft.");
         }
-        const task = taskStore.tasks.find((candidate) => candidate.id === taskId);
-        if (!task || task.deletedAt) {
-          throw new Error("Draft not found.");
-        }
-        if (task.assignedBy !== currentUserId) {
-          throw new Error("You can only delete drafts you created.");
-        }
-        if (task.status !== "in_progress") {
-          throw new Error("Only unfinished drafts can be deleted here.");
-        }
-        await taskStore.deleteTaskById(taskId, currentUserId);
+        await deleteLocalTaskDraft(localDraftId);
+        await refreshLocalDrafts();
       },
     },
   };

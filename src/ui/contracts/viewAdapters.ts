@@ -51,7 +51,10 @@ export interface DashboardQuickActionItem extends PrimitiveReadyItemBase {
 
 export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   id: string;
-  taskId: string;
+  /** Live task row — not used for local-only drafts. */
+  taskId?: string;
+  /** Local AsyncStorage draft id. */
+  localDraftId?: string;
   title: string;
   subtitle: string;
   timestampLabel: string;
@@ -1404,7 +1407,10 @@ export interface CreateTaskContextModel {
   activeProjectName?: string;
   assigneesLocked: boolean;
   requiresEditReason: boolean;
-  isResumeAsCreate: boolean;
+  /** True when editing a local-only saved draft (not a live task). */
+  isLocalDraft: boolean;
+  localDraftId?: string;
+  draftBadgeLabel?: string;
   parentBanner: {
     label: string;
     title: string;

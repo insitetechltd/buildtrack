@@ -67,19 +67,18 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   );
 
   const handleDraftPress = useCallback(
-    (taskId: string) => {
-      const swipeBlockState = swipeBlockedDraftIds[taskId];
+    (localDraftId: string) => {
+      const swipeBlockState = swipeBlockedDraftIds[localDraftId];
       if (swipeBlockState === "active") {
         return;
       }
       if (swipeBlockState === "dismissed") {
-        setDraftSwipeBlockState(taskId, undefined);
+        setDraftSwipeBlockState(localDraftId, undefined);
         return;
       }
 
       props.onNavigateToCreateTask({
-        editTaskId: taskId,
-        resumeAsCreate: true,
+        localDraftId,
         sourceScreen: "dashboard",
         clearForm: false,
         _timestamp: Date.now(),
@@ -89,14 +88,14 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   );
 
   const handleDraftDeletePress = useCallback(
-    (taskId: string) => {
-      Alert.alert("Delete draft?", "This unfinished task will be removed.", [
+    (localDraftId: string) => {
+      Alert.alert("Delete draft?", "This saved draft will be removed from this device.", [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            void actions.deleteDraftTask(taskId).catch((error) => {
+            void actions.deleteDraftTask(localDraftId).catch((error) => {
               Alert.alert(
                 "Unable to delete draft",
                 error instanceof Error ? error.message : "Please try again.",
@@ -282,13 +281,13 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               <Pressable
                 testID="dashboard-screen__drafts_toggle"
                 accessibilityRole="button"
-                accessibilityLabel="Drafts In Progress"
+                accessibilityLabel="Saved drafts"
                 onPress={() => setIsDraftsExpanded((current) => !current)}
                 className="mb-2 flex-row items-center justify-between"
                 hitSlop={12}
               >
                 <Text className="text-base font-semibold uppercase tracking-wider text-slate-500">
-                  Drafts In Progress
+                  Saved drafts
                 </Text>
                 <Text
                   testID="dashboard-screen__drafts_show_hide"
@@ -299,35 +298,44 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               </Pressable>
               {isDraftsExpanded ? (
                 <View className="gap-3" testID="dashboard-screen__drafts_list">
-                  {output.draftItems.map((item) => (
+                  {output.draftItems.map((item) => {
+                    const draftId = item.localDraftId ?? item.id.replace(/^draft:/, "");
+                    return (
                     <Swipeable
                       key={item.id}
-                      testID={`dashboard-screen__draft_item_${item.taskId}:swipeable`}
+                      testID={`dashboard-screen__draft_item_${draftId}:swipeable`}
                       overshootLeft={false}
                       overshootRight={false}
                       activeOffsetX={[-20, 20]}
                       failOffsetY={[-12, 12]}
-                      onSwipeableOpenStartDrag={() => setDraftSwipeBlockState(item.taskId, "active")}
-                      onSwipeableCloseStartDrag={() => setDraftSwipeBlockState(item.taskId, "active")}
-                      onSwipeableWillOpen={() => setDraftSwipeBlockState(item.taskId, "active")}
-                      onSwipeableClose={() => setDraftSwipeBlockState(item.taskId, "dismissed")}
+                      onSwipeableOpenStartDrag={() => setDraftSwipeBlockState(draftId, "active")}
+                      onSwipeableCloseStartDrag={() => setDraftSwipeBlockState(draftId, "active")}
+                      onSwipeableWillOpen={() => setDraftSwipeBlockState(draftId, "active")}
+                      onSwipeableClose={() => setDraftSwipeBlockState(draftId, "dismissed")}
                       renderRightActions={() => (
                         <DraftDeleteAction
-                          testID={`dashboard-screen__draft_item_${item.taskId}:delete-action`}
-                          onPress={() => handleDraftDeletePress(item.taskId)}
+                          testID={`dashboard-screen__draft_item_${draftId}:delete-action`}
+                          onPress={() => handleDraftDeletePress(draftId)}
                         />
                       )}
                     >
                       <Pressable
-                        testID={`dashboard-screen__draft_item_${item.taskId}`}
-                        onPress={() => handleDraftPress(item.taskId)}
+                        testID={`dashboard-screen__draft_item_${draftId}`}
+                        onPress={() => handleDraftPress(draftId)}
                         className="rounded-2xl border border-slate-200 bg-white p-4"
                       >
-                        <Text className="text-lg font-semibold text-slate-900">{item.title}</Text>
+                        <View className="flex-row items-center gap-2">
+                          <Text className="text-lg font-semibold text-slate-900 flex-1">{item.title}</Text>
+                          <View className="rounded-full bg-amber-100 px-2 py-0.5">
+                            <Text className="text-xs font-semibold uppercase text-amber-800">Draft</Text>
+                          </View>
+                        </View>
                         <Text className="mt-1 text-base text-slate-500">{item.subtitle}</Text>
+                        <Text className="mt-1 text-sm text-slate-400">{item.timestampLabel}</Text>
                       </Pressable>
                     </Swipeable>
-                  ))}
+                    );
+                  })}
                 </View>
               ) : null}
             </View>

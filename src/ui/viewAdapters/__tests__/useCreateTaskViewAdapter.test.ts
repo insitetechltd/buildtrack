@@ -64,6 +64,20 @@ jest.mock("../../../utils/usePhotoSelection", () => ({
   }),
 }));
 
+const mockGetLocalTaskDraft = jest.fn();
+const mockSaveLocalTaskDraft = jest.fn();
+const mockDeleteLocalTaskDraft = jest.fn();
+
+jest.mock("../../../utils/localTaskDraftStore", () => {
+  const actual = jest.requireActual("../../../utils/localTaskDraftStore");
+  return {
+    ...actual,
+    getLocalTaskDraft: (...args: unknown[]) => mockGetLocalTaskDraft(...args),
+    saveLocalTaskDraft: (...args: unknown[]) => mockSaveLocalTaskDraft(...args),
+    deleteLocalTaskDraft: (...args: unknown[]) => mockDeleteLocalTaskDraft(...args),
+  };
+});
+
 jest.mock("../../../hooks/useTaskLLMAssistant", () => ({
   useTaskLLMAssistant: () => ({
     suggestTaskFromText: jest.fn(),
@@ -84,7 +98,17 @@ jest.mock("../../../utils/useTranslation", () => ({
       subTaskOf: "Sub-task of:",
       addNewLocation: "Add new location",
     },
+    validation: {
+      assigneeRequired: "Please select at least one person to assign this task",
+    },
   }),
+  getNestedTranslation: (translations: Record<string, unknown>, path: string) =>
+    path.split(".").reduce<unknown>((obj, key) => {
+      if (obj && typeof obj === "object" && key in obj) {
+        return (obj as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, translations) ?? path,
 }));
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -126,34 +150,20 @@ describe("useCreateTaskViewAdapter", () => {
     });
   });
 
-  it("hydrates draft form data from AsyncStorage for create mode", async () => {
+  it("does not auto-restore legacy createTask form data from AsyncStorage", async () => {
     const AsyncStorage = require("@react-native-async-storage/async-storage");
     AsyncStorage.getItem.mockResolvedValueOnce(
       JSON.stringify({
         title: "Draft title",
         description: "Draft description",
-        taskReference: "DRAFT-1",
-        billingStatus: "billable",
-        priority: "high",
-        category: "electrical",
-        dueDate: "2099-02-02T00:00:00.000Z",
-        locationOnSite: "Level 3 - South Core",
-        assignedTo: ["user-2"],
-        attachments: ["https://example.com/draft.jpg"],
-        projectId: "project-1",
       }),
     );
 
     const { result } = renderHook(() => useCreateTaskViewAdapter({}));
 
     await waitFor(() => {
-      expect(result.current.output.formData.title).toBe("Draft title");
+      expect(result.current.output.formData.title).toBe("");
     });
-
-    expect(result.current.output.formData.dueDate.toISOString()).toBe("2099-02-02T00:00:00.000Z");
-    expect(result.current.output.formData.projectId).toBe("project-1");
-    expect(result.current.output.formData.locationOnSite).toBe("Level 3 - South Core");
-    expect(result.current.output.formData.assignedTo).toEqual(["user-2"]);
   });
 
   it("treats clearFormTimestamp as a one-shot reset trigger", async () => {
@@ -467,29 +477,37 @@ describe("useCreateTaskViewAdapter", () => {
     expect(result.current.output.context.activeProjectName).toBe("Project Alpha");
   });
 
-  it("resumes a draft as an unfinished create form and updates instead of duplicating", async () => {
+  it("loads a saved local draft and creates a task on submit (not update)", async () => {
     mockGetProjectsByUser.mockReturnValue([
       { id: "project-1", name: "Project Alpha", location: "Tower A" },
     ]);
+    mockGetLocalTaskDraft.mockResolvedValue({
+      id: "local-draft-1",
+      savedAt: "2026-01-01T00:00:00.000Z",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+      titlePreview: "Draft inspection",
+      projectId: "project-1",
+      form: {
+        title: "Draft inspection",
+        description: "Unfinished notes",
+        taskReference: "REF-DRAFT",
+        billingStatus: "non_billable",
+        priority: "medium",
+        category: "general",
+        dueDate: "2099-01-01T00:00:00.000Z",
+        projectId: "project-1",
+        locationOnSite: "Level 2",
+        assignedTo: ["user-2"],
+        attachments: [],
+        customTags: [],
+        isCriticalThisWeek: false,
+        primaryAssigneeId: "user-2",
+        containerId: "",
+        subContainerId: "",
+      },
+    });
     mockUseTaskStore.mockReturnValue({
-      tasks: [
-        {
-          id: "task-1",
-          title: "Draft inspection",
-          description: "Unfinished notes",
-          taskReference: "REF-DRAFT",
-          billingStatus: "non_billable",
-          priority: "medium",
-          category: "general",
-          dueDate: "2099-01-01T00:00:00.000Z",
-          projectId: "project-1",
-          locationOnSite: "Level 2",
-          assignedTo: ["user-2"],
-          assignedBy: "user-1",
-          attachments: [],
-          status: "in_progress",
-        },
-      ],
+      tasks: [],
       fetchTaskById: mockFetchTaskById,
       createTask: mockCreateTask,
       createSubTask: mockCreateSubTask,
@@ -497,11 +515,11 @@ describe("useCreateTaskViewAdapter", () => {
       fetchProjectLocations: mockFetchProjectLocations,
       ensureProjectLocation: mockEnsureProjectLocation,
     });
+    mockCreateTask.mockClear();
 
     const { result } = renderHook(() =>
       useCreateTaskViewAdapter({
-        editTaskId: "task-1",
-        resumeAsCreate: true,
+        localDraftId: "local-draft-1",
       }),
     );
 
@@ -510,7 +528,7 @@ describe("useCreateTaskViewAdapter", () => {
     });
 
     expect(result.current.output.context.headerTitle).toBe("Create New Task");
-    expect(result.current.output.context.isResumeAsCreate).toBe(true);
+    expect(result.current.output.context.isLocalDraft).toBe(true);
     expect(result.current.output.context.assigneesLocked).toBe(false);
     expect(result.current.output.context.requiresEditReason).toBe(false);
 
@@ -518,23 +536,25 @@ describe("useCreateTaskViewAdapter", () => {
       await result.current.actions.submit();
     });
 
-    expect(mockUpdateTask).toHaveBeenCalledWith(
-      "task-1",
-      expect.objectContaining({
-        title: "Draft inspection",
-        description: "Unfinished notes",
-        projectId: "project-1",
-      }),
-    );
-    expect(mockCreateTask).not.toHaveBeenCalled();
+    expect(mockCreateTask).toHaveBeenCalled();
+    expect(mockUpdateTask).not.toHaveBeenCalled();
+    expect(mockDeleteLocalTaskDraft).toHaveBeenCalledWith("local-draft-1");
+  });
 
-    const AsyncStorage = require("@react-native-async-storage/async-storage");
-    jest.useFakeTimers();
-    act(() => {
-      jest.advanceTimersByTime(2000);
+  it("requires a title before saveDraft persists locally", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-1", name: "Project Alpha", location: "Tower A" },
+    ]);
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    await act(async () => {
+      const saved = await result.current.actions.saveDraft();
+      expect(saved).toBe(false);
     });
-    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
-    jest.useRealTimers();
+
+    expect(mockSaveLocalTaskDraft).not.toHaveBeenCalled();
+    expect(result.current.output.errors.title).toBe("Title is required to save a draft");
   });
 
   it("submits create and edit modes with stable payloads", async () => {
@@ -671,6 +691,7 @@ describe("useCreateTaskViewAdapter", () => {
       result.current.actions.updateField("description", "No location required");
       result.current.actions.updateField("projectId", "project-1");
       result.current.actions.updateField("locationOnSite", "   ");
+      result.current.actions.updateField("assignedTo", ["user-2"]);
     });
 
     await act(async () => {

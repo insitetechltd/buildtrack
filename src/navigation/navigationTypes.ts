@@ -40,8 +40,8 @@ export type CreateTaskParams = {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string;
-  /** Resume an unfinished draft in Create Task chrome (not Task Detail / Edit Task). */
-  resumeAsCreate?: boolean;
+  /** Resume an unfinished local draft in Create Task chrome. */
+  localDraftId?: string;
   actionType?: "edit" | "update" | "photos" | "comment" | "reassign";
   updateTargetSubTaskId?: string;
   sourceTaskId?: string;
@@ -72,7 +72,7 @@ export type PhotoSelectionParams = {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string;
-  resumeAsCreate?: boolean;
+  localDraftId?: string;
   updateTargetSubTaskId?: string;
   selectedPhotos?: SelectedPhoto[];
   uploadedPhotoUrls?: string[];
@@ -106,7 +106,7 @@ export type InAppLibraryPickerParams = {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string;
-  resumeAsCreate?: boolean;
+  localDraftId?: string;
   /** When adding more from Select Photos, keep the current batch and append. */
   existingPhotos?: SelectedPhoto[];
   projectId?: string;

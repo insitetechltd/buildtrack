@@ -58,6 +58,7 @@ import type {
 } from "../navigation/navigationTypes";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
+import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import {
   createFormNavigationRegistry,
   getNextFocusableFieldId,
@@ -86,7 +87,7 @@ interface CreateTaskScreenProps {
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
-  resumeAsCreate?: boolean;
+  localDraftId?: string; // Resume a saved local draft
   actionType?: 'edit' | 'update' | 'photos' | 'comment' | 'reassign'; // Action type for different task actions
   cameraLaunchContext?: CameraLaunchContext;
   postCaptureDefault?: CameraPostCaptureDefault;
@@ -131,7 +132,7 @@ export default function CreateTaskScreen({
   parentTaskId,
   parentSubTaskId,
   editTaskId,
-  resumeAsCreate,
+  localDraftId,
   actionType,
   cameraLaunchContext,
   postCaptureDefault,
@@ -151,8 +152,8 @@ export default function CreateTaskScreen({
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
-      resumeAsCreate={resumeAsCreate}
-      actionType={resumeAsCreate ? undefined : (actionType || (editTaskId ? "edit" : undefined))}
+      localDraftId={localDraftId}
+      actionType={actionType || (editTaskId ? "edit" : undefined)}
       cameraLaunchContext={cameraLaunchContext}
       postCaptureDefault={postCaptureDefault}
       updateTargetSubTaskId={updateTargetSubTaskId}
@@ -173,7 +174,7 @@ function CreateTaskEditorScreen({
   parentTaskId,
   parentSubTaskId,
   editTaskId,
-  resumeAsCreate,
+  localDraftId,
   actionType,
   cameraLaunchContext,
   postCaptureDefault,
@@ -220,7 +221,7 @@ function CreateTaskEditorScreen({
 
   const { output, actions } = useCreateTaskViewAdapter({
     editTaskId,
-    resumeAsCreate,
+    localDraftId,
     parentTaskId,
     parentSubTaskId,
     clearForm,
@@ -232,6 +233,7 @@ function CreateTaskEditorScreen({
     updateField,
     togglePicker,
     submit,
+    saveDraft,
     setTextInput,
     setUserSearchQuery,
     toggleUserSelection,
@@ -390,7 +392,7 @@ function CreateTaskEditorScreen({
             parentTaskId,
             parentSubTaskId,
             editTaskId,
-            resumeAsCreate,
+            localDraftId: context.localDraftId,
           });
         }, 100);
       });
@@ -438,7 +440,7 @@ function CreateTaskEditorScreen({
             parentTaskId,
             parentSubTaskId,
             editTaskId,
-            resumeAsCreate,
+            localDraftId: context.localDraftId,
             existingPhotos: existingPhotos.map((photo) => ({
               uri: photo.uri,
               fileName: photo.fileName,
@@ -497,16 +499,18 @@ function CreateTaskEditorScreen({
     }
   };
 
-  const isExistingEdit = Boolean(editTaskId) && !resumeAsCreate;
+  const isExistingEdit = Boolean(editTaskId);
 
-  const headerSubtitle = isExistingEdit
-    ? t.createTask.headerEditSubtitle
-    : t.createTask.headerCreateSubtitle;
+  const headerSubtitle = context.draftBadgeLabel
+    ? context.draftBadgeLabel
+    : isExistingEdit
+      ? t.createTask.headerEditSubtitle
+      : t.createTask.headerCreateSubtitle;
 
   const performSubmit = async (options?: { editReason?: string }) => {
     const wasSuccessful = await submit(options);
     if (wasSuccessful) {
-      if (isExistingEdit || resumeAsCreate) {
+      if (isExistingEdit) {
         onNavigateBack();
       } else if (parentTaskId && parentSubTaskId) {
         setSubmitSuccessState({
@@ -543,7 +547,7 @@ function CreateTaskEditorScreen({
         parentTaskId,
         parentSubTaskId,
         editTaskId,
-        resumeAsCreate,
+        localDraftId: context.localDraftId,
         updateTargetSubTaskId,
       });
       return;
@@ -556,6 +560,17 @@ function CreateTaskEditorScreen({
 
     await performSubmit();
   };
+
+  const handleSaveDraft = async () => {
+    const saved = await saveDraft();
+    if (saved) {
+      Alert.alert(
+        "Draft saved",
+        "Find it under Activity → Saved drafts. Drafts expire after 7 days.",
+      );
+    }
+  };
+
   const handleEditReasonSubmit = async () => {
     const wasSuccessful = await performSubmit({ editReason: modals.editReason });
     if (wasSuccessful) {
@@ -1346,33 +1361,36 @@ function CreateTaskEditorScreen({
                 </Pressable>
               </InputField>
             </View>
-
-            <View
-              testID="create-task__submit-inline"
-              className="pt-4"
-            >
-              <View
-                testID="createTask-submit-focus-target"
-                accessibilityState={{ selected: activeFormFocusTarget === "submit" }}
-              >
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={handleSubmit}
-                  disabled={isSubmitting}
-                  className={cn(
-                    "items-center justify-center rounded-xl bg-blue-600 py-3",
-                    isSubmitting && "opacity-50",
-                  )}
-                >
-                  <Text className="text-base font-semibold text-white">
-                    {isExistingEdit ? t.createTask.updateTaskButton : t.createTask.createTaskButton}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {isExistingEdit ? (
+        <PrimaryActionBar
+          testID="create-task__action_bar"
+          primaryTestID="create-task__submit"
+          primaryLabel={
+            isSubmitting ? t.common.loading : t.createTask.updateTaskButton
+          }
+          onPrimaryPress={handleSubmit}
+          isPrimaryDisabled={isSubmitting}
+        />
+      ) : (
+        <PrimaryActionBar
+          testID="create-task__action_bar"
+          secondaryLabel="Save draft"
+          secondaryTestID="create-task__save-draft"
+          onSecondaryPress={() => {
+            void handleSaveDraft();
+          }}
+          primaryTestID="create-task__submit"
+          primaryLabel={
+            isSubmitting ? t.common.loading : t.createTask.createTaskButton
+          }
+          onPrimaryPress={handleSubmit}
+          isPrimaryDisabled={isSubmitting}
+        />
+      )}
 
       <Modal
         visible={submitSuccessState !== null}

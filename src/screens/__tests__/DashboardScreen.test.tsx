@@ -198,12 +198,12 @@ describe("DashboardScreen", () => {
       summaryPills: [],
       draftItems: [
         {
-          id: "draft:task-draft-1",
-          taskId: "task-draft-1",
+          id: "draft:local-draft-1",
+          localDraftId: "local-draft-1",
           title: "Draft inspection",
-          subtitle: "Pending notes",
+          subtitle: "Draft — not submitted",
           timestampLabel: "Jul 4 at 8:30 AM",
-          statusLabel: "in progress",
+          statusLabel: "Draft",
           density: "standard",
           structuralState: "stale",
         },
@@ -307,7 +307,7 @@ describe("DashboardScreen", () => {
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__activity_activity-2:no-photo-icon")).toBeTruthy();
     expect(screen.getByTestId("dashboard-screen__drafts_toggle")).toBeTruthy();
-    expect(screen.queryByTestId("dashboard-screen__draft_item_task-draft-1")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__draft_item_local-draft-1")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__header_profile")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__header_project_picker")).toBeNull();
@@ -330,15 +330,14 @@ describe("DashboardScreen", () => {
     expect(onNavigateToTaskDetail).toHaveBeenCalledWith("task-critical-1");
 
     fireEvent.press(screen.getByTestId("dashboard-screen__drafts_toggle"));
-    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_task-draft-1"));
+    fireEvent.press(screen.getByTestId("dashboard-screen__draft_item_local-draft-1"));
     expect(onNavigateToCreateTask).toHaveBeenCalledWith({
-      editTaskId: "task-draft-1",
-      resumeAsCreate: true,
+      localDraftId: "local-draft-1",
       sourceScreen: "dashboard",
       clearForm: false,
       _timestamp: expect.any(Number),
     });
-    expect(onNavigateToTaskDetail).not.toHaveBeenCalledWith("task-draft-1");
+    expect(onNavigateToTaskDetail).not.toHaveBeenCalledWith("local-draft-1");
 
     expect(onNavigateToProfile).not.toHaveBeenCalled();
     expect(onNavigateToProjectPicker).not.toHaveBeenCalled();

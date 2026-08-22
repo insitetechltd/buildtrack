@@ -527,6 +527,37 @@ describe('taskStore.supabase unit tests', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('prevents clearing all assignees on open tasks', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    resetTaskStore();
+    useTaskStore.setState({
+      tasks: [
+        createTaskState({
+          status: 'new',
+          assignedTo: [workerId],
+        }),
+      ],
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    let thrownError: unknown;
+
+    await act(async () => {
+      try {
+        await result.current.updateTask('task-123', { assignedTo: [] });
+      } catch (error) {
+        thrownError = error;
+      }
+    });
+
+    expect(thrownError).toBeInstanceOf(Error);
+    expect((thrownError as Error).message).toMatch(/assign this task/i);
+
+    consoleErrorSpy.mockRestore();
+  });
+
   it('clears the legacy accepted flag when a task is reset to new status', async () => {
     const updateMock = jest.fn().mockReturnThis();
     const eqMock = jest.fn().mockResolvedValue({ error: null });

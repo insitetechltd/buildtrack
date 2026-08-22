@@ -6,7 +6,7 @@
 
 ## Doing
 
-**M-BILL-01 BILL-A** — ERD draft (idle-parallel; next spine item after **M-OPS-02 Closed**).
+**M-BILL-01 BILL-A** — Draft SQL + Human Gate checklist ready. Trial = **regular list price + Stripe discount**. **Awaiting your Human Gate review** before BILL-B apply.
 
 **Marketing site:** almost ready — uncommitted separately.
 

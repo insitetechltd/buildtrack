@@ -27,7 +27,7 @@ GPT NO-GO aligns with the two GO-with-changes reviews on substance: the **direct
 
 R6 = card-on-file + auto-convert to **chosen paid plan** after ~30 days. Modeling `trial_v1 $0/mo` as `locked_plan_price_id` would grandfather customers at $0 forever under P3.
 
-**Locked fix:** Trial = **regular list price** (`locked_plan_price_id` = Growth/Unlimited paid SKU) + **Stripe coupon/promotion** for the discounted period. No $0 plan tier. `billing_phase=trial` revision holds trial caps; on trial end, new revision applies paid-period caps from the same locked price.
+**Locked fix:** Trial = **regular list price** (`locked_plan_price_id` = Growth/Unlimited paid SKU) + **Stripe native trial** on that Price (`trialing` status, `trial_end`). No $0 plan tier. `billing_phase=trial` revision holds trial caps; on `trialing → active`, new revision applies paid-period caps from the same locked price.
 
 ### C2 — Catalog vs contract: enforcement must not re-merge live catalog (3/3)
 
@@ -121,7 +121,7 @@ R6 unlimited-only wording left Growth ambiguous. **Locked fix:** Growth + trial 
 
 ## Top 5 must-fix before BILL-B (merged)
 
-1. **Trial model** — regular list price + Stripe discount; no $0 SKU; trial/paid entitlement revisions  
+1. **Trial model** — regular list price + Stripe native trial; no $0 SKU; trial/paid entitlement revisions  
 2. **Contract immutability** — entitlement revisions + snapshot SoT; no live catalog merge at enforce time  
 3. **Meter storage decision** — snapshot JSONB + typed cache (or full `company_entitlement_meters`); document ALTER policy  
 4. **`livemode` + pilot backfill + fail-closed** — env-separated prices; backfill existing companies  

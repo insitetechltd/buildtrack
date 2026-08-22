@@ -10,12 +10,14 @@
 
 ## Sign-off
 
-| Field | Value |
-|---|---|
-| Reviewer | |
-| Date | |
-| Decision | ☐ GO for BILL-B live apply  ☐ NO-GO (notes below) |
-| Environment | ☐ parity/sandbox first  ☐ production (explicit) |
+
+| Field       | Value                                            |
+| ----------- | ------------------------------------------------ |
+| Reviewer    |                                                  |
+| Date        |                                                  |
+| Decision    | ☐ GO for BILL-B live apply ☐ NO-GO (notes below) |
+| Environment | ☐ parity/sandbox first ☐ production (explicit)   |
+
 
 **Acceptable GO forms:** explicit chat “GO for BILL-B live apply” or signed line below.
 
@@ -23,16 +25,20 @@ Signed: _________________________
 
 ---
 
-## 1. Trial model (regular pricing + discount)
 
-- [ ] **Confirmed:** Trial = customer selects **Growth or Unlimited at list price** (`locked_plan_price_id` = paid SKU from signup).
-- [ ] **Confirmed:** Trial benefit = **Stripe discount** (100% off coupon or equivalent promotion on the regular Price), **not** a separate $0 plan tier.
-- [ ] **Confirmed:** Card collected at trial start; after trial end, billing continues at **same list price** without plan SKU change.
+
+## 1. Trial model (regular pricing + native Stripe trial)
+
+- [x] **Confirmed:** Trial = customer selects **Growth or Unlimited at list price** (`locked_plan_price_id` = paid SKU from signup).
+- [x] **Confirmed:** Trial benefit = **Stripe native trial** on that Price (`trial_period_days` or `trial_end`; subscription status `trialing`) — **not** a separate $0 plan tier and **not** a 100% coupon for the standard trial.
+- [x] **Confirmed:** Card collected at trial start; after trial end, billing continues at **same list price** without plan SKU change.
 - [ ] **Confirmed:** During trial, enforcement uses **trial caps** in entitlement snapshot; on `trialing → active`, webhook writes **new revision** with paid-period caps from same locked price.
-- [ ] Stripe objects named: coupon/promotion id(s) for trial: _______________
 - [ ] Trial duration: ☐ 30 days  ☐ 1 calendar month  ☐ other: _______
+- [ ] BILL-E checkout creates subscription with native trial on selected Price (Human Gate defers wiring; confirm intent now).
 
 ---
+
+
 
 ## 2. Catalog & tier flexibility
 
@@ -43,45 +49,55 @@ Signed: _________________________
 
 ---
 
+
+
 ## 3. Meters & R6 caps
 
-| meter_slug | Trial / Growth / Unlimited seed | Limit value | Inclusive? |
-|---|---|---|---|
-| `pm_seats` | all base | 1 | ☐ |
-| `worker_seats` | all base | 5 | ☐ |
-| `projects` | trial | 1 | ☐ |
-| `projects` | growth | 5 | ☐ |
-| `projects` | unlimited | NULL (∞) | ☐ |
-| `entries_trial_total` | trial phase only | 100 | ☐ under vs ☐ inclusive |
-| `entries_monthly` | growth / unlimited active | 200 / NULL | ☐ |
-| `storage_bytes` | all base | 5368709120 (5 GiB) | ☐ |
+
+| meter_slug            | Trial / Growth / Unlimited seed | Limit value        | Inclusive?             |
+| --------------------- | ------------------------------- | ------------------ | ---------------------- |
+| `pm_seats`            | all base                        | 1                  | ☐                      |
+| `worker_seats`        | all base                        | 5                  | ☐                      |
+| `projects`            | trial                           | 1                  | ☐                      |
+| `projects`            | growth                          | 5                  | ☐                      |
+| `projects`            | unlimited                       | NULL (∞)           | ☐                      |
+| `entries_trial_total` | trial phase only                | 100                | ☐ under vs ☐ inclusive |
+| `entries_monthly`     | growth / unlimited active       | 200 / NULL         | ☐                      |
+| `storage_bytes`       | all base                        | 5368709120 (5 GiB) | ☐                      |
+
 
 - [ ] Entry definition locked: **task create OR task update** only (not photo-only, not draft-only local).
 - [ ] Usage `period_key` = Stripe billing period start (ISO date), not calendar month alone.
 
 ---
 
+
+
 ## 4. Contract immutability & grandfathering
 
 - [ ] **Default policy signed:** New list prices apply to **new subscriptions only**; existing `locked_plan_price_id` unchanged unless customer upgrades or ops runs queued migration.
-- [ ] Runtime enforcement reads **`company_entitlements` + latest revision snapshot** — never live `plan_price_meters`.
-- [ ] **`plan_price_meters` rows are immutable** after any price is referenced by `locked_plan_price_id` (fix = new price version).
-- [ ] Append-only **`company_entitlement_revisions`** approved.
+- [ ] Runtime enforcement reads `company_entitlements` **+ latest revision snapshot** — never live `plan_price_meters`.
+- [ ] `plan_price_meters` **rows are immutable** after any price is referenced by `locked_plan_price_id` (fix = new price version).
+- [ ] Append-only `company_entitlement_revisions` approved.
 - [ ] Price increase default: ☐ grandfather  ☐ cohort migration  ☐ voluntary upgrade only.
 
 ---
+
+
 
 ## 5. Seat class rules (invite enforcement)
 
 - [ ] Role → seat table approved (`seat_class_rules` seed):
 
-| role / system_permission | pm_seats | worker_seats | exempt |
-|---|---|---|---|
-| admin | ☐ | ☐ | ☐ default **exempt** |
-| company_admin | ☐ | ☐ | ☐ default **exempt** |
-| manager / supervisor | ☐ consumes PM | ☐ | ☐ |
-| foreman | ☐ | ☐ consumes worker | ☐ |
-| member / worker | ☐ | ☐ consumes worker | ☐ |
+
+| role / system_permission | pm_seats      | worker_seats      | exempt               |
+| ------------------------ | ------------- | ----------------- | -------------------- |
+| admin                    | ☐             | ☐                 | ☐ default **exempt** |
+| company_admin            | ☐             | ☐                 | ☐ default **exempt** |
+| manager / supervisor     | ☐ consumes PM | ☐                 | ☐                    |
+| foreman                  | ☐             | ☐ consumes worker | ☐                    |
+| member / worker          | ☐             | ☐ consumes worker | ☐                    |
+
 
 - [ ] Pending invite **holds** seat: ☐ yes  ☐ no
 - [ ] Deactivated user **frees** seat: ☐ yes  ☐ no
@@ -89,17 +105,20 @@ Signed: _________________________
 
 ---
 
+
+
 ## 6. Stripe & environment
 
 - [ ] Separate **test** and **live** `plan_prices` rows (`livemode` column).
 - [ ] Stripe Product/Price ids mapped for **livemode=true** (production): documented in secure ops vault, **not** in git.
 - [ ] Stripe Product/Price ids mapped for **livemode=false** (test): _______________
-- [ ] Trial discount coupon id (live): _______________
-- [ ] Trial discount coupon id (test): _______________
+- [ ] Optional marketing coupon ids (not required for standard trial): live _______________ test _______________
 - [ ] Webhook signing secret rotation plan acknowledged.
-- [ ] Checkout metadata required: `company_id`, `plan_price_id`, `livemode`.
+- [ ] Checkout metadata required: `company_id`, `plan_price_id`, `livemode`, `trial_period_days` (or `trial_end` from Checkout config).
 
 ---
+
+
 
 ## 7. Pilot backfill (existing companies)
 
@@ -112,16 +131,20 @@ Signed: _________________________
 
 ---
 
+
+
 ## 8. Price change runbook
 
 - [ ] New list price = **new Stripe Price** + new `plan_prices` row; old price retired (`is_sellable=false`, `effective_to` set).
-- [ ] Cohort migrations use **`subscription_price_changes`** queue (not ad-hoc SQL).
+- [ ] Cohort migrations use `subscription_price_changes` queue (not ad-hoc SQL).
 - [ ] Stripe mechanism: ☐ Subscription Schedule  ☐ period-end update  ☐ other: _______
 - [ ] Default `proration_behavior`: ☐ none  ☐ create_prorations
 - [ ] Minimum customer notice period: _______ days
 - [ ] Legal/ToS price-change clause reviewed: ☐ yes  ☐ N/A
 
 ---
+
+
 
 ## 9. RLS & security
 
@@ -131,6 +154,8 @@ Signed: _________________________
 - [ ] No service-role keys in mobile app (unchanged policy).
 
 ---
+
+
 
 ## 10. Out of scope for BILL-B (confirm still deferred)
 
@@ -143,6 +168,8 @@ Signed: _________________________
 
 ---
 
+
+
 ## 11. Validation before apply
 
 - [ ] Draft SQL reviewed against this checklist
@@ -152,6 +179,8 @@ Signed: _________________________
 - [ ] Post-apply read-only audit queries prepared
 
 ---
+
+
 
 ## 12. Post-apply smoke (BILL-B)
 

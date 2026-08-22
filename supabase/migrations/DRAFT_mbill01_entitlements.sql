@@ -2,9 +2,10 @@
 -- Milestone: WS-BILL / M-BILL-01 Phase BILL-B
 -- Checklist: docs/superpowers/checklists/m-bill-01-human-gate.md
 --
--- Trial model: REGULAR LIST PRICE + STRIPE DISCOUNT (coupon/promotion).
+-- Trial model: REGULAR LIST PRICE + STRIPE NATIVE TRIAL (trial_end / trial_period_days).
 --   locked_plan_price_id always references paid Growth/Unlimited plan_prices row.
---   No lockable $0 trial SKU. Trial caps live in entitlement revision (billing_phase=trial).
+--   No lockable $0 trial SKU. Subscription status trialing; caps in billing_phase=trial revision.
+--   trial_stripe_coupon_id is optional — marketing promos only, not the standard free trial.
 --
 -- ROLLOUT: parity/sandbox first (v_apply_livemode = false in §14). Production requires
 --   explicit written Human GO and v_apply_livemode = true.
@@ -134,10 +135,13 @@ CREATE TRIGGER company_subscriptions_set_updated_at
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 COMMENT ON COLUMN public.company_subscriptions.locked_plan_price_id IS
-  'Paid list-price SKU chosen at signup. Trial = discount on this price, not a separate tier.';
+  'Paid list-price SKU chosen at signup. Standard trial = Stripe native trial on this Price (trialing status).';
+
+COMMENT ON COLUMN public.company_subscriptions.trial_ends_at IS
+  'Synced from Stripe subscription.trial_end when BILL-C webhook is live.';
 
 COMMENT ON COLUMN public.company_subscriptions.trial_stripe_coupon_id IS
-  'Stripe coupon/promotion applied for trial discount on regular list price.';
+  'Optional. Marketing/partner coupon on top of native trial — not used for the standard free trial.';
 
 CREATE TABLE IF NOT EXISTS public.company_subscription_items (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -568,7 +572,7 @@ VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- 11. Seed — plan tiers (no lockable trial tier; trial = discount on base)
+-- 11. Seed — plan tiers (no lockable trial tier; trial = native Stripe trial on base Price)
 -- ---------------------------------------------------------------------------
 
 INSERT INTO public.plan_tiers (slug, kind, display_name, description, sort_order, stripe_product_id)
@@ -805,7 +809,7 @@ BEGIN
   v_trial_snapshot := jsonb_build_object(
     'locked_plan_price_id', v_default_price,
     'billing_phase', 'trial',
-    'trial_discount_model', 'regular_price_plus_coupon',
+    'trial_discount_model', 'stripe_native_trial',
     'meters', jsonb_build_object(
       'pm_seats', 1,
       'worker_seats', 5,

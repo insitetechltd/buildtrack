@@ -6,7 +6,7 @@
 
 ## Doing
 
-**M-BILL-01 BILL-A** — Draft SQL + Human Gate checklist ready. Trial = **regular list price + Stripe discount**. **Awaiting your Human Gate review** before BILL-B apply.
+**M-BILL-01 BILL-A** — Draft SQL + Human Gate checklist ready. Trial = **regular list price + Stripe native trial**. **Awaiting your Human Gate review** before BILL-B apply.
 
 **Marketing site:** almost ready — uncommitted separately.
 

@@ -1,4 +1,4 @@
-# Create Task → fill title → Save draft → return to Activity.
+# Create Task → fill title → Save draft → land on Activity (Saved drafts).
 # Sets output.draftTitle for downstream draft-item taps.
 appId: com.buildtrack.app.local
 ---
@@ -25,12 +25,12 @@ appId: com.buildtrack.app.local
     direction: DOWN
 - tapOn:
     id: "create-task__save-draft"
+- waitForAnimationToEnd:
+    timeout: 2000
 - tapOn:
-    text: "OK"
+    id: "root-tab__activity"
     optional: true
-- tapOn:
-    id: "app-screen-header__back"
 - extendedWaitUntil:
     visible:
       id: "dashboard-screen__root"
-    timeout: 20000
+    timeout: 25000

@@ -84,6 +84,7 @@ type Attachment = string | SelectedPhoto;
 interface CreateTaskScreenProps {
   onNavigateBack: () => void;
   onCreateSuccess?: () => void;
+  onDraftSaved?: () => void;
   parentTaskId?: string;
   parentSubTaskId?: string;
   editTaskId?: string; // For editing an existing task
@@ -129,6 +130,7 @@ const InputField = ({
 export default function CreateTaskScreen({
   onNavigateBack,
   onCreateSuccess,
+  onDraftSaved,
   parentTaskId,
   parentSubTaskId,
   editTaskId,
@@ -149,6 +151,7 @@ export default function CreateTaskScreen({
     <CreateTaskEditorScreen
       onNavigateBack={onNavigateBack}
       onCreateSuccess={onCreateSuccess}
+      onDraftSaved={onDraftSaved}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -171,6 +174,7 @@ export default function CreateTaskScreen({
 function CreateTaskEditorScreen({
   onNavigateBack,
   onCreateSuccess,
+  onDraftSaved,
   parentTaskId,
   parentSubTaskId,
   editTaskId,
@@ -468,6 +472,12 @@ function CreateTaskEditorScreen({
   const asyncStoragePhotoCount = 0;
 
   const handleCancel = () => {
+    // Saved local drafts are persisted — leaving is not a discard.
+    if (context.isLocalDraft) {
+      onNavigateBack();
+      return;
+    }
+
     // If the form has any user-entered data, prompt before discarding
     const hasData =
       Boolean(formData.title.trim()) ||
@@ -563,12 +573,17 @@ function CreateTaskEditorScreen({
 
   const handleSaveDraft = async () => {
     const saved = await saveDraft();
-    if (saved) {
-      Alert.alert(
-        "Draft saved",
-        "Find it under Activity → Saved drafts. Drafts expire after 7 days.",
-      );
+    if (!saved) {
+      return;
     }
+    if (onDraftSaved) {
+      onDraftSaved();
+      return;
+    }
+    Alert.alert(
+      "Draft saved",
+      "Find it under Activity → Saved drafts. Drafts expire after 7 days.",
+    );
   };
 
   const handleEditReasonSubmit = async () => {

@@ -1605,10 +1605,17 @@ function CreateTaskScreenWrapper({
     navigation.goBack();
   }, [clearDraftPayloads, navigation]);
 
+  const handleDraftSaved = React.useCallback(() => {
+    navigateToRootTabScreen(navigation, "Activity", {
+      screen: "DashboardMain",
+    });
+  }, [navigation]);
+
   return (
     <CreateTaskScreen
       onNavigateBack={() => navigation.goBack()}
       onCreateSuccess={handleCreateSuccess}
+      onDraftSaved={handleDraftSaved}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}
@@ -2027,7 +2034,11 @@ function CreateTaskMainScreen({
     navigation.goBack();
   }, [clearDraftPayloads, localDraftId, navigation, sourceScreen]);
 
-  // Also listen for navigation focus to catch params that arrive late (already handled above)
+  const handleDraftSaved = React.useCallback(() => {
+    navigateToRootTabScreen(navigation, "Activity", {
+      screen: "DashboardMain",
+    });
+  }, [navigation]);
   
   // Handle back navigation - if editing, navigate back to TaskDetail screen
   const handleNavigateBack = React.useCallback(() => {
@@ -2074,6 +2085,7 @@ function CreateTaskMainScreen({
     <CreateTaskScreen
       onNavigateBack={handleNavigateBack}
       onCreateSuccess={handleCreateSuccess}
+      onDraftSaved={handleDraftSaved}
       parentTaskId={parentTaskId}
       parentSubTaskId={parentSubTaskId}
       editTaskId={editTaskId}

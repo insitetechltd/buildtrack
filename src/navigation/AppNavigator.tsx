@@ -83,6 +83,7 @@ import {
   navigateToProjectPicker,
   navigateToRootProfile,
   navigateToRootTabScreen,
+  type StackBackNavigation,
 } from "./rootNavigationHelpers";
 import {
   ROOT_TAB_BAR_STYLE,

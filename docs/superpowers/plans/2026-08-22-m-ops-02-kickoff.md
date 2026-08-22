@@ -44,10 +44,10 @@ Gap classifier SoT: `src/utils/taskWorkflowGaps.ts` — OPS-02 should reduce `GA
 | **OPS02-B** | Update-path guards (status transitions, assignee clears) | `updateTask`, edit form | 1–2d |
 | **OPS02-B+** | Legacy unassigned WIP reconcile on dashboard | `reconcileUnrecoverableWipTasks.ts`, dashboard adapter | ✅ Done |
 | **OPS02-B+** | Local create drafts (7d TTL, AsyncStorage) | `localTaskDraftStore.ts`, CreateTask adapter | ✅ Done |
-| **OPS02-C** | Hot-file shrink (extract helpers from taskStore / CreateTask / AppNavigator) | Same domains, no behavior change | 3–5d |
-| **OPS02-D** | Regression + optional Maestro create case | Jest + `P##` if needed | 0.5d |
+| **OPS02-C** | Hot-file shrink (extract helpers from taskStore / CreateTask / AppNavigator) | Same domains, no behavior change | ✅ Done |
+| **OPS02-D** | Regression + optional Maestro create case | Jest + `P##` if needed | ✅ Done |
 
-**Active:** OPS02-C → OPS02-D (close milestone).
+**Closed (2026-08-22).** Next spine: **M-BILL-01 BILL-A**.
 
 ---
 
@@ -76,16 +76,16 @@ Gap classifier SoT: `src/utils/taskWorkflowGaps.ts` — OPS-02 should reduce `GA
 
 ## OPS02-C acceptance (exit gate for MVP)
 
-- [ ] Focused extracts from taskStore / CreateTask / AppNavigator (line count ↓, behavior unchanged)
-- [ ] All OPS02-A/B tests still PASS
+- [x] Focused extracts from taskStore / CreateTask / AppNavigator (line count ↓, behavior unchanged)
+- [x] All OPS02-A/B tests still PASS
 
 ---
 
 ## OPS02-D acceptance (close M-OPS-02)
 
-- [ ] `npm run test:tasks` green (baseline)
-- [ ] Targeted regression per TESTING_STRATEGY or agreed subset
-- [ ] ROADMAP M-OPS-02 marked Closed; NOW → M-BILL-01 BILL-A
+- [x] `npm run test:tasks` green (38/38, 2026-08-22)
+- [x] Targeted regression: ops Jest subset 111/111 PASS
+- [x] ROADMAP M-OPS-02 marked Closed; NOW → M-BILL-01 BILL-A
 
 ---
 

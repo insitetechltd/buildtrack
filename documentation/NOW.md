@@ -6,9 +6,7 @@
 
 ## Doing
 
-**M-OPS-02:** **OPS02-A + OPS02-B DONE** (parallel chat). Remaining: **OPS02-C** (hot-file shrink) + **OPS02-D** (regression gate). Tests: validation Jest 46/46 PASS; `test:tasks` 38/38 PASS.
-
-**M-OPS-01 v1:** **Closed** — smoke OK.
+**M-BILL-01 BILL-A** — ERD draft (idle-parallel; next spine item after **M-OPS-02 Closed**).
 
 **Marketing site:** almost ready — uncommitted separately.
 
@@ -16,9 +14,13 @@
 
 ## Next (definitive — locked master plan)
 
-1. **OPS02-C** — extracts from taskStore / CreateTask / AppNavigator
-2. **OPS02-D** — regression gate → **close M-OPS-02**
-3. **M-BILL-01 BILL-A** (idle-parallel OK: ERD draft only)
+1. **M-BILL-01 BILL-A** — commercial ERD draft
+2. **M-BILL-01 BILL-B+** — Stripe/entitlements (Human Gate before live apply)
+3. **M-AUTHZ-02** after billing MVP
+
+## Recently closed
+
+**M-OPS-02 Closed (2026-08-22):** OPS02-A/B create+update guards, local drafts + WIP reconcile, OPS02-C hot-file shrink (`taskDerivedState`, `taskNormalization`, `taskDeferredSchemaCompat`, `taskStore.selectors`, AppNavigator nav helpers, `CreateTaskInputField`), draft discard deletes persisted draft + swipe-back discard dialog. OPS02-D: `test:tasks` 38/38, ops Jest subset 111/111 PASS. Commit `e3eeb6d`.
 
 ## Locked
 

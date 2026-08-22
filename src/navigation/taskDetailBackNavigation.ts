@@ -1,7 +1,7 @@
 import { CommonActions, StackActions } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useTaskStore } from "../state/taskStore.supabase";
-import { exitUpdateProgressScreen } from "./photoFlowNavigation";
+import { exitUpdateProgressScreen, type PhotoFlowStackNav } from "./photoFlowNavigation";
 import { resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
 import {
   navigateToCreateTaskRoute,
@@ -83,7 +83,7 @@ export function handleTasksTaskDetailBack(
 }
 
 export function handleUpdateProgressBack(navigation: StackBackNavigation) {
-  exitUpdateProgressScreen(navigation);
+  exitUpdateProgressScreen(navigation as PhotoFlowStackNav);
 }
 
 export function handleCameraTabPress({

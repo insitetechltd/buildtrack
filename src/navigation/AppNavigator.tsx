@@ -44,6 +44,7 @@ import { DashboardRoute, TasksRoute } from "./uiModeRoutes";
 import { buildDefaultStackScreenOptions, buildTaskDetailStackScreenOptions } from "./nativeStackOptions";
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import CompanyPlanScreen from "../screens/CompanyPlanScreen";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
 import ProjectsScreen from "../screens/ProjectsScreen";
 import CreateProjectScreen from "../screens/CreateProjectScreen";
@@ -266,6 +267,39 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
             name: "MainTabs",
             state: {
               routes: [{ name: "Activity" }],
+            },
+          },
+        ],
+      };
+    }
+
+    const [profilePath, profileQuery = ""] = path.split("?");
+    if (profilePath === "profile") {
+      const checkout = new URLSearchParams(profileQuery).get("checkout");
+      if (checkout === "success" || checkout === "cancel") {
+        return {
+          routes: [
+            {
+              name: "Profile",
+              state: {
+                routes: [
+                  {
+                    name: "CompanyPlan",
+                    params: { checkoutResult: checkout },
+                  },
+                ],
+              },
+            },
+          ],
+        };
+      }
+
+      return {
+        routes: [
+          {
+            name: "Profile",
+            state: {
+              routes: [{ name: "ProfileMain" }],
             },
           },
         ],
@@ -1317,6 +1351,7 @@ function ProfileStack() {
   return (
     <ProfileStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
       <ProfileStackNavigator.Screen name="ProfileMain" component={ProfileMainScreen} />
+      <ProfileStackNavigator.Screen name="CompanyPlan" component={CompanyPlanScreenWrapper} />
       <ProfileStackNavigator.Screen
         name="DeveloperSettings"
         component={DeveloperSettingsScreenWrapper}
@@ -1371,11 +1406,24 @@ function ProfileMainScreen({
           : undefined
       }
       onNavigateToOwnerConsole={() => navigation.navigate("OwnerConsole")}
+      onNavigateToCompanyPlan={() => navigation.navigate("CompanyPlan")}
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
       onNavigateToProfile={() => {}} // Already on profile screen
       onNavigateToProjectPicker={(allowBack?: boolean) => {
         navigateToProjectPicker(navigation, allowBack);
       }}
+    />
+  );
+}
+
+function CompanyPlanScreenWrapper({
+  navigation,
+  route,
+}: NativeStackScreenProps<ProfileStackParamList, "CompanyPlan">) {
+  return (
+    <CompanyPlanScreen
+      onNavigateBack={() => navigation.goBack()}
+      checkoutResult={route.params?.checkoutResult}
     />
   );
 }

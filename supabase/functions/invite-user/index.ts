@@ -143,6 +143,53 @@ function countSeats(
   return { pmCount, workerCount };
 }
 
+function isMissingColumnError(message: string | undefined): boolean {
+  return /42703|PGRST204|does not exist/i.test(message || "");
+}
+
+async function markMustSetPassword(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<void> {
+  const { error } = await adminClient
+    .from("users")
+    .update({ must_set_password: true })
+    .eq("id", userId);
+
+  if (error && !isMissingColumnError(error.message)) {
+    throw error;
+  }
+}
+
+async function upsertInviteProfile(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+  patch: Record<string, unknown>,
+  inviteRole: string,
+  inviteSystemPermission: string,
+): Promise<void> {
+  const { error: roleError } = await adminClient.from("users").upsert(
+    { ...patch, id: userId, role: inviteRole },
+    { onConflict: "id" },
+  );
+  if (!roleError) {
+    return;
+  }
+
+  if (!isMissingColumnError(roleError.message)) {
+    const { error: sysError } = await adminClient.from("users").upsert(
+      { ...patch, id: userId, system_permission: inviteSystemPermission },
+      { onConflict: "id" },
+    );
+    if (sysError) {
+      throw sysError;
+    }
+    return;
+  }
+
+  throw roleError;
+}
+
 async function mintSignInLink(
   adminClient: ReturnType<typeof createClient>,
   supabaseUrl: string,
@@ -373,6 +420,7 @@ Deno.serve(async (req) => {
           role: inviteRole,
           system_permission: inviteSystemPermission,
           is_pending: false,
+          must_set_password: true,
           position: seatType === "pm" ? "Project Manager" : "Worker",
         },
       });
@@ -396,6 +444,26 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "company_mismatch" }, 403);
       }
       userId = existing.id;
+
+      const existingPatch: Record<string, unknown> = {
+        id: userId,
+        email,
+        company_id: companyId,
+        is_pending: false,
+        position: seatType === "pm" ? "Project Manager" : "Worker",
+      };
+      if (name) {
+        existingPatch.name = name;
+      }
+
+      await upsertInviteProfile(
+        adminClient,
+        userId,
+        existingPatch,
+        inviteRole,
+        inviteSystemPermission,
+      );
+      await markMustSetPassword(adminClient, userId);
     } else {
       userId = created.user.id;
 
@@ -409,31 +477,14 @@ Deno.serve(async (req) => {
         position: seatType === "pm" ? "Project Manager" : "Worker",
       };
 
-      const missingColumn = (message: string | undefined) =>
-        /must_set_password|42703|PGRST204/i.test(message || "");
-
-      const upsertProfile = async (row: Record<string, unknown>) => {
-        const { error: upsertRoleError } = await adminClient.from("users").upsert(
-          { ...row, role: inviteRole },
-          { onConflict: "id" },
-        );
-        if (!upsertRoleError) {
-          return { error: null as { message?: string } | null };
-        }
-        if (missingColumn(upsertRoleError.message)) {
-          return { error: upsertRoleError };
-        }
-        const { error: sysError } = await adminClient.from("users").upsert(
-          { ...row, system_permission: inviteSystemPermission },
-          { onConflict: "id" },
-        );
-        return { error: sysError };
-      };
-
-      const withFlag = await upsertProfile({ ...patch, must_set_password: true });
-      if (withFlag.error && missingColumn(withFlag.error.message)) {
-        await upsertProfile(patch);
-      }
+      await upsertInviteProfile(
+        adminClient,
+        userId,
+        patch,
+        inviteRole,
+        inviteSystemPermission,
+      );
+      await markMustSetPassword(adminClient, userId);
     }
 
     if (!userId) {

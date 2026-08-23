@@ -12,6 +12,8 @@ export interface CreateCheckoutSessionResult {
   url?: string;
   sessionId?: string;
   planPriceId?: string;
+  upgraded?: boolean;
+  planTierSlug?: CheckoutPlanTierSlug;
   error?: string;
 }
 
@@ -25,6 +27,11 @@ const CHECKOUT_ERROR_LABELS: Record<string, string> = {
   plan_not_found: "That plan is not available right now",
   plan_lookup_failed: "Could not load plan pricing",
   checkout_url_missing: "Stripe did not return a checkout URL",
+  already_subscribed: "Your company is already on that plan",
+  downgrade_not_supported:
+    "Downgrades are not self-serve yet. Contact support to change plans.",
+  subscription_item_missing:
+    "Could not locate your Stripe subscription item for upgrade",
 };
 
 async function readFunctionsErrorMessage(
@@ -100,6 +107,8 @@ export async function createCompanyCheckoutSession(
     url?: string;
     sessionId?: string;
     planPriceId?: string;
+    upgraded?: boolean;
+    planTierSlug?: CheckoutPlanTierSlug;
   };
 
   if (payload.error) {
@@ -109,6 +118,15 @@ export async function createCompanyCheckoutSession(
         payload.message ||
         CHECKOUT_ERROR_LABELS[payload.error] ||
         payload.error,
+    };
+  }
+
+  if (payload.upgraded) {
+    return {
+      success: true,
+      upgraded: true,
+      planTierSlug: payload.planTierSlug,
+      planPriceId: payload.planPriceId,
     };
   }
 

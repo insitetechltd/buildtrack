@@ -235,6 +235,29 @@ describe("UserManagementScreen", () => {
             structuralState: "stale",
           },
           {
+            id: "user-card:invited-user",
+            userId: "invited-user",
+            name: "Invited Member",
+            email: "invited@example.com",
+            systemRoleLabel: "worker",
+            positionLabel: "Electrician",
+            isAdmin: false,
+            isProtected: false,
+            isPending: false,
+            pendingMessage: null,
+            canCopyInviteLink: true,
+            assignmentCountLabel: null,
+            assignmentRows: [],
+            primaryAction: {
+              id: "assign-action:invited-user",
+              label: "Assign",
+              testId: "user-management__assign-user-invited-user",
+            },
+            secondaryAction: null,
+            density: "standard",
+            structuralState: "stale",
+          },
+          {
             id: "user-card:assigned-user",
             userId: "assigned-user",
             name: "Assigned Member",
@@ -245,7 +268,7 @@ describe("UserManagementScreen", () => {
             isProtected: false,
             isPending: false,
             pendingMessage: null,
-            canCopyInviteLink: true,
+            canCopyInviteLink: false,
             assignmentCountLabel: "1 project assignment",
             assignmentRows: [
               {
@@ -307,11 +330,12 @@ describe("UserManagementScreen", () => {
     expect(screen.getByText("Assigned Member")).toBeTruthy();
     expect(screen.getByText("Copy invite link")).toBeTruthy();
     expect(screen.queryByTestId("user-management__copy-invite-pending-user")).toBeNull();
+    expect(screen.queryByTestId("user-management__copy-invite-assigned-user")).toBeNull();
 
     fireEvent.press(screen.getByTestId("user-management__approve-user-pending-user"));
 
     expect(mockRequestApproveUser).toHaveBeenCalledWith("pending-user");
-    fireEvent.press(screen.getByTestId("user-management__copy-invite-assigned-user"));
-    expect(mockCopyInviteLink).toHaveBeenCalledWith("assigned-user");
+    fireEvent.press(screen.getByTestId("user-management__copy-invite-invited-user"));
+    expect(mockCopyInviteLink).toHaveBeenCalledWith("invited-user");
   });
 });

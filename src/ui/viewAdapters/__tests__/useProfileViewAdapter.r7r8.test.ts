@@ -1,16 +1,13 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { Alert, Linking } from "react-native";
 
-import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
-import { getStripeCheckoutUrl } from "@/billing/orgPlans";
 import { useProfileViewAdapter } from "../useProfileViewAdapter";
-
-jest.mock("@/api/createCheckoutSession", () => ({
-  createCompanyCheckoutSession: jest.fn(),
-}));
 
 jest.mock("@/types/buildtrack", () => ({
   isAdmin: () => true,
+}));
+
+jest.mock("@/api/fetchCompanyEntitlements", () => ({
+  fetchCompanyEntitlementView: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock("@/state/authStore", () => ({
@@ -76,24 +73,6 @@ jest.mock("@/api/supabase", () => ({
 }));
 
 describe("useProfileViewAdapter R7/R8", () => {
-  const openURL = jest.spyOn(Linking, "openURL");
-  const alertSpy = jest.spyOn(Alert, "alert");
-  const createCheckout = createCompanyCheckoutSession as jest.Mock;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    openURL.mockResolvedValue(undefined as never);
-    createCheckout.mockResolvedValue({
-      success: true,
-      url: "https://checkout.stripe.com/c/pay/cs_test_123",
-    });
-  });
-
-  afterAll(() => {
-    openURL.mockRestore();
-    alertSpy.mockRestore();
-  });
-
   function settingsItems() {
     const { result } = renderHook(() =>
       useProfileViewAdapter({ onNavigateBack: jest.fn() }),
@@ -104,9 +83,13 @@ describe("useProfileViewAdapter R7/R8", () => {
     );
   }
 
-  it("shows Company plan for admins and opens checkout", async () => {
+  it("shows Company plan for admins and navigates to Company Plan screen", async () => {
+    const onNavigateToCompanyPlan = jest.fn();
     const { result } = renderHook(() =>
-      useProfileViewAdapter({ onNavigateBack: jest.fn() }),
+      useProfileViewAdapter({
+        onNavigateBack: jest.fn(),
+        onNavigateToCompanyPlan,
+      }),
     );
     const items =
       result.current.output.sections.find((s) => s.id === "profile-section:settings")
@@ -117,28 +100,7 @@ describe("useProfileViewAdapter R7/R8", () => {
       result.current.actions.handleMenuAction("company-plan");
     });
 
-    expect(alertSpy).toHaveBeenCalledWith(
-      "Company plan",
-      expect.stringContaining("US$19.99/mo"),
-      expect.any(Array),
-    );
-    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    await act(async () => {
-      await buttons.find((b) => b.text.startsWith("Growth"))?.onPress?.();
-    });
-
-    if (getStripeCheckoutUrl()) {
-      expect(openURL).toHaveBeenCalledWith(getStripeCheckoutUrl());
-      expect(createCheckout).not.toHaveBeenCalled();
-    } else {
-      expect(createCheckout).toHaveBeenCalledWith({
-        companyId: "company-1",
-        planTierSlug: "growth",
-      });
-      expect(openURL).toHaveBeenCalledWith(
-        "https://checkout.stripe.com/c/pay/cs_test_123",
-      );
-    }
+    expect(onNavigateToCompanyPlan).toHaveBeenCalledTimes(1);
   });
 
   it("hides Coming Soon and duplicate pending-approvals rows", () => {

@@ -92,7 +92,7 @@ jest.mock("../../screens/AddCommentScreen", () => "AddCommentScreen");
 jest.mock("../../screens/RejectTaskScreen", () => "RejectTaskScreen");
 jest.mock("../../screens/ReassignTaskScreen", () => "ReassignTaskScreen");
 
-const { default: AppNavigator } = require("../AppNavigator");
+const { default: AppNavigator, appLinking } = require("../AppNavigator");
 
 describe("AppNavigator linking", () => {
   beforeEach(() => {
@@ -127,5 +127,17 @@ describe("AppNavigator linking", () => {
     expect(
       linking?.config?.screens?.MainTabs?.screens?.Tasks?.screens?.TaskDetail?.path,
     ).toBe("verify/task/:taskId");
+  });
+
+  it("routes checkout success deep links to Company Plan", () => {
+    const state = appLinking.getStateFromPath?.("profile?checkout=success", {
+      screens: appLinking.config?.screens,
+    });
+
+    expect(state?.routes?.[0]?.name).toBe("Profile");
+    expect(state?.routes?.[0]?.state?.routes?.[0]?.name).toBe("CompanyPlan");
+    expect(state?.routes?.[0]?.state?.routes?.[0]?.params).toEqual({
+      checkoutResult: "success",
+    });
   });
 });

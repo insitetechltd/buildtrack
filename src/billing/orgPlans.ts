@@ -1,6 +1,6 @@
 /**
- * R6 paper SKUs for the R7 payment hook (no Stripe SDK / webhooks).
- * Set EXPO_PUBLIC_STRIPE_CHECKOUT_URL to a Stripe Payment Link or Checkout URL.
+ * R6 paper SKUs for the R7 payment hook.
+ * Profile checkout prefers create-checkout-session (BILL-E); Payment Link is legacy fallback only.
  */
 import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from "@/legal/legalLinks";
 

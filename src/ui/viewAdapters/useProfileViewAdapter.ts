@@ -2,12 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Platform } from "react-native";
 
 import { checkSupabaseConnection } from "@/api/supabase";
-import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
-import {
-  buildOrgPlanSummary,
-  getStripeCheckoutUrl,
-  type OrgCheckoutPlanTierSlug,
-} from "@/billing/orgPlans";
+import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
+import { formatEntitlementStatusLabel } from "@/billing/companyEntitlementSummary";
 import {
   PRIVACY_POLICY_URL,
   SUPPORT_EMAIL,
@@ -36,6 +32,7 @@ export interface ProfileScreenProps {
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToOwnerConsole?: () => void;
   onNavigateToPendingUsers?: () => void;
+  onNavigateToCompanyPlan?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
@@ -70,7 +67,8 @@ function toRoleLabel(role?: string): string {
 export function useProfileViewAdapter(
   props: ProfileScreenProps,
 ): ProfileViewAdapterHookResult {
-  const { onNavigateToDeveloperSettings, onNavigateToOwnerConsole } = props;
+  const { onNavigateToDeveloperSettings, onNavigateToOwnerConsole, onNavigateToCompanyPlan } =
+    props;
   const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
@@ -86,6 +84,7 @@ export function useProfileViewAdapter(
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [supabaseStatus, setSupabaseStatus] = useState<SupabaseStatus>("checking");
+  const [companyPlanLabel, setCompanyPlanLabel] = useState<string | undefined>();
   const [environmentInfo] = useState(() => detectEnvironment());
   const canApproveUsers = isAdmin(user);
 
@@ -114,6 +113,29 @@ export function useProfileViewAdapter(
       isMounted = false;
     };
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const companyId = user?.companyId;
+
+    if (!companyId || !canApproveUsers) {
+      setCompanyPlanLabel(undefined);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    void (async () => {
+      const view = await fetchCompanyEntitlementView(companyId);
+      if (isMounted) {
+        setCompanyPlanLabel(view ? formatEntitlementStatusLabel(view) : undefined);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [canApproveUsers, user?.companyId]);
 
   const resetPasswordState = useCallback(() => {
     setCurrentPassword("");
@@ -233,69 +255,11 @@ export function useProfileViewAdapter(
     resetPasswordState,
   ]);
 
-  const handleCompanyPlanCheckout = useCallback(
-    async (planTierSlug: OrgCheckoutPlanTierSlug) => {
-      const staticCheckoutUrl = getStripeCheckoutUrl();
-      if (staticCheckoutUrl) {
-        await Linking.openURL(staticCheckoutUrl).catch(() => {
-          Alert.alert(
-            t.profile.companyPlan,
-            `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
-          );
-        });
-        return;
-      }
-
-      if (!user?.companyId) {
-        Alert.alert(
-          t.profile.companyPlan,
-          `Unable to start checkout. Email ${SUPPORT_EMAIL}.`,
-        );
-        return;
-      }
-
-      const result = await createCompanyCheckoutSession({
-        companyId: user.companyId,
-        planTierSlug,
-      });
-
-      if (!result.success || !result.url) {
-        Alert.alert(
-          t.profile.companyPlan,
-          result.error || `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
-        );
-        return;
-      }
-
-      await Linking.openURL(result.url).catch(() => {
-        Alert.alert(
-          t.profile.companyPlan,
-          `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
-        );
-      });
-    },
-    [t.profile.companyPlan, user?.companyId],
-  );
-
   const handleMenuAction = useCallback(
     (actionId: string) => {
       switch (actionId) {
         case "company-plan":
-          Alert.alert(t.profile.companyPlan, buildOrgPlanSummary(), [
-            { text: t.common.cancel, style: "cancel" },
-            {
-              text: `Growth US$19.99/mo`,
-              onPress: () => {
-                void handleCompanyPlanCheckout("growth");
-              },
-            },
-            {
-              text: `Unlimited US$199.99/mo`,
-              onPress: () => {
-                void handleCompanyPlanCheckout("unlimited");
-              },
-            },
-          ]);
+          onNavigateToCompanyPlan?.();
           return;
         case "language":
           setShowLanguagePicker(true);
@@ -351,14 +315,11 @@ export function useProfileViewAdapter(
     },
     [
       handleRefreshData,
+      onNavigateToCompanyPlan,
       onNavigateToDeveloperSettings,
       onNavigateToOwnerConsole,
-      t.common.cancel,
-      t.profile.companyPlan,
-      t.profile.continueToCheckout,
       t.profile.helpSupport,
       toggleDarkMode,
-      handleCompanyPlanCheckout,
     ],
   );
 
@@ -373,6 +334,7 @@ export function useProfileViewAdapter(
         icon: "card-outline",
         showChevron: true,
         colorTone: "default",
+        rightText: companyPlanLabel,
         density: "standard",
         structuralState: "stale",
       });
@@ -492,6 +454,7 @@ export function useProfileViewAdapter(
       },
     ];
   }, [
+    companyPlanLabel,
     isDarkMode,
     language,
     canApproveUsers,

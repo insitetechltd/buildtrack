@@ -3,7 +3,6 @@
 // Secrets: STRIPE_SECRET_KEY, STRIPE_CHECKOUT_SUCCESS_URL, STRIPE_CHECKOUT_CANCEL_URL (optional)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import Stripe from "https://esm.sh/stripe@17.7.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +29,176 @@ function defaultCheckoutUrls() {
     success: "taskr://profile?checkout=success",
     cancel: "taskr://profile?checkout=cancel",
   };
+}
+
+async function createStripeCheckoutSession(
+  stripeSecret: string,
+  params: {
+    priceId: string;
+    companyId: string;
+    planPriceId: string;
+    livemode: boolean;
+    trialDays: number;
+    successUrl: string;
+    cancelUrl: string;
+    customerId?: string | null;
+    customerEmail?: string | null;
+  },
+): Promise<{ id: string; url: string }> {
+  const metadata = {
+    company_id: params.companyId,
+    plan_price_id: params.planPriceId,
+    livemode: String(params.livemode),
+  };
+
+  const body = new URLSearchParams();
+  body.set("mode", "subscription");
+  body.set("line_items[0][price]", params.priceId);
+  body.set("line_items[0][quantity]", "1");
+  body.set("success_url", params.successUrl);
+  body.set("cancel_url", params.cancelUrl);
+  body.set("client_reference_id", params.companyId);
+  body.set(
+    "subscription_data[trial_period_days]",
+    String(
+      Number.isFinite(params.trialDays) && params.trialDays > 0
+        ? params.trialDays
+        : DEFAULT_TRIAL_DAYS,
+    ),
+  );
+  for (const [key, value] of Object.entries(metadata)) {
+    body.set(`metadata[${key}]`, value);
+    body.set(`subscription_data[metadata][${key}]`, value);
+  }
+  if (params.customerId) {
+    body.set("customer", params.customerId);
+  } else if (params.customerEmail) {
+    body.set("customer_email", params.customerEmail);
+  }
+
+  const response = await fetch("https://api.stripe.com/v1/checkout/sessions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${stripeSecret}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body,
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message
+        : `Stripe checkout failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  if (typeof payload?.url !== "string" || !payload.url) {
+    throw new Error("checkout_url_missing");
+  }
+
+  return {
+    id: String(payload.id || ""),
+    url: payload.url,
+  };
+}
+
+async function stripeGet(
+  stripeSecret: string,
+  path: string,
+): Promise<Record<string, unknown>> {
+  const response = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: { Authorization: `Bearer ${stripeSecret}` },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message
+        : `Stripe request failed (${response.status})`;
+    throw new Error(message);
+  }
+  return payload as Record<string, unknown>;
+}
+
+async function upgradeStripeSubscription(
+  stripeSecret: string,
+  params: {
+    subscriptionId: string;
+    subscriptionItemId: string;
+    priceId: string;
+    companyId: string;
+    planPriceId: string;
+    livemode: boolean;
+  },
+): Promise<{ id: string; status: string }> {
+  const metadata = {
+    company_id: params.companyId,
+    plan_price_id: params.planPriceId,
+    livemode: String(params.livemode),
+  };
+
+  const body = new URLSearchParams();
+  body.set("items[0][id]", params.subscriptionItemId);
+  body.set("items[0][price]", params.priceId);
+  body.set("proration_behavior", "create_prorations");
+  body.set("payment_behavior", "pending_if_incomplete");
+  for (const [key, value] of Object.entries(metadata)) {
+    body.set(`metadata[${key}]`, value);
+  }
+
+  const response = await fetch(
+    `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(params.subscriptionId)}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${stripeSecret}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body,
+    },
+  );
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message
+        : `Stripe upgrade failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  return {
+    id: String(payload.id || params.subscriptionId),
+    status: String(payload.status || "active"),
+  };
+}
+
+async function syncUpgradedPlanLock(
+  adminClient: ReturnType<typeof createClient>,
+  companyId: string,
+  planPriceId: string,
+): Promise<void> {
+  const { error: subError } = await adminClient
+    .from("company_subscriptions")
+    .update({ locked_plan_price_id: planPriceId })
+    .eq("company_id", companyId);
+
+  if (subError) {
+    console.error("syncUpgradedPlanLock subscription update failed", subError);
+    throw new Error("upgrade_sync_failed");
+  }
+
+  const { error: entError } = await adminClient
+    .from("company_entitlements")
+    .update({ source_plan_price_id: planPriceId })
+    .eq("company_id", companyId);
+
+  if (entError) {
+    console.error("syncUpgradedPlanLock entitlements update failed", entError);
+    throw new Error("upgrade_sync_failed");
+  }
 }
 
 Deno.serve(async (req) => {
@@ -177,45 +346,114 @@ Deno.serve(async (req) => {
     const cancelUrl = Deno.env.get("STRIPE_CHECKOUT_CANCEL_URL") ??
       defaults.cancel;
 
+    const { data: existingSub } = await adminClient
+      .from("company_subscriptions")
+      .select(
+        "stripe_customer_id, stripe_subscription_id, status, locked_plan_price_id, plan_prices:locked_plan_price_id ( plan_tiers:plan_tier_id ( slug ) )",
+      )
+      .eq("company_id", companyId)
+      .maybeSingle();
+
+    const activeSubscriptionStatuses = new Set([
+      "trialing",
+      "active",
+      "past_due",
+    ]);
+    const currentTierSlug =
+      (existingSub?.plan_prices as { plan_tiers?: { slug?: string } } | null)
+        ?.plan_tiers?.slug ?? null;
+    const tierRank: Record<string, number> = { growth: 1, unlimited: 2 };
+
+    if (
+      existingSub?.stripe_subscription_id &&
+      activeSubscriptionStatuses.has(String(existingSub.status))
+    ) {
+      if (currentTierSlug === planTierSlug) {
+        return jsonResponse(
+          {
+            error: "already_subscribed",
+            message: `Your company is already on ${planTierSlug}.`,
+          },
+          409,
+        );
+      }
+      if (
+        currentTierSlug &&
+        tierRank[planTierSlug] != null &&
+        tierRank[currentTierSlug] != null &&
+        tierRank[planTierSlug] < tierRank[currentTierSlug]
+      ) {
+        return jsonResponse(
+          {
+            error: "downgrade_not_supported",
+            message:
+              "Downgrades are not self-serve yet. Contact support to change plans.",
+          },
+          409,
+        );
+      }
+      if (
+        currentTierSlug &&
+        tierRank[planTierSlug] != null &&
+        tierRank[currentTierSlug] != null &&
+        tierRank[planTierSlug] > tierRank[currentTierSlug]
+      ) {
+        const subscriptionId = String(existingSub.stripe_subscription_id);
+        const stripeSub = await stripeGet(
+          stripeSecret,
+          `/subscriptions/${encodeURIComponent(subscriptionId)}`,
+        );
+        const items = stripeSub.items as {
+          data?: Array<{ id?: string }>;
+        } | undefined;
+        const subscriptionItemId = items?.data?.[0]?.id;
+        if (!subscriptionItemId) {
+          return jsonResponse({ error: "subscription_item_missing" }, 500);
+        }
+
+        const upgraded = await upgradeStripeSubscription(stripeSecret, {
+          subscriptionId,
+          subscriptionItemId,
+          priceId: planPrice.stripe_price_id as string,
+          companyId,
+          planPriceId: planPrice.id as string,
+          livemode,
+        });
+
+        await syncUpgradedPlanLock(
+          adminClient,
+          companyId,
+          planPrice.id as string,
+        );
+
+        return jsonResponse({
+          upgraded: true,
+          planTierSlug,
+          planPriceId: planPrice.id,
+          subscriptionId: upgraded.id,
+          subscriptionStatus: upgraded.status,
+          livemode,
+        });
+      }
+    }
+
     const metadata = {
       company_id: companyId,
       plan_price_id: planPrice.id as string,
       livemode: String(livemode),
     };
 
-    const stripe = new Stripe(stripeSecret, {
-      apiVersion: "2024-11-20.acacia",
-      httpClient: Stripe.createFetchHttpClient(),
+    const session = await createStripeCheckoutSession(stripeSecret, {
+      priceId: planPrice.stripe_price_id as string,
+      companyId,
+      planPriceId: planPrice.id as string,
+      livemode,
+      trialDays,
+      successUrl,
+      cancelUrl,
+      customerId: existingSub?.stripe_customer_id as string | undefined,
+      customerEmail: caller.email ?? null,
     });
-
-    const { data: existingSub } = await adminClient
-      .from("company_subscriptions")
-      .select("stripe_customer_id")
-      .eq("company_id", companyId)
-      .maybeSingle();
-
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
-      mode: "subscription",
-      line_items: [{ price: planPrice.stripe_price_id as string, quantity: 1 }],
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-      client_reference_id: companyId,
-      metadata,
-      subscription_data: {
-        trial_period_days: Number.isFinite(trialDays) && trialDays > 0
-          ? trialDays
-          : DEFAULT_TRIAL_DAYS,
-        metadata,
-      },
-    };
-
-    if (existingSub?.stripe_customer_id) {
-      sessionParams.customer = existingSub.stripe_customer_id as string;
-    } else if (caller.email) {
-      sessionParams.customer_email = caller.email;
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams);
 
     if (!session.url) {
       return jsonResponse({ error: "checkout_url_missing" }, 500);
@@ -227,6 +465,7 @@ Deno.serve(async (req) => {
       planPriceId: planPrice.id,
       planTierSlug,
       livemode,
+      metadata,
     });
   } catch (err) {
     console.error("create-checkout-session handler error", err);

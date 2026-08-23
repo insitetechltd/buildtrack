@@ -1,4 +1,9 @@
-import { normalizeAuthUser, readMustSetPassword } from "../authStore";
+import {
+  normalizeAuthUser,
+  readMustSetPassword,
+  readMustSetPasswordFromAuthMetadata,
+  resolveMustSetPassword,
+} from "../authStore";
 
 describe("readMustSetPassword", () => {
   it("maps snake_case and camelCase true", () => {
@@ -10,6 +15,32 @@ describe("readMustSetPassword", () => {
     expect(readMustSetPassword(null)).toBe(false);
     expect(readMustSetPassword({})).toBe(false);
     expect(readMustSetPassword({ must_set_password: false })).toBe(false);
+  });
+});
+
+describe("resolveMustSetPassword", () => {
+  it("falls back to auth metadata when the users row is false", () => {
+    expect(
+      resolveMustSetPassword(
+        { must_set_password: false },
+        { must_set_password: true },
+      ),
+    ).toBe(true);
+  });
+
+  it("prefers a true users row over metadata", () => {
+    expect(
+      resolveMustSetPassword(
+        { must_set_password: true },
+        { must_set_password: false },
+      ),
+    ).toBe(true);
+  });
+
+  it("reads auth metadata alone", () => {
+    expect(readMustSetPasswordFromAuthMetadata({ must_set_password: true })).toBe(
+      true,
+    );
   });
 });
 

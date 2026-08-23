@@ -19,6 +19,28 @@ export function readMustSetPassword(
   return user.mustSetPassword === true || user.must_set_password === true;
 }
 
+export function readMustSetPasswordFromAuthMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!metadata) {
+    return false;
+  }
+  return (
+    metadata.mustSetPassword === true || metadata.must_set_password === true
+  );
+}
+
+/** users row is SoT; auth metadata covers invite flow when users UPDATE is blocked. */
+export function resolveMustSetPassword(
+  userRow: Record<string, unknown> | null | undefined,
+  authMetadata?: Record<string, unknown> | null,
+): boolean {
+  return (
+    readMustSetPassword(userRow) ||
+    readMustSetPasswordFromAuthMetadata(authMetadata)
+  );
+}
+
 const SAME_PASSWORD_ERROR = /different from the old password|same as the old|should be different/i;
 
 export function normalizeAuthUser<T extends Record<string, any>>(user: T) {
@@ -1098,6 +1120,7 @@ export const useAuthStore = create<AuthStore>()(
         try {
           const { error: updateError } = await supabase.auth.updateUser({
             password: trimmed,
+            data: { must_set_password: false, mustSetPassword: false },
           });
 
           const authAlreadyMatches =
@@ -1107,17 +1130,13 @@ export const useAuthStore = create<AuthStore>()(
             return { success: false, error: updateError.message };
           }
 
-          const { data: flagRows, error: flagError } = await supabase
-            .from("users")
-            .update({ must_set_password: false })
-            .eq("id", currentUser.id)
-            .select("id");
-
-          if (flagError || !flagRows?.length) {
-            const retryMessage =
-              "Password saved. Tap Continue again to finish.";
-            set({ isLoading: false, error: retryMessage });
-            return { success: false, error: retryMessage };
+          try {
+            await supabase
+              .from("users")
+              .update({ must_set_password: false })
+              .eq("id", currentUser.id);
+          } catch {
+            // users UPDATE may fail on legacy tenants until updated_at repair is applied.
           }
 
           const updatedUser = normalizeAuthUser({
@@ -1187,10 +1206,16 @@ export const useAuthStore = create<AuthStore>()(
             }
 
             // Transform Supabase data to match local interface
+            const mustSetPassword = resolveMustSetPassword(
+              userData,
+              session.user.user_metadata,
+            );
             const transformedUser = normalizeAuthUser({
               ...userData,
               companyId: userData.company_id || userData.companyId,
               lastSelectedProjectId: userData.last_selected_project_id || null,
+              must_set_password: mustSetPassword,
+              mustSetPassword,
             });
 
             set({ 

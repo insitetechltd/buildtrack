@@ -1367,6 +1367,58 @@ export interface ProfileSystemStatusItem {
   valueTone: "default" | "positive" | "negative" | "warning";
 }
 
+export type CompanyPlanOptionState =
+  | "current"
+  | "available"
+  | "upgrade"
+  | "downgrade_blocked";
+
+export interface CompanyPlanLimitRow {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface CompanyPlanOptionModel {
+  id: "growth" | "unlimited";
+  title: string;
+  priceLabel: string;
+  summary: string;
+  state: CompanyPlanOptionState;
+  actionLabel: string;
+  disabled: boolean;
+}
+
+export interface CompanyPlanCurrentPlanModel {
+  tierName: string;
+  statusLabel: string;
+  trialEndsLabel?: string;
+  phaseLabel: string;
+  limitRows: CompanyPlanLimitRow[];
+}
+
+export type CompanyPlanStatusBannerTone = "success" | "error" | "info";
+
+export interface CompanyPlanStatusBannerModel {
+  id: string;
+  tone: CompanyPlanStatusBannerTone;
+  message: string;
+}
+
+export interface CompanyPlanScreenViewAdapterOutput {
+  screenId: "CompanyPlanScreen";
+  readiness: NavigationScreenReadiness;
+  continuity: ScreenContinuityContract;
+  currentPlan: CompanyPlanCurrentPlanModel | null;
+  planOptions: CompanyPlanOptionModel[];
+  statusBanner: CompanyPlanStatusBannerModel | null;
+  activeActionPlanId: "growth" | "unlimited" | null;
+  isLoading: boolean;
+  isRefreshing: boolean;
+  isActionInFlight: boolean;
+  supportEmail: string;
+}
+
 export interface ProfileScreenViewAdapterOutput {
   screenId: "ProfileScreen";
   readiness: NavigationScreenReadiness;

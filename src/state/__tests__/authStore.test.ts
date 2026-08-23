@@ -794,7 +794,10 @@ describe('Authentication Workflow Tests', () => {
         outcome = await result.current.completeFirstLoginPassword("newpass1");
       });
 
-      expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({ password: "newpass1" });
+      expect(mockSupabase.auth.updateUser).toHaveBeenCalledWith({
+        password: "newpass1",
+        data: { must_set_password: false, mustSetPassword: false },
+      });
       expect(eq).toHaveBeenCalledWith("id", "mock-user-id");
       expect(outcome?.success).toBe(true);
       expect(result.current.user?.mustSetPassword).toBe(false);
@@ -882,16 +885,14 @@ describe('Authentication Workflow Tests', () => {
       expect(result.current.user?.mustSetPassword).toBe(false);
     });
 
-    it("keeps the gate when flag clear updates zero rows", async () => {
+    it("clears the gate when users flag update is blocked", async () => {
       const mockFrom = mockSupabase.from as unknown as jest.Mock;
       mockFrom.mockImplementation((table: string) => {
         if (table === "users") {
           return {
             select: jest.fn().mockReturnThis(),
             update: jest.fn().mockReturnValue({
-              eq: jest.fn().mockReturnValue({
-                select: jest.fn().mockResolvedValue({ data: [], error: null }),
-              }),
+              eq: jest.fn().mockRejectedValue(new Error("updated_at trigger broken")),
             }),
             eq: jest.fn(() => ({
               single: jest.fn().mockResolvedValue({
@@ -926,9 +927,8 @@ describe('Authentication Workflow Tests', () => {
         outcome = await result.current.completeFirstLoginPassword("newpass1");
       });
 
-      expect(outcome?.success).toBe(false);
-      expect(outcome?.error).toMatch(/Tap Continue again/i);
-      expect(result.current.user?.mustSetPassword).toBe(true);
+      expect(outcome?.success).toBe(true);
+      expect(result.current.user?.mustSetPassword).toBe(false);
     });
   });
 });

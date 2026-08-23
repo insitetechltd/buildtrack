@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import Constants from "expo-constants";
+import * as Application from "expo-application";
 
 import { useAuthStore } from "@/state/authStore";
 import type {
@@ -30,9 +31,19 @@ function isEmail(value: string): boolean {
 }
 
 function buildIdentifierLabel(): string {
-  const appVersion = Constants.expoConfig?.version || "1.0.0";
+  // Prefer native Info.plist / versionCode so the login badge matches the
+  // installed binary (EAS autoIncrement), not a stale app.json embed.
+  const appVersion =
+    Application.nativeApplicationVersion ||
+    Constants.expoConfig?.version ||
+    "1.0.0";
   const buildNumber =
-    Constants.expoConfig?.ios?.buildNumber || Constants.expoConfig?.android?.versionCode || "0";
+    Application.nativeBuildVersion ||
+    Constants.expoConfig?.ios?.buildNumber ||
+    (Constants.expoConfig?.android?.versionCode != null
+      ? String(Constants.expoConfig.android.versionCode)
+      : null) ||
+    "0";
 
   return `v${appVersion} (${buildNumber})`;
 }
@@ -79,16 +90,33 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
     }
 
     try {
-      const success = await login(emailOrPhone, password);
+      const success = await login(emailOrPhone.trim(), password);
 
       if (!success) {
         Alert.alert(t.login.loginFailed, t.login.invalidCredentials, [{ text: t.common.ok }]);
       }
     } catch (error: any) {
-      if (error?.message === "PENDING_APPROVAL") {
+      const code = error?.message;
+      if (code === "PENDING_APPROVAL") {
         Alert.alert(t.login.approvalPending, t.login.approvalPendingMessage, [
           { text: t.common.ok },
         ]);
+        return;
+      }
+      if (code === "EMAIL_NOT_CONFIRMED") {
+        Alert.alert(t.login.loginFailed, t.login.emailNotConfirmed, [{ text: t.common.ok }]);
+        return;
+      }
+      if (code === "PROFILE_MISSING") {
+        Alert.alert(t.login.loginFailed, t.login.profileMissing, [{ text: t.common.ok }]);
+        return;
+      }
+      if (code === "PHONE_LOOKUP_FAILED") {
+        Alert.alert(t.login.loginFailed, t.login.phoneLookupFailed, [{ text: t.common.ok }]);
+        return;
+      }
+      if (code === "INVALID_CREDENTIALS") {
+        Alert.alert(t.login.loginFailed, t.login.invalidCredentials, [{ text: t.common.ok }]);
         return;
       }
 
@@ -101,8 +129,11 @@ export function useLoginViewAdapter(): LoginViewAdapterHookResult {
     t.common.ok,
     t.login.approvalPending,
     t.login.approvalPendingMessage,
+    t.login.emailNotConfirmed,
     t.login.invalidCredentials,
     t.login.loginFailed,
+    t.login.phoneLookupFailed,
+    t.login.profileMissing,
     validateForm,
   ]);
 

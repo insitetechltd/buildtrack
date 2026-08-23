@@ -70,6 +70,25 @@ function getSelectedUserSummary(user: User | null): UserManagementSelectedUserSu
   };
 }
 
+export function canShowCopyInviteLinkForUser(
+  companyUser: Pick<
+    User,
+    "id" | "email" | "isPending" | "mustSetPassword" | "must_set_password"
+  >,
+  currentUserId?: string,
+): boolean {
+  const needsPassword =
+    companyUser.mustSetPassword === true ||
+    companyUser.must_set_password === true;
+
+  return Boolean(
+    companyUser.email &&
+      companyUser.id !== currentUserId &&
+      !companyUser.isPending &&
+      needsPassword,
+  );
+}
+
 export interface UserManagementViewAdapterProps {
   onNavigateBack: () => void;
 }
@@ -596,11 +615,7 @@ export function useUserManagementViewAdapter(
           pendingMessage: isPending
             ? "Awaiting approval - cannot be assigned to projects yet"
             : null,
-          canCopyInviteLink: Boolean(
-            companyUser.email &&
-              companyUser.id !== currentUser?.id &&
-              !isPending,
-          ),
+          canCopyInviteLink: canShowCopyInviteLinkForUser(companyUser, currentUser?.id),
           assignmentCountLabel: assignmentRows.length
             ? `${assignmentRows.length} project assignment${assignmentRows.length === 1 ? "" : "s"}`
             : null,

@@ -6,7 +6,7 @@
 
 ## Doing
 
-**M-BILL-01 BILL-E** — `create-checkout-session` Edge fn + Profile tier checkout wired; **deploy Edge fn** pending.
+**M-BILL-01 BILL-D** — `invite-user` reads `company_entitlements` + `seat_class_rules`; **deploy Edge fn** pending.
 
 **Marketing site:** almost ready — uncommitted separately.
 
@@ -14,13 +14,15 @@
 
 ## Next (definitive — locked master plan)
 
-1. **M-BILL-01 BILL-D** — `invite-user` reads `company_entitlements`
+1. **M-BILL-01 BILL-E deploy + checkout E2E** — deploy `create-checkout-session`, verify entitlements sync
 2. **M-BILL-01 BILL-F** — soft/hard metering gates (optional)
 3. **M-AUTHZ-02** after billing MVP
 
 ## Recently closed
 
-**M-BILL-01 BILL-C Closed (2026-08-23):** `stripe-webhook` deployed; `constructEventAsync` Deno fix; Stripe endpoint + secrets; test delivery verified (`billing_webhook_events` row, `pending_webhooks=0`). Commits `e0255e7` + async fix.
+**M-BILL-01 BILL-C Closed (2026-08-23):** `stripe-webhook` deployed; `constructEventAsync` Deno fix; Stripe endpoint + secrets; test delivery verified. Commits `e0255e7`, `6977725`.
+
+**M-BILL-01 BILL-E (code closed 2026-08-23):** `create-checkout-session` Edge fn + Profile Growth/Unlimited checkout wired. Commit `08f7267`. Deploy + E2E pending.
 
 **M-BILL-01 BILL-B Closed:** parity migration `113bf84`, 7 companies backfilled.
 

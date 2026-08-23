@@ -80,6 +80,26 @@ describe("inviteCompanyUser", () => {
     expect(result.error).toMatch(/full email/i);
   });
 
+  it("surfaces entitlements_missing", async () => {
+    mockInvoke.mockResolvedValue({
+      data: {
+        error: "entitlements_missing",
+        message: "Company entitlements are not configured.",
+      },
+      error: { message: "Edge Function returned a non-2xx status code" },
+    });
+
+    const result = await inviteCompanyUser({
+      companyId: "c-1",
+      name: "Worker",
+      email: "w@example.com",
+      seatType: "worker",
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/entitlements/i);
+  });
+
   it("reads error body from FunctionsHttpError context", async () => {
     mockInvoke.mockResolvedValue({
       data: null,

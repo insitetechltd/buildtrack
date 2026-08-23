@@ -1,8 +1,6 @@
 // Corp RC: company admin invites a seat and gets a first-sign-in deep link.
-// Temp passwords are generated only as an internal Auth credential and are not
-// shown. Email + temp-password invite returns after RC.
-// Deploy: Human Gate — Dashboard paste or `supabase functions deploy invite-user`.
-// Soft seat limits match R6 paper defaults (1 PM + 5 workers) until Stripe/R13.
+// BILL-D: seat caps from company_entitlements; counting via seat_class_rules.
+// Deploy: scripts/supabase/deploy-invite-user.sh
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
@@ -14,8 +12,19 @@ const corsHeaders = {
 
 type SeatType = "pm" | "worker";
 
-const PM_SEAT_LIMIT = 1;
-const WORKER_SEAT_LIMIT = 5;
+type SeatClassRule = {
+  role_key: string;
+  consumes_pm_seats: boolean;
+  consumes_worker_seats: boolean;
+  is_seat_exempt: boolean;
+};
+
+type CompanyUserRow = {
+  id: string;
+  role?: string | null;
+  system_permission?: string | null;
+  is_pending?: boolean | null;
+};
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -30,14 +39,108 @@ function generateTempPassword(): string {
   return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
 }
 
-function isPmRole(role: string | null | undefined): boolean {
+function legacyPmRole(role: string | null | undefined): boolean {
+  const value = (role || "").toLowerCase();
+  return value === "manager" || value === "supervisor";
+}
+
+function legacyWorkerRole(role: string | null | undefined): boolean {
   const value = (role || "").toLowerCase();
   return (
-    value === "admin" ||
-    value === "company_admin" ||
-    value === "manager" ||
-    value === "supervisor"
+    value === "foreman" ||
+    value === "member" ||
+    value === "worker"
   );
+}
+
+async function loadSeatLimits(
+  adminClient: ReturnType<typeof createClient>,
+  companyId: string,
+): Promise<{ pmSeatLimit: number; workerSeatLimit: number } | null> {
+  const { data, error } = await adminClient
+    .from("company_entitlements")
+    .select("pm_seat_limit, worker_seat_limit")
+    .eq("company_id", companyId)
+    .maybeSingle();
+
+  if (error) {
+    if (/42703|PGRST204|does not exist/i.test(error.message || "")) {
+      return null;
+    }
+    throw error;
+  }
+
+  if (!data) return null;
+
+  return {
+    pmSeatLimit: data.pm_seat_limit as number,
+    workerSeatLimit: data.worker_seat_limit as number,
+  };
+}
+
+async function loadSeatClassRules(
+  adminClient: ReturnType<typeof createClient>,
+): Promise<Map<string, SeatClassRule> | null> {
+  const { data, error } = await adminClient
+    .from("seat_class_rules")
+    .select("role_key, consumes_pm_seats, consumes_worker_seats, is_seat_exempt");
+
+  if (error) {
+    if (/42703|PGRST204|does not exist/i.test(error.message || "")) {
+      return null;
+    }
+    throw error;
+  }
+
+  const rules = new Map<string, SeatClassRule>();
+  for (const row of data || []) {
+    rules.set(String(row.role_key).toLowerCase(), row as SeatClassRule);
+  }
+  return rules;
+}
+
+function countSeats(
+  users: CompanyUserRow[],
+  rulesByKey: Map<string, SeatClassRule> | null,
+): { pmCount: number; workerCount: number } {
+  const activeUsers = users.filter((user) => user.is_pending !== true);
+  let pmCount = 0;
+  let workerCount = 0;
+
+  for (const user of activeUsers) {
+    const roleKey = (user.system_permission || user.role || "").toLowerCase();
+    if (!roleKey) continue;
+
+    const rule = rulesByKey?.get(roleKey);
+    if (rule) {
+      if (rule.is_seat_exempt) continue;
+      if (rule.consumes_pm_seats) {
+        pmCount += 1;
+        continue;
+      }
+      if (rule.consumes_worker_seats) {
+        workerCount += 1;
+      }
+      continue;
+    }
+
+    // Pre-BILL-D fallback when seat_class_rules is unavailable.
+    if (
+      roleKey === "admin" ||
+      roleKey === "company_admin"
+    ) {
+      continue;
+    }
+    if (legacyPmRole(roleKey)) {
+      pmCount += 1;
+    } else if (legacyWorkerRole(roleKey)) {
+      workerCount += 1;
+    } else {
+      workerCount += 1;
+    }
+  }
+
+  return { pmCount, workerCount };
 }
 
 async function mintSignInLink(
@@ -196,22 +299,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    let companyUsers: Array<{
-      id: string;
-      role?: string | null;
-      system_permission?: string | null;
-    }> = [];
+    let companyUsers: CompanyUserRow[] = [];
     {
       const rolePath = await adminClient
         .from("users")
-        .select("id, role")
+        .select("id, role, is_pending")
         .eq("company_id", companyId);
       if (!rolePath.error) {
         companyUsers = rolePath.data || [];
       } else {
         const sysPath = await adminClient
           .from("users")
-          .select("id, system_permission")
+          .select("id, system_permission, is_pending")
           .eq("company_id", companyId);
         if (sysPath.error) {
           return jsonResponse({ error: sysPath.message }, 500);
@@ -220,26 +319,38 @@ Deno.serve(async (req) => {
       }
     }
 
-    const activeUsers = companyUsers;
-    const pmCount = activeUsers.filter((u) =>
-      isPmRole(u.system_permission || u.role),
-    ).length;
-    const workerCount = activeUsers.length - pmCount;
-
-    if (seatType === "pm" && pmCount >= PM_SEAT_LIMIT) {
+    const seatLimits = await loadSeatLimits(adminClient, companyId);
+    if (!seatLimits) {
       return jsonResponse(
         {
-          error: "pm_seat_limit",
-          message: `PM seat limit reached (${PM_SEAT_LIMIT}). Add a PM seat add-on later.`,
+          error: "entitlements_missing",
+          message:
+            "Company entitlements are not configured. Contact support before inviting teammates.",
         },
         409,
       );
     }
-    if (seatType === "worker" && workerCount >= WORKER_SEAT_LIMIT) {
+
+    const seatRules = await loadSeatClassRules(adminClient);
+    const { pmCount, workerCount } = countSeats(companyUsers, seatRules);
+    const { pmSeatLimit, workerSeatLimit } = seatLimits;
+
+    if (seatType === "pm" && pmCount >= pmSeatLimit) {
+      return jsonResponse(
+        {
+          error: "pm_seat_limit",
+          message:
+            `PM seat limit reached (${pmSeatLimit}). Add a PM seat add-on to invite more.`,
+        },
+        409,
+      );
+    }
+    if (seatType === "worker" && workerCount >= workerSeatLimit) {
       return jsonResponse(
         {
           error: "worker_seat_limit",
-          message: `Worker seat limit reached (${WORKER_SEAT_LIMIT}). Add a worker pack later.`,
+          message:
+            `Worker seat limit reached (${workerSeatLimit}). Add a worker pack to invite more.`,
         },
         409,
       );

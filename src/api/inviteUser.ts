@@ -30,6 +30,8 @@ const INVITE_ERROR_LABELS: Record<string, string> = {
   not_company_admin: "Only a company admin can invite teammates",
   pm_seat_limit: "PM seat limit reached",
   worker_seat_limit: "Worker seat limit reached",
+  entitlements_missing:
+    "Company entitlements are not configured. Contact support before inviting teammates.",
   user_not_found: "That teammate was not found in your company",
 };
 

@@ -1,8 +1,13 @@
 import { act, renderHook } from "@testing-library/react-native";
 import { Alert, Linking } from "react-native";
 
-import { resolveOrgCheckoutUrl } from "@/billing/orgPlans";
+import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
+import { getStripeCheckoutUrl } from "@/billing/orgPlans";
 import { useProfileViewAdapter } from "../useProfileViewAdapter";
+
+jest.mock("@/api/createCheckoutSession", () => ({
+  createCompanyCheckoutSession: jest.fn(),
+}));
 
 jest.mock("@/types/buildtrack", () => ({
   isAdmin: () => true,
@@ -73,10 +78,15 @@ jest.mock("@/api/supabase", () => ({
 describe("useProfileViewAdapter R7/R8", () => {
   const openURL = jest.spyOn(Linking, "openURL");
   const alertSpy = jest.spyOn(Alert, "alert");
+  const createCheckout = createCompanyCheckoutSession as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
     openURL.mockResolvedValue(undefined as never);
+    createCheckout.mockResolvedValue({
+      success: true,
+      url: "https://checkout.stripe.com/c/pay/cs_test_123",
+    });
   });
 
   afterAll(() => {
@@ -94,7 +104,7 @@ describe("useProfileViewAdapter R7/R8", () => {
     );
   }
 
-  it("shows Company plan for admins and opens checkout", () => {
+  it("shows Company plan for admins and opens checkout", async () => {
     const { result } = renderHook(() =>
       useProfileViewAdapter({ onNavigateBack: jest.fn() }),
     );
@@ -103,7 +113,7 @@ describe("useProfileViewAdapter R7/R8", () => {
         ?.items ?? [];
     expect(items.some((item) => item.actionId === "company-plan")).toBe(true);
 
-    act(() => {
+    await act(async () => {
       result.current.actions.handleMenuAction("company-plan");
     });
 
@@ -113,10 +123,22 @@ describe("useProfileViewAdapter R7/R8", () => {
       expect.any(Array),
     );
     const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    act(() => {
-      buttons.find((b) => b.text === "Continue to checkout")?.onPress?.();
+    await act(async () => {
+      await buttons.find((b) => b.text.startsWith("Growth"))?.onPress?.();
     });
-    expect(openURL).toHaveBeenCalledWith(resolveOrgCheckoutUrl());
+
+    if (getStripeCheckoutUrl()) {
+      expect(openURL).toHaveBeenCalledWith(getStripeCheckoutUrl());
+      expect(createCheckout).not.toHaveBeenCalled();
+    } else {
+      expect(createCheckout).toHaveBeenCalledWith({
+        companyId: "company-1",
+        planTierSlug: "growth",
+      });
+      expect(openURL).toHaveBeenCalledWith(
+        "https://checkout.stripe.com/c/pay/cs_test_123",
+      );
+    }
   });
 
   it("hides Coming Soon and duplicate pending-approvals rows", () => {

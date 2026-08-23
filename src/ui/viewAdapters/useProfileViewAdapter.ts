@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Platform } from "react-native";
 
 import { checkSupabaseConnection } from "@/api/supabase";
-import { buildOrgPlanSummary, resolveOrgCheckoutUrl } from "@/billing/orgPlans";
+import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
+import {
+  buildOrgPlanSummary,
+  getStripeCheckoutUrl,
+  type OrgCheckoutPlanTierSlug,
+} from "@/billing/orgPlans";
 import {
   PRIVACY_POLICY_URL,
   SUPPORT_EMAIL,
@@ -228,6 +233,50 @@ export function useProfileViewAdapter(
     resetPasswordState,
   ]);
 
+  const handleCompanyPlanCheckout = useCallback(
+    async (planTierSlug: OrgCheckoutPlanTierSlug) => {
+      const staticCheckoutUrl = getStripeCheckoutUrl();
+      if (staticCheckoutUrl) {
+        await Linking.openURL(staticCheckoutUrl).catch(() => {
+          Alert.alert(
+            t.profile.companyPlan,
+            `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
+          );
+        });
+        return;
+      }
+
+      if (!user?.companyId) {
+        Alert.alert(
+          t.profile.companyPlan,
+          `Unable to start checkout. Email ${SUPPORT_EMAIL}.`,
+        );
+        return;
+      }
+
+      const result = await createCompanyCheckoutSession({
+        companyId: user.companyId,
+        planTierSlug,
+      });
+
+      if (!result.success || !result.url) {
+        Alert.alert(
+          t.profile.companyPlan,
+          result.error || `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
+        );
+        return;
+      }
+
+      await Linking.openURL(result.url).catch(() => {
+        Alert.alert(
+          t.profile.companyPlan,
+          `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
+        );
+      });
+    },
+    [t.profile.companyPlan, user?.companyId],
+  );
+
   const handleMenuAction = useCallback(
     (actionId: string) => {
       switch (actionId) {
@@ -235,14 +284,15 @@ export function useProfileViewAdapter(
           Alert.alert(t.profile.companyPlan, buildOrgPlanSummary(), [
             { text: t.common.cancel, style: "cancel" },
             {
-              text: t.profile.continueToCheckout,
+              text: `Growth US$19.99/mo`,
               onPress: () => {
-                void Linking.openURL(resolveOrgCheckoutUrl()).catch(() => {
-                  Alert.alert(
-                    t.profile.companyPlan,
-                    `Unable to open checkout. Email ${SUPPORT_EMAIL}.`,
-                  );
-                });
+                void handleCompanyPlanCheckout("growth");
+              },
+            },
+            {
+              text: `Unlimited US$199.99/mo`,
+              onPress: () => {
+                void handleCompanyPlanCheckout("unlimited");
               },
             },
           ]);
@@ -308,6 +358,7 @@ export function useProfileViewAdapter(
       t.profile.continueToCheckout,
       t.profile.helpSupport,
       toggleDarkMode,
+      handleCompanyPlanCheckout,
     ],
   );
 

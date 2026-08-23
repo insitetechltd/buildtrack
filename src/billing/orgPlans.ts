@@ -9,6 +9,8 @@ export const ORG_PLAN_UNLIMITED_USD = "199.99";
 export const ORG_ADDON_WORKER_PACK_USD = "4.99";
 export const ORG_ADDON_PM_SEAT_USD = "9.99";
 
+export type OrgCheckoutPlanTierSlug = "growth" | "unlimited";
+
 export function getStripeCheckoutUrl(): string | undefined {
   const raw = process.env.EXPO_PUBLIC_STRIPE_CHECKOUT_URL?.trim();
   return raw ? raw : undefined;

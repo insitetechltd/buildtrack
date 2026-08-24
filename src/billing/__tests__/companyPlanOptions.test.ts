@@ -8,6 +8,7 @@ import {
   type CompanyEntitlementRow,
   type CompanySubscriptionRow,
 } from "../companyEntitlementSummary";
+import type { SellablePlanCatalog } from "../planCatalog";
 
 describe("companyPlanOptions", () => {
   const trialEntitlements: CompanyEntitlementRow = {
@@ -65,10 +66,52 @@ describe("companyPlanOptions", () => {
 
   it("offers upgrade CTA from Starter to Pro", () => {
     const view = buildCompanyEntitlementView(trialEntitlements, growthSubscription);
-    const unlimited = buildCompanyPlanOptions(view).find(
+    const catalog: SellablePlanCatalog = {
+      currency: "hkd",
+      livemode: false,
+      baseBySlug: {
+        growth: {
+          slug: "growth",
+          kind: "base",
+          displayName: "Starter",
+          amountCents: 16000,
+          currency: "hkd",
+          planPriceId: "pp-g",
+          livemode: false,
+          sortOrder: 1,
+          meters: {
+            projects: 3,
+            entries_monthly: 300,
+            storage_bytes: 10 * 1024 * 1024 * 1024,
+            pm_seats: 1,
+            worker_seats: 5,
+          },
+        },
+        unlimited: {
+          slug: "unlimited",
+          kind: "base",
+          displayName: "Pro",
+          amountCents: 40000,
+          currency: "hkd",
+          planPriceId: "pp-u",
+          livemode: false,
+          sortOrder: 2,
+          meters: {
+            projects: 12,
+            entries_monthly: 800,
+            storage_bytes: 30 * 1024 * 1024 * 1024,
+            pm_seats: 2,
+            worker_seats: 10,
+          },
+        },
+      },
+      addonsBySlug: {},
+    };
+    const unlimited = buildCompanyPlanOptions(view, catalog).find(
       (option) => option.id === "unlimited",
     );
 
+    expect(unlimited?.priceLabel).toBe("HK$400/mo");
     expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
     expect(unlimited?.disabled).toBe(false);
   });

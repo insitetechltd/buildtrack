@@ -1,12 +1,9 @@
 import type { OrgCheckoutPlanTierSlug } from "./orgPlans";
 import {
-  ORG_ADDON_PM_SEAT_HKD,
-  ORG_ADDON_WORKER_PACK_HKD,
-  ORG_PLAN_PRO_HKD,
-  ORG_PLAN_STARTER_HKD,
-  displayNameForPlanSlug,
-  formatHkdMonthlyPrice,
-} from "./orgPlans";
+  resolveAddonPriceLabels,
+  resolveBaseTierDisplay,
+  type SellablePlanCatalog,
+} from "./planCatalog";
 import {
   resolveCheckoutTierAvailability,
   type CheckoutTierAvailability,
@@ -63,39 +60,33 @@ export function buildCompanyPlanLimitRows(
   ];
 }
 
-function tierCapsLine(slug: OrgCheckoutPlanTierSlug): string {
-  if (slug === "growth") {
-    return "3 projects · 300 entries/mo · 10 GB · 1 PM + 5 workers";
-  }
-  return "12 projects · 800 entries/mo · 30 GB · 2 PM + 10 workers";
-}
-
 function optionCopy(
   tier: OrgCheckoutPlanTierSlug,
   state: CheckoutTierAvailability,
+  catalog: SellablePlanCatalog | null | undefined,
 ): Pick<CompanyPlanOptionDraft, "actionLabel" | "disabled" | "summary"> {
-  const name = displayNameForPlanSlug(tier);
-  const summary = tierCapsLine(tier);
+  const { displayName, capsLine } = resolveBaseTierDisplay(tier, catalog);
+  const proName = resolveBaseTierDisplay("unlimited", catalog).displayName;
 
   switch (state) {
     case "current":
-      return { summary, actionLabel: "Current plan", disabled: true };
+      return { summary: capsLine, actionLabel: "Current plan", disabled: true };
     case "downgrade_blocked":
       return {
-        summary,
+        summary: capsLine,
         actionLabel: "Contact support to change plan",
         disabled: true,
       };
     case "upgrade":
       return {
-        summary,
-        actionLabel: `Upgrade to ${displayNameForPlanSlug("unlimited")}`,
+        summary: capsLine,
+        actionLabel: `Upgrade to ${proName}`,
         disabled: false,
       };
     default:
       return {
-        summary,
-        actionLabel: `Subscribe to ${name}`,
+        summary: capsLine,
+        actionLabel: `Subscribe to ${displayName}`,
         disabled: false,
       };
   }
@@ -103,24 +94,27 @@ function optionCopy(
 
 export function buildCompanyPlanOptions(
   view: CompanyEntitlementView | null,
+  catalog?: SellablePlanCatalog | null,
 ): CompanyPlanOptionDraft[] {
   const starterState = resolveCheckoutTierAvailability(view, "growth");
   const proState = resolveCheckoutTierAvailability(view, "unlimited");
+  const starter = resolveBaseTierDisplay("growth", catalog);
+  const pro = resolveBaseTierDisplay("unlimited", catalog);
 
   return [
     {
       id: "growth",
-      title: displayNameForPlanSlug("growth"),
-      priceLabel: formatHkdMonthlyPrice(ORG_PLAN_STARTER_HKD),
+      title: starter.displayName,
+      priceLabel: starter.priceLabel,
       state: starterState,
-      ...optionCopy("growth", starterState),
+      ...optionCopy("growth", starterState, catalog),
     },
     {
       id: "unlimited",
-      title: displayNameForPlanSlug("unlimited"),
-      priceLabel: formatHkdMonthlyPrice(ORG_PLAN_PRO_HKD),
+      title: pro.displayName,
+      priceLabel: pro.priceLabel,
       state: proState,
-      ...optionCopy("unlimited", proState),
+      ...optionCopy("unlimited", proState, catalog),
     },
   ];
 }
@@ -153,12 +147,11 @@ export function buildCompanyPlanTrialEndsLabel(
   });
 }
 
-export function buildAddonPriceLabels(): {
+export function buildAddonPriceLabels(
+  catalog?: SellablePlanCatalog | null,
+): {
   workerPack: string;
   pmSeat: string;
 } {
-  return {
-    workerPack: formatHkdMonthlyPrice(ORG_ADDON_WORKER_PACK_HKD),
-    pmSeat: formatHkdMonthlyPrice(ORG_ADDON_PM_SEAT_HKD),
-  };
+  return resolveAddonPriceLabels(catalog);
 }

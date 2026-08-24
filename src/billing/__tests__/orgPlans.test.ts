@@ -16,13 +16,82 @@ describe("orgPlans R7 hook", () => {
     }
   });
 
-  it("summarizes locked HK company SKUs", () => {
+  it("summarizes locked HK company SKUs (fallback when catalog unloaded)", () => {
     const summary = buildOrgPlanSummary();
     expect(summary).toContain("HK$160/mo");
     expect(summary).toContain("HK$400/mo");
     expect(summary).toContain("HK$20/mo");
     expect(summary).toContain("HK$100/mo");
     expect(summary).toContain("promotion code");
+  });
+
+  it("summarizes from dynamic catalog when provided", () => {
+    const summary = buildOrgPlanSummary({
+      currency: "hkd",
+      livemode: false,
+      baseBySlug: {
+        growth: {
+          slug: "growth",
+          kind: "base",
+          displayName: "Starter",
+          amountCents: 16000,
+          currency: "hkd",
+          planPriceId: "a",
+          livemode: false,
+          sortOrder: 1,
+          meters: {
+            projects: 3,
+            entries_monthly: 300,
+            storage_bytes: 10 * 1024 * 1024 * 1024,
+            pm_seats: 1,
+            worker_seats: 5,
+          },
+        },
+        unlimited: {
+          slug: "unlimited",
+          kind: "base",
+          displayName: "Pro",
+          amountCents: 40000,
+          currency: "hkd",
+          planPriceId: "b",
+          livemode: false,
+          sortOrder: 2,
+          meters: {
+            projects: 12,
+            entries_monthly: 800,
+            storage_bytes: 30 * 1024 * 1024 * 1024,
+            pm_seats: 2,
+            worker_seats: 10,
+          },
+        },
+      },
+      addonsBySlug: {
+        addon_worker_pack: {
+          slug: "addon_worker_pack",
+          kind: "addon",
+          displayName: "Worker pack (+5)",
+          amountCents: 2000,
+          currency: "hkd",
+          planPriceId: "c",
+          livemode: false,
+          sortOrder: 3,
+          meters: { worker_seats: 5 },
+        },
+        addon_pm_seat: {
+          slug: "addon_pm_seat",
+          kind: "addon",
+          displayName: "PM seat (+1)",
+          amountCents: 10000,
+          currency: "hkd",
+          planPriceId: "d",
+          livemode: false,
+          sortOrder: 4,
+          meters: { pm_seats: 1 },
+        },
+      },
+    });
+    expect(summary).toContain("Starter HK$160/mo");
+    expect(summary).toContain("Pro HK$400/mo");
   });
 
   it("uses the Stripe env URL when set", () => {

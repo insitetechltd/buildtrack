@@ -18,7 +18,7 @@ export interface CreateCheckoutSessionResult {
 }
 
 const CHECKOUT_ERROR_LABELS: Record<string, string> = {
-  invalid_payload: "Choose Growth or Unlimited to continue",
+  invalid_payload: "Choose Starter or Pro to continue",
   not_authenticated: "Sign in again, then retry checkout",
   caller_profile_not_found: "Your profile could not be loaded for checkout",
   caller_pending: "Your account is still pending approval",
@@ -73,7 +73,7 @@ async function readFunctionsErrorMessage(
   return null;
 }
 
-/** Creates a Stripe Checkout Session with native trial + billing metadata. */
+/** Creates a Stripe Checkout Session (promo codes; no default native trial). */
 export async function createCompanyCheckoutSession(
   input: CreateCheckoutSessionInput,
 ): Promise<CreateCheckoutSessionResult> {

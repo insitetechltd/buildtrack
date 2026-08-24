@@ -1,21 +1,33 @@
 /**
- * HK launch company SKUs (locked 2026-08-24).
- * Stripe/DB slugs remain `growth` / `unlimited` until catalog Human Gate renames tiers.
+ * Org checkout helpers. List prices/caps for Company Plan UI come from
+ * `plan_prices` via fetchSellablePlanCatalog — constants here are fallback only.
  */
 import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from "@/legal/legalLinks";
+import {
+  FALLBACK_LIST_PRICES_HKD,
+  resolveAddonPriceLabels,
+  resolveBaseTierDisplay,
+  type OrgCheckoutPlanTierSlug,
+  type SellablePlanCatalog,
+} from "./planCatalog";
 
-/** Display + checkout anchor: Starter tier (`growth` slug). */
-export const ORG_PLAN_STARTER_HKD = "160";
-/** Display + checkout anchor: Pro tier (`unlimited` slug). */
-export const ORG_PLAN_PRO_HKD = "400";
-/** Add-on list prices (HKD/mo) — locked 2026-08-24. */
-export const ORG_ADDON_WORKER_PACK_HKD = "20";
-export const ORG_ADDON_PM_SEAT_HKD = "100";
+export type { OrgCheckoutPlanTierSlug } from "./planCatalog";
 
-export const ORG_PLAN_STARTER_DISPLAY = "Starter";
-export const ORG_PLAN_PRO_DISPLAY = "Pro";
+/** @deprecated Prefer catalog; kept as offline/fallback list price. */
+export const ORG_PLAN_STARTER_HKD = FALLBACK_LIST_PRICES_HKD.growth.amountHkd;
+/** @deprecated Prefer catalog; kept as offline/fallback list price. */
+export const ORG_PLAN_PRO_HKD = FALLBACK_LIST_PRICES_HKD.unlimited.amountHkd;
+/** @deprecated Prefer catalog. */
+export const ORG_ADDON_WORKER_PACK_HKD =
+  FALLBACK_LIST_PRICES_HKD.addon_worker_pack.amountHkd;
+/** @deprecated Prefer catalog. */
+export const ORG_ADDON_PM_SEAT_HKD =
+  FALLBACK_LIST_PRICES_HKD.addon_pm_seat.amountHkd;
 
-export type OrgCheckoutPlanTierSlug = "growth" | "unlimited";
+export const ORG_PLAN_STARTER_DISPLAY =
+  FALLBACK_LIST_PRICES_HKD.growth.displayName;
+export const ORG_PLAN_PRO_DISPLAY =
+  FALLBACK_LIST_PRICES_HKD.unlimited.displayName;
 
 export function formatHkdMonthlyPrice(amount: string): string {
   return `HK$${amount}/mo`;
@@ -23,11 +35,19 @@ export function formatHkdMonthlyPrice(amount: string): string {
 
 export function displayNameForPlanSlug(
   slug: OrgCheckoutPlanTierSlug,
+  catalog?: SellablePlanCatalog | null,
 ): string {
-  return slug === "unlimited" ? ORG_PLAN_PRO_DISPLAY : ORG_PLAN_STARTER_DISPLAY;
+  return resolveBaseTierDisplay(slug, catalog).displayName;
 }
 
-export function listPriceForPlanSlug(slug: OrgCheckoutPlanTierSlug): string {
+export function listPriceForPlanSlug(
+  slug: OrgCheckoutPlanTierSlug,
+  catalog?: SellablePlanCatalog | null,
+): string {
+  const fromCatalog = catalog?.baseBySlug[slug];
+  if (fromCatalog) {
+    return String(fromCatalog.amountCents / 100);
+  }
   return slug === "unlimited" ? ORG_PLAN_PRO_HKD : ORG_PLAN_STARTER_HKD;
 }
 
@@ -36,26 +56,35 @@ export function getStripeCheckoutUrl(): string | undefined {
   return raw ? raw : undefined;
 }
 
-export function buildOrgPlanSummary(): string {
+export function buildOrgPlanSummary(
+  catalog?: SellablePlanCatalog | null,
+): string {
+  const starter = resolveBaseTierDisplay("growth", catalog);
+  const pro = resolveBaseTierDisplay("unlimited", catalog);
+  const addons = resolveAddonPriceLabels(catalog);
   return [
     "Company subscription (not personal).",
     "Free time: owner-issued promotion code only (no default Stripe trial). Card on file at subscribe.",
-    `${ORG_PLAN_STARTER_DISPLAY} ${formatHkdMonthlyPrice(ORG_PLAN_STARTER_HKD)} — 3 projects, 300 entries/month, 10 GB, 1 PM + 5 workers.`,
-    `${ORG_PLAN_PRO_DISPLAY} ${formatHkdMonthlyPrice(ORG_PLAN_PRO_HKD)} — 12 projects, 800 entries/month, 30 GB, 2 PM + 10 workers.`,
-    `Add-ons: +5 workers ${formatHkdMonthlyPrice(ORG_ADDON_WORKER_PACK_HKD)} · +1 PM ${formatHkdMonthlyPrice(ORG_ADDON_PM_SEAT_HKD)}.`,
+    `${starter.displayName} ${starter.priceLabel} — ${starter.capsLine.replace(/ · /g, ", ")}.`,
+    `${pro.displayName} ${pro.priceLabel} — ${pro.capsLine.replace(/ · /g, ", ")}.`,
+    `Add-ons: +5 workers ${addons.workerPack} · +1 PM ${addons.pmSeat}.`,
   ].join("\n\n");
 }
 
-export function getOrgCheckoutMailtoUrl(): string {
+export function getOrgCheckoutMailtoUrl(
+  catalog?: SellablePlanCatalog | null,
+): string {
   const subject = encodeURIComponent("Taskr company subscription checkout");
   const body = encodeURIComponent(
-    `Please send Stripe Checkout for our company.\n\n${buildOrgPlanSummary()}`,
+    `Please send Stripe Checkout for our company.\n\n${buildOrgPlanSummary(catalog)}`,
   );
   return `${SUPPORT_MAILTO_URL}?subject=${subject}&body=${body}`;
 }
 
-export function resolveOrgCheckoutUrl(): string {
-  return getStripeCheckoutUrl() ?? getOrgCheckoutMailtoUrl();
+export function resolveOrgCheckoutUrl(
+  catalog?: SellablePlanCatalog | null,
+): string {
+  return getStripeCheckoutUrl() ?? getOrgCheckoutMailtoUrl(catalog);
 }
 
 export { SUPPORT_EMAIL };

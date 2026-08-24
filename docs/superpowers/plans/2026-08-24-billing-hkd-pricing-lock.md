@@ -20,17 +20,19 @@
 - **No default Stripe native trial** — free time via **owner web admin promotion codes only** (not mobile, not tenant admin).
 - **Seat steppers** below tier cards on Company Plan (universal add-ons).
 - **Geo pricing:** HKD only for first market; other locales tabled.
-- **Legacy USD subs** grandfather until migrated.
+- **Display-only FX:** **tabled** as next billing slice **M-BILL-01G** (view USD/EUR estimates; charge HKD; no VAT/tax). See ROADMAP.
+- **No grandfathering needed (2026-08-24):** all companies/users are test; USD sellable rows may be unsellable/retired immediately. New checkouts are HKD only.
 
 ## Implementation follow-ups (Human Gate / build)
 
-1. Stripe HKD Prices + `plan_prices` rows (`currency=hkd`, amounts 16000 / 40000 cents).
-2. `plan_price_meters` aligned to caps table above.
+1. Stripe HKD Prices + `plan_prices` rows (`currency=hkd`, amounts 16000 / 40000 cents) — **test catalog applied**.
+2. `plan_price_meters` aligned to caps table above — **applied**.
 3. Remove `trial_period_days` from checkout; enable promotion codes on session.
 4. Owner web admin: mint single-use promo codes.
 5. Company Plan UI: compact cards + stepper block (build slice).
-
+6. Company Plan **dynamically loads** list prices/caps from `plan_prices` (not hardcoded).
 ## Code SoT
 
-- Display constants: `src/billing/orgPlans.ts`
-- Company Plan cards: `src/billing/companyPlanOptions.ts`
+- **Runtime list prices / caps:** `plan_prices` + `plan_price_meters` via `src/api/fetchSellablePlanCatalog.ts` (Company Plan loads dynamically).
+- Fallback constants only: `src/billing/orgPlans.ts` / `src/billing/planCatalog.ts` (`FALLBACK_LIST_PRICES_HKD`).
+- Company Plan cards: `src/billing/companyPlanOptions.ts` (accepts catalog).

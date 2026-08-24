@@ -75,7 +75,7 @@
         "autoIncrement": true
       },
       "android": {
-        "credentialsSource": "remote",
+        "credentialsSource": "local",
         "gradleCommand": ":app:bundleRelease"
       },
       "env": {
@@ -90,8 +90,8 @@
       "ios": {
         "ascAppId": "6754898737",
         "ascApiKeyIssuerId": "169799ef-c185-49f3-8c48-7d82e7ba7683",
-        "ascApiKeyId": "TX3C5NC72B",
-        "ascApiKeyPath": "./AppleID Credentials/AuthKey_TX3C5NC72B.p8"
+        "ascApiKeyId": "57D87U9MQ2",
+        "ascApiKeyPath": "/Volumes/KooDrive/Users/tristan/.appstoreconnect/private_keys/AuthKey_57D87U9MQ2.p8"
       },
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",

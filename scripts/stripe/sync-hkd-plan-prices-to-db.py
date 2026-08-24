@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Upsert HKD plan_prices + meters from Stripe HKD lookup keys. Deprecate USD sellable rows."""
+"""Upsert HKD plan_prices + meters from Stripe HKD lookup keys.
+
+Marks USD sellable rows unsellable for this livemode. All tenants are test
+right now — no grandfathering of USD subscriptions required.
+"""
 from __future__ import annotations
 
 import json

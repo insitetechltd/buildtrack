@@ -111,4 +111,28 @@ Locks:
 - Standard product path stays **Insite-managed** Supabase Storage. BYO is a **premium Enterprise Privacy** solution (pilot → productize), not the default SKU.
 - Jumping storage portability ahead of OPS or DMS requires an intentional lock change in this file.
 
+### 2026-08-24 — Owner Admin = dedicated app (locked)
+
+**Not in Taskr field app long-term.** Platform owner/operator work (monitoring, economics, tenant ops, workflow gaps at platform scope) belongs in a **separate Owner Admin app** — own bundle ID and TestFlight track — so app-level admin is never mixed with jobsite capture/review flows.
+
+Locks:
+
+- **M-OPS-01 v1** (Profile → Owner Console inside Taskr) = **bootstrap only**; closed 2026-08-22. **No new owner modules** in Taskr after RC.
+- **M-OPS-03** = dedicated Owner Admin app; carries Monitoring / Economics / Tenant ops IA; Edge/RPC backend access only.
+- **Retire or hide** Taskr Profile → Owner Console once M-OPS-03 ships.
+- **M-WEB-01** remains company admin for normal users (Henry) at `app.insiteworks.co` — not the owner operator shell.
+- Does **not** block RC, M-AUTHZ-02, or M-AI-01; idle-parallel after **M-BILL-01 MVP** is ok.
+
+ROADMAP: **`WS-OPS / M-OPS-03`** (Order 15.059).
+
+### 2026-08-24 — Billing display-only FX tabled (M-BILL-01G)
+
+Locks:
+
+- Charge currency stays **HKD** (HK company; no per-country VAT/GST in product scope for now).
+- **Display-only FX** (approx. USD/EUR under HKD list price) is **tabled** as **M-BILL-01G** — next billing slice after HKD MVP, not this TF.
+- No Stripe Tax / tax-inclusive local Prices until accountant GO.
+
+ROADMAP: **`WS-BILL / M-BILL-01G`** (Order 15.049). Pricing lock: `docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`.
+
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

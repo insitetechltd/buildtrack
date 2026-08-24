@@ -1380,7 +1380,8 @@ export interface CompanyPlanLimitRow {
 }
 
 export interface CompanyPlanOptionModel {
-  id: "growth" | "unlimited";
+  id: string;
+  planPriceId: string;
   title: string;
   priceLabel: string;
   summary: string;
@@ -1412,11 +1413,14 @@ export interface CompanyPlanScreenViewAdapterOutput {
   currentPlan: CompanyPlanCurrentPlanModel | null;
   planOptions: CompanyPlanOptionModel[];
   statusBanner: CompanyPlanStatusBannerModel | null;
-  activeActionPlanId: "growth" | "unlimited" | null;
+  activeActionPlanId: string | null;
   isLoading: boolean;
   isRefreshing: boolean;
   isActionInFlight: boolean;
   supportEmail: string;
+  offeredPlanNames: string;
+  plansSectionSubtitle: string;
+  displayCurrency: string;
 }
 
 export interface ProfileScreenViewAdapterOutput {

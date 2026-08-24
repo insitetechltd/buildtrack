@@ -10,7 +10,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const BASE_TIER_SLUGS = new Set(["growth", "unlimited"]);
 const DEFAULT_BILLING_CURRENCY = "hkd";
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -31,12 +30,16 @@ function defaultCheckoutUrls() {
   };
 }
 
-function appendCheckoutPlanToSuccessUrl(successUrl: string, plan: string): string {
+function appendCheckoutPlanToSuccessUrl(successUrl: string, plan: string, planPriceId?: string | null): string {
   if (/[?&]plan=/.test(successUrl)) {
     return successUrl;
   }
   const joiner = successUrl.includes("?") ? "&" : "?";
-  return `${successUrl}${joiner}plan=${encodeURIComponent(plan)}`;
+  let url = `${successUrl}${joiner}plan=${encodeURIComponent(plan)}`;
+  if (planPriceId) {
+    url += `&planPriceId=${encodeURIComponent(planPriceId)}`;
+  }
+  return url;
 }
 
 async function createStripeCheckoutSession(
@@ -257,8 +260,10 @@ Deno.serve(async (req) => {
       typeof body.planTierSlug === "string"
         ? body.planTierSlug.trim().toLowerCase()
         : "";
+    const planPriceIdInput =
+      typeof body.planPriceId === "string" ? body.planPriceId.trim() : "";
 
-    if (!companyId || !BASE_TIER_SLUGS.has(planTierSlug)) {
+    if (!companyId || !planTierSlug || !planPriceIdInput) {
       return jsonResponse({ error: "invalid_payload" }, 400);
     }
 
@@ -321,27 +326,26 @@ Deno.serve(async (req) => {
 
     const { data: tier, error: tierError } = await adminClient
       .from("plan_tiers")
-      .select("id")
+      .select("id, sort_order")
       .eq("slug", planTierSlug)
       .eq("kind", "base")
+      .eq("is_active", true)
       .maybeSingle();
 
     if (tierError || !tier?.id) {
       return jsonResponse({
         error: "plan_not_found",
-        message: `Unknown base tier slug: ${planTierSlug}`,
+        message: `Unknown or inactive base tier slug: ${planTierSlug}`,
       }, 404);
     }
 
     const { data: planPrice, error: planError } = await adminClient
       .from("plan_prices")
-      .select("id, stripe_price_id")
-      .eq("plan_tier_id", tier.id)
+      .select("id, stripe_price_id, plan_tier_id")
+      .eq("id", planPriceIdInput)
       .eq("livemode", livemode)
       .eq("currency", billingCurrency)
       .eq("is_sellable", true)
-      .order("effective_from", { ascending: false })
-      .limit(1)
       .maybeSingle();
 
     if (planError) {
@@ -349,10 +353,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "plan_lookup_failed" }, 500);
     }
 
-    if (!planPrice?.id || !planPrice.stripe_price_id) {
+    if (
+      !planPrice?.id ||
+      !planPrice.stripe_price_id ||
+      planPrice.plan_tier_id !== tier.id
+    ) {
       return jsonResponse({
-        error: "plan_not_found",
-        message: `No sellable ${planTierSlug} price for livemode=${livemode} currency=${billingCurrency}`,
+        error: "plan_price_mismatch",
+        message: `Sellable price ${planPriceIdInput} does not match tier ${planTierSlug}`,
       }, 404);
     }
 
@@ -360,6 +368,7 @@ Deno.serve(async (req) => {
     const successUrl = appendCheckoutPlanToSuccessUrl(
       Deno.env.get("STRIPE_CHECKOUT_SUCCESS_URL") ?? defaults.success,
       planTierSlug,
+      planPrice.id as string,
     );
     const cancelUrl = Deno.env.get("STRIPE_CHECKOUT_CANCEL_URL") ??
       defaults.cancel;
@@ -380,7 +389,23 @@ Deno.serve(async (req) => {
     const currentTierSlug =
       (existingSub?.plan_prices as { plan_tiers?: { slug?: string } } | null)
         ?.plan_tiers?.slug ?? null;
-    const tierRank: Record<string, number> = { growth: 1, unlimited: 2 };
+
+    let currentTierSortOrder: number | null = null;
+    if (currentTierSlug) {
+      const { data: currentTier } = await adminClient
+        .from("plan_tiers")
+        .select("sort_order")
+        .eq("slug", currentTierSlug)
+        .eq("kind", "base")
+        .maybeSingle();
+      currentTierSortOrder =
+        typeof currentTier?.sort_order === "number"
+          ? currentTier.sort_order
+          : null;
+    }
+
+    const targetTierSortOrder =
+      typeof tier.sort_order === "number" ? tier.sort_order : null;
 
     if (
       existingSub?.stripe_subscription_id &&
@@ -396,10 +421,9 @@ Deno.serve(async (req) => {
         );
       }
       if (
-        currentTierSlug &&
-        tierRank[planTierSlug] != null &&
-        tierRank[currentTierSlug] != null &&
-        tierRank[planTierSlug] < tierRank[currentTierSlug]
+        currentTierSortOrder != null &&
+        targetTierSortOrder != null &&
+        targetTierSortOrder < currentTierSortOrder
       ) {
         return jsonResponse(
           {
@@ -411,10 +435,9 @@ Deno.serve(async (req) => {
         );
       }
       if (
-        currentTierSlug &&
-        tierRank[planTierSlug] != null &&
-        tierRank[currentTierSlug] != null &&
-        tierRank[planTierSlug] > tierRank[currentTierSlug]
+        currentTierSortOrder != null &&
+        targetTierSortOrder != null &&
+        targetTierSortOrder > currentTierSortOrder
       ) {
         const subscriptionId = String(existingSub.stripe_subscription_id);
         const stripeSub = await stripeGet(

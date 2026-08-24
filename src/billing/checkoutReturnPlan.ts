@@ -1,53 +1,77 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import type { OrgCheckoutPlanTierSlug } from "./orgPlans";
-import { parseBaseTierSlug } from "./companyEntitlementSummary";
+import { normalizePlanTierSlug, type PlanTierSlug } from "./planCatalog";
 
-const STORAGE_KEY = "insite:last-checkout-plan";
+const PLAN_STORAGE_KEY = "insite:last-checkout-plan";
+const PRICE_STORAGE_KEY = "insite:last-checkout-plan-price-id";
 
-let rememberedCheckoutPlan: OrgCheckoutPlanTierSlug | null = null;
+let rememberedCheckoutPlan: PlanTierSlug | null = null;
+let rememberedCheckoutPlanPriceId: string | null = null;
+
+export type RememberedCheckoutSelection = {
+  plan: PlanTierSlug;
+  planPriceId: string | null;
+};
 
 export function rememberCheckoutPlan(
-  plan: OrgCheckoutPlanTierSlug | null | undefined,
+  plan: PlanTierSlug | null | undefined,
+  planPriceId?: string | null,
 ): void {
-  rememberedCheckoutPlan = parseBaseTierSlug(plan);
+  rememberedCheckoutPlan = normalizePlanTierSlug(plan);
+  rememberedCheckoutPlanPriceId = planPriceId?.trim() || null;
+
   if (rememberedCheckoutPlan) {
-    void AsyncStorage.setItem(STORAGE_KEY, rememberedCheckoutPlan);
+    void AsyncStorage.setItem(PLAN_STORAGE_KEY, rememberedCheckoutPlan);
+    if (rememberedCheckoutPlanPriceId) {
+      void AsyncStorage.setItem(PRICE_STORAGE_KEY, rememberedCheckoutPlanPriceId);
+    } else {
+      void AsyncStorage.removeItem(PRICE_STORAGE_KEY);
+    }
   } else {
-    void AsyncStorage.removeItem(STORAGE_KEY);
+    void AsyncStorage.removeItem(PLAN_STORAGE_KEY);
+    void AsyncStorage.removeItem(PRICE_STORAGE_KEY);
   }
 }
 
-export function peekRememberedCheckoutPlan(): OrgCheckoutPlanTierSlug | null {
-  return rememberedCheckoutPlan;
+export function peekRememberedCheckoutPlan(): RememberedCheckoutSelection | null {
+  if (!rememberedCheckoutPlan) {
+    return null;
+  }
+  return {
+    plan: rememberedCheckoutPlan,
+    planPriceId: rememberedCheckoutPlanPriceId,
+  };
 }
 
-export function takeRememberedCheckoutPlan(): OrgCheckoutPlanTierSlug | null {
-  const plan = rememberedCheckoutPlan;
+export function takeRememberedCheckoutPlan(): RememberedCheckoutSelection | null {
+  const selection = peekRememberedCheckoutPlan();
   rememberedCheckoutPlan = null;
-  return plan;
+  rememberedCheckoutPlanPriceId = null;
+  return selection;
 }
 
 export function clearRememberedCheckoutPlan(): void {
   rememberedCheckoutPlan = null;
-  void AsyncStorage.removeItem(STORAGE_KEY);
+  rememberedCheckoutPlanPriceId = null;
+  void AsyncStorage.removeItem(PLAN_STORAGE_KEY);
+  void AsyncStorage.removeItem(PRICE_STORAGE_KEY);
 }
 
 export async function resolveCheckoutReturnPlan(
   routePlan: string | null | undefined,
-): Promise<OrgCheckoutPlanTierSlug | null> {
-  const fromRoute = parseBaseTierSlug(routePlan);
+): Promise<PlanTierSlug | null> {
+  const fromRoute = normalizePlanTierSlug(routePlan);
   if (fromRoute) {
     return fromRoute;
   }
 
   const fromMemory = peekRememberedCheckoutPlan();
-  if (fromMemory) {
-    return fromMemory;
+  if (fromMemory?.plan) {
+    return fromMemory.plan;
   }
 
   try {
-    return parseBaseTierSlug(await AsyncStorage.getItem(STORAGE_KEY));
+    return normalizePlanTierSlug(await AsyncStorage.getItem(PLAN_STORAGE_KEY));
   } catch {
     return null;
   }
@@ -55,17 +79,30 @@ export async function resolveCheckoutReturnPlan(
 
 export function appendCheckoutPlanToSuccessUrl(
   successUrl: string,
-  plan: OrgCheckoutPlanTierSlug,
+  plan: PlanTierSlug,
+  planPriceId?: string | null,
 ): string {
-  if (/[?&]plan=/.test(successUrl)) {
-    return successUrl;
+  let url = successUrl;
+  if (!/[?&]plan=/.test(url)) {
+    const joiner = url.includes("?") ? "&" : "?";
+    url = `${url}${joiner}plan=${encodeURIComponent(plan)}`;
   }
-  const joiner = successUrl.includes("?") ? "&" : "?";
-  return `${successUrl}${joiner}plan=${encodeURIComponent(plan)}`;
+  if (planPriceId && !/[?&]planPriceId=/.test(url)) {
+    const joiner = url.includes("?") ? "&" : "?";
+    url = `${url}${joiner}planPriceId=${encodeURIComponent(planPriceId)}`;
+  }
+  return url;
 }
 
 export function parseCheckoutPlanParam(
   value: string | null | undefined,
-): OrgCheckoutPlanTierSlug | null {
-  return parseBaseTierSlug(value);
+): PlanTierSlug | null {
+  return normalizePlanTierSlug(value);
+}
+
+export function parseCheckoutPlanPriceIdParam(
+  value: string | null | undefined,
+): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }

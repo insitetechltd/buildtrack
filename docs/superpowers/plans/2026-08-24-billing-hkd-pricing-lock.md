@@ -34,5 +34,6 @@
 ## Code SoT
 
 - **Runtime list prices / caps:** `plan_prices` + `plan_price_meters` via `src/api/fetchSellablePlanCatalog.ts` (Company Plan loads dynamically).
-- Fallback constants only: `src/billing/orgPlans.ts` / `src/billing/planCatalog.ts` (`FALLBACK_LIST_PRICES_HKD`).
+- Fallback constants only: `src/billing/planCatalog.ts` (offline labels when catalog unavailable).
+- Ops runbook (no app release): `documentation/billing-catalog-ops-runbook.md`.
 - Company Plan cards: `src/billing/companyPlanOptions.ts` (accepts catalog).

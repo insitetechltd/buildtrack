@@ -59,7 +59,7 @@ async function loadSeatLimits(
 ): Promise<{ pmSeatLimit: number; workerSeatLimit: number } | null> {
   const { data, error } = await adminClient
     .from("company_entitlements")
-    .select("pm_seat_limit, worker_seat_limit")
+    .select("pm_seat_limit, worker_seat_limit, entitlements_snapshot")
     .eq("company_id", companyId)
     .maybeSingle();
 
@@ -72,9 +72,23 @@ async function loadSeatLimits(
 
   if (!data) return null;
 
+  const snapshot = data.entitlements_snapshot as {
+    meters?: Record<string, number | null>;
+  } | null;
+  const meters = snapshot?.meters ?? {};
+
+  const pmFromSnapshot = meters.pm_seats;
+  const workerFromSnapshot = meters.worker_seats;
+
   return {
-    pmSeatLimit: data.pm_seat_limit as number,
-    workerSeatLimit: data.worker_seat_limit as number,
+    pmSeatLimit:
+      typeof pmFromSnapshot === "number" && Number.isFinite(pmFromSnapshot)
+        ? pmFromSnapshot
+        : (data.pm_seat_limit as number),
+    workerSeatLimit:
+      typeof workerFromSnapshot === "number" && Number.isFinite(workerFromSnapshot)
+        ? workerFromSnapshot
+        : (data.worker_seat_limit as number),
   };
 }
 

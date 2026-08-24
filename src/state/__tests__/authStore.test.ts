@@ -555,7 +555,7 @@ describe('Authentication Workflow Tests', () => {
       expect(outcome?.success).toBe(true);
       expect(outcome?.companyId).toBe('company-uuid-1');
       expect(result.current.isAuthenticated).toBe(true);
-      expect(result.current.pendingCompanyPlanAfterSignup).toBe(true);
+      expect(result.current.requiresCompanyPlanSelection).toBe(true);
       expect(result.current.user?.companyId || (result.current.user as any)?.company_id).toBeTruthy();
     });
 

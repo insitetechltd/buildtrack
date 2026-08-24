@@ -1,54 +1,31 @@
 /**
- * Org checkout helpers. List prices/caps for Company Plan UI come from
- * `plan_prices` via fetchSellablePlanCatalog — constants here are fallback only.
+ * Org checkout helpers. List prices, caps, tier cards, and meters come from
+ * `plan_prices` + `meter_definitions` via fetchSellablePlanCatalog.
  */
 import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from "@/legal/legalLinks";
 import {
-  FALLBACK_LIST_PRICES_HKD,
+  buildOfferedPlanNamesLabel,
+  listBaseTiers,
   resolveAddonPriceLabels,
-  resolveBaseTierDisplay,
-  type OrgCheckoutPlanTierSlug,
+  resolveTierDisplay,
+  type PlanTierSlug,
   type SellablePlanCatalog,
 } from "./planCatalog";
 
-export type { OrgCheckoutPlanTierSlug } from "./planCatalog";
-
-/** @deprecated Prefer catalog; kept as offline/fallback list price. */
-export const ORG_PLAN_STARTER_HKD = FALLBACK_LIST_PRICES_HKD.growth.amountHkd;
-/** @deprecated Prefer catalog; kept as offline/fallback list price. */
-export const ORG_PLAN_PRO_HKD = FALLBACK_LIST_PRICES_HKD.unlimited.amountHkd;
-/** @deprecated Prefer catalog. */
-export const ORG_ADDON_WORKER_PACK_HKD =
-  FALLBACK_LIST_PRICES_HKD.addon_worker_pack.amountHkd;
-/** @deprecated Prefer catalog. */
-export const ORG_ADDON_PM_SEAT_HKD =
-  FALLBACK_LIST_PRICES_HKD.addon_pm_seat.amountHkd;
-
-export const ORG_PLAN_STARTER_DISPLAY =
-  FALLBACK_LIST_PRICES_HKD.growth.displayName;
-export const ORG_PLAN_PRO_DISPLAY =
-  FALLBACK_LIST_PRICES_HKD.unlimited.displayName;
-
-export function formatHkdMonthlyPrice(amount: string): string {
-  return `HK$${amount}/mo`;
-}
+export type { PlanTierSlug, OrgCheckoutPlanTierSlug } from "./planCatalog";
 
 export function displayNameForPlanSlug(
-  slug: OrgCheckoutPlanTierSlug,
+  slug: PlanTierSlug,
   catalog?: SellablePlanCatalog | null,
 ): string {
-  return resolveBaseTierDisplay(slug, catalog).displayName;
+  return resolveTierDisplay(slug, catalog).displayName;
 }
 
-export function listPriceForPlanSlug(
-  slug: OrgCheckoutPlanTierSlug,
+export function listPriceLabelForPlanSlug(
+  slug: PlanTierSlug,
   catalog?: SellablePlanCatalog | null,
 ): string {
-  const fromCatalog = catalog?.baseBySlug[slug];
-  if (fromCatalog) {
-    return String(fromCatalog.amountCents / 100);
-  }
-  return slug === "unlimited" ? ORG_PLAN_PRO_HKD : ORG_PLAN_STARTER_HKD;
+  return resolveTierDisplay(slug, catalog).priceLabel;
 }
 
 export function getStripeCheckoutUrl(): string | undefined {
@@ -59,16 +36,27 @@ export function getStripeCheckoutUrl(): string | undefined {
 export function buildOrgPlanSummary(
   catalog?: SellablePlanCatalog | null,
 ): string {
-  const starter = resolveBaseTierDisplay("growth", catalog);
-  const pro = resolveBaseTierDisplay("unlimited", catalog);
-  const addons = resolveAddonPriceLabels(catalog);
-  return [
-    "Company subscription (not personal).",
+  const lines = ["Company subscription (not personal)."];
+  lines.push(
     "Free time: owner-issued promotion code only (no default Stripe trial). Card on file at subscribe.",
-    `${starter.displayName} ${starter.priceLabel} — ${starter.capsLine.replace(/ · /g, ", ")}.`,
-    `${pro.displayName} ${pro.priceLabel} — ${pro.capsLine.replace(/ · /g, ", ")}.`,
-    `Add-ons: +5 workers ${addons.workerPack} · +1 PM ${addons.pmSeat}.`,
-  ].join("\n\n");
+  );
+
+  for (const tier of listBaseTiers(catalog)) {
+    const display = resolveTierDisplay(tier.slug, catalog);
+    lines.push(
+      `${display.displayName} ${display.priceLabel} — ${display.capsLine.replace(/ · /g, ", ")}.`,
+    );
+  }
+
+  const addons = resolveAddonPriceLabels(catalog);
+  const addonParts = Object.entries(addons).map(
+    ([slug, label]) => `${slug.replace(/_/g, " ")} ${label}`,
+  );
+  if (addonParts.length > 0) {
+    lines.push(`Add-ons: ${addonParts.join(" · ")}.`);
+  }
+
+  return lines.join("\n\n");
 }
 
 export function getOrgCheckoutMailtoUrl(
@@ -87,4 +75,4 @@ export function resolveOrgCheckoutUrl(
   return getStripeCheckoutUrl() ?? getOrgCheckoutMailtoUrl(catalog);
 }
 
-export { SUPPORT_EMAIL };
+export { buildOfferedPlanNamesLabel, SUPPORT_EMAIL };

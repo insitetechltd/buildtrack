@@ -1,11 +1,24 @@
-export type OrgCheckoutPlanTierSlug = "growth" | "unlimited";
+/** Any sellable base or add-on tier slug from `plan_tiers.slug`. */
+export type PlanTierSlug = string;
+
+/** @deprecated Prefer PlanTierSlug — alias kept for existing imports. */
+export type OrgCheckoutPlanTierSlug = PlanTierSlug;
 
 export type PlanCatalogMeterMap = Record<string, number | null>;
+
+export type MeterDefinition = {
+  slug: string;
+  displayName: string;
+  aggregation: string;
+  enforcement: string;
+  unit: string;
+};
 
 export type PlanCatalogTier = {
   slug: string;
   kind: "base" | "addon";
   displayName: string;
+  description?: string | null;
   amountCents: number;
   currency: string;
   planPriceId: string;
@@ -17,19 +30,21 @@ export type PlanCatalogTier = {
 export type SellablePlanCatalog = {
   currency: string;
   livemode: boolean | null;
-  baseBySlug: Partial<Record<OrgCheckoutPlanTierSlug, PlanCatalogTier>>;
-  addonsBySlug: Partial<
-    Record<"addon_worker_pack" | "addon_pm_seat", PlanCatalogTier>
-  >;
+  baseTiers: PlanCatalogTier[];
+  addonTiers: PlanCatalogTier[];
+  metersBySlug: Record<string, MeterDefinition>;
 };
 
-/** Fallback when DB catalog is unavailable — must match locked HK list prices. */
-export const FALLBACK_LIST_PRICES_HKD = {
-  growth: { displayName: "Starter", amountHkd: "160" },
-  unlimited: { displayName: "Pro", amountHkd: "400" },
-  addon_worker_pack: { displayName: "Worker pack (+5)", amountHkd: "20" },
-  addon_pm_seat: { displayName: "PM seat (+1)", amountHkd: "100" },
-} as const;
+const DEFAULT_DISPLAY_CURRENCY = "hkd";
+
+/** Display/charge currency for catalog fetch — override via env without app rebuild for ops. */
+export function resolveBillingDisplayCurrency(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_BILLING_DISPLAY_CURRENCY?.trim();
+  if (fromEnv) {
+    return fromEnv.toLowerCase();
+  }
+  return DEFAULT_DISPLAY_CURRENCY;
+}
 
 export function resolvePreferredLivemode(): boolean | null {
   const key = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
@@ -40,6 +55,52 @@ export function resolvePreferredLivemode(): boolean | null {
     return false;
   }
   return null;
+}
+
+export function normalizePlanTierSlug(
+  slug: string | null | undefined,
+): PlanTierSlug | null {
+  if (!slug) {
+    return null;
+  }
+  const normalized = slug.trim().toLowerCase();
+  return normalized.length > 0 ? normalized : null;
+}
+
+export function listBaseTiers(
+  catalog: SellablePlanCatalog | null | undefined,
+): PlanCatalogTier[] {
+  return catalog?.baseTiers ?? [];
+}
+
+export function findBaseTier(
+  catalog: SellablePlanCatalog | null | undefined,
+  slug: string,
+): PlanCatalogTier | undefined {
+  const normalized = normalizePlanTierSlug(slug);
+  if (!normalized || !catalog) {
+    return undefined;
+  }
+  return catalog.baseTiers.find((tier) => tier.slug === normalized);
+}
+
+export function findAddonTier(
+  catalog: SellablePlanCatalog | null | undefined,
+  slug: string,
+): PlanCatalogTier | undefined {
+  const normalized = normalizePlanTierSlug(slug);
+  if (!normalized || !catalog) {
+    return undefined;
+  }
+  return catalog.addonTiers.find((tier) => tier.slug === normalized);
+}
+
+export function tierSortRank(
+  catalog: SellablePlanCatalog | null | undefined,
+  slug: string | null | undefined,
+): number | null {
+  const tier = findBaseTier(catalog, slug ?? "");
+  return tier?.sortOrder ?? null;
 }
 
 export function selectSellableCatalogRows<
@@ -78,6 +139,12 @@ export function formatCatalogMoneyMonthly(
   if (code === "usd") {
     return `$${rounded}/mo`;
   }
+  if (code === "eur") {
+    return `€${rounded}/mo`;
+  }
+  if (code === "gbp") {
+    return `£${rounded}/mo`;
+  }
   return `${rounded} ${code.toUpperCase()}/mo`;
 }
 
@@ -92,73 +159,118 @@ function formatStorageBytes(bytes: number | null | undefined): string | null {
   return `${Math.round(bytes / (1024 * 1024))} MB`;
 }
 
+export function formatMeterLimitValue(
+  slug: string,
+  value: number | null | undefined,
+  definition?: MeterDefinition,
+): string {
+  if (value == null) {
+    return "Unlimited";
+  }
+
+  const unit = definition?.unit ?? "count";
+  if (unit === "bytes") {
+    return formatStorageBytes(value) ?? String(value);
+  }
+
+  const label = definition?.displayName ?? slug.replace(/_/g, " ");
+  const aggregation = definition?.aggregation ?? "";
+
+  if (aggregation === "counter_monthly") {
+    return `${value} ${label.toLowerCase()}/mo`;
+  }
+  if (aggregation === "counter_lifetime") {
+    return `${value} ${label.toLowerCase()} (lifetime)`;
+  }
+
+  return `${value} ${label.toLowerCase()}`;
+}
+
 export function formatTierCapsLineFromMeters(
   meters: PlanCatalogMeterMap,
+  metersBySlug?: Record<string, MeterDefinition>,
 ): string | null {
-  const projects = meters.projects;
-  const entries = meters.entries_monthly;
-  const storage = formatStorageBytes(meters.storage_bytes);
-  const pm = meters.pm_seats;
-  const workers = meters.worker_seats;
+  const slugs = Object.keys(meters).sort((a, b) => {
+    const rankA = metersBySlug?.[a]?.displayName ?? a;
+    const rankB = metersBySlug?.[b]?.displayName ?? b;
+    return rankA.localeCompare(rankB);
+  });
 
   const parts: string[] = [];
-  if (projects != null) {
-    parts.push(`${projects} projects`);
+  for (const slug of slugs) {
+    const formatted = formatMeterLimitValue(
+      slug,
+      meters[slug],
+      metersBySlug?.[slug],
+    );
+    if (formatted !== "Unlimited") {
+      parts.push(formatted);
+    }
   }
-  if (entries != null) {
-    parts.push(`${entries} entries/mo`);
-  }
-  if (storage) {
-    parts.push(storage);
-  }
-  if (pm != null || workers != null) {
-    parts.push(`${pm ?? 0} PM + ${workers ?? 0} workers`);
-  }
+
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
-export function resolveBaseTierDisplay(
-  slug: OrgCheckoutPlanTierSlug,
+export function resolveTierDisplay(
+  slug: PlanTierSlug,
   catalog: SellablePlanCatalog | null | undefined,
 ): { displayName: string; priceLabel: string; capsLine: string } {
-  const fromCatalog = catalog?.baseBySlug[slug];
+  const fromCatalog = findBaseTier(catalog, slug);
   if (fromCatalog) {
+    const capsLine =
+      formatTierCapsLineFromMeters(fromCatalog.meters, catalog?.metersBySlug) ??
+      fromCatalog.description?.trim() ??
+      "See plan details";
     return {
       displayName: fromCatalog.displayName,
       priceLabel: formatCatalogMoneyMonthly(
         fromCatalog.amountCents,
         fromCatalog.currency,
       ),
-      capsLine:
-        formatTierCapsLineFromMeters(fromCatalog.meters) ??
-        (slug === "growth"
-          ? "3 projects · 300 entries/mo · 10 GB · 1 PM + 5 workers"
-          : "12 projects · 800 entries/mo · 30 GB · 2 PM + 10 workers"),
+      capsLine,
     };
   }
 
-  const fallback = FALLBACK_LIST_PRICES_HKD[slug];
   return {
-    displayName: fallback.displayName,
-    priceLabel: `HK$${fallback.amountHkd}/mo`,
-    capsLine:
-      slug === "growth"
-        ? "3 projects · 300 entries/mo · 10 GB · 1 PM + 5 workers"
-        : "12 projects · 800 entries/mo · 30 GB · 2 PM + 10 workers",
+    displayName: slug,
+    priceLabel: "—",
+    capsLine: "Plan details unavailable",
   };
+}
+
+/** @deprecated Use resolveTierDisplay */
+export function resolveBaseTierDisplay(
+  slug: PlanTierSlug,
+  catalog: SellablePlanCatalog | null | undefined,
+): { displayName: string; priceLabel: string; capsLine: string } {
+  return resolveTierDisplay(slug, catalog);
 }
 
 export function resolveAddonPriceLabels(
   catalog: SellablePlanCatalog | null | undefined,
-): { workerPack: string; pmSeat: string } {
-  const worker = catalog?.addonsBySlug.addon_worker_pack;
-  const pm = catalog?.addonsBySlug.addon_pm_seat;
-  return {
-    workerPack: worker
-      ? formatCatalogMoneyMonthly(worker.amountCents, worker.currency)
-      : `HK$${FALLBACK_LIST_PRICES_HKD.addon_worker_pack.amountHkd}/mo`,
-    pmSeat: pm
-      ? formatCatalogMoneyMonthly(pm.amountCents, pm.currency)
-      : `HK$${FALLBACK_LIST_PRICES_HKD.addon_pm_seat.amountHkd}/mo`,
-  };
+): Record<string, string> {
+  const labels: Record<string, string> = {};
+  for (const addon of catalog?.addonTiers ?? []) {
+    labels[addon.slug] = formatCatalogMoneyMonthly(
+      addon.amountCents,
+      addon.currency,
+    );
+  }
+  return labels;
+}
+
+export function buildOfferedPlanNamesLabel(
+  catalog: SellablePlanCatalog | null | undefined,
+): string {
+  const names = listBaseTiers(catalog).map((tier) => tier.displayName);
+  if (names.length === 0) {
+    return "a company plan";
+  }
+  if (names.length === 1) {
+    return names[0];
+  }
+  if (names.length === 2) {
+    return `${names[0]} or ${names[1]}`;
+  }
+  return `${names.slice(0, -1).join(", ")}, or ${names[names.length - 1]}`;
 }

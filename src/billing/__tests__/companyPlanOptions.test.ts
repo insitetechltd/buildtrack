@@ -8,7 +8,45 @@ import {
   type CompanyEntitlementRow,
   type CompanySubscriptionRow,
 } from "../companyEntitlementSummary";
-import type { SellablePlanCatalog } from "../planCatalog";
+import type { MeterDefinition, SellablePlanCatalog } from "../planCatalog";
+
+const meterDefinitions: Record<string, MeterDefinition> = {
+  pm_seats: {
+    slug: "pm_seats",
+    displayName: "PM seats",
+    aggregation: "gauge",
+    enforcement: "hard",
+    unit: "count",
+  },
+  worker_seats: {
+    slug: "worker_seats",
+    displayName: "Worker seats",
+    aggregation: "gauge",
+    enforcement: "hard",
+    unit: "count",
+  },
+  projects: {
+    slug: "projects",
+    displayName: "Active projects",
+    aggregation: "gauge",
+    enforcement: "soft",
+    unit: "count",
+  },
+  entries_monthly: {
+    slug: "entries_monthly",
+    displayName: "Entries per billing period",
+    aggregation: "counter_monthly",
+    enforcement: "soft",
+    unit: "count",
+  },
+  storage_bytes: {
+    slug: "storage_bytes",
+    displayName: "Hot storage",
+    aggregation: "gauge",
+    enforcement: "soft",
+    unit: "bytes",
+  },
+};
 
 describe("companyPlanOptions", () => {
   const trialEntitlements: CompanyEntitlementRow = {
@@ -33,8 +71,52 @@ describe("companyPlanOptions", () => {
         slug: "growth",
         display_name: "Starter",
         kind: "base",
+        sort_order: 1,
       },
     },
+  };
+
+  const catalog: SellablePlanCatalog = {
+    currency: "hkd",
+    livemode: false,
+    baseTiers: [
+      {
+        slug: "growth",
+        kind: "base",
+        displayName: "Starter",
+        amountCents: 16000,
+        currency: "hkd",
+        planPriceId: "pp-g",
+        livemode: false,
+        sortOrder: 1,
+        meters: {
+          projects: 3,
+          entries_monthly: 300,
+          storage_bytes: 10 * 1024 * 1024 * 1024,
+          pm_seats: 1,
+          worker_seats: 5,
+        },
+      },
+      {
+        slug: "unlimited",
+        kind: "base",
+        displayName: "Pro",
+        amountCents: 40000,
+        currency: "hkd",
+        planPriceId: "pp-u",
+        livemode: false,
+        sortOrder: 2,
+        meters: {
+          projects: 12,
+          entries_monthly: 800,
+          storage_bytes: 30 * 1024 * 1024 * 1024,
+          pm_seats: 2,
+          worker_seats: 10,
+        },
+      },
+    ],
+    addonTiers: [],
+    metersBySlug: meterDefinitions,
   };
 
   it("marks Pro as current after upgrade", () => {
@@ -46,13 +128,14 @@ describe("companyPlanOptions", () => {
           slug: "unlimited",
           display_name: "Pro",
           kind: "base",
+          sort_order: 2,
         },
       },
     };
     const view = buildCompanyEntitlementView(trialEntitlements, unlimitedSubscription);
-    const options = buildCompanyPlanOptions(view);
+    const options = buildCompanyPlanOptions(view, catalog);
 
-    expect(resolveCheckoutTierAvailability(view, "unlimited")).toBe("current");
+    expect(resolveCheckoutTierAvailability(view, "unlimited", catalog)).toBe("current");
     expect(options.find((option) => option.id === "unlimited")?.state).toBe("current");
     expect(options.find((option) => option.id === "growth")?.state).toBe(
       "downgrade_blocked",
@@ -66,53 +149,35 @@ describe("companyPlanOptions", () => {
 
   it("offers upgrade CTA from Starter to Pro", () => {
     const view = buildCompanyEntitlementView(trialEntitlements, growthSubscription);
-    const catalog: SellablePlanCatalog = {
-      currency: "hkd",
-      livemode: false,
-      baseBySlug: {
-        growth: {
-          slug: "growth",
-          kind: "base",
-          displayName: "Starter",
-          amountCents: 16000,
-          currency: "hkd",
-          planPriceId: "pp-g",
-          livemode: false,
-          sortOrder: 1,
-          meters: {
-            projects: 3,
-            entries_monthly: 300,
-            storage_bytes: 10 * 1024 * 1024 * 1024,
-            pm_seats: 1,
-            worker_seats: 5,
-          },
-        },
-        unlimited: {
-          slug: "unlimited",
-          kind: "base",
-          displayName: "Pro",
-          amountCents: 40000,
-          currency: "hkd",
-          planPriceId: "pp-u",
-          livemode: false,
-          sortOrder: 2,
-          meters: {
-            projects: 12,
-            entries_monthly: 800,
-            storage_bytes: 30 * 1024 * 1024 * 1024,
-            pm_seats: 2,
-            worker_seats: 10,
-          },
-        },
-      },
-      addonsBySlug: {},
-    };
     const unlimited = buildCompanyPlanOptions(view, catalog).find(
       (option) => option.id === "unlimited",
     );
 
     expect(unlimited?.priceLabel).toBe("HK$400/mo");
+    expect(unlimited?.planPriceId).toBe("pp-u");
     expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
     expect(unlimited?.disabled).toBe(false);
+  });
+
+  it("renders one card per sellable base tier in catalog", () => {
+    const view = buildCompanyEntitlementView(trialEntitlements, null);
+    const threeTierCatalog: SellablePlanCatalog = {
+      ...catalog,
+      baseTiers: [
+        ...catalog.baseTiers,
+        {
+          slug: "enterprise",
+          kind: "base",
+          displayName: "Enterprise",
+          amountCents: 120000,
+          currency: "hkd",
+          planPriceId: "pp-e",
+          livemode: false,
+          sortOrder: 3,
+          meters: { ai_tokens_monthly: 1000000 },
+        },
+      ],
+    };
+    expect(buildCompanyPlanOptions(view, threeTierCatalog)).toHaveLength(3);
   });
 });

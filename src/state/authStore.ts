@@ -92,8 +92,9 @@ interface AuthStore extends AuthState {
   session: any | null;
   error: string | null;
   /** One-shot: navigate to Company Plan after create-company signup. */
-  pendingCompanyPlanAfterSignup: boolean;
-  consumePendingCompanyPlanAfterSignup: () => boolean;
+  /** Persisted — new company founders must pick a paid plan before app access. */
+  requiresCompanyPlanSelection: boolean;
+  clearRequiresCompanyPlanSelection: () => void;
   // Existing methods
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -137,14 +138,10 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       isInitialized: false,
       error: null,
-      pendingCompanyPlanAfterSignup: false,
+      requiresCompanyPlanSelection: false,
 
-      consumePendingCompanyPlanAfterSignup: () => {
-        const pending = get().pendingCompanyPlanAfterSignup;
-        if (pending) {
-          set({ pendingCompanyPlanAfterSignup: false });
-        }
-        return pending;
+      clearRequiresCompanyPlanSelection: () => {
+        set({ requiresCompanyPlanSelection: false });
       },
 
       login: async (username: string, password: string) => {
@@ -793,7 +790,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             isInitialized: true,
             error: null,
-            pendingCompanyPlanAfterSignup: true,
+            requiresCompanyPlanSelection: true,
           });
 
           return {
@@ -1252,9 +1249,9 @@ export const useAuthStore = create<AuthStore>()(
       name: "buildtrack-auth",
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
-        // Only persist user and auth state, not loading state
         user: state.user,
         isAuthenticated: state.isAuthenticated,
+        requiresCompanyPlanSelection: state.requiresCompanyPlanSelection,
       }),
       onRehydrateStorage: () => (state) => {
         console.log('🔄 AuthStore rehydration callback fired');

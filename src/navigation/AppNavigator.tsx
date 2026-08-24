@@ -45,6 +45,7 @@ import { buildDefaultStackScreenOptions, buildTaskDetailStackScreenOptions } fro
 import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import CompanyPlanScreen from "../screens/CompanyPlanScreen";
+import CompanyPlanSelectionGate from "./CompanyPlanSelectionGate";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
 import ProjectsScreen from "../screens/ProjectsScreen";
 import CreateProjectScreen from "../screens/CreateProjectScreen";
@@ -279,10 +280,7 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
       const checkout = new URLSearchParams(profileQuery).get("checkout");
       if (checkout === "success" || checkout === "cancel") {
         const planParam = new URLSearchParams(profileQuery).get("plan");
-        const checkoutPlan =
-          planParam === "growth" || planParam === "unlimited"
-            ? planParam
-            : undefined;
+        const checkoutPlan = planParam?.trim() ? planParam.trim().toLowerCase() : undefined;
         return {
           routes: [
             {
@@ -1882,46 +1880,6 @@ function AppRootStack() {
   );
 }
 
-function PostSignupCompanyPlanRedirect() {
-  const pendingCompanyPlanAfterSignup = useAuthStore(
-    (state) => state.pendingCompanyPlanAfterSignup,
-  );
-  const consumePendingCompanyPlanAfterSignup = useAuthStore(
-    (state) => state.consumePendingCompanyPlanAfterSignup,
-  );
-
-  useEffect(() => {
-    if (!pendingCompanyPlanAfterSignup) {
-      return;
-    }
-
-    const navigateToCompanyPlan = () => {
-      if (!rootNavigationRef.isReady()) {
-        return false;
-      }
-      if (!consumePendingCompanyPlanAfterSignup()) {
-        return true;
-      }
-      rootNavigationRef.navigate("Profile", { screen: "CompanyPlan" });
-      return true;
-    };
-
-    if (navigateToCompanyPlan()) {
-      return;
-    }
-
-    const frameId = requestAnimationFrame(() => {
-      navigateToCompanyPlan();
-    });
-    return () => cancelAnimationFrame(frameId);
-  }, [
-    consumePendingCompanyPlanAfterSignup,
-    pendingCompanyPlanAfterSignup,
-  ]);
-
-  return null;
-}
-
 // Main Tab Navigator
 function MainTabs() {
   const { user } = useAuthStore();
@@ -2164,6 +2122,9 @@ export default function AppNavigator() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const authUser = useAuthStore((state) => state.user);
   const mustSetPassword = authUser?.mustSetPassword === true;
+  const requiresCompanyPlanSelection = useAuthStore(
+    (state) => state.requiresCompanyPlanSelection,
+  );
 
   // Cold start only. Wait for initialize() so a persisted session cannot
   // open MainTabs before must_set_password is loaded. Never use isLoading
@@ -2182,6 +2143,11 @@ export default function AppNavigator() {
     return <SetPasswordScreen />;
   }
 
+  // New company founders: Company Plan only until Stripe subscription exists.
+  if (requiresCompanyPlanSelection) {
+    return <CompanyPlanSelectionGate />;
+  }
+
   // Keep Realtime/NetworkSync outside WorkspaceBootstrapGate so flipping
   // workspaceReady→false does not tear down channels (Hermes OOM under Maestro).
   return (
@@ -2190,7 +2156,6 @@ export default function AppNavigator() {
       <RealtimeSyncManager />
       <WorkspaceBootstrapGate>
         <NavigationContainer ref={rootNavigationRef} linking={appLinking}>
-          <PostSignupCompanyPlanRedirect />
           <DataRefreshManager />
           <AppRootStack />
         </NavigationContainer>

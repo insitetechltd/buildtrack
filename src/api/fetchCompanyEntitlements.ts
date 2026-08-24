@@ -16,7 +16,7 @@ export async function fetchCompanyEntitlementView(
   const { data: entitlements, error: entitlementsError } = await supabase
     .from("company_entitlements")
     .select(
-      "pm_seat_limit, worker_seat_limit, project_limit, entries_limit, entries_limit_kind, storage_limit_bytes, subscription_status, billing_phase, source_plan_price_id",
+      "pm_seat_limit, worker_seat_limit, project_limit, entries_limit, entries_limit_kind, storage_limit_bytes, subscription_status, billing_phase, source_plan_price_id, entitlements_snapshot",
     )
     .eq("company_id", companyId)
     .maybeSingle();

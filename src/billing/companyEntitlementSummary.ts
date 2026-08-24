@@ -1,4 +1,11 @@
-import type { OrgCheckoutPlanTierSlug } from "./orgPlans";
+import type { PlanTierSlug, SellablePlanCatalog } from "./planCatalog";
+import {
+  findBaseTier,
+  formatMeterLimitValue,
+  normalizePlanTierSlug,
+  tierSortRank,
+} from "./planCatalog";
+import { metersFromLegacyEntitlementRow } from "./entitlementMeters";
 
 export type CompanyEntitlementRow = {
   pm_seat_limit: number;
@@ -10,6 +17,7 @@ export type CompanyEntitlementRow = {
   subscription_status: string;
   billing_phase: string;
   source_plan_price_id: string | null;
+  entitlements_snapshot?: Record<string, unknown> | null;
 };
 
 export type CompanySubscriptionRow = {
@@ -22,37 +30,32 @@ export type CompanySubscriptionRow = {
       slug: string;
       display_name: string;
       kind: string;
+      sort_order?: number | null;
     } | null;
   } | null;
 };
 
 export type CompanyEntitlementView = {
-  tierSlug: OrgCheckoutPlanTierSlug | "pilot" | null;
+  tierSlug: PlanTierSlug | "pilot" | null;
   tierDisplayName: string;
   subscriptionStatus: string;
   billingPhase: string;
   hasStripeSubscription: boolean;
-  pmSeatLimit: number;
-  workerSeatLimit: number;
-  projectLimit: number | null;
-  entriesLimit: number | null;
-  entriesLimitKind: string;
-  storageLimitBytes: number | null;
+  meterLimits: Record<string, number | null>;
   trialEndsAt: string | null;
 };
 
-const BASE_TIER_RANK: Record<OrgCheckoutPlanTierSlug, number> = {
-  growth: 1,
-  unlimited: 2,
-};
-
+/** @deprecated Use normalizePlanTierSlug */
 export function parseBaseTierSlug(
   slug: string | null | undefined,
-): OrgCheckoutPlanTierSlug | null {
-  if (slug === "growth" || slug === "unlimited") {
-    return slug;
-  }
-  return null;
+): PlanTierSlug | null {
+  return normalizePlanTierSlug(slug);
+}
+
+function snapshotMeters(
+  entitlements: CompanyEntitlementRow,
+): Record<string, number | null> {
+  return metersFromLegacyEntitlementRow(entitlements);
 }
 
 export function buildCompanyEntitlementView(
@@ -64,11 +67,11 @@ export function buildCompanyEntitlementView(
   }
 
   const tierFromPrice = subscription?.plan_prices?.plan_tiers;
-  const parsedSlug = parseBaseTierSlug(tierFromPrice?.slug);
+  const parsedSlug = normalizePlanTierSlug(tierFromPrice?.slug);
   const tierSlug = parsedSlug ?? (subscription?.stripe_subscription_id ? null : "pilot");
   const tierDisplayName =
     tierFromPrice?.display_name ??
-    (tierSlug === "pilot" ? "Pilot" : "Company plan");
+    (tierSlug === "pilot" ? "Pilot" : parsedSlug ?? "Company plan");
 
   return {
     tierSlug,
@@ -76,12 +79,7 @@ export function buildCompanyEntitlementView(
     subscriptionStatus: entitlements.subscription_status,
     billingPhase: entitlements.billing_phase,
     hasStripeSubscription: Boolean(subscription?.stripe_subscription_id),
-    pmSeatLimit: entitlements.pm_seat_limit,
-    workerSeatLimit: entitlements.worker_seat_limit,
-    projectLimit: entitlements.project_limit,
-    entriesLimit: entitlements.entries_limit,
-    entriesLimitKind: entitlements.entries_limit_kind,
-    storageLimitBytes: entitlements.storage_limit_bytes,
+    meterLimits: snapshotMeters(entitlements),
     trialEndsAt: subscription?.trial_ends_at ?? null,
   };
 }
@@ -99,27 +97,26 @@ export function formatEntitlementStatusLabel(view: CompanyEntitlementView): stri
   return `${view.tierDisplayName} · ${status.charAt(0).toUpperCase()}${status.slice(1)}`;
 }
 
-export function formatEntitlementLimitsLabel(view: CompanyEntitlementView): string {
-  const parts: string[] = [
-    `${view.pmSeatLimit} PM`,
-    `${view.workerSeatLimit} workers`,
-  ];
+export function formatEntitlementLimitsLabel(
+  view: CompanyEntitlementView,
+  catalog?: SellablePlanCatalog | null,
+): string {
+  const slugs = Object.keys(view.meterLimits).sort();
+  const parts = slugs
+    .map((slug) => {
+      const value = view.meterLimits[slug];
+      if (value == null && catalog?.metersBySlug[slug] == null) {
+        return null;
+      }
+      return formatMeterLimitValue(
+        slug,
+        value,
+        catalog?.metersBySlug[slug],
+      );
+    })
+    .filter((part): part is string => Boolean(part));
 
-  if (view.projectLimit == null) {
-    parts.push("Unlimited projects");
-  } else {
-    parts.push(`${view.projectLimit} project${view.projectLimit === 1 ? "" : "s"}`);
-  }
-
-  if (view.entriesLimit == null) {
-    parts.push("Unlimited entries");
-  } else if (view.entriesLimitKind === "trial_total") {
-    parts.push(`${view.entriesLimit} entries (trial)`);
-  } else {
-    parts.push(`${view.entriesLimit} entries/mo`);
-  }
-
-  return parts.join(" · ");
+  return parts.length > 0 ? parts.join(" · ") : "Limits unavailable";
 }
 
 export type CheckoutTierAvailability =
@@ -130,33 +127,31 @@ export type CheckoutTierAvailability =
 
 export function overlayCheckoutPlanOnView(
   view: CompanyEntitlementView | null,
-  checkoutPlan: OrgCheckoutPlanTierSlug | null | undefined,
+  checkoutPlan: PlanTierSlug | null | undefined,
+  catalog?: SellablePlanCatalog | null,
 ): CompanyEntitlementView | null {
-  const plan = parseBaseTierSlug(checkoutPlan);
+  const plan = normalizePlanTierSlug(checkoutPlan);
   if (!plan) {
     return view;
   }
 
-  const live = parseBaseTierSlug(view?.tierSlug);
+  const live = normalizePlanTierSlug(view?.tierSlug ?? undefined);
   if (view?.hasStripeSubscription && live === plan) {
     return view;
   }
 
   const displayName =
-    plan === "unlimited" ? "Pro" : "Starter";
+    findBaseTier(catalog, plan)?.displayName ?? plan;
+
   if (!view) {
+    const catalogTier = findBaseTier(catalog, plan);
     return {
       tierSlug: plan,
       tierDisplayName: displayName,
       subscriptionStatus: "trialing",
       billingPhase: "trial",
       hasStripeSubscription: true,
-      pmSeatLimit: 1,
-      workerSeatLimit: 5,
-      projectLimit: 1,
-      entriesLimit: 100,
-      entriesLimitKind: "trial_total",
-      storageLimitBytes: 5368709120,
+      meterLimits: catalogTier?.meters ?? {},
       trialEndsAt: null,
     };
   }
@@ -171,26 +166,36 @@ export function overlayCheckoutPlanOnView(
 
 export function resolveCheckoutTierAvailability(
   view: CompanyEntitlementView | null,
-  target: OrgCheckoutPlanTierSlug,
+  target: PlanTierSlug,
+  catalog?: SellablePlanCatalog | null,
 ): CheckoutTierAvailability {
   if (!view?.hasStripeSubscription || !view.tierSlug || view.tierSlug === "pilot") {
     return "available";
   }
 
-  const current = parseBaseTierSlug(view.tierSlug);
-  if (!current) {
+  const current = normalizePlanTierSlug(view.tierSlug);
+  const normalizedTarget = normalizePlanTierSlug(target);
+  if (!current || !normalizedTarget) {
     return "available";
   }
 
-  if (current === target) {
+  if (current === normalizedTarget) {
     return "current";
   }
 
-  if (BASE_TIER_RANK[target] > BASE_TIER_RANK[current]) {
-    return "upgrade";
+  const currentRank = tierSortRank(catalog, current);
+  const targetRank = tierSortRank(catalog, normalizedTarget);
+
+  if (currentRank != null && targetRank != null) {
+    if (targetRank > currentRank) {
+      return "upgrade";
+    }
+    if (targetRank < currentRank) {
+      return "downgrade_blocked";
+    }
   }
 
-  return "downgrade_blocked";
+  return "available";
 }
 
 export function buildCompanyPlanDialogMessage(

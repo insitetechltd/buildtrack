@@ -1,8 +1,10 @@
-import type { OrgCheckoutPlanTierSlug } from "./orgPlans";
+import type { PlanTierSlug, SellablePlanCatalog } from "./planCatalog";
 import {
+  buildOfferedPlanNamesLabel,
+  formatMeterLimitValue,
+  listBaseTiers,
   resolveAddonPriceLabels,
-  resolveBaseTierDisplay,
-  type SellablePlanCatalog,
+  resolveTierDisplay,
 } from "./planCatalog";
 import {
   resolveCheckoutTierAvailability,
@@ -11,7 +13,8 @@ import {
 } from "./companyEntitlementSummary";
 
 export type CompanyPlanOptionDraft = {
-  id: OrgCheckoutPlanTierSlug;
+  id: PlanTierSlug;
+  planPriceId: string;
   title: string;
   priceLabel: string;
   summary: string;
@@ -20,53 +23,32 @@ export type CompanyPlanOptionDraft = {
   disabled: boolean;
 };
 
-function formatStorageLimit(bytes: number | null): string {
-  if (bytes == null) {
-    return "Unlimited";
-  }
-  const gb = bytes / (1024 * 1024 * 1024);
-  if (gb >= 1) {
-    return `${gb.toFixed(0)} GB`;
-  }
-  return `${Math.round(bytes / (1024 * 1024))} MB`;
-}
-
 export function buildCompanyPlanLimitRows(
   view: CompanyEntitlementView,
+  catalog?: SellablePlanCatalog | null,
 ): Array<{ id: string; label: string; value: string }> {
-  return [
-    { id: "pm", label: "PM seats", value: String(view.pmSeatLimit) },
-    { id: "workers", label: "Worker seats", value: String(view.workerSeatLimit) },
-    {
-      id: "projects",
-      label: "Projects",
-      value: view.projectLimit == null ? "Unlimited" : String(view.projectLimit),
-    },
-    {
-      id: "entries",
-      label: "Entries",
-      value:
-        view.entriesLimit == null
-          ? "Unlimited"
-          : view.entriesLimitKind === "trial_total"
-            ? `${view.entriesLimit} (trial total)`
-            : `${view.entriesLimit} / month`,
-    },
-    {
-      id: "storage",
-      label: "Storage",
-      value: formatStorageLimit(view.storageLimitBytes),
-    },
-  ];
+  const slugs = Object.keys(view.meterLimits).sort((a, b) => {
+    const labelA = catalog?.metersBySlug[a]?.displayName ?? a;
+    const labelB = catalog?.metersBySlug[b]?.displayName ?? b;
+    return labelA.localeCompare(labelB);
+  });
+
+  return slugs.map((slug) => {
+    const definition = catalog?.metersBySlug[slug];
+    return {
+      id: slug,
+      label: definition?.displayName ?? slug.replace(/_/g, " "),
+      value: formatMeterLimitValue(slug, view.meterLimits[slug], definition),
+    };
+  });
 }
 
 function optionCopy(
-  tier: OrgCheckoutPlanTierSlug,
+  tier: PlanCatalogTierRef,
   state: CheckoutTierAvailability,
   catalog: SellablePlanCatalog | null | undefined,
 ): Pick<CompanyPlanOptionDraft, "actionLabel" | "disabled" | "summary"> {
-  const { displayName, capsLine } = resolveBaseTierDisplay(tier, catalog);
-  const proName = resolveBaseTierDisplay("unlimited", catalog).displayName;
+  const { displayName, capsLine } = resolveTierDisplay(tier.slug, catalog);
 
   switch (state) {
     case "current":
@@ -77,12 +59,14 @@ function optionCopy(
         actionLabel: "Contact support to change plan",
         disabled: true,
       };
-    case "upgrade":
+    case "upgrade": {
+      const upgradeTargetName = displayName;
       return {
         summary: capsLine,
-        actionLabel: `Upgrade to ${proName}`,
+        actionLabel: `Upgrade to ${upgradeTargetName}`,
         disabled: false,
       };
+    }
     default:
       return {
         summary: capsLine,
@@ -92,31 +76,30 @@ function optionCopy(
   }
 }
 
+type PlanCatalogTierRef = { slug: string; displayName: string };
+
 export function buildCompanyPlanOptions(
   view: CompanyEntitlementView | null,
   catalog?: SellablePlanCatalog | null,
 ): CompanyPlanOptionDraft[] {
-  const starterState = resolveCheckoutTierAvailability(view, "growth");
-  const proState = resolveCheckoutTierAvailability(view, "unlimited");
-  const starter = resolveBaseTierDisplay("growth", catalog);
-  const pro = resolveBaseTierDisplay("unlimited", catalog);
+  const baseTiers = listBaseTiers(catalog);
+  if (baseTiers.length === 0) {
+    return [];
+  }
 
-  return [
-    {
-      id: "growth",
-      title: starter.displayName,
-      priceLabel: starter.priceLabel,
-      state: starterState,
-      ...optionCopy("growth", starterState, catalog),
-    },
-    {
-      id: "unlimited",
-      title: pro.displayName,
-      priceLabel: pro.priceLabel,
-      state: proState,
-      ...optionCopy("unlimited", proState, catalog),
-    },
-  ];
+  return baseTiers.map((tier) => {
+    const state = resolveCheckoutTierAvailability(view, tier.slug, catalog);
+    const { priceLabel } = resolveTierDisplay(tier.slug, catalog);
+
+    return {
+      id: tier.slug,
+      planPriceId: tier.planPriceId,
+      title: tier.displayName,
+      priceLabel,
+      state,
+      ...optionCopy(tier, state, catalog),
+    };
+  });
 }
 
 export function buildCompanyPlanTierName(view: CompanyEntitlementView): string {
@@ -149,9 +132,20 @@ export function buildCompanyPlanTrialEndsLabel(
 
 export function buildAddonPriceLabels(
   catalog?: SellablePlanCatalog | null,
-): {
-  workerPack: string;
-  pmSeat: string;
-} {
+): Record<string, string> {
   return resolveAddonPriceLabels(catalog);
 }
+
+export function buildPlansSectionSubtitle(
+  catalog?: SellablePlanCatalog | null,
+): string {
+  const names = buildOfferedPlanNamesLabel(catalog);
+  const addonLabels = Object.values(resolveAddonPriceLabels(catalog));
+  const addonLine =
+    addonLabels.length > 0
+      ? ` Add-ons available from ${catalog?.currency.toUpperCase() ?? "catalog"}.`
+      : "";
+  return `Choose ${names} for your company.${addonLine}`;
+}
+
+export { buildOfferedPlanNamesLabel };

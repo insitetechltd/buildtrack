@@ -1,10 +1,12 @@
 import { supabase } from "./supabase";
 
-export type CheckoutPlanTierSlug = "growth" | "unlimited";
+export type CheckoutPlanTierSlug = string;
 
 export interface CreateCheckoutSessionInput {
   companyId: string;
   planTierSlug: CheckoutPlanTierSlug;
+  /** Pins the sellable plan_prices row shown on the card (preferred over slug-only lookup). */
+  planPriceId: string;
 }
 
 export interface CreateCheckoutSessionResult {
@@ -18,13 +20,14 @@ export interface CreateCheckoutSessionResult {
 }
 
 const CHECKOUT_ERROR_LABELS: Record<string, string> = {
-  invalid_payload: "Choose Starter or Pro to continue",
+  invalid_payload: "Choose a plan to continue",
   not_authenticated: "Sign in again, then retry checkout",
   caller_profile_not_found: "Your profile could not be loaded for checkout",
   caller_pending: "Your account is still pending approval",
   company_mismatch: "Checkout company does not match your account",
   not_company_admin: "Only a company admin can start checkout",
   plan_not_found: "That plan is not available right now",
+  plan_price_mismatch: "That plan price is no longer available — refresh and try again",
   plan_lookup_failed: "Could not load plan pricing",
   checkout_url_missing: "Stripe did not return a checkout URL",
   already_subscribed: "Your company is already on that plan",
@@ -87,6 +90,7 @@ export async function createCompanyCheckoutSession(
       body: {
         companyId: input.companyId,
         planTierSlug: input.planTierSlug,
+        planPriceId: input.planPriceId,
       },
     },
   );

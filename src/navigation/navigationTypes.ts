@@ -168,7 +168,7 @@ export type ProfileStackParamList = {
   CompanyPlan:
     | {
         checkoutResult?: "success" | "cancel";
-        checkoutPlan?: "growth" | "unlimited";
+        checkoutPlan?: string;
       }
     | undefined;
   DeveloperSettings: undefined;

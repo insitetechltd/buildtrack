@@ -128,8 +128,10 @@ function PlanOptionCard({
   );
 }
 
+type CompanyPlanScreenProps = CompanyPlanViewAdapterProps;
+
 export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
-  const { onNavigateBack } = props;
+  const { onNavigateBack, forceSelection } = props;
   const t = useTranslation();
   const { output, actions } = useCompanyPlanViewAdapter(props);
 
@@ -151,8 +153,8 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
       <ModernScreenHeader
         title={t.profile.companyPlan}
         titleNode={<BrandHeaderTitle subtitle={t.profile.companyPlan} />}
-        showBackButton
-        onBackPress={onNavigateBack}
+        showBackButton={!forceSelection}
+        onBackPress={forceSelection ? undefined : onNavigateBack}
         className="border-b-0 bg-[#08576E] pb-2"
       />
 
@@ -168,6 +170,21 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
           />
         }
       >
+        {forceSelection ? (
+          <View
+            testID="company-plan-force-selection-banner"
+            className="mx-6 mt-4 rounded-xl border border-[#08576E]/20 bg-white p-4"
+          >
+            <Text className="text-base font-semibold text-gray-900">
+              Choose a company plan to continue
+            </Text>
+            <Text className="mt-2 text-base leading-6 text-gray-600">
+              Subscribe to {output.offeredPlanNames} to use Taskr. You can apply a
+              promotion code at checkout.
+            </Text>
+          </View>
+        ) : null}
+
         {output.statusBanner ? (
           <StatusBanner
             banner={output.statusBanner}
@@ -223,8 +240,7 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
         <View className="mx-6 mt-6 mb-8">
           <Text className="mb-2 text-xl font-semibold text-gray-900">Plans</Text>
           <Text className="mb-4 text-base text-gray-600">
-            30-day trial on new subscriptions. Card on file; billing starts after trial unless
-            you cancel.
+            {output.plansSectionSubtitle}
           </Text>
 
           <View className="gap-4">

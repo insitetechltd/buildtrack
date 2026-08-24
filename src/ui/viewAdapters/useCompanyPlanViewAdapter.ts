@@ -7,8 +7,13 @@ import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
 import { fetchSellablePlanCatalog } from "@/api/fetchSellablePlanCatalog";
 import {
   overlayCheckoutPlanOnView,
-  parseBaseTierSlug,
 } from "@/billing/companyEntitlementSummary";
+import {
+  normalizePlanTierSlug,
+  resolveBillingDisplayCurrency,
+  type SellablePlanCatalog,
+} from "@/billing/planCatalog";
+import { companyHasPaidStripePlan } from "@/billing/companyPlanGate";
 import {
   clearRememberedCheckoutPlan,
   rememberCheckoutPlan,
@@ -20,11 +25,12 @@ import {
   buildCompanyPlanPhaseLabel,
   buildCompanyPlanTierName,
   buildCompanyPlanTrialEndsLabel,
+  buildOfferedPlanNamesLabel,
+  buildPlansSectionSubtitle,
 } from "@/billing/companyPlanOptions";
-import type { SellablePlanCatalog } from "@/billing/planCatalog";
 import {
   displayNameForPlanSlug,
-  type OrgCheckoutPlanTierSlug,
+  type PlanTierSlug,
 } from "@/billing/orgPlans";
 import { SUPPORT_EMAIL } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
@@ -36,16 +42,17 @@ import type {
 import { useTranslation } from "@/utils/useTranslation";
 
 export interface CompanyPlanViewAdapterProps {
-  onNavigateBack: () => void;
+  onNavigateBack?: () => void;
+  forceSelection?: boolean;
   checkoutResult?: "success" | "cancel";
-  checkoutPlan?: OrgCheckoutPlanTierSlug;
+  checkoutPlan?: PlanTierSlug;
 }
 
 export interface CompanyPlanViewAdapterHookResult {
   output: CompanyPlanScreenViewAdapterOutput;
   actions: {
     handleRefresh: () => Promise<void>;
-    handlePlanAction: (planId: OrgCheckoutPlanTierSlug) => Promise<void>;
+    handlePlanAction: (planId: PlanTierSlug) => Promise<void>;
     dismissStatusBanner: () => void;
   };
 }
@@ -56,6 +63,9 @@ export function useCompanyPlanViewAdapter(
   const { checkoutResult, checkoutPlan } = props;
   const t = useTranslation();
   const { user } = useAuthStore();
+  const clearRequiresCompanyPlanSelection = useAuthStore(
+    (state) => state.clearRequiresCompanyPlanSelection,
+  );
   const [entitlement, setEntitlement] =
     useState<Awaited<ReturnType<typeof fetchCompanyEntitlementView>>>(null);
   const [catalog, setCatalog] = useState<SellablePlanCatalog | null>(null);
@@ -63,16 +73,18 @@ export function useCompanyPlanViewAdapter(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isActionInFlight, setIsActionInFlight] = useState(false);
   const [activeActionPlanId, setActiveActionPlanId] =
-    useState<OrgCheckoutPlanTierSlug | null>(null);
+    useState<PlanTierSlug | null>(null);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [statusBanner, setStatusBanner] =
     useState<CompanyPlanStatusBannerModel | null>(null);
   const [optimisticCheckoutPlan, setOptimisticCheckoutPlan] =
-    useState<OrgCheckoutPlanTierSlug | null>(null);
+    useState<PlanTierSlug | null>(null);
 
   const loadEntitlement = useCallback(async () => {
     const [nextCatalog, view] = await Promise.all([
-      fetchSellablePlanCatalog({ currency: "hkd" }),
+      fetchSellablePlanCatalog({
+        currency: resolveBillingDisplayCurrency(),
+      }),
       user?.companyId
         ? fetchCompanyEntitlementView(user.companyId)
         : Promise.resolve(null),
@@ -152,8 +164,11 @@ export function useCompanyPlanViewAdapter(
           setHasLoadedOnce(true);
           setIsLoading(false);
         }
-        const live = parseBaseTierSlug(view?.tierSlug);
+        const live = normalizePlanTierSlug(view?.tierSlug ?? undefined);
         if (view?.hasStripeSubscription && (!chosenPlan || live === chosenPlan)) {
+          if (companyHasPaidStripePlan(view)) {
+            clearRequiresCompanyPlanSelection();
+          }
           return;
         }
         await new Promise((resolve) => setTimeout(resolve, 1500));
@@ -163,7 +178,7 @@ export function useCompanyPlanViewAdapter(
     return () => {
       cancelled = true;
     };
-  }, [catalog, checkoutPlan, checkoutResult, optimisticCheckoutPlan, user?.companyId]);
+  }, [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, optimisticCheckoutPlan, user?.companyId]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -175,7 +190,7 @@ export function useCompanyPlanViewAdapter(
   }, [loadEntitlement]);
 
   const handlePlanAction = useCallback(
-    async (planId: OrgCheckoutPlanTierSlug) => {
+    async (planId: PlanTierSlug) => {
       if (!user?.companyId) {
         Alert.alert(
           t.profile.companyPlan,
@@ -190,6 +205,7 @@ export function useCompanyPlanViewAdapter(
           checkoutResult === "success"
             ? optimisticCheckoutPlan ?? checkoutPlan ?? null
             : null,
+          catalog,
         ),
         catalog,
       ).find((item) => item.id === planId);
@@ -212,10 +228,12 @@ export function useCompanyPlanViewAdapter(
         const result = await createCompanyCheckoutSession({
           companyId: user.companyId,
           planTierSlug: planId,
+          planPriceId: option.planPriceId,
         });
 
         if (result.success && result.upgraded) {
           await loadEntitlement();
+          clearRequiresCompanyPlanSelection();
           setStatusBanner({
             id: "company-plan:upgrade-success",
             tone: "success",
@@ -225,7 +243,7 @@ export function useCompanyPlanViewAdapter(
         }
 
         if (result.success && result.url) {
-          rememberCheckoutPlan(planId);
+          rememberCheckoutPlan(planId, option.planPriceId);
           await Linking.openURL(result.url).catch(() => {
             rememberCheckoutPlan(null);
             setStatusBanner({
@@ -249,12 +267,13 @@ export function useCompanyPlanViewAdapter(
         setActiveActionPlanId(null);
       }
     },
-    [catalog, checkoutPlan, checkoutResult, entitlement, loadEntitlement, optimisticCheckoutPlan, t.profile.companyPlan, user?.companyId],
+    [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, entitlement, loadEntitlement, optimisticCheckoutPlan, t.profile.companyPlan, user?.companyId],
   );
 
   const displayEntitlement = overlayCheckoutPlanOnView(
     entitlement,
     checkoutResult === "success" ? optimisticCheckoutPlan ?? checkoutPlan : null,
+    catalog,
   );
 
   const planOptions: CompanyPlanOptionModel[] = buildCompanyPlanOptions(
@@ -262,6 +281,7 @@ export function useCompanyPlanViewAdapter(
     catalog,
   ).map((option) => ({
     id: option.id,
+    planPriceId: option.planPriceId,
     title: option.title,
     priceLabel: option.priceLabel,
     summary: option.summary,
@@ -292,7 +312,7 @@ export function useCompanyPlanViewAdapter(
           statusLabel: buildCompanyPlanPhaseLabel(displayEntitlement),
           trialEndsLabel: buildCompanyPlanTrialEndsLabel(displayEntitlement),
           phaseLabel: displayEntitlement.billingPhase,
-          limitRows: buildCompanyPlanLimitRows(displayEntitlement),
+          limitRows: buildCompanyPlanLimitRows(displayEntitlement, catalog),
         }
       : null,
     planOptions,
@@ -302,6 +322,9 @@ export function useCompanyPlanViewAdapter(
     isRefreshing,
     isActionInFlight,
     supportEmail: SUPPORT_EMAIL,
+    offeredPlanNames: buildOfferedPlanNamesLabel(catalog),
+    plansSectionSubtitle: buildPlansSectionSubtitle(catalog),
+    displayCurrency: catalog?.currency ?? resolveBillingDisplayCurrency(),
   };
 
   return {

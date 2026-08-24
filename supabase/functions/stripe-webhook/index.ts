@@ -23,14 +23,6 @@ type EntitlementsSnapshot = {
   meters: MeterMap;
 };
 
-const TRIAL_METERS: MeterMap = {
-  pm_seats: 1,
-  worker_seats: 5,
-  projects: 1,
-  entries_trial_total: 100,
-  storage_bytes: 5368709120,
-};
-
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -65,12 +57,13 @@ function billingPhaseFromStatus(status: string): "trial" | "active" | "override"
   return status === "trialing" ? "trial" : "active";
 }
 
-function buildTrialSnapshot(planPriceId: string): EntitlementsSnapshot {
+function buildTrialSnapshotFromPrice(
+  paidSnapshot: EntitlementsSnapshot,
+): EntitlementsSnapshot {
   return {
-    locked_plan_price_id: planPriceId,
+    ...paidSnapshot,
     billing_phase: "trial",
     trial_discount_model: "stripe_native_trial",
-    meters: { ...TRIAL_METERS },
   };
 }
 
@@ -315,7 +308,8 @@ async function handleSubscriptionLifecycle(
     | "webhook" = "webhook";
 
   if (billingPhase === "trial") {
-    snapshot = buildTrialSnapshot(lockedPlanPriceId);
+    const paidSnapshot = await buildPaidSnapshot(admin, lockedPlanPriceId);
+    snapshot = buildTrialSnapshotFromPrice(paidSnapshot);
   } else {
     snapshot = await buildPaidSnapshot(admin, lockedPlanPriceId);
   }

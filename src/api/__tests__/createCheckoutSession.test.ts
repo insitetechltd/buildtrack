@@ -16,7 +16,7 @@ describe("createCompanyCheckoutSession", () => {
     jest.clearAllMocks();
   });
 
-  it("returns checkout url on success", async () => {
+  it("returns checkout url on success with pinned planPriceId", async () => {
     invoke.mockResolvedValue({
       data: {
         url: "https://checkout.stripe.com/c/pay/cs_test_123",
@@ -29,12 +29,14 @@ describe("createCompanyCheckoutSession", () => {
     const result = await createCompanyCheckoutSession({
       companyId: "company-1",
       planTierSlug: "growth",
+      planPriceId: "price-uuid",
     });
 
     expect(invoke).toHaveBeenCalledWith("create-checkout-session", {
       body: {
         companyId: "company-1",
         planTierSlug: "growth",
+        planPriceId: "price-uuid",
       },
     });
     expect(result).toEqual({
@@ -54,6 +56,7 @@ describe("createCompanyCheckoutSession", () => {
     const result = await createCompanyCheckoutSession({
       companyId: "company-1",
       planTierSlug: "unlimited",
+      planPriceId: "price-uuid",
     });
 
     expect(result.success).toBe(false);

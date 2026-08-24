@@ -91,6 +91,9 @@ interface AuthStore extends AuthState {
   isInitialized: boolean;
   session: any | null;
   error: string | null;
+  /** One-shot: navigate to Company Plan after create-company signup. */
+  pendingCompanyPlanAfterSignup: boolean;
+  consumePendingCompanyPlanAfterSignup: () => boolean;
   // Existing methods
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -134,6 +137,15 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
       isInitialized: false,
       error: null,
+      pendingCompanyPlanAfterSignup: false,
+
+      consumePendingCompanyPlanAfterSignup: () => {
+        const pending = get().pendingCompanyPlanAfterSignup;
+        if (pending) {
+          set({ pendingCompanyPlanAfterSignup: false });
+        }
+        return pending;
+      },
 
       login: async (username: string, password: string) => {
         const identifier = (username || "").trim();
@@ -781,6 +793,7 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             isInitialized: true,
             error: null,
+            pendingCompanyPlanAfterSignup: true,
           });
 
           return {

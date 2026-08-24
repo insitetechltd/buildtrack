@@ -165,7 +165,12 @@ export type TasksStackParamList = {
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
-  CompanyPlan: { checkoutResult?: "success" | "cancel" } | undefined;
+  CompanyPlan:
+    | {
+        checkoutResult?: "success" | "cancel";
+        checkoutPlan?: "growth" | "unlimited";
+      }
+    | undefined;
   DeveloperSettings: undefined;
   OwnerConsole: undefined;
   OwnerMonitoring: undefined;

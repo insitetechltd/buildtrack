@@ -16,13 +16,13 @@ describe("orgPlans R7 hook", () => {
     }
   });
 
-  it("summarizes locked R6 company SKUs", () => {
+  it("summarizes locked HK company SKUs", () => {
     const summary = buildOrgPlanSummary();
-    expect(summary).toContain("US$19.99/mo");
-    expect(summary).toContain("US$199.99/mo");
-    expect(summary).toContain("US$4.99/mo");
-    expect(summary).toContain("US$9.99/mo");
-    expect(summary).toContain("Card on file");
+    expect(summary).toContain("HK$160/mo");
+    expect(summary).toContain("HK$400/mo");
+    expect(summary).toContain("HK$20/mo");
+    expect(summary).toContain("HK$100/mo");
+    expect(summary).toContain("promotion code");
   });
 
   it("uses the Stripe env URL when set", () => {

@@ -6,13 +6,15 @@
 
 ## Doing
 
-**RC ship (2026-08-23):** Billing MVP + Company Plan landed locally; **commit + native rebuild + TestFlight submit** pending. TF **190** in review may predate billing — plan **191+** if ASC not yet public.
+**M-BILL-01 HKD (2026-08-24):** Phase 1 mobile + Phase 2 test-mode catalog **applied** — signup → Company Plan redirect; checkout return highlights chosen tier; HK$160/400 display; Stripe HKD prices + `plan_prices`/`plan_price_meters` sync; checkout `currency=hkd` + promo codes (no default trial). **Deploy `create-checkout-session`** after commit.
+
+**RC ship:** Steps 1–4 done (TF **192**). **Step 5 = human ASC** smoke on 192.
 
 **Marketing site:** almost ready — uncommitted separately.
 
 ## Next (definitive — locked master plan)
 
-1. **Ship commercial RC** — TestFlight / store path; marketing site if still gating
+1. **Human ASC (RC step 5)** — wait for **192** Ready to Test; smoke billing + Company Plan; approve TestFlight; **do not tick Public** until release-ready
 2. **M-AUTHZ-02** — multi-company project membership (liaison + project invite + host-absorb seats)
 3. **M-AI-01** / Wave 2 per locked spine after AUTHZ-02
 
@@ -31,6 +33,7 @@
 ## Locked
 
 - **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md` (**LOCKED**)
+- **HK billing (2026-08-24):** **Starter HK$160/mo** + **Pro HK$400/mo**; add-ons **HK$20** worker pack (+5) / **HK$100** PM seat (+1); promo-only free time; HKD first market — `docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`
 - **Spine:** OPS-01 v1 ✓ → **OPS-02 MVP** ✓ → **M-BILL-01 MVP** ✓ → **RC** → **M-AUTHZ-02** → AI-01 → Wave 2
 - **Parallel now:** marketing GHPages, idle P1s only
 - **Frozen:** KPI v2 apply, BILL live apply (live Stripe catalog placeholders), Wave 2 web
@@ -45,4 +48,4 @@
 
 ---
 
-Updated: 2026-08-23
+Updated: 2026-08-24

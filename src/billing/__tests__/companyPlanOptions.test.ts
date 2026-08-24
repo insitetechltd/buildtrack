@@ -30,20 +30,20 @@ describe("companyPlanOptions", () => {
     plan_prices: {
       plan_tiers: {
         slug: "growth",
-        display_name: "Growth",
+        display_name: "Starter",
         kind: "base",
       },
     },
   };
 
-  it("marks Unlimited as current after upgrade", () => {
+  it("marks Pro as current after upgrade", () => {
     const unlimitedSubscription: CompanySubscriptionRow = {
       ...growthSubscription,
       stripe_subscription_id: "sub_unlimited",
       plan_prices: {
         plan_tiers: {
           slug: "unlimited",
-          display_name: "Unlimited",
+          display_name: "Pro",
           kind: "base",
         },
       },
@@ -63,13 +63,13 @@ describe("companyPlanOptions", () => {
     expect(buildCompanyPlanTrialEndsLabel(view!)).toMatch(/2026/);
   });
 
-  it("offers upgrade CTA from Growth to Unlimited", () => {
+  it("offers upgrade CTA from Starter to Pro", () => {
     const view = buildCompanyEntitlementView(trialEntitlements, growthSubscription);
     const unlimited = buildCompanyPlanOptions(view).find(
       (option) => option.id === "unlimited",
     );
 
-    expect(unlimited?.actionLabel).toBe("Upgrade to Unlimited");
+    expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
     expect(unlimited?.disabled).toBe(false);
   });
 });

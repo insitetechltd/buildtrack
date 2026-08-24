@@ -30,6 +30,13 @@ appId: com.buildtrack.app.local
       visible: "Save Password?"
     commands:
       - tapOn: "Not Now"
+- runFlow:
+    when:
+      visible:
+        id: "admin-overview-hero"
+    commands:
+      - tapOn:
+          id: "root-tab__activity"
 - tapOn:
     text: "Not Now"
     optional: true

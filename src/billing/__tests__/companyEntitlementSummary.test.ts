@@ -3,6 +3,7 @@ import {
   buildCompanyPlanDialogMessage,
   formatEntitlementLimitsLabel,
   formatEntitlementStatusLabel,
+  overlayCheckoutPlanOnView,
   resolveCheckoutTierAvailability,
   type CompanyEntitlementRow,
   type CompanySubscriptionRow,
@@ -29,7 +30,7 @@ describe("companyEntitlementSummary", () => {
     expect(formatEntitlementStatusLabel(view!)).toContain("Pilot");
   });
 
-  it("shows the locked Growth plan after checkout", () => {
+  it("shows the locked Starter plan after checkout", () => {
     const subscription: CompanySubscriptionRow = {
       stripe_subscription_id: "sub_123",
       status: "trialing",
@@ -38,18 +39,28 @@ describe("companyEntitlementSummary", () => {
       plan_prices: {
         plan_tiers: {
           slug: "growth",
-          display_name: "Growth",
+          display_name: "Starter",
           kind: "base",
         },
       },
     };
     const view = buildCompanyEntitlementView(pilotEntitlements, subscription);
-    expect(formatEntitlementStatusLabel(view!)).toContain("Growth");
+    expect(formatEntitlementStatusLabel(view!)).toContain("Starter");
     expect(resolveCheckoutTierAvailability(view, "growth")).toBe("current");
     expect(resolveCheckoutTierAvailability(view, "unlimited")).toBe("upgrade");
   });
 
-  it("blocks downgrade and repeat checkout for Unlimited", () => {
+  it("highlights the chosen checkout plan before Stripe webhook writes a subscription", () => {
+    const overlay = overlayCheckoutPlanOnView(
+      buildCompanyEntitlementView(pilotEntitlements, null),
+      "growth",
+    );
+    expect(overlay?.tierDisplayName).toBe("Starter");
+    expect(resolveCheckoutTierAvailability(overlay, "growth")).toBe("current");
+    expect(resolveCheckoutTierAvailability(overlay, "unlimited")).toBe("upgrade");
+  });
+
+  it("blocks downgrade and repeat checkout for Pro", () => {
     const subscription: CompanySubscriptionRow = {
       stripe_subscription_id: "sub_456",
       status: "active",
@@ -58,7 +69,7 @@ describe("companyEntitlementSummary", () => {
       plan_prices: {
         plan_tiers: {
           slug: "unlimited",
-          display_name: "Unlimited",
+          display_name: "Pro",
           kind: "base",
         },
       },
@@ -79,14 +90,14 @@ describe("companyEntitlementSummary", () => {
       plan_prices: {
         plan_tiers: {
           slug: "growth",
-          display_name: "Growth",
+          display_name: "Starter",
           kind: "base",
         },
       },
     };
     const view = buildCompanyEntitlementView(pilotEntitlements, subscription);
     const message = buildCompanyPlanDialogMessage(view, buildOrgPlanSummary());
-    expect(message).toContain("Current: Growth");
+    expect(message).toContain("Current: Starter");
     expect(formatEntitlementLimitsLabel(view!)).toContain("1 PM");
   });
 });

@@ -1,4 +1,4 @@
-// M-BILL-01 BILL-E — Stripe Checkout Session with native trial + company metadata
+// M-BILL-01 BILL-E — Stripe Checkout Session (HKD catalog, promo codes, company metadata)
 // Deploy: scripts/supabase/deploy-create-checkout-session.sh
 // Secrets: STRIPE_SECRET_KEY, STRIPE_CHECKOUT_SUCCESS_URL, STRIPE_CHECKOUT_CANCEL_URL (optional)
 
@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 const BASE_TIER_SLUGS = new Set(["growth", "unlimited"]);
-const DEFAULT_TRIAL_DAYS = 30;
+const DEFAULT_BILLING_CURRENCY = "hkd";
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -31,6 +31,14 @@ function defaultCheckoutUrls() {
   };
 }
 
+function appendCheckoutPlanToSuccessUrl(successUrl: string, plan: string): string {
+  if (/[?&]plan=/.test(successUrl)) {
+    return successUrl;
+  }
+  const joiner = successUrl.includes("?") ? "&" : "?";
+  return `${successUrl}${joiner}plan=${encodeURIComponent(plan)}`;
+}
+
 async function createStripeCheckoutSession(
   stripeSecret: string,
   params: {
@@ -38,7 +46,7 @@ async function createStripeCheckoutSession(
     companyId: string;
     planPriceId: string;
     livemode: boolean;
-    trialDays: number;
+    trialDays: number | null;
     successUrl: string;
     cancelUrl: string;
     customerId?: string | null;
@@ -58,14 +66,17 @@ async function createStripeCheckoutSession(
   body.set("success_url", params.successUrl);
   body.set("cancel_url", params.cancelUrl);
   body.set("client_reference_id", params.companyId);
-  body.set(
-    "subscription_data[trial_period_days]",
-    String(
-      Number.isFinite(params.trialDays) && params.trialDays > 0
-        ? params.trialDays
-        : DEFAULT_TRIAL_DAYS,
-    ),
-  );
+  body.set("allow_promotion_codes", "true");
+  if (
+    params.trialDays != null &&
+    Number.isFinite(params.trialDays) &&
+    params.trialDays > 0
+  ) {
+    body.set(
+      "subscription_data[trial_period_days]",
+      String(params.trialDays),
+    );
+  }
   for (const [key, value] of Object.entries(metadata)) {
     body.set(`metadata[${key}]`, value);
     body.set(`subscription_data[metadata][${key}]`, value);
@@ -299,10 +310,14 @@ Deno.serve(async (req) => {
     }
 
     const livemode = stripeLivemodeFromSecret(stripeSecret);
-    const trialDays = Number.parseInt(
-      Deno.env.get("STRIPE_TRIAL_PERIOD_DAYS") ?? String(DEFAULT_TRIAL_DAYS),
-      10,
-    );
+    const billingCurrency = (
+      Deno.env.get("BILLING_CURRENCY") ?? DEFAULT_BILLING_CURRENCY
+    ).toLowerCase();
+    const trialDaysRaw = Deno.env.get("STRIPE_TRIAL_PERIOD_DAYS");
+    const trialDays =
+      trialDaysRaw == null || trialDaysRaw === ""
+        ? null
+        : Number.parseInt(trialDaysRaw, 10);
 
     const { data: tier, error: tierError } = await adminClient
       .from("plan_tiers")
@@ -323,6 +338,7 @@ Deno.serve(async (req) => {
       .select("id, stripe_price_id")
       .eq("plan_tier_id", tier.id)
       .eq("livemode", livemode)
+      .eq("currency", billingCurrency)
       .eq("is_sellable", true)
       .order("effective_from", { ascending: false })
       .limit(1)
@@ -336,13 +352,15 @@ Deno.serve(async (req) => {
     if (!planPrice?.id || !planPrice.stripe_price_id) {
       return jsonResponse({
         error: "plan_not_found",
-        message: `No sellable ${planTierSlug} price for livemode=${livemode}`,
+        message: `No sellable ${planTierSlug} price for livemode=${livemode} currency=${billingCurrency}`,
       }, 404);
     }
 
     const defaults = defaultCheckoutUrls();
-    const successUrl = Deno.env.get("STRIPE_CHECKOUT_SUCCESS_URL") ??
-      defaults.success;
+    const successUrl = appendCheckoutPlanToSuccessUrl(
+      Deno.env.get("STRIPE_CHECKOUT_SUCCESS_URL") ?? defaults.success,
+      planTierSlug,
+    );
     const cancelUrl = Deno.env.get("STRIPE_CHECKOUT_CANCEL_URL") ??
       defaults.cancel;
 

@@ -1,13 +1,13 @@
 import type { OrgCheckoutPlanTierSlug } from "./orgPlans";
 import {
-  ORG_ADDON_PM_SEAT_USD,
-  ORG_ADDON_WORKER_PACK_USD,
-  ORG_PLAN_GROWTH_USD,
-  ORG_PLAN_UNLIMITED_USD,
+  ORG_ADDON_PM_SEAT_HKD,
+  ORG_ADDON_WORKER_PACK_HKD,
+  ORG_PLAN_PRO_HKD,
+  ORG_PLAN_STARTER_HKD,
+  displayNameForPlanSlug,
+  formatHkdMonthlyPrice,
 } from "./orgPlans";
 import {
-  formatEntitlementLimitsLabel,
-  formatEntitlementStatusLabel,
   resolveCheckoutTierAvailability,
   type CheckoutTierAvailability,
   type CompanyEntitlementView,
@@ -63,76 +63,70 @@ export function buildCompanyPlanLimitRows(
   ];
 }
 
+function tierCapsLine(slug: OrgCheckoutPlanTierSlug): string {
+  if (slug === "growth") {
+    return "3 projects · 300 entries/mo · 10 GB · 1 PM + 5 workers";
+  }
+  return "12 projects · 800 entries/mo · 30 GB · 2 PM + 10 workers";
+}
+
 function optionCopy(
   tier: OrgCheckoutPlanTierSlug,
   state: CheckoutTierAvailability,
 ): Pick<CompanyPlanOptionDraft, "actionLabel" | "disabled" | "summary"> {
-  if (tier === "growth") {
-    const summary = `5 projects, up to 200 entries/month, 1 PM + 5 workers included. Add-ons: +5 workers US$${ORG_ADDON_WORKER_PACK_USD}/mo, +1 PM US$${ORG_ADDON_PM_SEAT_USD}/mo.`;
-    switch (state) {
-      case "current":
-        return { summary, actionLabel: "Current plan", disabled: true };
-      case "downgrade_blocked":
-        return {
-          summary,
-          actionLabel: "Contact support to downgrade",
-          disabled: true,
-        };
-      case "upgrade":
-        return { summary, actionLabel: "Subscribe to Growth", disabled: false };
-      default:
-        return { summary, actionLabel: "Subscribe to Growth", disabled: false };
-    }
-  }
+  const name = displayNameForPlanSlug(tier);
+  const summary = tierCapsLine(tier);
 
-  const summary =
-    "Unlimited projects and entries, max 5 GB storage, 1 PM + 5 workers included.";
   switch (state) {
     case "current":
       return { summary, actionLabel: "Current plan", disabled: true };
-    case "upgrade":
-      return { summary, actionLabel: "Upgrade to Unlimited", disabled: false };
     case "downgrade_blocked":
       return {
         summary,
-        actionLabel: "Contact support to downgrade",
+        actionLabel: "Contact support to change plan",
         disabled: true,
       };
+    case "upgrade":
+      return {
+        summary,
+        actionLabel: `Upgrade to ${displayNameForPlanSlug("unlimited")}`,
+        disabled: false,
+      };
     default:
-      return { summary, actionLabel: "Subscribe to Unlimited", disabled: false };
+      return {
+        summary,
+        actionLabel: `Subscribe to ${name}`,
+        disabled: false,
+      };
   }
 }
 
 export function buildCompanyPlanOptions(
   view: CompanyEntitlementView | null,
 ): CompanyPlanOptionDraft[] {
-  const growthState = resolveCheckoutTierAvailability(view, "growth");
-  const unlimitedState = resolveCheckoutTierAvailability(view, "unlimited");
+  const starterState = resolveCheckoutTierAvailability(view, "growth");
+  const proState = resolveCheckoutTierAvailability(view, "unlimited");
 
   return [
     {
       id: "growth",
-      title: "Growth",
-      priceLabel: `US$${ORG_PLAN_GROWTH_USD}/mo`,
-      state: growthState,
-      ...optionCopy("growth", growthState),
+      title: displayNameForPlanSlug("growth"),
+      priceLabel: formatHkdMonthlyPrice(ORG_PLAN_STARTER_HKD),
+      state: starterState,
+      ...optionCopy("growth", starterState),
     },
     {
       id: "unlimited",
-      title: "Unlimited",
-      priceLabel: `US$${ORG_PLAN_UNLIMITED_USD}/mo`,
-      state: unlimitedState,
-      ...optionCopy("unlimited", unlimitedState),
+      title: displayNameForPlanSlug("unlimited"),
+      priceLabel: formatHkdMonthlyPrice(ORG_PLAN_PRO_HKD),
+      state: proState,
+      ...optionCopy("unlimited", proState),
     },
   ];
 }
 
 export function buildCompanyPlanTierName(view: CompanyEntitlementView): string {
   return view.tierDisplayName;
-}
-
-export function buildCompanyPlanStatusLabel(view: CompanyEntitlementView): string {
-  return formatEntitlementStatusLabel(view);
 }
 
 export function buildCompanyPlanPhaseLabel(view: CompanyEntitlementView): string {
@@ -159,6 +153,12 @@ export function buildCompanyPlanTrialEndsLabel(
   });
 }
 
-export function buildCompanyPlanLimitsSummary(view: CompanyEntitlementView): string {
-  return formatEntitlementLimitsLabel(view);
+export function buildAddonPriceLabels(): {
+  workerPack: string;
+  pmSeat: string;
+} {
+  return {
+    workerPack: formatHkdMonthlyPrice(ORG_ADDON_WORKER_PACK_HKD),
+    pmSeat: formatHkdMonthlyPrice(ORG_ADDON_PM_SEAT_HKD),
+  };
 }

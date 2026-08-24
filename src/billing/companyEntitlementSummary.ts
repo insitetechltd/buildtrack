@@ -128,6 +128,47 @@ export type CheckoutTierAvailability =
   | "upgrade"
   | "downgrade_blocked";
 
+export function overlayCheckoutPlanOnView(
+  view: CompanyEntitlementView | null,
+  checkoutPlan: OrgCheckoutPlanTierSlug | null | undefined,
+): CompanyEntitlementView | null {
+  const plan = parseBaseTierSlug(checkoutPlan);
+  if (!plan) {
+    return view;
+  }
+
+  const live = parseBaseTierSlug(view?.tierSlug);
+  if (view?.hasStripeSubscription && live === plan) {
+    return view;
+  }
+
+  const displayName =
+    plan === "unlimited" ? "Pro" : "Starter";
+  if (!view) {
+    return {
+      tierSlug: plan,
+      tierDisplayName: displayName,
+      subscriptionStatus: "trialing",
+      billingPhase: "trial",
+      hasStripeSubscription: true,
+      pmSeatLimit: 1,
+      workerSeatLimit: 5,
+      projectLimit: 1,
+      entriesLimit: 100,
+      entriesLimitKind: "trial_total",
+      storageLimitBytes: 5368709120,
+      trialEndsAt: null,
+    };
+  }
+
+  return {
+    ...view,
+    tierSlug: plan,
+    tierDisplayName: displayName,
+    hasStripeSubscription: true,
+  };
+}
+
 export function resolveCheckoutTierAvailability(
   view: CompanyEntitlementView | null,
   target: OrgCheckoutPlanTierSlug,

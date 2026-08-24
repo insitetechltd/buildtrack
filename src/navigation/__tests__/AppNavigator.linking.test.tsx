@@ -5,6 +5,10 @@ let mockNavigationContainerProps: Record<string, unknown> | null = null;
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
+  createNavigationContainerRef: () => ({
+    isReady: () => false,
+    navigate: jest.fn(),
+  }),
   NavigationContainer: (props: Record<string, unknown>) => {
     mockNavigationContainerProps = props;
     return props.children;
@@ -138,6 +142,20 @@ describe("AppNavigator linking", () => {
     expect(state?.routes?.[0]?.state?.routes?.[0]?.name).toBe("CompanyPlan");
     expect(state?.routes?.[0]?.state?.routes?.[0]?.params).toEqual({
       checkoutResult: "success",
+    });
+  });
+
+  it("passes the chosen plan from checkout success deep links", () => {
+    const state = appLinking.getStateFromPath?.(
+      "profile?checkout=success&plan=growth",
+      {
+        screens: appLinking.config?.screens,
+      },
+    );
+
+    expect(state?.routes?.[0]?.state?.routes?.[0]?.params).toEqual({
+      checkoutResult: "success",
+      checkoutPlan: "growth",
     });
   });
 });

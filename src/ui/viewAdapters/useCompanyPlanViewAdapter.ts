@@ -5,13 +5,25 @@ import { useFocusEffect } from "@react-navigation/native";
 import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
 import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
 import {
+  overlayCheckoutPlanOnView,
+  parseBaseTierSlug,
+} from "@/billing/companyEntitlementSummary";
+import {
+  clearRememberedCheckoutPlan,
+  rememberCheckoutPlan,
+  resolveCheckoutReturnPlan,
+} from "@/billing/checkoutReturnPlan";
+import {
   buildCompanyPlanLimitRows,
   buildCompanyPlanOptions,
   buildCompanyPlanPhaseLabel,
   buildCompanyPlanTierName,
   buildCompanyPlanTrialEndsLabel,
 } from "@/billing/companyPlanOptions";
-import type { OrgCheckoutPlanTierSlug } from "@/billing/orgPlans";
+import {
+  displayNameForPlanSlug,
+  type OrgCheckoutPlanTierSlug,
+} from "@/billing/orgPlans";
 import { SUPPORT_EMAIL } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
 import type {
@@ -24,6 +36,7 @@ import { useTranslation } from "@/utils/useTranslation";
 export interface CompanyPlanViewAdapterProps {
   onNavigateBack: () => void;
   checkoutResult?: "success" | "cancel";
+  checkoutPlan?: OrgCheckoutPlanTierSlug;
 }
 
 export interface CompanyPlanViewAdapterHookResult {
@@ -38,7 +51,7 @@ export interface CompanyPlanViewAdapterHookResult {
 export function useCompanyPlanViewAdapter(
   props: CompanyPlanViewAdapterProps,
 ): CompanyPlanViewAdapterHookResult {
-  const { checkoutResult } = props;
+  const { checkoutResult, checkoutPlan } = props;
   const t = useTranslation();
   const { user } = useAuthStore();
   const [entitlement, setEntitlement] =
@@ -51,6 +64,8 @@ export function useCompanyPlanViewAdapter(
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [statusBanner, setStatusBanner] =
     useState<CompanyPlanStatusBannerModel | null>(null);
+  const [optimisticCheckoutPlan, setOptimisticCheckoutPlan] =
+    useState<OrgCheckoutPlanTierSlug | null>(null);
 
   const loadEntitlement = useCallback(async () => {
     if (!user?.companyId) {
@@ -87,23 +102,65 @@ export function useCompanyPlanViewAdapter(
       return;
     }
 
-    if (checkoutResult === "success") {
+    if (checkoutResult !== "success") {
       setStatusBanner({
-        id: "company-plan:checkout-success",
-        tone: "success",
-        message:
-          "Checkout complete. Your company subscription will appear here once Stripe confirms payment.",
+        id: "company-plan:checkout-cancel",
+        tone: "info",
+        message: "Checkout was canceled. No changes were made to your subscription.",
       });
-      void loadEntitlement();
       return;
     }
 
-    setStatusBanner({
-      id: "company-plan:checkout-cancel",
-      tone: "info",
-      message: "Checkout was canceled. No changes were made to your subscription.",
-    });
-  }, [checkoutResult, loadEntitlement]);
+    let cancelled = false;
+    void (async () => {
+      const chosenPlan =
+        (await resolveCheckoutReturnPlan(checkoutPlan)) ?? optimisticCheckoutPlan;
+      if (cancelled) {
+        return;
+      }
+      if (chosenPlan) {
+        setOptimisticCheckoutPlan(chosenPlan);
+        clearRememberedCheckoutPlan();
+      }
+
+      const planLabel = chosenPlan
+        ? displayNameForPlanSlug(chosenPlan)
+        : null;
+      setStatusBanner({
+        id: "company-plan:checkout-success",
+        tone: "success",
+        message: chosenPlan
+          ? `Checkout complete. You're on ${planLabel}. Plan limits stay in place until your billing phase updates.`
+          : "Checkout complete. Your company subscription will appear here once Stripe confirms payment.",
+      });
+
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        if (cancelled) {
+          return;
+        }
+        const view = user?.companyId
+          ? await fetchCompanyEntitlementView(user.companyId)
+          : null;
+        if (cancelled) {
+          return;
+        }
+        if (view) {
+          setEntitlement(view);
+          setHasLoadedOnce(true);
+          setIsLoading(false);
+        }
+        const live = parseBaseTierSlug(view?.tierSlug);
+        if (view?.hasStripeSubscription && (!chosenPlan || live === chosenPlan)) {
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutPlan, checkoutResult, user?.companyId]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -124,9 +181,14 @@ export function useCompanyPlanViewAdapter(
         return;
       }
 
-      const option = buildCompanyPlanOptions(entitlement).find(
-        (item) => item.id === planId,
-      );
+      const option = buildCompanyPlanOptions(
+        overlayCheckoutPlanOnView(
+          entitlement,
+          checkoutResult === "success"
+            ? optimisticCheckoutPlan ?? checkoutPlan ?? null
+            : null,
+        ),
+      ).find((item) => item.id === planId);
       if (!option || option.disabled) {
         return;
       }
@@ -153,13 +215,15 @@ export function useCompanyPlanViewAdapter(
           setStatusBanner({
             id: "company-plan:upgrade-success",
             tone: "success",
-            message: `Upgraded to ${planId === "unlimited" ? "Unlimited" : "Growth"}. Trial limits stay in place until your trial ends.`,
+            message: `Upgraded to ${displayNameForPlanSlug(planId)}. Promo or paid period limits stay in place until your billing phase changes.`,
           });
           return;
         }
 
         if (result.success && result.url) {
+          rememberCheckoutPlan(planId);
           await Linking.openURL(result.url).catch(() => {
+            rememberCheckoutPlan(null);
             setStatusBanner({
               id: "company-plan:checkout-open-failed",
               tone: "error",
@@ -181,11 +245,16 @@ export function useCompanyPlanViewAdapter(
         setActiveActionPlanId(null);
       }
     },
-    [entitlement, loadEntitlement, t.profile.companyPlan, user?.companyId],
+    [checkoutPlan, checkoutResult, entitlement, loadEntitlement, optimisticCheckoutPlan, t.profile.companyPlan, user?.companyId],
+  );
+
+  const displayEntitlement = overlayCheckoutPlanOnView(
+    entitlement,
+    checkoutResult === "success" ? optimisticCheckoutPlan ?? checkoutPlan : null,
   );
 
   const planOptions: CompanyPlanOptionModel[] = buildCompanyPlanOptions(
-    entitlement,
+    displayEntitlement,
   ).map((option) => ({
     id: option.id,
     title: option.title,
@@ -209,16 +278,16 @@ export function useCompanyPlanViewAdapter(
       isBackgroundRefreshing: isRefreshing,
       hasCachedFrame: hasLoadedOnce,
       shouldRenderSkeletonShell: false,
-      shouldRenderEmptyState: hasLoadedOnce && !entitlement,
+      shouldRenderEmptyState: hasLoadedOnce && !displayEntitlement,
       freshnessLabel: isRefreshing ? "Refreshing" : isLoading && !hasLoadedOnce ? "Loading" : "Ready",
     },
-    currentPlan: entitlement
+    currentPlan: displayEntitlement
       ? {
-          tierName: buildCompanyPlanTierName(entitlement),
-          statusLabel: buildCompanyPlanPhaseLabel(entitlement),
-          trialEndsLabel: buildCompanyPlanTrialEndsLabel(entitlement),
-          phaseLabel: entitlement.billingPhase,
-          limitRows: buildCompanyPlanLimitRows(entitlement),
+          tierName: buildCompanyPlanTierName(displayEntitlement),
+          statusLabel: buildCompanyPlanPhaseLabel(displayEntitlement),
+          trialEndsLabel: buildCompanyPlanTrialEndsLabel(displayEntitlement),
+          phaseLabel: displayEntitlement.billingPhase,
+          limitRows: buildCompanyPlanLimitRows(displayEntitlement),
         }
       : null,
     planOptions,

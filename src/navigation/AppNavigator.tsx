@@ -86,6 +86,7 @@ import {
   navigateToRootTabScreen,
   type StackBackNavigation,
 } from "./rootNavigationHelpers";
+import { rootNavigationRef } from "./rootNavigationRef";
 import {
   ROOT_TAB_BAR_STYLE,
   buildRootTabBarStyleForRoute,
@@ -277,6 +278,11 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
     if (profilePath === "profile") {
       const checkout = new URLSearchParams(profileQuery).get("checkout");
       if (checkout === "success" || checkout === "cancel") {
+        const planParam = new URLSearchParams(profileQuery).get("plan");
+        const checkoutPlan =
+          planParam === "growth" || planParam === "unlimited"
+            ? planParam
+            : undefined;
         return {
           routes: [
             {
@@ -285,7 +291,12 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
                 routes: [
                   {
                     name: "CompanyPlan",
-                    params: { checkoutResult: checkout },
+                    params: {
+                      checkoutResult: checkout,
+                      ...(checkout === "success" && checkoutPlan
+                        ? { checkoutPlan }
+                        : {}),
+                    },
                   },
                 ],
               },
@@ -1424,6 +1435,7 @@ function CompanyPlanScreenWrapper({
     <CompanyPlanScreen
       onNavigateBack={() => navigation.goBack()}
       checkoutResult={route.params?.checkoutResult}
+      checkoutPlan={route.params?.checkoutPlan}
     />
   );
 }
@@ -1870,6 +1882,46 @@ function AppRootStack() {
   );
 }
 
+function PostSignupCompanyPlanRedirect() {
+  const pendingCompanyPlanAfterSignup = useAuthStore(
+    (state) => state.pendingCompanyPlanAfterSignup,
+  );
+  const consumePendingCompanyPlanAfterSignup = useAuthStore(
+    (state) => state.consumePendingCompanyPlanAfterSignup,
+  );
+
+  useEffect(() => {
+    if (!pendingCompanyPlanAfterSignup) {
+      return;
+    }
+
+    const navigateToCompanyPlan = () => {
+      if (!rootNavigationRef.isReady()) {
+        return false;
+      }
+      if (!consumePendingCompanyPlanAfterSignup()) {
+        return true;
+      }
+      rootNavigationRef.navigate("Profile", { screen: "CompanyPlan" });
+      return true;
+    };
+
+    if (navigateToCompanyPlan()) {
+      return;
+    }
+
+    const frameId = requestAnimationFrame(() => {
+      navigateToCompanyPlan();
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [
+    consumePendingCompanyPlanAfterSignup,
+    pendingCompanyPlanAfterSignup,
+  ]);
+
+  return null;
+}
+
 // Main Tab Navigator
 function MainTabs() {
   const { user } = useAuthStore();
@@ -2137,7 +2189,8 @@ export default function AppNavigator() {
       <NetworkSyncManager />
       <RealtimeSyncManager />
       <WorkspaceBootstrapGate>
-        <NavigationContainer linking={appLinking}>
+        <NavigationContainer ref={rootNavigationRef} linking={appLinking}>
+          <PostSignupCompanyPlanRedirect />
           <DataRefreshManager />
           <AppRootStack />
         </NavigationContainer>

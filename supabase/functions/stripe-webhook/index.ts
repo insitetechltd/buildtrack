@@ -266,23 +266,122 @@ async function handleSubscriptionLifecycle(
     return;
   }
 
-  const stripePriceId = primaryStripePriceId(subscription);
-  if (!stripePriceId) {
-    throw new Error(`subscription ${subscription.id} has no primary price`);
-  }
+  // Merge base + add-on meters from all subscription items.
+  const items = subscription.items?.data ?? [];
+  const stripePriceIds: string[] = items
+    .map((it: any) => {
+      const price = it?.price as any;
+      if (!price) return null;
+      if (typeof price === "string") return price;
+      if (typeof price === "object" && price && typeof price.id === "string") {
+        return price.id;
+      }
+      return null;
+    })
+    .filter((v): v is string => Boolean(v));
 
-  const lockedPlanPriceId = await resolvePlanPriceId(
-    admin,
-    stripePriceId,
-    subscription.livemode,
-    metadata.plan_price_id as string | undefined,
-  );
-
-  if (!lockedPlanPriceId) {
+  if (stripePriceIds.length === 0) {
     throw new Error(
-      `no plan_prices row for stripe price ${stripePriceId} livemode=${subscription.livemode}`,
+      `subscription ${subscription.id} has no Stripe price ids`,
     );
   }
+
+  const { data: planPriceRows, error: planPriceRowsError } = await admin
+    .from("plan_prices")
+    .select("id, stripe_price_id, plan_tiers:plan_tier_id ( kind )")
+    .in("stripe_price_id", stripePriceIds)
+    .eq("livemode", subscription.livemode);
+
+  if (planPriceRowsError || !planPriceRows || planPriceRows.length === 0) {
+    throw new Error(
+      `no plan_prices rows for subscription items (livemode=${subscription.livemode})`,
+    );
+  }
+
+  const planPriceByStripe: Record<
+    string,
+    { planPriceId: string; kind: string }
+  > = {};
+  for (const row of planPriceRows as Array<{
+    id: string;
+    stripe_price_id: string;
+    plan_tiers?: { kind?: string } | null;
+  }>) {
+    const kind = row.plan_tiers?.kind;
+    if (!row.stripe_price_id || !row.id || !kind) continue;
+    planPriceByStripe[row.stripe_price_id] = {
+      planPriceId: row.id,
+      kind: kind as string,
+    };
+  }
+
+  const baseLockedPlanPriceId = Object.values(planPriceByStripe).find(
+    (p) => p.kind === "base",
+  )?.planPriceId;
+
+  if (!baseLockedPlanPriceId) {
+    throw new Error(
+      `subscription ${subscription.id} has no base plan_prices row`,
+    );
+  }
+
+  const billingPhase = billingPhaseFromStatus(mapStripeStatus(subscription.status));
+
+  // Helper: build meters for a given plan_price_id without enforcing base-vs-addon.
+  async function buildMetersSnapshotFromPrice(
+    planPriceId: string,
+  ): Promise<MeterMap> {
+    const data = await admin.rpc("build_entitlements_snapshot_from_price", {
+      p_plan_price_id: planPriceId,
+      // Use a non-(trial|active) billing phase so addons don't fail validation.
+      p_billing_phase: "migration",
+    });
+    return (data as { meters?: MeterMap }).meters ?? {};
+  }
+
+  const mergedMeters: MeterMap = {};
+  for (const it of items as any[]) {
+    const price = it?.price as any;
+    const stripePriceId =
+      typeof price === "string"
+        ? price
+        : typeof price?.id === "string"
+          ? price.id
+          : null;
+    if (!stripePriceId) continue;
+    const plan = planPriceByStripe[stripePriceId];
+    if (!plan) continue;
+
+    const quantity =
+      typeof it?.quantity === "number" && Number.isFinite(it.quantity)
+        ? Math.max(0, Math.floor(it.quantity))
+        : 1;
+
+    const metersForItem = await buildMetersSnapshotFromPrice(plan.planPriceId);
+    for (const [meterSlug, meterValue] of Object.entries(metersForItem)) {
+      if (meterValue == null) {
+        mergedMeters[meterSlug] = null;
+        continue;
+      }
+
+      const current = mergedMeters[meterSlug];
+      if (typeof current === "undefined") {
+        mergedMeters[meterSlug] = Number(meterValue) * quantity;
+        continue;
+      }
+
+      // "null" means unlimited. Unlimited + anything stays unlimited.
+      if (current === null) {
+        continue;
+      }
+
+      if (typeof current === "number") {
+        mergedMeters[meterSlug] = current + Number(meterValue) * quantity;
+      }
+    }
+  }
+
+  const lockedPlanPriceId = baseLockedPlanPriceId;
 
   const { data: priorSub } = await admin
     .from("company_subscriptions")
@@ -292,7 +391,6 @@ async function handleSubscriptionLifecycle(
 
   const priorStatus = priorSub?.status as string | undefined;
   const mappedStatus = mapStripeStatus(subscription.status);
-  const billingPhase = billingPhaseFromStatus(mappedStatus);
 
   await syncSubscriptionRecord(
     admin,
@@ -307,12 +405,12 @@ async function handleSubscriptionLifecycle(
     | "trial_end"
     | "webhook" = "webhook";
 
-  if (billingPhase === "trial") {
-    const paidSnapshot = await buildPaidSnapshot(admin, lockedPlanPriceId);
-    snapshot = buildTrialSnapshotFromPrice(paidSnapshot);
-  } else {
-    snapshot = await buildPaidSnapshot(admin, lockedPlanPriceId);
-  }
+  snapshot = {
+    locked_plan_price_id: lockedPlanPriceId,
+    billing_phase: billingPhase,
+    trial_discount_model: billingPhase === "trial" ? "stripe_native_trial" : undefined,
+    meters: mergedMeters,
+  } as EntitlementsSnapshot;
 
   const isTrialEnd =
     priorStatus === "trialing" && mappedStatus === "active";
@@ -321,7 +419,6 @@ async function handleSubscriptionLifecycle(
 
   if (isTrialEnd) {
     revisionSource = "trial_end";
-    snapshot = await buildPaidSnapshot(admin, lockedPlanPriceId);
   } else if (isSignup) {
     revisionSource = "signup";
   }

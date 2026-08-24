@@ -148,4 +148,10 @@ describe("companyEntitlementSummary", () => {
     expect(message).toContain("Current: Starter");
     expect(formatEntitlementLimitsLabel(view!, catalog)).toContain("1 pm seats");
   });
+
+  it("formats limits without a loaded catalog", () => {
+    const view = buildCompanyEntitlementView(pilotEntitlements, null);
+    expect(() => formatEntitlementLimitsLabel(view!, null)).not.toThrow();
+    expect(formatEntitlementLimitsLabel(view!, null).length).toBeGreaterThan(0);
+  });
 });

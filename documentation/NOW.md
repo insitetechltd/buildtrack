@@ -6,15 +6,22 @@
 
 ## Doing
 
-**TF 194:** local iOS build + EAS submit in progress. Includes catalog-driven Company Plan (N tiers, meters, currency) + `planPriceId` checkout pin + hard signup plan gate.
+**RC gate `M-AUTHZ-RC`:** host-company user/project/assignment contract — **this commercial RC**, not AUTHZ-02. App-side landed (Jest 38/38); headed Add Member / Assign / Edit Lead PM smoke remaining. SoT: `docs/superpowers/plans/2026-08-24-company-user-project-model.md`.
 
-**Edge:** billing functions **deployed 2026-08-24** (`create-checkout-session`, `stripe-webhook`, `invite-user`/`invite-open`) + HKD catalog sync OK.
+**TF 195 crash (fixed, unreleased):** returning from Stripe checkout aborted the app (`RCTFatal`). Cause: Company Plan rendered limit rows while `catalog` was still null (`catalog?.metersBySlug[slug]`). Needs next TF after this commit.
+
+**Company Plan add-ons:** PM seat + worker pack steppers shipped app-side + `update-company-addons` Edge; webhook now merges base+addon meters. Edge deployed 2026-08-24.
+
+**TF 194/195:** catalog-driven Company Plan already on TestFlight. Add-ons + crash fix are **not** in a TF build yet.
+
+**Edge:** billing functions **deployed 2026-08-24** (`create-checkout-session`, `stripe-webhook`, `invite-user`/`invite-open`, `update-company-addons`) + HKD catalog sync OK.
 
 ## Next (definitive — locked master plan)
 
-1. Wait ASC processing → install **TF 194**; smoke signup → locked Company Plan until Subscribe; HKD prices from catalog
-2. **M-AUTHZ-02** after billing smoke
-3. **M-AI-01** — **planning gate first** (`docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md`); then Wave 2 per spine
+1. **M-AUTHZ-RC close:** headed smoke of the three admin assignment surfaces
+2. Next TF: add-on steppers + Company Plan null-catalog crash fix; smoke checkout return + add-on +/−
+3. **M-AUTHZ-02** after RC (liaison / project invite / host-absorb)
+4. **M-AI-01** — **planning gate first** (`docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md`); then Wave 2 per spine
 
 **Parked for now:** **M-BILL-F**; **M-BILL-01G** display-only FX (next billing slice); **M-AI-01 build** (options/economics doc above — no code until checklist GO).
 
@@ -32,7 +39,7 @@
 
 - **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md` (**LOCKED**)
 - **HK billing:** charge HKD; dynamic catalog; **no grandfathering** (all test); display FX = **M-BILL-01G tabled** — `docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`
-- **Spine:** OPS-01 v1 ✓ → OPS-02 ✓ → **M-BILL-01** → RC → **M-AUTHZ-02** → AI-01 → Wave 2
+- **Spine:** OPS-01 v1 ✓ → OPS-02 ✓ → **M-BILL-01** + **M-AUTHZ-RC (this RC)** → **M-AUTHZ-02** → AI-01 → Wave 2
 - **Frozen:** KPI v2 apply, Wave 2 web, **new owner modules in Taskr** (→ **M-OPS-03**)
 - No service-role in mobile; no company switch
 

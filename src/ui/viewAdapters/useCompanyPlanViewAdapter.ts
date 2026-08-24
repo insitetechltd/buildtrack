@@ -5,12 +5,16 @@ import { useFocusEffect } from "@react-navigation/native";
 import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
 import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
 import { fetchSellablePlanCatalog } from "@/api/fetchSellablePlanCatalog";
+import { updateCompanyAddons } from "@/api/updateCompanyAddons";
 import {
   overlayCheckoutPlanOnView,
 } from "@/billing/companyEntitlementSummary";
 import {
   normalizePlanTierSlug,
   resolveBillingDisplayCurrency,
+  findAddonTier,
+  findBaseTier,
+  resolveAddonPriceLabels,
   type SellablePlanCatalog,
 } from "@/billing/planCatalog";
 import { companyHasPaidStripePlan } from "@/billing/companyPlanGate";
@@ -53,6 +57,10 @@ export interface CompanyPlanViewAdapterHookResult {
   actions: {
     handleRefresh: () => Promise<void>;
     handlePlanAction: (planId: PlanTierSlug) => Promise<void>;
+    handleUpdateAddons: (
+      nextWorkerPackQty: number,
+      nextPmSeatQty: number,
+    ) => Promise<void>;
     dismissStatusBanner: () => void;
   };
 }
@@ -81,17 +89,22 @@ export function useCompanyPlanViewAdapter(
     useState<PlanTierSlug | null>(null);
 
   const loadEntitlement = useCallback(async () => {
-    const [nextCatalog, view] = await Promise.all([
-      fetchSellablePlanCatalog({
-        currency: resolveBillingDisplayCurrency(),
-      }),
-      user?.companyId
-        ? fetchCompanyEntitlementView(user.companyId)
-        : Promise.resolve(null),
-    ]);
-    setCatalog(nextCatalog);
-    setEntitlement(view);
-    setHasLoadedOnce(true);
+    try {
+      const [nextCatalog, view] = await Promise.all([
+        fetchSellablePlanCatalog({
+          currency: resolveBillingDisplayCurrency(),
+        }),
+        user?.companyId
+          ? fetchCompanyEntitlementView(user.companyId)
+          : Promise.resolve(null),
+      ]);
+      setCatalog(nextCatalog);
+      setEntitlement(view);
+    } catch {
+      // Catalog/entitlement fetch failure must not crash the screen.
+    } finally {
+      setHasLoadedOnce(true);
+    }
   }, [user?.companyId]);
 
   useFocusEffect(
@@ -128,50 +141,61 @@ export function useCompanyPlanViewAdapter(
 
     let cancelled = false;
     void (async () => {
-      const chosenPlan =
-        (await resolveCheckoutReturnPlan(checkoutPlan)) ?? optimisticCheckoutPlan;
-      if (cancelled) {
-        return;
-      }
-      if (chosenPlan) {
-        setOptimisticCheckoutPlan(chosenPlan);
-        clearRememberedCheckoutPlan();
-      }
-
-      const planLabel = chosenPlan
-        ? displayNameForPlanSlug(chosenPlan, catalog)
-        : null;
-      setStatusBanner({
-        id: "company-plan:checkout-success",
-        tone: "success",
-        message: chosenPlan
-          ? `Checkout complete. You're on ${planLabel}. Plan limits stay in place until your billing phase updates.`
-          : "Checkout complete. Your company subscription will appear here once Stripe confirms payment.",
-      });
-
-      for (let attempt = 0; attempt < 6; attempt += 1) {
+      try {
+        const chosenPlan =
+          (await resolveCheckoutReturnPlan(checkoutPlan)) ?? optimisticCheckoutPlan;
         if (cancelled) {
           return;
         }
-        const view = user?.companyId
-          ? await fetchCompanyEntitlementView(user.companyId)
+        if (chosenPlan) {
+          setOptimisticCheckoutPlan(chosenPlan);
+          clearRememberedCheckoutPlan();
+        }
+
+        const planLabel = chosenPlan
+          ? displayNameForPlanSlug(chosenPlan, catalog)
           : null;
-        if (cancelled) {
-          return;
-        }
-        if (view) {
-          setEntitlement(view);
-          setHasLoadedOnce(true);
-          setIsLoading(false);
-        }
-        const live = normalizePlanTierSlug(view?.tierSlug ?? undefined);
-        if (view?.hasStripeSubscription && (!chosenPlan || live === chosenPlan)) {
-          if (companyHasPaidStripePlan(view)) {
-            clearRequiresCompanyPlanSelection();
+        setStatusBanner({
+          id: "company-plan:checkout-success",
+          tone: "success",
+          message: chosenPlan
+            ? `Checkout complete. You're on ${planLabel}. Plan limits stay in place until your billing phase updates.`
+            : "Checkout complete. Your company subscription will appear here once Stripe confirms payment.",
+        });
+
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          if (cancelled) {
+            return;
           }
-          return;
+          const view = user?.companyId
+            ? await fetchCompanyEntitlementView(user.companyId)
+            : null;
+          if (cancelled) {
+            return;
+          }
+          if (view) {
+            setEntitlement(view);
+            setHasLoadedOnce(true);
+            setIsLoading(false);
+          }
+          const live = normalizePlanTierSlug(view?.tierSlug ?? undefined);
+          if (view?.hasStripeSubscription && (!chosenPlan || live === chosenPlan)) {
+            if (companyHasPaidStripePlan(view)) {
+              clearRequiresCompanyPlanSelection();
+            }
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1500));
         }
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+      } catch {
+        if (!cancelled) {
+          setStatusBanner({
+            id: "company-plan:checkout-success",
+            tone: "success",
+            message:
+              "Checkout complete. Your company subscription will appear here once Stripe confirms payment.",
+          });
+        }
       }
     })();
 
@@ -270,6 +294,147 @@ export function useCompanyPlanViewAdapter(
     [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, entitlement, loadEntitlement, optimisticCheckoutPlan, t.profile.companyPlan, user?.companyId],
   );
 
+  const addonSteppers = (() => {
+    if (!catalog || !entitlement) {
+      return null;
+    }
+    if (!entitlement.hasStripeSubscription) {
+      return null;
+    }
+    if (!entitlement.tierSlug || entitlement.tierSlug === "pilot") {
+      return null;
+    }
+
+    const baseTier = findBaseTier(catalog, entitlement.tierSlug);
+    const workerAddon = findAddonTier(catalog, "addon_worker_pack");
+    const pmAddon = findAddonTier(catalog, "addon_pm_seat");
+    if (!baseTier || !workerAddon || !pmAddon) {
+      return null;
+    }
+
+    const currentWorkerTotal = entitlement.meterLimits?.worker_seats;
+    const currentPmTotal = entitlement.meterLimits?.pm_seats;
+    const baseWorkerTotal = baseTier.meters.worker_seats ?? 0;
+    const basePmTotal = baseTier.meters.pm_seats ?? 0;
+    const workerSeatsPerPack = workerAddon.meters.worker_seats;
+    const pmSeatsPerSeat = pmAddon.meters.pm_seats;
+
+    if (
+      typeof currentWorkerTotal !== "number" ||
+      typeof currentPmTotal !== "number" ||
+      typeof workerSeatsPerPack !== "number" ||
+      typeof pmSeatsPerSeat !== "number" ||
+      workerSeatsPerPack <= 0 ||
+      pmSeatsPerSeat <= 0
+    ) {
+      return null;
+    }
+
+    const additionalWorker = Math.max(0, currentWorkerTotal - baseWorkerTotal);
+    const additionalPm = Math.max(0, currentPmTotal - basePmTotal);
+
+    const workerPackQty = Math.max(
+      0,
+      Math.floor(additionalWorker / workerSeatsPerPack),
+    );
+    const pmSeatQty = Math.max(0, Math.floor(additionalPm / pmSeatsPerSeat));
+
+    const addonPricesBySlug = resolveAddonPriceLabels(catalog);
+
+    return {
+      workerPackQty,
+      pmSeatQty,
+      workerPackUnitPrice: addonPricesBySlug["addon_worker_pack"] ?? "—",
+      pmSeatUnitPrice: addonPricesBySlug["addon_pm_seat"] ?? "—",
+      workerSeatsPerPack,
+      pmSeatsPerSeat,
+    };
+  })();
+
+  const handleUpdateAddons = useCallback(
+    async (nextWorkerPackQty: number, nextPmSeatQty: number) => {
+      if (!user?.companyId) {
+        Alert.alert(
+          t.profile.companyPlan,
+          `Unable to update add-ons. Email ${SUPPORT_EMAIL}.`,
+        );
+        return;
+      }
+      if (!catalog || !addonSteppers) {
+        return;
+      }
+
+      const baseTier = findBaseTier(catalog, entitlement?.tierSlug ?? "");
+      const workerAddon = findAddonTier(catalog, "addon_worker_pack");
+      const pmAddon = findAddonTier(catalog, "addon_pm_seat");
+      if (!baseTier || !workerAddon || !pmAddon) {
+        return;
+      }
+
+      const baseWorkerTotal = baseTier.meters.worker_seats ?? 0;
+      const basePmTotal = baseTier.meters.pm_seats ?? 0;
+      const workerSeatsPerPack = workerAddon.meters.worker_seats ?? 0;
+      const pmSeatsPerSeat = pmAddon.meters.pm_seats ?? 0;
+
+      const expectedWorkerTotal =
+        baseWorkerTotal + nextWorkerPackQty * workerSeatsPerPack;
+      const expectedPmTotal = basePmTotal + nextPmSeatQty * pmSeatsPerSeat;
+
+      setIsActionInFlight(true);
+      try {
+        const result = await updateCompanyAddons({
+          companyId: user.companyId,
+          addonWorkerPacks: Math.max(0, Math.floor(nextWorkerPackQty)),
+          addonPmSeats: Math.max(0, Math.floor(nextPmSeatQty)),
+        });
+
+        if (!result.success) {
+          setStatusBanner({
+            id: "company-plan:addons-error",
+            tone: "error",
+            message: result.error || "Unable to update add-ons.",
+          });
+          return;
+        }
+
+        setStatusBanner({
+          id: "company-plan:addons-updating",
+          tone: "info",
+          message: "Updating add-ons…",
+        });
+
+        for (let attempt = 0; attempt < 6; attempt += 1) {
+          const latest = await fetchCompanyEntitlementView(user.companyId);
+          if (!latest) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            continue;
+          }
+
+          const workerNow = latest.meterLimits?.worker_seats;
+          const pmNow = latest.meterLimits?.pm_seats;
+          const workerOk =
+            typeof workerNow === "number" && workerNow === expectedWorkerTotal;
+          const pmOk = typeof pmNow === "number" && pmNow === expectedPmTotal;
+          if (workerOk && pmOk) {
+            setEntitlement(latest);
+            setHasLoadedOnce(true);
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+
+        setStatusBanner({
+          id: "company-plan:addons-success",
+          tone: "success",
+          message: "Add-ons updated. Your limits will refresh shortly.",
+        });
+      } finally {
+        setIsActionInFlight(false);
+      }
+    },
+    [addonSteppers, catalog, entitlement?.tierSlug, isActionInFlight, loadEntitlement, t.profile.companyPlan, user?.companyId],
+  );
+
   const displayEntitlement = overlayCheckoutPlanOnView(
     entitlement,
     checkoutResult === "success" ? optimisticCheckoutPlan ?? checkoutPlan : null,
@@ -316,6 +481,7 @@ export function useCompanyPlanViewAdapter(
         }
       : null,
     planOptions,
+    addonSteppers,
     statusBanner,
     activeActionPlanId,
     isLoading: isLoading && !hasLoadedOnce,
@@ -332,6 +498,7 @@ export function useCompanyPlanViewAdapter(
     actions: {
       handleRefresh,
       handlePlanAction,
+      handleUpdateAddons,
       dismissStatusBanner: () => setStatusBanner(null),
     },
   };

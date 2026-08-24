@@ -1398,6 +1398,15 @@ export interface CompanyPlanCurrentPlanModel {
   limitRows: CompanyPlanLimitRow[];
 }
 
+export interface CompanyPlanAddonStepperModel {
+  workerPackQty: number;
+  pmSeatQty: number;
+  workerPackUnitPrice: string;
+  pmSeatUnitPrice: string;
+  workerSeatsPerPack: number;
+  pmSeatsPerSeat: number;
+}
+
 export type CompanyPlanStatusBannerTone = "success" | "error" | "info";
 
 export interface CompanyPlanStatusBannerModel {
@@ -1412,6 +1421,7 @@ export interface CompanyPlanScreenViewAdapterOutput {
   continuity: ScreenContinuityContract;
   currentPlan: CompanyPlanCurrentPlanModel | null;
   planOptions: CompanyPlanOptionModel[];
+  addonSteppers: CompanyPlanAddonStepperModel | null;
   statusBanner: CompanyPlanStatusBannerModel | null;
   activeActionPlanId: string | null;
   isLoading: boolean;

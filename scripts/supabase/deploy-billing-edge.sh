@@ -28,8 +28,26 @@ echo "=== 3/4 Deploy stripe-webhook (catalog trial meters) ==="
 bash scripts/supabase/deploy-stripe-webhook.sh
 
 echo ""
-echo "=== 4/4 Deploy invite-user + invite-open (snapshot seat limits) ==="
+echo "=== 4/5 Deploy invite-user + invite-open (snapshot seat limits) ==="
 bash scripts/supabase/deploy-invite-user.sh
+
+echo ""
+echo "=== 5/5 Deploy update-company-addons (PM/Worker steppers) ==="
+supabase functions deploy update-company-addons --project-ref "$(python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import urlparse
+env = {}
+for line in Path('.env').read_text().splitlines():
+    s = line.strip()
+    if not s or s.startswith('#') or '=' not in s:
+        continue
+    k, v = s.split('=', 1)
+    env[k.strip()] = v.strip().strip('"').strip("'")
+url = env.get('EXPO_PUBLIC_SUPABASE_URL', '')
+host = urlparse(url).hostname or ''
+print(host.split('.')[0])
+PY
+)"
 
 echo ""
 echo "All billing edge deploys finished."

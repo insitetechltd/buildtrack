@@ -27,14 +27,14 @@ export function buildCompanyPlanLimitRows(
   view: CompanyEntitlementView,
   catalog?: SellablePlanCatalog | null,
 ): Array<{ id: string; label: string; value: string }> {
-  const slugs = Object.keys(view.meterLimits).sort((a, b) => {
-    const labelA = catalog?.metersBySlug[a]?.displayName ?? a;
-    const labelB = catalog?.metersBySlug[b]?.displayName ?? b;
+  const slugs = Object.keys(view.meterLimits ?? {}).sort((a, b) => {
+    const labelA = catalog?.metersBySlug?.[a]?.displayName ?? a;
+    const labelB = catalog?.metersBySlug?.[b]?.displayName ?? b;
     return labelA.localeCompare(labelB);
   });
 
   return slugs.map((slug) => {
-    const definition = catalog?.metersBySlug[slug];
+    const definition = catalog?.metersBySlug?.[slug];
     return {
       id: slug,
       label: definition?.displayName ?? slug.replace(/_/g, " "),
@@ -143,7 +143,7 @@ export function buildPlansSectionSubtitle(
   const addonLabels = Object.values(resolveAddonPriceLabels(catalog));
   const addonLine =
     addonLabels.length > 0
-      ? ` Add-ons available from ${catalog?.currency.toUpperCase() ?? "catalog"}.`
+      ? ` Add-ons available from ${catalog?.currency?.toUpperCase() ?? "catalog"}.`
       : "";
   return `Choose ${names} for your company.${addonLine}`;
 }

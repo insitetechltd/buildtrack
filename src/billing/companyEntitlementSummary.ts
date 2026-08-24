@@ -101,18 +101,15 @@ export function formatEntitlementLimitsLabel(
   view: CompanyEntitlementView,
   catalog?: SellablePlanCatalog | null,
 ): string {
-  const slugs = Object.keys(view.meterLimits).sort();
+  const slugs = Object.keys(view.meterLimits ?? {}).sort();
   const parts = slugs
     .map((slug) => {
-      const value = view.meterLimits[slug];
-      if (value == null && catalog?.metersBySlug[slug] == null) {
+      const value = view.meterLimits?.[slug];
+      const definition = catalog?.metersBySlug?.[slug];
+      if (value == null && definition == null) {
         return null;
       }
-      return formatMeterLimitValue(
-        slug,
-        value,
-        catalog?.metersBySlug[slug],
-      );
+      return formatMeterLimitValue(slug, value, definition);
     })
     .filter((part): part is string => Boolean(part));
 

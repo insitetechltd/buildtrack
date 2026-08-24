@@ -52,11 +52,14 @@ export default function CompanyPlanSelectionGate() {
       setIsCheckingEntitlement(false);
       return;
     }
-    const view = await fetchCompanyEntitlementView(user.companyId);
-    if (companyHasPaidStripePlan(view)) {
-      clearRequiresCompanyPlanSelection();
+    try {
+      const view = await fetchCompanyEntitlementView(user.companyId);
+      if (companyHasPaidStripePlan(view)) {
+        clearRequiresCompanyPlanSelection();
+      }
+    } finally {
+      setIsCheckingEntitlement(false);
     }
-    setIsCheckingEntitlement(false);
   }, [clearRequiresCompanyPlanSelection, user?.companyId]);
 
   useEffect(() => {

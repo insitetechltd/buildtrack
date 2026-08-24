@@ -132,6 +132,7 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
   const { onNavigateBack, forceSelection } = props;
   const t = useTranslation();
   const { output, actions } = useCompanyPlanViewAdapter(props);
+  const addonSteppers = output.addonSteppers;
 
   if (!output.readiness.hasUsableData && output.isLoading) {
     return (
@@ -253,6 +254,120 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
               />
             ))}
           </View>
+
+          {addonSteppers ? (
+            <View className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
+              <Text className="mb-2 text-lg font-semibold text-gray-900">
+                Add-ons
+              </Text>
+
+              <View className="gap-4">
+                <View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-base font-medium text-gray-900">
+                      Worker pack
+                    </Text>
+                    <Text className="text-base font-medium text-gray-900">
+                      {addonSteppers.workerPackUnitPrice}
+                    </Text>
+                  </View>
+
+                  <View className="mt-2 flex-row items-center justify-between">
+                    <Pressable
+                      testID="company-plan-worker-pack-decrease"
+                      disabled={output.isActionInFlight || addonSteppers.workerPackQty <= 0}
+                      onPress={() => {
+                        void actions.handleUpdateAddons(
+                          addonSteppers.workerPackQty - 1,
+                          addonSteppers.pmSeatQty,
+                        );
+                      }}
+                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+                    >
+                      <Text className="text-xl font-semibold text-gray-800">-</Text>
+                    </Pressable>
+
+                    <Text
+                      testID="company-plan-worker-pack-qty"
+                      className="min-w-[40px] text-center text-base font-semibold text-gray-900"
+                    >
+                      {addonSteppers.workerPackQty}
+                    </Text>
+
+                    <Pressable
+                      testID="company-plan-worker-pack-increase"
+                      disabled={output.isActionInFlight}
+                      onPress={() => {
+                        void actions.handleUpdateAddons(
+                          addonSteppers.workerPackQty + 1,
+                          addonSteppers.pmSeatQty,
+                        );
+                      }}
+                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+                    >
+                      <Text className="text-xl font-semibold text-gray-800">+</Text>
+                    </Pressable>
+                  </View>
+
+                  <Text className="mt-1 text-sm text-gray-500">
+                    Adds {addonSteppers.workerSeatsPerPack} workers
+                  </Text>
+                </View>
+
+                <View>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-base font-medium text-gray-900">
+                      PM seat
+                    </Text>
+                    <Text className="text-base font-medium text-gray-900">
+                      {addonSteppers.pmSeatUnitPrice}
+                    </Text>
+                  </View>
+
+                  <View className="mt-2 flex-row items-center justify-between">
+                    <Pressable
+                      testID="company-plan-pm-seat-decrease"
+                      disabled={output.isActionInFlight || addonSteppers.pmSeatQty <= 0}
+                      onPress={() => {
+                        void actions.handleUpdateAddons(
+                          addonSteppers.workerPackQty,
+                          addonSteppers.pmSeatQty - 1,
+                        );
+                      }}
+                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+                    >
+                      <Text className="text-xl font-semibold text-gray-800">-</Text>
+                    </Pressable>
+
+                    <Text
+                      testID="company-plan-pm-seat-qty"
+                      className="min-w-[40px] text-center text-base font-semibold text-gray-900"
+                    >
+                      {addonSteppers.pmSeatQty}
+                    </Text>
+
+                    <Pressable
+                      testID="company-plan-pm-seat-increase"
+                      disabled={output.isActionInFlight}
+                      onPress={() => {
+                        void actions.handleUpdateAddons(
+                          addonSteppers.workerPackQty,
+                          addonSteppers.pmSeatQty + 1,
+                        );
+                      }}
+                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
+                    >
+                      <Text className="text-xl font-semibold text-gray-800">+</Text>
+                    </Pressable>
+                  </View>
+
+                  <Text className="mt-1 text-sm text-gray-500">
+                    Adds {addonSteppers.pmSeatsPerSeat} PM
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
 
           <View className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
             <View className="flex-row items-start">

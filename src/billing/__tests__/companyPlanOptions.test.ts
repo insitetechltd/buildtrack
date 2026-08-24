@@ -1,6 +1,8 @@
 import {
+  buildCompanyPlanLimitRows,
   buildCompanyPlanOptions,
   buildCompanyPlanTrialEndsLabel,
+  buildPlansSectionSubtitle,
 } from "../companyPlanOptions";
 import {
   buildCompanyEntitlementView,
@@ -157,6 +159,15 @@ describe("companyPlanOptions", () => {
     expect(unlimited?.planPriceId).toBe("pp-u");
     expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
     expect(unlimited?.disabled).toBe(false);
+  });
+
+  it("renders limit rows and subtitle when catalog has not loaded yet", () => {
+    const view = buildCompanyEntitlementView(trialEntitlements, growthSubscription);
+    expect(view).not.toBeNull();
+    expect(() => buildCompanyPlanLimitRows(view!, null)).not.toThrow();
+    expect(buildCompanyPlanLimitRows(view!, null).length).toBeGreaterThan(0);
+    expect(() => buildPlansSectionSubtitle(null)).not.toThrow();
+    expect(buildCompanyPlanOptions(view, null)).toEqual([]);
   });
 
   it("renders one card per sellable base tier in catalog", () => {

@@ -6,7 +6,7 @@
 
 ## Doing
 
-**TF 193:** local `production-local` build + EAS submit — HKD Company Plan (signup redirect, dynamic `plan_prices`, checkout highlight). Display-only FX **tabled** as **M-BILL-01G**.
+**TF 193:** local build + EAS submit **done** — IPA `.eas/artifacts/build-1787544782036.ipa`. Wait ASC processing → install **193**; smoke signup → Company Plan + HKD prices. Do not tick Public.
 
 **Edge:** `create-checkout-session` still needs `supabase login` + deploy for HKD Checkout charge path.
 

@@ -128,8 +128,6 @@ function PlanOptionCard({
   );
 }
 
-type CompanyPlanScreenProps = CompanyPlanViewAdapterProps;
-
 export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
   const { onNavigateBack, forceSelection } = props;
   const t = useTranslation();

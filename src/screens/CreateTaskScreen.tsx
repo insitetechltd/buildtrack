@@ -19,8 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import TextField from "@/components/primitives/input/TextField";
-import { buildFormTextFieldContract } from "@/ui/mappers/formTextField";
 import {
   type NavigationProp,
   useFocusEffect,
@@ -60,6 +58,7 @@ import CreateTaskInputField from "./createTask/CreateTaskInputField";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
 import {
   CREATE_TASK_CONTROL_FONT_SIZE,
+  CREATE_TASK_CONTROL_HEIGHT,
   CREATE_TASK_CONTROL_INPUT,
   CREATE_TASK_CONTROL_PLACEHOLDER,
   CREATE_TASK_CONTROL_SHELL,
@@ -865,61 +864,70 @@ function CreateTaskEditorScreen({
               className="border-t border-gray-100 pt-4 gap-4"
             >
               <View testID="create-task__field_title--preview">
-                <TextField
-                  contract={buildFormTextFieldContract({
-                    id: "create-task-title",
-                    label: t.tasks.title,
-                    value: formData.title,
-                    placeholder: t.createTask.titlePlaceholder,
-                    error: errors.title,
-                    required: true,
-                    testId: "create-task__field_title",
-                  })}
-                  inputTestId="createTask-title"
-                  inputRef={titleInputRef}
-                  collapseEmptyChrome
-                  onChangeText={handleTitleChange}
-                  maxLength={100}
-                  autoCorrect={false}
-                  returnKeyType="next"
-                  accessibilityState={{ selected: activeFormFocusTarget === "title" }}
-                  onFocus={() => setActiveFormFocusTarget("title")}
-                  onKeyPress={(event) => handleFieldKeyPress("title", event)}
-                  onSubmitEditing={() => {
-                    moveFormFocus("title");
-                  }}
-                  blurOnSubmit={false}
-                />
+                <CreateTaskInputField label={t.tasks.title} required error={errors.title}>
+                  <View testID="create-task__field_title">
+                    <TextInput
+                      testID="createTask-title"
+                      ref={titleInputRef}
+                      className={CREATE_TASK_CONTROL_INPUT}
+                      value={formData.title}
+                      placeholder={t.createTask.titlePlaceholder}
+                      placeholderTextColor="#64748b"
+                      onChangeText={handleTitleChange}
+                      maxLength={100}
+                      autoCorrect={false}
+                      returnKeyType="next"
+                      accessibilityState={{ selected: activeFormFocusTarget === "title" }}
+                      onFocus={() => setActiveFormFocusTarget("title")}
+                      onKeyPress={(event) => handleFieldKeyPress("title", event)}
+                      onSubmitEditing={() => {
+                        moveFormFocus("title");
+                      }}
+                      blurOnSubmit={false}
+                      style={{
+                        height: CREATE_TASK_CONTROL_HEIGHT,
+                        fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                        lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                      }}
+                    />
+                  </View>
+                </CreateTaskInputField>
               </View>
 
-              <TextField
-                contract={buildFormTextFieldContract({
-                  id: "create-task-description",
-                  label: t.tasks.description,
-                  value: formData.description,
-                  placeholder: t.createTask.descriptionPlaceholder,
-                  error: errors.description,
-                  required: true,
-                  testId: "create-task__field_description",
-                })}
-                inputTestId="createTask-description"
-                inputRef={descriptionInputRef}
-                collapseEmptyChrome
-                onChangeText={handleDescriptionChange}
-                multiline
-                numberOfLines={4}
-                textAlignVertical="top"
-                maxLength={500}
-                autoCorrect={false}
-                returnKeyType="next"
-                accessibilityState={{ selected: activeFormFocusTarget === "description" }}
-                onFocus={() => setActiveFormFocusTarget("description")}
-                onKeyPress={(event) => handleFieldKeyPress("description", event)}
-                onSubmitEditing={() => {
-                  moveFormFocus("description");
-                }}
-                blurOnSubmit={false}
-              />
+              <CreateTaskInputField
+                label={t.tasks.description}
+                required
+                error={errors.description}
+              >
+                <View testID="create-task__field_description">
+                  <TextInput
+                    testID="createTask-description"
+                    ref={descriptionInputRef}
+                    className="min-h-[112px] rounded-xl border border-slate-300 bg-white px-4 py-3 text-base leading-6 text-slate-900"
+                    value={formData.description}
+                    placeholder={t.createTask.descriptionPlaceholder}
+                    placeholderTextColor="#64748b"
+                    onChangeText={handleDescriptionChange}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                    maxLength={500}
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    accessibilityState={{ selected: activeFormFocusTarget === "description" }}
+                    onFocus={() => setActiveFormFocusTarget("description")}
+                    onKeyPress={(event) => handleFieldKeyPress("description", event)}
+                    onSubmitEditing={() => {
+                      moveFormFocus("description");
+                    }}
+                    blurOnSubmit={false}
+                    style={{
+                      fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                      lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                    }}
+                  />
+                </View>
+              </CreateTaskInputField>
 
               <CreateTaskInputField label={t.tasks.priority} required>
                 <View className="flex-row flex-wrap gap-2">
@@ -1024,7 +1032,7 @@ function CreateTaskEditorScreen({
                       ) : context.assigneesLocked ? (
                         <Ionicons name="lock-closed" size={20} color="#9ca3af" />
                       ) : (
-                        <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                        <Ionicons name="chevron-down" size={20} color="#6b7280" />
                       )}
                     </Pressable>
                   );
@@ -1173,7 +1181,7 @@ function CreateTaskEditorScreen({
                         ? t.createTask.nonBillable
                         : t.createTask.billed}
                   </Text>
-                  <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
                 </Pressable>
               </CreateTaskInputField>
 
@@ -1237,6 +1245,7 @@ function CreateTaskEditorScreen({
                     returnKeyType="done"
                     blurOnSubmit
                     style={{
+                      height: CREATE_TASK_CONTROL_HEIGHT,
                       fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
                       lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
                     }}
@@ -1248,30 +1257,34 @@ function CreateTaskEditorScreen({
                 </View>
               </CreateTaskInputField>
 
-              <TextField
-                contract={buildFormTextFieldContract({
-                  id: "create-task-taskReference",
-                  label: t.createTask.taskReference,
-                  value: formData.taskReference,
-                  placeholder: t.createTask.taskReferencePlaceholder,
-                  required: false,
-                  testId: "create-task__field_taskReference",
-                })}
-                inputTestId="createTask-taskReference"
-                inputRef={taskReferenceInputRef}
-                collapseEmptyChrome
-                onChangeText={handleTaskReferenceChange}
-                maxLength={50}
-                autoCorrect={false}
-                returnKeyType="done"
-                accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
-                onFocus={() => setActiveFormFocusTarget("taskReference")}
-                onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
-                onSubmitEditing={() => {
-                  taskReferenceInputRef.current?.blur();
-                }}
-                blurOnSubmit={true}
-              />
+              <CreateTaskInputField label={t.createTask.taskReference} required={false}>
+                <View testID="create-task__field_taskReference">
+                  <TextInput
+                    testID="createTask-taskReference"
+                    ref={taskReferenceInputRef}
+                    className={CREATE_TASK_CONTROL_INPUT}
+                    value={formData.taskReference}
+                    placeholder={t.createTask.taskReferencePlaceholder}
+                    placeholderTextColor="#64748b"
+                    onChangeText={handleTaskReferenceChange}
+                    maxLength={50}
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    accessibilityState={{ selected: activeFormFocusTarget === "taskReference" }}
+                    onFocus={() => setActiveFormFocusTarget("taskReference")}
+                    onKeyPress={(event) => handleFieldKeyPress("taskReference", event)}
+                    onSubmitEditing={() => {
+                      taskReferenceInputRef.current?.blur();
+                    }}
+                    blurOnSubmit
+                    style={{
+                      height: CREATE_TASK_CONTROL_HEIGHT,
+                      fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                      lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                    }}
+                  />
+                </View>
+              </CreateTaskInputField>
             </View>
           </View>
         </ScrollView>

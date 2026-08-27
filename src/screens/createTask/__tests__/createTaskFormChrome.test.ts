@@ -1,24 +1,19 @@
 import {
   CREATE_TASK_CONTROL_FONT_SIZE,
+  CREATE_TASK_CONTROL_HEIGHT,
   CREATE_TASK_CONTROL_INPUT,
   CREATE_TASK_CONTROL_SHELL,
+  CREATE_TASK_LABEL_CLASS,
 } from "../createTaskFormChrome";
-import { INPUT_DENSITY_CLASS_MAP, INPUT_DENSITY_FONT_SIZE } from "@/components/primitives/tokens/input";
 
 describe("createTaskFormChrome", () => {
-  it("matches TextField expanded density for shell height, radius, padding, and type", () => {
-    const expanded = INPUT_DENSITY_CLASS_MAP.expanded;
-
-    expect(CREATE_TASK_CONTROL_SHELL).toContain("min-h-14");
-    expect(CREATE_TASK_CONTROL_SHELL).toContain("rounded-xl");
+  it("locks single-line controls to a shared 56px row with 16px type", () => {
+    expect(CREATE_TASK_CONTROL_HEIGHT).toBe(56);
+    expect(CREATE_TASK_CONTROL_FONT_SIZE).toBe(16);
+    expect(CREATE_TASK_CONTROL_SHELL).toContain("h-14");
     expect(CREATE_TASK_CONTROL_SHELL).toContain("px-4");
-    expect(CREATE_TASK_CONTROL_SHELL).toContain("py-3");
-    expect(expanded.inputContainer).toContain("min-h-14");
-    expect(expanded.inputContainer).toContain("rounded-xl");
-    expect(expanded.inputContainer).toContain("px-4");
-    expect(expanded.inputContainer).toContain("py-3");
-
-    expect(CREATE_TASK_CONTROL_INPUT).toContain("text-lg");
-    expect(CREATE_TASK_CONTROL_FONT_SIZE).toBe(INPUT_DENSITY_FONT_SIZE.expanded);
+    expect(CREATE_TASK_CONTROL_SHELL).not.toContain("py-3");
+    expect(CREATE_TASK_CONTROL_INPUT).toContain("h-14");
+    expect(CREATE_TASK_LABEL_CLASS).toContain("text-base");
   });
 });

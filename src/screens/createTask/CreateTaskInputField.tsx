@@ -1,6 +1,11 @@
 import React from "react";
 import { Text, View } from "react-native";
 
+import {
+  CREATE_TASK_LABEL_CLASS,
+  CREATE_TASK_REQUIRED_MARKER_CLASS,
+} from "./createTaskFormChrome";
+
 type CreateTaskInputFieldProps = {
   label: string;
   required?: boolean;
@@ -8,7 +13,7 @@ type CreateTaskInputFieldProps = {
   children: React.ReactNode;
 };
 
-/** Label + control stack aligned to TextField expanded density. */
+/** Label + control stack — tight, consistent rhythm for Create Task. */
 export default function CreateTaskInputField({
   label,
   required = true,
@@ -16,15 +21,15 @@ export default function CreateTaskInputField({
   children,
 }: CreateTaskInputFieldProps) {
   return (
-    <View testID="create-task__input-field" className="gap-2.5">
+    <View testID="create-task__input-field" className="gap-2">
       <View className="flex-row items-center gap-1">
-        <Text className="text-lg leading-7 font-semibold text-slate-900">{label}</Text>
+        <Text className={CREATE_TASK_LABEL_CLASS}>{label}</Text>
         {required ? (
-          <Text className="text-lg leading-7 font-semibold text-red-600">*</Text>
+          <Text className={CREATE_TASK_REQUIRED_MARKER_CLASS}>*</Text>
         ) : null}
       </View>
       {children}
-      {error ? <Text className="text-base leading-6 text-red-500">{error}</Text> : null}
+      {error ? <Text className="text-sm leading-5 text-red-500">{error}</Text> : null}
     </View>
   );
 }

@@ -59,7 +59,7 @@ Block if C/H findings. Proceed if 0 C/H.
 - Check for SQLSTATE 42703 (missing col) or PGRST204 (PostgREST) = deferred compat layer → defer to 03b fix, not local hack.
 
 ### Maestro E2E flake bugs
-- FIRST apply 8 preflight gates + 6 runner layers from maestro-preflight.md before blaming Maestro itself. 80% of flakes come from missing gates, not Maestro core.
+- FIRST apply Gate **0–8** + 6 runner layers from maestro-preflight.md before blaming Maestro itself. 80% of flakes come from missing gates, not Maestro core. Prefer `npm run maestro:locks` before device assignment.
 
 ### Race conditions (JS bundle reload + XCTest tap / realtime sync)
 - Add explicit `waitFor` or timeout guards. Never assume timing.

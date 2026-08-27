@@ -23,19 +23,12 @@
 ### Milestone Gate — DO NOT SKIP
 Before dispatching any workflow:
 1. Read documentation/NOW.md (session continuity — doing / next / locked / parked)
-2. Read AGENTS.md § Current Delivery Status
+2. Read AGENTS.md § Current Delivery Status (**pipeline focus is SoT — do not invent a second priority queue here**)
 3. Read documentation/ROADMAP.md milestone ledger
 4. If the task touches any active/pipeline milestone:
    - Cite milestone in scope
    - Route Maestro flows to the correct sprint-specific flow
    - Cross-check milestone gate status before marking anything closed
-5. Current milestone precedence priority queue (exact order 1..6):
-   1. UNBLOCK M-SUPABASE-02a/02b → resolve Rule 1
-   2. Close M-SUPABASE-02a/02b → RLS + FK
-   3. M-SUPABASE-03b Phase A only → NO LIVE WRITES → HUMAN GATE sign-off
-   4. M-SUPABASE-03b Phase B → parity tenant → live apply → deferred fallback 0
-   5. S-UX-01J/K/M/N ship (Tags+Primary Assignee / Delegation Panel / Location / Containers)
-   6. Idle parallel P1s (03a/03c/03d/03e) + P2s (04a..04d)
 
 ### Autonomy Policy — 5-Item Question Gate
 Default = autonomous. Do NOT ask user for confirmation for: bug fixes, focused refactors, small features following patterns, docs after implementation, plan/spec writing.
@@ -54,29 +47,31 @@ If non-blocking uncertainty exists: choose smallest repo-aligned default, write 
 - L2 Regression: `npm run test:regression` (runs tasks/uploads/components/integration sequentially)
 - L3 Jest journeys: `npm run test:e2e:journeys`
 - L3 Simulation / Parity: `npm run test:simulation` / `npm run test:parity`
-- L4 Maestro: `bash scripts/maestro/run-local.sh test <flow.yaml>` (see .cursor/rules/maestro-preflight.md BEFORE any run)
+- L4 Maestro: `bash scripts/maestro/run-local.sh test <flow.yaml>` (see .cursor/rules/maestro-preflight.md BEFORE any run — Gate **0–8**)
 - Typecheck baseline: `npx tsc --noEmit` MUST be rc=0 before any cycle claim
 
 ## Workflow Selection (choose exactly one route per task)
 
-1. Feature work: Plan (brainstorm → writing-plans) → Build (executing-plans + TDD + RN best practices) → Review (self-review + checklist) → COMMIT GATE → Test → QA-Validate (figma for WS-UX; debugger for simulator) → optional Release/Docs
-2. Bug fix: Plan (brainstorm fuzzy; debugger if runtime evidence needed) → Build (TDD + debugger) → Review → COMMIT GATE → Test → QA-Validate only if user-visible flow affected
-3. Refactor: Plan (writing-plans) → Review pre-check (risky) → Build (executing-plans) → Review → COMMIT GATE → Test
-4. Release/Deploy: Plan if scope unclear → Review → COMMIT GATE if changed → Test → QA-Validate → Release check (bundle-id match; manual Public checkbox only)
-5. Docs-only: Plan → Docs → Review → COMMIT GATE
-6. Combined Ms02/Ms03b Supabase: See `.cursor/rules/workflow-ms02-unblock.md` — Rule 1 hard block, Gate 1 7/7 redacted appendix, 03b Human Gate sign-off
+1. Feature work: Plan (brainstorm → writing-plans) → Gate A multi-critique → Build (executing-plans + TDD + RN best practices) → Review → [COMMIT GATE when user asks] → Test → Gate B validation critique → QA-Validate (figma for WS-UX; debugger for simulator) → optional Release/Docs
+2. Bug fix: Plan (brainstorm fuzzy; debugger if runtime evidence needed) → Build (TDD + debugger) → Review → [COMMIT GATE when user asks] → Test → QA-Validate only if user-visible flow affected
+3. Refactor: Plan (writing-plans) → Review pre-check (risky) → Build (executing-plans) → Review → [COMMIT GATE when user asks] → Test
+4. Release/Deploy: Plan if scope unclear → Review → [COMMIT GATE if changed and user asked] → Test → QA-Validate → Release check (bundle-id match; manual Public checkbox only)
+5. Docs-only: Plan → Docs → Review → [COMMIT GATE when user asks]
+6. Historical Ms02/Ms03b unblock path (Closed): `.cursor/rules/workflow-ms02-unblock.md` — keep for audit; do not route new work here
 
-## COMMIT GATE (non-negotiable ordering)
+## COMMIT GATE (non-negotiable ordering — only when user asks to commit)
 
 ```
 Builder → Reviewer (0 Critical / 0 High findings)
    → Conventional commit (single-scoped atomic)
+   → Push to tracked remote by default (unless user said not to / force required)
    → Test Engineer
    → QA Validator (if user-visible / navigation / task-flow / uploads)
 ```
 
 NEVER commit pre-Review. NEVER commit with C/H findings open.
 Conventional commit types: feat|fix|refactor|docs|test|build|chore|ci with scope.
+**Push policy (Insite SoT):** after a **user-requested** commit, push by default — including when the user only said “commit”. Skip push only if they say not to, force would be required, or auth fails.
 
 ## Role Boundaries (self-applied discipline)
 
@@ -124,20 +119,17 @@ Conventional commit types: feat|fix|refactor|docs|test|build|chore|ci with scope
 - NEVER commit secrets, credentials, keystores, or concrete <PROJECT_REF> values
 - If live SQL needed: use placeholders `<PROJECT_REF>` + `<DATABASE_PASSWORD>` ONLY; NEVER paste real values into git-tracked files
 
-## Hard Safety Rules (2026-08-08 current) — TOP 3 FIRST, THEN LEGACY 8
+## Hard Safety Rules
 
-### TOP 3 — NON-NEGOTIABLE (added 2026-08-08)
+### Historical Human Gates (Ms02 / Ms03b — Closed on production; keep for audit)
 
-**7.0a Rule 1 Gate 1 Requirement (02a/02b)**
-NEVER close M-SUPABASE-02a/02b (RLS 7-table anon-block + users FK NOT VALID) without a COMPLETE Gate 1 read-only SQL pass that produced 7/7 redacted appendix outputs. The 7 sections from WS_SUPABASE_01_READONLY_AUDIT.sql = PUBLIC_TABLES, TASK_LOCATION_COLUMNS, PROJECT_LOCATIONS_TABLE_EXISTS, PROJECT_LOCATIONS_COLUMNS, TASK_LOCATION_JSON_TYPES, TASK_LOCATION_ON_SITE_POPULATION, TASK_LOCATION_LABEL_CANDIDATES. If 7/7 not present → BLOCKED. Exact blocker text if both Option A (~/.pgpass) AND Option B (Dashboard paste) unavailable = `"no ~/.pgpass present AND user declined to paste dashboard outputs"`.
+**7.0a Rule 1 Gate 1** — Never claim 02a/02b closed without Gate 1 7/7 redacted appendix (historical; milestones Closed 2026-08-08).
 
-**7.0b 03b Schema Review Human Gate (Phase A → Phase B)**
-NEVER promote M-SUPABASE-03b from Phase A (artefacts only, NO LIVE WRITES, parity tenant apply + test) to Phase B (live apply) without EXPLICIT WRITTEN HUMAN-IN-THE-LOOP SCHEMA REVIEW GATE sign-off. Acceptable forms: (1) chat transcript explicit GO message, (2) signed checklist line. No sign-off = BLOCKED.
+**7.0b 03b Schema Review Human Gate** — Never promote Phase A → Phase B without written Human GO (historical; 03b Closed 2026-08-08).
 
-**7.0c F-003 ROLLOUT WARNING + 6-Column List**
-F-003 ROLLOUT WARNING VERBATIM (from findings backlog): The deferred-schema compat layer in src/state/taskStore.supabase.ts SILENTLY STRIPS 6 fields when INSERT/UPDATE hits a pre-migration tenant (SQLSTATE 42703 OR PostgREST PGRST204). This causes SILENT DATA LOSS for any UX that writes to these columns before 03b is closed on the tenant. The 6 columns = primary_assignee_id, delegated_user_ids, container_id, sub_container_id, tags, location_on_site. CONSEQUENCE: S-UX-01J/K/M/N MUST NOT ship before M-SUPABASE-03b is CLOSED on ALL production tenants. This rule is logged at: ROADMAP.md L72 (03b Notes), findings backlog F-003, §7.0c (this file), §18 Custom Instructions.
+**7.0c F-003 deferred-schema strip** — Compat layer in `taskStore.supabase.ts` still silently strips 6 cols on pre-migration tenants (SQLSTATE 42703 / PGRST204): `primary_assignee_id, delegated_user_ids, container_id, sub_container_id, tags, location_on_site`. Production tenants must remain on post-03b schema; do not reintroduce writes that assume those columns on unmigrated DBs.
 
-### Legacy 8 (preserved from 08-06)
+### Standing rules
 
 7.1 Preserve existing screen-driven architecture in src/screens/ — do not wholesale move files around without a Planner-approved refactor.
 7.2 Task features: use src/state/taskStore.supabase.ts as source of truth, never the legacy taskStore.ts for new behavior.
@@ -145,7 +137,7 @@ F-003 ROLLOUT WARNING VERBATIM (from findings backlog): The deferred-schema comp
 7.4 Keep secrets/credentials out of code and docs. Use env vars and placeholder `<PROJECT_REF>` only.
 7.5 Do not change build identifiers, release settings, Expo SDK versions, React Native versions, or dependency strategy unless the task explicitly requires it and Release Manager approves.
 7.6 For user-visible mobile UI changes: QA Validator pass is required, not optional.
-7.7 Maestro flows: ALWAYS apply the 8 preflight gates + 6 runner layers from .cursor/rules/maestro-preflight.md BEFORE ANY invocation. rc=0 alone is meaningless.
+7.7 Maestro flows: ALWAYS apply Gate **0–8** + 6 runner layers from `.cursor/rules/maestro-preflight.md` BEFORE ANY invocation. rc=0 alone is meaningless. Use `npm run maestro:locks` before claiming a sim.
 7.8 Make focused edits that fit the local style; avoid broad refactors unless requested.
 
 ## Sub-Rule Files — Open These For Specific Workflows

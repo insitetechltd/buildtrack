@@ -15,22 +15,22 @@ alwaysApply: true
 - UI change reports: include visual artifacts + delta explanation (see `.cursor/rules/ui-visual-report.mdc`).
 - Before Maestro or release claims, run `npm run dev:doctor`.
 - Workflow checklists: `.cursor/rules/workflow-solo.md` (default), `workflow-feature.md`, `workflow-bugfix.md`, `workflow-release.md`, `workflow-ms02-unblock.md`.
-- Multi-critique + form interaction gates: `.cursor/rules/multi-critique-validation.mdc` (plan ≥2 critiques; validation ≥1; headed TextField smoke).
-- Maestro 8-gate preflight: `.cursor/rules/maestro-preflight.md`.
+- Multi-critique + form interaction gates: `.cursor/rules/multi-critique-validation.mdc` (Gate A ≥2 plan critiques; Gate B ≥1 validation; Gate C headed form smoke). Shared brief: `multi-model-evaluation-prompt.mdc`.
+- Maestro Gate **0–8** preflight: `.cursor/rules/maestro-preflight.md`. Before claiming a sim: `npm run maestro:locks`.
 
 ## Concurrent development (default)
 
 - Orchestrator **prefers concurrent tracks** when ownership partitions (disjoint files / P## cases / idle-parallel milestones).
 - Cap Maestro at **≤2** distinct sim UDIDs on this machine; **1 job per UDID**.
 - **Two-sim SOP:** parallel Maestro only on **two different UDIDs** (`MAESTRO_UDID` per track before launch). Same UDID + two jobs = XCTest/FlyingFox death. One sim is the default when UDIDs are not claimed.
-- **Sim coordination (SOP §10):** before Maestro — `bash scripts/maestro/sim-lock.sh status`; check `documentation/NOW.md` for sims locked by other work; if free → `claim` / `claim-pair`, release on teardown. Never run on a UDID another chat locked or is headed on.
+- **Sim coordination (SOP §10):** before Maestro — `npm run maestro:locks` (or sim-lock + resource-lock status); check `documentation/NOW.md` for sims locked by other work; if free → `claim` / `claim-pair`, release on teardown. Never run on a UDID another chat locked or is headed on.
 - **RC dual-user gate:** `npm run test:e2e:maestro:dual-user` on **17 Pro Max (assigner) + iPhone 16 (assignee)** when free; avoid iPhone 17 Pro if another chat is using it.
 - Independent Maestro cases while iterating (not full suites): `scripts/maestro/run-create-task-photo-one.sh P##` and `scripts/maestro/run-update-progress-photo-one.sh U##`; full suites = final gate only.
 - Shared helpers / product SoT / Photos `FORCE_PURGE` = single-writer; sync then re-run affected cases.
 - Details: `.cursor/skills/insite-dev/SKILL.md` § Concurrent development + `solo-dev-harness` workflows.md.
 
-## Git push default (solo)
+## Git push default (solo) — overrides generic “never push” habits for this repo
 
-- After a successful **user-requested** commit, push to the tracked remote by default (`git push` / `git push -u origin HEAD` if needed).
+- After a successful **user-requested** commit, push to the tracked remote by default — including when the user only said “commit”.
 - Skip push only if the user says not to, if push would require force, or if auth fails (then report the blocker).
 - Never force-push to main/master; never update git config; never echo secrets or credential-bearing remote URLs.

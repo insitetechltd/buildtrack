@@ -36,14 +36,20 @@ Pick exactly ONE route from:
 3. Refactor → Plan (writing-plans) → Review pre-check risk → Build → Review → COMMIT → Test
 4. Release/Deploy → follow .cursor/rules/workflow-release.md
 5. Docs-only → Plan → Docs → Review → COMMIT
-6. Supabase Ms02/Ms03b combined → follow .cursor/rules/workflow-ms02-unblock.md
+6. Historical Supabase Ms02/Ms03b path (Closed) → `.cursor/rules/workflow-ms02-unblock.md` for audit only
+
+## 3b. Multi-critique (non-trivial / user-visible / shared primitives)
+Follow `.cursor/rules/multi-critique-validation.mdc` + shared brief in `multi-model-evaluation-prompt.mdc`:
+- **Gate A** before Builder: ≥2 parallel plan critiques (same brief)
+- **Gate B** before “done”: ≥1 independent validation critique
+- **Gate C** for form/input primitives: headed focus/keyboard/submit smoke
 
 ## 4. Discipline Rules (every SOLO cycle)
 - Start with Planner for non-trivial tasks
-- Use Build ONLY after plan exists
+- Use Build ONLY after plan exists (and Gate A when required)
 - Prefer **concurrent tracks** when ownership partitions (disjoint files / independent Maestro cases); serialize shared helpers, product SoT, schema/auth/release, same sim UDID
 - Cap Maestro ≤2 UDIDs on this host; 1 job per UDID; one-shot case runs while developing; full suite = final gate
-- **Sim coordination (SOP §10):** `bash scripts/maestro/sim-lock.sh status` before Maestro; claim if free; release on teardown; never two Maestro jobs on one UDID
+- **Sim coordination (SOP §10):** `npm run maestro:locks` before Maestro; claim if free; release on teardown; never two Maestro jobs on one UDID
 - Two-sim SOP: parallel Maestro only on **distinct** UDIDs (`MAESTRO_UDID` per track). Never two jobs on the same simulator.
 - Reviewer before COMMIT GATE
 - Test Engineer after commit (or after Reviewer if no commit requested)
@@ -51,7 +57,7 @@ Pick exactly ONE route from:
 - Release Manager only for build/store/env decisions
 - Review ALWAYS before commit. 0 Critical / 0 High findings mandatory.
 - User-visible or risky diffs: after Reviewer, run Bugbot (`review-bugbot`) unless user declined. Auth/RLS/secrets/payments: Security Review (`review-security`) unless declined.
-- Commit gate ordering: Build → Review 0 C/H → Conventional commit → Test → QA (if user-visible)
+- Commit gate ordering (when user asks): Build → Review 0 C/H → Conventional commit → **push by default** → Test → QA (if user-visible)
 - NEVER commit pre-review. NEVER commit with C/H open.
 - For task-domain work: inspect taskStore.supabase.ts + screens + AppNavigator.tsx
 - Prefer taskStore.supabase.ts over legacy taskStore.ts.

@@ -22,7 +22,7 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 4. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
 5. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
 6. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
-7. **Before Maestro:** SOP §10 — `bash scripts/maestro/sim-lock.sh status` + `bash scripts/maestro/resource-lock.sh status`; check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
+7. **Before Maestro:** SOP §10 — `npm run maestro:locks` (or sim-lock + resource-lock status); check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
 8. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft / multi-company membership:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock (plus dated addenda); append addenda when the user revisits. Multi-company product SoT: `documentation/multi-company-project-membership.md`.
 
 ## Session teardown
@@ -92,7 +92,7 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Machine / sim caps (this host profile)
 
-- **Sim/resource coordination:** SOP §10 — `bash scripts/maestro/sim-lock.sh status` + `bash scripts/maestro/resource-lock.sh status` before Maestro; claim if free; release both on teardown.
+- **Sim/resource coordination:** SOP §10 — `npm run maestro:locks` before Maestro; claim if free; release both on teardown.
 - **RC dual-user pair (when free):** assigner = iPhone **17 Pro Max** `B7B2640C-4738-4F8A-AEEE-5DF3D21D2533`; assignee = **iPhone 16** `F537DDA8-E83B-4A29-AF38-ACC8EC64F0DA`. **Avoid** iPhone **17 Pro** `702680D5-A92E-4C56-BE55-731D424FE63A` when another chat is headed there.
 - Typical Insite laptop: **≤2** concurrent Maestro jobs on **distinct** UDIDs only.
 - **Two-sim SOP:** assign one UDID per track **before** launch (`export MAESTRO_UDID=<that sim>`). Do not rely on script defaults when multiple sims are booted.
@@ -102,7 +102,7 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 
 ### Orchestrator sync checklist
 
-1. **Sim/resource lock preflight** (SOP §10): `sim-lock.sh status` + `resource-lock.sh status` + NOW; claim UDIDs plus `user:*`, `project:*`, and when needed `task:*` / `seed:*`; refuse if another chat holds any required lock.
+1. **Sim/resource lock preflight** (SOP §10): `npm run maestro:locks` + NOW; claim UDIDs plus `user:*`, `project:*`, and when needed `task:*` / `seed:*`; refuse if another chat holds any required lock.
 2. Assign UDID + seat/account + project scope + P-range and/or U-range (or file paths) per track before launch.
 3. List single-writer files and shared mutators up front (`photos:force-purge`, seed scripts, shared `_*.yaml`).
 4. After both tracks finish: merge helper/product fixes once → one-shot re-verify affected P## / U## → final suite gate.

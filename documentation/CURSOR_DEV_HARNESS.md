@@ -60,7 +60,7 @@ Also: **Cloudflare R2** = object storage (infra). Do not confuse with week-rank 
 | `workflow-solo.md` | Default orchestrator route for open-ended work |
 | `workflow-feature.md` / `workflow-bugfix.md` / `workflow-release.md` | Workflow-specific checklists |
 | `workflow-ms02-unblock.md` | M-SUPABASE-02a/02b + 03b gated path |
-| `maestro-preflight.md` | Maestro 8-gate preflight before flow claims |
+| `maestro-preflight.md` | Maestro Gate 0–8 preflight before flow claims (`npm run maestro:locks`) |
 
 Also: root `.cursorrules` (compact always-on summary) and handoff packet `cursor-handoff-2026-08-08.md` for Trae-exit context.
 

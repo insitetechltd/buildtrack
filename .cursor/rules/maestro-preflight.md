@@ -1,7 +1,12 @@
+---
+description: Maestro Gate 0–8 preflight + 6 runner layers before any flow
+alwaysApply: false
+---
+
 # Maestro Preflight & Runner Hardening (Sprint 7, M-QA-01..M-QA-03 Baseline)
 
-Create this file from cursor-handoff-2026-08-06.md §9 verbatim.
-MANDATORY: Apply the 8 preflight gates + 6 runner hardening layers BEFORE ANY Maestro flow invocation.
+MANDATORY: Apply Gate **0–8** (nine gates) + 6 runner hardening layers BEFORE ANY Maestro flow invocation.
+Before device work: `npm run maestro:locks` (sim-lock + resource-lock status).
 
 The 295-minute false-success lesson:
 - 4 runs 21:29→21:33 ALL rc=0 PASS suite result with screenshots = 0/4, 0/10, 0/4, 0/18
@@ -11,11 +16,11 @@ The 295-minute false-success lesson:
 
 ---
 
-## 8 Mandatory Preflight Gates (before ANY `maestro test`)
+## Gate 0–8 Mandatory Preflight (before ANY `maestro test`)
 
 ### Gate 0 — SIM + RESOURCE COORDINATION (before device assignment)
 
-Read SOP §10. Run `bash scripts/maestro/sim-lock.sh status` **and** `bash scripts/maestro/resource-lock.sh status`. Check `documentation/NOW.md` for sims, users, projects, and seed namespaces already owned by another chat. If the full bundle is free → claim sim UDIDs via `sim-lock.sh` and runtime resources via `resource-lock.sh` before any flow. If any required sim/resource is locked or `maestro` is already running on that UDID → **stop**; do not share the sim, user, project, task/seed namespace, or force-purge lane with another session. Release both lock families on teardown (`sim-lock.sh release-all`, `resource-lock.sh release-all`).
+Read SOP §10. Prefer `npm run maestro:locks`, or run `bash scripts/maestro/sim-lock.sh status` **and** `bash scripts/maestro/resource-lock.sh status`. Check `documentation/NOW.md` for sims, users, projects, and seed namespaces already owned by another chat. If the full bundle is free → claim sim UDIDs via `sim-lock.sh` and runtime resources via `resource-lock.sh` before any flow. If any required sim/resource is locked or `maestro` is already running on that UDID → **stop**; do not share the sim, user, project, task/seed namespace, or force-purge lane with another session. Release both lock families on teardown (`sim-lock.sh release-all`, `resource-lock.sh release-all`).
 
 ### Gate 1 — LOGBOX FAMILY AUDIT
 Open `index.ts` (or entry file calling `LogBox.ignoreLogs`). If the RED "Failed to open debugger…" banner is suppressed, the GRAY sibling "Open debugger to view warnings." banner MUST be suppressed alongside it. Any unstipulated bottom ~10% banner z-overlaps iPhone 17 Pro Max bottom-tab Pressables, causing XCTest SILENT TAP INTERCEPTION with rc=0. Cherry-picking = bug. This single issue produced >30% of the 5-hour debugging on M-QA-01.

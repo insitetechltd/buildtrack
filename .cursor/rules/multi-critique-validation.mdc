@@ -1,3 +1,8 @@
+---
+description: Multi-critique Gates A/B/C — shared brief, plan critiques, validation critique, form smoke
+alwaysApply: true
+---
+
 # Multi-critique + validation robustness (orchestrator)
 
 Portable cycle: `~/.cursor/skills/solo-dev-harness/SOP.md` §6. Dual-write process changes to SOP.md + `templates/` + this file.

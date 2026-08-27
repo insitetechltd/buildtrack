@@ -19,6 +19,8 @@
     "maestro:test": "bash ./scripts/maestro/run-local.sh test",
     "maestro:test:smoke": "bash ./scripts/maestro/run-local.sh test maestro/flows/launch-smoke.yaml",
     "maestro:sim-status": "bash ./scripts/maestro/sim-lock.sh status",
+    "maestro:resource-status": "bash ./scripts/maestro/resource-lock.sh status",
+    "maestro:locks": "bash -lc 'set -euo pipefail; echo \"=== sim-lock ===\"; bash ./scripts/maestro/sim-lock.sh status; echo; echo \"=== resource-lock ===\"; bash ./scripts/maestro/resource-lock.sh status'",
     "web": "expo start --web",
     "postinstall": "patch-package",
     "test": "jest",

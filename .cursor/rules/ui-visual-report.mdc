@@ -1,3 +1,8 @@
+---
+description: UI change reports must include visual artifacts and delta explanation
+alwaysApply: true
+---
+
 # UI change reports — visual artifacts required
 
 When the work changes **user-visible UI** (screens, chrome, navigation shells, forms, photo flows):

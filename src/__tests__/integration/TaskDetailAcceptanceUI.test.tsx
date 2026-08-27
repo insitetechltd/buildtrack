@@ -125,6 +125,7 @@ describe("TaskDetailScreen acceptance UI", () => {
       id: "task-info-card",
       density: "standard",
       structuralState: "ready",
+      title: "Replace ceiling tiles",
       descriptionLabel: "Confirm supplier lead times before final delivery.",
       siteLocationLabel: "Level 9 Rooftop",
       assignedByLabel: "Casey",
@@ -236,13 +237,14 @@ describe("TaskDetailScreen acceptance UI", () => {
     } as ReturnType<typeof useTaskDetailViewAdapter>);
   });
 
-  it("renders one scrolling info card as Task Details with compact metadata chips", () => {
+  it("renders one scrolling info card with the task title and compact metadata chips", () => {
     const screen = render(
       <TaskDetailInfoCard
         model={{
           id: "task-info-card",
           density: "standard",
           structuralState: "ready",
+          title: "Replace ceiling tiles",
           descriptionLabel: "Confirm supplier lead times before final delivery.",
           siteLocationLabel: "Level 9 Rooftop",
           assignedByLabel: "Casey",
@@ -254,7 +256,8 @@ describe("TaskDetailScreen acceptance UI", () => {
     );
 
     expect(screen.getByTestId("task-detail__info_card")).toBeTruthy();
-    expect(screen.getByText("Task Details")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__info_card_title")).toBeTruthy();
+    expect(screen.getByText("Replace ceiling tiles")).toBeTruthy();
     expect(screen.queryByText("Confirm supplier lead times before final delivery.")).toBeNull();
     expect(screen.getByTestId("task-detail__location_group")).toBeTruthy();
     expect(screen.getByTestId("task-detail__location_group__summary")).toBeTruthy();
@@ -369,7 +372,7 @@ describe("TaskDetailScreen acceptance UI", () => {
     expect(hero.getByText("Due Jul 10, 2026").props.className).toContain("text-base");
 
     expect(infoCardScreen.getByTestId("task-detail__info_card").props.className).toContain("p-[14px]");
-    expect(infoCardScreen.getByText("Task Details").props.className).toContain("text-base");
+    expect(infoCardScreen.getByText("Replace ceiling tiles").props.className).toContain("text-lg");
     expect(infoCardScreen.queryByText("Confirm supplier lead times before final delivery.")).toBeNull();
     expect(infoCardScreen.getByTestId("task-detail__status_chips")).toBeTruthy();
     fireEvent.press(infoCardScreen.getByTestId("task-detail__status_chips__toggle"));

@@ -24,7 +24,7 @@ export const ACTIVITY_FAMILY = {
   actorNameClassName: "text-base font-semibold text-[#0D2630]",
   badgePillClassName: "rounded-full bg-[#E7F4F8] px-2.5 py-1",
   badgeTextClassName: "text-sm font-semibold text-[#0A728F]",
-  photoHeight: 176,
+  photoHeight: 240,
 } as const;
 
 export function activityActorInitial(name: string): string {

@@ -156,15 +156,6 @@ export default function TaskActivityTimeline({
 
   return (
     <View testID={testID} className="mx-4 mt-4 mb-4 rounded-2xl border border-gray-200 bg-white p-4">
-      <View className="mb-4 flex-row items-center justify-between">
-        <Text className="text-lg font-semibold text-gray-900">Work thread</Text>
-        <View className="rounded-full bg-gray-100 px-3 py-1.5">
-          <Text className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-            Newest first
-          </Text>
-        </View>
-      </View>
-
       <View className="gap-4">
         {normalizedActivities.map((activity, index) => {
           const isLastActivity = index === normalizedActivities.length - 1;

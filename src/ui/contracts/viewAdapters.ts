@@ -351,6 +351,8 @@ export interface TaskDetailInfoCardRow {
 }
 
 export interface TaskDetailInfoCardModel extends PrimitiveReadyItemBase {
+  /** Task name shown as the info card heading. */
+  title?: string;
   descriptionLabel?: string;
   siteLocationLabel?: string;
   assignedByLabel?: string;

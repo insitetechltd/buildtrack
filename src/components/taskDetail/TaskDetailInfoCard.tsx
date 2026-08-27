@@ -116,14 +116,21 @@ export default function TaskDetailInfoCard({ model }: TaskDetailInfoCardProps) {
       (model.isCritical && model.criticalLabel),
   );
 
+  const cardTitle = model.title?.trim();
+
   return (
     <View
       testID="task-detail__info_card"
       className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-white p-[14px]"
     >
-      <Text className="text-base font-semibold uppercase tracking-[1.2px] text-slate-500">
-        Task Details
-      </Text>
+      {cardTitle ? (
+        <Text
+          testID="task-detail__info_card_title"
+          className="text-lg font-semibold text-slate-900"
+        >
+          {cardTitle}
+        </Text>
+      ) : null}
 
       <View className="mt-1">
         {hasProgress ? (

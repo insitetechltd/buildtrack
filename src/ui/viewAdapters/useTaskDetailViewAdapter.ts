@@ -868,6 +868,7 @@ export function useTaskDetailViewAdapter({
     id: 'task-info-card',
     density: 'standard',
     structuralState: 'stale',
+    title: task.title,
     descriptionLabel: task.description || '',
     siteLocationLabel: task.locationOnSite || '',
     assignedByLabel: delegationSummary.assignedByLabel,
@@ -1175,7 +1176,7 @@ export function useTaskDetailViewAdapter({
       },
       header: {
         taskId: task.id,
-        title: task.title,
+        title: t.tasks.taskDetails,
         statusLabel: getStatusLabel(task.status),
         projectName: task.projectId || 'Unknown Project',
         assigneeSummary: assignees.map((a) => a.name).join(', ') || 'Unassigned',

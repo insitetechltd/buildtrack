@@ -406,7 +406,7 @@ describe("TaskDetailScreen header regression", () => {
     );
   });
 
-  it("renders the activity timeline title when activities are available", () => {
+  it("renders the activity timeline without a Work thread header row", () => {
     mockUseTaskDetailViewAdapter.mockReturnValue({
       output: createAdapterOutput({
         activityThread: [
@@ -428,7 +428,9 @@ describe("TaskDetailScreen header regression", () => {
 
     const screen = render(<TaskDetailScreen taskId="task-1" onNavigateBack={jest.fn()} />);
 
-    expect(screen.getByText("Work thread")).toBeTruthy();
+    expect(screen.getByTestId("task-detail__activity_thread")).toBeTruthy();
+    expect(screen.queryByText("Work thread")).toBeNull();
+    expect(screen.queryByText("Newest first")).toBeNull();
   });
 
   it("renders the merged info card while keeping separate subtasks and detail cards out of the screen", () => {
@@ -536,7 +538,8 @@ describe("TaskDetailScreen header regression", () => {
     expect(screen.queryByTestId("task-detail__active_entry_stage")).toBeNull();
     expect(activityThread).toBeTruthy();
     expect(screen.getByTestId("task-detail__workthread_scroll")).toBeTruthy();
-    expect(within(activityThread).getByText("Work thread")).toBeTruthy();
+    expect(within(activityThread).queryByText("Work thread")).toBeNull();
+    expect(within(activityThread).queryByText("Newest first")).toBeNull();
     expect(within(activityThread).getByText("Submitted task for review")).toBeTruthy();
     expect(within(activityThread).getByText("Marked 100% complete")).toBeTruthy();
     expect(within(activityThread).getByText("Jul 5, 09:30")).toBeTruthy();

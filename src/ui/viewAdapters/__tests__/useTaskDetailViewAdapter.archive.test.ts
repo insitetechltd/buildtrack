@@ -52,6 +52,9 @@ describe("useTaskDetailViewAdapter archive actions", () => {
     });
 
     useTranslation.mockReturnValue({
+      tasks: {
+        taskDetails: "Task Details",
+      },
       taskDetail: {
         submittedForReview: "Submitted for Review",
         taskApproved: "Task Approved",

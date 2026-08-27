@@ -122,7 +122,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
     taskId: props.taskId,
     subTaskId: props.subTaskId
   });
-  const [isHeaderTitleExpanded, setIsHeaderTitleExpanded] = useState(false);
   const [isArchiveConfirmVisible, setIsArchiveConfirmVisible] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
 
@@ -260,7 +259,6 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
           titleNode={(
             <BrandHeaderTitle
               label="Loading..."
-              subtitle="Task details"
               titleTestID="task-detail__header_title"
             />
           )}
@@ -277,6 +275,7 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
   const infoCardModel = output.infoCard
     ? {
         ...output.infoCard,
+        title: output.infoCard.title ?? output.taskHero.title,
         statusLabel: output.infoCard.statusLabel ?? output.taskHero.statusLabel,
         categoryLabel: output.infoCard.categoryLabel ?? output.taskHero.categoryLabel,
         completionLabel: output.infoCard.completionLabel ?? output.taskHero.completionLabel,
@@ -292,15 +291,12 @@ export default function TaskDetailScreen(props: TaskDetailScreenProps) {
       <StatusBar style="dark" />
       
       <ModernScreenHeader 
-        title={output.header.title || "Task Details"}
+        title="Task Details"
         titleNode={(
           <View testID="task-detail__header_title_block">
             <BrandHeaderTitle
-              label={output.header.title || "Task Details"}
-              subtitle="Task details"
+              label="Task Details"
               titleTestID="task-detail__header_title"
-              titleNumberOfLines={isHeaderTitleExpanded ? undefined : 1}
-              onTitlePress={() => setIsHeaderTitleExpanded((current) => !current)}
             />
           </View>
         )}

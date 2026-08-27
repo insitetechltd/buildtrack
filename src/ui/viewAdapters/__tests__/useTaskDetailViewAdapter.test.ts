@@ -116,6 +116,9 @@ describe("useTaskDetailViewAdapter", () => {
     });
 
     useTranslation.mockReturnValue({
+      tasks: {
+        taskDetails: "Task Details",
+      },
       taskDetail: {
         submittedForReview: "Submitted for Review",
         taskApproved: "Task Approved",
@@ -473,6 +476,7 @@ describe("useTaskDetailViewAdapter", () => {
     );
 
     expect(result.current.output.infoCard).toMatchObject({
+      title: "Parent Task",
       descriptionLabel: "Confirm supplier lead times before final delivery.",
       assignedByLabel: "User user-1",
       assignedToLabel: "User user-2, User user-3",
@@ -1350,11 +1354,13 @@ describe("useTaskDetailViewAdapter", () => {
     });
 
     expect(result.current.output.infoCard).toMatchObject({
+      title: "Parent Task",
       statusLabel: "In Progress",
       categoryLabel: "General",
       completionLabel: "50% complete",
       dueDateLabel: "Oct 10, 2026",
       isAssignedToCurrentUser: true,
     });
+    expect(result.current.output.header.title).toBe("Task Details");
   });
 });

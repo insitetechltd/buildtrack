@@ -57,6 +57,19 @@ describe("captureSession sessionDraftStore", () => {
     expect(photos.find((p) => p.id === "1")?.selected).toBe(true);
     expect(photos.find((p) => p.id === "lib_1")?.selected).toBe(true);
   });
+
+  it("records library picks without requiring a file:// uri (defer pin to Accept)", () => {
+    const { addOrSelectLibraryPhoto } = useCaptureSessionStore.getState();
+    addOrSelectLibraryPhoto({
+      id: "lib_ph",
+      uri: "ph://asset-ph",
+      fileName: "job.jpg",
+      mediaLibraryAssetId: "asset-ph",
+    });
+    const row = useCaptureSessionStore.getState().photos[0];
+    expect(row.uri).toBe("ph://asset-ph");
+    expect(row.selected).toBe(true);
+  });
 });
 
 describe("mapSessionSelectionToSelectedPhotos", () => {

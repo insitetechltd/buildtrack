@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Image as ExpoImage } from "expo-image";
 import {
   View,
   Text,
@@ -207,9 +208,13 @@ export function CaptureSessionCameraScreen() {
             .filter((p) => p.source === "camera")
             .slice(-6)
             .map((p) => (
-              <Image
+              <ExpoImage
                 key={p.id}
                 source={{ uri: p.uri }}
+                recyclingKey={p.id}
+                cachePolicy="memory-disk"
+                contentFit="cover"
+                transition={0}
                 style={styles.sessionThumb}
               />
             ))}
@@ -231,6 +236,7 @@ export function CaptureSessionCameraScreen() {
           {libraryThumbUri ? (
             <Image
               source={{ uri: libraryThumbUri }}
+              resizeMode="cover"
               style={styles.libraryThumb}
             />
           ) : (

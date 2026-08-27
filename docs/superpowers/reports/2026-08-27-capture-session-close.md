@@ -27,6 +27,12 @@
 - Daily-report destination (`M-DAILY-01` Phase 0)
 - Dev Settings smoke host may remain for isolated checks
 
+## Follow-up (2026-08-28) — library picker lag
+
+JS-only: pin library `ph://` on **Accept** (not first tap); grid uses RN `Image` with explicit tile size (`expo-image` 2.2 still requests `PHImageManagerMaximumSize` for `ph://`). Camera `file://` thumbs stay on `expo-image`. Headed smoke on iPhone 17 Pro: grid tiles populated, tap → `1 selected` badge, Accept → Select Photos (1). Evidence: `.dbg/picker-lag-smoke/evidence/picker-lag-0{2,3,5}-*.png`.
+
+**Residual:** iCloud-only assets / limited-library not headed; FlashList and expo-image target-size parked (SDK lock).
+
 ## Residual
 
-- Unapplied seat/on_hold migrations unrelated; still need Human GO.
+- Seat CA→worker already live on DEV. Project `on_hold` drop migration dormant (reserved slot — do not apply).

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -14,14 +14,14 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library";
+import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
-import { pinDraftMedia } from "../../utils/draftMediaCache";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
-import { mapSessionSelectionToSelectedPhotos } from "./mapToSelectedPhotos";
+import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 
-const PAGE_SIZE = 60;
+const PAGE_SIZE = 36;
 const COLUMNS = 3;
 const GAP = 2;
 
@@ -38,18 +38,44 @@ function newLibrarySessionId(assetId: string): string {
   return `lib_${assetId}`;
 }
 
-async function resolveLocalUri(asset: MediaLibrary.Asset): Promise<string> {
-  if (asset.uri.startsWith("file://")) {
-    return asset.uri;
-  }
-  const info = await MediaLibrary.getAssetInfoAsync(asset, {
-    shouldDownloadFromNetwork: true,
-  });
-  if (info.localUri?.startsWith("file://")) {
-    return info.localUri;
-  }
-  throw new Error(`No local file URI for asset ${asset.id}`);
-}
+const LibraryGridTile = memo(function LibraryGridTile({
+  assetId,
+  uri,
+  tileSize,
+  selected,
+  order,
+  onPress,
+}: {
+  assetId: string;
+  uri: string;
+  tileSize: number;
+  selected: boolean;
+  order: number | undefined;
+  onPress: (assetId: string) => void;
+}) {
+  return (
+    <Pressable
+      onPress={() => onPress(assetId)}
+      style={{ width: tileSize, height: tileSize }}
+    >
+      {/* RN Image + explicit size: expo-image 2.2 loads ph:// at PHImageManagerMaximumSize. */}
+      <Image
+        source={{ uri }}
+        resizeMode="cover"
+        style={{ width: tileSize, height: tileSize }}
+      />
+      {selected && order != null ? (
+        <View
+          testID={`capture-session__order_badge_${assetId}`}
+          style={styles.orderBadge}
+          accessibilityLabel={`Selected ${order}`}
+        >
+          <Text style={styles.orderBadgeText}>{order}</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+});
 
 /**
  * Hybrid picker: session (camera) strip + MediaLibrary grid (album-scoped).
@@ -77,6 +103,9 @@ export function HybridLibraryPickerScreen() {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loadingPage, setLoadingPage] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const pageRequestRef = useRef(0);
+  const acceptingRef = useRef(false);
+  const assetsByIdRef = useRef(new Map<string, MediaLibrary.Asset>());
 
   const tileSize = useMemo(
     () => (width - GAP * (COLUMNS - 1)) / COLUMNS,
@@ -184,6 +213,8 @@ export function HybridLibraryPickerScreen() {
   }, []);
 
   const loadPage = useCallback(async (albumId: string, after?: string) => {
+    const requestId = pageRequestRef.current + 1;
+    pageRequestRef.current = requestId;
     setLoadingPage(true);
     try {
       const page = await MediaLibrary.getAssetsAsync({
@@ -193,13 +224,26 @@ export function HybridLibraryPickerScreen() {
         mediaType: MediaLibrary.MediaType.photo,
         sortBy: [[MediaLibrary.SortBy.modificationTime, false]],
       });
-      setAssets((prev) => (after ? [...prev, ...page.assets] : page.assets));
+      if (pageRequestRef.current !== requestId) {
+        return;
+      }
+      setAssets((prev) => {
+        const next = after ? [...prev, ...page.assets] : page.assets;
+        const map = new Map<string, MediaLibrary.Asset>();
+        for (const asset of next) {
+          map.set(asset.id, asset);
+        }
+        assetsByIdRef.current = map;
+        return next;
+      });
       setEndCursor(page.endCursor);
       setHasNextPage(page.hasNextPage);
     } catch (error) {
       console.warn("[CaptureSession] library page failed", error);
     } finally {
-      setLoadingPage(false);
+      if (pageRequestRef.current === requestId) {
+        setLoadingPage(false);
+      }
     }
   }, []);
 
@@ -243,28 +287,35 @@ export function HybridLibraryPickerScreen() {
   }, []);
 
   const onPressLibraryAsset = useCallback(
-    async (asset: MediaLibrary.Asset) => {
-      const already = photos.find((p) => p.mediaLibraryAssetId === asset.id);
+    (assetId: string) => {
+      const store = useCaptureSessionStore.getState();
+      const already = store.photos.find(
+        (p) => p.mediaLibraryAssetId === assetId,
+      );
       if (already) {
         toggleSelected(already.id);
         return;
       }
-      try {
-        const localUri = await resolveLocalUri(asset);
-        const fileName = asset.filename || `library_${Date.now()}.jpg`;
-        const pinnedUri = await pinDraftMedia(localUri, fileName);
-        addOrSelectLibraryPhoto({
-          id: newLibrarySessionId(asset.id),
-          uri: pinnedUri,
-          fileName,
-          mediaLibraryAssetId: asset.id,
-        });
-      } catch (error) {
-        console.warn("[CaptureSession] library pin failed", error);
-        Alert.alert("Library", "Could not load that photo. Try another.");
+      const selectedCountNow = store.photos.filter((p) => p.selected).length;
+      if (selectedCountNow >= store.selectionLimit) {
+        Alert.alert(
+          "Limit reached",
+          `You can select up to ${store.selectionLimit} photos.`,
+        );
+        return;
       }
+      const asset = assetsByIdRef.current.get(assetId);
+      if (!asset) {
+        return;
+      }
+      addOrSelectLibraryPhoto({
+        id: newLibrarySessionId(asset.id),
+        uri: asset.uri,
+        fileName: asset.filename || `library_${Date.now()}.jpg`,
+        mediaLibraryAssetId: asset.id,
+      });
     },
-    [addOrSelectLibraryPhoto, photos, toggleSelected],
+    [addOrSelectLibraryPhoto, toggleSelected],
   );
 
   const handleAccept = useCallback(async () => {
@@ -272,13 +323,21 @@ export function HybridLibraryPickerScreen() {
       Alert.alert("Select photos", "Highlight at least one photo to continue.");
       return;
     }
+    if (acceptingRef.current) {
+      return;
+    }
+    acceptingRef.current = true;
     setAccepting(true);
     try {
-      const mapped = mapSessionSelectionToSelectedPhotos(
+      const mapped = await materializeSelectedCapturePhotos(
         useCaptureSessionStore.getState().photos,
       );
       onComplete({ photos: mapped });
+    } catch (error) {
+      console.warn("[CaptureSession] accept pin failed", error);
+      Alert.alert("Library", "Could not prepare those photos. Try again.");
     } finally {
+      acceptingRef.current = false;
       setAccepting(false);
     }
   }, [onComplete, selectedCount]);
@@ -320,8 +379,9 @@ export function HybridLibraryPickerScreen() {
         <Pressable
           testID="capture-session__hybrid_back"
           onPress={goToCamera}
+          disabled={accepting}
           hitSlop={12}
-          style={styles.headerSide}
+          style={[styles.headerSide, accepting && { opacity: 0.4 }]}
         >
           <Ionicons name="chevron-back" size={26} color="#08576E" />
         </Pressable>
@@ -382,8 +442,12 @@ export function HybridLibraryPickerScreen() {
                   height: sessionTileSize,
                 }}
               >
-                <Image
+                <ExpoImage
                   source={{ uri: item.uri }}
+                  recyclingKey={item.id}
+                  cachePolicy="memory-disk"
+                  contentFit="cover"
+                  transition={0}
                   style={{
                     width: sessionTileSize,
                     height: sessionTileSize,
@@ -428,6 +492,11 @@ export function HybridLibraryPickerScreen() {
           numColumns={COLUMNS}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
+          extraData={selectionOrderByKey}
+          initialNumToRender={18}
+          maxToRenderPerBatch={12}
+          windowSize={5}
+          removeClippedSubviews
           ListFooterComponent={
             loadingPage ? (
               <ActivityIndicator
@@ -446,30 +515,16 @@ export function HybridLibraryPickerScreen() {
             gap: GAP,
             paddingBottom: insets.bottom + 24,
           }}
-          renderItem={({ item }) => {
-            const selected = selectedLibraryIds.has(item.id);
-            const order = selectionOrderByKey.get(item.id);
-            return (
-              <Pressable
-                onPress={() => void onPressLibraryAsset(item)}
-                style={{ width: tileSize, height: tileSize }}
-              >
-                <Image
-                  source={{ uri: item.uri }}
-                  style={{ width: tileSize, height: tileSize }}
-                />
-                {selected && order != null ? (
-                  <View
-                    testID={`capture-session__order_badge_${item.id}`}
-                    style={styles.orderBadge}
-                    accessibilityLabel={`Selected ${order}`}
-                  >
-                    <Text style={styles.orderBadgeText}>{order}</Text>
-                  </View>
-                ) : null}
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => (
+            <LibraryGridTile
+              assetId={item.id}
+              uri={item.uri}
+              tileSize={tileSize}
+              selected={selectedLibraryIds.has(item.id)}
+              order={selectionOrderByKey.get(item.id)}
+              onPress={onPressLibraryAsset}
+            />
+          )}
         />
       )}
 

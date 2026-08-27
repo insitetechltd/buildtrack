@@ -6,7 +6,19 @@ import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithCompanyInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserStoreWithInit } from "@/state/userStore.supabase";
-import { getProjectRole, isAdmin, type Project, type ProjectStatus } from "@/types/buildtrack";
+import {
+  isAdmin,
+  type Project,
+  type ProjectStatus,
+} from "@/types/buildtrack";
+import {
+  canManageProjectRoster,
+  getProjectMembershipLabel,
+  isEligibleProjectAdminCandidate,
+  MEMBER_GRANT_CATEGORY,
+  upsertProjectMembership,
+} from "@/ui/contracts/projectMembership";
+import { formatProjectStatusLabel, normalizeProjectStatus } from "@/ui/contracts/projectStatus";
 import type { ProjectDetailScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 import { useDateFormatter } from "@/utils/dateFormatter";
 
@@ -39,11 +51,9 @@ export interface ProjectDetailViewAdapterHookResult {
     closeAddMemberModal: () => void;
     addMembers: (userIds: string[]) => Promise<void>;
     confirmRemoveMember: (userId: string) => void;
+    setMemberAsProjectAdmin: (userId: string) => Promise<void>;
+    clearMemberProjectAdmin: (userId: string) => Promise<void>;
   };
-}
-
-function formatProjectStatusLabel(status: ProjectStatus): string {
-  return status.replace(/_/g, " ");
 }
 
 export function useProjectDetailViewAdapter(
@@ -62,6 +72,7 @@ export function useProjectDetailViewAdapter(
     getProjectUserAssignments,
     getLeadPMForProject,
     assignUserToProject,
+    updateUserProjectCategory,
     removeUserFromProject,
     fetchProjectUserAssignments,
     cleanupDuplicateAssignments,
@@ -71,7 +82,6 @@ export function useProjectDetailViewAdapter(
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isAddMemberModalVisible, setIsAddMemberModalVisible] = useState(false);
-  const canAdministerProject = isAdmin(user);
 
   const refreshAssignments = useCallback(
     async (shouldCleanupDuplicates: boolean) => {
@@ -128,6 +138,14 @@ export function useProjectDetailViewAdapter(
   const leadPmId = project ? getLeadPMForProject(project.id) : undefined;
   const leadPm = leadPmId ? getUserById(leadPmId) : null;
   const allAssignments = project ? getProjectUserAssignments(project.id) : [];
+  const canEdit = isAdmin(user);
+  /** Place-on-a-job: company CA or Project Admin on this job. */
+  const canManageMembers = Boolean(
+    project &&
+      (isAdmin(user) || canManageProjectRoster(user, project.id, allAssignments)),
+  );
+  /** Name PA: company CA only (construct admin verb). */
+  const canManageProjectAdmin = canEdit;
 
   const memberRows = useMemo(() => {
     if (!project) {
@@ -158,20 +176,30 @@ export function useProjectDetailViewAdapter(
     return Array.from(dedupedAssignments.values()).map((assignment) => {
       const member = getUserById(assignment.userId);
       const isLeadPm = assignment.userId === leadPmId;
+      const eligibleForPa = Boolean(member && isEligibleProjectAdminCandidate(member));
 
       return {
         id: assignment.id || `project-member:${assignment.userId}`,
         userId: assignment.userId,
         name: member?.name || "Unknown",
-        projectRoleLabel: getProjectRole(assignment).replace(/_/g, " "),
+        projectRoleLabel: getProjectMembershipLabel(assignment),
         email: member?.email,
         isLeadPm,
-        canRemove: canAdministerProject && !isLeadPm,
+        canRemove: canManageMembers && !isLeadPm,
+        canSetAsProjectAdmin: canManageProjectAdmin && eligibleForPa && !isLeadPm,
+        canClearProjectAdmin: canManageProjectAdmin && isLeadPm,
         density: "standard" as const,
         structuralState: "stale" as const,
       };
     });
-  }, [allAssignments, canAdministerProject, getUserById, leadPmId, project]);
+  }, [
+    allAssignments,
+    canManageMembers,
+    canManageProjectAdmin,
+    getUserById,
+    leadPmId,
+    project,
+  ]);
 
   const saveProjectEdits = useCallback(
     async (formData: ProjectFormSubmission) => {
@@ -210,46 +238,58 @@ export function useProjectDetailViewAdapter(
       }
 
       try {
-        const results = await Promise.allSettled(
-          userIds.map((userId) =>
-            assignUserToProject(userId, project.id, "worker", user.id),
-          ),
-        );
+        let inserted = 0;
+        let updated = 0;
 
-        const successful = results.filter(
-          (result) => result.status === "fulfilled",
-        ).length;
-        const failed = results.filter(
-          (result) => result.status === "rejected",
-        ).length;
+        for (const userId of userIds) {
+          const result = await upsertProjectMembership(
+            { assignUserToProject, updateUserProjectCategory },
+            {
+              userId,
+              projectId: project.id,
+              assignedBy: user.id,
+              assignments: getProjectUserAssignments(project.id),
+            },
+          );
+          if (result === "inserted") {
+            inserted += 1;
+          } else {
+            updated += 1;
+          }
+        }
 
         setIsAddMemberModalVisible(false);
         await fetchProjectUserAssignments(project.id);
 
-        if (successful > 0 && failed === 0) {
-          const memberLabel = successful === 1 ? "member" : "members";
-          Alert.alert("Success", `${successful} ${memberLabel} added to project`);
+        const memberLabel = userIds.length === 1 ? "member" : "members";
+        if (inserted > 0 && updated === 0) {
+          Alert.alert("Success", `${inserted} ${memberLabel} added to project`);
           return;
         }
-
-        if (successful > 0) {
+        if (updated > 0 && inserted === 0) {
           Alert.alert(
-            "Partial Success",
-            `${successful} members added successfully. ${failed} members were already assigned to this project.`,
+            "Success",
+            `${updated} ${memberLabel} updated on this project`,
           );
           return;
         }
-
         Alert.alert(
-          "Info",
-          "All selected members were already assigned to this project.",
+          "Success",
+          `${inserted} added and ${updated} updated on this project`,
         );
       } catch (error) {
         console.error("ProjectDetailScreen: Error adding members", error);
         Alert.alert("Error", "Failed to add members to project");
       }
     },
-    [assignUserToProject, fetchProjectUserAssignments, project, user],
+    [
+      assignUserToProject,
+      fetchProjectUserAssignments,
+      getProjectUserAssignments,
+      project,
+      updateUserProjectCategory,
+      user,
+    ],
   );
 
   const confirmRemoveMember = useCallback(
@@ -286,10 +326,71 @@ export function useProjectDetailViewAdapter(
     [fetchProjectUserAssignments, project, removeUserFromProject],
   );
 
+  const setMemberAsProjectAdmin = useCallback(
+    async (userId: string) => {
+      if (!project || !user) {
+        return;
+      }
+
+      const candidate = getUserById(userId);
+      if (!candidate || !isEligibleProjectAdminCandidate(candidate)) {
+        Alert.alert("Error", "Project Admin can only be a company admin or PM on this job");
+        return;
+      }
+
+      try {
+        await upsertProjectMembership(
+          { assignUserToProject, updateUserProjectCategory },
+          {
+            userId,
+            projectId: project.id,
+            asProjectAdmin: true,
+            assignedBy: user.id,
+            assignments: getProjectUserAssignments(project.id),
+            candidateUser: candidate,
+          },
+        );
+        await fetchProjectUserAssignments(project.id);
+        Alert.alert("Success", `${candidate.name} is now Project Admin`);
+      } catch (error) {
+        console.error("ProjectDetailScreen: Error naming Project Admin", error);
+        Alert.alert(
+          "Error",
+          error instanceof Error ? error.message : "Failed to name Project Admin",
+        );
+      }
+    },
+    [
+      assignUserToProject,
+      fetchProjectUserAssignments,
+      getProjectUserAssignments,
+      getUserById,
+      project,
+      updateUserProjectCategory,
+      user,
+    ],
+  );
+
+  const clearMemberProjectAdmin = useCallback(
+    async (userId: string) => {
+      if (!project) {
+        return;
+      }
+
+      try {
+        await updateUserProjectCategory(userId, project.id, MEMBER_GRANT_CATEGORY);
+        await fetchProjectUserAssignments(project.id);
+        Alert.alert("Success", "Project Admin cleared; member stays on the job");
+      } catch (error) {
+        console.error("ProjectDetailScreen: Error clearing Project Admin", error);
+        Alert.alert("Error", "Failed to clear Project Admin");
+      }
+    },
+    [fetchProjectUserAssignments, project, updateUserProjectCategory],
+  );
+
   const output = useMemo<ProjectDetailScreenViewAdapterOutput>(() => {
     const hasProject = Boolean(project);
-    const canEdit = canAdministerProject;
-    const canManageMembers = canEdit;
 
     return {
       screenId: "ProjectDetailScreen",
@@ -313,7 +414,7 @@ export function useProjectDetailViewAdapter(
             projectId: project.id,
             title: project.name,
             description: project.description,
-            statusValue: project.status,
+            statusValue: normalizeProjectStatus(project.status),
             statusLabel: formatProjectStatusLabel(project.status),
           }
         : null,
@@ -412,7 +513,8 @@ export function useProjectDetailViewAdapter(
     isRefreshing,
     leadPm,
     memberRows,
-    canAdministerProject,
+    canEdit,
+    canManageMembers,
     project,
     projectStats.totalUsers,
     projectTasks.length,
@@ -424,20 +526,22 @@ export function useProjectDetailViewAdapter(
     actions: {
       handleRefresh,
       openEditProject: () => {
-        if (project && canAdministerProject) {
+        if (project && canEdit) {
           setIsEditModalVisible(true);
         }
       },
       closeEditProject: () => setIsEditModalVisible(false),
       saveProjectEdits,
       openAddMemberModal: () => {
-        if (project && canAdministerProject) {
+        if (project && canManageMembers) {
           setIsAddMemberModalVisible(true);
         }
       },
       closeAddMemberModal: () => setIsAddMemberModalVisible(false),
       addMembers,
       confirmRemoveMember,
+      setMemberAsProjectAdmin,
+      clearMemberProjectAdmin,
     },
   };
 }

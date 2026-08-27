@@ -14,23 +14,75 @@ appId: com.buildtrack.app.local
 - tapOn:
     id: "createTask-description"
 - inputText: "Maestro create-task photo suite attachment coverage."
-# Keyboard covers Submit. Do not use hideKeyboard.
+# Dismiss keyboard while title row is still centered (50%,22% hits location row if scrolled down).
 - runFlow: ../_dismiss-keyboard.yaml
+# Location on site — pick existing option so later taps do not open the sheet.
 - scrollUntilVisible:
     centerElement: true
     element:
-      id: "create-task__submit-inline"
+      id: "create-task__location-picker-trigger"
     direction: DOWN
 - tapOn:
-    id: "create-task__submit-inline"
+    id: "create-task__location-picker-trigger"
+- extendedWaitUntil:
+    visible: "Location on Site"
+    timeout: 10000
+- scrollUntilVisible:
+    centerElement: true
+    element:
+      text: ".*Living room.*"
+    direction: DOWN
+    timeout: 10000
+- tapOn: ".*Living room.*"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__continuous_form"
+    timeout: 12000
+# Assignee required since S-UX-01J/K — pick Alice on Project A.
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-picker-trigger"
+    direction: DOWN
 - tapOn:
-    id: "create-task__submit-inline"
+    id: "create-task__assignee-picker-trigger"
+- extendedWaitUntil:
+    visible: "Assign To"
+    timeout: 12000
+- extendedWaitUntil:
+    notVisible: "Fetching project team members"
+    timeout: 30000
+- scrollUntilVisible:
+    centerElement: true
+    visibilityPercentage: 40
+    element:
+      id: "create-task__assignee-option-alice-workera1-at-test-com"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "create-task__assignee-option-alice-workera1-at-test-com"
+- tapOn:
+    id: "create-task__assignee-picker-done"
+- extendedWaitUntil:
+    visible:
+      id: "create-task__selected_assignees"
+    timeout: 12000
+# PrimaryActionBar is fixed outside ScrollView — tap directly (no scrollUntilVisible).
+- extendedWaitUntil:
+    visible:
+      id: "create-task__submit"
+    timeout: 10000
+- tapOn:
+    id: "create-task__submit"
+- tapOn:
+    id: "create-task__submit"
     delay: 1500
 # Success Alert can appear after the first visibility poll — wait, don't one-shot skip.
 - extendedWaitUntil:
     visible:
       id: "create-task__submit-success-confirm"
-    timeout: 20000
+    timeout: 45000
 - assertVisible:
     id: "create-task__submit-success-message"
 - takeScreenshot: "ct-photo-submit-success"

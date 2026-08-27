@@ -175,15 +175,30 @@ export function formatMeterLimitValue(
 
   const label = definition?.displayName ?? slug.replace(/_/g, " ");
   const aggregation = definition?.aggregation ?? "";
+  const unitLabel = formatCountUnitLabel(value, label);
 
   if (aggregation === "counter_monthly") {
-    return `${value} ${label.toLowerCase()}/mo`;
+    return `${unitLabel}/mo`;
   }
   if (aggregation === "counter_lifetime") {
-    return `${value} ${label.toLowerCase()} (lifetime)`;
+    // displayName may already include "(lifetime)" — don't append twice
+    const withoutLifetime = unitLabel.replace(/\s*\(lifetime\)\s*$/i, "").trim();
+    return `${withoutLifetime} (lifetime)`;
   }
 
-  return `${value} ${label.toLowerCase()}`;
+  return unitLabel;
+}
+
+/** `1 pm seat` / `5 worker seats` — avoid "1 pm seats". */
+function formatCountUnitLabel(value: number, label: string): string {
+  let unit = label.trim().toLowerCase();
+  if (value === 1) {
+    unit = unit
+      .replace(/\bseats\b/g, "seat")
+      .replace(/\bprojects\b/g, "project")
+      .replace(/\bentries\b/g, "entry");
+  }
+  return `${value} ${unit}`;
 }
 
 export function formatTierCapsLineFromMeters(

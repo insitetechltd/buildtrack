@@ -83,24 +83,9 @@ describe("useProfileViewAdapter R7/R8", () => {
     );
   }
 
-  it("shows Company plan for admins and navigates to Company Plan screen", async () => {
-    const onNavigateToCompanyPlan = jest.fn();
-    const { result } = renderHook(() =>
-      useProfileViewAdapter({
-        onNavigateBack: jest.fn(),
-        onNavigateToCompanyPlan,
-      }),
-    );
-    const items =
-      result.current.output.sections.find((s) => s.id === "profile-section:settings")
-        ?.items ?? [];
-    expect(items.some((item) => item.actionId === "company-plan")).toBe(true);
-
-    await act(async () => {
-      result.current.actions.handleMenuAction("company-plan");
-    });
-
-    expect(onNavigateToCompanyPlan).toHaveBeenCalledTimes(1);
+  it("does not show Company plan on Profile (entrance is Company Admin banner)", () => {
+    const items = settingsItems();
+    expect(items.some((item) => item.actionId === "company-plan")).toBe(false);
   });
 
   it("hides Coming Soon and duplicate pending-approvals rows", () => {

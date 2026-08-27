@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTaskStore } from '../../state/taskStore.supabase';
 import { useAuthStore } from '../../state/authStore';
@@ -39,6 +39,7 @@ import {
 import { Priority, TaskCategory, BillingStatus, TaskStatus } from '../../types/buildtrack';
 import { getSessionScopedSupabase } from '../../api/supabaseSessionGate';
 import { getAssignableProjectUsers } from '../../screens/createTaskAssignees';
+import { resolveWorkspaceProjectId } from '../contracts/workspaceProject';
 import { useTranslation, getNestedTranslation } from '../../utils/useTranslation';
 import { mergeUniqueAttachments } from '../../utils/mergeTaskAttachments';
 import { taskRequiresAssignees } from '../../utils/taskUpdateValidation';
@@ -214,6 +215,7 @@ export function useCreateTaskViewAdapter({
   const projectStore = useProjectStoreWithCompanyInit(user?.companyId || "");
   const { getProjectsByUser, getProjectUserAssignments, fetchProjectUserAssignments } = projectStore;
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
+  const setSelectedProject = useProjectFilterStore((state) => state.setSelectedProject);
   
   const [formData, setFormData] = useState<CreateTaskFormModel>(createEmptyFormData);
 
@@ -300,30 +302,7 @@ export function useCreateTaskViewAdapter({
     };
   }, [localDraftId]);
 
-  // 2. Validation Logic
-  const validateForm = useCallback(() => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.projectId) newErrors.projectId = 'Project is required';
-
-    if (!editTaskId) {
-      const { assignedTo } = buildRedesignMetadataPayload(formData);
-      if (assignedTo.length === 0) {
-        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
-      }
-    } else if (editTask && taskRequiresAssignees(editTask.status)) {
-      const { assignedTo } = buildRedesignMetadataPayload(formData);
-      if (assignedTo.length === 0) {
-        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [editTask, editTaskId, formData, t]);
-
-  // 3. Actions
+  // 3. Actions (declared early so workspace hydrate can call updateField)
   const updateField = useCallback((field: keyof CreateTaskFormModel, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
@@ -350,11 +329,48 @@ export function useCreateTaskViewAdapter({
     [parentSubTaskId, parentTaskId, tasks]
   );
   const userProjects = useMemo(() => getProjectsByUser(user?.id || ''), [getProjectsByUser, user?.id]);
-  const activeProjectId = formData.projectId || selectedProjectId || '';
+  const availableProjectIds = useMemo(
+    () => userProjects.map((project) => project.id),
+    [userProjects],
+  );
+  const resolvedWorkspaceProjectId = useMemo(
+    () => resolveWorkspaceProjectId(selectedProjectId, availableProjectIds),
+    [availableProjectIds, selectedProjectId],
+  );
+  // Prefer explicit form selection; otherwise inherit Activity workspace project.
+  const activeProjectId = formData.projectId || resolvedWorkspaceProjectId || '';
   const activeProject = useMemo(
     () => userProjects.find((project) => project.id === activeProjectId),
     [activeProjectId, userProjects]
   );
+
+  // 2. Validation Logic — require workspace-resolved project, not only form field.
+  const validateForm = useCallback(() => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.title.trim()) newErrors.title = 'Title is required';
+    if (!formData.description.trim()) newErrors.description = 'Description is required';
+    if (!activeProjectId) newErrors.projectId = 'Project is required';
+
+    if (!editTaskId) {
+      const { assignedTo } = buildRedesignMetadataPayload(formData);
+      if (assignedTo.length === 0) {
+        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+      }
+    } else if (editTask && taskRequiresAssignees(editTask.status)) {
+      const { assignedTo } = buildRedesignMetadataPayload(formData);
+      if (assignedTo.length === 0) {
+        newErrors.assignedTo = getNestedTranslation(t, 'validation.assigneeRequired');
+      }
+    }
+
+    setErrors(newErrors);
+    const messages = Object.values(newErrors);
+    if (messages.length > 0) {
+      Alert.alert('Cannot create task', messages[0]!);
+      return false;
+    }
+    return true;
+  }, [activeProjectId, editTask, editTaskId, formData, t]);
   const actorAssigneeRole = useMemo(
     () => resolveAssigneeRoleFromUser(user),
     [user],
@@ -367,9 +383,16 @@ export function useCreateTaskViewAdapter({
     });
     return filterSelectableAssigneeUsers(projectMembers, {
       actorRole: actorAssigneeRole,
+      actorUserId: user?.id,
       resolveRole: resolveAssigneeRoleFromUser,
     });
-  }, [activeProjectId, actorAssigneeRole, getAllUsers, getProjectUserAssignments]);
+  }, [
+    activeProjectId,
+    actorAssigneeRole,
+    getAllUsers,
+    getProjectUserAssignments,
+    user?.id,
+  ]);
   const filteredAssignableUsers = useMemo(() => {
     if (!userSearchQuery) {
       return allAssignableUsers;
@@ -389,6 +412,7 @@ export function useCreateTaskViewAdapter({
     taskStatus: editTask?.status as TaskStatus | undefined,
     isCreateFlow: !editTaskId,
   });
+
   const requiresEditReason = requiresEditReasonForStatus(
     editTask?.status as TaskStatus | undefined,
   );
@@ -459,6 +483,7 @@ export function useCreateTaskViewAdapter({
           candidateUserId: userId,
           assignableUserIds: assignableIds,
           actorRole: actorAssigneeRole,
+          actorUserId: user?.id,
           candidateRole: resolveAssigneeRoleFromUser(candidate),
         })
       ) {
@@ -476,7 +501,7 @@ export function useCreateTaskViewAdapter({
         };
       });
     },
-    [actorAssigneeRole, allAssignableUsers, assigneesLocked, formData.assignedTo],
+    [actorAssigneeRole, allAssignableUsers, assigneesLocked, formData.assignedTo, user?.id],
   );
 
   const setPrimaryAssignee = useCallback(
@@ -614,10 +639,29 @@ export function useCreateTaskViewAdapter({
   }, [editTask, editTaskId, localDraftId]);
 
   useEffect(() => {
-    if (!editTaskId && !formData.projectId && selectedProjectId) {
-      updateField('projectId', selectedProjectId);
+    if (editTaskId) {
+      return;
     }
-  }, [editTaskId, formData.projectId, selectedProjectId, updateField]);
+    if (!resolvedWorkspaceProjectId) {
+      return;
+    }
+    if (formData.projectId) {
+      return;
+    }
+    updateField('projectId', resolvedWorkspaceProjectId);
+  }, [editTaskId, formData.projectId, resolvedWorkspaceProjectId, updateField]);
+
+  // Mirror Dashboard: persist sole-project workspace so Location / filters stay aligned.
+  useEffect(() => {
+    if (!user?.id || selectedProjectId || availableProjectIds.length !== 1) {
+      return;
+    }
+    const onlyProjectId = availableProjectIds[0];
+    if (!onlyProjectId) {
+      return;
+    }
+    void setSelectedProject(onlyProjectId, user.id);
+  }, [availableProjectIds, selectedProjectId, setSelectedProject, user?.id]);
 
   useEffect(() => {
     if (!activeProjectId) {
@@ -764,11 +808,11 @@ export function useCreateTaskViewAdapter({
     updateField("locationOnSite", trimmedLocationOnSite);
     setProjectLocationLabels((currentLabels) => appendUniqueLocationLabel(currentLabels, trimmedLocationOnSite));
 
-    if (!formData.projectId) {
+    if (!activeProjectId) {
       return true;
     }
 
-    await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
+    await ensureProjectLocation(activeProjectId, trimmedLocationOnSite, user?.id);
     return true;
   };
 
@@ -792,14 +836,14 @@ export function useCreateTaskViewAdapter({
   const addProjectContainer = useCallback(
     async (rawLabel: string, parentId?: string) => {
       const label = normalizeContainerLabel(rawLabel);
-      if (!formData.projectId || !label) {
+      if (!activeProjectId || !label) {
         return null;
       }
-      const created = await ensureProjectContainer(formData.projectId, label, {
+      const created = await ensureProjectContainer(activeProjectId, label, {
         parentId: parentId || null,
         createdBy: user?.id,
       });
-      const refreshed = await fetchProjectContainers(formData.projectId);
+      const refreshed = await fetchProjectContainers(activeProjectId);
       setProjectContainers(refreshed);
       setContainerOrganizationExpanded(true);
       if (created) {
@@ -823,7 +867,7 @@ export function useCreateTaskViewAdapter({
     [
       ensureProjectContainer,
       fetchProjectContainers,
-      formData.projectId,
+      activeProjectId,
       user?.id,
     ],
   );
@@ -915,13 +959,14 @@ export function useCreateTaskViewAdapter({
     if (!validateForm()) return false;
     setIsSubmitting(true);
     try {
+      const submitProjectId = activeProjectId;
       const trimmedLocationOnSite = formData.locationOnSite.trim() || undefined;
       const existingAttachmentUrls = formData.attachments.filter(
         (attachment): attachment is string => typeof attachment === 'string',
       );
 
-      if (formData.projectId && trimmedLocationOnSite) {
-        await ensureProjectLocation(formData.projectId, trimmedLocationOnSite, user?.id);
+      if (submitProjectId && trimmedLocationOnSite) {
+        await ensureProjectLocation(submitProjectId, trimmedLocationOnSite, user?.id);
       }
 
       // Basic submit logic extracted from screen
@@ -936,7 +981,7 @@ export function useCreateTaskViewAdapter({
           title: formData.title,
           description: formData.description,
           taskReference: formData.taskReference || undefined,
-          projectId: formData.projectId,
+          projectId: submitProjectId,
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           billingStatus: formData.billingStatus as BillingStatus,
@@ -952,7 +997,7 @@ export function useCreateTaskViewAdapter({
           description: formData.description,
           taskReference: formData.taskReference || undefined,
           billingStatus: formData.billingStatus as BillingStatus,
-          projectId: formData.projectId,
+          projectId: submitProjectId,
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
@@ -976,7 +1021,7 @@ export function useCreateTaskViewAdapter({
           description: formData.description,
           taskReference: formData.taskReference || undefined,
           billingStatus: formData.billingStatus as BillingStatus,
-          projectId: formData.projectId,
+          projectId: submitProjectId,
           priority: formData.priority as Priority,
           category: formData.category as TaskCategory,
           dueDate: formData.dueDate.toISOString(),
@@ -1008,6 +1053,16 @@ export function useCreateTaskViewAdapter({
       return true;
     } catch (e) {
       console.error(e);
+      const message =
+        e instanceof Error && e.message
+          ? e.message
+          : typeof e === "object" &&
+              e &&
+              "message" in e &&
+              typeof (e as { message?: unknown }).message === "string"
+            ? String((e as { message: string }).message)
+            : "Something went wrong while creating the task.";
+      Alert.alert("Could not create task", message);
       return false;
     } finally {
       setIsSubmitting(false);

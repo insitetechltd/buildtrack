@@ -78,7 +78,6 @@ export type StatusSemanticToken =
   | "task_cancelled"
   | "project_planning"
   | "project_active"
-  | "project_on_hold"
   | "project_completed"
   | "project_cancelled"
   | "workspace_stale"

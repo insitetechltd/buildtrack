@@ -13,9 +13,17 @@ import { Ionicons } from "@expo/vector-icons";
 
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
+import {
+  SEAT_ADDON_COPY,
+  seatAddonPriceLine,
+  seatAddonQtyLine,
+  seatAddonRowLine,
+  type SeatAddonKind,
+} from "../billing/seatAddonCopy";
 import { cn } from "../utils/cn";
 import { useTranslation } from "../utils/useTranslation";
 import type {
+  CompanyPlanAddonStepperModel,
   CompanyPlanOptionModel,
   CompanyPlanStatusBannerModel,
 } from "../ui/contracts/viewAdapters";
@@ -25,6 +33,96 @@ import {
 } from "../ui/viewAdapters/useCompanyPlanViewAdapter";
 
 type CompanyPlanScreenProps = CompanyPlanViewAdapterProps;
+
+const TEAL = "#08576E";
+/** Section labels — at least as large as Starter / Pro / Extra Worker titles. */
+const SECTION_TITLE = "text-2xl font-semibold text-gray-900";
+/** Product row titles in plan + add-on cards (Starter, Pro, Extra worker, Extra PM). */
+const PRODUCT_TITLE = "text-xl font-semibold text-gray-900";
+
+function ExtraPersonRow({
+  kind,
+  qty,
+  unitPrice,
+  busySeatType,
+  onSubscribe,
+  onRemove,
+}: {
+  kind: SeatAddonKind;
+  qty: number;
+  unitPrice: string;
+  busySeatType: CompanyPlanAddonStepperModel["busySeatType"];
+  onSubscribe: () => void;
+  onRemove: () => void;
+}) {
+  const copy = SEAT_ADDON_COPY[kind];
+  const priceLine = seatAddonPriceLine(unitPrice);
+  const qtyLine = seatAddonQtyLine(qty);
+  const qtyTestId =
+    kind === "worker" ? "company-plan-worker-seat-qty" : "company-plan-pm-seat-qty";
+  const increaseTestId =
+    kind === "worker"
+      ? "company-plan-worker-seat-increase"
+      : "company-plan-pm-seat-increase";
+  const decreaseTestId =
+    kind === "worker"
+      ? "company-plan-worker-seat-decrease"
+      : "company-plan-pm-seat-decrease";
+  const busy = busySeatType !== null;
+  const busyThis = busySeatType === kind;
+  const canRemove = qty > 0 && !busy;
+
+  return (
+    <View>
+      <Text className={PRODUCT_TITLE}>{copy.rowLabel}</Text>
+      <Text
+        testID={`company-plan-${kind}-unit-price`}
+        className="mt-1 text-2xl font-semibold text-[#08576E]"
+      >
+        {priceLine}
+      </Text>
+      <Text
+        testID={qtyTestId}
+        accessibilityLabel={`${seatAddonRowLine({ kind, priceLabel: unitPrice })}, ${qty}`}
+        className="mt-1 text-base text-gray-600"
+      >
+        {qtyLine}
+      </Text>
+
+      <Pressable
+        testID={increaseTestId}
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel={copy.subscribeButton}
+        onPress={onSubscribe}
+        className={cn(
+          "mt-4 min-h-[48px] items-center justify-center rounded-xl bg-[#08576E] px-4",
+          busyThis && "opacity-50",
+        )}
+      >
+        <Text className="text-center text-lg font-semibold text-white">
+          {copy.subscribeButton}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        testID={decreaseTestId}
+        disabled={!canRemove}
+        accessibilityRole="button"
+        accessibilityLabel={copy.removeButton}
+        onPress={onRemove}
+        className={cn(
+          "mt-2 min-h-[48px] items-center justify-center rounded-xl border border-gray-300 bg-white px-4",
+          !canRemove && "opacity-40",
+        )}
+      >
+        <Text className="text-center text-lg font-semibold text-gray-800">
+          {copy.removeButton}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 
 function StatusBanner({
   banner,
@@ -38,22 +136,22 @@ function StatusBanner({
       ? "border-green-200 bg-green-50"
       : banner.tone === "error"
         ? "border-red-200 bg-red-50"
-        : "border-blue-200 bg-blue-50";
+        : "border-[#08576E]/25 bg-[#F0F7FA]";
 
   const textStyles =
     banner.tone === "success"
       ? "text-green-900"
       : banner.tone === "error"
         ? "text-red-900"
-        : "text-blue-900";
+        : "text-[#08576E]";
 
   return (
     <View
       testID="company-plan-status-banner"
-      className={cn("mx-6 mt-4 rounded-xl border p-4", toneStyles)}
+      className={cn("rounded-xl border p-4", toneStyles)}
     >
       <View className="flex-row items-start">
-        <Text className={cn("flex-1 text-base leading-6", textStyles)}>
+        <Text className={cn("flex-1 text-lg leading-7", textStyles)}>
           {banner.message}
         </Text>
         <Pressable
@@ -69,6 +167,13 @@ function StatusBanner({
   );
 }
 
+function planFeatureLines(summary: string): string[] {
+  return summary
+    .split("·")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 function PlanOptionCard({
   option,
   isLoading,
@@ -79,36 +184,59 @@ function PlanOptionCard({
   onPress: () => void;
 }) {
   const isCurrent = option.state === "current";
+  const priceDisplay =
+    option.priceLabel && option.priceLabel !== "—"
+      ? seatAddonPriceLine(option.priceLabel)
+      : option.priceLabel;
+  const features = planFeatureLines(option.summary);
 
   return (
     <View
       testID={`company-plan-option-${option.id}`}
       className={cn(
         "rounded-xl border bg-white p-4",
-        isCurrent ? "border-blue-500 bg-blue-50" : "border-gray-200",
+        isCurrent ? "border-[#08576E] bg-[#F0F7FA]" : "border-gray-200",
       )}
     >
-      <View className="mb-2 flex-row items-start justify-between">
-        <View className="flex-1 pr-3">
-          <Text className="text-xl font-semibold text-gray-900">{option.title}</Text>
-          <Text className="mt-1 text-lg font-medium text-blue-700">{option.priceLabel}</Text>
-        </View>
+      <View className="mb-3 flex-row items-start justify-between">
+        <Text className={cn("flex-1 pr-3", PRODUCT_TITLE)}>
+          {option.title}
+        </Text>
         {isCurrent ? (
-          <View className="rounded-full bg-blue-600 px-3 py-1">
-            <Text className="text-xs font-semibold uppercase text-white">Current</Text>
+          <View className="rounded-full bg-[#08576E] px-3 py-1">
+            <Text className="text-base font-semibold uppercase text-white">
+              Current
+            </Text>
           </View>
         ) : null}
       </View>
 
-      <Text className="text-base leading-6 text-gray-600">{option.summary}</Text>
+      <Text
+        testID={`company-plan-price-${option.id}`}
+        className="text-2xl font-bold text-[#08576E]"
+      >
+        {priceDisplay}
+      </Text>
+
+      <View className="mt-3 gap-2">
+        {features.map((line) => (
+          <View key={line} className="flex-row items-start">
+            <Text className="mr-2 text-lg text-[#08576E]">•</Text>
+            <Text className="flex-1 text-lg leading-7 text-gray-700">{line}</Text>
+          </View>
+        ))}
+      </View>
 
       <Pressable
         testID={`company-plan-action-${option.id}`}
-        disabled={option.disabled}
+        disabled={option.disabled || isLoading}
+        accessibilityRole="button"
+        accessibilityLabel={option.actionLabel}
         onPress={onPress}
         className={cn(
-          "mt-4 flex-row items-center justify-center rounded-lg py-3",
-          option.disabled ? "bg-gray-200" : "bg-blue-600",
+          "mt-4 min-h-[48px] flex-row items-center justify-center rounded-xl px-4 py-3",
+          option.disabled ? "bg-gray-200" : "bg-[#08576E]",
+          isLoading && "opacity-70",
         )}
       >
         {isLoading ? (
@@ -116,7 +244,7 @@ function PlanOptionCard({
         ) : (
           <Text
             className={cn(
-              "text-base font-semibold",
+              "text-center text-lg font-semibold",
               option.disabled ? "text-gray-500" : "text-white",
             )}
           >
@@ -129,7 +257,14 @@ function PlanOptionCard({
 }
 
 export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
-  const { onNavigateBack, forceSelection } = props;
+  const {
+    onNavigateBack,
+    forceSelection,
+    onNavigateToProfile,
+    onNavigateToProjectPicker,
+    onNavigateToCompanyManagement,
+    onNavigateToTaskDashboard,
+  } = props;
   const t = useTranslation();
   const { output, actions } = useCompanyPlanViewAdapter(props);
   const addonSteppers = output.addonSteppers;
@@ -139,7 +274,7 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
       <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
         <StatusBar style="light" />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#08576E" />
+          <ActivityIndicator size="large" color={TEAL} />
         </View>
       </SafeAreaView>
     );
@@ -151,9 +286,13 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
 
       <ModernScreenHeader
         title={t.profile.companyPlan}
-        titleNode={<BrandHeaderTitle subtitle={t.profile.companyPlan} />}
+        titleNode={<BrandHeaderTitle label={t.profile.companyPlan} />}
         showBackButton={!forceSelection}
         onBackPress={forceSelection ? undefined : onNavigateBack}
+        onNavigateToProfile={onNavigateToProfile}
+        onNavigateToProjectPicker={onNavigateToProjectPicker}
+        onNavigateToCompanyManagement={onNavigateToCompanyManagement}
+        onNavigateToTaskDashboard={onNavigateToTaskDashboard}
         className="border-b-0 bg-[#08576E] pb-2"
       />
 
@@ -169,80 +308,83 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
           />
         }
       >
-        {forceSelection ? (
+        <View className="px-4 py-4">
+          {forceSelection ? (
+            <View
+              testID="company-plan-force-selection-banner"
+              className="mb-4 rounded-xl border border-[#08576E]/25 bg-white p-4"
+            >
+              <Text className="text-lg font-semibold text-gray-900">
+                Choose {output.offeredPlanNames} to continue
+              </Text>
+              <Text className="mt-1 text-base leading-6 text-gray-600">
+                Promo codes apply at checkout.
+              </Text>
+            </View>
+          ) : null}
+
+          {output.statusBanner ? (
+            <View className="mb-4">
+              <StatusBanner
+                banner={output.statusBanner}
+                onDismiss={actions.dismissStatusBanner}
+              />
+            </View>
+          ) : null}
+
+          <Text className={cn("mb-2", SECTION_TITLE)}>Your plan</Text>
           <View
-            testID="company-plan-force-selection-banner"
-            className="mx-6 mt-4 rounded-xl border border-[#08576E]/20 bg-white p-4"
+            testID="company-plan-allocated-resources"
+            className="mb-6 rounded-xl border border-gray-200 bg-white p-4"
           >
-            <Text className="text-base font-semibold text-gray-900">
-              Choose a company plan to continue
-            </Text>
-            <Text className="mt-2 text-base leading-6 text-gray-600">
-              Subscribe to {output.offeredPlanNames} to use Taskr. You can apply a
-              promotion code at checkout.
-            </Text>
-          </View>
-        ) : null}
-
-        {output.statusBanner ? (
-          <StatusBanner
-            banner={output.statusBanner}
-            onDismiss={actions.dismissStatusBanner}
-          />
-        ) : null}
-
-        <View className={cn("mx-6 mt-4", output.statusBanner && "mt-2")}>
-          <Text className="mb-2 text-xl font-semibold text-gray-900">Current plan</Text>
-          <View className="rounded-xl border border-gray-200 bg-white p-4">
             {output.currentPlan ? (
               <>
-                <Text
-                  testID="company-plan-current-tier"
-                  className="text-2xl font-bold text-gray-900"
-                >
-                  {output.currentPlan.tierName}
-                </Text>
-                <Text className="mt-1 text-base text-gray-600">
-                  Subscription status: {output.currentPlan.statusLabel}
-                </Text>
+                <View className="mb-3 flex-row items-baseline justify-between">
+                  <Text
+                    testID="company-plan-current-tier"
+                    className={PRODUCT_TITLE}
+                  >
+                    {output.currentPlan.tierName}
+                  </Text>
+                  <Text className="text-base text-gray-500">
+                    {output.currentPlan.statusLabel}
+                  </Text>
+                </View>
                 {output.currentPlan.trialEndsLabel ? (
                   <Text
                     testID="company-plan-trial-ends"
-                    className="mt-1 text-base text-gray-600"
+                    className="mb-3 text-base text-gray-600"
                   >
-                    Trial ends: {output.currentPlan.trialEndsLabel}
+                    Trial ends {output.currentPlan.trialEndsLabel}
                   </Text>
                 ) : null}
-                <View className="mt-4 border-t border-gray-100 pt-4">
-                  {output.currentPlan.limitRows.map((row, index) => (
-                    <View
-                      key={row.id}
-                      className={cn(
-                        "flex-row items-center justify-between py-2",
-                        index > 0 && "border-t border-gray-100",
-                      )}
+                {output.currentPlan.limitRows.map((row, index) => (
+                  <View
+                    key={row.id}
+                    className={cn(
+                      "flex-row items-center justify-between py-2.5",
+                      index > 0 && "border-t border-gray-100",
+                    )}
+                  >
+                    <Text className="text-lg text-gray-600">{row.label}</Text>
+                    <Text
+                      testID={`company-plan-limit-${row.id}`}
+                      className="text-lg font-semibold text-gray-900"
                     >
-                      <Text className="text-base text-gray-600">{row.label}</Text>
-                      <Text className="text-base font-medium text-gray-900">{row.value}</Text>
-                    </View>
-                  ))}
-                </View>
+                      {row.value}
+                    </Text>
+                  </View>
+                ))}
               </>
             ) : (
-              <Text className="text-base text-gray-600">
-                No entitlement record found for this company yet.
+              <Text className="text-lg text-gray-600">
+                No plan yet — pick one below.
               </Text>
             )}
           </View>
-        </View>
 
-        <View className="mx-6 mt-6 mb-8">
-          <Text className="mb-2 text-xl font-semibold text-gray-900">Plans</Text>
-          <Text className="mb-4 text-base text-gray-600">
-            {output.plansSectionSubtitle}
-          </Text>
-
-          <View className="gap-4">
+          <Text className={cn("mb-3", SECTION_TITLE)}>Plans</Text>
+          <View className="gap-3">
             {output.planOptions.map((option) => (
               <PlanOptionCard
                 key={option.id}
@@ -256,128 +398,75 @@ export default function CompanyPlanScreen(props: CompanyPlanScreenProps) {
           </View>
 
           {addonSteppers ? (
-            <View className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-              <Text className="mb-2 text-lg font-semibold text-gray-900">
+            <View className="mt-6">
+              <Text
+                testID="company-plan-addons-title"
+                className={cn("mb-3", SECTION_TITLE)}
+              >
                 Add-ons
               </Text>
-
-              <View className="gap-4">
-                <View>
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base font-medium text-gray-900">
-                      Worker pack
-                    </Text>
-                    <Text className="text-base font-medium text-gray-900">
-                      {addonSteppers.workerPackUnitPrice}
-                    </Text>
-                  </View>
-
-                  <View className="mt-2 flex-row items-center justify-between">
-                    <Pressable
-                      testID="company-plan-worker-pack-decrease"
-                      disabled={output.isActionInFlight || addonSteppers.workerPackQty <= 0}
-                      onPress={() => {
-                        void actions.handleUpdateAddons(
-                          addonSteppers.workerPackQty - 1,
-                          addonSteppers.pmSeatQty,
-                        );
-                      }}
-                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
-                    >
-                      <Text className="text-xl font-semibold text-gray-800">-</Text>
-                    </Pressable>
-
-                    <Text
-                      testID="company-plan-worker-pack-qty"
-                      className="min-w-[40px] text-center text-base font-semibold text-gray-900"
-                    >
-                      {addonSteppers.workerPackQty}
-                    </Text>
-
-                    <Pressable
-                      testID="company-plan-worker-pack-increase"
-                      disabled={output.isActionInFlight}
-                      onPress={() => {
-                        void actions.handleUpdateAddons(
-                          addonSteppers.workerPackQty + 1,
-                          addonSteppers.pmSeatQty,
-                        );
-                      }}
-                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
-                    >
-                      <Text className="text-xl font-semibold text-gray-800">+</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text className="mt-1 text-sm text-gray-500">
-                    Adds {addonSteppers.workerSeatsPerPack} workers
-                  </Text>
-                </View>
-
-                <View>
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base font-medium text-gray-900">
-                      PM seat
-                    </Text>
-                    <Text className="text-base font-medium text-gray-900">
-                      {addonSteppers.pmSeatUnitPrice}
+              <View
+                testID="company-plan-extra-people"
+                className="rounded-xl border border-gray-200 bg-white p-4"
+              >
+                {addonSteppers.busySeatType ? (
+                  <View className="mb-4 flex-row items-center">
+                    <ActivityIndicator size="small" color="#08576E" />
+                    <Text className="ml-2 text-lg text-gray-600">
+                      {SEAT_ADDON_COPY.updating}
                     </Text>
                   </View>
+                ) : null}
 
-                  <View className="mt-2 flex-row items-center justify-between">
-                    <Pressable
-                      testID="company-plan-pm-seat-decrease"
-                      disabled={output.isActionInFlight || addonSteppers.pmSeatQty <= 0}
-                      onPress={() => {
-                        void actions.handleUpdateAddons(
-                          addonSteppers.workerPackQty,
-                          addonSteppers.pmSeatQty - 1,
-                        );
-                      }}
-                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
-                    >
-                      <Text className="text-xl font-semibold text-gray-800">-</Text>
-                    </Pressable>
+                <View className="gap-6">
+                  <ExtraPersonRow
+                    kind="worker"
+                    qty={addonSteppers.workerSeatQty}
+                    unitPrice={addonSteppers.workerUnitPrice}
+                    busySeatType={addonSteppers.busySeatType}
+                    onSubscribe={() => {
+                      void actions.handleUpdateAddons(
+                        addonSteppers.workerSeatQty + 1,
+                        addonSteppers.pmSeatQty,
+                      );
+                    }}
+                    onRemove={() => {
+                      void actions.handleUpdateAddons(
+                        addonSteppers.workerSeatQty - 1,
+                        addonSteppers.pmSeatQty,
+                      );
+                    }}
+                  />
 
-                    <Text
-                      testID="company-plan-pm-seat-qty"
-                      className="min-w-[40px] text-center text-base font-semibold text-gray-900"
-                    >
-                      {addonSteppers.pmSeatQty}
-                    </Text>
+                  <View className="border-t border-gray-200" />
 
-                    <Pressable
-                      testID="company-plan-pm-seat-increase"
-                      disabled={output.isActionInFlight}
-                      onPress={() => {
-                        void actions.handleUpdateAddons(
-                          addonSteppers.workerPackQty,
-                          addonSteppers.pmSeatQty + 1,
-                        );
-                      }}
-                      className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100"
-                    >
-                      <Text className="text-xl font-semibold text-gray-800">+</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text className="mt-1 text-sm text-gray-500">
-                    Adds {addonSteppers.pmSeatsPerSeat} PM
-                  </Text>
+                  <ExtraPersonRow
+                    kind="pm"
+                    qty={addonSteppers.pmSeatQty}
+                    unitPrice={addonSteppers.pmUnitPrice}
+                    busySeatType={addonSteppers.busySeatType}
+                    onSubscribe={() => {
+                      void actions.handleUpdateAddons(
+                        addonSteppers.workerSeatQty,
+                        addonSteppers.pmSeatQty + 1,
+                      );
+                    }}
+                    onRemove={() => {
+                      void actions.handleUpdateAddons(
+                        addonSteppers.workerSeatQty,
+                        addonSteppers.pmSeatQty - 1,
+                      );
+                    }}
+                  />
                 </View>
               </View>
             </View>
           ) : null}
 
-          <View className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
-            <View className="flex-row items-start">
-              <Ionicons name="mail-outline" size={20} color="#6b7280" />
-              <Text className="ml-3 flex-1 text-base leading-6 text-gray-600">
-                Need a downgrade, cancellation, or billing help? Email{" "}
-                <Text className="font-medium text-gray-900">{output.supportEmail}</Text>.
-              </Text>
-            </View>
-          </View>
+          <Text className="mt-6 mb-2 text-base leading-6 text-gray-500">
+            Billing help:{" "}
+            <Text className="font-medium text-gray-800">{output.supportEmail}</Text>
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>

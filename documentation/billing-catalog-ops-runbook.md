@@ -36,6 +36,11 @@ stripe-webhook → company_entitlements.entitlements_snapshot.meters
 
 **Checkout pinning:** The app sends `planTierSlug` + `planPriceId` (the exact sellable row shown on the card). The edge function validates the price row matches the tier before creating the session.
 
+**Add-on seats (HK lock):**
+- **Add** mid-cycle → Stripe qty increases immediately with `create_prorations` (charge remainder). Entitlements rise with webhook.
+- **Remove** mid-cycle → **no refund**. Stripe qty stays until `current_period_end`; desired qty stored in subscription metadata (`insite_pending_*`). Seat limit stays high until period rolls; `stripe-webhook` applies decrease with `proration_behavior=none`.
+- **Re-add** before period end → clears pending decrease; no second charge if qty never dropped.
+
 ---
 
 ## 1. Change list price (same tier)

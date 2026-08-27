@@ -1,5 +1,4 @@
 import React from "react";
-import { useNavigation } from "@react-navigation/native";
 
 import AppScreenHeader from "@/components/AppScreenHeader";
 
@@ -14,10 +13,17 @@ interface ModernScreenHeaderProps {
   onProfilePress?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToCompanyManagement?: () => void;
+  onNavigateToTaskDashboard?: () => void;
   onNavigateToDeveloperSettings?: () => void;
   className?: string;
 }
 
+/**
+ * Thin wrapper over AppScreenHeader. Avatar-menu navigation defaults
+ * (Company Admin / Task Dashboard / Profile / Change Project) live in
+ * AppScreenHeader so Dashboard + Tasks get the same privilege-aware menu.
+ */
 export default function ModernScreenHeader({
   title,
   titleNode,
@@ -29,37 +35,12 @@ export default function ModernScreenHeader({
   onProfilePress,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onNavigateToCompanyManagement,
+  onNavigateToTaskDashboard,
   onNavigateToDeveloperSettings,
   className,
 }: ModernScreenHeaderProps) {
-  const navigation = useNavigation<any>();
   const handleBackPress = onBackPress ?? onBack;
-  const handleNavigateToProfile =
-    onNavigateToProfile ??
-    (() => {
-      const parentNavigation = navigation.getParent?.();
-      const rootNavigation = parentNavigation?.getParent?.();
-      const parentRouteNames = parentNavigation?.getState?.()?.routeNames ?? [];
-
-      if (
-        parentRouteNames.includes("MainTabs") ||
-        parentRouteNames.includes("Profile") ||
-        !rootNavigation
-      ) {
-        parentNavigation?.navigate("Profile");
-        return;
-      }
-
-      rootNavigation?.navigate("Profile");
-    });
-  const handleNavigateToProjectPicker =
-    onNavigateToProjectPicker ??
-    ((allowBack?: boolean) => {
-      navigation.getParent?.()?.navigate("Activity", {
-        screen: "ProjectPicker",
-        params: { allowBack },
-      });
-    });
 
   return (
     <AppScreenHeader
@@ -68,8 +49,10 @@ export default function ModernScreenHeader({
       subtitle={subtitle}
       showBackButton={showBackButton}
       onBackPress={handleBackPress}
-      onNavigateToProfile={handleNavigateToProfile}
-      onNavigateToProjectPicker={handleNavigateToProjectPicker}
+      onNavigateToProfile={onNavigateToProfile}
+      onNavigateToProjectPicker={onNavigateToProjectPicker}
+      onNavigateToCompanyManagement={onNavigateToCompanyManagement}
+      onNavigateToTaskDashboard={onNavigateToTaskDashboard}
       onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       rightSlot={rightElement}
       className={className}

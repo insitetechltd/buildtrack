@@ -200,5 +200,17 @@ describe("taskDelegationPermissions", () => {
         }).map((u) => u.id),
       ).toEqual(["m"]);
     });
+
+    it("always allows selecting yourself when you are in the assignable pool", () => {
+      expect(
+        canSelectUserAsAssignee({
+          candidateUserId: "me",
+          assignableUserIds: ["me", "peer"],
+          actorRole: "member",
+          candidateRole: "admin",
+          actorUserId: "me",
+        }),
+      ).toBe(true);
+    });
   });
 });

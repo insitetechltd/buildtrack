@@ -178,37 +178,67 @@ describe("AdminDashboardScreen", () => {
           deniedMessage: null,
         },
         companyScope: {
+          companyId: "company-1",
           companyName: "BuildCo",
           subtitle: "Showing data for your company only",
         },
         topLevelStats: [
           {
+            id: "admin-stat:company_plan",
+            statId: "company_plan",
+            label: "Company Plan",
+            value: "BuildCo",
+            subtitle: "Plan & seats",
+            icon: "business-outline",
+            color: "bg-white",
+            iconColor: "#08576E",
+            textColor: "text-gray-900",
+            density: "standard",
+            structuralState: "stale",
+            actionId: "company_plan",
+            ctaLabel: "Manage",
+          },
+          {
             id: "admin-stat:projects",
             statId: "projects",
             label: "Projects",
             value: 12,
-            subtitle: "8 active",
+            hidePrimaryValue: true,
+            secondaryStats: [
+              { id: "planning", label: "Planning", value: 2 },
+              { id: "active", label: "On-going", value: 8 },
+              { id: "completed", label: "Completed", value: 1 },
+              { id: "cancelled", label: "Cancelled", value: 0 },
+            ],
+            secondaryLayout: "stage_tiles",
             icon: "folder-open-outline",
-            color: "bg-blue-50",
-            iconColor: "#3b82f6",
-            textColor: "text-blue-600",
+            color: "bg-white",
+            iconColor: "#08576E",
+            textColor: "text-gray-900",
             density: "standard",
             structuralState: "stale",
             actionId: "projects",
+            ctaLabel: "View all",
           },
           {
             id: "admin-stat:team",
             statId: "team",
             label: "Team Members",
             value: 4,
-            subtitle: "3 assigned",
+            hidePrimaryValue: true,
+            secondaryStats: [
+              { id: "pm", label: "PMs", value: 1 },
+              { id: "worker", label: "Workers", value: 3 },
+            ],
+            secondaryLayout: "stage_tiles",
             icon: "people-outline",
-            color: "bg-purple-50",
-            iconColor: "#7c3aed",
-            textColor: "text-purple-600",
+            color: "bg-white",
+            iconColor: "#08576E",
+            textColor: "text-gray-900",
             density: "standard",
             structuralState: "stale",
             actionId: "user_management",
+            ctaLabel: "Manage",
           },
         ],
         quickActions: [
@@ -218,9 +248,9 @@ describe("AdminDashboardScreen", () => {
             label: "Dev Admin Tools",
             description: "Database management, testing scripts, and environment control",
             icon: "code-slash-outline",
-            color: "bg-red-50",
-            iconColor: "#ef4444",
-            borderColor: "border-red-300",
+            color: "bg-white",
+            iconColor: "#08576E",
+            borderColor: "border-gray-200",
             isVisible: true,
             density: "standard",
             structuralState: "stale",
@@ -263,19 +293,59 @@ describe("AdminDashboardScreen", () => {
     });
   });
 
-  it("renders admin dashboard stats and delegates project navigation through the admin adapter", () => {
+  it("renders three sections with project stage tiles, team PM/Worker tiles, and CTA navigation", () => {
     const screen = render(
       <AdminDashboardScreen
         onNavigateToProjects={jest.fn()}
         onNavigateToUserManagement={jest.fn()}
+        onNavigateToCompanyPlan={jest.fn()}
         onNavigateToProfile={jest.fn()}
         onNavigateToDevAdmin={jest.fn()}
       />,
     );
 
-    expect(screen.getAllByText("Company Overview").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("BuildCo").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Company Overview")).toBeNull();
+    expect(screen.queryByTestId("admin-company-overview-scope")).toBeNull();
+    expect(screen.queryByTestId("company-banner__pressable")).toBeNull();
+
+    expect(screen.getByTestId("admin-stat-section-company_plan")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-section-projects")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-section-team")).toBeTruthy();
+    expect(screen.queryByTestId("admin-stat-section-completed_tasks")).toBeNull();
+    expect(screen.queryByTestId("admin-stat-section-admins")).toBeNull();
+    expect(screen.queryByText("Admins")).toBeNull();
+    expect(screen.queryByText("Completed Tasks")).toBeNull();
+    expect(screen.queryByText("Completed tasks")).toBeNull();
+    expect(screen.queryByText("Total tracked")).toBeNull();
+
+    expect(screen.queryByText("All projects : 12")).toBeNull();
+    expect(screen.queryByText("By stage")).toBeNull();
+
+    expect(screen.getByTestId("admin-stat-secondary-projects")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-secondary-projects-planning")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-secondary-projects-active")).toBeTruthy();
+    expect(screen.queryByTestId("admin-stat-secondary-projects-on_hold")).toBeNull();
+    expect(screen.getByTestId("admin-stat-secondary-projects-completed")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-secondary-projects-cancelled")).toBeTruthy();
+    expect(screen.getByText("Planning")).toBeTruthy();
+    expect(screen.getByText("On-going")).toBeTruthy();
+    expect(screen.queryByText("On Hold")).toBeNull();
+
+    expect(screen.getByTestId("admin-stat-secondary-team")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-secondary-team-pm")).toBeTruthy();
+    expect(screen.getByTestId("admin-stat-secondary-team-worker")).toBeTruthy();
+    expect(screen.getByText("PMs")).toBeTruthy();
+    expect(screen.getByText("Workers")).toBeTruthy();
+
+    expect(screen.getAllByText("Manage").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("View all")).toBeTruthy();
+    expect(screen.queryByText("Manage plan")).toBeNull();
+    expect(screen.queryByText("View projects")).toBeNull();
+    expect(screen.queryByText("Manage team")).toBeNull();
+
+    fireEvent.press(screen.getByTestId("admin-stat-company_plan"));
+    expect(mockPressQuickAction).toHaveBeenCalledWith("company_plan");
 
     fireEvent.press(screen.getByTestId("admin-stat-projects"));
     expect(mockPressQuickAction).toHaveBeenCalledWith("projects");
@@ -283,7 +353,12 @@ describe("AdminDashboardScreen", () => {
     fireEvent.press(screen.getByTestId("admin-stat-team"));
     expect(mockPressQuickAction).toHaveBeenCalledWith("user_management");
 
-    fireEvent.press(screen.getByTestId("admin-company-overview-banner"));
-    expect(mockPressQuickAction).toHaveBeenCalledWith("company_banner");
+    expect(screen.getByText("Company Plan")).toBeTruthy();
+    expect(screen.getByText("BuildCo")).toBeTruthy();
+    expect(screen.getByText("Plan & seats")).toBeTruthy();
+
+    expect(screen.queryByTestId("admin-company-overview-banner")).toBeNull();
+    expect(screen.queryByText("Banner")).toBeNull();
+    expect(screen.queryByText("Tap to edit the company banner")).toBeNull();
   });
 });

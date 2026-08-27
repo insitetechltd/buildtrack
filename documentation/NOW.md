@@ -6,51 +6,48 @@
 
 ## Doing
 
-**RC gate `M-AUTHZ-RC`:** host-company user/project/assignment contract — **this commercial RC**, not AUTHZ-02. App-side landed (Jest 38/38); headed Add Member / Assign / Edit Lead PM smoke remaining. SoT: `docs/superpowers/plans/2026-08-24-company-user-project-model.md`.
+**`M-AUTHZ-RC` headed smoke:** H01–H05 + **H08 PASS**. Confirm **H06** (Create Task) + **H07** (CA/PA field list vs Project B; Tasks peer visibility fix) after Metro reload — then milestone closeable on smoke.
 
-**TF 195 crash (fixed, unreleased):** returning from Stripe checkout aborted the app (`RCTFatal`). Cause: Company Plan rendered limit rows while `catalog` was still null (`catalog?.metersBySlug[slug]`). Needs next TF after this commit.
+**Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
-**Company Plan add-ons:** PM seat + worker pack steppers shipped app-side + `update-company-addons` Edge; webhook now merges base+addon meters. Edge deployed 2026-08-24.
+## Next (definitive)
 
-**TF 194/195:** catalog-driven Company Plan already on TestFlight. Add-ons + crash fix are **not** in a TF build yet.
+1. **Confirm H06 + H07** (headed) → close `M-AUTHZ-RC` smoke gate
+2. **`M-OPS-ENV-01`** — create empty PROD (say **start cutover**)
+3. **DEV smoke `M-BILL-01`** — Create Company (CA=worker) → plan → Extra people +1 → invite caps
+4. App Store submit → Stripe **live** on PROD
+5. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
 
-**Edge:** billing functions **deployed 2026-08-24** (`create-checkout-session`, `stripe-webhook`, `invite-user`/`invite-open`, `update-company-addons`) + HKD catalog sync OK.
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e.
 
-## Next (definitive — locked master plan)
+## Recently closed / shipped this session
 
-1. **M-AUTHZ-RC close:** headed smoke of the three admin assignment surfaces
-2. Next TF: add-on steppers + Company Plan null-catalog crash fix; smoke checkout return + add-on +/−
-3. **M-AUTHZ-02** after RC (liaison / project invite / host-absorb)
-4. **M-AI-01** — **planning gate first** (`docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md`); then Wave 2 per spine
+**Headed:** **H08 PASS** — Bob worker still sees assigned/created only.
 
-**Parked for now:** **M-BILL-F**; **M-BILL-01G** display-only FX (next billing slice); **M-AI-01 build** (options/economics doc above — no code until checklist GO).
+**Bugfix — Tasks peer visibility (H07):** admin/manager band peer job tasks now appear in Tasks as Team Queue (matched Activity).
 
-## Recently closed
+**Bugfix — Create Task workspace project:** Location inherits Activity/last-selected (or sole) project; Assign To not auto-defaulted; Organize-by-area UI removed.
 
-**M-BILL-01 catalog dynamism (2026-08-24):** Company Plan cards/prices/caps/currency from `plan_prices` + `meter_definitions`; checkout pins `planPriceId`; webhook trial meters from catalog; invite seat caps from snapshot. Ops: `documentation/billing-catalog-ops-runbook.md`. Edge deploy + HKD sync applied.
+**M-AUTHZ-RC catch-up (code):** PA roster gate, Member/PA labels, avatar → Company management, EditProjectModal hooks fix, etc.
 
-**M-BILL-01 HKD Phase 1+2 (2026-08-24):** signup → Company Plan; checkout return highlight; HKD Stripe catalog + DB meters. Commits `5f6b55d` / `40ff9ec`. TF **193**.
-
-**M-BILL-01 BILL-D/E Closed (2026-08-23):** Company Plan screen; checkout Edge; invite-user caps. TF **192**.
-
-**M-OPS-02 Closed (2026-08-22):** commit `e3eeb6d`.
+**M-BILL-01 DEV hygiene:** seat math, plan gate, worker seat copy; CA→worker seat law live.
 
 ## Locked
 
-- **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md` (**LOCKED**)
-- **HK billing:** charge HKD; dynamic catalog; **no grandfathering** (all test); display FX = **M-BILL-01G tabled** — `docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`
-- **Spine:** OPS-01 v1 ✓ → OPS-02 ✓ → **M-BILL-01** + **M-AUTHZ-RC (this RC)** → **M-AUTHZ-02** → AI-01 → Wave 2
-- **Frozen:** KPI v2 apply, Wave 2 web, **new owner modules in Taskr** (→ **M-OPS-03**)
+- **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md`
+- **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ submit
+- **HK billing:** charge HKD; no grandfathering
+- **ACL:** CA authority; default seat Worker; PA on CA|PM only; on-job roster = PA
 - No service-role in mobile; no company switch
 
 ## Parked
 
-- **M-BILL-01G** — display-only FX (view other currencies; charge HKD; no VAT)
-- **M-BILL-F** — usage gates / hard enforcement
-- **M-AI-01 implementation** — deferred until planning brief checklist complete (`docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md`)
-- Owner KPI v2 → **M-OPS-03 Owner Admin app**
-- Owner tenant writes, feedback inbox, BYO storage
+- **M-BILL-01G** / **M-BILL-F** (partial seat gates live)
+- **M-AI-01** implementation
+- **M-SEC-03** single active login
+- DEV purge UI → **M-OPS-03**
+- Owner KPI v2 → **M-OPS-03**
 
 ---
 
-Updated: 2026-08-24
+Updated: 2026-08-27 (H08 PASS)

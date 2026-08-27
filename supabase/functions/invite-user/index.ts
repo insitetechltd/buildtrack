@@ -24,6 +24,8 @@ type CompanyUserRow = {
   role?: string | null;
   system_permission?: string | null;
   is_pending?: boolean | null;
+  is_active?: boolean | null;
+  deployable_seat?: string | null;
 };
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -51,6 +53,34 @@ function legacyWorkerRole(role: string | null | undefined): boolean {
     value === "member" ||
     value === "worker"
   );
+}
+
+function seatClassForInviteUser(
+  user: CompanyUserRow,
+  rulesByKey: Map<string, SeatClassRule> | null,
+): "pm" | "worker" | "none" {
+  const deploy = (user.deployable_seat || "").toLowerCase();
+  if (deploy === "pm") return "pm";
+  if (deploy === "worker") return "worker";
+
+  const roleKey = (user.system_permission || user.role || "").toLowerCase();
+  if (!roleKey) return "none";
+
+  const rule = rulesByKey?.get(roleKey);
+  if (rule) {
+    if (rule.is_seat_exempt) return "none";
+    if (rule.consumes_pm_seats) return "pm";
+    if (rule.consumes_worker_seats) return "worker";
+    return "none";
+  }
+
+  // Fallback when seat_class_rules is unavailable — CA defaults to worker seat.
+  if (roleKey === "admin" || roleKey === "company_admin") {
+    return "worker";
+  }
+  if (legacyPmRole(roleKey)) return "pm";
+  if (legacyWorkerRole(roleKey)) return "worker";
+  return "worker";
 }
 
 async function loadSeatLimits(
@@ -117,39 +147,16 @@ function countSeats(
   users: CompanyUserRow[],
   rulesByKey: Map<string, SeatClassRule> | null,
 ): { pmCount: number; workerCount: number } {
-  const activeUsers = users.filter((user) => user.is_pending !== true);
+  // Soft-inactive frees the seat. Pending invites / awaiting approval HOLD a seat.
+  const seatHolders = users.filter((user) => user.is_active !== false);
   let pmCount = 0;
   let workerCount = 0;
 
-  for (const user of activeUsers) {
-    const roleKey = (user.system_permission || user.role || "").toLowerCase();
-    if (!roleKey) continue;
-
-    const rule = rulesByKey?.get(roleKey);
-    if (rule) {
-      if (rule.is_seat_exempt) continue;
-      if (rule.consumes_pm_seats) {
-        pmCount += 1;
-        continue;
-      }
-      if (rule.consumes_worker_seats) {
-        workerCount += 1;
-      }
-      continue;
-    }
-
-    // Pre-BILL-D fallback when seat_class_rules is unavailable.
-    if (
-      roleKey === "admin" ||
-      roleKey === "company_admin"
-    ) {
-      continue;
-    }
-    if (legacyPmRole(roleKey)) {
+  for (const user of seatHolders) {
+    const seatClass = seatClassForInviteUser(user, rulesByKey);
+    if (seatClass === "pm") {
       pmCount += 1;
-    } else if (legacyWorkerRole(roleKey)) {
-      workerCount += 1;
-    } else {
+    } else if (seatClass === "worker") {
       workerCount += 1;
     }
   }
@@ -190,18 +197,92 @@ async function upsertInviteProfile(
     return;
   }
 
+  if (isSeatLimitDbError(roleError.message)) {
+    throw Object.assign(new Error(roleError.message), {
+      code: seatLimitErrorCode(roleError.message),
+    });
+  }
+
   if (!isMissingColumnError(roleError.message)) {
     const { error: sysError } = await adminClient.from("users").upsert(
       { ...patch, id: userId, system_permission: inviteSystemPermission },
       { onConflict: "id" },
     );
     if (sysError) {
+      if (isSeatLimitDbError(sysError.message)) {
+        throw Object.assign(new Error(sysError.message), {
+          code: seatLimitErrorCode(sysError.message),
+        });
+      }
       throw sysError;
     }
     return;
   }
 
   throw roleError;
+}
+
+function isSeatLimitDbError(message: string | undefined): boolean {
+  return /pm_seat_limit|worker_seat_limit/i.test(message || "");
+}
+
+function seatLimitErrorCode(message: string | undefined): "pm_seat_limit" | "worker_seat_limit" {
+  return /pm_seat_limit/i.test(message || "") ? "pm_seat_limit" : "worker_seat_limit";
+}
+
+async function deleteInviteUser(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<void> {
+  await adminClient.from("users").delete().eq("id", userId);
+  await adminClient.auth.admin.deleteUser(userId);
+}
+
+async function assertSeatAvailableAfterWrite(
+  adminClient: ReturnType<typeof createClient>,
+  companyId: string,
+  seatType: SeatType,
+  seatRules: Map<string, SeatClassRule> | null,
+  limits: { pmSeatLimit: number; workerSeatLimit: number },
+): Promise<{ ok: true } | { ok: false; error: "pm_seat_limit" | "worker_seat_limit"; pmCount: number; workerCount: number }> {
+  const { data, error } = await adminClient
+    .from("users")
+    .select("id, role, system_permission, is_pending, is_active, deployable_seat")
+    .eq("company_id", companyId);
+
+  let companyUsers: CompanyUserRow[] = [];
+  if (error) {
+    if (isMissingColumnError(error.message)) {
+      const roleOnly = await adminClient
+        .from("users")
+        .select("id, role, is_pending, is_active")
+        .eq("company_id", companyId);
+      if (roleOnly.error) {
+        throw roleOnly.error;
+      }
+      companyUsers = roleOnly.data || [];
+    } else {
+      throw error;
+    }
+  } else {
+    companyUsers = data || [];
+  }
+
+  const { pmCount, workerCount } = countSeats(companyUsers, seatRules);
+  if (seatType === "pm" && pmCount > limits.pmSeatLimit) {
+    return { ok: false, error: "pm_seat_limit", pmCount, workerCount };
+  }
+  if (seatType === "worker" && workerCount > limits.workerSeatLimit) {
+    return { ok: false, error: "worker_seat_limit", pmCount, workerCount };
+  }
+  // Cross-check both pools — role writes can tip either class.
+  if (pmCount > limits.pmSeatLimit) {
+    return { ok: false, error: "pm_seat_limit", pmCount, workerCount };
+  }
+  if (workerCount > limits.workerSeatLimit) {
+    return { ok: false, error: "worker_seat_limit", pmCount, workerCount };
+  }
+  return { ok: true };
 }
 
 async function mintSignInLink(
@@ -364,14 +445,31 @@ Deno.serve(async (req) => {
     {
       const rolePath = await adminClient
         .from("users")
-        .select("id, role, is_pending")
+        .select("id, role, is_pending, is_active, deployable_seat")
         .eq("company_id", companyId);
       if (!rolePath.error) {
         companyUsers = rolePath.data || [];
+      } else if (isMissingColumnError(rolePath.error.message)) {
+        const roleOnly = await adminClient
+          .from("users")
+          .select("id, role, is_pending, is_active")
+          .eq("company_id", companyId);
+        if (roleOnly.error) {
+          const sysPath = await adminClient
+            .from("users")
+            .select("id, system_permission, is_pending")
+            .eq("company_id", companyId);
+          if (sysPath.error) {
+            return jsonResponse({ error: sysPath.message }, 500);
+          }
+          companyUsers = sysPath.data || [];
+        } else {
+          companyUsers = roleOnly.data || [];
+        }
       } else {
         const sysPath = await adminClient
           .from("users")
-          .select("id, system_permission, is_pending")
+          .select("id, system_permission, is_pending, is_active")
           .eq("company_id", companyId);
         if (sysPath.error) {
           return jsonResponse({ error: sysPath.message }, 500);
@@ -401,7 +499,11 @@ Deno.serve(async (req) => {
         {
           error: "pm_seat_limit",
           message:
-            `PM seat limit reached (${pmSeatLimit}). Add a PM seat add-on to invite more.`,
+            `PM seat limit reached (${pmCount}/${pmSeatLimit}). Add a PM seat to invite more.`,
+          pmCount,
+          workerCount,
+          pmSeatLimit,
+          workerSeatLimit,
         },
         409,
       );
@@ -411,17 +513,24 @@ Deno.serve(async (req) => {
         {
           error: "worker_seat_limit",
           message:
-            `Worker seat limit reached (${workerSeatLimit}). Add a worker pack to invite more.`,
+            `Worker seat limit reached (${workerCount}/${workerSeatLimit}). Add a worker seat to invite more.`,
+          pmCount,
+          workerCount,
+          pmSeatLimit,
+          workerSeatLimit,
         },
         409,
       );
     }
 
     const tempPassword = generateTempPassword();
-    const inviteRole = seatType === "pm" ? "manager" : "worker";
+    // Live `users.role` CHECK (M-SUPABASE-03a) allows supervisor, not manager.
+    // App SystemPermission still uses manager — map on read in the client.
+    const inviteRole = seatType === "pm" ? "supervisor" : "worker";
     const inviteSystemPermission = seatType === "pm" ? "manager" : "member";
 
     let userId: string | null = null;
+    let createdFreshAuthUser = false;
 
     const { data: created, error: createError } =
       await adminClient.auth.admin.createUser({
@@ -470,16 +579,37 @@ Deno.serve(async (req) => {
         existingPatch.name = name;
       }
 
-      await upsertInviteProfile(
-        adminClient,
-        userId,
-        existingPatch,
-        inviteRole,
-        inviteSystemPermission,
-      );
-      await markMustSetPassword(adminClient, userId);
+      try {
+        await upsertInviteProfile(
+          adminClient,
+          userId,
+          existingPatch,
+          inviteRole,
+          inviteSystemPermission,
+        );
+        await markMustSetPassword(adminClient, userId);
+      } catch (profileError) {
+        const message =
+          profileError instanceof Error ? profileError.message : "seat_limit";
+        const code =
+          (profileError as { code?: string })?.code ||
+          seatLimitErrorCode(message);
+        if (isSeatLimitDbError(message)) {
+          return jsonResponse(
+            {
+              error: code,
+              message,
+              pmSeatLimit: seatLimits.pmSeatLimit,
+              workerSeatLimit: seatLimits.workerSeatLimit,
+            },
+            409,
+          );
+        }
+        throw profileError;
+      }
     } else {
       userId = created.user.id;
+      createdFreshAuthUser = true;
 
       const patch: Record<string, unknown> = {
         id: userId,
@@ -491,22 +621,79 @@ Deno.serve(async (req) => {
         position: seatType === "pm" ? "Project Manager" : "Worker",
       };
 
-      await upsertInviteProfile(
-        adminClient,
-        userId,
-        patch,
-        inviteRole,
-        inviteSystemPermission,
-      );
-      await markMustSetPassword(adminClient, userId);
+      try {
+        await upsertInviteProfile(
+          adminClient,
+          userId,
+          patch,
+          inviteRole,
+          inviteSystemPermission,
+        );
+        await markMustSetPassword(adminClient, userId);
+      } catch (profileError) {
+        const message =
+          profileError instanceof Error ? profileError.message : "seat_limit";
+        const code =
+          (profileError as { code?: string })?.code ||
+          seatLimitErrorCode(message);
+        if (createdFreshAuthUser) {
+          await deleteInviteUser(adminClient, userId);
+        }
+        if (isSeatLimitDbError(message)) {
+          return jsonResponse(
+            {
+              error: code,
+              message,
+              pmSeatLimit: seatLimits.pmSeatLimit,
+              workerSeatLimit: seatLimits.workerSeatLimit,
+            },
+            409,
+          );
+        }
+        throw profileError;
+      }
     }
 
     if (!userId) {
       return jsonResponse({ error: "create_user_failed" }, 500);
     }
 
+    // Post-write verify closes concurrent-invite races (count→create→count).
+    const postCheck = await assertSeatAvailableAfterWrite(
+      adminClient,
+      companyId,
+      seatType,
+      seatRules,
+      seatLimits,
+    );
+    if (!postCheck.ok) {
+      if (createdFreshAuthUser) {
+        await deleteInviteUser(adminClient, userId);
+      } else {
+        // Existing email path: do not delete; leave profile but report limit.
+      }
+      const detail =
+        postCheck.error === "pm_seat_limit"
+          ? `PM seat limit reached (${postCheck.pmCount}/${seatLimits.pmSeatLimit}). Add a PM seat to invite more.`
+          : `Worker seat limit reached (${postCheck.workerCount}/${seatLimits.workerSeatLimit}). Add a worker seat to invite more.`;
+      return jsonResponse(
+        {
+          error: postCheck.error,
+          message: detail,
+          pmCount: postCheck.pmCount,
+          workerCount: postCheck.workerCount,
+          pmSeatLimit: seatLimits.pmSeatLimit,
+          workerSeatLimit: seatLimits.workerSeatLimit,
+        },
+        409,
+      );
+    }
+
     const minted = await mintSignInLink(adminClient, supabaseUrl, email, userId);
     if (!minted.signInLink) {
+      if (createdFreshAuthUser) {
+        await deleteInviteUser(adminClient, userId);
+      }
       return jsonResponse({ error: minted.error || "invite_link_failed" }, 500);
     }
 

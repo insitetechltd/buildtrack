@@ -3,9 +3,11 @@ import { Alert } from "react-native";
 
 import { useAuthStore } from "@/state/authStore";
 import { useProjectStoreWithCompanyInit } from "@/state/projectStore.supabase";
+import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserStoreWithInit } from "@/state/userStore.supabase";
 import { isAdmin, type Project, type ProjectStatus } from "@/types/buildtrack";
 import type { ProjectsScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
+import { normalizeProjectStatus } from "@/ui/contracts/projectStatus";
 import { useDateFormatter } from "@/utils/dateFormatter";
 import { useTranslation } from "@/utils/useTranslation";
 
@@ -27,22 +29,21 @@ export interface ProjectsViewAdapterHookResult {
 }
 
 function getStatusLabel(
-  status: ProjectStatus,
+  status: ProjectStatus | string,
   labels: Record<ProjectStatus, string>,
 ): string {
-  return labels[status] || status.replace(/_/g, " ");
+  const normalized = normalizeProjectStatus(status);
+  return labels[normalized] || status.replace(/_/g, " ");
 }
 
 function getProjectStatusTone(
-  status: ProjectStatus,
+  status: ProjectStatus | string,
 ): "success" | "info" | "warning" | "neutral" | "danger" {
-  switch (status) {
+  switch (normalizeProjectStatus(status)) {
     case "active":
       return "success";
     case "planning":
       return "info";
-    case "on_hold":
-      return "warning";
     case "cancelled":
       return "danger";
     case "completed":
@@ -73,6 +74,7 @@ export function useProjectsViewAdapter(
     updateProject,
   } = projectStore;
   const { fetchUsers, getUserById, users } = userStore;
+  const tasks = useTaskStore((state) => state.tasks);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -103,7 +105,6 @@ export function useProjectsViewAdapter(
     () => ({
       active: t.projects.active,
       planning: t.projects.planning,
-      on_hold: t.projects.onHold,
       completed: t.projects.completed,
       cancelled: t.projects.cancelled,
     }),
@@ -111,7 +112,6 @@ export function useProjectsViewAdapter(
       t.projects.active,
       t.projects.cancelled,
       t.projects.completed,
-      t.projects.onHold,
       t.projects.planning,
     ],
   );
@@ -239,7 +239,8 @@ export function useProjectsViewAdapter(
         project.name.toLowerCase().includes(normalizedQuery) ||
         project.description.toLowerCase().includes(normalizedQuery);
       const matchesStatus =
-        statusFilter === "all" || project.status === statusFilter;
+        statusFilter === "all" ||
+        normalizeProjectStatus(project.status) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -361,13 +362,14 @@ export function useProjectsViewAdapter(
         const createdBy = getUserById(project.createdBy);
         const leadPmId = getLeadPMForProject(project.id);
         const leadPm = leadPmId ? getUserById(leadPmId) : null;
+        const taskCount = tasks.filter((task) => task.projectId === project.id).length;
 
         return {
           id: `projects:${project.id}`,
           projectId: project.id,
           title: project.name,
           description: project.description,
-          statusValue: project.status,
+          statusValue: normalizeProjectStatus(project.status),
           statusLabel: getStatusLabel(project.status, statusLabels),
           statusTone: getProjectStatusTone(project.status),
           locationLabel: project.location || t.projects.noLocation,
@@ -375,6 +377,9 @@ export function useProjectsViewAdapter(
             projectStats.totalUsers === 1
               ? t.projects.member
               : t.projects.members
+          }`,
+          taskCountLabel: `${taskCount} ${
+            taskCount === 1 ? t.phrases.task : t.phrases.tasks
           }`,
           clientName: project.clientInfo.name,
           startDateLabel: dateFormatter.formatDateShort(project.startDate),
@@ -406,12 +411,6 @@ export function useProjectsViewAdapter(
           value: "planning",
           label: t.projects.planning,
           isSelected: statusFilter === "planning",
-        },
-        {
-          id: "projects-filter:on_hold",
-          value: "on_hold",
-          label: t.projects.onHold,
-          isSelected: statusFilter === "on_hold",
         },
         {
           id: "projects-filter:completed",
@@ -467,12 +466,14 @@ export function useProjectsViewAdapter(
     t.projects.noProjects,
     t.projects.noProjectsFound,
     t.projects.noProjectsMessage,
-    t.projects.onHold,
     t.projects.planning,
     t.projects.project,
     t.projects.projectsPlural,
     t.projects.tryAdjustingSearch,
     t.projects.unknown,
+    t.phrases.task,
+    t.phrases.tasks,
+    tasks,
     user,
     users,
   ]);

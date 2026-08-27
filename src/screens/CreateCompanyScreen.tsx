@@ -223,8 +223,11 @@ export default function CreateCompanyScreen({ onToggleLogin }: CreateCompanyScre
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
+              spellCheck={false}
+              // Avoid email+password signup heuristic that summons iOS Strong Password.
+              autoComplete="off"
+              textContentType="none"
+              importantForAutofill="no"
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
               blurOnSubmit={false}
@@ -236,10 +239,13 @@ export default function CreateCompanyScreen({ onToggleLogin }: CreateCompanyScre
               collapseEmptyChrome
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              // Disable iOS Strong Password overlay (blank/yellow cover on sim).
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
+              // oneTimeCode: known kill-switch for iOS Strong Password blank sheet on sim.
               autoComplete="off"
-              textContentType="none"
-              passwordRules=""
+              textContentType="oneTimeCode"
+              importantForAutofill="no"
               returnKeyType="next"
               onSubmitEditing={() => confirmRef.current?.focus()}
               blurOnSubmit={false}
@@ -263,9 +269,12 @@ export default function CreateCompanyScreen({ onToggleLogin }: CreateCompanyScre
               collapseEmptyChrome
               onChangeText={setConfirmPassword}
               secureTextEntry={!showPassword}
+              autoCapitalize="none"
+              autoCorrect={false}
+              spellCheck={false}
               autoComplete="off"
-              textContentType="none"
-              passwordRules=""
+              textContentType="oneTimeCode"
+              importantForAutofill="no"
               returnKeyType="go"
               onSubmitEditing={() => void onSubmit()}
             />

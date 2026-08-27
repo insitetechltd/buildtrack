@@ -42,6 +42,9 @@ export default function CompanyPlanSelectionGate() {
   const clearRequiresCompanyPlanSelection = useAuthStore(
     (state) => state.clearRequiresCompanyPlanSelection,
   );
+  const requestLandOnCompanyManagementAfterCheckout = useAuthStore(
+    (state) => state.requestLandOnCompanyManagementAfterCheckout,
+  );
   const [checkoutParams, setCheckoutParams] = useState(() =>
     parseCheckoutLink(null),
   );
@@ -56,11 +59,19 @@ export default function CompanyPlanSelectionGate() {
       const view = await fetchCompanyEntitlementView(user.companyId);
       if (companyHasPaidStripePlan(view)) {
         clearRequiresCompanyPlanSelection();
+        if (checkoutParams.checkoutResult === "success") {
+          requestLandOnCompanyManagementAfterCheckout();
+        }
       }
     } finally {
       setIsCheckingEntitlement(false);
     }
-  }, [clearRequiresCompanyPlanSelection, user?.companyId]);
+  }, [
+    checkoutParams.checkoutResult,
+    clearRequiresCompanyPlanSelection,
+    requestLandOnCompanyManagementAfterCheckout,
+    user?.companyId,
+  ]);
 
   useEffect(() => {
     void verifySubscription();

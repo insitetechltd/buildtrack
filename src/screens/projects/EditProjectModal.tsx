@@ -26,9 +26,18 @@ import { useUserStoreWithInit } from "@/state/userStore.supabase";
 import {
   type Project,
   type ProjectStatus,
-  getUserSystemPermission,
   isLeadProjectManager,
 } from "@/types/buildtrack";
+import {
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_ORDER,
+  formatProjectStatusLabel,
+  normalizeProjectStatus,
+} from "@/ui/contracts/projectStatus";
+import {
+  isEligibleProjectAdminCandidate,
+  upsertProjectMembership,
+} from "@/ui/contracts/projectMembership";
 import { cn } from "@/utils/cn";
 import { useDateFormatter } from "@/utils/dateFormatter";
 import {
@@ -65,7 +74,6 @@ export function EditProjectModal({
     getLeadPMForProject,
     getProjectUserAssignments,
     assignUserToProject,
-    removeUserFromProject,
     updateUserProjectCategory,
   } = useProjectStoreWithCompanyInit(user?.companyId || "");
 
@@ -97,7 +105,7 @@ export function EditProjectModal({
     setFormData({
       name: project.name,
       description: project.description,
-      status: project.status,
+      status: normalizeProjectStatus(project.status),
       startDate: new Date(project.startDate),
       endDate: project.endDate
         ? new Date(project.endDate)
@@ -120,22 +128,28 @@ export function EditProjectModal({
     );
   }, [visible, project, hydratedLeadPM, hasTouchedLeadPMSelection]);
 
-  const eligibleLeadPMs = React.useMemo(
-    () =>
-      companyUsers.filter((candidate) => getUserSystemPermission(candidate) === "manager"),
-    [companyUsers],
-  );
-
-  if (!user || !project) {
-    return null;
-  }
+  // Host company CA|PM already on this job only — never partner PA (AUTHZ-02).
+  const eligibleLeadPMs = React.useMemo(() => {
+    if (!project) {
+      return [];
+    }
+    const onJob = new Set(
+      getProjectUserAssignments(project.id)
+        .filter((assignment) => assignment.isActive)
+        .map((assignment) => assignment.userId),
+    );
+    return companyUsers.filter(
+      (candidate) =>
+        isEligibleProjectAdminCandidate(candidate) && onJob.has(candidate.id),
+    );
+  }, [companyUsers, project?.id, getProjectUserAssignments]);
 
   const selectedLeadPmUser = eligibleLeadPMs.find(
     (candidate) => candidate.id === selectedLeadPM,
   );
   const selectedLeadPmLabel = selectedLeadPmUser
     ? `${selectedLeadPmUser.name} (${selectedLeadPmUser.role})`
-    : "No Lead PM (Select one)";
+    : "No Project Admin (Select one)";
   const formNavigationRegistry = useMemo(
     () =>
       createFormNavigationRegistry([
@@ -190,7 +204,11 @@ export function EditProjectModal({
     [moveFormFocus],
   );
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
+    if (!user || !project) {
+      return;
+    }
+
     if (!formData.name.trim()) {
       Alert.alert("Error", "Project name is required");
       return;
@@ -219,48 +237,56 @@ export function EditProjectModal({
       const effectiveSelectedLeadPM = hasTouchedLeadPMSelection
         ? selectedLeadPM
         : hydratedLeadPM;
-      const activeLeadAssignments = projectAssignments.filter(
-        (assignment) => assignment.isActive && isLeadProjectManager(assignment),
-      );
+      const writer = { assignUserToProject, updateUserProjectCategory };
 
       if (effectiveSelectedLeadPM) {
-        const selectedLeadPmAssignment = projectAssignments.find(
-          (assignment) => assignment.userId === effectiveSelectedLeadPM && assignment.isActive,
+        const candidateUser =
+          companyUsers.find((candidate) => candidate.id === effectiveSelectedLeadPM) ??
+          undefined;
+        await upsertProjectMembership(writer, {
+          userId: effectiveSelectedLeadPM,
+          projectId: project.id,
+          asProjectAdmin: true,
+          assignedBy: user.id,
+          assignments: projectAssignments,
+          candidateUser,
+        });
+      } else {
+        const leftoverLeads = projectAssignments.filter(
+          (assignment) => assignment.isActive && isLeadProjectManager(assignment),
         );
-
-        if (selectedLeadPmAssignment && !isLeadProjectManager(selectedLeadPmAssignment)) {
-          await updateUserProjectCategory(
-            effectiveSelectedLeadPM,
-            project.id,
-            "lead_project_manager",
-          );
-        } else if (!selectedLeadPmAssignment) {
-          await assignUserToProject(
-            effectiveSelectedLeadPM,
-            project.id,
-            "lead_project_manager",
-            user.id,
-          );
+        for (const lead of leftoverLeads) {
+          await updateUserProjectCategory(lead.userId, project.id, "worker");
         }
-      }
-
-      const staleLeadUserIds = Array.from(
-        new Set(
-          activeLeadAssignments
-            .map((assignment) => assignment.userId)
-            .filter((userId) => userId !== effectiveSelectedLeadPM),
-        ),
-      );
-
-      for (const staleLeadUserId of staleLeadUserIds) {
-        await removeUserFromProject(staleLeadUserId, project.id);
       }
 
       await onSaveSuccess();
     } catch (error) {
       console.error("ProjectsScreen: Failed to save edited project modal state:", error);
     }
-  };
+  }, [
+    assignUserToProject,
+    companyUsers,
+    formData.description,
+    formData.endDate,
+    formData.location,
+    formData.name,
+    formData.startDate,
+    formData.status,
+    getProjectUserAssignments,
+    hasTouchedLeadPMSelection,
+    hydratedLeadPM,
+    onSave,
+    onSaveSuccess,
+    project,
+    selectedLeadPM,
+    updateUserProjectCategory,
+    user,
+  ]);
+
+  if (!user || !project) {
+    return null;
+  }
 
   return (
     <Modal
@@ -289,10 +315,19 @@ export function EditProjectModal({
           className="flex-1"
         >
           <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="always">
-            <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+            {/* Elevate Project Information while status menu is open so it paints above Location */}
+            <View
+              testID="edit-project-info-card"
+              className="mb-4 rounded-xl border border-gray-200 bg-white p-4"
+              style={
+                showStatusPicker
+                  ? { zIndex: 20, elevation: 20, overflow: "visible" }
+                  : { zIndex: 1, elevation: 0, overflow: "visible" }
+              }
+            >
               <Text className="mb-4 text-2xl font-bold text-gray-900">Project Information</Text>
 
-              <View className="space-y-4">
+              <View className="space-y-4" style={{ overflow: "visible" }}>
                 <TextField
                   contract={buildFormTextFieldContract({
                     id: "edit-project-name",
@@ -341,15 +376,16 @@ export function EditProjectModal({
                   blurOnSubmit={false}
                 />
 
-                <View>
+                <View className="relative" style={{ zIndex: showStatusPicker ? 1000 : 1 }}>
                   <Text className="mb-2 text-lg font-semibold text-slate-900">Status</Text>
 
                   <Pressable
+                    testID="edit-project-status-trigger"
                     onPress={() => setShowStatusPicker(!showStatusPicker)}
                     className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-gray-50 px-4 py-3"
                   >
-                    <Text className="text-lg capitalize text-gray-900">
-                      {formData.status.replace("_", " ")}
+                    <Text className="text-lg text-gray-900">
+                      {formatProjectStatusLabel(formData.status)}
                     </Text>
                     <Ionicons
                       name={showStatusPicker ? "chevron-up" : "chevron-down"}
@@ -359,44 +395,59 @@ export function EditProjectModal({
                   </Pressable>
 
                   {showStatusPicker ? (
-                    <View className="absolute top-full left-0 right-0 z-50 mt-1 rounded-lg border border-gray-300 bg-white shadow-lg">
-                      {["planning", "active", "on_hold", "completed", "cancelled"].map(
-                        (status, index) => (
+                    <View
+                      testID="edit-project-status-menu"
+                      className="absolute top-full left-0 right-0 mt-1 rounded-lg border border-gray-300 bg-white shadow-lg"
+                      style={{
+                        zIndex: 1001,
+                        elevation: 1001,
+                        shadowColor: "#000",
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                      }}
+                    >
+                      {PROJECT_STATUS_ORDER.map((status, index) => (
                           <Pressable
                             key={status}
+                            testID={`edit-project-status-option-${status}`}
                             onPress={() => {
                               setFormData((prev) => ({
                                 ...prev,
-                                status: status as ProjectStatus,
+                                status,
                               }));
                               setShowStatusPicker(false);
                             }}
                             className={cn(
                               "px-4 py-3",
                               formData.status === status && "bg-blue-50",
-                              index < 4 && "border-b border-gray-200",
+                              index < PROJECT_STATUS_ORDER.length - 1 &&
+                                "border-b border-gray-200",
                             )}
                           >
                             <Text
                               className={cn(
-                                "text-lg capitalize",
+                                "text-lg",
                                 formData.status === status
                                   ? "font-medium text-blue-900"
                                   : "text-gray-900",
                               )}
                             >
-                              {status.replace("_", " ")}
+                              {PROJECT_STATUS_LABELS[status]}
                             </Text>
                           </Pressable>
-                        ),
-                      )}
+                        ))}
                     </View>
                   ) : null}
                 </View>
               </View>
             </View>
 
-            <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+            <View
+              testID="edit-project-location-card"
+              className="mb-4 rounded-xl border border-gray-200 bg-white p-4"
+              style={{ zIndex: 1, elevation: 1 }}
+            >
               <Text className="mb-3 text-2xl font-bold text-gray-900">Location</Text>
 
               <TextField
@@ -459,11 +510,12 @@ export function EditProjectModal({
             </View>
 
             <View className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
-              <Text className="mb-4 text-2xl font-bold text-gray-900">Lead Project Manager</Text>
+              <Text className="mb-4 text-2xl font-bold text-gray-900">Project Admin</Text>
 
               <View className="space-y-3">
                 <Text className="text-base text-gray-600">
-                  The Lead PM has full visibility to all tasks and subtasks in this project
+                  Name a company admin or PM already on this job. Partners cannot be host
+                  Project Admin.
                 </Text>
 
                 <View>
@@ -489,11 +541,11 @@ export function EditProjectModal({
                             setHasTouchedLeadPMSelection(true);
                             setSelectedLeadPM("");
                             setShowLeadPMPicker(false);
-                            console.log('ProjectsScreen: Lead PM changed to: ""');
+                            console.log('ProjectsScreen: Project Admin cleared');
                           }}
                           className="border-b border-gray-200 px-4 py-3"
                         >
-                          <Text className="text-lg text-gray-900">No Lead PM (Select one)</Text>
+                          <Text className="text-lg text-gray-900">No Project Admin (Select one)</Text>
                         </Pressable>
                         {eligibleLeadPMs.map((eligibleUser) => (
                           <Pressable

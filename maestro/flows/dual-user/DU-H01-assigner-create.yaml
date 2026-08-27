@@ -1,12 +1,4 @@
 # DU-H01 phase 2 — John creates task with photo, assigns Alice.
-#
-# Optimal path (each step COMPLETE or FAIL — no soft skip of required gates):
-#   1. resume John stopApp:false     REQUIRED (keep session; no quit-without-logout)
-#   2. ensure Project A              REQUIRED (empty team list if skipped/wrong project)
-#   3. open create + photo           REQUIRED
-#   4. assign Alice                  REQUIRED (needs project team loaded)
-#   5. submit with title             REQUIRED
-# NOT here: pull-to-refresh after login; launchApp stop/clear mid-gate.
 appId: com.buildtrack.app.local
 tags:
   - dual-user

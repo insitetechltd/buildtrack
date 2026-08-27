@@ -4,23 +4,19 @@ import {
   Text,
   ScrollView,
   Pressable,
-  Modal,
-  TextInput,
-  Image,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import AdminOverviewHero from "../components/admin/AdminOverviewHero";
-import ModalHandle from "../components/ModalHandle";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
+import { lightPalette } from "../theme/colors";
 import { cn } from "../utils/cn";
 import type {
-  AdminDashboardBannerSettingsModel,
   AdminDashboardQuickActionItem,
+  AdminDashboardSecondaryStat,
   AdminDashboardStatCard,
 } from "../ui/contracts/viewAdapters";
 import {
@@ -30,43 +26,209 @@ import {
 
 type AdminDashboardScreenProps = AdminDashboardViewAdapterProps;
 
-function StatCard({
+const TEAL = lightPalette.brand;
+const SCREEN_BG = lightPalette.canvas;
+
+/**
+ * C′ Admin Dashboard type scale — Insite tokens (base=14, lg=18, xl=20, 2xl=24).
+ * Title in header ≥ body; tile labels never smaller than text-base.
+ */
+const TYPE = {
+  sectionTitle: "text-xl font-semibold text-gray-900",
+  primaryValue: "text-xl font-semibold text-gray-900",
+  secondaryLabel: "text-base text-gray-600",
+  cta: "text-base font-semibold text-[#08576E]",
+  tileLabel: "text-base font-semibold",
+  tileNumber: "text-2xl font-bold text-gray-900",
+} as const;
+
+type TileChrome = {
+  container: string;
+  label: string;
+};
+
+function tileChromeFor(statId: string): TileChrome {
+  switch (statId) {
+    case "planning":
+      return {
+        container: "border border-amber-200 bg-amber-50",
+        label: "text-amber-800",
+      };
+    case "active":
+      return {
+        container: "border border-cyan-200 bg-cyan-50",
+        label: "text-cyan-900",
+      };
+    case "completed":
+      return {
+        container: "border border-emerald-200 bg-emerald-50",
+        label: "text-emerald-900",
+      };
+    case "cancelled":
+      return {
+        container: "border border-gray-200 bg-gray-50",
+        label: "text-gray-600",
+      };
+    case "pm":
+      return {
+        container: "border border-gray-200 bg-[#F0F7FA]",
+        label: "text-[#08576E]",
+      };
+    case "worker":
+      return {
+        container: "border border-gray-200 bg-gray-50",
+        label: "text-gray-600",
+      };
+    default:
+      return {
+        container: "border border-gray-200 bg-gray-50",
+        label: "text-gray-600",
+      };
+  }
+}
+
+/**
+ * C′ anatomy:
+ * 1. Pressable header band (icon well + title + CTA) — primary nav
+ * 2. Optional body value / subtitle
+ * 3. 2×2 (or 2-col wrap) metric tiles
+ * No footer link row.
+ */
+function StatSection({
   card,
   onPress,
 }: {
   card: AdminDashboardStatCard;
   onPress?: () => void;
 }) {
-  const content = (
-    <>
-      <View className="flex-row items-center justify-between mb-2">
-        <Ionicons name={card.icon as any} size={22} color={card.iconColor} />
-        <View className="flex-row items-center">
-          <Text className={cn("text-3xl font-bold", card.textColor)}>{card.value}</Text>
-          {onPress ? (
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" style={{ marginLeft: 4 }} />
-          ) : null}
-        </View>
+  const ctaLabel = card.ctaLabel || "Open";
+  const secondaryStats = card.secondaryStats ?? [];
+  const secondaryLayout = card.secondaryLayout ?? "row";
+  const header = (
+    <View className="min-h-[52px] flex-row items-center bg-[#F0F7FA] px-3 py-3">
+      <View className="mr-3 h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white">
+        <Ionicons name={card.icon as any} size={20} color={TEAL} />
       </View>
-      <Text className="text-base font-semibold text-gray-900">{card.label}</Text>
-      {card.subtitle ? <Text className="text-sm text-gray-600 mt-1">{card.subtitle}</Text> : null}
-    </>
+      <Text className={cn("flex-1", TYPE.sectionTitle)} numberOfLines={1}>
+        {card.label}
+      </Text>
+      {onPress ? (
+        <View className="ml-2 flex-row items-center">
+          <Text className={TYPE.cta}>{ctaLabel}</Text>
+          <Ionicons
+            name="chevron-forward"
+            size={18}
+            color={TEAL}
+            style={{ marginLeft: 2 }}
+          />
+        </View>
+      ) : null}
+    </View>
   );
 
-  if (onPress) {
-    return (
-      <Pressable
-        testID={`admin-stat-${card.statId}`}
-        onPress={onPress}
-        accessibilityRole="button"
-        className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}
-      >
-        {content}
-      </Pressable>
-    );
-  }
+  const body = (
+    <View className="px-4 py-3">
+      {!card.hidePrimaryValue ? (
+        <Text className={TYPE.primaryValue} numberOfLines={2}>
+          {card.value}
+        </Text>
+      ) : null}
+      {card.subtitle ? (
+        <Text
+          className={cn(
+            TYPE.secondaryLabel,
+            !card.hidePrimaryValue ? "mt-1" : null,
+          )}
+        >
+          {card.subtitle}
+        </Text>
+      ) : null}
 
-  return <View className={cn("w-[48%] rounded-xl p-4 mb-3", card.color)}>{content}</View>;
+      {secondaryStats.length > 0 && secondaryLayout === "stage_tiles" ? (
+        <View
+          testID={`admin-stat-secondary-${card.statId}`}
+          className={cn(
+            "flex-row flex-wrap",
+            card.hidePrimaryValue && !card.subtitle ? null : "mt-3",
+          )}
+          style={{ gap: 8 }}
+        >
+          {secondaryStats.map((stat) => (
+            <StageOrRoleTile
+              key={stat.id}
+              sectionId={card.statId}
+              stat={stat}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {secondaryStats.length > 0 && secondaryLayout === "row" ? (
+        <View
+          testID={`admin-stat-secondary-${card.statId}`}
+          className="mt-3 flex-row"
+          style={{ gap: 8 }}
+        >
+          {secondaryStats.map((stat) => (
+            <View
+              key={stat.id}
+              testID={`admin-stat-secondary-${card.statId}-${stat.id}`}
+              className="min-h-[88px] flex-1 rounded-xl border border-gray-200 bg-gray-50 px-3 py-3"
+            >
+              <Text className={cn(TYPE.tileLabel, "text-gray-600")}>
+                {stat.label}
+              </Text>
+              <Text className={cn(TYPE.tileNumber, "mt-1")}>{stat.value}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+
+  return (
+    <View
+      testID={`admin-stat-section-${card.statId}`}
+      className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white"
+    >
+      {onPress ? (
+        <Pressable
+          testID={`admin-stat-${card.statId}`}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={`${card.label}, ${ctaLabel}`}
+          className="active:opacity-90"
+        >
+          {header}
+        </Pressable>
+      ) : (
+        header
+      )}
+      {body}
+    </View>
+  );
+}
+
+function StageOrRoleTile({
+  sectionId,
+  stat,
+}: {
+  sectionId: string;
+  stat: AdminDashboardSecondaryStat;
+}) {
+  const chrome = tileChromeFor(stat.id);
+  return (
+    <View
+      testID={`admin-stat-secondary-${sectionId}-${stat.id}`}
+      className={cn("min-h-[88px] rounded-xl px-3 py-3", chrome.container)}
+      style={{ width: "48%" }}
+    >
+      <Text className={cn(TYPE.tileLabel, chrome.label)} numberOfLines={2}>
+        {stat.label}
+      </Text>
+      <Text className={cn(TYPE.tileNumber, "mt-1")}>{stat.value}</Text>
+    </View>
+  );
 }
 
 function QuickActionCard({
@@ -80,233 +242,26 @@ function QuickActionCard({
     <Pressable
       testID={`admin-quick-action-${action.actionId}`}
       onPress={onPress}
-      className={cn("rounded-xl border p-4 mb-3", action.color, action.borderColor)}
+      accessibilityRole="button"
+      accessibilityLabel={action.label}
+      className="mb-3 min-h-[48px] overflow-hidden rounded-xl border border-gray-200 bg-white"
     >
-      <View className="flex-row items-start">
-        <View className="w-12 h-12 rounded-lg bg-white/70 items-center justify-center mr-4">
-          <Ionicons name={action.icon as any} size={24} color={action.iconColor} />
+      <View className="flex-row items-center px-4 py-3">
+        <View className="mr-3 h-11 w-11 items-center justify-center rounded-lg bg-[#F0F7FA]">
+          <Ionicons name={action.icon as any} size={22} color={TEAL} />
         </View>
-        <View className="flex-1">
+        <View className="flex-1 pr-2">
           <Text
             testID={`admin-quick-action-trigger-${action.actionId}`}
-            onPress={onPress}
-            className="text-lg font-semibold text-gray-900 mb-1"
+            className="mb-0.5 text-xl font-semibold text-gray-900"
           >
             {action.label}
           </Text>
-          <Text className="text-base text-gray-600">{action.description}</Text>
+          <Text className={TYPE.secondaryLabel}>{action.description}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+        <Ionicons name="chevron-forward" size={20} color={TEAL} />
       </View>
     </Pressable>
-  );
-}
-
-function BannerSettingsModal({
-  bannerSettings,
-  onClose,
-  onChangeText,
-  onSelectColorPreset,
-  onToggleVisibility,
-  onPickImage,
-  onRemoveImage,
-  onSave,
-}: {
-  bannerSettings: AdminDashboardBannerSettingsModel;
-  onClose: () => void;
-  onChangeText: (value: string) => void;
-  onSelectColorPreset: (presetId: string) => void;
-  onToggleVisibility: () => void;
-  onPickImage: () => void;
-  onRemoveImage: () => void;
-  onSave: () => void;
-}) {
-  if (!bannerSettings.isModalVisible || !Modal) {
-    return null;
-  }
-
-  return (
-    <Modal
-      visible={bannerSettings.isModalVisible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
-        <StatusBar style="light" />
-
-        <ModalHandle />
-
-        <View className="flex-row items-center bg-white border-b border-gray-200 px-6 py-4">
-          <Pressable onPress={onClose} className="mr-4 w-10 h-10 items-center justify-center">
-            <Ionicons name="close" size={24} color="#374151" />
-          </Pressable>
-          <Text className="text-2xl font-semibold text-gray-900 flex-1">
-            Company Banner Settings
-          </Text>
-        </View>
-
-        <ScrollView className="flex-1 px-6 py-4">
-          <View className="mb-6">
-            <Text className="text-base font-semibold text-gray-700 mb-2">Preview</Text>
-            {bannerSettings.isVisible ? (
-              <View className="rounded-lg overflow-hidden">
-                {bannerSettings.imageUri ? (
-                  <Image
-                    source={{ uri: bannerSettings.imageUri }}
-                    className="w-full h-24"
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View
-                    className="px-4 py-3"
-                    style={{ backgroundColor: bannerSettings.backgroundColor }}
-                  >
-                    <Text
-                      className="text-base font-medium text-center"
-                      style={{ color: bannerSettings.textColor }}
-                    >
-                      {bannerSettings.text || "Your banner text will appear here"}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View className="bg-gray-100 px-4 py-3 rounded-lg border border-gray-300">
-                <Text className="text-base text-gray-500 text-center">Banner is hidden</Text>
-              </View>
-            )}
-          </View>
-
-          <View className="mb-6">
-            <View className="flex-row items-center justify-between mb-3">
-              <View className="flex-1">
-                <Text className="text-base font-semibold text-gray-700">Banner Image (Optional)</Text>
-                <Text className="text-sm text-gray-500 mt-1">Recommended size: 1200x225px</Text>
-              </View>
-              {bannerSettings.imageUri ? (
-                <Pressable
-                  onPress={onRemoveImage}
-                  className="w-8 h-8 bg-red-500 rounded-full items-center justify-center ml-2"
-                >
-                  <Ionicons name="trash-outline" size={16} color="white" />
-                </Pressable>
-              ) : null}
-            </View>
-
-            <Pressable
-              onPress={onPickImage}
-              className="bg-white rounded-lg border border-dashed border-gray-300 overflow-hidden"
-            >
-              {bannerSettings.imageUri ? (
-                <Image
-                  source={{ uri: bannerSettings.imageUri }}
-                  style={{
-                    width: "100%",
-                    height: 128,
-                    backgroundColor: "#f3f4f6",
-                  }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View className="p-4 items-center">
-                  <Ionicons name="images-outline" size={24} color="#9ca3af" />
-                  <Text className="text-gray-400 text-base mt-1">Tap to add banner image</Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-
-          {!bannerSettings.imageUri ? (
-            <>
-              <View className="mb-4">
-                <Text className="text-base font-semibold text-gray-700 mb-2">Banner Text</Text>
-                <TextInput
-                  className="bg-white border border-gray-300 rounded-lg px-4 py-3 text-gray-900"
-                  placeholder="Enter banner message..."
-                  value={bannerSettings.text}
-                  onChangeText={onChangeText}
-                  multiline
-                />
-              </View>
-
-              <View className="mb-4">
-                <Text className="text-base font-semibold text-gray-700 mb-2">Color Preset</Text>
-                <View className="flex-row flex-wrap -mx-1">
-                  {bannerSettings.colorPresets.map((preset) => (
-                    <Pressable
-                      key={preset.id}
-                      onPress={() => onSelectColorPreset(preset.id)}
-                      className="w-1/3 px-1 mb-2"
-                    >
-                      <View
-                        className="rounded-lg py-3 items-center justify-center border-2"
-                        style={{
-                          backgroundColor: preset.backgroundColor,
-                          borderColor:
-                            bannerSettings.backgroundColor === preset.backgroundColor
-                              ? "#374151"
-                              : "transparent",
-                        }}
-                      >
-                        <Text style={{ color: preset.textColor }} className="text-sm font-medium">
-                          {preset.label}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
-            </>
-          ) : null}
-
-          <View className="mb-4">
-            <View className="bg-white rounded-lg border border-gray-300 px-4 py-3">
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1 mr-4">
-                  <Text className="text-base font-semibold text-gray-900 mb-1">
-                    Banner Visibility
-                  </Text>
-                  <Text className="text-sm text-gray-600">
-                    {bannerSettings.isVisible
-                      ? "Banner will be shown to all users"
-                      : "Banner is hidden from all users"}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={onToggleVisibility}
-                  className={cn(
-                    "w-12 h-7 rounded-full flex-row items-center px-0.5",
-                    bannerSettings.isVisible ? "bg-green-500" : "bg-gray-300",
-                  )}
-                >
-                  <View
-                    className={cn(
-                      "w-6 h-6 rounded-full bg-white",
-                      bannerSettings.isVisible ? "ml-auto" : undefined,
-                    )}
-                  />
-                </Pressable>
-              </View>
-            </View>
-          </View>
-
-          <Pressable
-            onPress={onSave}
-            className="bg-blue-600 rounded-lg py-4 items-center justify-center mt-2"
-          >
-            <Text className="text-white font-semibold text-lg">Save Banner Settings</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onClose}
-            className="bg-gray-200 rounded-lg py-4 items-center justify-center mt-3 mb-6"
-          >
-            <Text className="text-gray-700 font-semibold text-lg">Cancel</Text>
-          </Pressable>
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
   );
 }
 
@@ -321,7 +276,11 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
 
   if (!output.access.isAllowed) {
     return (
-      <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+      <SafeAreaView
+        edges={["bottom", "left", "right"]}
+        className="flex-1"
+        style={{ backgroundColor: SCREEN_BG }}
+      >
         <StatusBar style="light" />
         <ModernScreenHeader
           title="Admin Dashboard"
@@ -329,7 +288,7 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
           className="border-b-0 bg-[#08576E] pb-2"
         />
         <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-gray-500 text-center">
+          <Text className={cn("text-center", TYPE.secondaryLabel)}>
             {output.access.deniedMessage || "Access denied."}
           </Text>
         </View>
@@ -338,7 +297,11 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
   }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+    <SafeAreaView
+      edges={["bottom", "left", "right"]}
+      className="flex-1"
+      style={{ backgroundColor: SCREEN_BG }}
+    >
       <StatusBar style="light" />
 
       <ModernScreenHeader
@@ -359,58 +322,21 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
           ) : undefined
         }
       >
-        <View className="py-4">
-          <AdminOverviewHero
-            title="Company Overview"
-            companyName={output.companyScope.companyName}
-            summaryLabel="Tap to edit the company banner"
-            onPress={() => actions.pressQuickAction("company_banner")}
-          />
-
-          <View className="mb-5 px-4">
-            <View className="rounded-2xl border border-gray-200 bg-white p-4">
-              {output.companyScope.companyName ? (
-                <Pressable
-                  testID="admin-company-overview-banner"
-                  onPress={() => actions.pressQuickAction("company_banner")}
-                  accessibilityRole="button"
-                  accessibilityLabel="Edit company banner"
-                  className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3"
-                >
-                  <View className="flex-row items-center">
-                    <Ionicons name="business" size={16} color="#3b82f6" />
-                    <Text className="ml-2 flex-1 font-medium text-blue-900">
-                      {output.companyScope.companyName}
-                    </Text>
-                    <Text className="mr-1 text-sm text-blue-700">Banner</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#3b82f6" />
-                  </View>
-                  {output.companyScope.subtitle ? (
-                    <Text className="mt-1 text-sm text-blue-700">
-                      {output.companyScope.subtitle}
-                    </Text>
-                  ) : null}
-                </Pressable>
-              ) : null}
-
-              <View className="flex-row flex-wrap justify-between">
-                {output.topLevelStats.map((card) => (
-                  <StatCard
-                    key={card.id}
-                    card={card}
-                    onPress={
-                      card.actionId
-                        ? () => actions.pressQuickAction(card.actionId!)
-                        : undefined
-                    }
-                  />
-                ))}
-              </View>
-            </View>
-          </View>
+        <View className="px-4 py-4">
+          {output.topLevelStats.map((card) => (
+            <StatSection
+              key={card.id}
+              card={card}
+              onPress={
+                card.actionId
+                  ? () => actions.pressQuickAction(card.actionId!)
+                  : undefined
+              }
+            />
+          ))}
 
           {visibleQuickActions.length > 0 ? (
-            <View className="mx-4 mb-2">
+            <View className="mt-1">
               {visibleQuickActions.map((action) => (
                 <QuickActionCard
                   key={action.id}
@@ -422,17 +348,6 @@ export default function AdminDashboardScreen(props: AdminDashboardScreenProps) {
           ) : null}
         </View>
       </ScrollView>
-
-      <BannerSettingsModal
-        bannerSettings={output.bannerSettings}
-        onClose={actions.closeBannerSettings}
-        onChangeText={actions.setBannerText}
-        onSelectColorPreset={actions.selectBannerColorPreset}
-        onToggleVisibility={actions.toggleBannerVisibility}
-        onPickImage={() => void actions.pickBannerImage()}
-        onRemoveImage={actions.removeBannerImage}
-        onSave={() => void actions.saveBannerSettings()}
-      />
     </SafeAreaView>
   );
 }

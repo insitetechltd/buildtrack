@@ -30,7 +30,7 @@ Honest assessment vs 1–2 person Expo+Supabase peers (judgment, 2026-08-19): di
 
 | Order | ID | What |
 |---|---|---|
-| Now | Commercial RC | Ship the field loop. No new product surfaces. |
+| Now | Commercial RC | Ship the field loop. No **new** product surfaces. **Does** include **M-AUTHZ-RC**: one host-company assignment contract on existing Henry admin (not liaison/invite). |
 | 15.05 | `M-OPS-01` | In-app **owner command console** (allowlisted Tristan). Workflow-gaps bin. Not Activity, not Henry Admin, no extra web host. |
 | 15.06 | `M-OPS-02` | Shrink `taskStore.supabase.ts` / `CreateTaskScreen` / `AppNavigator`. Enforce intended states. |
 | 15.065 | `M-AUTHZ-02` | Multi-company membership: partner **liaison** + project invite + optional host-absorb seats. SoT: `documentation/multi-company-project-membership.md`. Not RC. |
@@ -134,5 +134,19 @@ Locks:
 - No Stripe Tax / tax-inclusive local Prices until accountant GO.
 
 ROADMAP: **`WS-BILL / M-BILL-01G`** (Order 15.049). Pricing lock: `docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`.
+
+### 2026-08-24 — M-AI-01 query gateway (planning only; no build GO)
+
+Architecture, MCP vs in-app, Supabase Edge vs app placement, and tier economics for project Q&A were captured in chat. **Do not start M-AI-01 implementation** until the planning checklist in `docs/superpowers/plans/2026-08-24-m-ai-01-query-gateway-planning-brief.md` is complete. Provisional lean: read RPCs + Edge gateway + bundled fair-use query caps; optional dev MCP on same API. Distinct from `MCP_HUB_ARCHITECTURE.md` (external platforms) and from client-side Create Task LLM.
+
+ROADMAP: **`WS-AI / M-AI-01`** (Order 15.07).
+
+### Addendum 2026-08-24 — company / user / project admin contract
+
+Locked model: `docs/superpowers/plans/2026-08-24-company-user-project-model.md`. ROADMAP: **`WS-AUTHZ / M-AUTHZ-RC`** (Order 14.96).
+
+**Correction (same day):** this is **commercial RC**, not a jump into `M-AUTHZ-02`. First customers use Henry admin to put **their** people on **their** jobs. Two inconsistent add-people paths is an RC defect. We do **not** pull liaison / project invite / host-absorb into this ship.
+
+**Construct lock (evening GO):** CA / PM / Worker seats + **PA as project grant** (crownable on CA or PM only — never worker). Same field UI for all; CA management via avatar; CA sees project KPIs not every task; drop trade title picker; CA may take field authority on a job via PA. PM remains necessary for field managers who are not the billing admin. Runtime still catching up (admin tab shell, all-company task lists, ProjectRole picker).
 
 *(Append dated bullets here when this discussion is revisited. Do not rewrite the locks above unless the user explicitly changes them.)*

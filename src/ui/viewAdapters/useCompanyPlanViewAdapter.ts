@@ -1,20 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { Alert, Linking } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { NavigationContext } from "@react-navigation/native";
 
 import { createCompanyCheckoutSession } from "@/api/createCheckoutSession";
 import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
 import { fetchSellablePlanCatalog } from "@/api/fetchSellablePlanCatalog";
-import { updateCompanyAddons } from "@/api/updateCompanyAddons";
+import { updateCompanyAddons, reconcileCompanyAddonsFromStripe } from "@/api/updateCompanyAddons";
 import {
   overlayCheckoutPlanOnView,
 } from "@/billing/companyEntitlementSummary";
 import {
   normalizePlanTierSlug,
   resolveBillingDisplayCurrency,
-  findAddonTier,
-  findBaseTier,
-  resolveAddonPriceLabels,
   type SellablePlanCatalog,
 } from "@/billing/planCatalog";
 import { companyHasPaidStripePlan } from "@/billing/companyPlanGate";
@@ -36,6 +33,24 @@ import {
   displayNameForPlanSlug,
   type PlanTierSlug,
 } from "@/billing/orgPlans";
+import {
+  buildAddSeatConfirm,
+  buildRemoveSeatConfirm,
+  buildStripeConfirmedAlert,
+  SEAT_ADDON_COPY,
+  type SeatAddonKind,
+} from "@/billing/seatAddonCopy";
+import {
+  clearPendingAddonHold,
+  clearPendingAddonHoldIfMatched,
+  computeServerAddonBaseline,
+  expectedSeatTotalsFromAddonQty,
+  getPendingAddonHold,
+  overlayPendingAddonSeatsOnView,
+  resolveDraftSeatQty,
+  setPendingAddonHold,
+  shouldResetAddonDraftsOnTierChange,
+} from "@/billing/serverAddonBaseline";
 import { SUPPORT_EMAIL } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
 import type {
@@ -45,8 +60,48 @@ import type {
 } from "@/ui/contracts/viewAdapters";
 import { useTranslation } from "@/utils/useTranslation";
 
+/**
+ * Company Plan is shown both inside ProfileStack and outside NavigationContainer
+ * (post–create-company gate). useFocusEffect throws without a navigator — use this.
+ */
+function useFocusOrMountEffect(effect: () => void | (() => void)) {
+  const navigation = useContext(NavigationContext);
+
+  useEffect(() => {
+    let cleanup: void | (() => void);
+
+    const run = () => {
+      if (typeof cleanup === "function") {
+        cleanup();
+      }
+      cleanup = effect();
+    };
+
+    run();
+
+    if (!navigation) {
+      return () => {
+        if (typeof cleanup === "function") {
+          cleanup();
+        }
+      };
+    }
+
+    const unsubscribe = navigation.addListener("focus", run);
+    return () => {
+      unsubscribe();
+      if (typeof cleanup === "function") {
+        cleanup();
+      }
+    };
+  }, [effect, navigation]);
+}
 export interface CompanyPlanViewAdapterProps {
   onNavigateBack?: () => void;
+  onNavigateToProfile?: () => void;
+  onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToCompanyManagement?: () => void;
+  onNavigateToTaskDashboard?: () => void;
   forceSelection?: boolean;
   checkoutResult?: "success" | "cancel";
   checkoutPlan?: PlanTierSlug;
@@ -58,7 +113,7 @@ export interface CompanyPlanViewAdapterHookResult {
     handleRefresh: () => Promise<void>;
     handlePlanAction: (planId: PlanTierSlug) => Promise<void>;
     handleUpdateAddons: (
-      nextWorkerPackQty: number,
+      nextWorkerSeatQty: number,
       nextPmSeatQty: number,
     ) => Promise<void>;
     dismissStatusBanner: () => void;
@@ -68,11 +123,14 @@ export interface CompanyPlanViewAdapterHookResult {
 export function useCompanyPlanViewAdapter(
   props: CompanyPlanViewAdapterProps,
 ): CompanyPlanViewAdapterHookResult {
-  const { checkoutResult, checkoutPlan } = props;
+  const { checkoutResult, checkoutPlan, forceSelection } = props;
   const t = useTranslation();
   const { user } = useAuthStore();
   const clearRequiresCompanyPlanSelection = useAuthStore(
     (state) => state.clearRequiresCompanyPlanSelection,
+  );
+  const requestLandOnCompanyManagementAfterCheckout = useAuthStore(
+    (state) => state.requestLandOnCompanyManagementAfterCheckout,
   );
   const [entitlement, setEntitlement] =
     useState<Awaited<ReturnType<typeof fetchCompanyEntitlementView>>>(null);
@@ -85,6 +143,13 @@ export function useCompanyPlanViewAdapter(
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [statusBanner, setStatusBanner] =
     useState<CompanyPlanStatusBannerModel | null>(null);
+  const [draftWorkerSeatQty, setDraftWorkerSeatQty] = useState<number | null>(
+    null,
+  );
+  const [draftPmSeatQty, setDraftPmSeatQty] = useState<number | null>(null);
+  const [busySeatType, setBusySeatType] = useState<"worker" | "pm" | null>(
+    null,
+  );
   const [optimisticCheckoutPlan, setOptimisticCheckoutPlan] =
     useState<PlanTierSlug | null>(null);
 
@@ -107,23 +172,23 @@ export function useCompanyPlanViewAdapter(
     }
   }, [user?.companyId]);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      setIsLoading((current) => (hasLoadedOnce ? current : true));
+  const loadOnFocusOrMount = useCallback(() => {
+    let cancelled = false;
+    setIsLoading((current) => (hasLoadedOnce ? current : true));
 
-      void (async () => {
-        await loadEntitlement();
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      })();
+    void (async () => {
+      await loadEntitlement();
+      if (!cancelled) {
+        setIsLoading(false);
+      }
+    })();
 
-      return () => {
-        cancelled = true;
-      };
-    }, [hasLoadedOnce, loadEntitlement]),
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, [hasLoadedOnce, loadEntitlement]);
+
+  useFocusOrMountEffect(loadOnFocusOrMount);
 
   useEffect(() => {
     if (!checkoutResult) {
@@ -182,6 +247,7 @@ export function useCompanyPlanViewAdapter(
           if (view?.hasStripeSubscription && (!chosenPlan || live === chosenPlan)) {
             if (companyHasPaidStripePlan(view)) {
               clearRequiresCompanyPlanSelection();
+              requestLandOnCompanyManagementAfterCheckout();
             }
             return;
           }
@@ -202,16 +268,21 @@ export function useCompanyPlanViewAdapter(
     return () => {
       cancelled = true;
     };
-  }, [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, optimisticCheckoutPlan, user?.companyId]);
+  }, [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, optimisticCheckoutPlan, requestLandOnCompanyManagementAfterCheckout, user?.companyId]);
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
+      // Do not clear drafts / pending hold — pull-to-refresh during webhook lag
+      // must not snap Extra people counts back to 0.
+      if (user?.companyId) {
+        await reconcileCompanyAddonsFromStripe(user.companyId).catch(() => null);
+      }
       await loadEntitlement();
     } finally {
       setIsRefreshing(false);
     }
-  }, [loadEntitlement]);
+  }, [loadEntitlement, user?.companyId]);
 
   const handlePlanAction = useCallback(
     async (planId: PlanTierSlug) => {
@@ -257,7 +328,10 @@ export function useCompanyPlanViewAdapter(
 
         if (result.success && result.upgraded) {
           await loadEntitlement();
-          clearRequiresCompanyPlanSelection();
+          if (forceSelection) {
+            clearRequiresCompanyPlanSelection();
+            requestLandOnCompanyManagementAfterCheckout();
+          }
           setStatusBanner({
             id: "company-plan:upgrade-success",
             tone: "success",
@@ -291,154 +365,298 @@ export function useCompanyPlanViewAdapter(
         setActiveActionPlanId(null);
       }
     },
-    [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, entitlement, loadEntitlement, optimisticCheckoutPlan, t.profile.companyPlan, user?.companyId],
+    [catalog, checkoutPlan, checkoutResult, clearRequiresCompanyPlanSelection, entitlement, forceSelection, loadEntitlement, optimisticCheckoutPlan, requestLandOnCompanyManagementAfterCheckout, t.profile.companyPlan, user?.companyId],
   );
 
-  const addonSteppers = (() => {
-    if (!catalog || !entitlement) {
-      return null;
+  const serverAddonBaseline = computeServerAddonBaseline(catalog, entitlement);
+  const lastAddonTierSlugRef = useRef<string | null>(null);
+
+  // Seed / sync drafts. Never clear on brief baseline null; hold pending target
+  // while entitlement lags after Stripe success.
+  useEffect(() => {
+    if (!serverAddonBaseline) {
+      return;
     }
-    if (!entitlement.hasStripeSubscription) {
-      return null;
-    }
-    if (!entitlement.tierSlug || entitlement.tierSlug === "pilot") {
-      return null;
+    if (busySeatType) {
+      return;
     }
 
-    const baseTier = findBaseTier(catalog, entitlement.tierSlug);
-    const workerAddon = findAddonTier(catalog, "addon_worker_pack");
-    const pmAddon = findAddonTier(catalog, "addon_pm_seat");
-    if (!baseTier || !workerAddon || !pmAddon) {
-      return null;
-    }
+    const companyId = user?.companyId;
+    const pending = getPendingAddonHold(companyId);
 
-    const currentWorkerTotal = entitlement.meterLimits?.worker_seats;
-    const currentPmTotal = entitlement.meterLimits?.pm_seats;
-    const baseWorkerTotal = baseTier.meters.worker_seats ?? 0;
-    const basePmTotal = baseTier.meters.pm_seats ?? 0;
-    const workerSeatsPerPack = workerAddon.meters.worker_seats;
-    const pmSeatsPerSeat = pmAddon.meters.pm_seats;
+    setDraftWorkerSeatQty((prev) =>
+      resolveDraftSeatQty({
+        prev,
+        serverQty: serverAddonBaseline.workerSeatQty,
+        pendingQty: pending?.workerSeatQty ?? null,
+      }),
+    );
+    setDraftPmSeatQty((prev) =>
+      resolveDraftSeatQty({
+        prev,
+        serverQty: serverAddonBaseline.pmSeatQty,
+        pendingQty: pending?.pmSeatQty ?? null,
+      }),
+    );
 
     if (
-      typeof currentWorkerTotal !== "number" ||
-      typeof currentPmTotal !== "number" ||
-      typeof workerSeatsPerPack !== "number" ||
-      typeof pmSeatsPerSeat !== "number" ||
-      workerSeatsPerPack <= 0 ||
-      pmSeatsPerSeat <= 0
+      companyId &&
+      pending &&
+      pending.workerSeatQty === serverAddonBaseline.workerSeatQty &&
+      pending.pmSeatQty === serverAddonBaseline.pmSeatQty
     ) {
-      return null;
+      clearPendingAddonHold(companyId);
     }
+  }, [
+    busySeatType,
+    serverAddonBaseline?.workerSeatQty,
+    serverAddonBaseline?.pmSeatQty,
+    user?.companyId,
+  ]);
 
-    const additionalWorker = Math.max(0, currentWorkerTotal - baseWorkerTotal);
-    const additionalPm = Math.max(0, currentPmTotal - basePmTotal);
+  // Plan change only: real tier switch (growth→unlimited), not undefined→tier.
+  useEffect(() => {
+    if (!serverAddonBaseline) {
+      return;
+    }
+    const nextTier = serverAddonBaseline.tierSlug;
+    const previousTier = lastAddonTierSlugRef.current;
+    if (shouldResetAddonDraftsOnTierChange(previousTier, nextTier)) {
+      clearPendingAddonHold(user?.companyId);
+      setDraftWorkerSeatQty(serverAddonBaseline.workerSeatQty);
+      setDraftPmSeatQty(serverAddonBaseline.pmSeatQty);
+    }
+    lastAddonTierSlugRef.current = nextTier;
+  }, [
+    serverAddonBaseline?.tierSlug,
+    serverAddonBaseline?.workerSeatQty,
+    serverAddonBaseline?.pmSeatQty,
+    user?.companyId,
+  ]);
 
-    const workerPackQty = Math.max(
-      0,
-      Math.floor(additionalWorker / workerSeatsPerPack),
-    );
-    const pmSeatQty = Math.max(0, Math.floor(additionalPm / pmSeatsPerSeat));
-
-    const addonPricesBySlug = resolveAddonPriceLabels(catalog);
-
-    return {
-      workerPackQty,
-      pmSeatQty,
-      workerPackUnitPrice: addonPricesBySlug["addon_worker_pack"] ?? "—",
-      pmSeatUnitPrice: addonPricesBySlug["addon_pm_seat"] ?? "—",
-      workerSeatsPerPack,
-      pmSeatsPerSeat,
-    };
-  })();
+  const pendingHold = getPendingAddonHold(user?.companyId);
+  const addonSteppers = serverAddonBaseline
+    ? {
+        workerSeatQty:
+          draftWorkerSeatQty ??
+          pendingHold?.workerSeatQty ??
+          serverAddonBaseline.workerSeatQty,
+        pmSeatQty:
+          draftPmSeatQty ??
+          pendingHold?.pmSeatQty ??
+          serverAddonBaseline.pmSeatQty,
+        workerUnitPrice: serverAddonBaseline.workerUnitPrice,
+        pmUnitPrice: serverAddonBaseline.pmUnitPrice,
+        busySeatType,
+      }
+    : null;
 
   const handleUpdateAddons = useCallback(
-    async (nextWorkerPackQty: number, nextPmSeatQty: number) => {
+    async (nextWorkerSeatQty: number, nextPmSeatQty: number) => {
+      if (busySeatType) {
+        return;
+      }
       if (!user?.companyId) {
         Alert.alert(
           t.profile.companyPlan,
-          `Unable to update add-ons. Email ${SUPPORT_EMAIL}.`,
+          `Unable to update seats. Email ${SUPPORT_EMAIL}.`,
         );
         return;
       }
-      if (!catalog || !addonSteppers) {
+      if (!catalog || !serverAddonBaseline) {
+        Alert.alert(
+          t.profile.companyPlan,
+          "Extra seats are available after you subscribe to a company plan.",
+        );
         return;
       }
 
-      const baseTier = findBaseTier(catalog, entitlement?.tierSlug ?? "");
-      const workerAddon = findAddonTier(catalog, "addon_worker_pack");
-      const pmAddon = findAddonTier(catalog, "addon_pm_seat");
-      if (!baseTier || !workerAddon || !pmAddon) {
+      const pending = getPendingAddonHold(user.companyId);
+      const currentWorker =
+        draftWorkerSeatQty ??
+        pending?.workerSeatQty ??
+        serverAddonBaseline.workerSeatQty;
+      const currentPm =
+        draftPmSeatQty ?? pending?.pmSeatQty ?? serverAddonBaseline.pmSeatQty;
+      const safeWorkerQty = Math.max(0, Math.floor(nextWorkerSeatQty));
+      const safePmQty = Math.max(0, Math.floor(nextPmSeatQty));
+
+      const workerDelta = safeWorkerQty - currentWorker;
+      const pmDelta = safePmQty - currentPm;
+      if (workerDelta === 0 && pmDelta === 0) {
+        return;
+      }
+      if (workerDelta !== 0 && pmDelta !== 0) {
         return;
       }
 
-      const baseWorkerTotal = baseTier.meters.worker_seats ?? 0;
-      const basePmTotal = baseTier.meters.pm_seats ?? 0;
-      const workerSeatsPerPack = workerAddon.meters.worker_seats ?? 0;
-      const pmSeatsPerSeat = pmAddon.meters.pm_seats ?? 0;
+      const kind: SeatAddonKind = workerDelta !== 0 ? "worker" : "pm";
+      const isAdd = (kind === "worker" ? workerDelta : pmDelta) > 0;
+      const priceLabel =
+        kind === "worker"
+          ? serverAddonBaseline.workerUnitPrice
+          : serverAddonBaseline.pmUnitPrice;
 
-      const expectedWorkerTotal =
-        baseWorkerTotal + nextWorkerPackQty * workerSeatsPerPack;
-      const expectedPmTotal = basePmTotal + nextPmSeatQty * pmSeatsPerSeat;
+      const confirm = isAdd
+        ? buildAddSeatConfirm({ kind, priceLabel })
+        : buildRemoveSeatConfirm({ kind });
 
-      setIsActionInFlight(true);
-      try {
-        const result = await updateCompanyAddons({
-          companyId: user.companyId,
-          addonWorkerPacks: Math.max(0, Math.floor(nextWorkerPackQty)),
-          addonPmSeats: Math.max(0, Math.floor(nextPmSeatQty)),
-        });
-
-        if (!result.success) {
-          setStatusBanner({
-            id: "company-plan:addons-error",
-            tone: "error",
-            message: result.error || "Unable to update add-ons.",
+      const runUpdate = async () => {
+        const { expectedWorkerTotal, expectedPmTotal } =
+          expectedSeatTotalsFromAddonQty({
+            baseWorkerTotal: serverAddonBaseline.baseWorkerTotal,
+            basePmTotal: serverAddonBaseline.basePmTotal,
+            workerSeatQty: safeWorkerQty,
+            pmSeatQty: safePmQty,
           });
-          return;
-        }
 
+        const previousWorker = currentWorker;
+        const previousPm = currentPm;
+
+        setBusySeatType(kind);
         setStatusBanner({
           id: "company-plan:addons-updating",
           tone: "info",
-          message: "Updating add-ons…",
+          message: SEAT_ADDON_COPY.updating,
         });
 
-        for (let attempt = 0; attempt < 6; attempt += 1) {
-          const latest = await fetchCompanyEntitlementView(user.companyId);
-          if (!latest) {
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            continue;
+        try {
+          const result = await updateCompanyAddons({
+            companyId: user.companyId,
+            addonWorkerPacks: safeWorkerQty,
+            addonPmSeats: safePmQty,
+          });
+
+          if (!result.success) {
+            clearPendingAddonHold(user.companyId);
+            setDraftWorkerSeatQty(previousWorker);
+            setDraftPmSeatQty(previousPm);
+            const message = result.error || "Unable to update seats.";
+            setStatusBanner({
+              id: "company-plan:addons-error",
+              tone: "error",
+              message,
+            });
+            Alert.alert(t.profile.companyPlan, message);
+            return;
           }
 
-          const workerNow = latest.meterLimits?.worker_seats;
-          const pmNow = latest.meterLimits?.pm_seats;
-          const workerOk =
-            typeof workerNow === "number" && workerNow === expectedWorkerTotal;
-          const pmOk = typeof pmNow === "number" && pmNow === expectedPmTotal;
-          if (workerOk && pmOk) {
-            setEntitlement(latest);
-            setHasLoadedOnce(true);
-            break;
+          setPendingAddonHold({
+            companyId: user.companyId,
+            workerSeatQty: safeWorkerQty,
+            pmSeatQty: safePmQty,
+            expectedWorkerTotal,
+            expectedPmTotal,
+          });
+          setDraftWorkerSeatQty(safeWorkerQty);
+          setDraftPmSeatQty(safePmQty);
+
+          // Mid-cycle remove: seats stay until period end — do not wait for lower meters.
+          if (result.deferredDecrease) {
+            const confirmed = buildStripeConfirmedAlert({
+              kind,
+              isAdd: false,
+              priceLabel,
+              confirmation: result.stripeConfirmation,
+            });
+            setStatusBanner({
+              id: "company-plan:addons-success",
+              tone: "success",
+              message: SEAT_ADDON_COPY.successRemove(kind),
+            });
+            Alert.alert(confirmed.title, confirmed.message);
+            return;
           }
-          await new Promise((resolve) => setTimeout(resolve, 1500));
+
+          let synced = false;
+          for (let attempt = 0; attempt < 8; attempt += 1) {
+            const latest = await fetchCompanyEntitlementView(user.companyId);
+            if (!latest) {
+              await new Promise((resolve) => setTimeout(resolve, 1200));
+              continue;
+            }
+
+            const workerNow = latest.meterLimits?.worker_seats;
+            const pmNow = latest.meterLimits?.pm_seats;
+            const workerOk =
+              typeof workerNow === "number" && workerNow === expectedWorkerTotal;
+            const pmOk =
+              typeof pmNow === "number" && pmNow === expectedPmTotal;
+            if (workerOk && pmOk) {
+              setEntitlement(latest);
+              setHasLoadedOnce(true);
+              clearPendingAddonHoldIfMatched({
+                companyId: user.companyId,
+                workerTotal: workerNow,
+                pmTotal: pmNow,
+              });
+              synced = true;
+              break;
+            }
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+          }
+
+          const confirmed = buildStripeConfirmedAlert({
+            kind,
+            isAdd,
+            priceLabel,
+            confirmation: result.stripeConfirmation,
+          });
+          setStatusBanner({
+            id: "company-plan:addons-success",
+            tone: "success",
+            message: synced
+              ? isAdd
+                ? SEAT_ADDON_COPY.successAdd(kind, priceLabel)
+                : SEAT_ADDON_COPY.successRemove(kind)
+              : SEAT_ADDON_COPY.successPendingSync,
+          });
+          Alert.alert(confirmed.title, confirmed.message);
+        } catch (error) {
+          clearPendingAddonHold(user.companyId);
+          setDraftWorkerSeatQty(previousWorker);
+          setDraftPmSeatQty(previousPm);
+          const message =
+            error instanceof Error ? error.message : "Unable to update seats.";
+          setStatusBanner({
+            id: "company-plan:addons-error",
+            tone: "error",
+            message,
+          });
+          Alert.alert(t.profile.companyPlan, message);
+        } finally {
+          setBusySeatType(null);
         }
+      };
 
-        setStatusBanner({
-          id: "company-plan:addons-success",
-          tone: "success",
-          message: "Add-ons updated. Your limits will refresh shortly.",
-        });
-      } finally {
-        setIsActionInFlight(false);
-      }
+      Alert.alert(confirm.title, confirm.message, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: confirm.confirmLabel,
+          onPress: () => {
+            void runUpdate();
+          },
+        },
+      ]);
     },
-    [addonSteppers, catalog, entitlement?.tierSlug, isActionInFlight, loadEntitlement, t.profile.companyPlan, user?.companyId],
+    [
+      busySeatType,
+      catalog,
+      draftPmSeatQty,
+      draftWorkerSeatQty,
+      serverAddonBaseline,
+      t.profile.companyPlan,
+      user?.companyId,
+    ],
   );
 
-  const displayEntitlement = overlayCheckoutPlanOnView(
-    entitlement,
-    checkoutResult === "success" ? optimisticCheckoutPlan ?? checkoutPlan : null,
-    catalog,
+  const displayEntitlement = overlayPendingAddonSeatsOnView(
+    overlayCheckoutPlanOnView(
+      entitlement,
+      checkoutResult === "success" ? optimisticCheckoutPlan ?? checkoutPlan : null,
+      catalog,
+    ),
+    pendingHold,
   );
 
   const planOptions: CompanyPlanOptionModel[] = buildCompanyPlanOptions(

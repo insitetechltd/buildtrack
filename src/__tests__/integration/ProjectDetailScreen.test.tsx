@@ -265,7 +265,7 @@ describe("ProjectDetailScreen", () => {
           title: "Tower A",
           description: "Core package",
           statusValue: "active",
-          statusLabel: "active",
+          statusLabel: "On-going",
         },
         leadPm: {
           userId: "user-3",
@@ -304,10 +304,12 @@ describe("ProjectDetailScreen", () => {
             id: "project-member:user-3",
             userId: "user-3",
             name: "Jordan Lee",
-            projectRoleLabel: "lead project manager",
+            projectRoleLabel: "Project Admin",
             email: "jordan@example.com",
             isLeadPm: true,
             canRemove: false,
+            canSetAsProjectAdmin: false,
+            canClearProjectAdmin: true,
             density: "standard",
             structuralState: "stale",
           },
@@ -330,6 +332,8 @@ describe("ProjectDetailScreen", () => {
         closeAddMemberModal: jest.fn(),
         addMembers: jest.fn(),
         confirmRemoveMember: jest.fn(),
+        setMemberAsProjectAdmin: jest.fn(),
+        clearMemberProjectAdmin: jest.fn(),
       },
     });
   });
@@ -343,8 +347,9 @@ describe("ProjectDetailScreen", () => {
     );
 
     expect(screen.getAllByText("Tower A").length).toBeGreaterThan(0);
+    expect(screen.getByText("Project Detail")).toBeTruthy();
     expect(screen.getByText("Project details")).toBeTruthy();
-    expect(screen.getByText("Lead Project Manager: Jordan Lee")).toBeTruthy();
+    expect(screen.getByText("Project Admin: Jordan Lee")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("project-detail__edit"));
 

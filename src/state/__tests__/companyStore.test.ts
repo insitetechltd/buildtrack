@@ -29,6 +29,7 @@ describe('Company Management Tests', () => {
 
   beforeEach(() => {
     useCompanyStore.setState({
+      companies: [{ ...mockCompany, createdAt: new Date().toISOString(), createdBy: 'user-1', isActive: true }],
       company: null,
       isLoading: false,
       error: null,
@@ -41,6 +42,7 @@ describe('Company Management Tests', () => {
       insert: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
       eq: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
       single: jest.fn().mockResolvedValue({ data: null, error: null }),
     });
   });
@@ -64,7 +66,19 @@ describe('Company Management Tests', () => {
         await result.current.fetchCompany(mockCompany.id);
       });
 
-      expect(result.current.company).toEqual(mockCompany);
+      expect(result.current.company).toMatchObject({
+        id: mockCompany.id,
+        name: mockCompany.name,
+        type: mockCompany.type,
+        description: mockCompany.description,
+        banner: {
+          text: mockCompany.banner.text,
+          backgroundColor: mockCompany.banner.backgroundColor,
+          textColor: mockCompany.banner.textColor,
+          isVisible: mockCompany.banner.isVisible,
+        },
+        isActive: true,
+      });
       expect(mockSupabase.from).toHaveBeenCalledWith('companies');
     });
 
@@ -117,6 +131,35 @@ describe('Company Management Tests', () => {
       });
 
       expect(mockSupabase.from).toHaveBeenCalled();
+    });
+
+    it('strips ephemeral local image URIs before persisting banner', async () => {
+      const updateEq = jest.fn().mockResolvedValue({ data: null, error: null });
+      const update = jest.fn().mockReturnValue({ eq: updateEq });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ update });
+
+      const { result } = renderHook(() => useCompanyStore());
+
+      await act(async () => {
+        await result.current.updateCompanyBanner(mockCompany.id, {
+          text: 'Safety',
+          backgroundColor: '#000',
+          textColor: '#fff',
+          isVisible: true,
+          imageUri: 'file:///tmp/local-banner.jpg',
+          imageStoragePath: 'company-123/branding/banner.jpg',
+        });
+      });
+
+      expect(update).toHaveBeenCalledWith({
+        banner: {
+          text: 'Safety',
+          backgroundColor: '#000',
+          textColor: '#fff',
+          isVisible: true,
+          imageStoragePath: 'company-123/branding/banner.jpg',
+        },
+      });
     });
 
     it('should update company logo', async () => {

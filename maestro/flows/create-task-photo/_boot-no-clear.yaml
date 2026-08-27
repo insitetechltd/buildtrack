@@ -3,6 +3,8 @@
 # which creates a fresh local draft each run.
 appId: com.buildtrack.app.local
 ---
+# stopApp kills the process — logout first so Realtime channels close (M-DATA-04).
+- runFlow: ../_logout.yaml
 - launchApp:
     clearState: false
     stopApp: true

@@ -4,6 +4,10 @@
 
 This document defines the current runtime truth and the intended normalized model for user type, system permission, backward-compatible user role, project role, and the emerging role-catalog system.
 
+**Locked product model (2026-08-24, RC gate `M-AUTHZ-RC`):** `docs/superpowers/plans/2026-08-24-company-user-project-model.md` — company vs system permission vs project membership/ProjectRole labels; assignment contract for admin UI. This matrix remains the catalog of fields; do not treat ProjectRole as the access ACL.
+
+**Seat law addendum (2026-08-25):** CA is **company authority**, not a PM seat by default. Default deployable seat for CA = **Worker**. CA may be upgraded to a PM deployable seat (`deployable_seat=pm`) under `pm_seats` entitlement. Place-on-a-job does not change seat class. Billing + Admin Dashboard Team tiles share `countCompanySeatUsage` / `seatClassForUser`.
+
 It is written to resolve ambiguity across:
 
 - `users.role` and `User.role`

@@ -16,6 +16,7 @@ export interface InviteUserResult {
   signInLink?: string;
   seatType?: InviteSeatType;
   error?: string;
+  errorCode?: string;
 }
 
 const EMAIL_RE = /\S+@\S+\.\S+/;
@@ -102,7 +103,11 @@ export async function inviteCompanyUser(
   if (error) {
     const message =
       (await readFunctionsErrorMessage(error, data)) || "Invite failed";
-    return { success: false, error: message };
+    const code =
+      typeof data === "object" && data && "error" in data
+        ? String((data as { error?: string }).error || "")
+        : undefined;
+    return { success: false, error: message, errorCode: code || undefined };
   }
 
   if (!data || typeof data !== "object") {
@@ -125,6 +130,7 @@ export async function inviteCompanyUser(
         payload.message ||
         INVITE_ERROR_LABELS[payload.error] ||
         payload.error,
+      errorCode: payload.error,
     };
   }
 

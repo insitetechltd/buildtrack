@@ -52,13 +52,23 @@ jest.mock("@/navigation/uiModeRoutes", () => ({
 }));
 
 jest.mock("@/state/taskStore.supabase", () => ({
-  useTaskStore: (selector?: (state: { getUnreadTaskCount: () => number }) => unknown) => {
+  useTaskStore: (selector?: (state: {
+    getUnreadTaskCount: () => number;
+    tasksById: Record<string, unknown>;
+    tasks: unknown[];
+  }) => unknown) => {
     const state = {
       getUnreadTaskCount: () => 0,
+      tasksById: {},
+      tasks: [],
     };
 
     return selector ? selector(state) : state;
   },
+}));
+
+jest.mock("@/ui/viewAdapters/useActivityTabBadgeCount", () => ({
+  useActivityTabBadgeCount: () => undefined,
 }));
 
 jest.mock("@/types/buildtrack", () => ({

@@ -214,6 +214,34 @@ async function syncSubscriptionRecord(
     ? new Date(subscription.trial_end * 1000).toISOString()
     : null;
 
+  const periodStartUnix =
+    typeof subscription.current_period_start === "number"
+      ? subscription.current_period_start
+      : subscription.items?.data
+          ?.map((item) =>
+            typeof (item as { current_period_start?: number }).current_period_start ===
+              "number"
+              ? (item as { current_period_start: number }).current_period_start
+              : null,
+          )
+          .filter((v): v is number => v != null)
+          .sort((a, b) => a - b)[0] ??
+        null;
+
+  const periodEndUnix =
+    typeof subscription.current_period_end === "number"
+      ? subscription.current_period_end
+      : subscription.items?.data
+          ?.map((item) =>
+            typeof (item as { current_period_end?: number }).current_period_end ===
+              "number"
+              ? (item as { current_period_end: number }).current_period_end
+              : null,
+          )
+          .filter((v): v is number => v != null)
+          .sort((a, b) => b - a)[0] ??
+        null;
+
   const { error } = await admin.from("company_subscriptions").upsert({
     company_id: companyId,
     stripe_customer_id:
@@ -223,10 +251,12 @@ async function syncSubscriptionRecord(
     stripe_subscription_id: subscription.id,
     status: mapStripeStatus(subscription.status),
     trial_ends_at: trialEndsAt,
-    current_period_start: new Date(subscription.current_period_start * 1000)
-      .toISOString(),
-    current_period_end: new Date(subscription.current_period_end * 1000)
-      .toISOString(),
+    current_period_start: periodStartUnix
+      ? new Date(periodStartUnix * 1000).toISOString()
+      : null,
+    current_period_end: periodEndUnix
+      ? new Date(periodEndUnix * 1000).toISOString()
+      : null,
     locked_plan_price_id: lockedPlanPriceId,
     livemode: subscription.livemode,
   }, { onConflict: "company_id" });
@@ -241,11 +271,152 @@ function primaryStripePriceId(subscription: Stripe.Subscription): string | null 
   return typeof price === "string" ? price : price.id;
 }
 
+const PENDING_WORKER_META = "insite_pending_worker_addon_qty";
+const PENDING_PM_META = "insite_pending_pm_addon_qty";
+const PENDING_AT_META = "insite_pending_addons_at";
+
+function parsePendingQty(raw: string | undefined): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return null;
+  return n;
+}
+
+/**
+ * HK lock: mid-cycle remove schedules qty via metadata; apply with no credit
+ * when the billing period rolls (current_period_start >= pending_at).
+ * Returns updated subscription when applied so entitlements use new qty.
+ */
+async function maybeApplyPendingAddonDecreases(
+  stripe: Stripe,
+  admin: AdminClient,
+  subscription: Stripe.Subscription,
+): Promise<{ subscription: Stripe.Subscription; applied: boolean }> {
+  const metadata = subscription.metadata ?? {};
+  // pending_at is a unix timestamp, not a qty
+  const pendingAtRaw = metadata[PENDING_AT_META];
+  const pendingAtUnix =
+    pendingAtRaw && pendingAtRaw !== ""
+      ? Number(pendingAtRaw)
+      : Number.NaN;
+
+  if (!Number.isFinite(pendingAtUnix)) {
+    return { subscription, applied: false };
+  }
+
+  const periodStartUnix =
+    typeof subscription.current_period_start === "number"
+      ? subscription.current_period_start
+      : subscription.items?.data
+          ?.map((item) =>
+            typeof (item as { current_period_start?: number }).current_period_start ===
+              "number"
+              ? (item as { current_period_start: number }).current_period_start
+              : null,
+          )
+          .filter((v): v is number => v != null)
+          .sort((a, b) => a - b)[0] ??
+        null;
+
+  // Not yet at period boundary — keep seats until roll.
+  if (periodStartUnix == null || periodStartUnix < pendingAtUnix) {
+    return { subscription, applied: false };
+  }
+
+  const pendingWorker = parsePendingQty(metadata[PENDING_WORKER_META]);
+  const pendingPm = parsePendingQty(metadata[PENDING_PM_META]);
+  if (pendingWorker == null && pendingPm == null) {
+    // Stale timestamp only — clear it
+    await stripe.subscriptions.update(subscription.id, {
+      proration_behavior: "none",
+      metadata: {
+        [PENDING_AT_META]: "",
+      },
+    });
+    return { subscription, applied: false };
+  }
+
+  const { data: addonPriceRows } = await admin
+    .from("plan_prices")
+    .select(
+      "stripe_price_id, plan_tiers:plan_tier_id ( slug, kind )",
+    )
+    .eq("livemode", subscription.livemode);
+
+  const workerPriceIds = new Set<string>();
+  const pmPriceIds = new Set<string>();
+  for (const row of (addonPriceRows ?? []) as Array<{
+    stripe_price_id: string;
+    plan_tiers?: { slug?: string; kind?: string } | null;
+  }>) {
+    if (row.plan_tiers?.kind !== "addon" || !row.stripe_price_id) continue;
+    if (row.plan_tiers.slug === "addon_worker_pack") {
+      workerPriceIds.add(row.stripe_price_id);
+    }
+    if (row.plan_tiers.slug === "addon_pm_seat") {
+      pmPriceIds.add(row.stripe_price_id);
+    }
+  }
+
+  const items = subscription.items?.data ?? [];
+  const updateItems: Stripe.SubscriptionUpdateParams.Item[] = [];
+
+  for (const item of items) {
+    const priceId =
+      typeof item.price === "string" ? item.price : item.price?.id;
+    if (!priceId) continue;
+
+    if (pendingWorker != null && workerPriceIds.has(priceId)) {
+      if (pendingWorker === 0) {
+        updateItems.push({ id: item.id, deleted: true });
+      } else if (item.quantity !== pendingWorker) {
+        updateItems.push({ id: item.id, quantity: pendingWorker });
+      }
+    }
+
+    if (pendingPm != null && pmPriceIds.has(priceId)) {
+      if (pendingPm === 0) {
+        updateItems.push({ id: item.id, deleted: true });
+      } else if (item.quantity !== pendingPm) {
+        updateItems.push({ id: item.id, quantity: pendingPm });
+      }
+    }
+  }
+
+  const updated = await stripe.subscriptions.update(subscription.id, {
+    proration_behavior: "none",
+    items: updateItems.length > 0 ? updateItems : undefined,
+    metadata: {
+      [PENDING_WORKER_META]: "",
+      [PENDING_PM_META]: "",
+      [PENDING_AT_META]: "",
+    },
+  });
+
+  console.log("stripe-webhook: applied pending addon decrease at period end", {
+    subscriptionId: subscription.id,
+    pendingWorker,
+    pendingPm,
+    pendingAtUnix,
+  });
+
+  return { subscription: updated, applied: true };
+}
+
 async function handleSubscriptionLifecycle(
   admin: AdminClient,
+  stripe: Stripe,
   event: Stripe.Event,
   subscription: Stripe.Subscription,
 ) {
+  // Apply deferred remove-seat qty before merging entitlements.
+  const pendingApply = await maybeApplyPendingAddonDecreases(
+    stripe,
+    admin,
+    subscription,
+  );
+  subscription = pendingApply.subscription;
+
   const metadata = subscription.metadata ?? {};
   let companyId = metadata.company_id as string | undefined;
 
@@ -403,7 +574,8 @@ async function handleSubscriptionLifecycle(
   let revisionSource:
     | "signup"
     | "trial_end"
-    | "webhook" = "webhook";
+    | "webhook"
+    | "addon_change" = "webhook";
 
   snapshot = {
     locked_plan_price_id: lockedPlanPriceId,
@@ -421,13 +593,21 @@ async function handleSubscriptionLifecycle(
     revisionSource = "trial_end";
   } else if (isSignup) {
     revisionSource = "signup";
+  } else if (pendingApply.applied) {
+    revisionSource = "addon_change";
   }
 
   const priceChanged = priorSub?.locked_plan_price_id &&
     priorSub.locked_plan_price_id !== lockedPlanPriceId;
   const statusChanged = priorStatus && priorStatus !== mappedStatus;
 
-  if (isSignup || isTrialEnd || priceChanged || statusChanged) {
+  if (
+    isSignup ||
+    isTrialEnd ||
+    priceChanged ||
+    statusChanged ||
+    pendingApply.applied
+  ) {
     await appendRevision(
       admin,
       companyId,
@@ -556,6 +736,7 @@ Deno.serve(async (req) => {
       case "customer.subscription.updated":
         await handleSubscriptionLifecycle(
           admin,
+          stripe,
           event,
           event.data.object as Stripe.Subscription,
         );

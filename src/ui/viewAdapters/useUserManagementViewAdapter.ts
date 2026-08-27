@@ -7,6 +7,23 @@ import {
   inviteCompanyUser,
   type InviteSeatType,
 } from "@/api/inviteUser";
+import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
+import { fetchSellablePlanCatalog } from "@/api/fetchSellablePlanCatalog";
+import { updateCompanyAddons } from "@/api/updateCompanyAddons";
+import {
+  countCompanySeatUsage,
+  formatSeatUsageSummary,
+  seatLimitReached,
+  type SeatUsageLimits,
+} from "@/billing/seatUsage";
+import {
+  readSeatLimitsFromEntitlement,
+  waitForSeatLimitIncrease,
+} from "@/billing/waitForSeatLimitIncrease";
+import {
+  addonExtraQtyFromTotals,
+} from "@/billing/serverAddonBaseline";
+import { findAddonTier, findBaseTier, resolveAddonPriceLabels } from "@/billing/planCatalog";
 import { useAuthStore } from "@/state/authStore";
 import { useCompanyStore } from "@/state/companyStore";
 import {
@@ -19,42 +36,37 @@ import {
   getUserSystemPermission,
   isAdmin,
   type Project,
-  type ProjectRole,
   type User,
 } from "@/types/buildtrack";
+import {
+  getProjectRoleLabel,
+  upsertProjectMembership,
+} from "@/ui/contracts/projectMembership";
 import type {
   UserManagementInviteFormModel,
   UserManagementInviteResultModel,
-  UserManagementProjectRoleOption,
   UserManagementScreenViewAdapterOutput,
   UserManagementSelectedUserSummary,
 } from "@/ui/contracts/viewAdapters";
 import { notifyDataMutation } from "@/utils/DataRefreshManager";
 import { useTranslation } from "@/utils/useTranslation";
+import { userAccountIsDeleted } from "@/types/userAccountRetention";
 
-const PROJECT_ROLES: ProjectRole[] = [
-  "lead_project_manager",
-  "contractor",
-  "subcontractor",
-  "inspector",
-  "architect",
-  "engineer",
-  "worker",
-  "foreman",
-];
-
-function getProjectRoleLabel(role: ProjectRole): string {
-  return role
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+/** Staff roster ACL on User Management: CA vs Member (staff). */
+function getStaffPageLabel(user: User): string {
+  return isAdmin(user) ? "CA" : "Member";
 }
 
-function getSystemRoleLabel(user: User): string {
-  return getUserSystemPermission(user)
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+/** Company seat shown on the project-assignments line: CA | PM | Worker. */
+function getCompanySeatLabel(user: User): string {
+  const permission = getUserSystemPermission(user);
+  if (permission === "admin") {
+    return "CA";
+  }
+  if (permission === "manager") {
+    return "PM";
+  }
+  return "Worker";
 }
 
 function getSelectedUserSummary(user: User | null): UserManagementSelectedUserSummary | null {
@@ -66,7 +78,7 @@ function getSelectedUserSummary(user: User | null): UserManagementSelectedUserSu
     userId: user.id,
     name: user.name,
     email: user.email,
-    roleLabel: getSystemRoleLabel(user),
+    roleLabel: getStaffPageLabel(user),
   };
 }
 
@@ -91,6 +103,7 @@ export function canShowCopyInviteLinkForUser(
 
 export interface UserManagementViewAdapterProps {
   onNavigateBack: () => void;
+  onNavigateToCompanyPlan?: () => void;
 }
 
 export interface UserManagementViewAdapterHookResult {
@@ -106,7 +119,6 @@ export interface UserManagementViewAdapterHookResult {
     closeActiveModal: () => void;
     closeAssignmentFlow: () => void;
     openProjectPicker: () => void;
-    openProjectRolePicker: () => void;
     returnToAssignmentModal: () => void;
     toggleProfileMenu: () => void;
     confirmLogout: () => void;
@@ -115,18 +127,19 @@ export interface UserManagementViewAdapterHookResult {
     requestRejectUser: (userId: string) => void;
     requestRemoveAssignment: (userId: string, projectId: string) => void;
     selectProject: (projectId: string) => void;
-    selectProjectRole: (role: ProjectRole) => void;
     saveAssignment: () => Promise<void>;
     confirmApproveUser: () => Promise<void>;
     confirmRejectUser: () => Promise<void>;
     confirmRemoveAssignment: () => Promise<void>;
     copyInviteLink: (userId: string) => Promise<void>;
+    requestDeactivateUser: (userId: string) => void;
   };
 }
 
 export function useUserManagementViewAdapter(
-  _props: UserManagementViewAdapterProps,
+  props: UserManagementViewAdapterProps,
 ): UserManagementViewAdapterHookResult {
+  const { onNavigateToCompanyPlan } = props;
   const t = useTranslation();
   const { user: currentUser, logout } = useAuthStore();
   const currentCompanyId = currentUser?.companyId ?? "";
@@ -140,6 +153,8 @@ export function useUserManagementViewAdapter(
     fetchProjectsByCompany,
     removeUserFromProject,
     getUserProjectAssignments,
+    getProjectUserAssignments,
+    updateUserProjectCategory,
   } = projectStore;
   const {
     getUsersByCompany,
@@ -147,11 +162,11 @@ export function useUserManagementViewAdapter(
     fetchUsers,
     approveUser,
     rejectUser,
+    deactivateUserSeat,
   } = userStore;
 
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [selectedProjectRole, setSelectedProjectRole] = useState<ProjectRole>("worker");
   const [activeModal, setActiveModal] =
     useState<UserManagementScreenViewAdapterOutput["activeModal"]>(null);
   const [successMessage, setSuccessMessage] = useState("");
@@ -171,6 +186,7 @@ export function useUserManagementViewAdapter(
   const [copyingInviteUserId, setCopyingInviteUserId] = useState<string | null>(
     null,
   );
+  const [seatUsageLabel, setSeatUsageLabel] = useState<string | null>(null);
 
   const companyUsers = useMemo(
     () => (currentCompanyId ? getUsersByCompany(currentCompanyId) : []),
@@ -185,23 +201,34 @@ export function useUserManagementViewAdapter(
     [currentCompanyId, getCompanyById],
   );
   const filteredUsers = useMemo(() => {
+    const activeRoster = companyUsers.filter(
+      (companyUser) => companyUser.isActive !== false && !userAccountIsDeleted(companyUser),
+    );
     const normalizedQuery = searchQuery.trim().toLowerCase();
+    const matched = !normalizedQuery
+      ? activeRoster
+      : activeRoster.filter(
+          (companyUser) =>
+            companyUser.name.toLowerCase().includes(normalizedQuery) ||
+            companyUser.email?.toLowerCase().includes(normalizedQuery) ||
+            companyUser.phone?.toLowerCase().includes(normalizedQuery),
+        );
 
-    if (!normalizedQuery) {
-      return companyUsers;
+    const selfId = currentUser?.id;
+    if (!selfId) {
+      return matched;
     }
 
-    return companyUsers.filter(
-      (companyUser) =>
-        companyUser.name.toLowerCase().includes(normalizedQuery) ||
-        companyUser.email?.toLowerCase().includes(normalizedQuery),
-    );
-  }, [companyUsers, searchQuery]);
+    return [...matched].sort((left, right) => {
+      if (left.id === selfId) return -1;
+      if (right.id === selfId) return 1;
+      return 0;
+    });
+  }, [companyUsers, currentUser?.id, searchQuery]);
 
   const resetAssignmentFlow = useCallback(() => {
     setSelectedUser(null);
     setSelectedProject(null);
-    setSelectedProjectRole("worker");
   }, []);
 
   const handleRefresh = useCallback(async () => {
@@ -240,6 +267,197 @@ export function useUserManagementViewAdapter(
     setInviteSubmitting(false);
   }, []);
 
+  const refreshSeatUsage = useCallback(async (): Promise<{
+    usage: ReturnType<typeof countCompanySeatUsage>;
+    limits: SeatUsageLimits | null;
+  }> => {
+    await fetchUsers();
+    const roster = currentCompanyId ? getUsersByCompany(currentCompanyId) : [];
+    const usage = countCompanySeatUsage(roster);
+    const entitlement = currentCompanyId
+      ? await fetchCompanyEntitlementView(currentCompanyId)
+      : null;
+    const limits = readSeatLimitsFromEntitlement(entitlement);
+    setSeatUsageLabel(limits ? formatSeatUsageSummary(usage, limits) : null);
+    return { usage, limits };
+  }, [currentCompanyId, fetchUsers, getUsersByCompany]);
+
+  const offerSeatUpsell = useCallback(
+    (seatType: InviteSeatType, detailMessage: string) => {
+      void (async () => {
+        if (!currentCompanyId) {
+          return;
+        }
+
+        const catalog = await fetchSellablePlanCatalog().catch(() => null);
+        const priceLabels = resolveAddonPriceLabels(catalog);
+        const addonPrice =
+          seatType === "pm"
+            ? priceLabels.addon_pm_seat
+            : priceLabels.addon_worker_pack;
+        const addNoun = seatType === "pm" ? "1 PM" : "1 Worker";
+        const addLabel = addonPrice
+          ? `Add ${addNoun} · ${addonPrice}`
+          : `Add ${addNoun}`;
+        const priceLine = addonPrice
+          ? `\n\n${seatType === "pm" ? "PM" : "Worker"}: ${addonPrice} / month`
+          : "";
+
+        Alert.alert("Seat limit reached", `${detailMessage}${priceLine}`, [
+          { text: "Not now", style: "cancel" },
+          {
+            text: "Company Plan",
+            onPress: () => {
+              setActiveModal(null);
+              onNavigateToCompanyPlan?.();
+            },
+          },
+          {
+            text: addLabel,
+            onPress: () => {
+              void (async () => {
+                try {
+                  const [entitlement, freshCatalog] = await Promise.all([
+                    fetchCompanyEntitlementView(currentCompanyId),
+                    catalog
+                      ? Promise.resolve(catalog)
+                      : fetchSellablePlanCatalog(),
+                  ]);
+
+                  if (
+                    !entitlement?.hasStripeSubscription ||
+                    !entitlement.tierSlug ||
+                    entitlement.tierSlug === "pilot"
+                  ) {
+                    Alert.alert(
+                      "Subscribe first",
+                      `Add-on seats need an active company plan.${priceLine}\n\nOpen Company Plan to subscribe, then return here to add seats.`,
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Company Plan",
+                          onPress: () => {
+                            setActiveModal(null);
+                            onNavigateToCompanyPlan?.();
+                          },
+                        },
+                      ],
+                    );
+                    return;
+                  }
+
+                  const baseTier = findBaseTier(
+                    freshCatalog,
+                    entitlement.tierSlug,
+                  );
+                  const workerAddon = findAddonTier(
+                    freshCatalog,
+                    "addon_worker_pack",
+                  );
+                  const pmAddon = findAddonTier(freshCatalog, "addon_pm_seat");
+                  if (!baseTier || !workerAddon || !pmAddon) {
+                    setActiveModal(null);
+                    onNavigateToCompanyPlan?.();
+                    return;
+                  }
+
+                  const currentWorkerTotal =
+                    entitlement.meterLimits?.worker_seats ?? 0;
+                  const currentPmTotal = entitlement.meterLimits?.pm_seats ?? 0;
+                  const baseWorkerTotal = baseTier.meters.worker_seats ?? 0;
+                  const basePmTotal = baseTier.meters.pm_seats ?? 0;
+                  // Product law: +1 seat per unit — ignore stale catalog pack meters (e.g. 5).
+                  const workerSeatQty = addonExtraQtyFromTotals(
+                    currentWorkerTotal,
+                    baseWorkerTotal,
+                  );
+                  const pmSeatQty = addonExtraQtyFromTotals(
+                    currentPmTotal,
+                    basePmTotal,
+                  );
+
+                  const nextWorker =
+                    seatType === "worker" ? workerSeatQty + 1 : workerSeatQty;
+                  const nextPm = seatType === "pm" ? pmSeatQty + 1 : pmSeatQty;
+
+                  const baseline = readSeatLimitsFromEntitlement(entitlement) ?? {
+                    pmSeatLimit: currentPmTotal,
+                    workerSeatLimit: currentWorkerTotal,
+                  };
+
+                  const result = await updateCompanyAddons({
+                    companyId: currentCompanyId,
+                    addonWorkerPacks: nextWorker,
+                    addonPmSeats: nextPm,
+                  });
+
+                  if (!result.success) {
+                    Alert.alert(
+                      "Could not add seats",
+                      result.error || "Open Company Plan to add seats.",
+                      [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Company Plan",
+                          onPress: () => {
+                            setActiveModal(null);
+                            onNavigateToCompanyPlan?.();
+                          },
+                        },
+                      ],
+                    );
+                    return;
+                  }
+
+                  Alert.alert(
+                    "Updating seats",
+                    "Waiting for billing to confirm the new seat limit before inviting…",
+                  );
+
+                  const confirmed = await waitForSeatLimitIncrease({
+                    companyId: currentCompanyId,
+                    baseline,
+                    seatType,
+                  });
+
+                  if (!confirmed) {
+                    Alert.alert(
+                      "Seats not ready yet",
+                      "Billing has not confirmed the new seats. Open Company Plan, wait a moment, then invite again. Do not invite until the usage label shows the higher limit.",
+                      [
+                        {
+                          text: "Company Plan",
+                          onPress: () => {
+                            setActiveModal(null);
+                            onNavigateToCompanyPlan?.();
+                          },
+                        },
+                        { text: "OK", style: "cancel" },
+                      ],
+                    );
+                    void refreshSeatUsage();
+                    return;
+                  }
+
+                  await refreshSeatUsage();
+                  Alert.alert(
+                    "Seats ready",
+                    `Limits updated to PM ${confirmed.pmSeatLimit} · Worker ${confirmed.workerSeatLimit}. You can invite now.`,
+                  );
+                } catch (error) {
+                  console.error("UserManagement: add seats failed", error);
+                  setActiveModal(null);
+                  onNavigateToCompanyPlan?.();
+                }
+              })();
+            },
+          },
+        ]);
+      })();
+    },
+    [currentCompanyId, onNavigateToCompanyPlan, refreshSeatUsage],
+  );
+
   const openInviteModal = useCallback(() => {
     setInviteName("");
     setInviteEmail("");
@@ -247,7 +465,8 @@ export function useUserManagementViewAdapter(
     setInviteError(null);
     setInviteResult(null);
     setActiveModal("invite");
-  }, []);
+    void refreshSeatUsage();
+  }, [refreshSeatUsage]);
 
   const submitInvite = useCallback(async () => {
     if (!currentCompanyId) {
@@ -262,6 +481,18 @@ export function useUserManagementViewAdapter(
     setInviteSubmitting(true);
     setInviteError(null);
 
+    const { usage, limits } = await refreshSeatUsage();
+    if (limits && seatLimitReached(inviteSeatType, usage, limits)) {
+      setInviteSubmitting(false);
+      const summary = formatSeatUsageSummary(usage, limits);
+      setInviteError(summary);
+      offerSeatUpsell(
+        inviteSeatType,
+        `${summary}. Add seats to continue inviting.`,
+      );
+      return;
+    }
+
     const result = await inviteCompanyUser({
       companyId: currentCompanyId,
       name: inviteName,
@@ -272,7 +503,15 @@ export function useUserManagementViewAdapter(
     setInviteSubmitting(false);
 
     if (!result.success || !result.signInLink || !result.email) {
-      setInviteError(result.error || "Invite failed");
+      const message = result.error || "Invite failed";
+      setInviteError(message);
+      if (
+        result.errorCode === "pm_seat_limit" ||
+        result.errorCode === "worker_seat_limit"
+      ) {
+        offerSeatUpsell(inviteSeatType, message);
+      }
+      void refreshSeatUsage();
       return;
     }
 
@@ -282,13 +521,14 @@ export function useUserManagementViewAdapter(
       seatType: result.seatType || inviteSeatType,
     });
     setActiveModal("inviteResult");
-    void fetchUsers();
+    void refreshSeatUsage();
   }, [
     currentCompanyId,
-    fetchUsers,
     inviteEmail,
     inviteName,
     inviteSeatType,
+    offerSeatUpsell,
+    refreshSeatUsage,
   ]);
 
   const copyInviteLink = useCallback(
@@ -344,7 +584,6 @@ export function useUserManagementViewAdapter(
 
       setSelectedUser(companyUser);
       setSelectedProject(null);
-      setSelectedProjectRole("worker");
       setActiveModal("assign");
     },
     [companyUsers],
@@ -411,14 +650,6 @@ export function useUserManagementViewAdapter(
     setActiveModal("project");
   }, [selectedUser]);
 
-  const openProjectRolePicker = useCallback(() => {
-    if (!selectedUser) {
-      return;
-    }
-
-    setActiveModal("category");
-  }, [selectedUser]);
-
   const returnToAssignmentModal = useCallback(() => {
     if (!selectedUser) {
       return;
@@ -441,26 +672,25 @@ export function useUserManagementViewAdapter(
     [projects],
   );
 
-  const selectProjectRole = useCallback((role: ProjectRole) => {
-    setSelectedProjectRole(role);
-    setActiveModal("assign");
-  }, []);
-
   const saveAssignment = useCallback(async () => {
     if (!selectedUser || !selectedProject || !currentUser) {
       return;
     }
 
     try {
-      await assignUserToProject(
-        selectedUser.id,
-        selectedProject.id,
-        selectedProjectRole,
-        currentUser.id,
+      const result = await upsertProjectMembership(
+        { assignUserToProject, updateUserProjectCategory },
+        {
+          userId: selectedUser.id,
+          projectId: selectedProject.id,
+          assignedBy: currentUser.id,
+          assignments: getProjectUserAssignments(selectedProject.id),
+        },
       );
       notifyDataMutation("assignment");
+      const verb = result === "updated" ? "updated on" : "placed on";
       setSuccessMessage(
-        `${selectedUser.name} has been assigned to ${selectedProject.name} as ${getProjectRoleLabel(selectedProjectRole)}.`,
+        `${selectedUser.name} has been ${verb} ${selectedProject.name}.`,
       );
       setActiveModal("success");
       resetAssignmentFlow();
@@ -471,11 +701,71 @@ export function useUserManagementViewAdapter(
   }, [
     assignUserToProject,
     currentUser,
+    getProjectUserAssignments,
     resetAssignmentFlow,
     selectedProject,
-    selectedProjectRole,
     selectedUser,
+    updateUserProjectCategory,
   ]);
+
+  const requestDeactivateUser = useCallback(
+    (userId: string) => {
+      const target = companyUsers.find((candidate) => candidate.id === userId);
+      if (!target) {
+        return;
+      }
+      if (target.id === currentUser?.id) {
+        Alert.alert("Not allowed", "You cannot deactivate your own seat.");
+        return;
+      }
+      if (isAdmin(target) && getAdminCountByCompany(target.companyId) === 1) {
+        Alert.alert(
+          "Protected admin",
+          "The last company admin cannot be deactivated. Promote another admin first.",
+        );
+        return;
+      }
+
+      Alert.alert(
+        "Make inactive?",
+        `${target.name} will keep their profile but stop using a company seat so you can invite someone else.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Make inactive",
+            style: "destructive",
+            onPress: () => {
+              void (async () => {
+                try {
+                  const ok = await deactivateUserSeat(userId);
+                  if (!ok) {
+                    Alert.alert("Error", "Could not make this user inactive. Please try again.");
+                    return;
+                  }
+                  notifyDataMutation("user");
+                  await fetchUsers();
+                  setSuccessMessage(
+                    `${target.name} is inactive. Their seat is free for another invite.`,
+                  );
+                  setActiveModal("success");
+                } catch (error) {
+                  console.error("UserManagementScreen: Error deactivating user", error);
+                  Alert.alert("Error", "Could not make this user inactive. Please try again.");
+                }
+              })();
+            },
+          },
+        ],
+      );
+    },
+    [
+      companyUsers,
+      currentUser?.id,
+      deactivateUserSeat,
+      fetchUsers,
+      getAdminCountByCompany,
+    ],
+  );
 
   const confirmRemoveAssignment = useCallback(async () => {
     if (!pendingRemoval) {
@@ -546,19 +836,6 @@ export function useUserManagementViewAdapter(
     ]);
   }, [logout]);
 
-  const projectRoleOptions = useMemo<UserManagementProjectRoleOption[]>(
-    () =>
-      PROJECT_ROLES.map((role) => ({
-        id: `user-management-role:${role}`,
-        role,
-        label: getProjectRoleLabel(role),
-        isSelected: selectedProjectRole === role,
-        density: "standard",
-        structuralState: "stale",
-      })),
-    [selectedProjectRole],
-  );
-
   const availableProjects = useMemo(
     () =>
       projects.map((project) => ({
@@ -601,17 +878,27 @@ export function useUserManagementViewAdapter(
           .filter((assignment): assignment is NonNullable<typeof assignment> => Boolean(assignment));
         const isPending = Boolean(companyUser.isPending);
         const isProtected = isAdmin(companyUser) && getAdminCountByCompany(companyUser.companyId) === 1;
+        const canDeactivate =
+          companyUser.id !== currentUser?.id &&
+          !isProtected &&
+          !isPending &&
+          companyUser.isActive !== false;
 
         return {
           id: `user-card:${companyUser.id}`,
           userId: companyUser.id,
           name: companyUser.name,
           email: companyUser.email,
-          systemRoleLabel: getSystemRoleLabel(companyUser),
-          positionLabel: companyUser.position,
+          phone: companyUser.phone,
+          systemRoleLabel: getStaffPageLabel(companyUser),
+          /** Kept for contract; seat class for assignments is companySeatLabel. */
+          positionLabel: getCompanySeatLabel(companyUser),
+          companySeatLabel: getCompanySeatLabel(companyUser),
           isAdmin: isAdmin(companyUser),
           isProtected,
           isPending,
+          isActive: companyUser.isActive !== false,
+          canDeactivate,
           pendingMessage: isPending
             ? "Awaiting approval - cannot be assigned to projects yet"
             : null,
@@ -689,6 +976,7 @@ export function useUserManagementViewAdapter(
         seatType: inviteSeatType,
         isSubmitting: inviteSubmitting,
         error: inviteError,
+        seatUsageLabel,
       } satisfies UserManagementInviteFormModel,
       inviteResult,
       copyingInviteUserId,
@@ -704,9 +992,7 @@ export function useUserManagementViewAdapter(
       selectedUserSummary: getSelectedUserSummary(selectedUser),
       selectedProjectId: selectedProject?.id || null,
       selectedProjectName: selectedProject?.name || null,
-      selectedProjectRole,
       availableProjects,
-      projectRoleOptions,
       emptyState: {
         title: "No Users Found",
         message: searchQuery
@@ -727,15 +1013,14 @@ export function useUserManagementViewAdapter(
     inviteResult,
     inviteSeatType,
     inviteSubmitting,
+    seatUsageLabel,
     isProfileMenuVisible,
     isRefreshing,
     pendingApprovalUser,
     pendingRemoval,
-    projectRoleOptions,
     searchQuery,
     selectedProject?.id,
     selectedProject?.name,
-    selectedProjectRole,
     selectedUser,
     successMessage,
     t.userManagement,
@@ -755,7 +1040,6 @@ export function useUserManagementViewAdapter(
       closeActiveModal,
       closeAssignmentFlow,
       openProjectPicker,
-      openProjectRolePicker,
       returnToAssignmentModal,
       toggleProfileMenu: () => setIsProfileMenuVisible((current) => !current),
       confirmLogout,
@@ -764,12 +1048,12 @@ export function useUserManagementViewAdapter(
       requestRejectUser,
       requestRemoveAssignment,
       selectProject,
-      selectProjectRole,
       saveAssignment,
       confirmApproveUser,
       confirmRejectUser,
       confirmRemoveAssignment,
       copyInviteLink,
+      requestDeactivateUser,
     },
   };
 }

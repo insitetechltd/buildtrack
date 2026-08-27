@@ -1,9 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, Linking, Platform } from "react-native";
 
-import { checkSupabaseConnection } from "@/api/supabase";
-import { fetchCompanyEntitlementView } from "@/api/fetchCompanyEntitlements";
-import { formatEntitlementStatusLabel } from "@/billing/companyEntitlementSummary";
 import {
   PRIVACY_POLICY_URL,
   SUPPORT_EMAIL,
@@ -12,18 +9,13 @@ import {
 } from "@/legal/legalLinks";
 import { useAuthStore } from "@/state/authStore";
 import { useLanguageStore, type Language } from "@/state/languageStore";
-import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
-import { useTaskStore } from "@/state/taskStore.supabase";
 import { useThemeStore } from "@/state/themeStore";
-import { useUserStore } from "@/state/userStore.supabase";
 import { isPlatformSuperuser } from "@/config/platformSuperusers";
-import { isAdmin } from "@/types/buildtrack";
 import type {
   ProfileScreenMenuItem,
   ProfileScreenSectionModel,
   ProfileScreenViewAdapterOutput,
 } from "@/ui/contracts/viewAdapters";
-import { detectEnvironment, getEnvironmentStyles } from "@/utils/environmentDetector";
 import { useTranslation } from "@/utils/useTranslation";
 
 export interface ProfileScreenProps {
@@ -32,7 +24,6 @@ export interface ProfileScreenProps {
   onNavigateToDeveloperSettings?: () => void;
   onNavigateToOwnerConsole?: () => void;
   onNavigateToPendingUsers?: () => void;
-  onNavigateToCompanyPlan?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
 }
@@ -51,8 +42,6 @@ export interface ProfileViewAdapterHookResult {
   };
 }
 
-type SupabaseStatus = "checking" | "connected" | "disconnected";
-
 function toRoleLabel(role?: string): string {
   if (!role) {
     return "";
@@ -67,14 +56,13 @@ function toRoleLabel(role?: string): string {
 export function useProfileViewAdapter(
   props: ProfileScreenProps,
 ): ProfileViewAdapterHookResult {
-  const { onNavigateToDeveloperSettings, onNavigateToOwnerConsole, onNavigateToCompanyPlan } =
-    props;
+  const {
+    onNavigateToDeveloperSettings,
+    onNavigateToOwnerConsole,
+  } = props;
   const { user, changePassword } = useAuthStore();
   const { language, setLanguage } = useLanguageStore();
   const { isDarkMode, toggleDarkMode } = useThemeStore();
-  const taskStore = useTaskStore();
-  const projectStore = useProjectStoreWithInit();
-  const userStore = useUserStore();
   const t = useTranslation();
 
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -83,59 +71,7 @@ export function useProfileViewAdapter(
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [supabaseStatus, setSupabaseStatus] = useState<SupabaseStatus>("checking");
-  const [companyPlanLabel, setCompanyPlanLabel] = useState<string | undefined>();
-  const [environmentInfo] = useState(() => detectEnvironment());
-  const canApproveUsers = isAdmin(user);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkConnection = async () => {
-      try {
-        const isConnected = await checkSupabaseConnection();
-
-        if (isMounted) {
-          setSupabaseStatus(isConnected ? "connected" : "disconnected");
-        }
-      } catch (error) {
-        console.error("Supabase connection check failed:", error);
-
-        if (isMounted) {
-          setSupabaseStatus("disconnected");
-        }
-      }
-    };
-
-    void checkConnection();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    const companyId = user?.companyId;
-
-    if (!companyId || !canApproveUsers) {
-      setCompanyPlanLabel(undefined);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    void (async () => {
-      const view = await fetchCompanyEntitlementView(companyId);
-      if (isMounted) {
-        setCompanyPlanLabel(view ? formatEntitlementStatusLabel(view) : undefined);
-      }
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [canApproveUsers, user?.companyId]);
+  const isOwnerAccount = isPlatformSuperuser(user);
 
   const resetPasswordState = useCallback(() => {
     setCurrentPassword("");
@@ -151,23 +87,6 @@ export function useProfileViewAdapter(
     setShowPasswordChange(false);
     resetPasswordState();
   }, [isChangingPassword, resetPasswordState]);
-
-  const handleRefreshData = useCallback(async () => {
-    if (!user) {
-      return;
-    }
-
-    try {
-      await Promise.all([
-        taskStore.fetchTasks(),
-        projectStore.fetchProjects(),
-        projectStore.fetchUserProjectAssignments(user.id),
-        userStore.fetchUsers(),
-      ]);
-    } catch (error) {
-      console.error("Profile refresh failed:", error);
-    }
-  }, [projectStore, taskStore, user, userStore]);
 
   const handleLanguageSelection = useCallback(
     (nextLanguage: Language) => {
@@ -258,17 +177,11 @@ export function useProfileViewAdapter(
   const handleMenuAction = useCallback(
     (actionId: string) => {
       switch (actionId) {
-        case "company-plan":
-          onNavigateToCompanyPlan?.();
-          return;
         case "language":
           setShowLanguagePicker(true);
           return;
         case "theme":
           toggleDarkMode();
-          return;
-        case "refresh-data":
-          void handleRefreshData();
           return;
         case "change-password":
           setShowPasswordChange(true);
@@ -314,8 +227,6 @@ export function useProfileViewAdapter(
       }
     },
     [
-      handleRefreshData,
-      onNavigateToCompanyPlan,
       onNavigateToDeveloperSettings,
       onNavigateToOwnerConsole,
       t.profile.helpSupport,
@@ -326,26 +237,25 @@ export function useProfileViewAdapter(
   const sections = useMemo<ProfileScreenSectionModel[]>(() => {
     const settingsItems: ProfileScreenMenuItem[] = [];
 
-    if (canApproveUsers) {
-      settingsItems.push({
-        id: "profile-menu:company-plan",
-        actionId: "company-plan",
-        title: t.profile.companyPlan,
-        icon: "card-outline",
-        showChevron: true,
-        colorTone: "default",
-        rightText: companyPlanLabel,
-        density: "standard",
-        structuralState: "stale",
-      });
-    }
-
-    if (isPlatformSuperuser(user) && onNavigateToOwnerConsole) {
+    if (isOwnerAccount && onNavigateToOwnerConsole) {
       settingsItems.push({
         id: "profile-menu:owner-console",
         actionId: "owner-console",
         title: "Owner Console",
         icon: "construct-outline",
+        showChevron: true,
+        colorTone: "default",
+        density: "standard",
+        structuralState: "stale",
+      });
+    }
+
+    if (isOwnerAccount && onNavigateToDeveloperSettings) {
+      settingsItems.push({
+        id: "profile-menu:developer-settings",
+        actionId: "developer-settings",
+        title: "Dev Admin tools",
+        icon: "code-slash-outline",
         showChevron: true,
         colorTone: "default",
         density: "standard",
@@ -377,30 +287,10 @@ export function useProfileViewAdapter(
         structuralState: "stale",
       },
       {
-        id: "profile-menu:refresh-data",
-        actionId: "refresh-data",
-        title: t.profile.reloadData,
-        icon: "refresh-outline",
-        showChevron: true,
-        colorTone: "default",
-        density: "standard",
-        structuralState: "stale",
-      },
-      {
         id: "profile-menu:change-password",
         actionId: "change-password",
         title: "Change Password",
         icon: "lock-closed-outline",
-        showChevron: true,
-        colorTone: "default",
-        density: "standard",
-        structuralState: "stale",
-      },
-      {
-        id: "profile-menu:help-support",
-        actionId: "help-support",
-        title: t.profile.helpSupport,
-        icon: "help-circle-outline",
         showChevron: true,
         colorTone: "default",
         density: "standard",
@@ -415,6 +305,16 @@ export function useProfileViewAdapter(
         title: "About Taskr",
         icon: "information-circle-outline",
         showChevron: false,
+        colorTone: "default",
+        density: "standard",
+        structuralState: "stale",
+      },
+      {
+        id: "profile-menu:help-support",
+        actionId: "help-support",
+        title: t.profile.helpSupport,
+        icon: "help-circle-outline",
+        showChevron: true,
         colorTone: "default",
         density: "standard",
         structuralState: "stale",
@@ -454,25 +354,21 @@ export function useProfileViewAdapter(
       },
     ];
   }, [
-    companyPlanLabel,
     isDarkMode,
+    isOwnerAccount,
     language,
-    canApproveUsers,
+    onNavigateToDeveloperSettings,
     onNavigateToOwnerConsole,
-    t.profile.companyPlan,
     t.profile.darkMode,
     t.profile.english,
     t.profile.helpSupport,
     t.profile.language,
     t.profile.lightMode,
-    t.profile.reloadData,
     t.profile.settings,
     t.profile.theme,
     t.profile.traditionalChinese,
     user,
   ]);
-
-  const environmentStyles = getEnvironmentStyles(environmentInfo);
 
   const output = useMemo<ProfileScreenViewAdapterOutput>(() => {
     const hasUsableData = Boolean(user);
@@ -533,50 +429,17 @@ export function useProfileViewAdapter(
           confirmPassword.length > 0 &&
           newPassword === confirmPassword,
       },
-      systemStatusItems: [
-        {
-          id: "profile-system-status:environment",
-          label: "Environment",
-          value: environmentInfo.displayName,
-          indicatorColor: environmentStyles.backgroundColor,
-          valueTone: "default",
-        },
-        {
-          id: "profile-system-status:cloud-connection",
-          label: "Cloud Connection",
-          value:
-            supabaseStatus === "connected"
-              ? "Connected"
-              : supabaseStatus === "disconnected"
-                ? "Offline"
-                : "Checking...",
-          indicatorColor:
-            supabaseStatus === "connected"
-              ? "#22c55e"
-              : supabaseStatus === "disconnected"
-                ? "#ef4444"
-                : "#eab308",
-          valueTone:
-            supabaseStatus === "connected"
-              ? "positive"
-              : supabaseStatus === "disconnected"
-                ? "negative"
-                : "warning",
-        },
-      ],
+      systemStatusItems: [],
     };
   }, [
     confirmPassword,
     currentPassword,
-    environmentInfo.displayName,
-    environmentStyles.backgroundColor,
     isChangingPassword,
     language,
     newPassword,
     sections,
     showLanguagePicker,
     showPasswordChange,
-    supabaseStatus,
     t.profile.english,
     t.profile.englishUS,
     t.profile.traditionalChinese,

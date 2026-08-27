@@ -1,8 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 
+import {
+  isEphemeralBannerImageUri,
+  resolveCompanyBannerImageUrl,
+  uploadCompanyBannerImage,
+} from "@/api/companyBannerStorage";
+import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
 import { useAuthStore } from "@/state/authStore";
 import { useCompanyStore } from "@/state/companyStore";
 import { useProjectStoreWithCompanyInit } from "@/state/projectStore.supabase";
@@ -12,13 +18,62 @@ import {
   getUserSystemPermission,
   isAdmin,
   type Company,
+  type ProjectStatus,
+  type User,
+  type UserProjectAssignment,
 } from "@/types/buildtrack";
+import { countCompanySeatUsage } from "@/billing/seatUsage";
 import type {
   AdminDashboardBannerColorPreset,
   AdminDashboardBannerSettingsModel,
   AdminDashboardQuickActionId,
   AdminDashboardScreenViewAdapterOutput,
+  AdminDashboardSecondaryStat,
 } from "@/ui/contracts/viewAdapters";
+import {
+  PROJECT_STATUS_LABELS,
+  PROJECT_STATUS_ORDER,
+  normalizeProjectStatus,
+} from "@/ui/contracts/projectStatus";
+
+function buildProjectStageStats(
+  projects: Array<{ status: ProjectStatus | string }>,
+): AdminDashboardSecondaryStat[] {
+  return PROJECT_STATUS_ORDER.map((status) => ({
+    id: status,
+    label: PROJECT_STATUS_LABELS[status],
+    value: projects.filter(
+      (project) => normalizeProjectStatus(project.status) === status,
+    ).length,
+  }));
+}
+
+/**
+ * Admin Dashboard Team Members headcount — same seat law as billing.
+ *
+ * - PM (`manager` / supervisor) or CA with deployableSeat=pm → PM tile
+ * - Worker + CA default (no PM deployable upgrade) → Worker tile
+ * Project assignment does **not** change seat class (Place ≠ seat).
+ */
+export function countAdminDashboardTeamHeadcount(
+  users: Array<
+    Pick<User, "id" | "role" | "systemPermission" | "isPending" | "isActive"> & {
+      is_active?: boolean | null;
+      deployableSeat?: "pm" | "worker" | null;
+      deployable_seat?: "pm" | "worker" | null;
+    }
+  >,
+  _assignments?: Array<Pick<UserProjectAssignment, "userId" | "isActive">>,
+): { pmCount: number; workerCount: number } {
+  return countCompanySeatUsage(users);
+}
+
+function buildTeamHeadcountStats(pmCount: number, workerCount: number): AdminDashboardSecondaryStat[] {
+  return [
+    { id: "pm", label: "PMs", value: pmCount },
+    { id: "worker", label: "Workers", value: workerCount },
+  ];
+}
 
 interface AdminDashboardBannerFormState {
   text: string;
@@ -26,12 +81,14 @@ interface AdminDashboardBannerFormState {
   textColor: string;
   isVisible: boolean;
   imageUri: string;
+  imageStoragePath: string;
 }
 
 export interface AdminDashboardViewAdapterProps {
   onNavigateToProjects: () => void;
   onNavigateToUserManagement: () => void;
   onNavigateToProfile: () => void;
+  onNavigateToCompanyPlan?: () => void;
   onNavigateToDevAdmin?: () => void;
 }
 
@@ -60,6 +117,7 @@ const DEFAULT_BANNER_FORM: AdminDashboardBannerFormState = {
   textColor: "#ffffff",
   isVisible: true,
   imageUri: "",
+  imageStoragePath: "",
 };
 
 const BANNER_COLOR_PRESETS: AdminDashboardBannerColorPreset[] = [
@@ -112,6 +170,7 @@ function getBannerFormState(banner: Company["banner"] | undefined): AdminDashboa
     textColor: banner.textColor,
     isVisible: banner.isVisible,
     imageUri: banner.imageUri || "",
+    imageStoragePath: banner.imageStoragePath || "",
   };
 }
 
@@ -126,10 +185,6 @@ function getRoleLabel(role: string | undefined): string {
     .join(" ");
 }
 
-function isCompletedTaskStatus(status: string): boolean {
-  return status === "completed" || status === "approved" || status === "done";
-}
-
 export function useAdminDashboardViewAdapter(
   props: AdminDashboardViewAdapterProps,
 ): AdminDashboardViewAdapterHookResult {
@@ -137,15 +192,16 @@ export function useAdminDashboardViewAdapter(
     onNavigateToProjects,
     onNavigateToUserManagement,
     onNavigateToProfile,
+    onNavigateToCompanyPlan,
     onNavigateToDevAdmin,
   } = props;
   const { user, logout } = useAuthStore();
   const currentCompanyId = user?.companyId || "";
   const projectStore = useProjectStoreWithCompanyInit(currentCompanyId);
   const userStore = useUserStoreWithInit();
-  const tasks = useTaskStore((state) => state.tasks);
   const fetchTasks = useTaskStore((state) => state.fetchTasks);
-  const { getCompanyById, getCompanyBanner, updateCompanyBanner } = useCompanyStore();
+  const { getCompanyById, getCompanyBanner, updateCompanyBanner, ensureCompanyLoaded } =
+    useCompanyStore();
   const { getProjectsByCompany, userAssignments, fetchProjects } = projectStore;
   const { getUsersByCompany, fetchUsers } = userStore;
 
@@ -153,8 +209,16 @@ export function useAdminDashboardViewAdapter(
   const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
   const [isBannerModalVisible, setIsBannerModalVisible] = useState(false);
   const [bannerForm, setBannerForm] = useState<AdminDashboardBannerFormState>(DEFAULT_BANNER_FORM);
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
 
   const adminUser = isAdmin(user) ? user : null;
+
+  useEffect(() => {
+    if (!adminUser?.companyId) {
+      return;
+    }
+    void ensureCompanyLoaded(adminUser.companyId);
+  }, [adminUser?.companyId, ensureCompanyLoaded]);
   const allProjects = useMemo(
     () => (adminUser ? getProjectsByCompany(adminUser.companyId) : []),
     [adminUser, getProjectsByCompany],
@@ -192,16 +256,6 @@ export function useAdminDashboardViewAdapter(
     [allProjects, assignedProjectIds, companyUserIds],
   );
 
-  const companyProjectIds = useMemo(
-    () => new Set(companyProjects.map((project) => project.id)),
-    [companyProjects],
-  );
-
-  const companyTasks = useMemo(
-    () => tasks.filter((task) => companyProjectIds.has(task.projectId)),
-    [companyProjectIds, tasks],
-  );
-
   const companyAssignments = useMemo(
     () => userAssignments.filter((assignment) => companyUserIds.has(assignment.userId)),
     [companyUserIds, userAssignments],
@@ -237,8 +291,22 @@ export function useAdminDashboardViewAdapter(
       return;
     }
 
-    setBannerForm(getBannerFormState(getCompanyBanner(adminUser.companyId)));
+    const nextForm = getBannerFormState(getCompanyBanner(adminUser.companyId));
+    setBannerForm(nextForm);
     setIsBannerModalVisible(true);
+
+    void (async () => {
+      const previewUrl = await resolveCompanyBannerImageUrl({
+        imageStoragePath: nextForm.imageStoragePath || undefined,
+        imageUri: nextForm.imageUri || undefined,
+      });
+      if (previewUrl) {
+        setBannerForm((current) => ({
+          ...current,
+          imageUri: previewUrl,
+        }));
+      }
+    })();
   }, [adminUser, getCompanyBanner]);
 
   const closeBannerSettings = useCallback(() => {
@@ -371,6 +439,7 @@ export function useAdminDashboardViewAdapter(
             setBannerForm((current) => ({
               ...current,
               imageUri: "",
+              imageStoragePath: "",
             })),
         },
       ],
@@ -378,14 +447,57 @@ export function useAdminDashboardViewAdapter(
   }, []);
 
   const saveBannerSettings = useCallback(async () => {
-    if (!adminUser) {
+    if (!adminUser || isSavingBanner) {
       return;
     }
 
-    await updateCompanyBanner(adminUser.companyId, bannerForm);
-    setIsBannerModalVisible(false);
-    Alert.alert("Success", "Company banner updated successfully!");
-  }, [adminUser, bannerForm, updateCompanyBanner]);
+    setIsSavingBanner(true);
+    try {
+      let imageStoragePath = bannerForm.imageStoragePath.trim();
+      const selectedUri = bannerForm.imageUri.trim();
+
+      if (selectedUri && isEphemeralBannerImageUri(selectedUri)) {
+        const uploaded = await uploadCompanyBannerImage({
+          companyId: adminUser.companyId,
+          uri: selectedUri,
+        });
+        imageStoragePath = uploaded.storagePath;
+        setBannerForm((current) => ({
+          ...current,
+          imageStoragePath: uploaded.storagePath,
+          imageUri: uploaded.previewUrl,
+        }));
+      } else if (selectedUri) {
+        const extracted = extractBuildtrackStoragePath(selectedUri);
+        if (extracted) {
+          imageStoragePath = extracted;
+        }
+      } else {
+        imageStoragePath = "";
+      }
+
+      await updateCompanyBanner(adminUser.companyId, {
+        text: bannerForm.text,
+        backgroundColor: bannerForm.backgroundColor,
+        textColor: bannerForm.textColor,
+        isVisible: bannerForm.isVisible,
+        ...(imageStoragePath ? { imageStoragePath } : {}),
+      });
+      setIsBannerModalVisible(false);
+      Alert.alert(
+        "Success",
+        "Company banner updated. All seats in your company will see this banner.",
+      );
+    } catch (error) {
+      console.error("AdminDashboardScreen: Failed to save company banner", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error ? error.message : "Failed to save company banner. Please try again.",
+      );
+    } finally {
+      setIsSavingBanner(false);
+    }
+  }, [adminUser, bannerForm, isSavingBanner, updateCompanyBanner]);
 
   const pressQuickAction = useCallback(
     (actionId: AdminDashboardQuickActionId) => {
@@ -397,7 +509,8 @@ export function useAdminDashboardViewAdapter(
           onNavigateToUserManagement();
           return;
         case "company_banner":
-          openBannerSettings();
+        case "company_plan":
+          onNavigateToCompanyPlan?.();
           return;
         case "dev_admin":
           onNavigateToDevAdmin?.();
@@ -405,10 +518,10 @@ export function useAdminDashboardViewAdapter(
       }
     },
     [
+      onNavigateToCompanyPlan,
       onNavigateToDevAdmin,
       onNavigateToProjects,
       onNavigateToUserManagement,
-      openBannerSettings,
     ],
   );
 
@@ -431,14 +544,12 @@ export function useAdminDashboardViewAdapter(
 
   const output = useMemo<AdminDashboardScreenViewAdapterOutput>(() => {
     const isAllowed = isAdmin(user);
-    const completedTasks = companyTasks.filter((task) => isCompletedTaskStatus(task.status)).length;
-    const activeProjects = companyProjects.filter((project) => project.status === "active").length;
-    const assignedUsers = new Set(
-      companyAssignments.filter((assignment) => assignment.isActive).map((assignment) => assignment.userId),
-    ).size;
-    const adminCount = companyUsers.filter(
-      (companyUser) => getUserSystemPermission(companyUser) === "admin",
-    ).length;
+    const projectStageStats = buildProjectStageStats(companyProjects);
+    const { pmCount, workerCount } = countAdminDashboardTeamHeadcount(
+      companyUsers,
+      companyAssignments,
+    );
+    const teamTotal = pmCount + workerCount;
     const structuralState = companyProjects.length === 0 ? "empty" : "stale";
     const permissionLabel = adminUser ? getRoleLabel(getUserSystemPermission(adminUser)) : "Admin";
 
@@ -463,66 +574,62 @@ export function useAdminDashboardViewAdapter(
         deniedMessage: isAllowed ? null : "Access denied. Admin role required.",
       },
       companyScope: {
+        companyId: currentCompanyId || undefined,
         companyName: currentCompany?.name,
         subtitle: currentCompany ? "Showing data for your company only" : undefined,
       },
       topLevelStats: [
         {
+          id: "admin-stat:company_plan",
+          statId: "company_plan",
+          label: "Company Plan",
+          value: currentCompany?.name?.trim() || "—",
+          subtitle: "Plan & seats",
+          icon: "business-outline",
+          color: "bg-white",
+          iconColor: "#08576E",
+          textColor: "text-gray-900",
+          density: "standard",
+          structuralState,
+          actionId: onNavigateToCompanyPlan ? "company_plan" : undefined,
+          ctaLabel: onNavigateToCompanyPlan ? "Manage" : undefined,
+        },
+        {
           id: "admin-stat:projects",
           statId: "projects",
           label: "Projects",
           value: companyProjects.length,
-          subtitle: `${activeProjects} active`,
+          hidePrimaryValue: true,
+          secondaryStats: projectStageStats,
+          secondaryLayout: "stage_tiles",
           icon: "folder-open-outline",
-          color: "bg-blue-50",
-          iconColor: "#3b82f6",
-          textColor: "text-blue-600",
+          color: "bg-white",
+          iconColor: "#08576E",
+          textColor: "text-gray-900",
           density: "standard",
           structuralState,
           actionId: "projects",
+          ctaLabel: "View all",
         },
         {
           id: "admin-stat:team",
           statId: "team",
           label: "Team Members",
-          value: companyUsers.length,
-          subtitle: `${assignedUsers} assigned`,
+          value: teamTotal,
+          hidePrimaryValue: true,
+          secondaryStats: buildTeamHeadcountStats(pmCount, workerCount),
+          secondaryLayout: "stage_tiles",
           icon: "people-outline",
-          color: "bg-purple-50",
-          iconColor: "#7c3aed",
-          textColor: "text-purple-600",
+          color: "bg-white",
+          iconColor: "#08576E",
+          textColor: "text-gray-900",
           density: "standard",
           structuralState,
           actionId: "user_management",
-        },
-        {
-          id: "admin-stat:completed_tasks",
-          statId: "completed_tasks",
-          label: "Completed Tasks",
-          value: completedTasks,
-          subtitle: `${companyTasks.length} total tracked`,
-          icon: "checkmark-done-outline",
-          color: "bg-green-50",
-          iconColor: "#10b981",
-          textColor: "text-green-600",
-          density: "standard",
-          structuralState,
-        },
-        {
-          id: "admin-stat:admins",
-          statId: "admins",
-          label: "Admins",
-          value: adminCount,
-          subtitle: permissionLabel,
-          icon: "shield-checkmark-outline",
-          color: "bg-amber-50",
-          iconColor: "#f59e0b",
-          textColor: "text-amber-600",
-          density: "standard",
-          structuralState,
+          ctaLabel: "Manage",
         },
       ],
-      // Projects / team / banner live on overview taps; keep Dev Admin only for now.
+      // Overview CTAs cover plan / projects / team; keep Dev Admin only for now.
       quickActions: [
         {
           id: "admin-action:dev_admin",
@@ -530,9 +637,9 @@ export function useAdminDashboardViewAdapter(
           label: "Dev Admin Tools",
           description: "Database management, testing scripts, and environment control",
           icon: "code-slash-outline",
-          color: "bg-red-50",
-          iconColor: "#ef4444",
-          borderColor: "border-red-300",
+          color: "bg-white",
+          iconColor: "#08576E",
+          borderColor: "border-gray-200",
           isVisible: Boolean(onNavigateToDevAdmin),
           density: "standard",
           structuralState: "stale",
@@ -554,10 +661,12 @@ export function useAdminDashboardViewAdapter(
     bannerSettings,
     companyAssignments,
     companyProjects,
-    companyTasks,
     companyUsers,
     currentCompany,
+    currentCompanyId,
+    isProfileMenuVisible,
     isRefreshing,
+    onNavigateToCompanyPlan,
     onNavigateToDevAdmin,
     user,
   ]);

@@ -48,6 +48,8 @@ interface TextFieldProps {
   spellCheck?: boolean;
   textContentType?: TextInputProps["textContentType"];
   passwordRules?: TextInputProps["passwordRules"];
+  /** Kill iOS/Android autofill / Strong Password sheets when set to "no". */
+  importantForAutofill?: TextInputProps["importantForAutofill"];
   returnKeyType?: TextInputProps["returnKeyType"];
   blurOnSubmit?: boolean;
   maxLength?: number;
@@ -89,6 +91,7 @@ export default function TextField({
   spellCheck,
   textContentType,
   passwordRules,
+  importantForAutofill,
   returnKeyType,
   blurOnSubmit,
   maxLength,
@@ -224,6 +227,7 @@ export default function TextField({
             spellCheck={spellCheck}
             textContentType={textContentType}
             passwordRules={passwordRules}
+            importantForAutofill={importantForAutofill}
             returnKeyType={returnKeyType}
             blurOnSubmit={blurOnSubmit}
             maxLength={maxLength}

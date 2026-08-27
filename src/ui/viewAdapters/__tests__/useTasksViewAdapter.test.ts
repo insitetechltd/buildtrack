@@ -205,7 +205,10 @@ describe("useTasksViewAdapter", () => {
 
     expect(result.current.output.filterButton.activeCount).toBe(1);
     expect(result.current.output.activeFilterChips).toEqual([{ id: "queue", label: "Queue: Archived" }]);
-    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual(["task-archived"]);
+    expect(result.current.output.taskRowItems.map((row) => row.taskId).sort()).toEqual([
+      "task-archived",
+      "task-archived-unrelated",
+    ]);
 
     act(() => {
       result.current.actions.removeAppliedFilterChip("queue");
@@ -382,5 +385,94 @@ describe("useTasksViewAdapter", () => {
 
     expect(archiveTask).toHaveBeenCalledWith("task-approved", "user-1");
     expect(fetchArchivedTasks).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists peer project tasks for managers (same visibility as Activity)", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-mine",
+          title: "My assignment",
+          status: "in_progress",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-peer",
+          title: "Peer job task",
+          status: "in_progress",
+          assignedTo: ["bob"],
+          assignedBy: "alice",
+          projectId: "project-1",
+        }),
+        makeTask({
+          id: "task-other-project",
+          title: "Off-job task",
+          status: "in_progress",
+          assignedTo: ["bob"],
+          assignedBy: "alice",
+          projectId: "project-not-mine",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId).sort()).toEqual([
+      "task-mine",
+      "task-peer",
+    ]);
+    expect(
+      result.current.output.taskRowItems.find((row) => row.taskId === "task-peer")?.queue,
+    ).toBe("team_queue");
+  });
+
+  it("keeps workers on assigned/created only even when peers share the project", () => {
+    const { useAuthStore } = require("@/state/authStore");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks();
+    useAuthStore.mockReturnValue({
+      user: {
+        id: "user-1",
+        role: "worker",
+      },
+    });
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        makeTask({
+          id: "task-mine",
+          title: "My assignment",
+          status: "in_progress",
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+        }),
+        makeTask({
+          id: "task-peer",
+          title: "Peer job task",
+          status: "in_progress",
+          assignedTo: ["bob"],
+          assignedBy: "alice",
+          projectId: "project-1",
+        }),
+      ],
+      archivedTasks: [],
+      isLoading: false,
+      fetchArchivedTasks: jest.fn(),
+      buildTaskTree: (tasks: any[]) => tasks,
+    });
+
+    const { result } = renderHook(() => useTasksViewAdapter());
+
+    expect(result.current.output.taskRowItems.map((row) => row.taskId)).toEqual(["task-mine"]);
   });
 });

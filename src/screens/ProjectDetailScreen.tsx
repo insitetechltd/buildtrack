@@ -21,7 +21,10 @@ import { useAuthStore } from "@/state/authStore";
 import { useCompanyStore } from "@/state/companyStore";
 import { useUserPreferencesStore } from "@/state/userPreferencesStore";
 import { useUserStoreWithInit } from "@/state/userStore.supabase";
-import { isAdmin, type ProjectStatus } from "@/types/buildtrack";
+import { type ProjectStatus } from "@/types/buildtrack";
+import {
+  companyUsersEligibleForProjectAdd,
+} from "@/ui/contracts/projectMembership";
 import { cn } from "@/utils/cn";
 import { useProjectDetailViewAdapter } from "@/ui/viewAdapters/useProjectDetailViewAdapter";
 
@@ -39,8 +42,6 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
         return "text-green-600 bg-green-50 border-green-200";
       case "planning":
         return "text-blue-600 bg-blue-50 border-blue-200";
-      case "on_hold":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200";
       case "completed":
         return "text-gray-600 bg-gray-50 border-gray-200";
       case "cancelled":
@@ -59,8 +60,8 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
       <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
         <StatusBar style="light" />
         <ModernScreenHeader
-          title="Project Details"
-          titleNode={<BrandHeaderTitle label="Project Details" subtitle="Project details" />}
+          title="Project Detail"
+          titleNode={<BrandHeaderTitle label="Project Detail" subtitle="Project details" />}
           showBackButton={true}
           onBackPress={onNavigateBack}
           className="border-b-0 bg-[#08576E] pb-2"
@@ -92,10 +93,10 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
       <StatusBar style="light" />
 
       <ModernScreenHeader
-        title="Project Details"
+        title="Project Detail"
         titleNode={
           <BrandHeaderTitle
-            label={output.header.title || "Project Details"}
+            label="Project Detail"
             subtitle="Project details"
           />
         }
@@ -154,7 +155,7 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
             <View className="flex-row items-center">
               <Ionicons name="star" size={20} color="#7c3aed" />
               <Text className="text-base text-purple-900 font-semibold ml-2">
-                Lead Project Manager: {output.leadPm.name}
+                Project Admin: {output.leadPm.name}
               </Text>
             </View>
             {output.leadPm.email && (
@@ -258,7 +259,9 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
                       </Text>
                       {member.isLeadPm ? (
                         <View className="ml-2 bg-purple-100 px-2 py-0.5 rounded">
-                          <Text className="text-sm text-purple-700 font-medium">Lead PM</Text>
+                          <Text className="text-sm text-purple-700 font-medium">
+                            Project Admin
+                          </Text>
                         </View>
                       ) : null}
                     </View>
@@ -270,14 +273,35 @@ export default function ProjectDetailScreen({ projectId, onNavigateBack }: Proje
                     ) : null}
                   </View>
 
-                  {member.canRemove ? (
-                    <Pressable
-                      onPress={() => actions.confirmRemoveMember(member.userId)}
-                      className="w-8 h-8 items-center justify-center bg-red-50 rounded-lg ml-3"
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#ef4444" />
-                    </Pressable>
-                  ) : null}
+                  <View className="flex-row items-center ml-2">
+                    {member.canSetAsProjectAdmin ? (
+                      <Pressable
+                        testID={`project-detail__set-pa-${member.userId}`}
+                        onPress={() => void actions.setMemberAsProjectAdmin(member.userId)}
+                        className="px-2 py-1.5 bg-purple-50 rounded-lg mr-2"
+                      >
+                        <Text className="text-sm font-medium text-purple-700">Make PA</Text>
+                      </Pressable>
+                    ) : null}
+                    {member.canClearProjectAdmin ? (
+                      <Pressable
+                        testID={`project-detail__clear-pa-${member.userId}`}
+                        onPress={() => void actions.clearMemberProjectAdmin(member.userId)}
+                        className="px-2 py-1.5 bg-gray-100 rounded-lg mr-2"
+                      >
+                        <Text className="text-sm font-medium text-gray-700">Clear PA</Text>
+                      </Pressable>
+                    ) : null}
+                    {member.canRemove ? (
+                      <Pressable
+                        testID={`project-detail__remove-member-${member.userId}`}
+                        onPress={() => actions.confirmRemoveMember(member.userId)}
+                        className="w-8 h-8 items-center justify-center bg-red-50 rounded-lg"
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                      </Pressable>
+                    ) : null}
+                  </View>
                 </View>
               ))
             ) : (
@@ -379,34 +403,29 @@ function AddMemberModal({
   onAdd: (userIds: string[]) => Promise<void>;
 }) {
   const { user } = useAuthStore();
-  const { getUsersByCompany, getAllUsers } = useUserStoreWithInit();
+  const { getUsersByCompany } = useUserStoreWithInit();
   const { getCompanyById } = useCompanyStore();
   const { isFavoriteUser, toggleFavoriteUser } = useUserPreferencesStore();
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const canAdministerProject = isAdmin(user);
 
-  const allAvailableUsers = useMemo(() => {
-    if (canAdministerProject) {
-      return getAllUsers().filter((availableUser) => !existingMembers.includes(availableUser.id));
-    }
-
+  const companyRoster = useMemo(() => {
     const companyUsers = user?.companyId ? getUsersByCompany(user.companyId) : [];
-    return companyUsers.filter((availableUser) => !existingMembers.includes(availableUser.id));
-  }, [canAdministerProject, user?.companyId, getAllUsers, getUsersByCompany, existingMembers]);
+    return companyUsersEligibleForProjectAdd(companyUsers, user?.companyId, []);
+  }, [user?.companyId, getUsersByCompany]);
 
   const availableUsers = useMemo(() => {
-    let filtered = allAvailableUsers;
+    let filtered = companyRoster;
 
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = allAvailableUsers.filter((availableUser) => {
+      filtered = companyRoster.filter((availableUser) => {
         const company = getCompanyById(availableUser.companyId);
         return (
           availableUser.name.toLowerCase().includes(query) ||
           (availableUser.email && availableUser.email.toLowerCase().includes(query)) ||
-          availableUser.position.toLowerCase().includes(query) ||
+          (availableUser.position || "").toLowerCase().includes(query) ||
           (company && company.name.toLowerCase().includes(query))
         );
       });
@@ -422,9 +441,9 @@ function AddMemberModal({
         return 0;
       });
     }
-    
+
     return filtered;
-  }, [allAvailableUsers, searchQuery, getCompanyById, user?.id, isFavoriteUser]);
+  }, [companyRoster, searchQuery, getCompanyById, user?.id, isFavoriteUser]);
 
   React.useEffect(() => {
     if (visible) {
@@ -484,7 +503,7 @@ function AddMemberModal({
             <Ionicons name="search" size={20} color="#6b7280" />
             <TextInput
               className="flex-1 ml-2 text-lg text-gray-900"
-              placeholder="Search by name, email, position, or company..."
+              placeholder="Search by name, email, or position..."
               placeholderTextColor="#9ca3af"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -497,15 +516,6 @@ function AddMemberModal({
               </Pressable>
             )}
           </View>
-          
-          {/* Results info */}
-          {canAdministerProject && (
-            <Text className="text-sm text-gray-600 mt-2">
-              {availableUsers.length} user{availableUsers.length !== 1 ? "s" : ""} available
-              {searchQuery && ` (filtered from ${allAvailableUsers.length})`}
-              {" • "}Showing users from all companies
-            </Text>
-          )}
         </View>
 
         <ScrollView className="flex-1 px-6 py-4">
@@ -516,7 +526,7 @@ function AddMemberModal({
                   Select Users <Text className="text-red-500">*</Text>
                 </Text>
                 <Text className="text-sm text-gray-500 mt-1">
-                  Tap to select/deselect team members
+                  Same-company roster only. Name Project Admin from the team list (Make PA).
                 </Text>
               </View>
 
@@ -557,6 +567,9 @@ function AddMemberModal({
                           </Text>
                         </View>
                       )}
+                      {existingMembers.includes(availableUser.id) ? (
+                        <Text className="text-sm text-blue-600 mt-1">Already on this project</Text>
+                      ) : null}
                       {availableUser.email && (
                         <Text className="text-sm text-gray-400 mt-0.5">
                           {availableUser.email}
@@ -617,10 +630,7 @@ function AddMemberModal({
               <Ionicons name="people-outline" size={64} color="#9ca3af" />
               <Text className="text-gray-500 text-xl font-medium mt-4">No Available Users</Text>
               <Text className="text-gray-400 text-center mt-2 px-8">
-                {canAdministerProject
-                  ? "All users from all companies are already assigned to this project."
-                  : "All company members are already assigned to this project."
-                }
+                No company members are available to add.
               </Text>
             </View>
           )}

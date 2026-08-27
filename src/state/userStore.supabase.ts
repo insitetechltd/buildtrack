@@ -6,6 +6,7 @@ import { supabase } from "../api/supabase";
 import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { User, UserRole, SystemPermission, getUserSystemPermission, hasSystemPermission } from "../types/buildtrack";
 import { userAccountIsDeleted } from "../types/userAccountRetention";
+import { roleChangeExceedsSeatLimit } from "../billing/seatUsage";
 
 function mapSupabaseUser(user: {
   role?: string | null;
@@ -15,6 +16,8 @@ function mapSupabaseUser(user: {
   last_selected_project_id?: string | null;
   is_pending?: boolean;
   isPending?: boolean;
+  is_active?: boolean;
+  isActive?: boolean;
   approved_by?: string | null;
   approvedBy?: string | null;
   approved_at?: string | null;
@@ -25,30 +28,42 @@ function mapSupabaseUser(user: {
   inviteSignInLink?: string | null;
   must_set_password?: boolean;
   mustSetPassword?: boolean;
+  deployable_seat?: "pm" | "worker" | null;
+  deployableSeat?: "pm" | "worker" | null;
 }): User {
   const dbRoleRaw = user.role || user.system_permission || "worker";
   const dbRole =
     dbRoleRaw === "company_admin"
       ? "admin"
-      : dbRoleRaw === "member"
-        ? "worker"
-        : dbRoleRaw;
+      : dbRoleRaw === "supervisor"
+        ? "manager"
+        : dbRoleRaw === "member"
+          ? "worker"
+          : dbRoleRaw;
   const systemPermission: SystemPermission =
     user.system_permission === "admin" ||
     user.system_permission === "manager" ||
     user.system_permission === "member"
       ? user.system_permission
-      : dbRole === "worker"
-        ? "member"
-        : (dbRole as SystemPermission);
+      : dbRole === "admin"
+        ? "admin"
+        : dbRole === "manager"
+          ? "manager"
+          : "member";
+
+  const deployableRaw = user.deployableSeat ?? user.deployable_seat;
+  const deployableSeat =
+    deployableRaw === "pm" || deployableRaw === "worker" ? deployableRaw : null;
 
   return {
     ...(user as User),
     role: dbRole as UserRole,
     systemPermission,
+    deployableSeat,
     companyId: user.company_id || user.companyId || "",
     lastSelectedProjectId: user.last_selected_project_id || null,
     isPending: user.is_pending ?? user.isPending ?? false,
+    isActive: user.is_active ?? user.isActive ?? true,
     approvedBy: user.approved_by || user.approvedBy || null,
     approvedAt: user.approved_at || user.approvedAt || null,
     deletedAt: user.deleted_at ?? user.deletedAt ?? null,
@@ -80,7 +95,13 @@ interface UserStore {
   getAdminCountByCompany: (companyId: string) => number;
   canDeleteUser: (userId: string) => { canDelete: boolean; reason?: string };
   canChangeUserRole: (userId: string, newRole: UserRole) => { canChange: boolean; reason?: string };
-  
+  canAssignCompanySeatRole: (
+    userId: string,
+    nextRole: string,
+    limits: { pmSeatLimit: number; workerSeatLimit: number },
+    nextIsActive?: boolean,
+  ) => { canChange: boolean; reason?: string; seatType: "pm" | "worker" | null };
+
   // User approval
   approveUser: (userId: string, approvedBy: string) => Promise<boolean>;
   rejectUser: (userId: string) => Promise<boolean>;
@@ -88,6 +109,8 @@ interface UserStore {
   // Mutations
   createUser: (userData: Omit<User, "id" | "createdAt">) => Promise<string>;
   updateUser: (id: string, updates: Partial<User>) => Promise<boolean>;
+  /** Soft-deactivate a seat without deleting the profile (vacates invite caps). */
+  deactivateUserSeat: (id: string) => Promise<boolean>;
   deleteUser: (id: string) => Promise<boolean>;
 }
 
@@ -318,6 +341,53 @@ export const useUserStore = create<UserStore>()(
         return { canChange: true };
       },
 
+      /**
+       * Seat-aware role change gate. Call before updateUser when changing role /
+       * reactivating a seat. Entitlement limits must be passed from a fresh fetch.
+       */
+      canAssignCompanySeatRole: (
+        userId: string,
+        nextRole: string,
+        limits: { pmSeatLimit: number; workerSeatLimit: number },
+        nextIsActive = true,
+      ) => {
+        const user = get().getUserById(userId);
+        if (!user) {
+          return { canChange: false, reason: "User not found", seatType: null as "pm" | "worker" | null };
+        }
+        const lastAdminGate = get().canChangeUserRole(
+          userId,
+          nextRole === "member" ? "worker" : (nextRole as UserRole),
+        );
+        if (!lastAdminGate.canChange) {
+          return { ...lastAdminGate, seatType: null as "pm" | "worker" | null };
+        }
+
+        const companyUsers = get().getUsersByCompany(user.companyId);
+        const mappedRole =
+          nextRole === "manager"
+            ? "supervisor"
+            : nextRole === "member"
+              ? "worker"
+              : nextRole;
+        const { exceeds, seatType, usage } = roleChangeExceedsSeatLimit(
+          companyUsers,
+          limits,
+          { userId, nextRole: mappedRole, nextIsActive },
+        );
+        if (exceeds) {
+          return {
+            canChange: false,
+            reason:
+              seatType === "pm"
+                ? `PM seat limit reached (${usage.pmCount}/${limits.pmSeatLimit}). Add a PM seat before assigning this role.`
+                : `Worker seat limit reached (${usage.workerCount}/${limits.workerSeatLimit}). Add a worker seat before assigning this role.`,
+            seatType,
+          };
+        }
+        return { canChange: true, seatType: null };
+      },
+
       // APPROVE user
       approveUser: async (userId, approvedBy) => {
         if (!supabase) {
@@ -426,7 +496,12 @@ export const useUserStore = create<UserStore>()(
             .insert({
               name: userData.name,
               email: userData.email,
-              role: userData.role,
+              role:
+                userData.role === "manager"
+                  ? "supervisor"
+                  : userData.role === "member"
+                    ? "worker"
+                    : userData.role,
               company_id: userData.companyId,
               position: userData.position,
               phone: userData.phone,
@@ -469,24 +544,53 @@ export const useUserStore = create<UserStore>()(
 
         set({ isLoading: true, error: null });
         try {
-          // Map systemPermission back to role for database (backward compatibility)
-          const dbRole = updates.systemPermission 
-            ? (updates.systemPermission === 'member' ? 'worker' : updates.systemPermission)
-            : (updates.role === 'member' ? 'worker' : updates.role);
-          
+          // Map systemPermission / role into live users.role CHECK vocabulary
+          const rawDbRole = updates.systemPermission
+            ? updates.systemPermission === "member"
+              ? "worker"
+              : updates.systemPermission
+            : updates.role === "member"
+              ? "worker"
+              : updates.role;
+          const dbRole =
+            rawDbRole === "manager"
+              ? "supervisor"
+              : rawDbRole;
+
+          const dbUpdates: Record<string, unknown> = {};
+          if (updates.name !== undefined) dbUpdates.name = updates.name;
+          if (updates.email !== undefined) dbUpdates.email = updates.email;
+          if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+          if (updates.position !== undefined) dbUpdates.position = updates.position;
+          if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+          if (dbRole !== undefined) dbUpdates.role = dbRole;
+          if (typeof updates.isActive === "boolean") {
+            dbUpdates.is_active = updates.isActive;
+          }
+          if (typeof updates.isPending === "boolean") {
+            dbUpdates.is_pending = updates.isPending;
+          }
+
+          if (Object.keys(dbUpdates).length === 0) {
+            set({ isLoading: false });
+            return true;
+          }
+
           const { error } = await supabase
             .from('users')
-            .update({
-              name: updates.name,
-              email: updates.email,
-              role: dbRole,
-              company_id: updates.companyId,
-              position: updates.position,
-              phone: updates.phone,
-            })
+            .update(dbUpdates)
             .eq('id', id);
 
-          if (error) throw error;
+          if (error) {
+            if (/pm_seat_limit|worker_seat_limit/i.test(error.message || "")) {
+              set({
+                error: error.message,
+                isLoading: false,
+              });
+              return false;
+            }
+            throw error;
+          }
 
           // Update local state
           set(state => ({
@@ -507,6 +611,10 @@ export const useUserStore = create<UserStore>()(
           });
           return false;
         }
+      },
+
+      deactivateUserSeat: async (id) => {
+        return get().updateUser(id, { isActive: false });
       },
 
       // DELETE user in Supabase

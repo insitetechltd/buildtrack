@@ -7,6 +7,7 @@ import { useAuthStore } from "./src/state/authStore";
 import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/sprint7RuntimeSandbox";
 import { parseInviteSignInUrl } from "./src/auth/inviteSignInLink";
 import { Linking } from "react-native";
+import ThemeRoot from "./src/theme/ThemeRoot";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.1";
@@ -148,7 +149,9 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <AppNavigator />
+        <ThemeRoot>
+          <AppNavigator />
+        </ThemeRoot>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

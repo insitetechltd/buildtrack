@@ -138,6 +138,7 @@ describe("useCreateTaskViewAdapter", () => {
     mockGetAllUsers.mockReturnValue([]);
     mockUseProjectFilterStore.mockReturnValue({
       selectedProjectId: null,
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
     });
     mockUseTaskStore.mockReturnValue({
       tasks: [],
@@ -218,6 +219,7 @@ describe("useCreateTaskViewAdapter", () => {
   it("derives location options from shared project locations instead of task history", async () => {
     mockUseProjectFilterStore.mockReturnValue({
       selectedProjectId: "project-1",
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
     });
     mockUseTaskStore.mockReturnValue({
       tasks: [
@@ -346,6 +348,7 @@ describe("useCreateTaskViewAdapter", () => {
   it("derives nested subtask context and assignable users from project state", async () => {
     mockUseProjectFilterStore.mockReturnValue({
       selectedProjectId: "project-1",
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
     });
     mockUseTaskStore.mockReturnValue({
       tasks: [
@@ -925,5 +928,44 @@ describe("useCreateTaskViewAdapter", () => {
       }),
     );
     expect(mockCreateSubTask.mock.calls[0][1]).not.toHaveProperty("updates");
+  });
+
+  it("inherits Activity workspace project into location picker and form projectId", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "project-west", name: "West Wing", companyId: "company-1" },
+      { id: "project-east", name: "East Wing", companyId: "company-1" },
+    ]);
+    mockUseProjectFilterStore.mockReturnValue({
+      selectedProjectId: "project-west",
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
+    });
+    mockFetchProjectLocations.mockResolvedValue([{ label: "Roof" }]);
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    await waitFor(() => {
+      expect(result.current.output.formData.projectId).toBe("project-west");
+    });
+    expect(result.current.output.locationPicker.projectId).toBe("project-west");
+    expect(result.current.output.context.activeProjectId).toBe("project-west");
+  });
+
+  it("falls back to the sole available project when Activity has no selection", async () => {
+    mockGetProjectsByUser.mockReturnValue([
+      { id: "only-project", name: "Skylight", companyId: "company-1" },
+    ]);
+    mockUseProjectFilterStore.mockReturnValue({
+      selectedProjectId: null,
+      setSelectedProject: jest.fn().mockResolvedValue(undefined),
+    });
+
+    const { result } = renderHook(() => useCreateTaskViewAdapter({}));
+
+    await waitFor(() => {
+      expect(result.current.output.locationPicker.projectId).toBe("only-project");
+    });
+    await waitFor(() => {
+      expect(result.current.output.formData.projectId).toBe("only-project");
+    });
   });
 });

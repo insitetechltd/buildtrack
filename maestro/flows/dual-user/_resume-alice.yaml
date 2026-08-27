@@ -1,16 +1,17 @@
-# Bring Alice to foreground WITHOUT stopping the app.
-# M-DATA-04: launchApp defaults to stopApp:true (quit without logout) — never do that mid-gate.
+# Resume Alice session without clearState (between conductor phases).
 appId: com.buildtrack.app.local
 ---
 - launchApp:
     clearState: false
-    stopApp: false
     permissions:
       photos: allow
       medialibrary: allow
       camera: allow
       notifications: deny
-- runFlow: ../_dismiss-blocking-overlays.yaml
+- extendedWaitUntil:
+    visible:
+      id: "app-screen-header__profile-trigger"
+    timeout: 90000
 - runFlow:
     when:
       visible:
@@ -31,6 +32,6 @@ appId: com.buildtrack.app.local
             - tapOn: "Not Now"
 - extendedWaitUntil:
     visible:
-      id: "app-screen-header__profile-trigger"
+      id: "dashboard-screen__root"
     timeout: 45000
 - runFlow: ../create-task-photo/_assert-no-logbox.yaml

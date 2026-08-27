@@ -130,7 +130,7 @@ describe("ProjectPickerScreen", () => {
             projectId: "project-1",
             title: "North Tower",
             description: "Concrete package",
-            statusLabel: "active",
+            statusLabel: "On-going",
             isSelected: false,
             density: "standard",
             structuralState: "stale",

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getSessionScopedSupabase } from "../api/supabaseSessionGate";
 import { supabase } from "../api/supabase";
 
 export type SectionFilter = "my_tasks" | "inbox" | "outbox" | "my_work" | "all";
@@ -209,10 +210,20 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
       getLastSelectedProject: async (userId: string): Promise<string | null> => {
         console.log(`🔍 [getLastSelectedProject] Fetching for user: ${userId}`);
         
+        // Wait briefly for JWT — anon SELECT on users is revoked (42501).
+        let sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          const started = Date.now();
+          while (!sessionClient && Date.now() - started < 8000) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            sessionClient = await getSessionScopedSupabase();
+          }
+        }
+
         // First try to get from database (most up-to-date, cross-device)
-        if (supabase) {
+        if (sessionClient) {
           try {
-            const { data, error } = await supabase
+            const { data, error } = await sessionClient
               .from('users')
               .select('last_selected_project_id')
               .eq('id', userId)
@@ -256,6 +267,10 @@ export const useProjectFilterStore = create<ProjectFilterState>()(
             console.warn('⚠️ [getLastSelectedProject] Exception fetching from database:', error);
             // Fall through to local storage fallback
           }
+        } else {
+          console.warn(
+            '⚠️ [getLastSelectedProject] No session yet — using local lastSelectedProjects fallback',
+          );
         }
         
         // Fallback to local storage (for offline scenarios)

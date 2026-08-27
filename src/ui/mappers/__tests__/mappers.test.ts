@@ -32,7 +32,7 @@ describe("ui mappers", () => {
       title: "North Tower",
       subtitle: "Inspection Package A",
       statusToken: "project_active",
-      statusLabel: "Active",
+      statusLabel: "On-going",
       openTaskCount: 12,
       overdueTaskCount: 2,
       density: "standard",

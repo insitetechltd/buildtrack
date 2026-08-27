@@ -12,11 +12,34 @@ module.exports = {
   theme: {
     // NOTE to AI: You can extend the theme with custom colors or styles here.
     extend: {
-      // For example, you can add a primary or secondary color here.
-      // colors: {
-      //   primary: "#INSERT_VALID_HEX_CODE",
-      //   secondary: "#INSERT_VALID_HEX_CODE",
-      // },
+      colors: {
+        canvas: {
+          DEFAULT: "#E7F4F8",
+          dark: "#0B1C22",
+        },
+        surface: {
+          DEFAULT: "#FFFFFF",
+          dark: "#132830",
+        },
+        ink: {
+          DEFAULT: "#111827",
+          muted: "#4B5563",
+          faint: "#6B7280",
+          dark: "#E8F4F8",
+          "dark-muted": "#A8C5D0",
+          "dark-faint": "#7A9AA6",
+        },
+        brand: {
+          DEFAULT: "#08576E",
+          border: "#0B6A84",
+          ink: "#F8FCFF",
+        },
+        accent: {
+          DEFAULT: "#0A556B",
+          strong: "#12A8E0",
+          dark: "#4DB8D9",
+        },
+      },
       fontSize: {
         xs: "10px",
         sm: "12px",

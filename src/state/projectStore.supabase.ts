@@ -569,14 +569,16 @@ export const useProjectStore = create<ProjectStore>()(
       },
 
       fetchProjectsByCompany: async (companyId: string, forceRefresh = false) => {
-        if (!supabase) {
-          console.error('Supabase not configured, no data available');
-          set({ projects: [], userAssignments: [], isLoading: false, error: 'Supabase not configured' });
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn(
+            '📊 [projects] Skipping fetchProjectsByCompany — no Supabase session (avoids anon 42501)',
+          );
           return;
         }
 
         const resourceKey = buildResourceKey("projects", "company", companyId);
-        const supabaseClient = supabase;
+        const supabaseClient = sessionClient;
         const cachedIds = get().queryProjectIds[resourceKey] || get().projectIdsByCompany[companyId] || [];
         const hasCachedData = cachedIds.length > 0;
 
@@ -669,14 +671,16 @@ export const useProjectStore = create<ProjectStore>()(
       },
 
       fetchProjectsByUser: async (userId: string, forceRefresh = false) => {
-        if (!supabase) {
-          console.error('Supabase not configured, no data available');
-          set({ projects: [], userAssignments: [], isLoading: false, error: 'Supabase not configured' });
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn(
+            '📊 [projects] Skipping fetchProjectsByUser — no Supabase session (avoids anon 42501)',
+          );
           return;
         }
 
         const resourceKey = buildResourceKey("projects", "user", userId);
-        const supabaseClient = supabase;
+        const supabaseClient = sessionClient;
         const cachedIds = get().queryProjectIds[resourceKey] || get().projectIdsByUser[userId] || [];
         const hasCachedData = cachedIds.length > 0;
 
@@ -787,12 +791,16 @@ export const useProjectStore = create<ProjectStore>()(
       },
 
       fetchProjectById: async (id: string, forceRefresh = false) => {
-        if (!supabase) {
+        const sessionClient = await getSessionScopedSupabase();
+        if (!sessionClient) {
+          console.warn(
+            '📊 [projects] Skipping fetchProjectById — no Supabase session (avoids anon 42501)',
+          );
           return get().getProjectById(id) || null;
         }
 
         const resourceKey = buildResourceKey("project", id);
-        const supabaseClient = supabase;
+        const supabaseClient = sessionClient;
         const cachedProject = get().projectsById[id] || get().getProjectById(id);
 
         if (!forceRefresh && cachedProject && isRequestCacheFresh(resourceKey)) {
@@ -1592,10 +1600,10 @@ export const useProjectStoreWithCompanyInit = (companyId: string) => {
   const store = useProjectStore();
   
   React.useEffect(() => {
-    // Fetch projects for the specific company if not already loaded
-    if (companyId && supabase) {
-      store.fetchProjectsByCompany(companyId);
+    if (!companyId) {
+      return;
     }
+    void store.fetchProjectsByCompany(companyId);
   }, [companyId]);
   
   return store;

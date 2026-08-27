@@ -90,7 +90,7 @@ export type BillingStatus = "billable" | "non_billable" | "billed";
  */
 export type TaskCategory = "safety" | "electrical" | "plumbing" | "structural" | "general" | "materials" | "commercial";
 
-export type ProjectStatus = "planning" | "active" | "on_hold" | "completed" | "cancelled";
+export type ProjectStatus = "planning" | "active" | "completed" | "cancelled";
 
 /**
  * PROJECT ROLE (Project-specific capacity)
@@ -193,7 +193,13 @@ export interface Company {
     backgroundColor: string;
     textColor: string;
     isVisible: boolean;
-    imageUri?: string; // Custom uploaded banner image (overrides text/colors when set)
+    /** Durable buildtrack-files object key — company-wide for all seats. */
+    imageStoragePath?: string;
+    /**
+     * Legacy / local preview only. Do not persist file:// or data: URIs —
+     * use imageStoragePath after upload.
+     */
+    imageUri?: string;
   };
   createdAt: string;
   createdBy: string;
@@ -344,6 +350,13 @@ export interface User {
    * Scope: System-wide
    */
   systemPermission?: SystemPermission;
+
+  /**
+   * Deployable seat (PM vs Worker) — independent of company-admin authority.
+   * CA (`admin`) defaults to worker when unset. Set to `pm` when CA is upgraded
+   * to a PM seat (subject to pm_seats entitlement).
+   */
+  deployableSeat?: "pm" | "worker" | null;
   
   /** 
    * NEW: Default role reference (new role system)
@@ -391,6 +404,12 @@ export interface User {
   is_pending?: boolean; // Legacy compatibility
   approvedBy?: string | null;
   approvedAt?: string | null;
+  /**
+   * Soft seat flag. When false, profile is retained but the seat is vacated
+   * for invite / billing caps (User Management swipe-to-inactive).
+   */
+  isActive?: boolean;
+  is_active?: boolean;
   /** Set when login/contact were deleted; name stays for jobsite history. */
   deletedAt?: string | null;
   deleted_at?: string | null;
@@ -706,17 +725,23 @@ export function getUserSystemPermission(user: User): SystemPermission {
   if (user.systemPermission) {
     return user.systemPermission;
   }
-  
+
   // Fall back to old field and migrate "worker" to "member"
   if (user.role === "worker") {
     return "member";
   }
-  
-  // Map old role to new permission (admin and manager stay the same)
-  if (user.role === "admin" || user.role === "manager" || user.role === "member") {
-    return user.role as SystemPermission;
+
+  // Live DB vocabulary (M-SUPABASE-03a): supervisor = PM seat; company_admin = CA
+  if (user.role === "supervisor" || user.role === "manager") {
+    return "manager";
   }
-  
+  if (user.role === "admin" || user.role === "company_admin") {
+    return "admin";
+  }
+  if (user.role === "member") {
+    return "member";
+  }
+
   // Default fallback
   return "member";
 }

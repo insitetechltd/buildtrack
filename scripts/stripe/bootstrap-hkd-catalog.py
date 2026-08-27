@@ -26,14 +26,14 @@ HKD_SKUS = [
         "lookup": "taskr_pro_hkd_monthly",
         "tier_slug": "unlimited",
         "product_name": "Taskr Pro",
-        "description": "12 projects, 800 entries/month, 30 GB, 2 PM + 10 workers.",
+        "description": "12 projects, 800 entries/month, 30 GB, 3 PM + 15 workers.",
         "unit_amount": 40000,
     },
     {
         "lookup": "taskr_worker_pack_hkd_monthly",
         "tier_slug": "addon_worker_pack",
-        "product_name": "Taskr Worker pack (+5)",
-        "description": "Add-on: +5 worker seats per month.",
+        "product_name": "Taskr Worker seat",
+        "description": "Add-on: +1 worker seat per month (HK$20).",
         "unit_amount": 2000,
     },
     {

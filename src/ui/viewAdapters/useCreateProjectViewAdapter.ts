@@ -124,12 +124,15 @@ export function useCreateProjectViewAdapter(
     const isAllowed = isAdmin(user);
     const banner = user?.companyId ? getCompanyBanner(user.companyId) : undefined;
     const companyBanner =
-      banner && banner.isVisible && (banner.text || banner.imageUri)
+      banner &&
+      banner.isVisible &&
+      (banner.text || banner.imageStoragePath || banner.imageUri)
         ? {
             text: banner.text,
             backgroundColor: banner.backgroundColor,
             textColor: banner.textColor,
             imageUri: banner.imageUri,
+            imageStoragePath: banner.imageStoragePath,
           }
         : null;
 

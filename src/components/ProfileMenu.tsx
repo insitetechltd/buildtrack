@@ -3,6 +3,11 @@ import { Alert, Modal, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useAuthStore } from "../state/authStore";
+import {
+  getUserSystemPermission,
+  isAdmin,
+  type User,
+} from "../types/buildtrack";
 import { useTranslation } from "../utils/useTranslation";
 
 interface ProfileMenuProps {
@@ -10,7 +15,21 @@ interface ProfileMenuProps {
   onClose: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+  onNavigateToCompanyManagement?: () => void;
+  onNavigateToTaskDashboard?: () => void;
   onNavigateToDeveloperSettings?: () => void;
+}
+
+/** Seat label for avatar menu — CA / manager / worker (M-AUTHZ-RC). */
+export function getAvatarMenuSeatLabel(user: User): string {
+  if (isAdmin(user)) {
+    return "Company Admin";
+  }
+  const permission = getUserSystemPermission(user);
+  if (permission === "manager") {
+    return "Manager";
+  }
+  return "Worker";
 }
 
 export default function ProfileMenu({
@@ -18,45 +37,68 @@ export default function ProfileMenu({
   onClose,
   onNavigateToProfile,
   onNavigateToProjectPicker,
+  onNavigateToCompanyManagement,
+  onNavigateToTaskDashboard,
   onNavigateToDeveloperSettings,
 }: ProfileMenuProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const t = useTranslation();
+  // Privilege gate: Company management only for company admins; callback required for nav.
+  const showCompanyAdmin = Boolean(user && isAdmin(user) && onNavigateToCompanyManagement);
+  const seatLabel = user ? getAvatarMenuSeatLabel(user) : "";
 
   if (!user || !visible) {
     return null;
   }
 
-  const handleNavigateToProfile = () => {
+  const runAfterMenuClose = (action?: () => void) => {
     onClose();
-    onNavigateToProfile?.();
+    if (!action) {
+      return;
+    }
+    // Let the Modal dismiss before navigating — otherwise nested Profile/Admin
+    // targets often no-op while the overlay is still tearing down.
+    setTimeout(() => {
+      action();
+    }, 0);
+  };
+
+  const handleNavigateToProfile = () => {
+    runAfterMenuClose(onNavigateToProfile);
   };
 
   const handleNavigateToProjectPicker = () => {
-    onClose();
-    onNavigateToProjectPicker?.(true);
+    runAfterMenuClose(() => onNavigateToProjectPicker?.(true));
+  };
+
+  const handleNavigateToCompanyManagement = () => {
+    runAfterMenuClose(onNavigateToCompanyManagement);
+  };
+
+  const handleNavigateToTaskDashboard = () => {
+    runAfterMenuClose(onNavigateToTaskDashboard);
   };
 
   const handleNavigateToDeveloperSettings = () => {
-    onClose();
-    onNavigateToDeveloperSettings?.();
+    runAfterMenuClose(onNavigateToDeveloperSettings);
   };
 
   const handleLogout = () => {
-    onClose();
-    Alert.alert(
-      t.dashboard.logout || "Logout",
-      t.dashboard.logoutConfirm || "Are you sure you want to logout?",
-      [
-        { text: t.common.cancel || "Cancel", style: "cancel" },
-        {
-          text: t.dashboard.logout || "Logout",
-          style: "destructive",
-          onPress: logout,
-        },
-      ],
-    );
+    runAfterMenuClose(() => {
+      Alert.alert(
+        t.dashboard.logout || "Logout",
+        t.dashboard.logoutConfirm || "Are you sure you want to logout?",
+        [
+          { text: t.common.cancel || "Cancel", style: "cancel" },
+          {
+            text: t.dashboard.logout || "Logout",
+            style: "destructive",
+            onPress: logout,
+          },
+        ],
+      );
+    });
   };
 
   return (
@@ -91,21 +133,36 @@ export default function ProfileMenu({
             {user.name}
           </Text>
           <Text className="mt-1 text-xs uppercase tracking-wide text-[#7FA7B4]">
-            {user.role}
+            {seatLabel}
           </Text>
         </View>
 
         <View className="py-2">
-          <Pressable
-            testID="profile-menu-profile_settings"
-            onPress={handleNavigateToProfile}
-            className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
-          >
-            <Ionicons name="person-outline" size={20} color="#0A556B" />
-            <Text className="ml-3 text-base font-medium text-[#10222B]">
-              {t.dashboard.profileAndSettings || "Profile & Settings"}
-            </Text>
-          </Pressable>
+          {onNavigateToTaskDashboard ? (
+            <Pressable
+              testID="profile-menu-task_dashboard"
+              onPress={handleNavigateToTaskDashboard}
+              className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+            >
+              <Ionicons name="grid-outline" size={20} color="#0A556B" />
+              <Text className="ml-3 text-base font-medium text-[#10222B]">
+                Tasks Dashboard
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {showCompanyAdmin ? (
+            <Pressable
+              testID="profile-menu-company_admin"
+              onPress={handleNavigateToCompanyManagement}
+              className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+            >
+              <Ionicons name="apps-outline" size={20} color="#0A556B" />
+              <Text className="ml-3 text-base font-medium text-[#10222B]">
+                Company management
+              </Text>
+            </Pressable>
+          ) : null}
 
           {onNavigateToProjectPicker ? (
             <Pressable
@@ -119,6 +176,17 @@ export default function ProfileMenu({
               </Text>
             </Pressable>
           ) : null}
+
+          <Pressable
+            testID="profile-menu-profile_settings"
+            onPress={handleNavigateToProfile}
+            className="flex-row items-center px-4 py-3 active:bg-[#EAF6FB]"
+          >
+            <Ionicons name="person-outline" size={20} color="#0A556B" />
+            <Text className="ml-3 text-base font-medium text-[#10222B]">
+              {t.dashboard.profileAndSettings || "Profile & Settings"}
+            </Text>
+          </Pressable>
 
           {onNavigateToDeveloperSettings ? (
             <Pressable

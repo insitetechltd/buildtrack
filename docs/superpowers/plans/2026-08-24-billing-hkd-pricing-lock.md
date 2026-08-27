@@ -7,16 +7,18 @@
 | Tier | HK$/mo | Stripe slug (until catalog rename) | Caps (contract target) |
 |---|---|---|---|
 | **Starter** | **160** | `growth` | 3 projects · 300 entries/mo · 10 GB · 1 PM + 5 workers |
-| **Pro** | **400** | `unlimited` | 12 projects · 800 entries/mo · 30 GB · 2 PM + 10 workers |
+| **Pro** | **400** | `unlimited` | 12 projects · 800 entries/mo · 30 GB · 3 PM + 15 workers |
 
-| Add-on | HK$/mo | Slug |
-|---|---|---|
-| Worker pack (+5) | **20** | `addon_worker_pack` |
-| PM / manager seat (+1) | **100** | `addon_pm_seat` |
+| Add-on | HK$/mo | Slug | What you get |
+|---|---|---|---|
+| **Worker seat** | **20** | `addon_worker_pack` (slug kept) | **+1 worker** |
+| **PM seat** | **100** | `addon_pm_seat` | **+1 PM** |
 
 ## Product law (locked same session)
 
 - **Unlimited** base tier **retired from sale**; Pro replaces it at HK$400.
+- **Pro seat math (2026-08-25):** 3 PM + 15 workers (~3× Starter seats) vs HK$400 (~2.5× Starter price). Prior 2 PM + 10 was under-scoped for the price step.
+- **Add-on seats are per person (2026-08-25):** not a “pack”. HK$20 = 1 worker; HK$100 = 1 PM. Confirm price before add; on remove, no pro-rata refund — entitlement/bill recalculates at cycle end.
 - **No default Stripe native trial** — free time via **owner web admin promotion codes only** (not mobile, not tenant admin).
 - **Seat steppers** below tier cards on Company Plan (universal add-ons).
 - **Geo pricing:** HKD only for first market; other locales tabled.

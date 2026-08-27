@@ -178,8 +178,7 @@ export default function ProjectForm({
 
   const statusOptions = [
     { label: "Planning", value: "planning" },
-    { label: "Active", value: "active" },
-    { label: "On Hold", value: "on_hold" },
+    { label: "On-going", value: "active" },
     { label: "Completed", value: "completed" },
     { label: "Cancelled", value: "cancelled" },
   ];
@@ -252,11 +251,19 @@ export default function ProjectForm({
       className="flex-1"
     >
       <ScrollView className="flex-1 px-4 py-3" keyboardShouldPersistTaps="always">
-        {/* Project Information */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        {/* Project Information — elevate whole card while status menu is open so it paints above Location */}
+        <View
+          testID="project-form-info-card"
+          className="bg-white rounded-xl border border-gray-200 p-4 mb-4"
+          style={
+            showStatusPicker
+              ? { zIndex: 20, elevation: 20, overflow: "visible" }
+              : { zIndex: 1, elevation: 0, overflow: "visible" }
+          }
+        >
           <Text className="text-2xl font-bold text-gray-900 mb-4">Project Information</Text>
           
-          <View className="space-y-4">
+          <View className="space-y-4" style={{ overflow: "visible" }}>
             <TextField
               contract={buildFormTextFieldContract({
                 id: "project-clientName",
@@ -336,11 +343,13 @@ export default function ProjectForm({
               
               {/* Custom Status Dropdown */}
               <Pressable
+                testID="project-form-status-trigger"
                 onPress={() => setShowStatusPicker(!showStatusPicker)}
                 className="border border-gray-300 rounded-lg px-4 py-3 bg-gray-50 flex-row items-center justify-between"
               >
-                <Text className="text-gray-900 text-lg capitalize">
-                  {formData.status.replace("_", " ")}
+                <Text className="text-gray-900 text-lg">
+                  {statusOptions.find((option) => option.value === formData.status)?.label ??
+                    formData.status}
                 </Text>
                 <Ionicons 
                   name={showStatusPicker ? "chevron-up" : "chevron-down"} 
@@ -352,6 +361,7 @@ export default function ProjectForm({
               {/* Dropdown Options */}
               {showStatusPicker && (
                 <View 
+                  testID="project-form-status-menu"
                   className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg"
                   style={{ 
                     zIndex: 1001,
@@ -365,6 +375,7 @@ export default function ProjectForm({
                   {statusOptions.map((option, index) => (
                     <Pressable
                       key={option.value}
+                      testID={`project-form-status-option-${option.value}`}
                       onPress={() => {
                         setFormData(prev => ({ ...prev, status: option.value as ProjectStatus }));
                         setShowStatusPicker(false);
@@ -389,8 +400,12 @@ export default function ProjectForm({
           </View>
         </View>
 
-        {/* Location */}
-        <View className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+        {/* Location — keep below open status menu (sibling stacking) */}
+        <View
+          testID="project-form-location-card"
+          className="bg-white rounded-xl border border-gray-200 p-4 mb-4"
+          style={{ zIndex: 1, elevation: 1 }}
+        >
           <View className="flex-row items-center mb-3">
             <Text className="text-2xl font-bold text-gray-900">Location</Text>
             <Text className="text-red-500 text-2xl font-bold ml-1">*</Text>

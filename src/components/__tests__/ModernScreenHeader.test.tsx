@@ -28,16 +28,22 @@ jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({ user: { id: "user-1", name: "Casey", companyId: "company-1" } }),
 }));
 
-jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({
-    getParent: () => ({
-      navigate: mockNavigate,
+jest.mock("@react-navigation/native", () => {
+  const React = require("react");
+  return {
+    NavigationContext: React.createContext({
+      getParent: () => ({
+        navigate: mockNavigate,
+      }),
     }),
-  }),
-}));
+  };
+});
 
-jest.mock("@/state/companyStore", () => ({
-  useCompanyStore: () => ({ getCompanyBanner: () => null }),
+jest.mock("@/navigation/rootNavigationHelpers", () => ({
+  navigateToCompanyManagement: jest.fn(),
+  navigateToRootProfile: jest.fn(),
+  navigateToProjectPicker: jest.fn(),
+  navigateToTaskDashboard: jest.fn(),
 }));
 
 jest.mock("@/state/themeStore", () => ({

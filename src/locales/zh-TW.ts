@@ -224,7 +224,6 @@ export const zhTW = {
     all: "全部",
     active: "進行中",
     planning: "規劃中",
-    onHold: "暫停",
     completed: "完成",
     cancelled: "已取消",
     // Project card info
@@ -464,7 +463,6 @@ export const zhTW = {
     noLocation: "無位置",
     // Admin restriction
     accessRestricted: "存取受限",
-    adminCannotCreateTasks: "管理員帳戶無法建立或被指派任務。此功能僅供經理和工人使用。",
     goBack: "返回",
     // Permissions
     permissionDenied: "權限不足",

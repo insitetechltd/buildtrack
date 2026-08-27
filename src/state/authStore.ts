@@ -49,8 +49,13 @@ export function normalizeAuthUser<T extends Record<string, any>>(user: T) {
     user.system_permission ||
     null;
   const rawRole = user.role || "worker";
+  // Live DB CHECK uses supervisor/company_admin; app UserRole uses manager/admin.
   const normalizedRole: UserRole =
-    rawRole === "company_admin" ? "admin" : (rawRole as UserRole);
+    rawRole === "company_admin"
+      ? "admin"
+      : rawRole === "supervisor"
+        ? "manager"
+        : (rawRole as UserRole);
   const mustSetPassword = readMustSetPassword(user);
 
   const normalizedUser = {
@@ -84,7 +89,32 @@ function getPersistenceRole(
     return "worker";
   }
 
+  // App "manager" persists as DB "supervisor" (users_role_allowed_values).
+  if (systemPermission === "manager") {
+    return "manager";
+  }
+
   return systemPermission as UserRole;
+}
+
+/** Map app seat / SystemPermission into live `users.role` CHECK vocabulary. */
+export function toDbUsersRole(
+  roleOrPermission: string | null | undefined,
+): string {
+  const value = (roleOrPermission || "worker").toLowerCase();
+  if (value === "admin" || value === "company_admin") {
+    return "admin";
+  }
+  if (value === "manager" || value === "supervisor") {
+    return "supervisor";
+  }
+  if (value === "member" || value === "worker") {
+    return "worker";
+  }
+  if (value === "foreman") {
+    return "foreman";
+  }
+  return "worker";
 }
 
 interface AuthStore extends AuthState {
@@ -95,6 +125,10 @@ interface AuthStore extends AuthState {
   /** Persisted — new company founders must pick a paid plan before app access. */
   requiresCompanyPlanSelection: boolean;
   clearRequiresCompanyPlanSelection: () => void;
+  /** One-shot after Stripe checkout success — land on Company management dashboard. */
+  landOnCompanyManagementAfterCheckout: boolean;
+  requestLandOnCompanyManagementAfterCheckout: () => void;
+  clearLandOnCompanyManagementAfterCheckout: () => void;
   // Existing methods
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -139,9 +173,18 @@ export const useAuthStore = create<AuthStore>()(
       isInitialized: false,
       error: null,
       requiresCompanyPlanSelection: false,
+      landOnCompanyManagementAfterCheckout: false,
 
       clearRequiresCompanyPlanSelection: () => {
         set({ requiresCompanyPlanSelection: false });
+      },
+
+      requestLandOnCompanyManagementAfterCheckout: () => {
+        set({ landOnCompanyManagementAfterCheckout: true });
+      },
+
+      clearLandOnCompanyManagementAfterCheckout: () => {
+        set({ landOnCompanyManagementAfterCheckout: false });
       },
 
       login: async (username: string, password: string) => {
@@ -517,7 +560,7 @@ export const useAuthStore = create<AuthStore>()(
               phone: updates.phone,
               company_id: updates.companyId,
               position: updates.position,
-              role: persistedRole,
+              role: persistedRole ? toDbUsersRole(persistedRole) : undefined,
             })
             .eq('id', currentUser.id);
 

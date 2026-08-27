@@ -111,7 +111,7 @@ export default function ProjectPickerScreen({
                   <View className="flex-row items-center mt-2">
                     <View className={cn(
                       "px-2 py-1 rounded-full",
-                      project.statusLabel === "active"
+                      project.statusLabel === "On-going"
                         ? isDarkMode
                           ? "bg-green-900/50"
                           : "bg-green-100"
@@ -120,8 +120,8 @@ export default function ProjectPickerScreen({
                           : "bg-yellow-100"
                     )}>
                       <Text className={cn(
-                        "text-sm font-medium capitalize",
-                        project.statusLabel === "active"
+                        "text-sm font-medium",
+                        project.statusLabel === "On-going"
                           ? isDarkMode
                             ? "text-green-300"
                             : "text-green-700"

@@ -8,6 +8,7 @@ import type {
   RootTabParamList,
   TasksStackParamList,
 } from "./navigationTypes";
+import { rootNavigationRef } from "./rootNavigationRef";
 
 export type RouteStateLike = {
   index?: number;
@@ -104,17 +105,33 @@ function hasAnyRoute(
   return routeNames.some((routeName) => currentRouteNames.includes(routeName));
 }
 
+/** Walk parent chain so avatar menu works from nested Profile → Company Admin. */
+function findAncestorNavigation(
+  navigation: { getParent?: () => ParentNavigationLike | undefined } | undefined,
+  routeNames: string[],
+  maxDepth = 6,
+): ParentNavigationLike | undefined {
+  let current: ParentNavigationLike | undefined = navigation?.getParent?.();
+  for (let depth = 0; depth < maxDepth && current; depth += 1) {
+    if (hasAnyRoute(current, routeNames)) {
+      return current;
+    }
+    current = current.getParent?.();
+  }
+  return undefined;
+}
+
 export function getRootTabsNavigation(navigation: {
   getParent?: () => ParentNavigationLike | undefined;
 }) {
-  const parentNav = navigation.getParent?.();
-  if (hasAnyRoute(parentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])) {
-    return parentNav as RootTabLikeNavigation;
-  }
-
-  const grandParentNav = parentNav?.getParent?.();
-  if (hasAnyRoute(grandParentNav, ["Activity", "Camera", "Tasks", "AdminDashboard"])) {
-    return grandParentNav as RootTabLikeNavigation;
+  const tabsNav = findAncestorNavigation(navigation, [
+    "Activity",
+    "Camera",
+    "Tasks",
+    "AdminDashboard",
+  ]);
+  if (tabsNav) {
+    return tabsNav as RootTabLikeNavigation;
   }
 
   return undefined;
@@ -123,34 +140,93 @@ export function getRootTabsNavigation(navigation: {
 export function getRootStackNavigation(navigation: {
   getParent?: () => ParentNavigationLike | undefined;
 }) {
-  const parentNav = navigation.getParent?.();
-  if (hasAnyRoute(parentNav, ["MainTabs", "Profile"])) {
-    return parentNav as RootStackLikeNavigation;
-  }
-
-  const grandParentNav = parentNav?.getParent?.();
-  if (hasAnyRoute(grandParentNav, ["MainTabs", "Profile"])) {
-    return grandParentNav as RootStackLikeNavigation;
+  const stackNav = findAncestorNavigation(navigation, ["MainTabs", "Profile"]);
+  if (stackNav) {
+    return stackNav as RootStackLikeNavigation;
   }
 
   return undefined;
+}
+
+/** Profile stack sits under Root → Profile; used when already inside Company Admin. */
+export function getProfileStackNavigation(navigation: {
+  getParent?: () => ParentNavigationLike | undefined;
+}) {
+  return findAncestorNavigation(navigation, [
+    "ProfileMain",
+    "CompanyManagement",
+    "DeveloperSettings",
+  ]);
 }
 
 export function navigateToRootProfile(
   navigation: { getParent?: () => ParentNavigationLike | undefined },
   screen: keyof ProfileStackParamList = "ProfileMain",
 ) {
+  // Prefer container ref — parent walk alone can leave nested CompanyManagement focused.
+  if (rootNavigationRef.isReady()) {
+    rootNavigationRef.navigate("Profile", { screen });
+    return;
+  }
+
+  const profileStack = getProfileStackNavigation(navigation);
+  if (profileStack?.navigate) {
+    profileStack.navigate(screen as never);
+    return;
+  }
+
   const rootNav = getRootStackNavigation(navigation);
-  if (!rootNav) {
+  if (rootNav) {
+    rootNav.navigate("Profile", { screen });
+  }
+}
+
+export function navigateToCompanyManagement(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+) {
+  if (rootNavigationRef.isReady()) {
+    rootNavigationRef.navigate("Profile", {
+      screen: "CompanyManagement",
+      params: { screen: "AdminDashboardMain" },
+    });
     return;
   }
 
-  if (screen === "ProfileMain") {
-    rootNav.navigate("Profile");
-    return;
+  const rootNav = getRootStackNavigation(navigation);
+  if (rootNav) {
+    rootNav.navigate("Profile", {
+      screen: "CompanyManagement",
+      params: { screen: "AdminDashboardMain" },
+    });
+  }
+}
+
+export function navigateToCompanyManagementFromRoot() {
+  if (!rootNavigationRef.isReady()) {
+    return false;
   }
 
-  rootNav.navigate("Profile", { screen });
+  rootNavigationRef.navigate("Profile", {
+    screen: "CompanyManagement",
+    params: { screen: "AdminDashboardMain" },
+  });
+  return true;
+}
+
+/** Field Site Activity / task dashboard (MainTabs → Activity). */
+export function navigateToTaskDashboard(
+  navigation: { getParent?: () => ParentNavigationLike | undefined },
+) {
+  navigateToRootTabScreen(navigation, "Activity");
+}
+
+export function navigateToTaskDashboardFromRoot() {
+  if (!rootNavigationRef.isReady()) {
+    return false;
+  }
+
+  rootNavigationRef.navigate("MainTabs", { screen: "Activity" });
+  return true;
 }
 
 export function navigateToRootTabScreen<T extends keyof RootTabParamList>(
@@ -158,6 +234,16 @@ export function navigateToRootTabScreen<T extends keyof RootTabParamList>(
   screen: T,
   params?: RootTabParamList[T],
 ) {
+  // From Company Admin (Profile stack), tabs are not ancestors — use root ref first.
+  if (rootNavigationRef.isReady()) {
+    if (params === undefined) {
+      rootNavigationRef.navigate("MainTabs", { screen } as never);
+      return;
+    }
+    rootNavigationRef.navigate("MainTabs", { screen, params } as never);
+    return;
+  }
+
   const tabsNav = getRootTabsNavigation(navigation);
   if (tabsNav) {
     tabsNav.navigate(screen as never, params as never);
@@ -165,16 +251,16 @@ export function navigateToRootTabScreen<T extends keyof RootTabParamList>(
   }
 
   const rootNav = getRootStackNavigation(navigation);
-  if (!rootNav) {
-    return;
+  if (rootNav) {
+    if (params === undefined) {
+      rootNav.navigate("MainTabs", { screen } as RootStackParamList["MainTabs"]);
+      return;
+    }
+    rootNav.navigate("MainTabs", {
+      screen,
+      params,
+    } as RootStackParamList["MainTabs"]);
   }
-
-  if (params === undefined) {
-    rootNav.navigate("MainTabs", { screen } as RootStackParamList["MainTabs"]);
-    return;
-  }
-
-  rootNav.navigate("MainTabs", { screen, params } as RootStackParamList["MainTabs"]);
 }
 
 export function navigateToProjectPicker(

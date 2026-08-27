@@ -7,6 +7,7 @@ import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUserStore } from "@/state/userStore.supabase";
 import type { ProjectPickerScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
+import { formatProjectStatusLabel } from "@/ui/contracts/projectStatus";
 
 export interface ProjectPickerViewAdapterProps {
   allowBack?: boolean;
@@ -101,7 +102,7 @@ export function useProjectPickerViewAdapter(
         projectId: project.id,
         title: project.name,
         description: project.description,
-        statusLabel: project.status,
+        statusLabel: formatProjectStatusLabel(project.status),
         isSelected: projectFilterStore.selectedProjectId === project.id,
         density: "standard",
         structuralState,

@@ -30,8 +30,8 @@ SKUS = [
     },
     {
         "lookup": "taskr_worker_pack_monthly",
-        "product_name": "Taskr Worker pack (+5)",
-        "description": "Add-on: +5 worker seats per month.",
+        "product_name": "Taskr Worker seat",
+        "description": "Add-on: +1 worker seat per month.",
         "unit_amount": 499,
         "cta": False,
     },

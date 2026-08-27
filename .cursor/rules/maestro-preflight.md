@@ -43,18 +43,16 @@ Maestro v2 artifacts ONLY live under:
 ```
 Do NOT search `/`, `$HOME`, or repo-wide `.maestro/` for screenshots; findings there are STALE.
 
-### Gate 7 — DASHBOARD RETURN (prefer day-to-day, not wipe)
-From DevSettings or any non-root screen back to Dashboard home, prefer:
+### Gate 7 — DASHBOARD RETURN / HARD RESET
+From DevSettings or any non-root screen back to Dashboard home, prefer resume (`clearState: false`) when session is valid.
+
+**M-DATA-04:** Never `clearState: true` or `stopApp: true` while a live Supabase session is open. Run `maestro/flows/_logout.yaml` first so Realtime channels close cleanly, then hard-reset if needed:
 ```yaml
-- tapOn:
-    id: "root-tab__activity"
-```
-or relaunch without wipe:
-```yaml
+- runFlow: _logout.yaml
 - launchApp:
-    clearState: false
+    clearState: true
 ```
-**Do not** default to `clearState: true`. Ordinary boots model real phone reuse (session + caches stay). Use clearState only for intentional first-install / TCC / sandbox-reset flows (document in the YAML header). Identity switch: `maestro/flows/_logout.yaml` then login — never kill while subscribed.
+Ordinary P## / U## boots use `create-task-photo/_boot.yaml` (`clearState: false`). Identity switch: `_logout.yaml` then login — do not wipe the container.
 
 ### Gate 8 — VISUAL PNG EVIDENCE FIRST BEFORE rc=0 ACCEPTED
 First action after ANY Maestro run (rc=0 OR rc=1) is to VISUALLY READ screenshot PNG bytes of tab-landing and actor-switch screenshots. Compare title text / list content to filename intent. rc=0 ALONE IS MEANINGLESS. False rc=0 due to banner intercepts produced 5 wasted hours.
@@ -84,7 +82,7 @@ This is the AUTOMATED version of Gate #8 above that would have FAILED all 4 fals
 First failing scenario → DO NOT run remaining scenarios against dead state; saves expensive tokens.
 
 ### Layer 6 — INTER-SCENARIO COOL-DOWN 8s
-After an **intentional** `clearState: true` JS restart (QA01 / sandbox hard-reset only), PAUSE 8s before next confirmation-sheet tap to avoid race between JS bundle reload + XCTest tap dispatch. Ordinary no-clear boots do not need this cool-down.
+After `clearState: true` JS restart, PAUSE 8s before next confirmation-sheet tap to avoid race between JS bundle reload + XCTest tap dispatch.
 
 ---
 
@@ -116,7 +114,7 @@ Parallel Maestro is allowed only on **two distinct simulator UDIDs**, **1 job pe
 [ ] G4: PRESET-vs-ACTOR cross-checked
 [ ] G5: FLAG ORDER correct (--reinstall-driver after test)
 [ ] G6: ARTIFACTS in /tmp/maestro-tmp-home only
-[ ] G7: DASHBOARD RETURN via tab tap or no-clear relaunch (clearState only if intentional hard-reset)
+[ ] G7: logout before clearState/stopApp; ordinary boots clearState: false
 [ ] G8: PNGs VISUALLY read after run
 [ ] L1-L6: Runner wrapper layers ON (if using custom runner)
 [ ] MAESTRO_0CLICK_DISABLE=1 EXPORTED

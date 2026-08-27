@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuthStore } from "@/state/authStore";
+import { isPlatformSuperuser } from "@/config/platformSuperusers";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
-import { isAdmin, type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
+import { type Priority, type Task, type TaskStatus } from "@/types/buildtrack";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import { isCompletedLifecycleStatus } from "@/utils/taskLifecycleStatus";
 import { mergeAssignedToIds } from "@/ui/contracts/taskDelegation";
@@ -369,15 +370,30 @@ function compareTasksBySortField(
   return compareTasksForSearchFirstList(left, right);
 }
 
-function resolveQueueForTask(task: Task, currentUserId: string): TasksQueueId | null {
-  const isAssignedToUser = (task.assignedTo ?? []).includes(currentUserId);
-  const isAssignedByUser = task.assignedBy === currentUserId;
+function resolveQueueForTask(
+  task: Task,
+  currentUserId: string,
+  options?: { includeVisibleProjectPeers?: boolean },
+): TasksQueueId | null {
+  const assignedIds = mergeAssignedToIds({
+    assignedTo: task.assignedTo || [],
+    primaryAssigneeId: task.primaryAssigneeId,
+    delegatedUserIds: task.delegatedUserIds || [],
+  });
+  const isAssignedToUser = assignedIds.some((id) => String(id) === String(currentUserId));
+  const isAssignedByUser = String(task.assignedBy ?? "") === String(currentUserId);
 
   if (isAssignedToUser) {
     return "my_queue";
   }
 
   if (isAssignedByUser) {
+    return "team_queue";
+  }
+
+  // Admin/manager (and PA via that band) already passed filterTasksForViewer.
+  // Peer job tasks must still appear in Tasks — Activity already lists them.
+  if (options?.includeVisibleProjectPeers) {
     return "team_queue";
   }
 
@@ -764,20 +780,25 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         ? "stale"
         : "empty";
 
+    const viewerBand = user ? resolveTaskSelectRoleBand(user) : "worker";
+    const includeVisibleProjectPeers = viewerBand === "admin" || viewerBand === "manager";
+    const resolveQueue = (task: Task) =>
+      resolveQueueForTask(task, currentUserId, { includeVisibleProjectPeers });
+
     const candidateTasks = allKnownTasks.filter((task) => {
       if (selectedProjectId && task.projectId !== selectedProjectId) {
         return false;
       }
 
-      return Boolean(resolveQueueForTask(task, currentUserId));
+      return Boolean(resolveQueue(task));
     });
 
     const visibleQueueTasks = candidateTasks.filter((task) => {
       switch (appliedFilters.queue) {
         case "inbox":
-          return !task.archivedAt && resolveQueueForTask(task, currentUserId) === "my_queue";
+          return !task.archivedAt && resolveQueue(task) === "my_queue";
         case "outbox":
-          return !task.archivedAt && resolveQueueForTask(task, currentUserId) === "team_queue";
+          return !task.archivedAt && resolveQueue(task) === "team_queue";
         case "archived":
           return Boolean(task.archivedAt);
         case "all_queues":
@@ -807,10 +828,10 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     );
 
     const myQueueTasks = candidateTasks.filter(
-      (task) => resolveQueueForTask(task, currentUserId) === "my_queue",
+      (task) => resolveQueue(task) === "my_queue",
     );
     const teamQueueTasks = candidateTasks.filter(
-      (task) => resolveQueueForTask(task, currentUserId) === "team_queue",
+      (task) => resolveQueue(task) === "team_queue",
     );
 
     const searchScopedTasks = overdueWindowScopedTasks.filter((task) => {
@@ -859,7 +880,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
         !isArchivedTask &&
         isCompletedLifecycleStatus(task.status) &&
         (isAssignedToMe || isTaskCreator);
-      const queue = resolveQueueForTask(task, currentUserId) ?? "my_queue";
+      const queue = resolveQueue(task) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);
       const projectName = project?.name ?? "Project";
@@ -1045,6 +1066,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     stagedFilters,
     taskFetchError,
     tasks,
+    user,
   ]);
 
   useEffect(() => {
@@ -1207,10 +1229,10 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     setSearchQuery,
     searchInput,
     visibility: {
-      showCreateTaskFab: Boolean(user && !isAdmin(user)),
+      showCreateTaskFab: Boolean(user),
       showProfileShortcut: Boolean(user),
       showProjectPickerShortcut: Boolean(user),
-      showDeveloperSettingsShortcut: __DEV__,
+      showDeveloperSettingsShortcut: isPlatformSuperuser(user),
       showResetFiltersShortcut: Boolean(user),
     },
     actions: {

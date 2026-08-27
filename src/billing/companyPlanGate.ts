@@ -1,8 +1,12 @@
 import type { CompanyEntitlementView } from "./companyEntitlementSummary";
 
-/** Paid Stripe subscription — unlocks the app after signup plan selection. */
+/** Paid Stripe subscription in a usable billing state — unlocks the app after signup plan selection. */
 export function companyHasPaidStripePlan(
   view: CompanyEntitlementView | null | undefined,
 ): boolean {
-  return view?.hasStripeSubscription === true;
+  if (view?.hasStripeSubscription !== true) {
+    return false;
+  }
+  const status = (view.subscriptionStatus || "").toLowerCase();
+  return status === "active" || status === "trialing";
 }

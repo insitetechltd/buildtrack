@@ -112,8 +112,8 @@ describe("companyPlanOptions", () => {
           projects: 12,
           entries_monthly: 800,
           storage_bytes: 30 * 1024 * 1024 * 1024,
-          pm_seats: 2,
-          worker_seats: 10,
+          pm_seats: 3,
+          worker_seats: 15,
         },
       },
     ],
@@ -159,6 +159,36 @@ describe("companyPlanOptions", () => {
     expect(unlimited?.planPriceId).toBe("pp-u");
     expect(unlimited?.actionLabel).toBe("Upgrade to Pro");
     expect(unlimited?.disabled).toBe(false);
+  });
+
+  it("renders allocated resource totals as quantity-only values", () => {
+    const view = buildCompanyEntitlementView(
+      {
+        ...trialEntitlements,
+        entitlements_snapshot: {
+          meters: {
+            pm_seats: 3,
+            worker_seats: 15,
+            projects: 1,
+            storage_bytes: 5368709120,
+            entries_trial_total: 100,
+          },
+        },
+      },
+      growthSubscription,
+    );
+    const rows = buildCompanyPlanLimitRows(view!, catalog);
+    expect(rows.find((row) => row.id === "pm_seats")).toEqual({
+      id: "pm_seats",
+      label: "PM seats",
+      value: "3",
+    });
+    expect(rows.find((row) => row.id === "worker_seats")).toEqual({
+      id: "worker_seats",
+      label: "Worker seats",
+      value: "15",
+    });
+    expect(rows.find((row) => row.id === "storage_bytes")?.value).toBe("5 GB");
   });
 
   it("renders limit rows and subtitle when catalog has not loaded yet", () => {

@@ -202,10 +202,25 @@ describe("ProfileScreen", () => {
             title: "Settings",
             items: [
               {
-                id: "refresh-data",
-                actionId: "refresh-data",
-                title: "Refresh Data",
-                icon: "refresh-outline",
+                id: "theme",
+                actionId: "theme",
+                title: "Theme",
+                icon: "sunny-outline",
+                showChevron: true,
+                density: "standard",
+                structuralState: "stale",
+              },
+            ],
+          },
+          {
+            id: "about",
+            title: "About",
+            items: [
+              {
+                id: "help-support",
+                actionId: "help-support",
+                title: "Help & Support",
+                icon: "help-circle-outline",
                 showChevron: true,
                 density: "standard",
                 structuralState: "stale",
@@ -257,15 +272,18 @@ jest.mock("../../components/BrandHeaderTitle", () => ({
 
   });
 
-  it("renders profile content and delegates refresh through the profile adapter", () => {
+  it("renders profile content and delegates menu actions through the profile adapter", () => {
     const screen = render(<ProfileScreen onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("Profile")).toBeTruthy();
     expect(screen.getByText("Settings")).toBeTruthy();
-    expect(screen.getByText("Refresh Data")).toBeTruthy();
+    expect(screen.getByText("Theme")).toBeTruthy();
+    expect(screen.getByText("Help & Support")).toBeTruthy();
+    expect(screen.queryByText("System Status")).toBeNull();
+    expect(screen.queryByText("Refresh Data")).toBeNull();
 
-    fireEvent.press(screen.getByText("Refresh Data"));
+    fireEvent.press(screen.getByText("Theme"));
 
-    expect(mockHandleRefreshData).toHaveBeenCalledWith("refresh-data");
+    expect(mockHandleRefreshData).toHaveBeenCalledWith("theme");
   });
 });

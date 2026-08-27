@@ -219,9 +219,8 @@ jest.mock("@/utils/useTranslation", () => ({
       noProjectsMessage: "You haven't been assigned to any projects yet",
       createProject: "Create Project",
       all: "All",
-      active: "Active",
+      active: "On-going",
       planning: "Planning",
-      onHold: "On Hold",
       completed: "Completed",
       cancelled: "Cancelled",
       leadPM: "Lead PM",
@@ -244,7 +243,7 @@ jest.mock("@/utils/useTranslation", () => ({
       estimatedEndDate: "Estimated End Date",
       leadProjectManager: "Lead Project Manager",
       leadPMDescription: "Lead PM details",
-      noLeadPM: "No Lead PM (Select one)",
+      noLeadPM: "No Project Admin (Select one)",
       projectNameRequired: "Project name is required",
       endDateError: "End date must be after start date",
       editProject: "Edit Project",
@@ -296,7 +295,7 @@ describe("ProjectsScreen", () => {
 
   type AdapterActions = {
     setSearchQuery: (value: string) => void;
-    selectStatusFilter: (value: "all" | "active" | "planning" | "on_hold" | "completed" | "cancelled") => void;
+    selectStatusFilter: (value: "all" | "active" | "planning" | "completed" | "cancelled") => void;
     handleRefresh: () => Promise<void> | void;
     openEditProject: (projectId: string) => void;
     closeEditProject: () => void;
@@ -313,10 +312,11 @@ describe("ProjectsScreen", () => {
       title: "Tower A",
       description: "Core package",
       statusValue: "active",
-      statusLabel: "Active",
+      statusLabel: "On-going",
       statusTone: "success",
       locationLabel: "Central Site",
       memberCountLabel: "4 members",
+      taskCountLabel: "6 tasks",
       clientName: "Acme",
       startDateLabel: "2026-01-01",
       createdByLabel: "Casey Rivera",
@@ -454,7 +454,8 @@ describe("ProjectsScreen", () => {
     );
 
     expect(screen.getAllByText("Projects").length).toBeGreaterThan(0);
-    expect(screen.getByText("Workspace")).toBeTruthy();
+    expect(screen.queryByText("Workspace")).toBeNull();
+    expect(screen.queryByTestId("projects-overview-hero")).toBeNull();
     expect(screen.getByPlaceholderText("Search projects...")).toBeTruthy();
     expect(screen.getByText("Tower A")).toBeTruthy();
 
@@ -468,7 +469,7 @@ describe("ProjectsScreen", () => {
       output: {
         projectItems: [
           buildProjectItem({
-            statusLabel: "On Hold",
+            statusLabel: "On-going",
             leadPmName: "Taylor Morgan",
             locationLabel: "North Yard",
             memberCountLabel: "7 members",
@@ -488,7 +489,8 @@ describe("ProjectsScreen", () => {
       />,
     );
 
-    expect(screen.getByText("On Hold")).toBeTruthy();
+    expect(screen.getByText("On-going")).toBeTruthy();
+    expect(screen.queryByText("On Hold")).toBeNull();
     expect(screen.getByText("Lead PM: Taylor Morgan")).toBeTruthy();
     expect(screen.getByText("North Yard")).toBeTruthy();
     expect(screen.getByText("7 members")).toBeTruthy();
@@ -885,6 +887,67 @@ describe("ProjectsScreen", () => {
     expect(mockAssignUserToProject).not.toHaveBeenCalled();
   });
 
+  it("lists host company admin next to PMs in the Project Admin picker", async () => {
+    mockGetUsersByCompany.mockReturnValue([
+      { id: "user-3", name: "Jordan Lee", role: "manager" },
+      { id: "user-admin", name: "Henry Admin", role: "admin" },
+      { id: "user-worker", name: "Pat Worker", role: "worker" },
+    ]);
+    mockGetLeadPMForProject.mockReturnValue("user-3");
+    mockGetProjectUserAssignments.mockReturnValue([
+      {
+        userId: "user-3",
+        projectId: "project-1",
+        category: "lead_project_manager",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+      {
+        userId: "user-admin",
+        projectId: "project-1",
+        category: "worker",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+      {
+        userId: "user-worker",
+        projectId: "project-1",
+        category: "worker",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+    ]);
+
+    mockUseProjectsViewAdapterReturn({
+      output: {
+        isEditModalVisible: true,
+        editingProject: buildProjectRecord(),
+      },
+      actions: {
+        completeEditedProjectSave: jest.fn(),
+      },
+    });
+
+    const screen = render(
+      <ProjectsScreen
+        onNavigateToProjectDetail={jest.fn()}
+        onNavigateToCreateProject={jest.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Jordan Lee (manager)")).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByText("Jordan Lee (manager)"));
+
+    expect(screen.getByText("Henry Admin (admin)")).toBeTruthy();
+    expect(screen.queryByText("Pat Worker (worker)")).toBeNull();
+  });
+
   it("updates lead-PM assignments only after a successful save when the selection changes", async () => {
     const mockCompleteEditedProjectSave = jest.fn();
 
@@ -898,6 +961,14 @@ describe("ProjectsScreen", () => {
         userId: "user-3",
         projectId: "project-1",
         category: "lead_project_manager",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+      {
+        userId: "user-4",
+        projectId: "project-1",
+        category: "worker",
         assignedBy: "user-1",
         assignedAt: "2026-01-02T00:00:00.000Z",
         isActive: true,
@@ -937,20 +1008,18 @@ describe("ProjectsScreen", () => {
       expect(mockCompleteEditedProjectSave).toHaveBeenCalledTimes(1);
     });
 
-    expect(mockAssignUserToProject).toHaveBeenCalledWith(
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith(
       "user-4",
       "project-1",
       "lead_project_manager",
-      "user-1",
     );
-    expect(mockRemoveUserFromProject).toHaveBeenCalledWith("user-3", "project-1");
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith("user-3", "project-1", "worker");
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
     expect(mockSaveEditedProject.mock.invocationCallOrder[0]).toBeLessThan(
-      mockAssignUserToProject.mock.invocationCallOrder[0],
+      mockUpdateUserProjectCategory.mock.invocationCallOrder[0],
     );
-    expect(mockAssignUserToProject.mock.invocationCallOrder[0]).toBeLessThan(
-      mockRemoveUserFromProject.mock.invocationCallOrder[0],
-    );
-    expect(mockRemoveUserFromProject.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockUpdateUserProjectCategory.mock.invocationCallOrder[0]).toBeLessThan(
       mockCompleteEditedProjectSave.mock.invocationCallOrder[0],
     );
   });
@@ -1023,19 +1092,39 @@ describe("ProjectsScreen", () => {
     });
 
     expect(mockAssignUserToProject).not.toHaveBeenCalled();
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith(
+      "user-4",
+      "project-1",
+      "lead_project_manager",
+    );
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith("user-3", "project-1", "worker");
     expect(mockSaveEditedProject.mock.invocationCallOrder[0]).toBeLessThan(
       mockUpdateUserProjectCategory.mock.invocationCallOrder[0],
     );
-    expect(mockRemoveUserFromProject).toHaveBeenCalledWith("user-3", "project-1");
-    expect(mockUpdateUserProjectCategory.mock.invocationCallOrder[0]).toBeLessThan(
-      mockRemoveUserFromProject.mock.invocationCallOrder[0],
+    expect(
+      mockUpdateUserProjectCategory.mock.invocationCallOrder[
+        mockUpdateUserProjectCategory.mock.calls.findIndex(
+          (call) => call[0] === "user-4",
+        )
+      ],
+    ).toBeLessThan(
+      mockUpdateUserProjectCategory.mock.invocationCallOrder[
+        mockUpdateUserProjectCategory.mock.calls.findIndex(
+          (call) => call[0] === "user-3",
+        )
+      ],
     );
-    expect(mockRemoveUserFromProject.mock.invocationCallOrder[0]).toBeLessThan(
-      mockCompleteEditedProjectSave.mock.invocationCallOrder[0],
-    );
+    expect(
+      mockUpdateUserProjectCategory.mock.invocationCallOrder[
+        mockUpdateUserProjectCategory.mock.calls.findIndex(
+          (call) => call[0] === "user-3",
+        )
+      ],
+    ).toBeLessThan(mockCompleteEditedProjectSave.mock.invocationCallOrder[0]);
   });
 
-  it("removes every stale active lead assignment that does not match the selected lead so retries can clean up duplicates", async () => {
+  it("demotes every stale active lead assignment that does not match the selected lead so retries can clean up duplicates", async () => {
     const mockCompleteEditedProjectSave = jest.fn();
 
     mockGetUsersByCompany.mockReturnValue([
@@ -1090,25 +1179,29 @@ describe("ProjectsScreen", () => {
       expect(mockSaveEditedProject).toHaveBeenCalledTimes(1);
     });
     await waitFor(() => {
-      expect(mockRemoveUserFromProject).toHaveBeenCalledWith("user-3", "project-1");
+      expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith("user-3", "project-1", "worker");
     });
     await waitFor(() => {
       expect(mockCompleteEditedProjectSave).toHaveBeenCalledTimes(1);
     });
 
     expect(mockAssignUserToProject).not.toHaveBeenCalled();
-    expect(mockUpdateUserProjectCategory).not.toHaveBeenCalled();
-    expect(mockRemoveUserFromProject).not.toHaveBeenCalledWith("user-4", "project-1");
-    expect(mockSaveEditedProject.mock.invocationCallOrder[0]).toBeLessThan(
-      mockRemoveUserFromProject.mock.invocationCallOrder[0],
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
+    expect(mockUpdateUserProjectCategory).not.toHaveBeenCalledWith(
+      "user-4",
+      "project-1",
+      "lead_project_manager",
     );
-    expect(mockRemoveUserFromProject.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mockSaveEditedProject.mock.invocationCallOrder[0]).toBeLessThan(
+      mockUpdateUserProjectCategory.mock.invocationCallOrder[0],
+    );
+    expect(mockUpdateUserProjectCategory.mock.invocationCallOrder[0]).toBeLessThan(
       mockCompleteEditedProjectSave.mock.invocationCallOrder[0],
     );
   });
 
-  it("keeps a lead-PM removal failure inside the save flow after starting the replacement assignment", async () => {
-    const removeError = new Error("Remove failed");
+  it("keeps a lead-PM demote failure inside the save flow after starting the replacement assignment", async () => {
+    const demoteError = new Error("Demote failed");
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const mockCompleteEditedProjectSave = jest.fn();
 
@@ -1126,9 +1219,21 @@ describe("ProjectsScreen", () => {
         assignedAt: "2026-01-02T00:00:00.000Z",
         isActive: true,
       },
+      {
+        userId: "user-4",
+        projectId: "project-1",
+        category: "worker",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-03T00:00:00.000Z",
+        isActive: true,
+      },
     ]);
     mockSaveEditedProject.mockResolvedValueOnce(undefined);
-    mockRemoveUserFromProject.mockRejectedValueOnce(removeError);
+    mockUpdateUserProjectCategory.mockImplementation(async (userId: string) => {
+      if (userId === "user-3") {
+        throw demoteError;
+      }
+    });
 
     mockUseProjectsViewAdapterReturn({
       output: {
@@ -1162,24 +1267,25 @@ describe("ProjectsScreen", () => {
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "ProjectsScreen: Failed to save edited project modal state:",
-        removeError,
+        demoteError,
       );
     });
 
-    expect(mockAssignUserToProject).toHaveBeenCalledWith(
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith(
       "user-4",
       "project-1",
       "lead_project_manager",
-      "user-1",
     );
-    expect(mockRemoveUserFromProject).toHaveBeenCalledWith("user-3", "project-1");
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith("user-3", "project-1", "worker");
+    expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
     expect(mockCompleteEditedProjectSave).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
   });
 
-  it("keeps a lead-PM assignment failure inside the save flow after save succeeds", async () => {
-    const assignError = new Error("Assign failed");
+  it("keeps a Project Admin crown failure inside the save flow after save succeeds", async () => {
+    const crownError = new Error("Crown failed");
     const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
     const mockCompleteEditedProjectSave = jest.fn();
 
@@ -1187,8 +1293,18 @@ describe("ProjectsScreen", () => {
       { id: "user-4", name: "Taylor Morgan", role: "manager" },
     ]);
     mockGetLeadPMForProject.mockReturnValue("");
+    mockGetProjectUserAssignments.mockReturnValue([
+      {
+        userId: "user-4",
+        projectId: "project-1",
+        category: "worker",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+    ]);
     mockSaveEditedProject.mockResolvedValueOnce(undefined);
-    mockAssignUserToProject.mockRejectedValueOnce(assignError);
+    mockUpdateUserProjectCategory.mockRejectedValueOnce(crownError);
 
     mockUseProjectsViewAdapterReturn({
       output: {
@@ -1208,10 +1324,10 @@ describe("ProjectsScreen", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("No Lead PM (Select one)")).toBeTruthy();
+      expect(screen.getByText("No Project Admin (Select one)")).toBeTruthy();
     });
 
-    fireEvent.press(screen.getByText("No Lead PM (Select one)"));
+    fireEvent.press(screen.getByText("No Project Admin (Select one)"));
     fireEvent.press(screen.getByText("Taylor Morgan (manager)"));
     fireEvent.press(screen.getByText("Save"));
 
@@ -1222,17 +1338,17 @@ describe("ProjectsScreen", () => {
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "ProjectsScreen: Failed to save edited project modal state:",
-        assignError,
+        crownError,
       );
     });
 
     expect(mockRemoveUserFromProject).not.toHaveBeenCalled();
-    expect(mockAssignUserToProject).toHaveBeenCalledWith(
+    expect(mockUpdateUserProjectCategory).toHaveBeenCalledWith(
       "user-4",
       "project-1",
       "lead_project_manager",
-      "user-1",
     );
+    expect(mockAssignUserToProject).not.toHaveBeenCalled();
     expect(mockCompleteEditedProjectSave).not.toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();
@@ -1248,6 +1364,24 @@ describe("ProjectsScreen", () => {
       { id: "user-4", name: "Taylor Morgan", role: "manager" },
     ]);
     mockGetLeadPMForProject.mockReturnValue("user-3");
+    mockGetProjectUserAssignments.mockReturnValue([
+      {
+        userId: "user-3",
+        projectId: "project-1",
+        category: "lead_project_manager",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-02T00:00:00.000Z",
+        isActive: true,
+      },
+      {
+        userId: "user-4",
+        projectId: "project-1",
+        category: "worker",
+        assignedBy: "user-1",
+        assignedAt: "2026-01-03T00:00:00.000Z",
+        isActive: true,
+      },
+    ]);
     mockSaveEditedProject.mockRejectedValueOnce(saveError);
 
     mockUseProjectsViewAdapterReturn({
@@ -1315,7 +1449,7 @@ describe("ProjectsScreen", () => {
       />,
     );
 
-    expect(screen.getByText("No Lead PM (Select one)")).toBeTruthy();
+    expect(screen.getByText("No Project Admin (Select one)")).toBeTruthy();
 
     mockGetUsersByCompany.mockReturnValue([
       { id: "user-3", name: "Jordan Lee", role: "manager" },
@@ -1408,7 +1542,7 @@ describe("ProjectsScreen", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("No Lead PM (Select one)")).toBeTruthy();
+      expect(screen.getByText("No Project Admin (Select one)")).toBeTruthy();
     });
 
     fireEvent.press(screen.getByText("Save"));

@@ -45,9 +45,8 @@ appId: com.buildtrack.app.local
     id: "createTask-add-photos"
 - assertVisible: "Add Photos"
 - tapOn: "Choose from Library"
-# System permission sheet (first grant). Ordinary boots no longer clearState;
-# this sheet mainly appears after intentional hard-reset / first-install flows.
-# Product shows loading until granted, then mounts the gallery — do not remount.
+# System permission sheet (first grant / Maestro clearState). Product shows loading
+# until granted, then mounts the gallery — do not remount around this.
 - runFlow:
     when:
       visible: "Allow Full Access"

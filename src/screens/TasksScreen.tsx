@@ -228,7 +228,7 @@ export default function TasksScreen(props: TasksScreenProps) {
 
   return (
     <>
-    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-[#E7F4F8]" edges={["left", "right", "bottom"]}>
+    <SafeAreaView testID="tasks-screen__root" className="flex-1 bg-canvas dark:bg-canvas-dark" edges={["left", "right", "bottom"]}>
         <AppScreenHeader
           title="Tasks"
           titleNode={<BrandHeaderTitle subtitle="Tasks" />}
@@ -256,7 +256,7 @@ export default function TasksScreen(props: TasksScreenProps) {
         <View
           testID="tasks-screen__search_section"
           className={cn(
-            "bg-[#E7F4F8] px-4 pt-1",
+            "bg-canvas px-4 pt-1 dark:bg-canvas-dark",
             output.activeFilterChips.length > 0 ? "pb-4" : "pb-1",
           )}
         >

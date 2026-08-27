@@ -154,7 +154,6 @@ jest.mock('../../utils/useTranslation', () => ({
        selectUsersToAssign: 'Select Users',
        doneSelected: () => 'Done',
        assigneesLocked: 'Assignees cannot be changed (task accepted)',
-       adminCannotCreateTasks: 'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.'
      },
       taskDetail: {
         editReasonTitle: 'Edit Reason',
@@ -625,7 +624,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
   });
 
-  it('keeps the branded shell visible when admins are blocked from creating tasks', () => {
+  it('allows company admins to use the create-task form (same field UI)', () => {
     mockIsAdmin = true;
 
     const screen = render(
@@ -636,12 +635,12 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
     expect(screen.getByTestId('create-task__header')).toBeTruthy();
-    expect(screen.getByTestId('app-screen-header__profile-trigger')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
     expect(
-      screen.getByText(
+      screen.queryByText(
         'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.',
       ),
-    ).toBeTruthy();
+    ).toBeNull();
   });
 
   it('surfaces project-scoped location options with an add-new path', async () => {

@@ -60,7 +60,7 @@ export function ProjectsScreenProjectCard({
               getStatusColorClassName(project.statusTone),
             )}
           >
-            <Text className="text-sm font-medium capitalize">{project.statusLabel}</Text>
+            <Text className="text-sm font-medium">{project.statusLabel}</Text>
           </View>
           {project.canEdit ? (
             <Pressable
@@ -98,6 +98,18 @@ export function ProjectsScreenProjectCard({
         <View className="flex-row items-center">
           <Ionicons name="people-outline" size={14} color="#6b7280" />
           <Text className="text-sm text-gray-500 ml-1">{project.memberCountLabel}</Text>
+          {project.taskCountLabel ? (
+            <>
+              <Text className="text-sm text-gray-400 mx-1.5">·</Text>
+              <Ionicons name="checkbox-outline" size={14} color="#6b7280" />
+              <Text
+                testID={`projects-task-count-${project.projectId}`}
+                className="text-sm text-gray-500 ml-1"
+              >
+                {project.taskCountLabel}
+              </Text>
+            </>
+          ) : null}
         </View>
       </View>
 

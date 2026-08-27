@@ -1,6 +1,6 @@
 # Open DU_TASK_TITLE on Tasks via DU_TASK_ID.
-# Pull-to-refresh belongs HERE (sync after Alice submits) — not after login.
-# If already on the right detail screen, do nothing.
+# Keep this helper short for troubleshooting: if we're already on the right detail
+# screen, do nothing; otherwise refresh once in place and open by row testID.
 appId: com.buildtrack.app.local
 ---
 - runFlow: ../_dismiss-blocking-overlays.yaml

@@ -183,6 +183,10 @@ jest.mock("../../state/taskStore.supabase", () => {
   return { useTaskStore };
 });
 
+jest.mock("../../ui/viewAdapters/useActivityTabBadgeCount", () => ({
+  useActivityTabBadgeCount: () => undefined,
+}));
+
 jest.mock("../../types/buildtrack", () => ({
   isAdmin: () => false,
 }));

@@ -68,7 +68,7 @@ export const en = {
     noTasksMessage: "Tasks assigned to you will appear here",
     projectParticipation: "Project Participation",
     totalProjects: "Total Projects",
-    active: "Active",
+    active: "On-going",
     planning: "Planning",
     viewing: "Viewing",
     allProjects: "All Projects",
@@ -224,9 +224,8 @@ export const en = {
     createFirstProject: "Create your first project to get started",
     // Status
     all: "All",
-    active: "Active",
+    active: "On-going",
     planning: "Planning",
-    onHold: "On Hold",
     completed: "Completed",
     cancelled: "Cancelled",
     // Project card info
@@ -466,7 +465,6 @@ export const en = {
     noLocation: "No location",
     // Admin restriction
     accessRestricted: "Access Restricted",
-    adminCannotCreateTasks: "Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.",
     goBack: "Go Back",
     // Permissions
     permissionDenied: "Permission Denied",

@@ -110,6 +110,7 @@ jest.mock("expo-status-bar", () => ({
 
 jest.mock("react-native-safe-area-context", () => ({
   SafeAreaView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
 jest.mock("react-native/Libraries/Modal/Modal", () => {
@@ -188,6 +189,7 @@ describe("UserManagementScreen", () => {
           seatType: "worker",
           isSubmitting: false,
           error: null,
+          seatUsageLabel: null,
         },
         inviteResult: null,
         copyingInviteUserId: null,
@@ -203,20 +205,21 @@ describe("UserManagementScreen", () => {
         selectedUserSummary: null,
         selectedProjectId: null,
         selectedProjectName: null,
-        selectedProjectRole: "worker",
         availableProjects: [],
-        projectRoleOptions: [],
         userCards: [
           {
             id: "user-card:pending-user",
             userId: "pending-user",
             name: "Pending Person",
             email: "pending@example.com",
-            systemRoleLabel: "admin",
-            positionLabel: "Supervisor",
+            systemRoleLabel: "CA",
+            positionLabel: "CA",
+            companySeatLabel: "CA",
             isAdmin: false,
             isProtected: false,
             isPending: true,
+            isActive: true,
+            canDeactivate: false,
             pendingMessage: "Awaiting approval - cannot be assigned to projects yet",
             canCopyInviteLink: false,
             assignmentCountLabel: null,
@@ -239,11 +242,14 @@ describe("UserManagementScreen", () => {
             userId: "invited-user",
             name: "Invited Member",
             email: "invited@example.com",
-            systemRoleLabel: "worker",
-            positionLabel: "Electrician",
+            systemRoleLabel: "Member",
+            positionLabel: "Worker",
+            companySeatLabel: "Worker",
             isAdmin: false,
             isProtected: false,
             isPending: false,
+            isActive: true,
+            canDeactivate: true,
             pendingMessage: null,
             canCopyInviteLink: true,
             assignmentCountLabel: null,
@@ -262,11 +268,14 @@ describe("UserManagementScreen", () => {
             userId: "assigned-user",
             name: "Assigned Member",
             email: "assigned@example.com",
-            systemRoleLabel: "manager",
-            positionLabel: "Project Manager",
+            systemRoleLabel: "Member",
+            positionLabel: "PM",
+            companySeatLabel: "PM",
             isAdmin: false,
             isProtected: false,
             isPending: false,
+            isActive: true,
+            canDeactivate: true,
             pendingMessage: null,
             canCopyInviteLink: false,
             assignmentCountLabel: "1 project assignment",
@@ -302,7 +311,6 @@ describe("UserManagementScreen", () => {
         closeActiveModal: jest.fn(),
         closeAssignmentFlow: jest.fn(),
         openProjectPicker: jest.fn(),
-        openProjectRolePicker: jest.fn(),
         returnToAssignmentModal: jest.fn(),
         toggleProfileMenu: jest.fn(),
         confirmLogout: jest.fn(),
@@ -311,12 +319,12 @@ describe("UserManagementScreen", () => {
         requestRejectUser: jest.fn(),
         requestRemoveAssignment: jest.fn(),
         selectProject: jest.fn(),
-        selectProjectRole: jest.fn(),
         saveAssignment: jest.fn(),
         confirmApproveUser: jest.fn(),
         confirmRejectUser: jest.fn(),
         confirmRemoveAssignment: jest.fn(),
         copyInviteLink: mockCopyInviteLink,
+        requestDeactivateUser: jest.fn(),
       },
     });
   });
@@ -325,7 +333,10 @@ describe("UserManagementScreen", () => {
     const screen = render(<UserManagementScreen onNavigateBack={jest.fn()} />);
 
     expect(screen.getByText("User Management")).toBeTruthy();
-    expect(screen.getByText("BuildCo")).toBeTruthy();
+    expect(screen.getByTestId("user-management__add-user_button")).toBeTruthy();
+    expect(screen.getByTestId("user-management__bottom-nav")).toBeTruthy();
+    expect(screen.queryByText("BuildCo")).toBeNull();
+    expect(screen.queryByText("Showing users from your company only")).toBeNull();
     expect(screen.getByText("Pending Person")).toBeTruthy();
     expect(screen.getByText("Assigned Member")).toBeTruthy();
     expect(screen.getByText("Copy invite link")).toBeTruthy();
@@ -337,5 +348,31 @@ describe("UserManagementScreen", () => {
     expect(mockRequestApproveUser).toHaveBeenCalledWith("pending-user");
     fireEvent.press(screen.getByTestId("user-management__copy-invite-invited-user"));
     expect(mockCopyInviteLink).toHaveBeenCalledWith("invited-user");
+  });
+
+  it("matches root Camera FAB geometry and tab-bar chrome for the add-user control", () => {
+    const screen = render(<UserManagementScreen onNavigateBack={jest.fn()} />);
+
+    expect(screen.getByTestId("user-management__bottom-nav")).toHaveStyle({
+      height: 76,
+      paddingTop: 8,
+      paddingBottom: 10,
+      overflow: "visible",
+    });
+    expect(screen.getByTestId("user-management__add-user")).toHaveStyle({
+      alignItems: "center",
+      alignSelf: "stretch",
+      flex: 1,
+      justifyContent: "center",
+    });
+    expect(screen.getByTestId("user-management__add-user_button")).toHaveStyle({
+      alignSelf: "center",
+      borderRadius: 32,
+      borderWidth: 4,
+      elevation: 8,
+      height: 64,
+      top: -16,
+      width: 64,
+    });
   });
 });

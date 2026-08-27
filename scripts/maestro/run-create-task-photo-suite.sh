@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create Task photo Maestro suite P01–P22 (S-UX-01Q) — FINAL GATE only.
 #
-# Development workflow: each P## uses ordinary no-clear _boot (resume session).
+# Development workflow: each P## is an independent flow (_boot clearState).
 #   Fix one case → reseed if needed → run ONLY that case:
 #     bash scripts/maestro/run-create-task-photo-one.sh P04
 # Do NOT loop P01→P22 while iterating. Use this suite script once all 22

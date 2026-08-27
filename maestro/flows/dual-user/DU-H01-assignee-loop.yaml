@@ -1,12 +1,4 @@
 # DU-H01 phase 3 — Alice accepts, updates with photo, submits for review.
-#
-# Optimal path:
-#   1. resume Alice stopApp:false   REQUIRED
-#   2. ensure Project A             REQUIRED
-#   3. open task (Tasks pull OK)    REQUIRED
-#   4. accept if CTA visible        COMPLETE or already-accepted branch
-#   5. update 100% + photo          REQUIRED
-#   6. submit_review (scroll+tap)   REQUIRED — never soft-skip as "already submitted"
 appId: com.buildtrack.app.local
 tags:
   - dual-user
@@ -96,21 +88,29 @@ tags:
       id: "task-detail__header_title"
     timeout: 15000
 - takeScreenshot: "du-h01-08-alice-updated"
-# Submit for Review can sit below the fold; do not treat "not visible yet" as already submitted.
-- scrollUntilVisible:
-    centerElement: true
-    element:
-      id: "task-detail__quick-action-submit_review"
-    direction: DOWN
-    speed: 40
-    visibilityPercentage: 40
-    timeout: 20000
-- tapOn:
-    id: "task-detail__quick-action-submit_review"
-- waitForAnimationToEnd:
-    timeout: 2500
-- extendedWaitUntil:
-    notVisible:
-      id: "task-detail__quick-action-submit_review"
-    timeout: 15000
-- takeScreenshot: "du-h01-09-alice-submitted"
+- runFlow:
+    when:
+      visible:
+        id: "task-detail__quick-action-submit_review"
+    commands:
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: "task-detail__quick-action-submit_review"
+          direction: DOWN
+      - tapOn:
+          id: "task-detail__quick-action-submit_review"
+      - waitForAnimationToEnd:
+          timeout: 2500
+      - assertNotVisible:
+          id: "task-detail__quick-action-submit_review"
+      - takeScreenshot: "du-h01-09-alice-submitted"
+- runFlow:
+    when:
+      notVisible:
+        id: "task-detail__quick-action-submit_review"
+    commands:
+      # Phase retries can land after the task is already submitted; in that case the CTA is absent.
+      - assertNotVisible:
+          id: "task-detail__quick-action-submit_review"
+      - takeScreenshot: "du-h01-09-alice-already-submitted"

@@ -12,7 +12,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 
-import ProjectsOverviewHero from "../components/projects/ProjectsOverviewHero";
 import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ScreenSection from "../components/ui/ScreenSection";
@@ -54,7 +53,12 @@ export default function ProjectsScreen({
 
       <ModernScreenHeader
         title={t.projects.projects}
-        titleNode={<BrandHeaderTitle subtitle={t.projects.projects} />}
+        titleNode={
+          <BrandHeaderTitle
+            label={t.projects.projects}
+            subtitle={output.projectCountLabel}
+          />
+        }
         showBackButton={!!onNavigateBack}
         onBackPress={onNavigateBack}
         className="border-b-0 bg-[#08576E] pb-2"
@@ -84,6 +88,25 @@ export default function ProjectsScreen({
         }
       />
 
+      <View className="border-b border-gray-200 bg-white px-6 py-4">
+        <View className="flex-row items-center rounded-lg bg-gray-100 px-3 py-2">
+          <Ionicons name="search-outline" size={22} color="#6b7280" />
+          <TextInput
+            className="ml-2 flex-1 text-lg text-gray-900"
+            placeholder={t.projects.searchProjects}
+            placeholderTextColor="#9ca3af"
+            value={output.searchQuery}
+            onChangeText={actions.setSearchQuery}
+            returnKeyType="done"
+          />
+        </View>
+      </View>
+
+      <ProjectsScreenFilterChips
+        options={output.filterOptions}
+        onSelect={actions.selectStatusFilter}
+      />
+
       <ScrollView
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -95,35 +118,6 @@ export default function ProjectsScreen({
         }
       >
         <View className="py-4">
-          <ProjectsOverviewHero
-            title={t.projects.projects}
-            projectCountLabel={output.projectCountLabel}
-          />
-
-          <ScreenSection
-            title="Filters"
-            subtitle="Search and narrow the workspace before reviewing the full list."
-          >
-            <View className="rounded-2xl border border-gray-200 bg-white p-4">
-              <View className="flex-row items-center rounded-xl bg-gray-100 px-3 py-2">
-                <Ionicons name="search-outline" size={20} color="#6b7280" />
-                <TextInput
-                  className="ml-2 flex-1 text-gray-900"
-                  placeholder={t.projects.searchProjects}
-                  value={output.searchQuery}
-                  onChangeText={actions.setSearchQuery}
-                />
-              </View>
-            </View>
-
-            <View className="-mx-4 mt-4">
-              <ProjectsScreenFilterChips
-                options={output.filterOptions}
-                onSelect={actions.selectStatusFilter}
-              />
-            </View>
-          </ScreenSection>
-
           <ScreenSection title="Project List" subtitle={output.projectCountLabel} className="mb-0">
             <View>
               {output.continuity.isInitialLoading ? (

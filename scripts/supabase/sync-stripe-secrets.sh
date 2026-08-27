@@ -49,6 +49,14 @@ if [[ -n "${STRIPE_WEBHOOK_SECRET:-}" ]]; then
   ARGS+=("STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}")
 fi
 
+if [[ -n "${STRIPE_TRIAL_PERIOD_DAYS:-}" ]]; then
+  ARGS+=("STRIPE_TRIAL_PERIOD_DAYS=${STRIPE_TRIAL_PERIOD_DAYS}")
+fi
+
+if [[ -n "${BILLING_CURRENCY:-}" ]]; then
+  ARGS+=("BILLING_CURRENCY=${BILLING_CURRENCY}")
+fi
+
 echo "Syncing Stripe secrets to project_ref length=${#REF}…"
 supabase "${ARGS[@]}"
-echo "Secrets synced. Redeploy create-checkout-session if you changed the function code."
+echo "Secrets synced. Redeploy create-checkout-session / update-company-addons if function code changed."

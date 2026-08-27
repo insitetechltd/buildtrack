@@ -1,4 +1,8 @@
-import type { PlanTierSlug, SellablePlanCatalog } from "./planCatalog";
+import type {
+  MeterDefinition,
+  PlanTierSlug,
+  SellablePlanCatalog,
+} from "./planCatalog";
 import {
   buildOfferedPlanNamesLabel,
   formatMeterLimitValue,
@@ -23,6 +27,34 @@ export type CompanyPlanOptionDraft = {
   disabled: boolean;
 };
 
+/**
+ * Quantity-only values for the allocated-resources card.
+ * Label already names the meter; do not repeat "1 pm seats".
+ */
+function formatAllocatedResourceValue(
+  slug: string,
+  value: number | null | undefined,
+  definition?: MeterDefinition,
+): string {
+  if (value == null) {
+    return "Unlimited";
+  }
+
+  const unit = definition?.unit ?? "count";
+  if (unit === "bytes") {
+    return formatMeterLimitValue(slug, value, definition);
+  }
+
+  if (definition?.aggregation === "counter_monthly") {
+    return `${value}/mo`;
+  }
+
+  return String(value);
+}
+
+/**
+ * Live entitlement totals (base plan + add-ons), not the catalog base SKU alone.
+ */
 export function buildCompanyPlanLimitRows(
   view: CompanyEntitlementView,
   catalog?: SellablePlanCatalog | null,
@@ -38,7 +70,11 @@ export function buildCompanyPlanLimitRows(
     return {
       id: slug,
       label: definition?.displayName ?? slug.replace(/_/g, " "),
-      value: formatMeterLimitValue(slug, view.meterLimits[slug], definition),
+      value: formatAllocatedResourceValue(
+        slug,
+        view.meterLimits[slug],
+        definition,
+      ),
     };
   });
 }
@@ -140,12 +176,7 @@ export function buildPlansSectionSubtitle(
   catalog?: SellablePlanCatalog | null,
 ): string {
   const names = buildOfferedPlanNamesLabel(catalog);
-  const addonLabels = Object.values(resolveAddonPriceLabels(catalog));
-  const addonLine =
-    addonLabels.length > 0
-      ? ` Add-ons available from ${catalog?.currency?.toUpperCase() ?? "catalog"}.`
-      : "";
-  return `Choose ${names} for your company.${addonLine}`;
+  return `Choose ${names} for your company.`;
 }
 
 export { buildOfferedPlanNamesLabel };

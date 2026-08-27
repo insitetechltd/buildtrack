@@ -78,16 +78,20 @@ describe("useProfileViewAdapter corp account model", () => {
     ).toBe(false);
   });
 
-  it("still exposes help support in settings", () => {
+  it("exposes help support in the About section", () => {
     const { result } = renderHook(() => useProfileViewAdapter({}));
     act(() => {
       // no-op: ensure hook remains stable
     });
+    const aboutItems =
+      result.current.output.sections.find((s) => s.id === "profile-section:about")
+        ?.items ?? [];
+    expect(aboutItems.some((item) => item.actionId === "help-support")).toBe(true);
     const settingsItems =
       result.current.output.sections.find((s) => s.id === "profile-section:settings")
         ?.items ?? [];
     expect(settingsItems.some((item) => item.actionId === "help-support")).toBe(
-      true,
+      false,
     );
   });
 });

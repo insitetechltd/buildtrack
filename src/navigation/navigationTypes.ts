@@ -163,23 +163,6 @@ export type TasksStackParamList = {
   InAppLibraryPicker: InAppLibraryPickerParams;
 };
 
-export type ProfileStackParamList = {
-  ProfileMain: undefined;
-  CompanyPlan:
-    | {
-        checkoutResult?: "success" | "cancel";
-        checkoutPlan?: string;
-      }
-    | undefined;
-  DeveloperSettings: undefined;
-  OwnerConsole: undefined;
-  OwnerMonitoring: undefined;
-  OwnerEconomics: undefined;
-  OwnerTenantOps: undefined;
-  WorkflowGaps: undefined;
-  PendingUsers: undefined;
-};
-
 export type ReportsStackParamList = {
   ReportsMain: undefined;
 };
@@ -196,7 +179,32 @@ export type AdminDashboardStackParamList = {
   ProjectDetail: { projectId: string };
   CreateProject: undefined;
   UserManagement: undefined;
+  CompanyPlan:
+    | {
+        checkoutResult?: "success" | "cancel";
+        checkoutPlan?: string;
+      }
+    | undefined;
   DevAdmin: undefined;
+};
+
+export type ProfileStackParamList = {
+  ProfileMain: undefined;
+  CompanyPlan:
+    | {
+        checkoutResult?: "success" | "cancel";
+        checkoutPlan?: string;
+      }
+    | undefined;
+  /** CA management shell (projects, users, KPIs) — not a root field tab. */
+  CompanyManagement: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
+  DeveloperSettings: undefined;
+  OwnerConsole: undefined;
+  OwnerMonitoring: undefined;
+  OwnerEconomics: undefined;
+  OwnerTenantOps: undefined;
+  WorkflowGaps: undefined;
+  PendingUsers: undefined;
 };
 
 export type RootTabParamList = {

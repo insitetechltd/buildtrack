@@ -3,10 +3,11 @@
  *
  * Rules:
  * - worker / member / foreman: assigned_to contains me OR assigned_by is me
- * - supervisor / manager: tasks on projects I am assigned to
- * - admin / company_admin: tasks on my company projects
+ * - supervisor / manager / admin (field lists): tasks on projects I am assigned to
+ * - Company KPI / all-company health stays on management (avatar → Admin Dashboard)
  *
- * This keeps worker-facing lists focused without changing backend policy.
+ * Admin field lists must NOT dump every company task — same membership wall as PM.
+ * Multi-company later: viewerProjectIds includes host + guest assignments on that job.
  *
  * Callers that need project/assignment maps must hold loading (not fail-open,
  * not claim empty) until `isProjectScopeReady` is true for admin/manager bands.
@@ -62,14 +63,7 @@ export function canViewerSelectTask(args: {
 
   const band = resolveTaskSelectRoleBand(viewer);
 
-  if (band === "admin") {
-    const viewerCompanyId = viewer.companyId == null ? "" : String(viewer.companyId).trim();
-    const projectCompanyId =
-      args.project?.companyId == null ? "" : String(args.project.companyId).trim();
-    return Boolean(viewerCompanyId && projectCompanyId && viewerCompanyId === projectCompanyId);
-  }
-
-  if (band === "manager") {
+  if (band === "admin" || band === "manager") {
     const projectId = args.task.projectId == null ? "" : String(args.task.projectId).trim();
     if (!projectId) {
       return false;

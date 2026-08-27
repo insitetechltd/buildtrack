@@ -55,8 +55,16 @@ jest.mock("../../state/projectFilterStore", () => ({
 }));
 
 jest.mock("../../state/taskStore.supabase", () => ({
-  useTaskStore: (selector: (state: { getUnreadTaskCount: () => number }) => unknown) =>
-    selector({ getUnreadTaskCount: () => 0 }),
+  useTaskStore: (selector: (state: {
+    getUnreadTaskCount: () => number;
+    tasksById: Record<string, unknown>;
+    tasks: unknown[];
+  }) => unknown) =>
+    selector({ getUnreadTaskCount: () => 0, tasksById: {}, tasks: [] }),
+}));
+
+jest.mock("../../ui/viewAdapters/useActivityTabBadgeCount", () => ({
+  useActivityTabBadgeCount: () => undefined,
 }));
 
 jest.mock("../../types/buildtrack", () => ({

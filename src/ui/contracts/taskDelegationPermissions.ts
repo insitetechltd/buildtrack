@@ -138,6 +138,8 @@ export function canSelectUserAsAssignee(args: {
   assignableUserIds: ReadonlySet<string> | readonly string[];
   actorRole?: AssigneeRoleLike;
   candidateRole?: AssigneeRoleLike;
+  /** Always allow selecting yourself when you are on the job. */
+  actorUserId?: string | null;
 }): boolean {
   const candidateId =
     args.candidateUserId == null ? "" : String(args.candidateUserId).trim();
@@ -151,6 +153,12 @@ export function canSelectUserAsAssignee(args: {
     : (pool as ReadonlySet<string>).has(candidateId);
   if (!inPool) {
     return false;
+  }
+
+  const actorId =
+    args.actorUserId == null ? "" : String(args.actorUserId).trim();
+  if (actorId && actorId === candidateId) {
+    return true;
   }
 
   const actorKey = normalizeAssigneeRoleKey(args.actorRole);
@@ -170,6 +178,7 @@ export function filterSelectableAssigneeIds(
   assignableUserIds: ReadonlySet<string> | readonly string[],
   options?: {
     actorRole?: AssigneeRoleLike;
+    actorUserId?: string | null;
     roleByUserId?: ReadonlyMap<string, AssigneeRoleLike> | Record<string, AssigneeRoleLike>;
   },
 ): string[] {
@@ -188,6 +197,7 @@ export function filterSelectableAssigneeIds(
       candidateUserId: id,
       assignableUserIds,
       actorRole: options?.actorRole,
+      actorUserId: options?.actorUserId,
       candidateRole: lookupRole(id),
     }),
   );
@@ -198,6 +208,7 @@ export function filterSelectableAssigneeUsers<T extends { id: string }>(
   candidates: readonly T[],
   args: {
     actorRole?: AssigneeRoleLike;
+    actorUserId?: string | null;
     resolveRole: (user: T) => AssigneeRoleLike;
   },
 ): T[] {
@@ -207,6 +218,7 @@ export function filterSelectableAssigneeUsers<T extends { id: string }>(
       candidateUserId: user.id,
       assignableUserIds: assignableIds,
       actorRole: args.actorRole,
+      actorUserId: args.actorUserId,
       candidateRole: args.resolveRole(user),
     }),
   );

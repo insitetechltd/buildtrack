@@ -29,7 +29,6 @@ import {
 } from "@react-navigation/native";
 import { useAuthStore } from "../state/authStore";
 import { useCreateTaskViewAdapter } from "../ui/viewAdapters/useCreateTaskViewAdapter";
-import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
 import { useUserStore } from "../state/userStore.supabase";
 import { useProjectStoreWithCompanyInit } from "../state/projectStore.supabase";
@@ -210,7 +209,7 @@ function CreateTaskEditorScreen({
     clearFormTimestamp,
   });
 
-  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, locationPicker, containerOrganization, projects, modals } = output;
+  const { formData, errors, pickers, activity, aiAssistant, context, assigneePicker, locationPicker, projects, modals } = output;
   const {
     updateField,
     togglePicker,
@@ -226,11 +225,6 @@ function CreateTaskEditorScreen({
     mergeIncomingAttachments,
     setShowSuggestionPreview,
     saveLocationOnSiteSelection,
-    expandContainerOrganization,
-    setContainerId,
-    setSubContainerId,
-    addProjectContainer,
-    setContainerDraft,
     setShowEditReasonModal,
     setEditReason,
     clearError,
@@ -639,31 +633,6 @@ function CreateTaskEditorScreen({
   }, [uploadedPhotoUrls, mergeIncomingAttachments]);
 
   if (!user) return null;
-  if (isAdmin(user)) {
-    return (
-      <SafeAreaView
-        testID="create-task__root"
-        edges={['bottom', 'left', 'right']}
-        className="flex-1 bg-[#E7F4F8]"
-      >
-        <StatusBar style="light" />
-        <View testID="create-task__header">
-          <ModernScreenHeader
-            title={context.headerTitle}
-            subtitle={headerSubtitle}
-            showBackButton={true}
-            onBackPress={handleCancel}
-            onNavigateToProfile={onNavigateToProfile}
-            onNavigateToProjectPicker={onNavigateToProjectPicker}
-            className="border-b-0 bg-[#08576E] pb-2"
-          />
-        </View>
-        <View className="flex-1 items-center justify-center px-6">
-          <Text className="text-center text-base text-gray-700">{t.createTask.adminCannotCreateTasks}</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView
@@ -708,7 +677,7 @@ function CreateTaskEditorScreen({
           ref={scrollViewRef}
           className="flex-1 py-4"
           keyboardShouldPersistTaps="always"
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -1035,130 +1004,6 @@ function CreateTaskEditorScreen({
                 ) : null}
               </CreateTaskInputField>
 
-              {!containerOrganization.isVisible ? (
-                <Pressable
-                  testID="create-task__expand_container_organization"
-                  accessibilityRole="button"
-                  onPress={expandContainerOrganization}
-                  disabled={!locationPicker.projectId}
-                  className={cn(
-                    "rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3",
-                    !locationPicker.projectId && "opacity-50",
-                  )}
-                >
-                  <Text className="text-base font-medium text-slate-700">
-                    Organize by area (optional)
-                  </Text>
-                  <Text className="mt-1 text-sm text-slate-500">
-                    Hidden by default — add floors, zones, or packages only when this project needs them.
-                  </Text>
-                </Pressable>
-              ) : (
-                <View
-                  testID="create-task__container_organization"
-                  className="rounded-xl border border-slate-200 bg-white p-3"
-                >
-                  <Text className="mb-1 text-base font-semibold uppercase tracking-[1.2px] text-slate-500">
-                    Area
-                  </Text>
-                  <Text className="mb-3 text-base text-slate-600">
-                    Optional. Tags stay for flexible labels; use areas only for stable browse groups.
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2 mb-3">
-                    {containerOrganization.containers
-                      .filter((container) => !container.parentId)
-                      .map((container) => {
-                        const selected =
-                          containerOrganization.selectedContainerId === container.id;
-                        return (
-                          <Pressable
-                            key={container.id}
-                            testID={`create-task__container_${container.id}`}
-                            onPress={() => setContainerId(selected ? "" : container.id)}
-                            className={cn(
-                              "rounded-full px-3 py-1.5 border",
-                              selected
-                                ? "border-blue-300 bg-blue-50"
-                                : "border-slate-200 bg-slate-50",
-                            )}
-                          >
-                            <Text
-                              className={cn(
-                                "text-sm font-medium",
-                                selected ? "text-blue-900" : "text-slate-800",
-                              )}
-                            >
-                              {container.label}
-                            </Text>
-                          </Pressable>
-                        );
-                      })}
-                  </View>
-                  {containerOrganization.selectedContainerId ? (
-                    <View className="mb-3">
-                      <Text className="mb-2 text-base font-semibold text-slate-900">Sub-area (optional)</Text>
-                      <View className="flex-row flex-wrap gap-2">
-                        {containerOrganization.containers
-                          .filter(
-                            (container) =>
-                              container.parentId ===
-                              containerOrganization.selectedContainerId,
-                          )
-                          .map((container) => {
-                            const selected =
-                              containerOrganization.selectedSubContainerId ===
-                              container.id;
-                            return (
-                              <Pressable
-                                key={container.id}
-                                testID={`create-task__sub_container_${container.id}`}
-                                onPress={() =>
-                                  setSubContainerId(selected ? "" : container.id)
-                                }
-                                className={cn(
-                                  "rounded-full px-3 py-1.5 border",
-                                  selected
-                                    ? "border-indigo-300 bg-indigo-50"
-                                    : "border-slate-200 bg-slate-50",
-                                )}
-                              >
-                                <Text
-                                  className={cn(
-                                    "text-sm font-medium",
-                                    selected ? "text-indigo-900" : "text-slate-800",
-                                  )}
-                                >
-                                  {container.label}
-                                </Text>
-                              </Pressable>
-                            );
-                          })}
-                      </View>
-                    </View>
-                  ) : null}
-                  <TextInput
-                    testID="create-task__container_input"
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white text-lg text-gray-900"
-                    placeholder={
-                      containerOrganization.selectedContainerId
-                        ? "Add sub-area, press return"
-                        : "Add area, press return"
-                    }
-                    placeholderTextColor="#9ca3af"
-                    value={containerOrganization.draftLabel}
-                    onChangeText={setContainerDraft}
-                    returnKeyType="done"
-                    blurOnSubmit
-                    onSubmitEditing={() => {
-                      void addProjectContainer(
-                        containerOrganization.draftLabel,
-                        containerOrganization.selectedContainerId || undefined,
-                      );
-                    }}
-                  />
-                </View>
-              )}
-
               <CreateTaskInputField label={t.tasks.assignTo} error={errors.assignedTo}>
                 {(() => {
                   const isDisabled = isLoadingUsers || context.assigneesLocked;
@@ -1208,9 +1053,6 @@ function CreateTaskEditorScreen({
                 >
                   <Text className="mb-2 text-base font-semibold text-slate-900">
                     {t.createTask.selectedUsers}
-                  </Text>
-                  <Text className="mb-2 text-sm text-gray-500">
-                    Tap a name to set Primary. Other selected users save as Delegates.
                   </Text>
                   <View className="flex-row flex-wrap">
                     {selectedUsers.map((userId) => {

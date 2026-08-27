@@ -33,6 +33,11 @@ appId: com.buildtrack.app.local
     visible:
       id: "tasks-screen__task_list"
     timeout: 25000
+# Sync API-seeded task into local store before search.
+- tapOn:
+    id: "tasks-screen__header_reset_filters"
+- waitForAnimationToEnd:
+    timeout: 3000
 # Pull-ish: search once, then open the seeded row by testID (not text index).
 # Do not erase+retype — iOS concatenates leftover search text.
 - tapOn:
@@ -54,30 +59,37 @@ appId: com.buildtrack.app.local
           commands:
             - tapOn:
                 id: "tasks-screen__header_reset_filters"
-                optional: true
             - waitForAnimationToEnd:
-                timeout: 2500
+                timeout: 3000
+            - tapOn:
+                id: "text-field:tasks-search__input"
+            - inputText: ${UP_SEED_TITLE}
+            - tapOn:
+                point: "50%, 8%"
+            - waitForAnimationToEnd:
+                timeout: 800
       - extendedWaitUntil:
           visible:
             id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
           timeout: 25000
+      - scrollUntilVisible:
+          centerElement: true
+          element:
+            id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          direction: DOWN
+          timeout: 10000
+      # First tap may clear swipe-block state; second opens Task Detail.
       - tapOn:
-          id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title-pressable"}
+          id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+      - tapOn:
+          id: ${"tasks-screen__row_" + UP_SEED_TASK_ID}
+          delay: 800
       - waitForAnimationToEnd:
-          timeout: 1500
-      - runFlow:
-          when:
-            visible:
-              id: "tasks-screen__root"
-          commands:
-            - tapOn:
-                id: ${"tasks-screen__row_" + UP_SEED_TASK_ID + ":title"}
-            - waitForAnimationToEnd:
-                timeout: 1500
+          timeout: 2000
 - extendedWaitUntil:
     visible:
       id: "task-detail__header_title"
-    timeout: 12000
+    timeout: 20000
 # Worker assignee may still need Accept before Update.
 - runFlow:
     when:

@@ -648,6 +648,7 @@ export type AdminDashboardQuickActionId =
   | "projects"
   | "user_management"
   | "company_banner"
+  | "company_plan"
   | "dev_admin";
 
 export interface AdminDashboardAccessModel {
@@ -656,8 +657,15 @@ export interface AdminDashboardAccessModel {
 }
 
 export interface AdminDashboardCompanyScopeModel {
+  companyId?: string;
   companyName?: string;
   subtitle?: string;
+}
+
+export interface AdminDashboardSecondaryStat {
+  id: string;
+  label: string;
+  value: number | string;
 }
 
 export interface AdminDashboardStatCard extends PrimitiveReadyItemBase {
@@ -665,12 +673,29 @@ export interface AdminDashboardStatCard extends PrimitiveReadyItemBase {
   label: string;
   value: number | string;
   subtitle?: string;
+  /**
+   * When true, skip the large primary value (tiles/secondary stats carry the numbers).
+   * Used for Team Members where PMs / Workers tiles are enough.
+   */
+  hidePrimaryValue?: boolean;
+  /**
+   * Extra metrics under the primary value.
+   * Projects uses these as stage tiles (planning / active / completed / cancelled).
+   */
+  secondaryStats?: AdminDashboardSecondaryStat[];
+  /**
+   * How secondaryStats render. Default `row` is a compact peer strip;
+   * `stage_tiles` is a wrap grid of stage counts (Admin Dashboard Projects).
+   */
+  secondaryLayout?: "row" | "stage_tiles";
   icon: string;
   color: string;
   iconColor: string;
   textColor: string;
-  /** When set, tapping the stat navigates via pressQuickAction. */
+  /** When set, tapping the section CTA navigates via pressQuickAction. */
   actionId?: AdminDashboardQuickActionId;
+  /** Label for the section detail pressable (e.g. "Manage plan"). Required when actionId is set. */
+  ctaLabel?: string;
 }
 
 export interface AdminDashboardQuickActionItem extends PrimitiveReadyItemBase {
@@ -735,6 +760,8 @@ export interface ProjectsScreenProjectItem extends PrimitiveReadyItemBase {
   statusTone: "success" | "info" | "warning" | "neutral" | "danger";
   locationLabel: string;
   memberCountLabel: string;
+  /** Per-project task total for list rows (Admin → Projects drill-in). */
+  taskCountLabel?: string;
   clientName: string;
   startDateLabel: string;
   createdByLabel: string;
@@ -813,6 +840,10 @@ export interface ProjectDetailMemberRow extends PrimitiveReadyItemBase {
   email?: string;
   isLeadPm: boolean;
   canRemove: boolean;
+  /** CA can crown eligible CA|PM already on the job. */
+  canSetAsProjectAdmin: boolean;
+  /** CA can demote current PA to member (keeps on job). */
+  canClearProjectAdmin: boolean;
 }
 
 export interface ProjectDetailEmptyStateModel {
@@ -844,7 +875,6 @@ export interface ProjectDetailScreenViewAdapterOutput {
 export type UserManagementActiveModal =
   | "assign"
   | "project"
-  | "category"
   | "success"
   | "removeConfirm"
   | "invite"
@@ -896,11 +926,20 @@ export interface UserManagementUserCard extends PrimitiveReadyItemBase {
   userId: string;
   name: string;
   email?: string;
+  phone?: string;
+  /** Staff page ACL: "CA" | "Member". */
   systemRoleLabel: string;
+  /** @deprecated Prefer companySeatLabel; was free-text position. */
   positionLabel: string;
+  /** Company seat for assignments line: "CA" | "PM" | "Worker". */
+  companySeatLabel: string;
   isAdmin: boolean;
   isProtected: boolean;
   isPending: boolean;
+  /** Soft-inactive seats are hidden from the default roster. */
+  isActive: boolean;
+  /** False for self, last protected admin, or already-inactive. */
+  canDeactivate: boolean;
   pendingMessage: string | null;
   canCopyInviteLink: boolean;
   assignmentCountLabel: string | null;
@@ -949,6 +988,7 @@ export interface UserManagementInviteFormModel {
   seatType: "pm" | "worker";
   isSubmitting: boolean;
   error: string | null;
+  seatUsageLabel: string | null;
 }
 
 export interface UserManagementInviteResultModel {
@@ -978,9 +1018,7 @@ export interface UserManagementScreenViewAdapterOutput {
   selectedUserSummary: UserManagementSelectedUserSummary | null;
   selectedProjectId: string | null;
   selectedProjectName: string | null;
-  selectedProjectRole: ProjectRole;
   availableProjects: UserManagementProjectOption[];
-  projectRoleOptions: UserManagementProjectRoleOption[];
   emptyState: UserManagementEmptyStateModel;
 }
 
@@ -1238,6 +1276,7 @@ export interface CreateProjectBannerModel {
   backgroundColor: string;
   textColor: string;
   imageUri?: string;
+  imageStoragePath?: string;
 }
 
 export interface CreateProjectScreenViewAdapterOutput {
@@ -1401,12 +1440,14 @@ export interface CompanyPlanCurrentPlanModel {
 }
 
 export interface CompanyPlanAddonStepperModel {
-  workerPackQty: number;
+  /** Extra worker seats beyond base plan (1 seat per add-on unit). */
+  workerSeatQty: number;
+  /** Extra PM seats beyond base plan. */
   pmSeatQty: number;
-  workerPackUnitPrice: string;
-  pmSeatUnitPrice: string;
-  workerSeatsPerPack: number;
-  pmSeatsPerSeat: number;
+  workerUnitPrice: string;
+  pmUnitPrice: string;
+  /** Which row is mid-update (others stay enabled for readability). */
+  busySeatType: "worker" | "pm" | null;
 }
 
 export type CompanyPlanStatusBannerTone = "success" | "error" | "info";

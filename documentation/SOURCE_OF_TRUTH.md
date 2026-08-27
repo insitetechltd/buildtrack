@@ -125,6 +125,7 @@ These are the primary human-readable references for current implementation-align
 - [INSITE_APP_LATEST.md](file:///Volumes/KooDrive/Insite%20App/documentation/INSITE_APP_LATEST.md)
 - [BUG_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/BUG_INVENTORY.md)
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
+- [EXPIRED_SURFACES_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/EXPIRED_SURFACES_INVENTORY.md)
 - [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
 

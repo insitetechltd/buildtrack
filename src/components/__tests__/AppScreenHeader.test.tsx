@@ -11,16 +11,22 @@ const mockProfileMenu = jest.fn(
     visible,
     onNavigateToProfile,
     onNavigateToProjectPicker,
+    onNavigateToCompanyManagement,
+    onNavigateToTaskDashboard,
     onNavigateToDeveloperSettings,
   }: {
     visible: boolean;
     onNavigateToProfile?: () => void;
     onNavigateToProjectPicker?: (allowBack?: boolean) => void;
+    onNavigateToCompanyManagement?: () => void;
+    onNavigateToTaskDashboard?: () => void;
     onNavigateToDeveloperSettings?: () => void;
   }) =>
     visible ? (
       <>
         <Text>Profile Menu</Text>
+        <Text onPress={() => onNavigateToCompanyManagement?.()}>Company Admin</Text>
+        <Text onPress={() => onNavigateToTaskDashboard?.()}>Task Dashboard</Text>
         <Text onPress={() => onNavigateToProjectPicker?.(true)}>Change Project</Text>
         <Text onPress={() => onNavigateToProfile?.()}>Profile & Settings</Text>
         <Text onPress={() => onNavigateToDeveloperSettings?.()}>Developer Settings</Text>
@@ -30,6 +36,32 @@ const mockProfileMenu = jest.fn(
 
 jest.mock("@/state/authStore", () => ({
   useAuthStore: () => ({ user: { id: "user-1", name: "Casey", companyId: "company-1" } }),
+}));
+
+jest.mock("@react-navigation/native", () => {
+  const React = require("react");
+  return {
+    NavigationContext: React.createContext({
+      getParent: () => ({ navigate: jest.fn() }),
+      navigate: jest.fn(),
+    }),
+  };
+});
+
+const mockNavigateToCompanyManagement = jest.fn();
+const mockNavigateToTaskDashboard = jest.fn();
+const mockNavigateToRootProfile = jest.fn();
+const mockNavigateToProjectPicker = jest.fn();
+
+jest.mock("@/navigation/rootNavigationHelpers", () => ({
+  navigateToCompanyManagement: (...args: unknown[]) => mockNavigateToCompanyManagement(...args),
+  navigateToTaskDashboard: (...args: unknown[]) => mockNavigateToTaskDashboard(...args),
+  navigateToRootProfile: (...args: unknown[]) => mockNavigateToRootProfile(...args),
+  navigateToProjectPicker: (...args: unknown[]) => mockNavigateToProjectPicker(...args),
+}));
+
+jest.mock("@/config/platformSuperusers", () => ({
+  isPlatformSuperuser: jest.fn(() => false),
 }));
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -127,12 +159,16 @@ describe("AppScreenHeader", () => {
   it("opens the profile menu and routes shared menu callbacks", () => {
     const onNavigateToProfile = jest.fn();
     const onNavigateToProjectPicker = jest.fn();
+    const onNavigateToCompanyManagement = jest.fn();
+    const onNavigateToTaskDashboard = jest.fn();
     const onNavigateToDeveloperSettings = jest.fn();
     const screen = render(
       <AppScreenHeader
         title="Projects"
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
+        onNavigateToCompanyManagement={onNavigateToCompanyManagement}
+        onNavigateToTaskDashboard={onNavigateToTaskDashboard}
         onNavigateToDeveloperSettings={onNavigateToDeveloperSettings}
       />,
     );
@@ -141,12 +177,42 @@ describe("AppScreenHeader", () => {
 
     expect(screen.getByText("Profile Menu")).toBeTruthy();
 
+    fireEvent.press(screen.getByText("Company Admin"));
+    fireEvent.press(screen.getByText("Task Dashboard"));
     fireEvent.press(screen.getByText("Change Project"));
     fireEvent.press(screen.getByText("Profile & Settings"));
     fireEvent.press(screen.getByText("Developer Settings"));
 
+    expect(onNavigateToCompanyManagement).toHaveBeenCalledTimes(1);
+    expect(onNavigateToTaskDashboard).toHaveBeenCalledTimes(1);
     expect(onNavigateToProjectPicker).toHaveBeenCalledWith(true);
     expect(onNavigateToProfile).toHaveBeenCalledTimes(1);
     expect(onNavigateToDeveloperSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults Company Admin and Task Dashboard via navigation when props are omitted", () => {
+    const screen = render(<AppScreenHeader title="Site Activity" />);
+
+    fireEvent.press(screen.getByTestId("app-screen-header__profile-trigger"));
+    fireEvent.press(screen.getByText("Company Admin"));
+    fireEvent.press(screen.getByText("Task Dashboard"));
+
+    expect(mockNavigateToCompanyManagement).toHaveBeenCalledTimes(1);
+    expect(mockNavigateToTaskDashboard).toHaveBeenCalledTimes(1);
+  });
+
+  it("defaults Developer Settings to Profile stack for platform superusers", () => {
+    const { isPlatformSuperuser } = require("@/config/platformSuperusers");
+    (isPlatformSuperuser as jest.Mock).mockReturnValue(true);
+
+    const screen = render(<AppScreenHeader title="Site Activity" />);
+
+    fireEvent.press(screen.getByTestId("app-screen-header__profile-trigger"));
+    fireEvent.press(screen.getByText("Developer Settings"));
+
+    expect(mockNavigateToRootProfile).toHaveBeenCalledWith(
+      expect.anything(),
+      "DeveloperSettings",
+    );
   });
 });

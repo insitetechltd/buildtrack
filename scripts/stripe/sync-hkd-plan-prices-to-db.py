@@ -35,8 +35,8 @@ AMOUNT_CENTS_BY_SLUG = {
 DISPLAY_NAME_BY_SLUG = {
     "growth": "Starter",
     "unlimited": "Pro",
-    "addon_worker_pack": "Worker pack (+5)",
-    "addon_pm_seat": "PM seat (+1)",
+    "addon_worker_pack": "Worker seat",
+    "addon_pm_seat": "PM seat",
 }
 
 BASE_METERS_BY_SLUG: dict[str, dict[str, int | None]] = {
@@ -48,13 +48,13 @@ BASE_METERS_BY_SLUG: dict[str, dict[str, int | None]] = {
         "storage_bytes": 10 * 1024 * 1024 * 1024,
     },
     "unlimited": {
-        "pm_seats": 2,
-        "worker_seats": 10,
+        "pm_seats": 3,
+        "worker_seats": 15,
         "projects": 12,
         "entries_monthly": 800,
         "storage_bytes": 30 * 1024 * 1024 * 1024,
     },
-    "addon_worker_pack": {"worker_seats": 5},
+    "addon_worker_pack": {"worker_seats": 1},
     "addon_pm_seat": {"pm_seats": 1},
 }
 

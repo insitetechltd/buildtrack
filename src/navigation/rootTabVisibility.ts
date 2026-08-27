@@ -1,6 +1,7 @@
 import type { ViewStyle } from "react-native";
 import { resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
 
+/** Root bottom-tab chrome — shared by Camera FAB and User Management add-user FAB. */
 export const ROOT_TAB_BAR_STYLE: ViewStyle = {
   height: 76,
   overflow: "visible",
@@ -8,6 +9,33 @@ export const ROOT_TAB_BAR_STYLE: ViewStyle = {
   paddingBottom: 10,
   borderTopColor: "#e5e7eb",
   backgroundColor: "#ffffff",
+};
+
+/** Raised center FAB geometry (Camera / Add Task). Color stays per-surface. */
+export const ROOT_TAB_CENTER_FAB_TOP_OFFSET = -16;
+
+export const ROOT_TAB_CENTER_FAB_LAYOUT: ViewStyle = {
+  alignItems: "center",
+  alignSelf: "center",
+  borderColor: "#ffffff",
+  borderRadius: 32,
+  borderWidth: 4,
+  elevation: 8,
+  height: 64,
+  justifyContent: "center",
+  minWidth: 64,
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.28,
+  shadowRadius: 14,
+  top: ROOT_TAB_CENTER_FAB_TOP_OFFSET,
+  width: 64,
+};
+
+export const ROOT_TAB_CENTER_FAB_SLOT: ViewStyle = {
+  alignItems: "center",
+  alignSelf: "stretch",
+  flex: 1,
+  justifyContent: "center",
 };
 
 export function shouldCollapseRootSideTabsOnTaskDetailRoute(routeName?: string) {

@@ -18,14 +18,36 @@ describe("companyPlanGate", () => {
     trialEndsAt: null,
   };
 
-  it("requires a Stripe subscription to unlock the app", () => {
+  it("requires an active or trialing Stripe subscription to unlock the app", () => {
     expect(companyHasPaidStripePlan(pilotView)).toBe(false);
     expect(
       companyHasPaidStripePlan({
         ...pilotView,
         tierSlug: "growth",
+        subscriptionStatus: "active",
         hasStripeSubscription: true,
       }),
     ).toBe(true);
+    expect(
+      companyHasPaidStripePlan({
+        ...pilotView,
+        subscriptionStatus: "trialing",
+        hasStripeSubscription: true,
+      }),
+    ).toBe(true);
+    expect(
+      companyHasPaidStripePlan({
+        ...pilotView,
+        subscriptionStatus: "past_due",
+        hasStripeSubscription: true,
+      }),
+    ).toBe(false);
+    expect(
+      companyHasPaidStripePlan({
+        ...pilotView,
+        subscriptionStatus: "canceled",
+        hasStripeSubscription: true,
+      }),
+    ).toBe(false);
   });
 });

@@ -1,9 +1,21 @@
-# Owner Console — complete module plan (M-OPS-01)
+# Owner Console — complete module plan (M-OPS-01 → M-OPS-03)
 
 **Date:** 2026-08-22  
-**Updated:** 2026-08-22 (three-section IA: Monitoring / Economics / Tenant ops)  
-**Status:** Planning complete — ready for build kickoff with web track  
-**Harness:** Taskr mobile → Profile → Owner Console (platform superuser only)
+**Updated:** 2026-08-26 (naming lock: **M-OPS-03 = Owner management interface**)  
+**Status:** Planning complete — v1 bootstrap closed; **v2+ = Owner management interface (M-OPS-03)**  
+**Harness (v1 bootstrap only):** Taskr mobile → Profile → Owner Console — **freeze; do not extend**  
+**Target harness (M-OPS-03):** **Owner management interface** — dedicated operator **app + web** (same product surface; not field Taskr; not Henry company admin)
+
+### Naming lock (2026-08-26)
+
+| Name | Means |
+|---|---|
+| **M-OPS-03** | The **owner’s management interface** (platform operator Tristan) |
+| Surfaces | Dedicated **Owner Admin app** (mobile/tablet) **and** desk **web `/owner/*`** — one IA, shared Edge/RPCs |
+| Not | Taskr Profile → Owner Console (M-OPS-01 v1 bootstrap only; retire when M-OPS-03 ships) |
+| Not | **M-WEB-01** company admin for Henry / normal tenants |
+
+Tenant ops (plans, users/companies, usage vs caps, audit, **test-env purge §3e**, prod/dev ops tools) live **inside M-OPS-03**, not as a separate milestone.
 
 ---
 
@@ -239,8 +251,31 @@ Distinct from Section 1 KPI totals (platform-wide).
 | | |
 |---|---|
 | **Status** | Planned (with B4 writes) |
-| **Purpose** | Every owner mutation: user create/deactivate, plan override, entitlement bypass |
+| **Purpose** | Every owner mutation: user create/deactivate, plan override, entitlement bypass, **tenant purge** |
 | **Visible from** | Tenant ops; summarized in Economics as “manual adjustments” |
+
+### 3e — Test / sandbox tenant purge (**M-OPS-03 Owner management interface**)
+
+| | |
+|---|---|
+| **Status** | Planned — logged 2026-08-26; **not** Taskr mobile; **not** Henry M-WEB-01 |
+| **Home** | **M-OPS-03** Owner management interface → Tenant operations → Users & companies (or dedicated Purge panel) — app and/or web `/owner/*` |
+| **Purpose** | Operator cleanup of throwaway test companies/accounts in **Stripe test mode** + matching Supabase tenant data |
+| **Why here** | In-app `deleteCompany` is soft (`isActive=false`) only. Hard cleanup needs Stripe cancel, Storage object delete, `auth.users` delete, then ordered DB delete — service-role via Edge only |
+
+**Keep-in-mind procedure (SoT for the UI + Edge)**
+
+1. **Allowlist keep** (e.g. production-like tenants) vs purge candidates  
+2. **Dry-run** first: company name, user emails, Stripe customer/sub IDs, storage path counts  
+3. Per company, ordered apply:  
+   - Cancel Stripe test subscription (immediate) → optional delete test Customer  
+   - Delete `buildtrack-files` objects for that tenant  
+   - `auth.admin.deleteUser` for each member  
+   - Delete company-scoped rows that do not cascade cleanly, then `DELETE` company  
+4. Confirm no leftover `company_subscriptions` / `company_entitlements`; Stripe customer gone  
+5. **Hard rules:** livemode=false only unless separate production Human Gate; every purge row → owner audit log; never expose service-role to client
+
+**Not:** company-admin self-serve company wipe; soft deactivate alone; Dashboard click-chaos without audit.
 
 ---
 
@@ -253,6 +288,7 @@ Distinct from Section 1 KPI totals (platform-wide).
 | Full billing portal | Dedicated billing milestone / M-OPS-01 B4+ | M-WEB-03 = reports/branding, not billing |
 | BYO storage costs | Economics costs | `WS-STORAGE` deferred |
 | CI / Maestro health | Monitoring → Reliability (optional) | Solo-dev ops; low priority |
+| Ad-hoc CLI tenant purge | **3e → M-OPS-03 Owner management interface** | Prefer audited owner UI over one-off scripts |
 
 ---
 
@@ -278,10 +314,14 @@ Architecture SoT: `2026-08-22-owner-monitoring-architecture.md`
 - `owner_exception_events` + client flush
 - Gaps Loaded / Database toggle; audit log before writes
 
-### v3 — Pull insufficient
+### v3 — Owner management interface (M-OPS-03) (locked 2026-08-24; naming 2026-08-26)
 
+- **M-OPS-03 = the owner’s management interface** — not a side tool; this is where all platform-owner ops live after RC
+- Surfaces: dedicated **Owner Admin app** (separate bundle / TestFlight from Taskr) **+** desk **web `/owner/*`** (same IA / Edge / RPCs)
+- Modules: Monitoring / Economics / Tenant ops (incl. §3e test-env purge, plans, entitlements, audit)
 - Alerting; optional daily rollups; Sentry/uptime
-- Web `/owner/*` reuses RPCs; tenant writes via Edge only
+- Tenant writes via Edge only; **no service-role in any client**
+- Remove or hide Taskr Profile → Owner Console once M-OPS-03 is on TestFlight / web
 
 **Then M-OPS-02** (core-loop tightness) — parallel ok after v1 close.
 

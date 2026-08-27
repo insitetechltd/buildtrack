@@ -12,6 +12,22 @@ This document is intentionally credential-safe:
 
 Use secure secret storage for all real values.
 
+## Live schema snapshot (agent SoT)
+
+Before writing live Dashboard SQL, read:
+
+- `documentation/audit/database/LIVE_SCHEMA_SNAPSHOT.md`
+
+Refresh after schema migrations:
+
+```bash
+bash scripts/supabase/dump-live-schema.sh
+```
+
+Requires `EXPO_PUBLIC_SUPABASE_URL` + `SUPABASE_ACCESS_TOKEN` in `.env`. Output is columns/PKs/FKs only (no row data); project ref redacted.
+
+**Live tenant quirks (2026-08-25):** `users.role` exists; `users.system_permission` does **not**. `billing_webhook_events.processed_at` exists; `created_at` does **not**.
+
 ## Scope
 
 This runbook covers:

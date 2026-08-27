@@ -29,9 +29,10 @@ import {
   Linking,
 } from "react-native";
 import { useAuthStore } from "../state/authStore";
+import { isPlatformSuperuser } from "../config/platformSuperusers";
 import { useProjectFilterStore } from "../state/projectFilterStore";
-import { isAdmin } from "../types/buildtrack";
 import { useTaskStore } from "../state/taskStore.supabase";
+import { useActivityTabBadgeCount } from "../ui/viewAdapters/useActivityTabBadgeCount";
 import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
 import { RealtimeSyncManager } from "../utils/RealtimeSyncManager";
@@ -46,6 +47,7 @@ import CreateTaskScreen from "../screens/CreateTaskScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import CompanyPlanScreen from "../screens/CompanyPlanScreen";
 import CompanyPlanSelectionGate from "./CompanyPlanSelectionGate";
+import PostCheckoutManagementRedirect from "./PostCheckoutManagementRedirect";
 import TaskDetailScreen from "../screens/TaskDetailScreen";
 import ProjectsScreen from "../screens/ProjectsScreen";
 import CreateProjectScreen from "../screens/CreateProjectScreen";
@@ -90,6 +92,8 @@ import {
 import { rootNavigationRef } from "./rootNavigationRef";
 import {
   ROOT_TAB_BAR_STYLE,
+  ROOT_TAB_CENTER_FAB_LAYOUT,
+  ROOT_TAB_CENTER_FAB_SLOT,
   buildRootTabBarStyleForRoute,
   resolveTaskDetailUpdateLockState,
   shouldCollapseRootSideTabsOnTaskDetailRoute,
@@ -161,7 +165,7 @@ const AdminDashboardStackNavigator = createNativeStackNavigator<AdminDashboardSt
 
 // Bottom-tab geometry is intentionally tuned and should only change with
 // matching test updates plus simulator verification.
-const ROOT_TAB_CAMERA_TOP_OFFSET = -16;
+// Center FAB layout SoT: ROOT_TAB_CENTER_FAB_* in rootTabVisibility.ts
 const ROOT_TAB_SIDE_CENTER_OFFSET = Dimensions.get("window").width / 12;
 
 const SPRINT7_AUTOMATION_PATH_RE =
@@ -1362,6 +1366,11 @@ function ProfileStack() {
       <ProfileStackNavigator.Screen name="ProfileMain" component={ProfileMainScreen} />
       <ProfileStackNavigator.Screen name="CompanyPlan" component={CompanyPlanScreenWrapper} />
       <ProfileStackNavigator.Screen
+        name="CompanyManagement"
+        component={AdminDashboardStack}
+        options={{ headerShown: false }}
+      />
+      <ProfileStackNavigator.Screen
         name="DeveloperSettings"
         component={DeveloperSettingsScreenWrapper}
       />
@@ -1393,6 +1402,9 @@ function ProfileStack() {
 function ProfileMainScreen({
   navigation,
 }: NativeStackScreenProps<ProfileStackParamList, "ProfileMain">) {
+  const user = useAuthStore((state) => state.user);
+  const canOpenOwnerTools = isPlatformSuperuser(user);
+
   return (
     <ProfileScreen
       onNavigateBack={() => navigation.goBack()}
@@ -1410,12 +1422,13 @@ function ProfileMainScreen({
         });
       }}
       onNavigateToDeveloperSettings={
-        typeof __DEV__ !== "undefined" && __DEV__
+        canOpenOwnerTools
           ? () => navigation.navigate("DeveloperSettings")
           : undefined
       }
-      onNavigateToOwnerConsole={() => navigation.navigate("OwnerConsole")}
-      onNavigateToCompanyPlan={() => navigation.navigate("CompanyPlan")}
+      onNavigateToOwnerConsole={
+        canOpenOwnerTools ? () => navigation.navigate("OwnerConsole") : undefined
+      }
       onNavigateToPendingUsers={() => navigation.navigate("PendingUsers")}
       onNavigateToProfile={() => {}} // Already on profile screen
       onNavigateToProjectPicker={(allowBack?: boolean) => {
@@ -1432,6 +1445,16 @@ function CompanyPlanScreenWrapper({
   return (
     <CompanyPlanScreen
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToProfile={() => navigation.navigate("ProfileMain")}
+      onNavigateToProjectPicker={(allowBack?: boolean) => {
+        navigateToProjectPicker(navigation, allowBack);
+      }}
+      onNavigateToCompanyManagement={() =>
+        navigation.navigate("CompanyManagement", { screen: "AdminDashboardMain" })
+      }
+      onNavigateToTaskDashboard={() => {
+        navigateToRootTabScreen(navigation, "Activity");
+      }}
       checkoutResult={route.params?.checkoutResult}
       checkoutPlan={route.params?.checkoutPlan}
     />
@@ -1766,6 +1789,7 @@ function AdminDashboardStack() {
       />
       <AdminDashboardStackNavigator.Screen name="CreateProject" component={CreateProjectMainScreen} />
       <AdminDashboardStackNavigator.Screen name="UserManagement" component={UserManagementMainScreen} />
+      <AdminDashboardStackNavigator.Screen name="CompanyPlan" component={CompanyPlanFromAdminScreen} />
       <AdminDashboardStackNavigator.Screen name="DevAdmin" component={DevAdminScreenWrapper} />
     </AdminDashboardStackNavigator.Navigator>
   );
@@ -1774,13 +1798,16 @@ function AdminDashboardStack() {
 function AdminDashboardMainScreen({
   navigation,
 }: NativeStackScreenProps<AdminDashboardStackParamList, "AdminDashboardMain">) {
+  const user = useAuthStore((state) => state.user);
+
   return (
     <AdminDashboardScreen
       onNavigateToProjects={() => navigation.navigate("ProjectsList")}
       onNavigateToUserManagement={() => navigation.navigate("UserManagement")}
+      onNavigateToCompanyPlan={() => navigation.navigate("CompanyPlan")}
       onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToDevAdmin={
-        typeof __DEV__ !== "undefined" && __DEV__
+        isPlatformSuperuser(user)
           ? () => navigation.navigate("DevAdmin")
           : undefined
       }
@@ -1867,6 +1894,23 @@ function UserManagementMainScreen({
   return (
     <UserManagementScreen
       onNavigateBack={() => navigation.goBack()}
+      onNavigateToCompanyPlan={() => navigation.navigate("CompanyPlan")}
+    />
+  );
+}
+
+function CompanyPlanFromAdminScreen({
+  navigation,
+  route,
+}: NativeStackScreenProps<AdminDashboardStackParamList, "CompanyPlan">) {
+  return (
+    <CompanyPlanScreen
+      checkoutResult={route.params?.checkoutResult}
+      checkoutPlan={route.params?.checkoutPlan}
+      onNavigateBack={() => navigation.goBack()}
+      onNavigateToCompanyManagement={() =>
+        navigation.navigate("AdminDashboardMain")
+      }
     />
   );
 }
@@ -1883,13 +1927,9 @@ function AppRootStack() {
 // Main Tab Navigator
 function MainTabs() {
   const { user } = useAuthStore();
-  const getUnreadTaskCount = useTaskStore(state => state.getUnreadTaskCount);
   const tasksById = useTaskStore((state) => state.tasksById);
   const tasks = useTaskStore((state) => state.tasks);
-  
-  // Get unread task count for badge
-  const unreadCount = user ? getUnreadTaskCount(user.id) : 0;
-  const badgeCount = unreadCount > 99 ? '99+' : (unreadCount > 0 ? unreadCount : undefined);
+  const badgeCount = useActivityTabBadgeCount();
   
   return (
     <Tab.Navigator
@@ -1915,147 +1955,130 @@ function MainTabs() {
         },
       }}
     >
-      {!isAdmin(user) && (
-        <Tab.Screen
-          name="Activity"
-          component={DashboardStack}
-          options={({ route, navigation }) => {
-            const hideSideTabs = shouldHideRootSideTabsForTabState(
-              typeof navigation?.getState === "function"
-                ? (navigation.getState() as Parameters<
+      {/* Same field shell for CA / PM / Worker — management via avatar → CompanyManagement */}
+      <Tab.Screen
+        name="Activity"
+        component={DashboardStack}
+        options={({ route, navigation }) => {
+          const hideSideTabs = shouldHideRootSideTabsForTabState(
+            typeof navigation?.getState === "function"
+              ? (navigation.getState() as Parameters<
+                  typeof resolveTaskDetailCameraTabParams
+                >[0])
+              : undefined,
+          );
+          return {
+          tabBarLabel: "Activity",
+          tabBarButton: (props) => (
+            <RootTabButton
+              {...props}
+              testID="root-tab__activity"
+              alignTowardsCamera="right"
+              hidden={hideSideTabs}
+            />
+          ),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="sparkles-outline" size={size} color={color} />
+          ),
+          tabBarBadge: hideSideTabs ? undefined : badgeCount,
+          tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
+          tabBarStyle: buildRootTabBarStyleForRoute(
+            getFocusedRouteNameFromRoute(route),
+          ),
+        };
+        }}
+      />
+      <Tab.Screen
+        name="Camera"
+        component={CreateTaskStack}
+        listeners={({ navigation }) => ({
+          tabPress: (event) => {
+            handleCameraTabPress({
+              event,
+              navigation: {
+                getState: () =>
+                  navigation.getState() as Parameters<
                     typeof resolveTaskDetailCameraTabParams
-                  >[0])
-                : undefined,
-            );
-            return {
-            tabBarLabel: "Activity",
-            tabBarButton: (props) => (
-              <RootTabButton
-                {...props}
-                testID="root-tab__activity"
-                alignTowardsCamera="right"
-                hidden={hideSideTabs}
-              />
-            ),
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="sparkles-outline" size={size} color={color} />
-            ),
-            tabBarBadge: hideSideTabs ? undefined : badgeCount,
-            tabBarBadgeStyle: { backgroundColor: '#ef4444', color: 'white', fontSize: 10 },
-            tabBarStyle: buildRootTabBarStyleForRoute(
-              getFocusedRouteNameFromRoute(route),
-            ),
-          };
-          }}
-        />
-      )}
-      {isAdmin(user) ? (
-        <Tab.Screen
-          name="AdminDashboard"
-          component={AdminDashboardStack}
-          options={{
-            tabBarLabel: "Dashboard",
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="apps-outline" size={size} color={color} />
-            ),
-          }}
-        />
-      ) : null}
-      {!isAdmin(user) && (
-        <Tab.Screen
-          name="Camera"
-          component={CreateTaskStack}
-          listeners={({ navigation }) => ({
-            tabPress: (event) => {
-              handleCameraTabPress({
-                event,
-                navigation: {
-                  getState: () =>
-                    navigation.getState() as Parameters<
-                      typeof resolveTaskDetailCameraTabParams
-                    >[0],
-                  navigate: (screen, params) =>
-                    (navigation.navigate as (screen: string, params?: unknown) => void)(
-                      screen,
-                      params,
-                    ),
-                },
-              });
-            },
-          })}
-          options={({ route, navigation }) => {
-            const { shortcut: updateShortcut, isLocked: isTaskDetailUpdateLocked } =
-              resolveTaskDetailUpdateLockState({
-                tabState:
-                  typeof navigation?.getState === "function"
-                    ? (navigation.getState() as Parameters<
-                        typeof resolveTaskDetailUpdateShortcut
-                      >[0])
-                    : undefined,
-                userId: user?.id,
-                tasksById,
-                tasks,
-              });
-            const isTaskDetailUpdate = Boolean(updateShortcut);
-            return {
-            tabBarLabel: isTaskDetailUpdate ? "Update" : "Camera",
-            tabBarActiveTintColor: "#ffffff",
-            tabBarInactiveTintColor: "#ffffff",
-            tabBarButton: (props) => (
-              <CenterCameraTabButton
-                {...props}
-                disabled={isTaskDetailUpdateLocked}
-                accessibilityLabel={isTaskDetailUpdate ? "Update" : props.accessibilityLabel}
-                icon={
-                  <Ionicons
-                    testID="root-tab__camera_icon"
-                    name={isTaskDetailUpdate ? "add" : "camera"}
-                    size={28}
-                    color="#ffffff"
-                  />
-                }
-              />
-            ),
-            tabBarStyle: buildRootTabBarStyleForRoute(
-              getFocusedRouteNameFromRoute(route),
-              "CreateTaskMain",
-            ),
-          };
-          }}
-        />
-      )}
-      {!isAdmin(user) && (
-        <Tab.Screen
-          name="Tasks"
-          component={TasksStack}
-          options={({ route, navigation }) => {
-            const hideSideTabs = shouldHideRootSideTabsForTabState(
-              typeof navigation?.getState === "function"
-                ? (navigation.getState() as Parameters<
-                    typeof resolveTaskDetailCameraTabParams
-                  >[0])
-                : undefined,
-            );
-            return {
-            tabBarLabel: "Tasks",
-            tabBarButton: (props) => (
-              <RootTabButton
-                {...props}
-                testID="root-tab__tasks"
-                alignTowardsCamera="left"
-                hidden={hideSideTabs}
-              />
-            ),
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list-outline" size={size} color={color} />
-            ),
-            tabBarStyle: buildRootTabBarStyleForRoute(
-              getFocusedRouteNameFromRoute(route),
-            ),
-          };
-          }}
-        />
-      )}
+                  >[0],
+                navigate: (screen, params) =>
+                  (navigation.navigate as (screen: string, params?: unknown) => void)(
+                    screen,
+                    params,
+                  ),
+              },
+            });
+          },
+        })}
+        options={({ route, navigation }) => {
+          const { shortcut: updateShortcut, isLocked: isTaskDetailUpdateLocked } =
+            resolveTaskDetailUpdateLockState({
+              tabState:
+                typeof navigation?.getState === "function"
+                  ? (navigation.getState() as Parameters<
+                      typeof resolveTaskDetailUpdateShortcut
+                    >[0])
+                  : undefined,
+              userId: user?.id,
+              tasksById,
+              tasks,
+            });
+          const isTaskDetailUpdate = Boolean(updateShortcut);
+          return {
+          tabBarLabel: isTaskDetailUpdate ? "Update" : "Camera",
+          tabBarActiveTintColor: "#ffffff",
+          tabBarInactiveTintColor: "#ffffff",
+          tabBarButton: (props) => (
+            <CenterCameraTabButton
+              {...props}
+              disabled={isTaskDetailUpdateLocked}
+              accessibilityLabel={isTaskDetailUpdate ? "Update" : props.accessibilityLabel}
+              icon={
+                <Ionicons
+                  testID="root-tab__camera_icon"
+                  name={isTaskDetailUpdate ? "add" : "camera"}
+                  size={28}
+                  color="#ffffff"
+                />
+              }
+            />
+          ),
+          tabBarStyle: buildRootTabBarStyleForRoute(
+            getFocusedRouteNameFromRoute(route),
+            "CreateTaskMain",
+          ),
+        };
+        }}
+      />
+      <Tab.Screen
+        name="Tasks"
+        component={TasksStack}
+        options={({ route, navigation }) => {
+          const hideSideTabs = shouldHideRootSideTabsForTabState(
+            typeof navigation?.getState === "function"
+              ? (navigation.getState() as Parameters<
+                  typeof resolveTaskDetailCameraTabParams
+                >[0])
+              : undefined,
+          );
+          return {
+          tabBarLabel: "Tasks",
+          tabBarButton: (props) => (
+            <RootTabButton
+              {...props}
+              testID="root-tab__tasks"
+              alignTowardsCamera="left"
+              hidden={hideSideTabs}
+            />
+          ),
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" size={size} color={color} />
+          ),
+          tabBarStyle: buildRootTabBarStyleForRoute(
+            getFocusedRouteNameFromRoute(route),
+          ),
+        };
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -2156,6 +2179,7 @@ export default function AppNavigator() {
       <RealtimeSyncManager />
       <WorkspaceBootstrapGate>
         <NavigationContainer ref={rootNavigationRef} linking={appLinking}>
+          <PostCheckoutManagementRedirect />
           <DataRefreshManager />
           <AppRootStack />
         </NavigationContainer>
@@ -2204,28 +2228,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   centerCameraTabButtonSlot: {
-    alignItems: "center",
-    alignSelf: "stretch",
-    flex: 1,
-    justifyContent: "center",
+    ...ROOT_TAB_CENTER_FAB_SLOT,
   },
   centerCameraTabButton: {
-    alignItems: "center",
-    alignSelf: "center",
+    ...ROOT_TAB_CENTER_FAB_LAYOUT,
     backgroundColor: "#dc2626",
-    borderColor: "#ffffff",
-    borderRadius: 32,
-    borderWidth: 4,
-    elevation: 8,
-    height: 64,
-    justifyContent: "center",
-    minWidth: 64,
     shadowColor: "#7f1d1d",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    top: ROOT_TAB_CAMERA_TOP_OFFSET,
-    width: 64,
   },
   centerCameraTabButtonFocused: {
     backgroundColor: "#b91c1c",

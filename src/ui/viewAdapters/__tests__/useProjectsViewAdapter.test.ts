@@ -18,12 +18,15 @@ jest.mock("@/state/userStore.supabase", () => ({
   useUserStoreWithInit: jest.fn(),
 }));
 
+jest.mock("@/state/taskStore.supabase", () => ({
+  useTaskStore: jest.fn(),
+}));
+
 jest.mock("@/utils/useTranslation", () => ({
   useTranslation: () => ({
     projects: {
-      active: "Active",
+      active: "On-going",
       planning: "Planning",
-      onHold: "On Hold",
       completed: "Completed",
       cancelled: "Cancelled",
       all: "All",
@@ -41,6 +44,10 @@ jest.mock("@/utils/useTranslation", () => ({
       createFirstProject: "Create your first project to get started",
       noProjectsMessage: "You haven't been assigned to any projects yet",
       projectUpdated: "Project updated successfully",
+    },
+    phrases: {
+      task: "task",
+      tasks: "tasks",
     },
     errors: {
       success: "Success",
@@ -121,6 +128,7 @@ describe("useProjectsViewAdapter", () => {
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithCompanyInit } = require("@/state/projectStore.supabase");
     const { useUserStoreWithInit } = require("@/state/userStore.supabase");
+    const { useTaskStore } = require("@/state/taskStore.supabase");
 
     useAuthStore.mockReturnValue({ user });
 
@@ -176,6 +184,16 @@ describe("useProjectsViewAdapter", () => {
       },
     });
 
+    useTaskStore.mockImplementation((selector: (state: unknown) => unknown) =>
+      selector({
+        tasks: [
+          { id: "task-1", projectId: "project-company-1" },
+          { id: "task-2", projectId: "project-company-1" },
+          { id: "task-3", projectId: "project-1" },
+        ],
+      }),
+    );
+
     return {
       setCompanyProjects(nextProjects: Project[]) {
         companyProjects = nextProjects;
@@ -221,6 +239,8 @@ describe("useProjectsViewAdapter", () => {
       "project-company-2",
     ]);
     expect(result.current.output.projectCountLabel).toBe("2 projects");
+    expect(result.current.output.projectItems[0]?.taskCountLabel).toBe("2 tasks");
+    expect(result.current.output.projectItems[1]?.taskCountLabel).toBe("0 tasks");
   });
 
   it("exposes minimal shell render-state models for header actions and project status tone", async () => {

@@ -18,12 +18,12 @@ import ModernScreenHeader from "../components/ModernScreenHeader";
 import BrandHeaderTitle from "../components/BrandHeaderTitle";
 import ModalHandle from "../components/ModalHandle";
 import { cn } from "../utils/cn";
+import { useThemeStore } from "../state/themeStore";
 import { useTranslation } from "../utils/useTranslation";
 import {
   useProfileViewAdapter,
   type ProfileScreenProps,
 } from "../ui/viewAdapters/useProfileViewAdapter";
-import type { ProfileSystemStatusItem } from "../ui/contracts/viewAdapters";
 import {
   createFormNavigationRegistry,
   getNextFocusableFieldId,
@@ -54,13 +54,15 @@ function MenuOption({
     <Pressable
       onPress={onPress}
       testID={testID}
-      className="flex-row items-center border-b border-gray-100 bg-white px-6 py-4"
+      className="flex-row items-center border-b border-gray-100 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark"
     >
-      <Ionicons name={icon as any} size={20} color="#6b7280" />
+      <Ionicons name={icon as any} size={20} color="#7A9AA6" />
       <Text
         className={cn(
           "ml-3 flex-1 text-lg",
-          colorTone === "danger" ? "text-red-600" : "text-gray-900",
+          colorTone === "danger"
+            ? "text-red-600 dark:text-red-400"
+            : "text-gray-900 dark:text-ink-dark",
         )}
       >
         {title}
@@ -70,40 +72,28 @@ function MenuOption({
           <Text className="text-xs font-bold text-white">{badge > 99 ? "99+" : badge}</Text>
         </View>
       ) : null}
-      {rightText && !badge ? <Text className="mr-2 text-base text-gray-500">{rightText}</Text> : null}
-      {showChevron ? <Ionicons name="chevron-forward" size={20} color="#d1d5db" /> : null}
+      {rightText && !badge ? (
+        <Text className="mr-2 text-base text-gray-500 dark:text-ink-dark-muted">{rightText}</Text>
+      ) : null}
+      {showChevron ? <Ionicons name="chevron-forward" size={20} color="#7A9AA6" /> : null}
     </Pressable>
   );
-}
-
-function getSystemStatusTextClassName(item: ProfileSystemStatusItem): string {
-  switch (item.valueTone) {
-    case "positive":
-      return "text-green-700";
-    case "negative":
-      return "text-red-700";
-    case "warning":
-      return "text-yellow-700";
-    default:
-      return "text-gray-900";
-  }
 }
 
 export default function ProfileScreen({
   onNavigateBack,
   onNavigateToDeveloperSettings,
   onNavigateToOwnerConsole,
-  onNavigateToCompanyPlan,
   onNavigateToPendingUsers,
   onNavigateToProfile,
   onNavigateToProjectPicker,
 }: ProfileScreenProps) {
   const t = useTranslation();
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { output, actions } = useProfileViewAdapter({
     onNavigateBack,
     onNavigateToDeveloperSettings,
     onNavigateToOwnerConsole,
-    onNavigateToCompanyPlan,
     onNavigateToPendingUsers,
     onNavigateToProfile,
     onNavigateToProjectPicker,
@@ -117,69 +107,46 @@ export default function ProfileScreen({
         { fieldId: "currentPassword", isFocusable: true },
         { fieldId: "newPassword", isFocusable: true },
         { fieldId: "confirmPassword", isFocusable: true },
-        { fieldId: "submit", isFocusable: true },
       ]),
     [],
   );
-  const focusPasswordField = useCallback(
-    (fieldId: "currentPassword" | "newPassword" | "confirmPassword" | "submit" | null) => {
-      if (!fieldId || fieldId === "submit") {
-        currentPasswordInputRef.current?.blur?.();
-        newPasswordInputRef.current?.blur?.();
-        confirmPasswordInputRef.current?.blur?.();
+
+  const focusPasswordField = useCallback((fieldId: string) => {
+    if (fieldId === "currentPassword") {
+      currentPasswordInputRef.current?.focus();
+      return;
+    }
+    if (fieldId === "newPassword") {
+      newPasswordInputRef.current?.focus();
+      return;
+    }
+    if (fieldId === "confirmPassword") {
+      confirmPasswordInputRef.current?.focus();
+    }
+  }, []);
+
+  const handlePasswordFieldKeyPress = useCallback(
+    (fieldId: string, event: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
+      const direction = getTabNavigationDirection(event);
+      if (!direction) {
         return;
       }
-
-      const focusTargetMap = {
-        currentPassword: currentPasswordInputRef,
-        newPassword: newPasswordInputRef,
-        confirmPassword: confirmPasswordInputRef,
-      } satisfies Record<
-        "currentPassword" | "newPassword" | "confirmPassword",
-        React.RefObject<TextInput | null>
-      >;
-
-      focusTargetMap[fieldId].current?.focus?.();
-    },
-    [],
-  );
-  const movePasswordFieldFocus = useCallback(
-    (
-      activeFieldId: "currentPassword" | "newPassword" | "confirmPassword",
-      direction: "next" | "previous" = "next",
-    ) => {
-      const targetFieldId =
-        direction === "previous"
-          ? getPreviousFocusableFieldId(passwordFormNavigationRegistry, activeFieldId)
-          : getNextFocusableFieldId(passwordFormNavigationRegistry, activeFieldId);
-
-      focusPasswordField(
-        (targetFieldId as "currentPassword" | "newPassword" | "confirmPassword" | "submit" | null) ??
-          null,
-      );
+      const nextId =
+        direction === "next"
+          ? getNextFocusableFieldId(passwordFormNavigationRegistry, fieldId)
+          : getPreviousFocusableFieldId(passwordFormNavigationRegistry, fieldId);
+      if (nextId) {
+        focusPasswordField(nextId);
+      }
     },
     [focusPasswordField, passwordFormNavigationRegistry],
   );
-  const handlePasswordFieldKeyPress = useCallback(
-    (
-      activeFieldId: "currentPassword" | "newPassword" | "confirmPassword",
-      event: NativeSyntheticEvent<TextInputKeyPressEventData>,
-    ) => {
-      if (event.nativeEvent.key !== "Tab") {
-        return;
-      }
-
-      movePasswordFieldFocus(activeFieldId, getTabNavigationDirection(event));
-    },
-    [movePasswordFieldFocus],
-  );
-
-  if (!output.readiness.hasUsableData) {
-    return null;
-  }
 
   return (
-    <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
+    <SafeAreaView
+      edges={["bottom", "left", "right"]}
+      className="flex-1 bg-canvas dark:bg-canvas-dark"
+    >
       <StatusBar style="light" />
 
       <ModernScreenHeader
@@ -189,28 +156,38 @@ export default function ProfileScreen({
         onBackPress={onNavigateBack}
         onNavigateToProfile={onNavigateToProfile}
         onNavigateToProjectPicker={onNavigateToProjectPicker}
-        className="border-b-0 bg-[#08576E] pb-2"
+        className="border-b-0 bg-brand pb-2"
       />
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="mx-6 mt-4 rounded-xl border border-gray-200 bg-white">
+        <View className="mx-6 mt-4 rounded-xl border border-gray-200 bg-white dark:border-[#1E3A44] dark:bg-surface-dark">
           <View className="items-center py-6">
-            <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-blue-600">
+            <View className="mb-4 h-20 w-20 items-center justify-center rounded-full bg-accent-strong">
               <Text className="text-3xl font-bold text-white">{output.profileCard.initial}</Text>
             </View>
-            <Text className="text-2xl font-bold text-gray-900">{output.profileCard.name}</Text>
-            <Text className="capitalize text-gray-600">{output.profileCard.roleLabel}</Text>
-            <Text className="mt-1 text-base text-gray-500">{output.profileCard.email}</Text>
+            <Text className="text-2xl font-bold text-gray-900 dark:text-ink-dark">
+              {output.profileCard.name}
+            </Text>
+            <Text className="capitalize text-gray-600 dark:text-ink-dark-muted">
+              {output.profileCard.roleLabel}
+            </Text>
+            <Text className="mt-1 text-base text-gray-500 dark:text-ink-dark-faint">
+              {output.profileCard.email}
+            </Text>
             {output.profileCard.phone ? (
-              <Text className="text-base text-gray-500">{output.profileCard.phone}</Text>
+              <Text className="text-base text-gray-500 dark:text-ink-dark-faint">
+                {output.profileCard.phone}
+              </Text>
             ) : null}
           </View>
         </View>
 
         {output.sections.map((section) => (
           <View key={section.id} className="mt-6">
-            <Text className="mb-2 px-6 text-xl font-semibold text-gray-900">{section.title}</Text>
-            <View className="mx-6 rounded-xl border border-gray-200 bg-white">
+            <Text className="mb-2 px-6 text-xl font-semibold text-gray-900 dark:text-ink-dark">
+              {section.title}
+            </Text>
+            <View className="mx-6 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-[#1E3A44] dark:bg-surface-dark">
               {section.items.map((item) => (
                 <MenuOption
                   key={item.id}
@@ -230,28 +207,7 @@ export default function ProfileScreen({
           </View>
         ))}
 
-        <View className="mb-4 mt-6 px-6">
-          <Text className="mb-2 text-xl font-semibold text-gray-900">System Status</Text>
-          <View className="rounded-xl border border-gray-200 bg-white p-4">
-            {output.systemStatusItems.map((item, index) => (
-              <React.Fragment key={item.id}>
-                {index > 0 ? <View className="my-2 h-px bg-gray-200" /> : null}
-                <View className="flex-row items-center justify-between py-2">
-                  <View className="flex-1 flex-row items-center">
-                    <View
-                      className="mr-3 h-3 w-3 rounded-full"
-                      style={{ backgroundColor: item.indicatorColor }}
-                    />
-                    <Text className="text-base text-gray-700">{item.label}</Text>
-                  </View>
-                  <Text className={cn("text-base font-medium", getSystemStatusTextClassName(item))}>
-                    {item.value}
-                  </Text>
-                </View>
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+        <View className="h-8" />
       </ScrollView>
 
       {output.passwordChange.visible ? (
@@ -261,12 +217,15 @@ export default function ProfileScreen({
           presentationStyle="pageSheet"
           onRequestClose={actions.closePasswordChange}
         >
-          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
-            <StatusBar style="light" />
+          <SafeAreaView
+            edges={["bottom", "left", "right"]}
+            className="flex-1 bg-canvas dark:bg-canvas-dark"
+          >
+            <StatusBar style={isDarkMode ? "light" : "dark"} />
 
             <ModalHandle />
 
-            <View className="flex-row items-center border-b border-gray-200 bg-white px-6 py-4">
+            <View className="flex-row items-center border-b border-gray-200 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark">
               <Pressable
                 onPress={actions.closePasswordChange}
                 className="mr-4 h-10 w-10 items-center justify-center"
@@ -275,19 +234,24 @@ export default function ProfileScreen({
                 <Ionicons
                   name="close"
                   size={24}
-                  color={output.passwordChange.isSubmitting ? "#d1d5db" : "#374151"}
+                  color={output.passwordChange.isSubmitting ? "#7A9AA6" : "#A8C5D0"}
                 />
               </Pressable>
-              <Text className="flex-1 text-2xl font-semibold text-gray-900">Change Password</Text>
+              <Text className="flex-1 text-2xl font-semibold text-gray-900 dark:text-ink-dark">
+                Change Password
+              </Text>
             </View>
 
             <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
               <View className="mb-4">
-                <Text className="mb-2 text-lg font-semibold text-slate-900">Current Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900 dark:text-ink-dark">
+                  Current Password
+                </Text>
                 <TextInput
                   ref={currentPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900 dark:border-[#1E3A44] dark:bg-surface-dark dark:text-ink-dark"
                   placeholder="Enter your current password"
+                  placeholderTextColor="#7A9AA6"
                   value={output.passwordChange.currentPassword}
                   onChangeText={actions.setCurrentPassword}
                   secureTextEntry
@@ -297,18 +261,20 @@ export default function ProfileScreen({
                   style={{ fontSize: 18 }}
                   onKeyPress={(event) => handlePasswordFieldKeyPress("currentPassword", event)}
                   onSubmitEditing={() => {
-                    movePasswordFieldFocus("currentPassword");
+                    focusPasswordField("newPassword");
                   }}
-                  blurOnSubmit={false}
                 />
               </View>
 
               <View className="mb-4">
-                <Text className="mb-2 text-lg font-semibold text-slate-900">New Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900 dark:text-ink-dark">
+                  New Password
+                </Text>
                 <TextInput
                   ref={newPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
-                  placeholder="Enter new password (min. 6 characters)"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900 dark:border-[#1E3A44] dark:bg-surface-dark dark:text-ink-dark"
+                  placeholder="Enter a new password"
+                  placeholderTextColor="#7A9AA6"
                   value={output.passwordChange.newPassword}
                   onChangeText={actions.setNewPassword}
                   secureTextEntry
@@ -318,49 +284,53 @@ export default function ProfileScreen({
                   style={{ fontSize: 18 }}
                   onKeyPress={(event) => handlePasswordFieldKeyPress("newPassword", event)}
                   onSubmitEditing={() => {
-                    movePasswordFieldFocus("newPassword");
+                    focusPasswordField("confirmPassword");
                   }}
-                  blurOnSubmit={false}
                 />
               </View>
 
               <View className="mb-6">
-                <Text className="mb-2 text-lg font-semibold text-slate-900">Confirm New Password</Text>
+                <Text className="mb-2 text-lg font-semibold text-slate-900 dark:text-ink-dark">
+                  Confirm New Password
+                </Text>
                 <TextInput
                   ref={confirmPasswordInputRef}
-                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900"
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-lg text-gray-900 dark:border-[#1E3A44] dark:bg-surface-dark dark:text-ink-dark"
                   placeholder="Confirm new password"
+                  placeholderTextColor="#7A9AA6"
                   value={output.passwordChange.confirmPassword}
                   onChangeText={actions.setConfirmPassword}
                   secureTextEntry
-                  style={{ fontSize: 18 }}
                   autoCapitalize="none"
                   editable={!output.passwordChange.isSubmitting}
                   returnKeyType="done"
+                  style={{ fontSize: 18 }}
                   onKeyPress={(event) => handlePasswordFieldKeyPress("confirmPassword", event)}
                   onSubmitEditing={() => {
-                    confirmPasswordInputRef.current?.blur();
+                    if (output.passwordChange.isValid && !output.passwordChange.isSubmitting) {
+                      void actions.submitPasswordChange();
+                    }
                   }}
                 />
               </View>
 
               <Pressable
+                testID="profile-change-password-submit"
                 onPress={() => {
                   void actions.submitPasswordChange();
                 }}
-                disabled={output.passwordChange.isSubmitting}
+                disabled={!output.passwordChange.isValid || output.passwordChange.isSubmitting}
                 className={cn(
-                  "items-center justify-center rounded-lg bg-blue-600 py-4",
-                  output.passwordChange.isSubmitting && "opacity-50",
+                  "mb-8 items-center justify-center rounded-xl py-4",
+                  output.passwordChange.isValid && !output.passwordChange.isSubmitting
+                    ? "bg-brand"
+                    : "bg-gray-300 dark:bg-[#1E3A44]",
                 )}
               >
                 {output.passwordChange.isSubmitting ? (
-                  <View className="flex-row items-center">
-                    <ActivityIndicator color="white" size="small" className="mr-2" />
-                    <Text className="text-lg font-semibold text-white">Changing Password...</Text>
-                  </View>
+                  <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text className="text-lg font-semibold text-white">Change Password</Text>
+                  <Text className="text-lg font-semibold text-white">Update Password</Text>
                 )}
               </Pressable>
             </ScrollView>
@@ -375,64 +345,46 @@ export default function ProfileScreen({
           presentationStyle="pageSheet"
           onRequestClose={actions.closeLanguagePicker}
         >
-          <SafeAreaView edges={["bottom", "left", "right"]} className="flex-1 bg-[#E7F4F8]">
-            <StatusBar style="light" />
-
+          <SafeAreaView
+            edges={["bottom", "left", "right"]}
+            className="flex-1 bg-canvas dark:bg-canvas-dark"
+          >
             <ModalHandle />
-
-            <View className="flex-row items-center border-b border-gray-200 bg-white px-6 py-4">
+            <View className="flex-row items-center border-b border-gray-200 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark">
               <Pressable
                 onPress={actions.closeLanguagePicker}
                 className="mr-4 h-10 w-10 items-center justify-center"
               >
-                <Ionicons name="close" size={24} color="#374151" />
+                <Ionicons name="close" size={24} color="#A8C5D0" />
               </Pressable>
-              <Text className="flex-1 text-2xl font-semibold text-gray-900">
-                {t.profile.selectLanguage}
+              <Text className="flex-1 text-2xl font-semibold text-gray-900 dark:text-ink-dark">
+                {t.profile.language}
               </Text>
             </View>
-
-            <View className="px-6 py-4">
+            <ScrollView className="flex-1">
               {output.languagePicker.options.map((option) => (
                 <Pressable
                   key={option.id}
                   onPress={() => actions.handleLanguageSelection(option.language)}
-                  className={cn(
-                    "mb-3 flex-row items-center rounded-lg border bg-white px-4 py-4",
-                    option.isSelected ? "border-blue-500 bg-blue-50" : "border-gray-300",
-                  )}
+                  className="flex-row items-center border-b border-gray-100 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark"
                 >
-                  <View
-                    className={cn(
-                      "mr-3 h-5 w-5 items-center justify-center rounded-full border-2",
-                      option.isSelected ? "border-blue-500" : "border-gray-300",
-                    )}
-                  >
-                    {option.isSelected ? <View className="h-3 w-3 rounded-full bg-blue-500" /> : null}
-                  </View>
                   <View className="flex-1">
-                    <Text
-                      className={cn(
-                        "text-lg font-semibold",
-                        option.isSelected ? "text-blue-900" : "text-gray-900",
-                      )}
-                    >
+                    <Text className="text-lg font-medium text-gray-900 dark:text-ink-dark">
                       {option.title}
                     </Text>
-                    <Text className="mt-0.5 text-sm text-gray-600">{option.subtitle}</Text>
+                    <Text className="text-base text-gray-500 dark:text-ink-dark-muted">
+                      {option.subtitle}
+                    </Text>
                   </View>
-                  <Ionicons
-                    name="language-outline"
-                    size={24}
-                    color={option.isSelected ? "#3b82f6" : "#6b7280"}
-                  />
+                  {option.isSelected ? (
+                    <Ionicons name="checkmark-circle" size={24} color="#12A8E0" />
+                  ) : null}
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
           </SafeAreaView>
         </Modal>
       ) : null}
-
     </SafeAreaView>
   );
 }

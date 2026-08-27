@@ -101,19 +101,30 @@ describe("taskVisibilityPermissions", () => {
     ).toEqual(["self"]);
   });
 
-  it("scopes admins to company projects only", () => {
+  it("scopes admins to assigned projects (not all company tasks)", () => {
+    const peerTask = {
+      projectId: "proj-a",
+      assignedBy: "x",
+      assignedTo: ["y"],
+    };
+
     expect(
       canViewerSelectTask({
         viewer: { id: "henry", systemPermission: "admin", companyId: "co-a" },
-        task: {
-          projectId: "proj-b",
-          assignedBy: "x",
-          assignedTo: ["y"],
-        },
-        project: { id: "proj-b", companyId: "co-b" },
+        task: peerTask,
+        project: projectA,
         viewerProjectIds: [],
       }),
     ).toBe(false);
+
+    expect(
+      canViewerSelectTask({
+        viewer: { id: "henry", systemPermission: "admin", companyId: "co-a" },
+        task: peerTask,
+        project: projectA,
+        viewerProjectIds: ["proj-a"],
+      }),
+    ).toBe(true);
   });
 
   it("denies admin/manager when project scope is missing (callers must hold loading)", () => {

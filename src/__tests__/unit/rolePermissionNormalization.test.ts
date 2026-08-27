@@ -16,6 +16,15 @@ describe("role and permission normalization", () => {
     ).toBe("member");
   });
 
+  it("maps live DB supervisor role to manager system permission", () => {
+    expect(
+      getUserSystemPermission({
+        id: "user-pm",
+        role: "supervisor",
+      } as any),
+    ).toBe("manager");
+  });
+
   it("prefers systemPermission when present", () => {
     expect(
       getUserSystemPermission({

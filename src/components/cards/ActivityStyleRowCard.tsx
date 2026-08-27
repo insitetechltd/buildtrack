@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  LayoutChangeEvent,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { cn } from "@/utils/cn";
@@ -32,7 +39,10 @@ interface ActivityStyleRowCardProps {
   heroActorLabel?: string;
   metaLabel?: string;
   badgeLabel?: string;
+  /** Single preview photo (still supported). Prefer imageUris for multi. */
   imageUri?: string;
+  /** All event photos — enables horizontal swipe when length > 1. */
+  imageUris?: string[];
   variant?: ActivityStyleRowVariant;
   layout?: ActivityStyleRowLayout;
   mediaSize?: ActivityStyleRowMediaSize;
@@ -75,6 +85,7 @@ export default function ActivityStyleRowCard({
   metaLabel = "",
   badgeLabel = "",
   imageUri,
+  imageUris,
   variant = "activity",
   layout = "rail",
   mediaSize,
@@ -87,11 +98,35 @@ export default function ActivityStyleRowCard({
   onPress,
   disabled,
 }: ActivityStyleRowCardProps) {
-  const [hasUsableImage, setHasUsableImage] = useState(Boolean(imageUri));
+  const resolvedImageUris = useMemo(() => {
+    if (Array.isArray(imageUris) && imageUris.length > 0) {
+      return imageUris.filter((uri) => typeof uri === "string" && uri.length > 0);
+    }
+    if (imageUri) {
+      return [imageUri];
+    }
+    return [] as string[];
+  }, [imageUri, imageUris]);
+
+  const [failedUris, setFailedUris] = useState<Record<string, true>>({});
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [heroWidth, setHeroWidth] = useState(0);
+
+  const usableImageUris = useMemo(
+    () => resolvedImageUris.filter((uri) => !failedUris[uri]),
+    [failedUris, resolvedImageUris],
+  );
 
   useEffect(() => {
-    setHasUsableImage(Boolean(imageUri));
-  }, [imageUri]);
+    setFailedUris({});
+    setGalleryIndex(0);
+  }, [resolvedImageUris.join("|")]);
+
+  useEffect(() => {
+    if (galleryIndex >= usableImageUris.length) {
+      setGalleryIndex(Math.max(0, usableImageUris.length - 1));
+    }
+  }, [galleryIndex, usableImageUris.length]);
 
   const resolvedMediaSize = mediaSize ?? defaultMediaSize(variant);
   const media = MEDIA[resolvedMediaSize];
@@ -145,7 +180,20 @@ export default function ActivityStyleRowCard({
   const hasBadge = badgeLabel.trim().length > 0;
   const resolvedActorLabel = (actorLabel ?? heroActorLabel).trim();
   const hasActor = resolvedActorLabel.length > 0;
-  const showPostPhoto = Boolean(hasUsableImage && imageUri);
+  const showPostPhoto = usableImageUris.length > 0;
+  const primaryImageUri = usableImageUris[0];
+  const hasUsableImage = Boolean(primaryImageUri);
+
+  const markImageFailed = (uri: string) => {
+    setFailedUris((current) => (current[uri] ? current : { ...current, [uri]: true }));
+  };
+
+  const onHeroLayout = (event: LayoutChangeEvent) => {
+    const nextWidth = Math.round(event.nativeEvent.layout.width);
+    if (nextWidth > 0 && nextWidth !== heroWidth) {
+      setHeroWidth(nextWidth);
+    }
+  };
 
   const bottomRow =
     hasMeta || hasBadge ? (
@@ -182,15 +230,15 @@ export default function ActivityStyleRowCard({
     ) : null;
 
   // Depth 2 — Post (Recent Activity)
+  // Photo carousel must NOT sit inside the card Pressable — iOS gives the
+  // parent press responder priority and horizontal swipe never starts.
   if (resolvePostLayout(layout)) {
     const changeLine = title.trim();
     const taskName = (subtitle || overlayTitle || "").trim();
 
     return (
-      <Pressable
+      <View
         testID={testID}
-        onPress={onPress}
-        disabled={disabled}
         className="overflow-hidden rounded-2xl bg-white"
         accessibilityState={{ disabled: Boolean(disabled) }}
       >
@@ -203,7 +251,12 @@ export default function ActivityStyleRowCard({
             }
             className="overflow-hidden"
           >
-            <View className="px-4 pt-3">
+            <Pressable
+              testID={`${testID}:body-pressable`}
+              onPress={onPress}
+              disabled={disabled}
+              className="px-4 pt-3"
+            >
               {(hasActor || hasMeta) && (
                 <View testID={`${testID}:post-header`} className="mb-3">
                   <View className="flex-row items-center gap-3">
@@ -244,11 +297,7 @@ export default function ActivityStyleRowCard({
                 </View>
               )}
 
-              <Pressable
-                testID={`${testID}:title-pressable`}
-                onPress={onPress}
-                disabled={disabled}
-              >
+              <View testID={`${testID}:title-pressable`}>
                 <Text
                   testID={`${testID}:title`}
                   className={titleClassName ?? recipeClasses.title}
@@ -256,7 +305,7 @@ export default function ActivityStyleRowCard({
                 >
                   {changeLine}
                 </Text>
-              </Pressable>
+              </View>
               {taskName ? (
                 <Text
                   testID={`${testID}:subtitle`}
@@ -266,32 +315,125 @@ export default function ActivityStyleRowCard({
                   {taskName}
                 </Text>
               ) : null}
-            </View>
+            </Pressable>
 
-            {showPostPhoto && imageUri ? (
-              <View
-                testID={`${testID}:hero`}
-                className="mx-4 mt-3 overflow-hidden rounded-2xl bg-slate-100"
-                style={{ height: ACTIVITY_FAMILY.photoHeight }}
-              >
-                <ExpoImage
-                  testID={`${testID}:hero-image`}
-                  source={{
-                    uri: imageUri,
-                    cacheKey: extractBuildtrackStoragePath(imageUri) ?? imageUri,
-                  }}
-                  style={StyleSheet.absoluteFillObject}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                  onError={() => setHasUsableImage(false)}
-                />
+            {showPostPhoto ? (
+              <View className="mx-4 mt-3">
+                <View
+                  testID={`${testID}:hero`}
+                  className="overflow-hidden rounded-2xl bg-slate-100"
+                  style={{ height: ACTIVITY_FAMILY.photoHeight }}
+                  onLayout={onHeroLayout}
+                >
+                  {usableImageUris.length > 1 && heroWidth > 0 ? (
+                    <ScrollView
+                      testID={`${testID}:hero-swipe`}
+                      horizontal
+                      pagingEnabled
+                      directionalLockEnabled
+                      nestedScrollEnabled
+                      disableIntervalMomentum
+                      decelerationRate="fast"
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ height: "100%" }}
+                      style={{ height: ACTIVITY_FAMILY.photoHeight }}
+                      onMomentumScrollEnd={(event) => {
+                        const pageWidth = Math.max(
+                          event.nativeEvent.layoutMeasurement.width,
+                          heroWidth,
+                          1,
+                        );
+                        const nextIndex = Math.round(
+                          event.nativeEvent.contentOffset.x / pageWidth,
+                        );
+                        setGalleryIndex(
+                          Math.min(Math.max(nextIndex, 0), usableImageUris.length - 1),
+                        );
+                      }}
+                    >
+                      {usableImageUris.map((uri, photoIndex) => (
+                        <Pressable
+                          key={`${testID}:hero-slide:${photoIndex}`}
+                          testID={
+                            photoIndex === 0
+                              ? `${testID}:hero-image-pressable`
+                              : `${testID}:hero-image-pressable-${photoIndex}`
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Activity photo ${photoIndex + 1} of ${usableImageUris.length}`}
+                          disabled={disabled}
+                          onPress={onPress}
+                          style={{
+                            width: heroWidth,
+                            height: ACTIVITY_FAMILY.photoHeight,
+                            position: "relative",
+                          }}
+                        >
+                          <ExpoImage
+                            testID={
+                              photoIndex === 0
+                                ? `${testID}:hero-image`
+                                : `${testID}:hero-image-${photoIndex}`
+                            }
+                            source={{
+                              uri,
+                              cacheKey: extractBuildtrackStoragePath(uri) ?? uri,
+                            }}
+                            style={StyleSheet.absoluteFillObject}
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            onError={() => markImageFailed(uri)}
+                          />
+                        </Pressable>
+                      ))}
+                    </ScrollView>
+                  ) : (
+                    <Pressable
+                      testID={`${testID}:hero-image-pressable`}
+                      accessibilityRole="button"
+                      disabled={disabled}
+                      onPress={onPress}
+                      style={StyleSheet.absoluteFillObject}
+                    >
+                      <ExpoImage
+                        testID={`${testID}:hero-image`}
+                        source={{
+                          uri: primaryImageUri,
+                          cacheKey:
+                            extractBuildtrackStoragePath(primaryImageUri) ??
+                            primaryImageUri,
+                        }}
+                        style={StyleSheet.absoluteFillObject}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        onError={() => markImageFailed(primaryImageUri)}
+                      />
+                    </Pressable>
+                  )}
+                </View>
+                {usableImageUris.length > 1 ? (
+                  <View
+                    testID={`${testID}:hero-pager`}
+                    className="mt-2 flex-row items-center justify-center gap-1.5"
+                  >
+                    {usableImageUris.map((_, photoIndex) => (
+                      <View
+                        key={`${testID}:hero-dot:${photoIndex}`}
+                        className={cn(
+                          "h-2 rounded-full",
+                          photoIndex === galleryIndex ? "w-5 bg-[#08576E]" : "w-2 bg-slate-300",
+                        )}
+                      />
+                    ))}
+                  </View>
+                ) : null}
               </View>
             ) : null}
 
             <View className="pb-3" />
           </View>
         </View>
-      </Pressable>
+      </View>
     );
   }
 
@@ -323,21 +465,22 @@ export default function ActivityStyleRowCard({
           testID={`${testID}:thumbnail`}
           className={cn(
             "absolute bottom-0 left-0 top-0 z-0 overflow-hidden",
-            hasUsableImage && imageUri ? "bg-slate-100" : recipeClasses.placeholder,
+            hasUsableImage && primaryImageUri ? "bg-slate-100" : recipeClasses.placeholder,
           )}
           style={{ width: media.widthPx }}
         >
-          {hasUsableImage && imageUri ? (
+          {hasUsableImage && primaryImageUri ? (
             <ExpoImage
               testID={`${testID}:thumbnail-image`}
               source={{
-                uri: imageUri,
-                cacheKey: extractBuildtrackStoragePath(imageUri) ?? imageUri,
+                uri: primaryImageUri,
+                cacheKey:
+                  extractBuildtrackStoragePath(primaryImageUri) ?? primaryImageUri,
               }}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               cachePolicy="memory-disk"
-              onError={() => setHasUsableImage(false)}
+              onError={() => markImageFailed(primaryImageUri)}
             />
           ) : (
             <View

@@ -1,0 +1,256 @@
+# Chinese translation brief (Insite / Taskr mobile app) — PART A ONLY
+
+You are translating UI copy for a construction jobsite task app (photo evidence → task → review).
+Target: **Traditional Chinese (zh-TW)** — Taiwan/HK field tone, not Mainland marketing Chinese unless asked.
+
+## Rules
+1. Output format (one line per entry, exactly):
+   KEY | 繁體中文譯文
+   Example: auth.login | 登入
+2. Keep placeholders EXACTLY as in EN (do not translate brace names):
+   {creatorName}, {assigneesList}, {arg1}, {count}, {name}, etc.
+3. Keep emoji if present in EN.
+4. Preferred glossary:
+   - task → 工作 (or 任務 if already established in key context)
+   - project → 專案
+   - assign → 指派 / 分配
+   - review / approval → 審核 / 審批
+   - overdue → 逾期
+   - progress → 進度
+   - attachment / photo → 附件 / 相片
+5. Do NOT translate brand/product names: Taskr, Insite, BuildTrack.
+6. Do NOT invent new keys. Translate only the keys listed below.
+7. Return ONLY the KEY | 譯文 lines (no numbering, no EN reprint, no commentary).
+
+## Keys to translate
+Source: src/locales/en.ts → destination: src/locales/zh-TW.ts
+
+## Part A chunk 1/4 — common + auth + nav + dashboard
+Keys in this chunk: 112
+Sections: common, auth, nav, dashboard
+(Send chunks 1→4 in order; merge all KEY | 譯文 replies before apply.)
+
+1. common.all
+   EN: All
+2. common.apply
+   EN: Apply
+3. common.back
+   EN: Back
+4. common.cancel
+   EN: Cancel
+5. common.clear
+   EN: Clear
+6. common.close
+   EN: Close
+7. common.confirm
+   EN: Confirm
+8. common.create
+   EN: Create
+9. common.delete
+   EN: Delete
+10. common.done
+   EN: Done
+11. common.edit
+   EN: Edit
+12. common.filter
+   EN: Filter
+13. common.loading
+   EN: Loading...
+14. common.next
+   EN: Next
+15. common.no
+   EN: No
+16. common.ok
+   EN: OK
+17. common.save
+   EN: Save
+18. common.search
+   EN: Search
+19. common.seeAll
+   EN: See All
+20. common.select
+   EN: Select
+21. common.selected
+   EN: Selected
+22. common.total
+   EN: Total
+23. common.update
+   EN: Update
+24. common.yes
+   EN: Yes
+25. auth.confirmPassword
+   EN: Confirm Password
+26. auth.email
+   EN: Email
+27. auth.forgotPassword
+   EN: Forgot Password?
+28. auth.login
+   EN: Login
+29. auth.logout
+   EN: Logout
+30. auth.logoutConfirm
+   EN: Are you sure you want to logout?
+31. auth.password
+   EN: Password
+32. auth.register
+   EN: Register
+33. auth.welcomeBack
+   EN: Welcome Back! 👋
+34. nav.activity
+   EN: Activity
+35. nav.dashboard
+   EN: Dashboard
+36. nav.profile
+   EN: Profile
+37. nav.projects
+   EN: Projects
+38. nav.reports
+   EN: Reports
+39. nav.settings
+   EN: Settings
+40. nav.tasks
+   EN: Tasks
+41. dashboard.accomplishments
+   EN: My Completed Work
+42. dashboard.active
+   EN: On-going
+43. dashboard.allProjects
+   EN: All Projects
+44. dashboard.assigned
+   EN: Assigned
+45. dashboard.changeProject
+   EN: Change Project
+46. dashboard.completed
+   EN: Completed
+47. dashboard.currentTasks
+   EN: Current\nTasks
+48. dashboard.currentTasksHeader
+   EN: Current Tasks
+49. dashboard.dataRefreshed
+   EN: Data refreshed successfully!
+50. dashboard.done
+   EN: Done
+51. dashboard.error
+   EN: Error
+52. dashboard.followUpNow
+   EN: Follow Up\nNow
+53. dashboard.followUpNowHeader
+   EN: Follow Up Now
+54. dashboard.inProgress
+   EN: In Progress
+55. dashboard.inbox
+   EN: Inbox
+56. dashboard.keyTasks
+   EN: Key Tasks
+57. dashboard.loadingData
+   EN: Loading data...
+58. dashboard.loadingProjects
+   EN: Loading projects...
+59. dashboard.loadingTasks
+   EN: Loading tasks...
+60. dashboard.loadingUsers
+   EN: Loading users...
+61. dashboard.logout
+   EN: Logout
+62. dashboard.logoutConfirm
+   EN: Are you sure you want to logout?
+63. dashboard.myActionRequiredNow
+   EN: My Action\nRequired Now
+64. dashboard.myActionRequiredNowHeader
+   EN: My Action Required Now
+65. dashboard.myTasks
+   EN: My Tasks
+66. dashboard.newRequests
+   EN: New\nRequests
+67. dashboard.newRequestsHeader
+   EN: New Requests
+68. dashboard.noProjectsMessage
+   EN: You haven't been assigned to any projects yet. Contact your admin to get started.
+69. dashboard.noProjectsYet
+   EN: No Projects Yet
+70. dashboard.noTasksMessage
+   EN: Tasks assigned to you will appear here
+71. dashboard.noTasksYet
+   EN: No tasks assigned yet
+72. dashboard.notStarted
+   EN: Not Started
+73. dashboard.outbox
+   EN: Outbox
+74. dashboard.overdue
+   EN: Overdue
+75. dashboard.pendingAcceptance
+   EN: Pending\nAcceptance
+76. dashboard.pendingAcceptanceHeader
+   EN: Pending Acceptance
+77. dashboard.pendingApproval
+   EN: Pending\nApproval
+78. dashboard.pendingApprovalHeader
+   EN: Pending Approval
+79. dashboard.pendingMyReview
+   EN: Pending\nmy review
+80. dashboard.pendingMyReviewHeader
+   EN: Pending my review
+81. dashboard.planning
+   EN: Planning
+82. dashboard.profileAndSettings
+   EN: Profile & Settings
+83. dashboard.projectParticipation
+   EN: Project Participation
+84. dashboard.quickOverview
+   EN: Full Task List
+85. dashboard.received
+   EN: Received
+86. dashboard.recentTasks
+   EN: Recent Tasks
+87. dashboard.refreshFailed
+   EN: Failed to refresh data. Please try again.
+88. dashboard.refreshingData
+   EN: Refreshing all data for the new project
+89. dashboard.rejected
+   EN: Rejected
+90. dashboard.reviewing
+   EN: Reviewing
+91. dashboard.selectAProject
+   EN: Select a Project
+92. dashboard.selectProject
+   EN: Select Project
+93. dashboard.selectProjectMessage
+   EN: Please select a project to view your dashboard
+94. dashboard.success
+   EN: Success
+95. dashboard.switchingProject
+   EN: Switching Project...
+96. dashboard.tapStarHint
+   EN: Tap star in Tasks screen
+97. dashboard.tasksAssignedToMe
+   EN: Task Inbox
+98. dashboard.tasksForMe
+   EN: Tasks for me
+99. dashboard.tasksFromMe
+   EN: Tasks from me
+100. dashboard.tasksIAssigned
+   EN: Task Outbox
+101. dashboard.teamProceeding
+   EN: Team\nProceeding
+102. dashboard.teamProceedingHeader
+   EN: Team Proceeding
+103. dashboard.totalProjects
+   EN: Total Projects
+104. dashboard.viewTasks
+   EN: View tasks from all your projects
+105. dashboard.viewing
+   EN: Viewing
+106. dashboard.welcomeBack
+   EN: Welcome Back! 👋
+107. dashboard.wip
+   EN: WIP
+108. dashboard.workAccepted
+   EN: Work\nAccepted
+109. dashboard.workAcceptedHeader
+   EN: Work Accepted
+110. dashboard.workRejected
+   EN: Work\nRejected
+111. dashboard.workRejectedHeader
+   EN: Work Rejected
+112. dashboard.yourProjects
+   EN: Your Projects

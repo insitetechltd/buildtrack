@@ -1,0 +1,388 @@
+# Chinese translation brief (Insite / Taskr mobile app) — PART A ONLY
+
+You are translating UI copy for a construction jobsite task app (photo evidence → task → review).
+Target: **Traditional Chinese (zh-TW)** — Taiwan/HK field tone, not Mainland marketing Chinese unless asked.
+
+## Rules
+1. Output format (one line per entry, exactly):
+   KEY | 繁體中文譯文
+   Example: auth.login | 登入
+2. Keep placeholders EXACTLY as in EN (do not translate brace names):
+   {creatorName}, {assigneesList}, {arg1}, {count}, {name}, etc.
+3. Keep emoji if present in EN.
+4. Preferred glossary:
+   - task → 工作 (or 任務 if already established in key context)
+   - project → 專案
+   - assign → 指派 / 分配
+   - review / approval → 審核 / 審批
+   - overdue → 逾期
+   - progress → 進度
+   - attachment / photo → 附件 / 相片
+5. Do NOT translate brand/product names: Taskr, Insite, BuildTrack.
+6. Do NOT invent new keys. Translate only the keys listed below.
+7. Return ONLY the KEY | 譯文 lines (no numbering, no EN reprint, no commentary).
+
+## Keys to translate
+Source: src/locales/en.ts → destination: src/locales/zh-TW.ts
+
+## Part A chunk 2/4 — tasks + projects + profile + userManagement
+Keys in this chunk: 178
+Sections: tasks, projects, profile, userManagement
+(Send chunks 1→4 in order; merge all KEY | 譯文 replies before apply.)
+
+1. tasks.all
+   EN: All
+2. tasks.assignTo
+   EN: Assign To
+3. tasks.assigned
+   EN: Assigned
+4. tasks.assignedBy
+   EN: Assigned By
+5. tasks.assignedTasks
+   EN: Assigned Tasks
+6. tasks.assignedTo
+   EN: Assigned To
+7. tasks.attachments
+   EN: Attachments
+8. tasks.category
+   EN: Category
+9. tasks.commercial
+   EN: Commercial
+10. tasks.comp
+   EN: Comp.
+11. tasks.completed
+   EN: Completed
+12. tasks.completion
+   EN: Completion
+13. tasks.couldNotLoadTasks
+   EN: Could not load tasks
+14. tasks.couldNotLoadTasksMessage
+   EN: Pull to refresh and try again.
+15. tasks.createNewTask
+   EN: Create New Task
+16. tasks.createTask
+   EN: Create Task
+17. tasks.critical
+   EN: Critical
+18. tasks.description
+   EN: Description
+19. tasks.done
+   EN: Done
+20. tasks.due
+   EN: Due
+21. tasks.dueDate
+   EN: Due Date
+22. tasks.electrical
+   EN: Electrical
+23. tasks.general
+   EN: General
+24. tasks.high
+   EN: High
+25. tasks.inProgress
+   EN: In Progress
+26. tasks.low
+   EN: Low
+27. tasks.materials
+   EN: Materials
+28. tasks.medium
+   EN: Medium
+29. tasks.myTasks
+   EN: My Tasks
+30. tasks.noMatchingTasks
+   EN: No matching tasks
+31. tasks.noTasks
+   EN: No tasks yet
+32. tasks.noTasksMessage
+   EN: You haven't been assigned any tasks yet
+33. tasks.notStarted
+   EN: Not Started
+34. tasks.overdue
+   EN: Overdue
+35. tasks.plumbing
+   EN: Plumbing
+36. tasks.priority
+   EN: Priority
+37. tasks.progress
+   EN: Progress
+38. tasks.received
+   EN: Received
+39. tasks.rejected
+   EN: Rejected
+40. tasks.reviewing
+   EN: Reviewing
+41. tasks.safety
+   EN: Safety
+42. tasks.searchTasks
+   EN: Search tasks...
+43. tasks.selfAssigned
+   EN: Self-Assigned
+44. tasks.status
+   EN: Status
+45. tasks.structural
+   EN: Structural
+46. tasks.task
+   EN: task
+47. tasks.taskCreated
+   EN: Task Created
+48. tasks.taskCreatedMessage
+   EN: Task has been created successfully and assigned to the selected users.
+49. tasks.taskDetails
+   EN: Task Details
+50. tasks.tasks
+   EN: Tasks
+51. tasks.tasksPlural
+   EN: tasks
+52. tasks.title
+   EN: Title
+53. tasks.tryAdjustingFilters
+   EN: Try adjusting your filters
+54. tasks.wip
+   EN: WIP
+55. projects.active
+   EN: On-going
+56. projects.all
+   EN: All
+57. projects.assignedToYou
+   EN: assigned to you
+58. projects.budget
+   EN: Budget
+59. projects.cancelled
+   EN: Cancelled
+60. projects.completed
+   EN: Completed
+61. projects.create
+   EN: Create
+62. projects.createFirstProject
+   EN: Create your first project to get started
+63. projects.createNewProject
+   EN: Create New Project
+64. projects.createProject
+   EN: Create Project
+65. projects.createdBy
+   EN: Created by
+66. projects.editProject
+   EN: Edit Project
+67. projects.endDateError
+   EN: End date must be after start date
+68. projects.enterFullAddress
+   EN: Enter full address (street, city, state/province, postal code, country)
+69. projects.enterProjectName
+   EN: Enter project name
+70. projects.estimatedEndDate
+   EN: Estimated End Date
+71. projects.failedToCreateProject
+   EN: Failed to create project. Please try again.
+72. projects.leadPM
+   EN: Lead PM
+73. projects.leadPMDescription
+   EN: The Lead PM has full visibility to all tasks and subtasks in this project
+74. projects.leadProjectManager
+   EN: Lead Project Manager
+75. projects.loadingProjects
+   EN: Loading projects...
+76. projects.location
+   EN: Location
+77. projects.member
+   EN: member
+78. projects.members
+   EN: members
+79. projects.noLeadPM
+   EN: No Lead PM (Select one)
+80. projects.noLocation
+   EN: No location
+81. projects.noProjects
+   EN: No projects yet
+82. projects.noProjectsAvailable
+   EN: No projects available
+83. projects.noProjectsFound
+   EN: No projects found
+84. projects.noProjectsMessage
+   EN: You haven't been assigned to any projects yet
+85. projects.planning
+   EN: Planning
+86. projects.project
+   EN: project
+87. projects.projectCreated
+   EN: Project Created
+88. projects.projectCreatedMessage
+   EN: Your project was created successfully, but it may take a moment to appear in the list.
+89. projects.projectDescription
+   EN: Project description
+90. projects.projectDetails
+   EN: Project Details
+91. projects.projectInformation
+   EN: Project Information
+92. projects.projectName
+   EN: Project Name
+93. projects.projectNameRequired
+   EN: Project name is required
+94. projects.projectTimeline
+   EN: Project Timeline
+95. projects.projectUpdated
+   EN: Project updated successfully
+96. projects.projects
+   EN: Projects
+97. projects.projectsPlural
+   EN: projects
+98. projects.searchProjects
+   EN: Search projects...
+99. projects.selectProject
+   EN: Select a Project
+100. projects.startDate
+   EN: Start Date
+101. projects.status
+   EN: Status
+102. projects.tryAdjustingSearch
+   EN: Try adjusting your search or filters
+103. projects.unknown
+   EN: Unknown
+104. projects.yourProjects
+   EN: Your Projects
+105. profile.about
+   EN: About
+106. profile.companyPlan
+   EN: Company plan
+107. profile.continueToCheckout
+   EN: Continue to checkout
+108. profile.darkMode
+   EN: Dark Mode
+109. profile.deleteAccount
+   EN: Delete Account
+110. profile.deleteAccountConfirm
+   EN: This permanently deletes your login and contact details. Your name stays on jobsite task history for the company record. This cannot be undone.
+111. profile.deleteAccountFailed
+   EN: Could not delete account
+112. profile.editProfile
+   EN: Edit Profile
+113. profile.english
+   EN: English
+114. profile.englishUS
+   EN: English (United States)
+115. profile.helpSupport
+   EN: Help & Support
+116. profile.language
+   EN: Language
+117. profile.languageChanged
+   EN: Language Changed
+118. profile.languageChangedMessage
+   EN: The app needs to reload to apply the new language. Reload now?
+119. profile.later
+   EN: Later
+120. profile.lightMode
+   EN: Light Mode
+121. profile.logout
+   EN: Logout
+122. profile.memberSince
+   EN: Member Since
+123. profile.notifications
+   EN: Notifications
+124. profile.pleaseRestart
+   EN: Please Restart
+125. profile.pleaseRestartMessage
+   EN: Please close and reopen the app to see the new language.
+126. profile.privacySecurity
+   EN: Privacy & Security
+127. profile.profile
+   EN: Profile
+128. profile.reloadData
+   EN: Reload Data
+129. profile.reloadNow
+   EN: Reload Now
+130. profile.selectLanguage
+   EN: Select Language
+131. profile.settings
+   EN: Settings
+132. profile.tasksAssigned
+   EN: Tasks Assigned
+133. profile.theme
+   EN: Theme
+134. profile.traditionalChinese
+   EN: 繁體中文
+135. userManagement.accessDenied
+   EN: Access denied. Admin role required.
+136. userManagement.admin
+   EN: Admin
+137. userManagement.allRequestsProcessed
+   EN: All user requests have been processed. New requests will appear here.
+138. userManagement.approve
+   EN: Approve
+139. userManagement.approveFailed
+   EN: Failed to approve user. Please try again.
+140. userManagement.approveMessage
+   EN: Approve {name} to join your company?
+141. userManagement.approveSuccess
+   EN: {name} has been approved and can now log in.
+142. userManagement.approveUser
+   EN: Approve User
+143. userManagement.approved
+   EN: Approved
+144. userManagement.architect
+   EN: Architect
+145. userManagement.assignSuccess
+   EN: {userName} has been assigned to {projectName} as {role}.
+146. userManagement.assignToProject
+   EN: Assign to Project
+147. userManagement.assignUser
+   EN: Assign User
+148. userManagement.contractor
+   EN: Contractor
+149. userManagement.engineer
+   EN: Engineer
+150. userManagement.foreman
+   EN: Foreman
+151. userManagement.goBack
+   EN: Go Back
+152. userManagement.inspector
+   EN: Inspector
+153. userManagement.leadProjectManager
+   EN: Lead Project Manager
+154. userManagement.manager
+   EN: Manager
+155. userManagement.noPendingApprovals
+   EN: No Pending Approvals
+156. userManagement.noProjectAssignments
+   EN: No project assignments yet
+157. userManagement.pending
+   EN: Pending
+158. userManagement.pendingApprovals
+   EN: Pending Approvals
+159. userManagement.projectAssignments
+   EN: Project Assignments
+160. userManagement.reject
+   EN: Reject
+161. userManagement.rejectFailed
+   EN: Failed to reject user. Please try again.
+162. userManagement.rejectMessage
+   EN: Reject {name}'s request to join your company? This will delete their account.
+163. userManagement.rejectSuccess
+   EN: {name}'s request has been rejected.
+164. userManagement.rejectUser
+   EN: Reject User
+165. userManagement.removeConfirm
+   EN: Are you sure you want to remove {userName} from {projectName}?
+166. userManagement.removeFromProject
+   EN: Remove from Project
+167. userManagement.removeSuccess
+   EN: {userName} has been removed from {projectName}.
+168. userManagement.removeUser
+   EN: Remove User
+169. userManagement.searchUsers
+   EN: Search users...
+170. userManagement.selectProject
+   EN: Select Project
+171. userManagement.selectRole
+   EN: Select Role
+172. userManagement.subcontractor
+   EN: Subcontractor
+173. userManagement.user
+   EN: user
+174. userManagement.userManagement
+   EN: User Management
+175. userManagement.userWaiting
+   EN: user waiting
+176. userManagement.users
+   EN: Users
+177. userManagement.usersWaiting
+   EN: users waiting
+178. userManagement.worker
+   EN: Worker

@@ -6,31 +6,28 @@
 
 ## Doing
 
-**`M-AUTHZ-RC` headed smoke:** H01–H05 + **H08 PASS**. Confirm **H06** (Create Task) + **H07** (CA/PA field list vs Project B; Tasks peer visibility fix) after Metro reload — then milestone closeable on smoke.
-
 **Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
 ## Next (definitive)
 
-1. **Confirm H06 + H07** (headed) → close `M-AUTHZ-RC` smoke gate
-2. **`M-OPS-ENV-01`** — create empty PROD (say **start cutover**)
-3. **DEV smoke `M-BILL-01`** — Create Company (CA=worker) → plan → Extra people +1 → invite caps
-4. App Store submit → Stripe **live** on PROD
-5. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
+1. **`M-OPS-ENV-01`** — create empty PROD (say **start cutover**)
+2. **DEV smoke `M-BILL-01`** — Create Company (CA=worker) → plan → Extra people +1 → invite caps
+3. App Store submit → Stripe **live** on PROD
+4. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
 
-**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e.
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e; unapplied migrations CA→worker + drop `on_hold` (need GO).
 
 ## Recently closed / shipped this session
 
-**Headed:** **H08 PASS** — Bob worker still sees assigned/created only.
+**`captureSession` Closed (2026-08-27):** Hybrid module production SoT — Camera tab + Create/Update Add Photos; headed Create + Update smoke PASS; Update Progress task title; SET_PARAMS fix. Close: `docs/superpowers/reports/2026-08-27-capture-session-close.md`.
 
-**Bugfix — Tasks peer visibility (H07):** admin/manager band peer job tasks now appear in Tasks as Team Queue (matched Activity).
+**`M-DATA-04` Closed (2026-08-27):** Realtime churn gate PASS — close: `docs/superpowers/reports/2026-08-27-m-data-04-close.md`.
 
-**Bugfix — Create Task workspace project:** Location inherits Activity/last-selected (or sole) project; Assign To not auto-defaulted; Organize-by-area UI removed.
+**Docs:** **M-DAILY-01 Phase 0** — `docs/superpowers/analysis/2026-08-27-daily-capture-memo-vision.md`.
 
-**M-AUTHZ-RC catch-up (code):** PA roster gate, Member/PA labels, avatar → Company management, EditProjectModal hooks fix, etc.
+**`M-AUTHZ-RC` Closed (2026-08-27):** H01–H08 headed PASS. Close report: `docs/superpowers/reports/2026-08-27-m-authz-rc-close.md`.
 
-**M-BILL-01 DEV hygiene:** seat math, plan gate, worker seat copy; CA→worker seat law live.
+**Headed:** H06 / H07 / H08 PASS (user confirmed) — Create Task, CA field list vs Project B, Bob worker regression.
 
 ## Locked
 
@@ -38,16 +35,12 @@
 - **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ submit
 - **HK billing:** charge HKD; no grandfathering
 - **ACL:** CA authority; default seat Worker; PA on CA|PM only; on-job roster = PA
-- No service-role in mobile; no company switch
+- **AUTHZ-RC construct:** Closed — see close report
 
-## Parked
+## Sims / locks
 
-- **M-BILL-01G** / **M-BILL-F** (partial seat gates live)
-- **M-AI-01** implementation
-- **M-SEC-03** single active login
-- DEV purge UI → **M-OPS-03**
-- Owner KPI v2 → **M-OPS-03**
+(none claimed this teardown)
 
----
+## Parked notes
 
-Updated: 2026-08-27 (H08 PASS)
+Optional AUTHZ L2 matrix gaps (F05/F06 etc.) = backlog, not reopen.

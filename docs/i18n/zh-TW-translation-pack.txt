@@ -1,0 +1,1387 @@
+# Chinese translation brief (Insite / Taskr mobile app)
+
+You are translating UI copy for a construction jobsite task app (photo evidence → task → review).
+Target: **Traditional Chinese (zh-TW)** — Taiwan/HK field tone, not Mainland marketing Chinese unless asked.
+
+## Rules
+1. Output format (one line per entry):
+   KEY | 繁體中文譯文
+2. Keep placeholders EXACTLY: {creatorName}, {assigneesList}, {arg1}, etc.
+3. Keep emoji if present.
+4. Preferred glossary:
+   - task → 工作 (or 任務 if already established in key context)
+   - project → 專案
+   - assign → 指派 / 分配
+   - review / approval → 審核 / 審批
+   - overdue → 逾期
+   - progress → 進度
+   - attachment / photo → 附件 / 相片
+5. Do NOT translate brand/product names: Taskr, Insite, BuildTrack (unless noted).
+6. Do NOT invent new keys.
+
+## Part A — Locale dictionary keys (661 strings)
+Source file: src/locales/en.ts → write into src/locales/zh-TW.ts
+
+1. auth.confirmPassword
+   EN: Confirm Password
+2. auth.email
+   EN: Email
+3. auth.forgotPassword
+   EN: Forgot Password?
+4. auth.login
+   EN: Login
+5. auth.logout
+   EN: Logout
+6. auth.logoutConfirm
+   EN: Are you sure you want to logout?
+7. auth.password
+   EN: Password
+8. auth.register
+   EN: Register
+9. auth.welcomeBack
+   EN: Welcome Back! 👋
+10. common.all
+   EN: All
+11. common.apply
+   EN: Apply
+12. common.back
+   EN: Back
+13. common.cancel
+   EN: Cancel
+14. common.clear
+   EN: Clear
+15. common.close
+   EN: Close
+16. common.confirm
+   EN: Confirm
+17. common.create
+   EN: Create
+18. common.delete
+   EN: Delete
+19. common.done
+   EN: Done
+20. common.edit
+   EN: Edit
+21. common.filter
+   EN: Filter
+22. common.loading
+   EN: Loading...
+23. common.next
+   EN: Next
+24. common.no
+   EN: No
+25. common.ok
+   EN: OK
+26. common.save
+   EN: Save
+27. common.search
+   EN: Search
+28. common.seeAll
+   EN: See All
+29. common.select
+   EN: Select
+30. common.selected
+   EN: Selected
+31. common.total
+   EN: Total
+32. common.update
+   EN: Update
+33. common.yes
+   EN: Yes
+34. createCompany.backToLogin
+   EN: Already have an account? Sign in
+35. createCompany.companyName
+   EN: Company name
+36. createCompany.companyNamePlaceholder
+   EN: Acme Construction
+37. createCompany.companyNameRequired
+   EN: Company name is required
+38. createCompany.creating
+   EN: Creating…
+39. createCompany.emailRequired
+   EN: Email is required
+40. createCompany.failedMessage
+   EN: Please try again.
+41. createCompany.failedTitle
+   EN: Could not create company
+42. createCompany.invalidEmail
+   EN: Enter a valid email
+43. createCompany.nameRequired
+   EN: Your name is required
+44. createCompany.submit
+   EN: Create company
+45. createCompany.subtitle
+   EN: Start your company account. You will be the company admin.
+46. createCompany.title
+   EN: Create company
+47. createCompany.workEmail
+   EN: Work email
+48. createCompany.workEmailPlaceholder
+   EN: you@company.com
+49. createCompany.yourName
+   EN: Your name
+50. createCompany.yourNamePlaceholder
+   EN: Full name
+51. createTask.acceptField
+   EN: Accept
+52. createTask.accessRestricted
+   EN: Access Restricted
+53. createTask.addNewLocation
+   EN: Add new location
+54. createTask.addNewLocationPlaceholder
+   EN: Enter a new location on site
+55. createTask.addPhotos
+   EN: Add Photos
+56. createTask.addTeamMembersFirst
+   EN: Add team members to the project first
+57. createTask.aiSuggestions
+   EN: AI Suggestions
+58. createTask.applySuggestions
+   EN: Apply Suggestions
+59. createTask.assignTo
+   EN: Assign To
+60. createTask.attachments
+   EN: Attachments
+61. createTask.billable
+   EN: Billable
+62. createTask.billed
+   EN: Billed
+63. createTask.billingStatus
+   EN: Billing Status
+64. createTask.changeLocation
+   EN: Change location
+65. createTask.chooseFromLibrary
+   EN: Choose from Library
+66. createTask.clearSearch
+   EN: Clear Search
+67. createTask.clearSuggestions
+   EN: Clear AI Suggestions
+68. createTask.createNewTask
+   EN: Create New Task
+69. createTask.createSubTask
+   EN: Create Sub-Task
+70. createTask.createTaskButton
+   EN: Create Task
+71. createTask.creating
+   EN: Creating...
+72. createTask.descriptionPlaceholder
+   EN: Describe the task in detail...
+73. createTask.doneSelected [FN]
+   EN: Done ({arg1} selected)
+74. createTask.editTask
+   EN: Edit Task
+75. createTask.enterCantoneseOrEnglish
+   EN: Enter task details in Cantonese or English
+76. createTask.error
+   EN: Error
+77. createTask.failedToCreateTask
+   EN: Failed to create task. Please try again.
+78. createTask.failedToPaste
+   EN: Failed to paste from clipboard
+79. createTask.failedToPickImages
+   EN: Failed to pick images
+80. createTask.failedToTakePhoto
+   EN: Failed to take photo
+81. createTask.failedToUpdateTask
+   EN: Failed to update task. Please try again.
+82. createTask.fetchingTeamMembers
+   EN: Fetching project team members
+83. createTask.filesAdded [FN]
+   EN: {arg1} file(s) added
+84. createTask.goBack
+   EN: Go Back
+85. createTask.headerCreateSubtitle
+   EN: Create task
+86. createTask.headerEditSubtitle
+   EN: Task editor
+87. createTask.imagePasted
+   EN: Image pasted from clipboard!
+88. createTask.loadingUsers
+   EN: Loading users...
+89. createTask.locationOnSite
+   EN: Location on Site
+90. createTask.moreDetailsSubtitle
+   EN: Optional context for downstream work
+91. createTask.moreDetailsTitle
+   EN: More Details
+92. createTask.nestedSubTask
+   EN: Nested Sub-Task
+93. createTask.nestedSubTaskCreatedSuccess
+   EN: Nested sub-task created successfully and assigned to the selected users.
+94. createTask.nestedUnder
+   EN: Nested under:
+95. createTask.noAttachmentsAdded
+   EN: No attachments added
+96. createTask.noImageInClipboard
+   EN: No image found in clipboard. Copy an image first.
+97. createTask.noLocation
+   EN: No location
+98. createTask.noProjectsAvailable
+   EN: No projects available
+99. createTask.noSuggestions
+   EN: No suggestions available
+100. createTask.noUsersAssigned
+   EN: No users assigned to this project
+101. createTask.noUsersFound
+   EN: No users found
+102. createTask.nonBillable
+   EN: Non-Billable
+103. createTask.onlyCreatorCanEdit
+   EN: Only the task creator can edit this task.
+104. createTask.pasteFromClipboard
+   EN: Paste from Clipboard
+105. createTask.pasteImageError
+   EN: Could not paste image from clipboard
+106. createTask.permissionDenied
+   EN: Permission Denied
+107. createTask.photosFailedUpload
+   EN: photo(s) failed to upload. Please try again.
+108. createTask.photosUploadMessage
+   EN: Photos will be uploaded to cloud storage and visible to all assignees.
+109. createTask.processingText
+   EN: Processing text input...
+110. createTask.processingVoice
+   EN: Processing voice input...
+111. createTask.project
+   EN: Project
+112. createTask.rejectField
+   EN: Reject
+113. createTask.saveNewLocation
+   EN: Save location
+114. createTask.scheduleSubtitle
+   EN: Set the target date
+115. createTask.scheduleTitle
+   EN: Schedule
+116. createTask.searchPlaceholder
+   EN: Search by name, email, position, or role...
+117. createTask.selectBillingStatus
+   EN: Select Billing Status
+118. createTask.selectCategory
+   EN: Select Category
+119. createTask.selectLocationOnSite
+   EN: Select a location on site
+120. createTask.selectLocationOnSiteFirstProject
+   EN: Select a project to add a location on site
+121. createTask.selectPriority
+   EN: Select Priority
+122. createTask.selectProject
+   EN: Select a project
+123. createTask.selectUsersToAssign
+   EN: Select users to assign
+124. createTask.selectedUsers
+   EN: Selected Users:
+125. createTask.subTaskCreated
+   EN: Sub-Task Created
+126. createTask.subTaskCreatedSuccess
+   EN: Sub-task created successfully and assigned to the selected users.
+127. createTask.subTaskOf
+   EN: Sub-task of:
+128. createTask.suggestionPreview
+   EN: Suggestion Preview
+129. createTask.takePhoto
+   EN: Take Photo
+130. createTask.tapToAddFiles
+   EN: Tap to Add Files
+131. createTask.taskAlreadyAccepted
+   EN: This task has already been accepted. It can no longer be edited.
+132. createTask.taskAlreadyRejected
+   EN: This task has already been rejected. It can no longer be edited.
+133. createTask.taskBasicsSubtitle
+   EN: Start with the essentials
+134. createTask.taskBasicsTitle
+   EN: Task Basics
+135. createTask.taskCreated
+   EN: Task Created
+136. createTask.taskCreatedSuccess
+   EN: Task created successfully and assigned to the selected users.
+137. createTask.taskNotFound
+   EN: Task Not Found
+138. createTask.taskReference
+   EN: Task Reference #
+139. createTask.taskReferencePlaceholder
+   EN: Enter task reference information
+140. createTask.taskUpdated
+   EN: Task Updated
+141. createTask.taskUpdatedSuccess
+   EN: Task updated successfully.
+142. createTask.textInput
+   EN: Text Input
+143. createTask.textInputPlaceholder
+   EN: Describe the task...
+144. createTask.titlePlaceholder
+   EN: Enter task title
+145. createTask.tryAdjustingSearch
+   EN: Try adjusting your search
+146. createTask.unableToEditTask
+   EN: Unable to edit this task because it could not be loaded.
+147. createTask.updateTaskButton
+   EN: Update Task
+148. createTask.updating
+   EN: Updating...
+149. createTask.uploadWarning
+   EN: Upload Warning
+150. createTask.usersAvailable [FN]
+   EN: {arg1} users available (filtered from {arg2})
+151. createTask.usersSelected [FN]
+   EN: {arg1} user selected
+152. createTask.voiceInput
+   EN: Voice Input
+153. dashboard.accomplishments
+   EN: My Completed Work
+154. dashboard.active
+   EN: On-going
+155. dashboard.allProjects
+   EN: All Projects
+156. dashboard.assigned
+   EN: Assigned
+157. dashboard.changeProject
+   EN: Change Project
+158. dashboard.completed
+   EN: Completed
+159. dashboard.currentTasks
+   EN: Current⏎Tasks
+160. dashboard.currentTasksHeader
+   EN: Current Tasks
+161. dashboard.dataRefreshed
+   EN: Data refreshed successfully!
+162. dashboard.done
+   EN: Done
+163. dashboard.error
+   EN: Error
+164. dashboard.followUpNow
+   EN: Follow Up⏎Now
+165. dashboard.followUpNowHeader
+   EN: Follow Up Now
+166. dashboard.inProgress
+   EN: In Progress
+167. dashboard.inbox
+   EN: Inbox
+168. dashboard.keyTasks
+   EN: Key Tasks
+169. dashboard.loadingData
+   EN: Loading data...
+170. dashboard.loadingProjects
+   EN: Loading projects...
+171. dashboard.loadingTasks
+   EN: Loading tasks...
+172. dashboard.loadingUsers
+   EN: Loading users...
+173. dashboard.logout
+   EN: Logout
+174. dashboard.logoutConfirm
+   EN: Are you sure you want to logout?
+175. dashboard.myActionRequiredNow
+   EN: My Action⏎Required Now
+176. dashboard.myActionRequiredNowHeader
+   EN: My Action Required Now
+177. dashboard.myTasks
+   EN: My Tasks
+178. dashboard.newRequests
+   EN: New⏎Requests
+179. dashboard.newRequestsHeader
+   EN: New Requests
+180. dashboard.noProjectsMessage
+   EN: You haven't been assigned to any projects yet. Contact your admin to get started.
+181. dashboard.noProjectsYet
+   EN: No Projects Yet
+182. dashboard.noTasksMessage
+   EN: Tasks assigned to you will appear here
+183. dashboard.noTasksYet
+   EN: No tasks assigned yet
+184. dashboard.notStarted
+   EN: Not Started
+185. dashboard.outbox
+   EN: Outbox
+186. dashboard.overdue
+   EN: Overdue
+187. dashboard.pendingAcceptance
+   EN: Pending⏎Acceptance
+188. dashboard.pendingAcceptanceHeader
+   EN: Pending Acceptance
+189. dashboard.pendingApproval
+   EN: Pending⏎Approval
+190. dashboard.pendingApprovalHeader
+   EN: Pending Approval
+191. dashboard.pendingMyReview
+   EN: Pending⏎my review
+192. dashboard.pendingMyReviewHeader
+   EN: Pending my review
+193. dashboard.planning
+   EN: Planning
+194. dashboard.profileAndSettings
+   EN: Profile & Settings
+195. dashboard.projectParticipation
+   EN: Project Participation
+196. dashboard.quickOverview
+   EN: Full Task List
+197. dashboard.received
+   EN: Received
+198. dashboard.recentTasks
+   EN: Recent Tasks
+199. dashboard.refreshFailed
+   EN: Failed to refresh data. Please try again.
+200. dashboard.refreshingData
+   EN: Refreshing all data for the new project
+201. dashboard.rejected
+   EN: Rejected
+202. dashboard.reviewing
+   EN: Reviewing
+203. dashboard.selectAProject
+   EN: Select a Project
+204. dashboard.selectProject
+   EN: Select Project
+205. dashboard.selectProjectMessage
+   EN: Please select a project to view your dashboard
+206. dashboard.success
+   EN: Success
+207. dashboard.switchingProject
+   EN: Switching Project...
+208. dashboard.tapStarHint
+   EN: Tap star in Tasks screen
+209. dashboard.tasksAssignedToMe
+   EN: Task Inbox
+210. dashboard.tasksForMe
+   EN: Tasks for me
+211. dashboard.tasksFromMe
+   EN: Tasks from me
+212. dashboard.tasksIAssigned
+   EN: Task Outbox
+213. dashboard.teamProceeding
+   EN: Team⏎Proceeding
+214. dashboard.teamProceedingHeader
+   EN: Team Proceeding
+215. dashboard.totalProjects
+   EN: Total Projects
+216. dashboard.viewTasks
+   EN: View tasks from all your projects
+217. dashboard.viewing
+   EN: Viewing
+218. dashboard.welcomeBack
+   EN: Welcome Back! 👋
+219. dashboard.wip
+   EN: WIP
+220. dashboard.workAccepted
+   EN: Work⏎Accepted
+221. dashboard.workAcceptedHeader
+   EN: Work Accepted
+222. dashboard.workRejected
+   EN: Work⏎Rejected
+223. dashboard.workRejectedHeader
+   EN: Work Rejected
+224. dashboard.yourProjects
+   EN: Your Projects
+225. errors.error
+   EN: Error
+226. errors.info
+   EN: Info
+227. errors.success
+   EN: Success
+228. errors.warning
+   EN: Warning
+229. fab.addSubTask
+   EN: Add Sub-task
+230. fab.cancelTask
+   EN: Cancel Task
+231. fab.editTaskDetail
+   EN: Edit Task Detail
+232. fab.newTask
+   EN: New Task
+233. login.approvalPending
+   EN: Approval Pending
+234. login.approvalPendingMessage
+   EN: Your account is pending approval from your company administrator. You will be notified once your account is approved.
+235. login.buildTrack
+   EN: BuildTrack
+236. login.constructionTaskManagement
+   EN: Construction Task Management
+237. login.createCompany
+   EN: Create company
+238. login.dontHaveAccount
+   EN: Don't have an account?
+239. login.emailAddress
+   EN: Email Address
+240. login.emailNotConfirmed
+   EN: This email is not confirmed yet. Open the confirmation link from your invite email, or ask your admin to resend the invite.
+241. login.emailOrPhone
+   EN: Email or Phone Number
+242. login.emailOrPhonePlaceholder
+   EN: email@example.com or +1234567890
+243. login.emailOrPhoneRequired
+   EN: Email or phone number is required
+244. login.emailPlaceholder
+   EN: Enter your email
+245. login.failedToLogin
+   EN: Failed to login with
+246. login.invalidCredentials
+   EN: Invalid email or password. Please try again.
+247. login.invalidEmailOrPhone
+   EN: Please enter a valid email or phone number
+248. login.loginFailed
+   EN: Login Failed
+249. login.passwordPlaceholder
+   EN: Enter your password
+250. login.phoneLookupFailed
+   EN: Phone sign-in could not find that number. Sign in with the email from your invite instead.
+251. login.pleaseTryAgain
+   EN: Please try again.
+252. login.profileMissing
+   EN: Password was accepted but this account has no Taskr profile. Ask your admin to re-invite the seat, or contact support.
+253. login.quickLogin
+   EN: Quick Login - Tap any user
+254. login.quickLoginFailed
+   EN: Quick Login Failed
+255. login.signIn
+   EN: Sign In
+256. login.signUp
+   EN: Sign Up
+257. login.signingIn
+   EN: Signing In...
+258. login.tapToLogin
+   EN: Tap any name to login instantly
+259. nav.activity
+   EN: Activity
+260. nav.dashboard
+   EN: Dashboard
+261. nav.profile
+   EN: Profile
+262. nav.projects
+   EN: Projects
+263. nav.reports
+   EN: Reports
+264. nav.settings
+   EN: Settings
+265. nav.tasks
+   EN: Tasks
+266. phrases.comingSoon
+   EN: Coming Soon
+267. phrases.comingSoonMessage
+   EN: This feature will be available in a future update.
+268. phrases.project
+   EN: project
+269. phrases.projects
+   EN: projects
+270. phrases.task
+   EN: task
+271. phrases.tasks
+   EN: tasks
+272. phrases.user
+   EN: user
+273. phrases.users
+   EN: users
+274. profile.about
+   EN: About
+275. profile.companyPlan
+   EN: Company plan
+276. profile.continueToCheckout
+   EN: Continue to checkout
+277. profile.darkMode
+   EN: Dark Mode
+278. profile.deleteAccount
+   EN: Delete Account
+279. profile.deleteAccountConfirm
+   EN: This permanently deletes your login and contact details. Your name stays on jobsite task history for the company record. This cannot be undone.
+280. profile.deleteAccountFailed
+   EN: Could not delete account
+281. profile.editProfile
+   EN: Edit Profile
+282. profile.english
+   EN: English
+283. profile.englishUS
+   EN: English (United States)
+284. profile.helpSupport
+   EN: Help & Support
+285. profile.language
+   EN: Language
+286. profile.languageChanged
+   EN: Language Changed
+287. profile.languageChangedMessage
+   EN: The app needs to reload to apply the new language. Reload now?
+288. profile.later
+   EN: Later
+289. profile.lightMode
+   EN: Light Mode
+290. profile.logout
+   EN: Logout
+291. profile.memberSince
+   EN: Member Since
+292. profile.notifications
+   EN: Notifications
+293. profile.pleaseRestart
+   EN: Please Restart
+294. profile.pleaseRestartMessage
+   EN: Please close and reopen the app to see the new language.
+295. profile.privacySecurity
+   EN: Privacy & Security
+296. profile.profile
+   EN: Profile
+297. profile.reloadData
+   EN: Reload Data
+298. profile.reloadNow
+   EN: Reload Now
+299. profile.selectLanguage
+   EN: Select Language
+300. profile.settings
+   EN: Settings
+301. profile.tasksAssigned
+   EN: Tasks Assigned
+302. profile.theme
+   EN: Theme
+303. profile.traditionalChinese
+   EN: 繁體中文
+304. projects.active
+   EN: On-going
+305. projects.all
+   EN: All
+306. projects.assignedToYou
+   EN: assigned to you
+307. projects.budget
+   EN: Budget
+308. projects.cancelled
+   EN: Cancelled
+309. projects.completed
+   EN: Completed
+310. projects.create
+   EN: Create
+311. projects.createFirstProject
+   EN: Create your first project to get started
+312. projects.createNewProject
+   EN: Create New Project
+313. projects.createProject
+   EN: Create Project
+314. projects.createdBy
+   EN: Created by
+315. projects.editProject
+   EN: Edit Project
+316. projects.endDateError
+   EN: End date must be after start date
+317. projects.enterFullAddress
+   EN: Enter full address (street, city, state/province, postal code, country)
+318. projects.enterProjectName
+   EN: Enter project name
+319. projects.estimatedEndDate
+   EN: Estimated End Date
+320. projects.failedToCreateProject
+   EN: Failed to create project. Please try again.
+321. projects.leadPM
+   EN: Lead PM
+322. projects.leadPMDescription
+   EN: The Lead PM has full visibility to all tasks and subtasks in this project
+323. projects.leadProjectManager
+   EN: Lead Project Manager
+324. projects.loadingProjects
+   EN: Loading projects...
+325. projects.location
+   EN: Location
+326. projects.member
+   EN: member
+327. projects.members
+   EN: members
+328. projects.noLeadPM
+   EN: No Lead PM (Select one)
+329. projects.noLocation
+   EN: No location
+330. projects.noProjects
+   EN: No projects yet
+331. projects.noProjectsAvailable
+   EN: No projects available
+332. projects.noProjectsFound
+   EN: No projects found
+333. projects.noProjectsMessage
+   EN: You haven't been assigned to any projects yet
+334. projects.planning
+   EN: Planning
+335. projects.project
+   EN: project
+336. projects.projectCreated
+   EN: Project Created
+337. projects.projectCreatedMessage
+   EN: Your project was created successfully, but it may take a moment to appear in the list.
+338. projects.projectDescription
+   EN: Project description
+339. projects.projectDetails
+   EN: Project Details
+340. projects.projectInformation
+   EN: Project Information
+341. projects.projectName
+   EN: Project Name
+342. projects.projectNameRequired
+   EN: Project name is required
+343. projects.projectTimeline
+   EN: Project Timeline
+344. projects.projectUpdated
+   EN: Project updated successfully
+345. projects.projects
+   EN: Projects
+346. projects.projectsPlural
+   EN: projects
+347. projects.searchProjects
+   EN: Search projects...
+348. projects.selectProject
+   EN: Select a Project
+349. projects.startDate
+   EN: Start Date
+350. projects.status
+   EN: Status
+351. projects.tryAdjustingSearch
+   EN: Try adjusting your search or filters
+352. projects.unknown
+   EN: Unknown
+353. projects.yourProjects
+   EN: Your Projects
+354. registration.alreadyHaveAccount
+   EN: Already have an account?
+355. registration.change
+   EN: Change
+356. registration.company
+   EN: Company
+357. registration.companyNameRequired
+   EN: Company name is required
+358. registration.confirmPassword
+   EN: Confirm Password
+359. registration.confirmPasswordPlaceholder
+   EN: Confirm your password
+360. registration.confirmPasswordRequired
+   EN: Please confirm your password
+361. registration.createAccount
+   EN: Create your account to get started
+362. registration.createAccountButton
+   EN: Create Account
+363. registration.createNew
+   EN: Create New
+364. registration.creatingAccount
+   EN: Creating Account...
+365. registration.emailAddress
+   EN: Email Address
+366. registration.enterCompanyName
+   EN: Enter your company name
+367. registration.enterEmailOptional
+   EN: Enter your email (optional)
+368. registration.enterFullName
+   EN: Enter your full name
+369. registration.enterPassword
+   EN: Enter your password
+370. registration.enterPromoCode
+   EN: Enter promo code to continue
+371. registration.firstUserAdmin
+   EN: You will be the first user and administrator of this company.
+372. registration.fullName
+   EN: Full Name
+373. registration.getStarted
+   EN: Get Started
+374. registration.invalidEmail
+   EN: Please enter a valid email address
+375. registration.invalidPromoCode
+   EN: Invalid promo code
+376. registration.joinExisting
+   EN: Join Existing
+377. registration.joinTaskr
+   EN: Join Taskr
+378. registration.nameRequired
+   EN: Name is required
+379. registration.noCompaniesAvailable
+   EN: No companies available
+380. registration.optional
+   EN: Optional
+381. registration.passwordRequired
+   EN: Password is required
+382. registration.passwordTooShort
+   EN: Password must be at least 6 characters
+383. registration.passwordsDoNotMatch
+   EN: Passwords do not match
+384. registration.phoneInvalid
+   EN: Phone number must be exactly 8 digits
+385. registration.phoneNumber
+   EN: Phone Number
+386. registration.phoneNumberPlaceholder
+   EN: Enter 8-digit phone number
+387. registration.phoneRequired
+   EN: Phone number is required
+388. registration.promoCode
+   EN: Promo Code
+389. registration.promoCodeRequired
+   EN: Promo code is required
+390. registration.registrationFailed
+   EN: Registration Failed
+391. registration.registrationSubmitted
+   EN: Registration Submitted
+392. registration.registrationSubmittedMessage
+   EN: Your registration request has been sent to the company administrator for approval. You will be notified once approved.
+393. registration.selectACompany
+   EN: Select a company
+394. registration.selectCompany
+   EN: Select Company
+395. registration.selectCompanyOption
+   EN: Please select a company option
+396. registration.selectCompanyRequired
+   EN: Please select a company
+397. registration.unexpectedError
+   EN: An unexpected error occurred. Please try again.
+398. registration.validPromoCode
+   EN: Valid promo code!
+399. registration.welcomeNewCompany
+   EN: Welcome!
+400. registration.welcomeNewCompanyMessage
+   EN: Your company has been created and you are now the administrator. You can start creating projects and inviting team members.
+401. reports.adjustDateRange
+   EN: Adjust your date range or report type
+402. reports.assignedTasks
+   EN: Assigned Tasks
+403. reports.avgCompletion
+   EN: Avg Completion
+404. reports.complete
+   EN: complete
+405. reports.completed
+   EN: Completed
+406. reports.criticalPriority
+   EN: Critical Priority
+407. reports.dateRange
+   EN: Date Range
+408. reports.due
+   EN: Due
+409. reports.exportAsPDF
+   EN: In a production app, this would be exported as PDF or CSV.
+410. reports.from
+   EN: From
+411. reports.inProgress
+   EN: In Progress
+412. reports.moreTasksInReport
+   EN: more tasks in full report
+413. reports.myTasks
+   EN: My Tasks
+414. reports.noTasksFound
+   EN: No tasks found
+415. reports.overdue
+   EN: Overdue
+416. reports.reportConfiguration
+   EN: Report Configuration
+417. reports.reportContains
+   EN: Report contains
+418. reports.reportGenerated
+   EN: Report Generated
+419. reports.reportSummary
+   EN: Report Summary
+420. reports.reportType
+   EN: Report Type
+421. reports.reports
+   EN: Reports
+422. reports.statisticsOverview
+   EN: Statistics Overview
+423. reports.taskPreview
+   EN: Task Preview
+424. reports.tasksFrom
+   EN: tasks from
+425. reports.to
+   EN: To
+426. reports.toDate
+   EN: to
+427. reports.totalTasks
+   EN: Total Tasks
+428. reports.viewSummary
+   EN: View Summary
+429. setPassword.confirmPassword
+   EN: Confirm password
+430. setPassword.confirmPasswordPlaceholder
+   EN: Re-enter your password
+431. setPassword.confirmPasswordRequired
+   EN: Please confirm your password
+432. setPassword.failedTitle
+   EN: Could not save password
+433. setPassword.password
+   EN: New password
+434. setPassword.passwordPlaceholder
+   EN: At least 6 characters
+435. setPassword.passwordRequired
+   EN: Password is required
+436. setPassword.passwordTooShort
+   EN: Password must be at least 6 characters
+437. setPassword.passwordsDoNotMatch
+   EN: Passwords do not match
+438. setPassword.retryAfterAuth
+   EN: Password saved. Tap Continue again to finish.
+439. setPassword.submit
+   EN: Continue
+440. setPassword.submitting
+   EN: Saving…
+441. setPassword.subtitle
+   EN: Choose a password so you can sign in next time.
+442. setPassword.title
+   EN: Set your password
+443. taskDetail.accept
+   EN: Accept
+444. taskDetail.acceptCompletionConfirm
+   EN: Accept this task as completed?
+445. taskDetail.acceptTask
+   EN: Accept Task
+446. taskDetail.acceptTaskConfirm
+   EN: Are you sure you want to accept this task?
+447. taskDetail.addPhotos
+   EN: Add Photos
+448. taskDetail.addUpdate
+   EN: Add Update
+449. taskDetail.assignedBy
+   EN: Assigned By
+450. taskDetail.assignedTo
+   EN: Assigned To
+451. taskDetail.assigneeSubmitted
+   EN: The assignee has submitted this task for your approval
+452. taskDetail.assignees
+   EN: Assignees
+453. taskDetail.attachedFiles
+   EN: Attached Files
+454. taskDetail.awaitingApproval
+   EN: Your task has been submitted and is awaiting approval from the task creator
+455. taskDetail.cancel
+   EN: Cancel
+456. taskDetail.cancelTaskConfirm
+   EN: Are you sure you want to cancel this task?
+457. taskDetail.changesDetected
+   EN: Changes Detected
+458. taskDetail.children
+   EN: Children
+459. taskDetail.choosePhotoMethod
+   EN: Choose how you want to add photos
+460. taskDetail.compPercent
+   EN: Comp. %
+461. taskDetail.completionAccepted
+   EN: Completion Accepted
+462. taskDetail.completionPercentage
+   EN: Completion Percentage
+463. taskDetail.completionRejected
+   EN: Completion Rejected
+464. taskDetail.createdOn
+   EN: Created On
+465. taskDetail.current
+   EN: Current
+466. taskDetail.decline
+   EN: Decline
+467. taskDetail.declineSubTask
+   EN: Decline Sub-Task
+468. taskDetail.declineSubTaskReason
+   EN: Please provide a reason for declining this sub-task:
+469. taskDetail.declineTask
+   EN: Decline Task
+470. taskDetail.declineTaskConfirm
+   EN: Are you sure you want to decline this task?
+471. taskDetail.delete
+   EN: Delete
+472. taskDetail.deleteConfirm
+   EN: Are you sure you want to delete this task?
+473. taskDetail.due
+   EN: Due:
+474. taskDetail.dueDate
+   EN: Due Date
+475. taskDetail.editHistory
+   EN: Edit History
+476. taskDetail.editReason
+   EN: Edit Reason
+477. taskDetail.editReasonPlaceholder
+   EN: Enter reason for editing this task...
+478. taskDetail.editReasonPrompt
+   EN: Please provide a reason for editing this accepted task (optional)
+479. taskDetail.editReasonTitle
+   EN: Reason for Edit
+480. taskDetail.editTaskDetails
+   EN: Edit Task Details
+481. taskDetail.editedBy
+   EN: Edited by
+482. taskDetail.editedOn
+   EN: Edited on
+483. taskDetail.failedToSubmitUpdate
+   EN: Failed to submit update
+484. taskDetail.fieldChanged
+   EN: {field} changed
+485. taskDetail.from
+   EN: from
+486. taskDetail.markAsComplete
+   EN: Mark as Complete
+487. taskDetail.markCompleteConfirm
+   EN: Mark this task as complete?
+488. taskDetail.noAssignees
+   EN: No assignees
+489. taskDetail.noAttachments
+   EN: No attachments
+490. taskDetail.noChildren
+   EN: No sub-tasks
+491. taskDetail.noEditHistory
+   EN: No edit history available
+492. taskDetail.noFilesAdded
+   EN: No files added
+493. taskDetail.noReasonProvided
+   EN: No reason provided
+494. taskDetail.noUpdates
+   EN: No updates yet
+495. taskDetail.photosAndFiles
+   EN: Photos & Files
+496. taskDetail.photosUpdates
+   EN: Add Photos
+497. taskDetail.previous
+   EN: Previous
+498. taskDetail.progressDetails
+   EN: Progress Details
+499. taskDetail.progressUpdate
+   EN: Progress Update
+500. taskDetail.progressUpdateAdded
+   EN: Progress update added successfully!
+501. taskDetail.project
+   EN: Project
+502. taskDetail.readyForReview
+   EN: Ready for Review
+503. taskDetail.reason
+   EN: Reason:
+504. taskDetail.reassign
+   EN: Reassign
+505. taskDetail.reassignTo
+   EN: Reassign To
+506. taskDetail.reassignToAnotherUser
+   EN: Reassign to Another User
+507. taskDetail.recentChanges
+   EN: Recent Changes
+508. taskDetail.reject
+   EN: Reject
+509. taskDetail.rejectCompletionConfirm
+   EN: Reject this task completion?
+510. taskDetail.reviewedAndApproved
+   EN: Reviewed and approved by
+511. taskDetail.searchUsers
+   EN: Search users...
+512. taskDetail.selectUsers
+   EN: Select Users
+513. taskDetail.subTaskAccepted
+   EN: Sub-task accepted successfully! You can now start working on it.
+514. taskDetail.subTaskDeclined
+   EN: Sub-Task Declined
+515. taskDetail.subTaskDeclinedMessage
+   EN: The sub-task has been declined.
+516. taskDetail.submitForReview
+   EN: Submit for Review
+517. taskDetail.submitForReviewConfirm
+   EN: Submit this task for review?
+518. taskDetail.submitUpdate
+   EN: Submit Update
+519. taskDetail.submittedForReview
+   EN: Submitted for Review
+520. taskDetail.tapToAddFiles
+   EN: Tap to Add Files
+521. taskDetail.taskAccepted
+   EN: Task Accepted
+522. taskDetail.taskApproved
+   EN: Task Approved
+523. taskDetail.taskCancelled
+   EN: Task Cancelled
+524. taskDetail.taskCompleted
+   EN: Task Completed
+525. taskDetail.taskDeclined
+   EN: Task Declined
+526. taskDetail.taskDeclinedByAssignee
+   EN: This task was declined by the assignee
+527. taskDetail.taskDeclinedMessage
+   EN: This task was declined by the assignee
+528. taskDetail.taskDeleted
+   EN: Task Deleted
+529. taskDetail.taskReassigned
+   EN: Task Reassigned
+530. taskDetail.taskRejected
+   EN: Task Rejected
+531. taskDetail.taskSubmitted
+   EN: Task Submitted
+532. taskDetail.taskWasEdited
+   EN: This task was edited by {editor} on {date}
+533. taskDetail.tasksForMeNewRequest
+   EN: Tasks for me – New Request
+534. taskDetail.to
+   EN: to
+535. taskDetail.updateDescription
+   EN: Update Description
+536. taskDetail.updateDescriptionPlaceholder
+   EN: Describe what you've done...
+537. taskDetail.updateStatus
+   EN: Update Status
+538. taskDetail.updateTask
+   EN: Update Progress
+539. taskDetail.updates
+   EN: Updates
+540. taskDetail.viewEditHistory
+   EN: View Edit History
+541. tasks.all
+   EN: All
+542. tasks.assignTo
+   EN: Assign To
+543. tasks.assigned
+   EN: Assigned
+544. tasks.assignedBy
+   EN: Assigned By
+545. tasks.assignedTasks
+   EN: Assigned Tasks
+546. tasks.assignedTo
+   EN: Assigned To
+547. tasks.attachments
+   EN: Attachments
+548. tasks.category
+   EN: Category
+549. tasks.commercial
+   EN: Commercial
+550. tasks.comp
+   EN: Comp.
+551. tasks.completed
+   EN: Completed
+552. tasks.completion
+   EN: Completion
+553. tasks.couldNotLoadTasks
+   EN: Could not load tasks
+554. tasks.couldNotLoadTasksMessage
+   EN: Pull to refresh and try again.
+555. tasks.createNewTask
+   EN: Create New Task
+556. tasks.createTask
+   EN: Create Task
+557. tasks.critical
+   EN: Critical
+558. tasks.description
+   EN: Description
+559. tasks.done
+   EN: Done
+560. tasks.due
+   EN: Due
+561. tasks.dueDate
+   EN: Due Date
+562. tasks.electrical
+   EN: Electrical
+563. tasks.general
+   EN: General
+564. tasks.high
+   EN: High
+565. tasks.inProgress
+   EN: In Progress
+566. tasks.low
+   EN: Low
+567. tasks.materials
+   EN: Materials
+568. tasks.medium
+   EN: Medium
+569. tasks.myTasks
+   EN: My Tasks
+570. tasks.noMatchingTasks
+   EN: No matching tasks
+571. tasks.noTasks
+   EN: No tasks yet
+572. tasks.noTasksMessage
+   EN: You haven't been assigned any tasks yet
+573. tasks.notStarted
+   EN: Not Started
+574. tasks.overdue
+   EN: Overdue
+575. tasks.plumbing
+   EN: Plumbing
+576. tasks.priority
+   EN: Priority
+577. tasks.progress
+   EN: Progress
+578. tasks.received
+   EN: Received
+579. tasks.rejected
+   EN: Rejected
+580. tasks.reviewing
+   EN: Reviewing
+581. tasks.safety
+   EN: Safety
+582. tasks.searchTasks
+   EN: Search tasks...
+583. tasks.selfAssigned
+   EN: Self-Assigned
+584. tasks.status
+   EN: Status
+585. tasks.structural
+   EN: Structural
+586. tasks.task
+   EN: task
+587. tasks.taskCreated
+   EN: Task Created
+588. tasks.taskCreatedMessage
+   EN: Task has been created successfully and assigned to the selected users.
+589. tasks.taskDetails
+   EN: Task Details
+590. tasks.tasks
+   EN: Tasks
+591. tasks.tasksPlural
+   EN: tasks
+592. tasks.title
+   EN: Title
+593. tasks.tryAdjustingFilters
+   EN: Try adjusting your filters
+594. tasks.wip
+   EN: WIP
+595. userManagement.accessDenied
+   EN: Access denied. Admin role required.
+596. userManagement.admin
+   EN: Admin
+597. userManagement.allRequestsProcessed
+   EN: All user requests have been processed. New requests will appear here.
+598. userManagement.approve
+   EN: Approve
+599. userManagement.approveFailed
+   EN: Failed to approve user. Please try again.
+600. userManagement.approveMessage
+   EN: Approve {name} to join your company?
+601. userManagement.approveSuccess
+   EN: {name} has been approved and can now log in.
+602. userManagement.approveUser
+   EN: Approve User
+603. userManagement.approved
+   EN: Approved
+604. userManagement.architect
+   EN: Architect
+605. userManagement.assignSuccess
+   EN: {userName} has been assigned to {projectName} as {role}.
+606. userManagement.assignToProject
+   EN: Assign to Project
+607. userManagement.assignUser
+   EN: Assign User
+608. userManagement.contractor
+   EN: Contractor
+609. userManagement.engineer
+   EN: Engineer
+610. userManagement.foreman
+   EN: Foreman
+611. userManagement.goBack
+   EN: Go Back
+612. userManagement.inspector
+   EN: Inspector
+613. userManagement.leadProjectManager
+   EN: Lead Project Manager
+614. userManagement.manager
+   EN: Manager
+615. userManagement.noPendingApprovals
+   EN: No Pending Approvals
+616. userManagement.noProjectAssignments
+   EN: No project assignments yet
+617. userManagement.pending
+   EN: Pending
+618. userManagement.pendingApprovals
+   EN: Pending Approvals
+619. userManagement.projectAssignments
+   EN: Project Assignments
+620. userManagement.reject
+   EN: Reject
+621. userManagement.rejectFailed
+   EN: Failed to reject user. Please try again.
+622. userManagement.rejectMessage
+   EN: Reject {name}'s request to join your company? This will delete their account.
+623. userManagement.rejectSuccess
+   EN: {name}'s request has been rejected.
+624. userManagement.rejectUser
+   EN: Reject User
+625. userManagement.removeConfirm
+   EN: Are you sure you want to remove {userName} from {projectName}?
+626. userManagement.removeFromProject
+   EN: Remove from Project
+627. userManagement.removeSuccess
+   EN: {userName} has been removed from {projectName}.
+628. userManagement.removeUser
+   EN: Remove User
+629. userManagement.searchUsers
+   EN: Search users...
+630. userManagement.selectProject
+   EN: Select Project
+631. userManagement.selectRole
+   EN: Select Role
+632. userManagement.subcontractor
+   EN: Subcontractor
+633. userManagement.user
+   EN: user
+634. userManagement.userManagement
+   EN: User Management
+635. userManagement.userWaiting
+   EN: user waiting
+636. userManagement.users
+   EN: Users
+637. userManagement.usersWaiting
+   EN: users waiting
+638. userManagement.worker
+   EN: Worker
+639. validation.assigneeRequired
+   EN: Please select at least one person to assign this task
+640. validation.descriptionRequired
+   EN: Description is required
+641. validation.dueDateFuture
+   EN: Due date must be in the future
+642. validation.emailInvalid
+   EN: Please enter a valid email
+643. validation.emailRequired
+   EN: Email is required
+644. validation.passwordMismatch
+   EN: Passwords do not match
+645. validation.passwordRequired
+   EN: Password is required
+646. validation.passwordTooShort
+   EN: Password must be at least 6 characters
+647. validation.projectRequired
+   EN: Please select a project
+648. validation.required
+   EN: This field is required
+649. validation.titleRequired
+   EN: Title is required
+650. voiceInput.error
+   EN: Error
+651. voiceInput.extracting
+   EN: Extracting task information...
+652. voiceInput.failedToStartRecording
+   EN: Failed to start recording. Please try again.
+653. voiceInput.failedToStopRecording
+   EN: Failed to stop recording. Please try again.
+654. voiceInput.microphonePermissionRequired
+   EN: Microphone permission is required to record voice input.
+655. voiceInput.permissionDenied
+   EN: Permission Denied
+656. voiceInput.processing
+   EN: Processing...
+657. voiceInput.recordingHint
+   EN: Speak clearly in Cantonese or English
+658. voiceInput.startRecording
+   EN: Start Recording
+659. voiceInput.stopRecording
+   EN: Stop Recording
+660. voiceInput.title
+   EN: Voice Input
+661. voiceInput.transcribing
+   EN: Transcribing...
+
+## Part B — Runtime activity / feed strings (not all in locale file yet)
+Translate these sentence templates too:
+
+1. EN: Task created by {creatorName}
+2. EN: Task accepted by {creatorName}
+3. EN: Task assigned to {assigneesList} by {assignerName}
+4. EN: Task assignment updated by {assignerName}
+5. EN: Task accepted by {acceptingUser}
+6. EN: Task declined by {decliningUser}. Reason: {reason}
+7. EN: Task submitted for review by {submittingUser}
+8. EN: Task completion accepted by {reviewerName}
+9. EN: Task completion rejected by {reviewerName}. Reason: {reason}
+10. EN: Task deleted by {deletingUser}
+11. EN: Task cancelled by {cancellingUser}
+12. EN: Task archived by {archivingUser}
+13. EN: Task auto-accepted by {creatorName}
+14. EN: New Task
+15. EN: Task Accepted
+16. EN: Task In Progress
+17. EN: Submitted for Review
+18. EN: Task Rejected
+19. EN: Task Completed
+20. EN: Task Cancelled
+21. EN: photos captured
+22. EN: {count} photos captured
+23. EN: Saved to project
+24. EN: Task activity
+25. EN: Recent Activity
+26. EN: This Week's Critical Tasks
+27. EN: Team Queue
+28. EN: My Queue
+29. EN: NEW
+30. EN: DOING
+31. EN: REVIEW
+32. EN: No recent activity for the current project yet.
+33. EN: Select a project to view recent activity.
+34. EN: Saved drafts
+
+## Return format reminder
+KEY | 譯文

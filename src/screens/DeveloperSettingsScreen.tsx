@@ -95,6 +95,9 @@ export default function DeveloperSettingsScreen(props: DeveloperSettingsScreenPr
         case "open-task-detail-verification":
           actions.handleOpenTaskDetailVerification();
           break;
+        case "open-capture-session-smoke":
+          actions.handleOpenCaptureSessionSmoke();
+          break;
         case "force-sync-all":
           actions.handleForceSyncAll();
           break;

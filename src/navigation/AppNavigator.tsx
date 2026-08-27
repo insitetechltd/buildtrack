@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   NavigationContainer,
+  CommonActions,
   getFocusedRouteNameFromRoute,
   type LinkingOptions,
 } from "@react-navigation/native";
@@ -31,7 +32,6 @@ import {
 import { useAuthStore } from "../state/authStore";
 import { isPlatformSuperuser } from "../config/platformSuperusers";
 import { useProjectFilterStore } from "../state/projectFilterStore";
-import { useTaskStore } from "../state/taskStore.supabase";
 import { useActivityTabBadgeCount } from "../ui/viewAdapters/useActivityTabBadgeCount";
 import { DataRefreshManager } from "../utils/DataRefreshManager";
 import { NetworkSyncManager } from "../utils/NetworkSyncManager";
@@ -57,6 +57,8 @@ import ProjectDetailScreen from "../screens/ProjectDetailScreen";
 import DevAdminScreen from "../screens/DevAdminScreen";
 import ProjectPickerScreen from "../screens/ProjectPickerScreen";
 import DeveloperSettingsScreen from "../screens/DeveloperSettingsScreen";
+import CaptureSessionSmokeScreen from "../screens/CaptureSessionSmokeScreen";
+import CaptureSessionFlowScreen from "../screens/CaptureSessionFlowScreen";
 import OwnerConsoleScreen from "../screens/OwnerConsoleScreen";
 import OwnerMonitoringScreen from "../screens/OwnerMonitoringScreen";
 import OwnerEconomicsScreen from "../screens/OwnerEconomicsScreen";
@@ -95,7 +97,6 @@ import {
   ROOT_TAB_CENTER_FAB_LAYOUT,
   ROOT_TAB_CENTER_FAB_SLOT,
   buildRootTabBarStyleForRoute,
-  resolveTaskDetailUpdateLockState,
   shouldCollapseRootSideTabsOnTaskDetailRoute,
   shouldHideRootSideTabsForTabState,
 } from "./rootTabVisibility";
@@ -123,6 +124,12 @@ import {
   cancelInAppLibraryPicker,
   returnToPhotoSelectionFlat,
 } from "./photoFlowNavigation";
+import {
+  exitCaptureFirstFlow,
+  handOffCaptureFirstToUpdateProgress,
+  promptCaptureFirstDestination,
+} from "./captureFirstCameraFlow";
+import CaptureTaskPickerScreen from "../screens/CaptureTaskPickerScreen";
 import {
   buildTaskDetailVerificationUrl,
   TASK_DETAIL_VERIFICATION_PATH,
@@ -341,15 +348,20 @@ export const appLinking: LinkingOptions<RootStackParamList> = {
 function CenterCameraTabButton({
   accessibilityLabel,
   accessibilityState,
-  children,
   disabled = false,
   onLongPress,
   onPress,
   icon,
   style,
-}: BottomTabBarButtonProps & { icon: React.ReactNode; disabled?: boolean }) {
+  affordance = "camera",
+}: BottomTabBarButtonProps & {
+  icon: React.ReactNode;
+  disabled?: boolean;
+  affordance?: "camera" | "update";
+}) {
   const isFocused = accessibilityState?.selected === true;
   const tabButtonStyle = style as StyleProp<ViewStyle>;
+  const isUpdate = affordance === "update";
 
   return (
     <View
@@ -372,7 +384,12 @@ function CenterCameraTabButton({
           testID="root-tab__camera_button"
           style={[
             styles.centerCameraTabButton,
-            isFocused ? styles.centerCameraTabButtonFocused : null,
+            isUpdate ? styles.centerUpdateTabButton : null,
+            isFocused
+              ? isUpdate
+                ? styles.centerUpdateTabButtonFocused
+                : styles.centerCameraTabButtonFocused
+              : null,
             disabled ? { opacity: 0.5 } : null,
           ]}
         >
@@ -384,7 +401,7 @@ function CenterCameraTabButton({
             {icon}
           </View>
         </Pressable>
-        {children}
+        {/* Omit default tab children so RN does not paint a second camera glyph. */}
       </View>
     </View>
   );
@@ -513,6 +530,11 @@ function DashboardStack() {
         name="InAppLibraryPicker"
         component={InAppLibraryPickerScreenWrapper}
         options={{ headerShown: false, animation: "slide_from_bottom" }}
+      />
+      <DashboardStackNavigator.Screen
+        name="CaptureSession"
+        component={CaptureSessionScreenWrapper}
+        options={{ headerShown: false, animation: "fade" }}
       />
     </DashboardStackNavigator.Navigator>
   );
@@ -688,6 +710,11 @@ function TasksStack() {
         name="InAppLibraryPicker"
         component={InAppLibraryPickerScreenWrapper}
         options={{ headerShown: false, animation: "slide_from_bottom" }}
+      />
+      <TasksStackNavigator.Screen
+        name="CaptureSession"
+        component={CaptureSessionScreenWrapper}
+        options={{ headerShown: false, animation: "fade" }}
       />
     </TasksStackNavigator.Navigator>
   );
@@ -869,11 +896,27 @@ function InAppLibraryPickerScreenWrapper({
   navigation,
 }: InAppLibraryPickerScreenWrapperProps) {
   const params = route.params || {};
+  const captureFirstFlow = Boolean(params.captureFirstFlow);
 
   return (
     <InAppLibraryPickerScreen
       // Cancel: return to Select Photos when add-more; otherwise leave the photo flow.
-      onCancel={() => cancelInAppLibraryPicker(navigation as any)}
+      onCancel={() => {
+        if (captureFirstFlow) {
+          const state = (navigation as any).getState?.();
+          const routes = state?.routes ?? [];
+          const index = state?.index ?? routes.length - 1;
+          const parentIsPhotoSelection =
+            index > 0 && routes[index - 1]?.name === "PhotoSelection";
+          if (parentIsPhotoSelection) {
+            cancelInAppLibraryPicker(navigation as any);
+            return;
+          }
+          exitCaptureFirstFlow(navigation as any);
+          return;
+        }
+        cancelInAppLibraryPicker(navigation as any);
+      }}
       initiallySelectedPhotos={params.existingPhotos ?? []}
       onSave={(libraryPhotos) => {
         // Picker returns the full library selection (including pre-highlighted).
@@ -882,6 +925,10 @@ function InAppLibraryPickerScreenWrapper({
           (photo) => !photo.mediaLibraryAssetId,
         );
         const nextPhotos = [...localOnly, ...libraryPhotos];
+        if (captureFirstFlow && nextPhotos.length === 0) {
+          exitCaptureFirstFlow(navigation as any);
+          return;
+        }
         const photoParams: PhotoSelectionParams = {
           taskId: params.taskId,
           subTaskId: params.subTaskId,
@@ -905,6 +952,7 @@ function InAppLibraryPickerScreenWrapper({
           saveIntent: params.saveIntent,
           originRouteName: params.originRouteName,
           selectionRevision: Date.now(),
+          captureFirstFlow: params.captureFirstFlow,
         };
 
         returnToPhotoSelectionFlat(navigation as any, photoParams);
@@ -922,7 +970,7 @@ function PhotoSelectionScreenWrapper({
   route,
   navigation,
 }: PhotoSelectionScreenWrapperProps) {
-  const { taskId, subTaskId, projectId: routeProjectId, companyId: routeCompanyId, userId: routeUserId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId, selectedTaskId: routeSelectedTaskId, saveIntent: routeSaveIntent, originRouteName: originRouteNameParam, selectionRevision } = route.params || {};
+  const { taskId, subTaskId, projectId: routeProjectId, companyId: routeCompanyId, userId: routeUserId, initialCompletionPercentage, initialPhotos, returnScreen, actionType, entityType, uploadImmediately, sourceScreen, sourceTaskId, sourceSubTaskId, selectedTaskId: routeSelectedTaskId, saveIntent: routeSaveIntent, originRouteName: originRouteNameParam, selectionRevision, captureFirstFlow } = route.params || {};
   const originRouteName = originRouteNameParam || route.name;
   const uploadedUrlsRef = React.useRef<string[] | null>(null);
 
@@ -1029,6 +1077,14 @@ function PhotoSelectionScreenWrapper({
         mediaLibraryAssetId: candidate?.mediaLibraryAssetId,
       };
     });
+
+    if (captureFirstFlow) {
+      promptCaptureFirstDestination({
+        navigation: navigation as any,
+        photos: normalizedPhotos,
+      });
+      return;
+    }
 
     // For CreateTaskScreen or UpdateProgressScreen: go back and update params on the previous screen
     if (returnScreen === 'CreateTask') {
@@ -1172,6 +1228,7 @@ function PhotoSelectionScreenWrapper({
           selectedTaskId: routeSelectedTaskId,
           saveIntent: routeSaveIntent,
           originRouteName,
+          captureFirstFlow,
           existingPhotos: currentPhotos.map(
             (photo): SelectedPhoto => ({
               uri: photo.uri,
@@ -1184,7 +1241,13 @@ function PhotoSelectionScreenWrapper({
           ),
         });
       }}
-      onNavigateBack={() => navigation.goBack()}
+      onNavigateBack={() => {
+        if (captureFirstFlow) {
+          exitCaptureFirstFlow(navigation as any);
+          return;
+        }
+        navigation.goBack();
+      }}
       onNavigateToUpdateProgress={(taskId: string, subTaskId?: string, initialCompletionPercentage?: number, uploadedPhotoUrls?: string[]) => {
         const updateProgressNavigation =
           navigation as NativeStackNavigationProp<
@@ -1205,6 +1268,10 @@ function PhotoSelectionScreenWrapper({
       onAttachedToExistingTask={handleAttachedToExistingTask}
       onSaveUnattachedDone={handleSaveUnattachedDone}
       onPhotosSelected={(() => {
+        // Capture-first checkmark prompts Create vs Update (not return to a form).
+        if (captureFirstFlow && effectiveUploadImmediately === false) {
+          return handlePhotosSelected;
+        }
         // Check if we should use onPhotosSelected (when uploadImmediately is false)
         const shouldUsePhotosSelected = (returnScreen === 'CreateTask' || returnScreen === 'UpdateProgress') && effectiveUploadImmediately === false;
         if (shouldUsePhotosSelected) {
@@ -1373,6 +1440,11 @@ function ProfileStack() {
       <ProfileStackNavigator.Screen
         name="DeveloperSettings"
         component={DeveloperSettingsScreenWrapper}
+      />
+      <ProfileStackNavigator.Screen
+        name="CaptureSessionSmoke"
+        component={CaptureSessionSmokeScreenWrapper}
+        options={{ headerShown: false }}
       />
       <ProfileStackNavigator.Screen
         name="OwnerConsole"
@@ -1544,7 +1616,29 @@ function DeveloperSettingsScreenWrapper({
 
         void Linking.openURL(buildTaskDetailVerificationUrl(taskId));
       }}
+      onOpenCaptureSessionSmoke={() => {
+        console.log("[CaptureSessionSmoke] Dev Settings → navigate");
+        try {
+          navigation.navigate("CaptureSessionSmoke");
+        } catch (error) {
+          console.error("[CaptureSessionSmoke] navigate threw", error);
+          Alert.alert(
+            "Capture session",
+            `Could not open smoke screen: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }}
     />
+  );
+}
+
+function CaptureSessionSmokeScreenWrapper({
+  navigation,
+}: NativeStackScreenProps<ProfileStackParamList, "CaptureSessionSmoke">) {
+  return (
+    <CaptureSessionSmokeScreen onClose={() => navigation.goBack()} />
   );
 }
 
@@ -1555,6 +1649,42 @@ function DevAdminScreenWrapper({
 }
 
 // Create Task Stack
+function CaptureTaskPickerScreenWrapper({
+  route,
+  navigation,
+}: NativeStackScreenProps<CreateTaskStackParamList, "CaptureTaskPicker">) {
+  const selectedPhotos = route.params?.selectedPhotos ?? [];
+
+  return (
+    <CaptureTaskPickerScreen
+      selectedPhotos={selectedPhotos}
+      onCancel={() => {
+        if (navigation.canGoBack()) {
+          navigation.goBack();
+          return;
+        }
+        // Stack lost Select Photos — recreate it with the staged batch.
+        navigation.navigate("PhotoSelection", {
+          initialPhotos: selectedPhotos,
+          uploadImmediately: false,
+          captureFirstFlow: true,
+          returnScreen: "CreateTask",
+          entityType: "task",
+          initialCompletionPercentage: 0,
+          selectionRevision: Date.now(),
+        });
+      }}
+      onSelectTask={(taskId) => {
+        handOffCaptureFirstToUpdateProgress({
+          navigation: navigation as any,
+          taskId,
+          photos: selectedPhotos,
+        });
+      }}
+    />
+  );
+}
+
 function CreateTaskStack() {
   return (
     <CreateTaskStackNavigator.Navigator screenOptions={buildDefaultStackScreenOptions()}>
@@ -1572,7 +1702,77 @@ function CreateTaskStack() {
         component={InAppLibraryPickerScreenWrapper}
         options={{ headerShown: false, animation: "slide_from_bottom" }}
       />
+      <CreateTaskStackNavigator.Screen
+        name="CaptureSession"
+        component={CaptureSessionScreenWrapper}
+        options={{ headerShown: false, animation: "fade" }}
+      />
+      <CreateTaskStackNavigator.Screen
+        name="CaptureTaskPicker"
+        component={CaptureTaskPickerScreenWrapper}
+        options={{ headerShown: false }}
+      />
     </CreateTaskStackNavigator.Navigator>
+  );
+}
+
+function CaptureSessionScreenWrapper({
+  navigation,
+  route,
+}:
+  | NativeStackScreenProps<CreateTaskStackParamList, "CaptureSession">
+  | NativeStackScreenProps<DashboardStackParamList, "CaptureSession">
+  | NativeStackScreenProps<TasksStackParamList, "CaptureSession">) {
+  const params = route.params;
+  const isAddPhotos = Boolean(
+    params && typeof params === "object" && params.entry === "addPhotos",
+  );
+
+  return (
+    <CaptureSessionFlowScreen
+      onCancel={() => {
+        if (isAddPhotos) {
+          navigation.goBack();
+          return;
+        }
+        exitCaptureFirstFlow(navigation as any);
+      }}
+      onComplete={(photos) => {
+        if (isAddPhotos && params && typeof params === "object") {
+          navigation.navigate("PhotoSelection", {
+            taskId: params.taskId,
+            subTaskId: params.subTaskId,
+            companyId: params.companyId,
+            userId: params.userId,
+            initialCompletionPercentage: params.initialCompletionPercentage ?? 0,
+            initialPhotos: photos,
+            returnScreen: params.returnScreen,
+            actionType: params.actionType,
+            parentTaskId: params.parentTaskId,
+            parentSubTaskId: params.parentSubTaskId,
+            editTaskId: params.editTaskId,
+            localDraftId: params.localDraftId,
+            uploadImmediately: params.uploadImmediately ?? false,
+            sourceScreen: params.sourceScreen,
+            sourceTaskId: params.sourceTaskId,
+            sourceSubTaskId: params.sourceSubTaskId,
+            entityType: params.entityType,
+            captureFirstFlow: false,
+            selectionRevision: Date.now(),
+          });
+          return;
+        }
+        navigation.navigate("PhotoSelection", {
+          initialPhotos: photos,
+          uploadImmediately: false,
+          captureFirstFlow: true,
+          returnScreen: "CreateTask",
+          entityType: "task",
+          initialCompletionPercentage: 0,
+          selectionRevision: Date.now(),
+        });
+      }}
+    />
   );
 }
 
@@ -1608,6 +1808,7 @@ function CreateTaskMainScreen({
   const uploadedPhotoUrlsFromParams = params.uploadedPhotoUrls; // Uploaded URLs returned from PhotoSelectionScreen
   const clearForm = params.clearForm; // Flag to clear form when "Create New Task" is pressed
   const clearFormTimestamp = params._timestamp; // Timestamp to track when clearForm was set
+  const captureFirstFlow = Boolean(params.captureFirstFlow);
 
   React.useEffect(() => {
     if (!clearForm) {
@@ -1676,11 +1877,19 @@ function CreateTaskMainScreen({
   const clearDraftPayloads = React.useCallback(() => {
     setSelectedPhotosState(undefined);
     setUploadedPhotoUrlsState(undefined);
-    navigation.setParams({
-      selectedPhotos: undefined,
-      uploadedPhotoUrls: undefined,
+    // Target this screen's route key — setParams on an unfocused/child route
+    // raises "SET_PARAMS was not handled by any navigator".
+    if (!route.key) {
+      return;
+    }
+    navigation.dispatch({
+      ...CommonActions.setParams({
+        selectedPhotos: undefined,
+        uploadedPhotoUrls: undefined,
+      }),
+      source: route.key,
     });
-  }, [navigation]);
+  }, [navigation, route.key]);
   const handleCreateSuccess = React.useCallback(() => {
     clearDraftPayloads();
     const parentNav = navigation.getParent();
@@ -1709,6 +1918,24 @@ function CreateTaskMainScreen({
   
   // Handle back navigation - if editing, navigate back to TaskDetail screen
   const handleNavigateBack = React.useCallback(() => {
+    // Capture-first create: always pop to Select Photos (kept under this screen).
+    if (captureFirstFlow) {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return;
+      }
+      navigation.navigate("PhotoSelection", {
+        initialPhotos: selectedPhotosState ?? [],
+        uploadImmediately: false,
+        captureFirstFlow: true,
+        returnScreen: "CreateTask",
+        entityType: "task",
+        initialCompletionPercentage: 0,
+        selectionRevision: Date.now(),
+      });
+      return;
+    }
+
     const parentNav = navigation.getParent();
     if (localDraftId) {
       if (parentNav && sourceScreen === "dashboard") {
@@ -1743,7 +1970,16 @@ function CreateTaskMainScreen({
     } else {
       navigation.goBack();
     }
-  }, [editTaskId, localDraftId, sourceScreen, sourceTaskId, sourceSubTaskId, navigation]);
+  }, [
+    captureFirstFlow,
+    editTaskId,
+    localDraftId,
+    navigation,
+    selectedPhotosState,
+    sourceScreen,
+    sourceSubTaskId,
+    sourceTaskId,
+  ]);
   
   // Route to appropriate screen based on actionType
   // For now, all actions go through CreateTaskScreen which will handle them
@@ -1926,9 +2162,6 @@ function AppRootStack() {
 
 // Main Tab Navigator
 function MainTabs() {
-  const { user } = useAuthStore();
-  const tasksById = useTaskStore((state) => state.tasksById);
-  const tasks = useTaskStore((state) => state.tasks);
   const badgeCount = useActivityTabBadgeCount();
   
   return (
@@ -2010,33 +2243,34 @@ function MainTabs() {
           },
         })}
         options={({ route, navigation }) => {
-          const { shortcut: updateShortcut, isLocked: isTaskDetailUpdateLocked } =
-            resolveTaskDetailUpdateLockState({
-              tabState:
-                typeof navigation?.getState === "function"
-                  ? (navigation.getState() as Parameters<
-                      typeof resolveTaskDetailUpdateShortcut
-                    >[0])
-                  : undefined,
-              userId: user?.id,
-              tasksById,
-              tasks,
-            });
+          const updateShortcut = resolveTaskDetailUpdateShortcut(
+            typeof navigation?.getState === "function"
+              ? (navigation.getState() as Parameters<
+                  typeof resolveTaskDetailUpdateShortcut
+                >[0])
+              : undefined,
+          );
           const isTaskDetailUpdate = Boolean(updateShortcut);
           return {
-          tabBarLabel: isTaskDetailUpdate ? "Update" : "Camera",
+          tabBarLabel: "",
+          tabBarShowLabel: false,
           tabBarActiveTintColor: "#ffffff",
           tabBarInactiveTintColor: "#ffffff",
           tabBarButton: (props) => (
             <CenterCameraTabButton
               {...props}
-              disabled={isTaskDetailUpdateLocked}
-              accessibilityLabel={isTaskDetailUpdate ? "Update" : props.accessibilityLabel}
+              disabled={Boolean(props.disabled)}
+              affordance={isTaskDetailUpdate ? "update" : "camera"}
+              accessibilityLabel={
+                isTaskDetailUpdate
+                  ? "Start task update"
+                  : props.accessibilityLabel ?? "Camera"
+              }
               icon={
                 <Ionicons
                   testID="root-tab__camera_icon"
                   name={isTaskDetailUpdate ? "add" : "camera"}
-                  size={28}
+                  size={isTaskDetailUpdate ? 36 : 28}
                   color="#ffffff"
                 />
               }
@@ -2237,6 +2471,13 @@ const styles = StyleSheet.create({
   },
   centerCameraTabButtonFocused: {
     backgroundColor: "#b91c1c",
+  },
+  centerUpdateTabButton: {
+    backgroundColor: "#08576E",
+    shadowColor: "#043847",
+  },
+  centerUpdateTabButtonFocused: {
+    backgroundColor: "#06485A",
   },
   centerCameraTabIconSurface: {
     alignItems: "center",

@@ -144,14 +144,21 @@ jest.mock("../uiModeRoutes", () => ({
 
 const mockAuthState = {
   isAuthenticated: true,
+  isInitialized: true,
   isLoading: false,
-  user: { id: "user-1", role: "worker" },
+  requiresCompanyPlanSelection: false,
+  requiresPasswordSetup: false,
+  user: { id: "user-1", role: "worker", companyId: "company-1" },
 };
 
 jest.mock("../../state/authStore", () => ({
-  useAuthStore: Object.assign(() => mockAuthState, {
-    getState: () => mockAuthState,
-  }),
+  useAuthStore: Object.assign(
+    (selector?: (state: typeof mockAuthState) => unknown) =>
+      selector ? selector(mockAuthState) : mockAuthState,
+    {
+      getState: () => mockAuthState,
+    },
+  ),
 }));
 
 const mockProjectFilterState = {
@@ -207,6 +214,7 @@ jest.mock("../../screens/LoginScreen", () => "LoginScreen");
 jest.mock("../../screens/SetPasswordScreen", () => "SetPasswordScreen");
 jest.mock("../../screens/CreateTaskScreen", () => "CreateTaskScreen");
 jest.mock("../../screens/ProfileScreen", () => "ProfileScreen");
+jest.mock("../../screens/CompanyPlanScreen", () => "CompanyPlanScreen");
 jest.mock("../../screens/TaskDetailScreen", () => "TaskDetailScreen");
 jest.mock("../../screens/ReportsScreen", () => "ReportsScreen");
 jest.mock("../../screens/ProjectsScreen", () => "ProjectsScreen");
@@ -473,7 +481,7 @@ describe("AppNavigator back helpers", () => {
     });
   });
 
-  it("opens the default camera create-task entry when the current tab is not a task-detail shortcut", () => {
+  it("opens capture session when the camera tab is pressed off Task Detail", () => {
     const navigate = jest.fn();
     const preventDefault = jest.fn();
 
@@ -500,11 +508,47 @@ describe("AppNavigator back helpers", () => {
 
     expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith("Camera", {
-      screen: "CreateTaskMain",
-      params: undefined,
+      screen: "CaptureSession",
     });
   });
 
+  it("opens Update Progress when the center FAB is pressed on Task Detail", () => {
+    const navigate = jest.fn();
+    const preventDefault = jest.fn();
+
+    handleCameraTabPress({
+      event: { preventDefault },
+      navigation: {
+        getState: () => ({
+          index: 2,
+          routes: [
+            { name: "Activity" },
+            { name: "Camera" },
+            {
+              name: "Tasks",
+              state: {
+                index: 1,
+                routes: [
+                  { name: "TasksList" },
+                  { name: "TaskDetail", params: { taskId: "task-99" } },
+                ],
+              },
+            },
+          ],
+        }),
+        navigate,
+      },
+    } as any);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("Tasks", {
+      screen: "UpdateProgress",
+      params: expect.objectContaining({
+        taskId: "task-99",
+        sourceScreen: "tasks",
+      }),
+    });
+  });
 
   it("pops when the navigator reports back history even if state inspection looks root-like", () => {
     const pop = jest.fn();

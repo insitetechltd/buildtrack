@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
@@ -106,8 +106,14 @@ function DraggingPhotoTile({
   }));
 
   const gesture = useMemo(() => {
+    const tap = Gesture.Tap()
+      .maxDuration(250)
+      .onEnd(() => {
+        runOnJS(onPress)(index);
+      });
+
     const pan = Gesture.Pan()
-      .activateAfterLongPress(160)
+      .activateAfterLongPress(220)
       .onStart(() => {
         startX.value = translateX.value;
         startY.value = translateY.value;
@@ -130,12 +136,14 @@ function DraggingPhotoTile({
         zIndex.value = 1;
       });
 
-    return pan;
+    // Long-press pan wins over tap so hold-anywhere reorders; quick tap still edits.
+    return Gesture.Exclusive(pan, tap);
   }, [
     index,
     onDragEnd,
     onDragStart,
     onDragUpdate,
+    onPress,
     scale,
     startX,
     startY,
@@ -147,16 +155,12 @@ function DraggingPhotoTile({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={animatedStyle}>
-        <Pressable
+        <View
           testID={`photo-selection__tile_${index}`}
-          onPress={() => {
-            if (draggingIndex !== null) return;
-            onPress(index);
-          }}
           style={styles.tilePressable}
           accessibilityRole="button"
-          accessibilityLabel={`Photo ${index + 1}. Tap to edit, hold to reorder`}
-          accessibilityHint="Long press then drag to reorder"
+          accessibilityLabel={`Photo ${index + 1}. Tap to edit, hold anywhere to reorder`}
+          accessibilityHint="Long press anywhere on the photo then drag to reorder"
         >
           <ExpoImage
             source={{ uri: photo.annotatedUri || photo.uri }}
@@ -170,17 +174,10 @@ function DraggingPhotoTile({
               <Ionicons name="checkmark" size={12} color="white" />
             </View>
           ) : null}
-          <View
-            testID={`photo-selection__drag_handle_${index}`}
-            style={styles.dragHandle}
-            pointerEvents="none"
-          >
-            <Ionicons name="menu" size={14} color="white" />
-          </View>
           <View style={styles.expandBadge} pointerEvents="none">
             <Ionicons name="expand" size={12} color="white" />
           </View>
-        </Pressable>
+        </View>
       </Animated.View>
     </GestureDetector>
   );
@@ -201,6 +198,8 @@ export default function SortablePhotoGrid({
   const [positions, setPositions] = useState(() => photos.map((_, i) => i));
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
   const dragOriginIndex = useSharedValue(-1);
+  const positionsRef = useRef(positions);
+  positionsRef.current = positions;
 
   useEffect(() => {
     if (draggingIndex !== null) return;
@@ -247,19 +246,20 @@ export default function SortablePhotoGrid({
       setPositions((prev) => {
         const currentFrom = prev.indexOf(from);
         if (currentFrom < 0 || currentFrom === to) return prev;
-        return moveItem(prev, currentFrom, to);
+        const next = moveItem(prev, currentFrom, to);
+        positionsRef.current = next;
+        return next;
       });
     },
     [gap, photos.length, tileSize, dragOriginIndex],
   );
 
   const handleDragEnd = useCallback(() => {
-    setDraggingIndex(null);
+    const nextPositions = positionsRef.current;
     dragOriginIndex.value = -1;
-    setPositions((prev) => {
-      commitOrder(prev);
-      return prev;
-    });
+    setDraggingIndex(null);
+    // Commit parent order outside any setState updater (avoids setState-during-render).
+    commitOrder(nextPositions);
   }, [commitOrder, dragOriginIndex]);
 
   const addOrigin = slotOrigin(0, tileSize, gap);
@@ -347,15 +347,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#16a34a",
     borderRadius: 999,
     padding: 4,
-  },
-  dragHandle: {
-    position: "absolute",
-    bottom: 8,
-    left: 8,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
   },
   expandBadge: {
     position: "absolute",

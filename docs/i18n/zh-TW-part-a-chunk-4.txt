@@ -1,0 +1,312 @@
+# Chinese translation brief (Insite / Taskr mobile app) — PART A ONLY
+
+You are translating UI copy for a construction jobsite task app (photo evidence → task → review).
+Target: **Traditional Chinese (zh-TW)** — Taiwan/HK field tone, not Mainland marketing Chinese unless asked.
+
+## Rules
+1. Output format (one line per entry, exactly):
+   KEY | 繁體中文譯文
+   Example: auth.login | 登入
+2. Keep placeholders EXACTLY as in EN (do not translate brace names):
+   {creatorName}, {assigneesList}, {arg1}, {count}, {name}, etc.
+3. Keep emoji if present in EN.
+4. Preferred glossary:
+   - task → 工作 (or 任務 if already established in key context)
+   - project → 專案
+   - assign → 指派 / 分配
+   - review / approval → 審核 / 審批
+   - overdue → 逾期
+   - progress → 進度
+   - attachment / photo → 附件 / 相片
+5. Do NOT translate brand/product names: Taskr, Insite, BuildTrack.
+6. Do NOT invent new keys. Translate only the keys listed below.
+7. Return ONLY the KEY | 譯文 lines (no numbering, no EN reprint, no commentary).
+
+## Keys to translate
+Source: src/locales/en.ts → destination: src/locales/zh-TW.ts
+
+## Part A chunk 4/4 — login + createCompany + setPassword + registration + reports + fab + errors
+Keys in this chunk: 140
+Sections: login, createCompany, setPassword, registration, reports, fab, errors
+(Send chunks 1→4 in order; merge all KEY | 譯文 replies before apply.)
+
+1. login.approvalPending
+   EN: Approval Pending
+2. login.approvalPendingMessage
+   EN: Your account is pending approval from your company administrator. You will be notified once your account is approved.
+3. login.buildTrack
+   EN: BuildTrack
+4. login.constructionTaskManagement
+   EN: Construction Task Management
+5. login.createCompany
+   EN: Create company
+6. login.dontHaveAccount
+   EN: Don't have an account?
+7. login.emailAddress
+   EN: Email Address
+8. login.emailNotConfirmed
+   EN: This email is not confirmed yet. Open the confirmation link from your invite email, or ask your admin to resend the invite.
+9. login.emailOrPhone
+   EN: Email or Phone Number
+10. login.emailOrPhonePlaceholder
+   EN: email@example.com or +1234567890
+11. login.emailOrPhoneRequired
+   EN: Email or phone number is required
+12. login.emailPlaceholder
+   EN: Enter your email
+13. login.failedToLogin
+   EN: Failed to login with
+14. login.invalidCredentials
+   EN: Invalid email or password. Please try again.
+15. login.invalidEmailOrPhone
+   EN: Please enter a valid email or phone number
+16. login.loginFailed
+   EN: Login Failed
+17. login.passwordPlaceholder
+   EN: Enter your password
+18. login.phoneLookupFailed
+   EN: Phone sign-in could not find that number. Sign in with the email from your invite instead.
+19. login.pleaseTryAgain
+   EN: Please try again.
+20. login.profileMissing
+   EN: Password was accepted but this account has no Taskr profile. Ask your admin to re-invite the seat, or contact support.
+21. login.quickLogin
+   EN: Quick Login - Tap any user
+22. login.quickLoginFailed
+   EN: Quick Login Failed
+23. login.signIn
+   EN: Sign In
+24. login.signUp
+   EN: Sign Up
+25. login.signingIn
+   EN: Signing In...
+26. login.tapToLogin
+   EN: Tap any name to login instantly
+27. createCompany.backToLogin
+   EN: Already have an account? Sign in
+28. createCompany.companyName
+   EN: Company name
+29. createCompany.companyNamePlaceholder
+   EN: Acme Construction
+30. createCompany.companyNameRequired
+   EN: Company name is required
+31. createCompany.creating
+   EN: Creating…
+32. createCompany.emailRequired
+   EN: Email is required
+33. createCompany.failedMessage
+   EN: Please try again.
+34. createCompany.failedTitle
+   EN: Could not create company
+35. createCompany.invalidEmail
+   EN: Enter a valid email
+36. createCompany.nameRequired
+   EN: Your name is required
+37. createCompany.submit
+   EN: Create company
+38. createCompany.subtitle
+   EN: Start your company account. You will be the company admin.
+39. createCompany.title
+   EN: Create company
+40. createCompany.workEmail
+   EN: Work email
+41. createCompany.workEmailPlaceholder
+   EN: you@company.com
+42. createCompany.yourName
+   EN: Your name
+43. createCompany.yourNamePlaceholder
+   EN: Full name
+44. setPassword.confirmPassword
+   EN: Confirm password
+45. setPassword.confirmPasswordPlaceholder
+   EN: Re-enter your password
+46. setPassword.confirmPasswordRequired
+   EN: Please confirm your password
+47. setPassword.failedTitle
+   EN: Could not save password
+48. setPassword.password
+   EN: New password
+49. setPassword.passwordPlaceholder
+   EN: At least 6 characters
+50. setPassword.passwordRequired
+   EN: Password is required
+51. setPassword.passwordTooShort
+   EN: Password must be at least 6 characters
+52. setPassword.passwordsDoNotMatch
+   EN: Passwords do not match
+53. setPassword.retryAfterAuth
+   EN: Password saved. Tap Continue again to finish.
+54. setPassword.submit
+   EN: Continue
+55. setPassword.submitting
+   EN: Saving…
+56. setPassword.subtitle
+   EN: Choose a password so you can sign in next time.
+57. setPassword.title
+   EN: Set your password
+58. registration.alreadyHaveAccount
+   EN: Already have an account?
+59. registration.change
+   EN: Change
+60. registration.company
+   EN: Company
+61. registration.companyNameRequired
+   EN: Company name is required
+62. registration.confirmPassword
+   EN: Confirm Password
+63. registration.confirmPasswordPlaceholder
+   EN: Confirm your password
+64. registration.confirmPasswordRequired
+   EN: Please confirm your password
+65. registration.createAccount
+   EN: Create your account to get started
+66. registration.createAccountButton
+   EN: Create Account
+67. registration.createNew
+   EN: Create New
+68. registration.creatingAccount
+   EN: Creating Account...
+69. registration.emailAddress
+   EN: Email Address
+70. registration.enterCompanyName
+   EN: Enter your company name
+71. registration.enterEmailOptional
+   EN: Enter your email (optional)
+72. registration.enterFullName
+   EN: Enter your full name
+73. registration.enterPassword
+   EN: Enter your password
+74. registration.enterPromoCode
+   EN: Enter promo code to continue
+75. registration.firstUserAdmin
+   EN: You will be the first user and administrator of this company.
+76. registration.fullName
+   EN: Full Name
+77. registration.getStarted
+   EN: Get Started
+78. registration.invalidEmail
+   EN: Please enter a valid email address
+79. registration.invalidPromoCode
+   EN: Invalid promo code
+80. registration.joinExisting
+   EN: Join Existing
+81. registration.joinTaskr
+   EN: Join Taskr
+82. registration.nameRequired
+   EN: Name is required
+83. registration.noCompaniesAvailable
+   EN: No companies available
+84. registration.optional
+   EN: Optional
+85. registration.passwordRequired
+   EN: Password is required
+86. registration.passwordTooShort
+   EN: Password must be at least 6 characters
+87. registration.passwordsDoNotMatch
+   EN: Passwords do not match
+88. registration.phoneInvalid
+   EN: Phone number must be exactly 8 digits
+89. registration.phoneNumber
+   EN: Phone Number
+90. registration.phoneNumberPlaceholder
+   EN: Enter 8-digit phone number
+91. registration.phoneRequired
+   EN: Phone number is required
+92. registration.promoCode
+   EN: Promo Code
+93. registration.promoCodeRequired
+   EN: Promo code is required
+94. registration.registrationFailed
+   EN: Registration Failed
+95. registration.registrationSubmitted
+   EN: Registration Submitted
+96. registration.registrationSubmittedMessage
+   EN: Your registration request has been sent to the company administrator for approval. You will be notified once approved.
+97. registration.selectACompany
+   EN: Select a company
+98. registration.selectCompany
+   EN: Select Company
+99. registration.selectCompanyOption
+   EN: Please select a company option
+100. registration.selectCompanyRequired
+   EN: Please select a company
+101. registration.unexpectedError
+   EN: An unexpected error occurred. Please try again.
+102. registration.validPromoCode
+   EN: Valid promo code!
+103. registration.welcomeNewCompany
+   EN: Welcome!
+104. registration.welcomeNewCompanyMessage
+   EN: Your company has been created and you are now the administrator. You can start creating projects and inviting team members.
+105. reports.adjustDateRange
+   EN: Adjust your date range or report type
+106. reports.assignedTasks
+   EN: Assigned Tasks
+107. reports.avgCompletion
+   EN: Avg Completion
+108. reports.complete
+   EN: complete
+109. reports.completed
+   EN: Completed
+110. reports.criticalPriority
+   EN: Critical Priority
+111. reports.dateRange
+   EN: Date Range
+112. reports.due
+   EN: Due
+113. reports.exportAsPDF
+   EN: In a production app, this would be exported as PDF or CSV.
+114. reports.from
+   EN: From
+115. reports.inProgress
+   EN: In Progress
+116. reports.moreTasksInReport
+   EN: more tasks in full report
+117. reports.myTasks
+   EN: My Tasks
+118. reports.noTasksFound
+   EN: No tasks found
+119. reports.overdue
+   EN: Overdue
+120. reports.reportConfiguration
+   EN: Report Configuration
+121. reports.reportContains
+   EN: Report contains
+122. reports.reportGenerated
+   EN: Report Generated
+123. reports.reportSummary
+   EN: Report Summary
+124. reports.reportType
+   EN: Report Type
+125. reports.reports
+   EN: Reports
+126. reports.statisticsOverview
+   EN: Statistics Overview
+127. reports.taskPreview
+   EN: Task Preview
+128. reports.tasksFrom
+   EN: tasks from
+129. reports.to
+   EN: To
+130. reports.toDate
+   EN: to
+131. reports.totalTasks
+   EN: Total Tasks
+132. reports.viewSummary
+   EN: View Summary
+133. fab.addSubTask
+   EN: Add Sub-task
+134. fab.cancelTask
+   EN: Cancel Task
+135. fab.editTaskDetail
+   EN: Edit Task Detail
+136. fab.newTask
+   EN: New Task
+137. errors.error
+   EN: Error
+138. errors.info
+   EN: Info
+139. errors.success
+   EN: Success
+140. errors.warning
+   EN: Warning

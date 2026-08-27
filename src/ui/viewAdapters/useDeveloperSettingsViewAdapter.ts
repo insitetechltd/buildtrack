@@ -33,6 +33,7 @@ import { isUuidLike } from "@/navigation/screenVerification";
 export interface DeveloperSettingsViewAdapterProps {
   onNavigateBack: () => void;
   onOpenTaskDetailVerification: (taskId?: string) => void;
+  onOpenCaptureSessionSmoke?: () => void;
 }
 
 export interface DeveloperSettingsViewAdapterHookResult {
@@ -40,6 +41,7 @@ export interface DeveloperSettingsViewAdapterHookResult {
   actions: {
     handleNavigateBack: () => void;
     handleOpenTaskDetailVerification: () => void;
+    handleOpenCaptureSessionSmoke: () => void;
     handleForceSyncAll: () => void;
     handleClearTaskCache: () => void;
     handleClearProjectCache: () => void;
@@ -77,7 +79,8 @@ function createActionItem(
 export function useDeveloperSettingsViewAdapter(
   props: DeveloperSettingsViewAdapterProps,
 ): DeveloperSettingsViewAdapterHookResult {
-  const { onNavigateBack, onOpenTaskDetailVerification } = props;
+  const { onNavigateBack, onOpenTaskDetailVerification, onOpenCaptureSessionSmoke } =
+    props;
   const { user, logout } = useAuthStore();
   const taskStore = useTaskStore();
   const projectStore = useProjectStoreWithInit();
@@ -128,6 +131,18 @@ export function useDeveloperSettingsViewAdapter(
 
     onOpenTaskDetailVerification(verificationTaskId);
   }, [onOpenTaskDetailVerification, verificationTaskId]);
+
+  const handleOpenCaptureSessionSmoke = useCallback(() => {
+    console.log("[CaptureSessionSmoke] action pressed");
+    if (!onOpenCaptureSessionSmoke) {
+      Alert.alert(
+        "Capture session smoke",
+        "Navigation host is not wired for this build. Reload the JS bundle after pulling latest.",
+      );
+      return;
+    }
+    onOpenCaptureSessionSmoke();
+  }, [onOpenCaptureSessionSmoke]);
 
   const handleClearAllLocalData = useCallback(() => {
     Alert.alert(
@@ -501,6 +516,14 @@ export function useDeveloperSettingsViewAdapter(
               "purple",
               !verificationTaskId,
             ),
+            createActionItem(
+              "open-capture-session-smoke",
+              "Open Capture Session (A/B smoke)",
+              "Custom camera + hybrid library — does not replace Camera tab",
+              "camera-outline",
+              "green",
+              false,
+            ),
           ],
         },
         {
@@ -640,6 +663,7 @@ export function useDeveloperSettingsViewAdapter(
     user,
     userStore.users.length,
     verificationTaskId,
+    onOpenCaptureSessionSmoke,
   ]);
 
   return {
@@ -647,6 +671,7 @@ export function useDeveloperSettingsViewAdapter(
     actions: {
       handleNavigateBack,
       handleOpenTaskDetailVerification,
+      handleOpenCaptureSessionSmoke,
       handleForceSyncAll,
       handleClearTaskCache,
       handleClearProjectCache,

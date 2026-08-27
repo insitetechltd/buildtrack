@@ -135,6 +135,19 @@ export default function UpdateProgressScreen(props: UpdateProgressScreenProps) {
       />
 
       <ScrollView className="flex-1 px-6 py-4" contentContainerStyle={{ paddingBottom: 100 }}>
+        <View className="mb-4" testID="update-progress__task_title_block">
+          <Text className="text-sm font-medium uppercase tracking-wide text-gray-500">
+            Task
+          </Text>
+          <Text
+            testID="update-progress__task_title"
+            className="mt-1 text-xl font-semibold text-gray-900"
+            accessibilityRole="header"
+          >
+            {task.title}
+          </Text>
+        </View>
+
         <FileUploadHarness
           title={t.taskDetail.photosAndFiles}
           items={validPhotos.map((photo, idx) => ({

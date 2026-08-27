@@ -123,12 +123,21 @@ jest.mock("../uiModeRoutes", () => ({
 
 const mockAuthState = {
   isAuthenticated: true,
+  isInitialized: true,
   isLoading: false,
-  user: { id: "user-1", role: "worker" },
+  requiresCompanyPlanSelection: false,
+  requiresPasswordSetup: false,
+  user: { id: "user-1", role: "worker", companyId: "company-1" },
 };
 
 jest.mock("../../state/authStore", () => ({
-  useAuthStore: () => mockAuthState,
+  useAuthStore: Object.assign(
+    (selector?: (state: typeof mockAuthState) => unknown) =>
+      selector ? selector(mockAuthState) : mockAuthState,
+    {
+      getState: () => mockAuthState,
+    },
+  ),
 }));
 
 const mockProjectFilterState = {
@@ -175,6 +184,7 @@ jest.mock("../../screens/LoginScreen", () => "LoginScreen");
 jest.mock("../../screens/SetPasswordScreen", () => "SetPasswordScreen");
 jest.mock("../../screens/CreateTaskScreen", () => "CreateTaskScreen");
 jest.mock("../../screens/ProfileScreen", () => "ProfileScreen");
+jest.mock("../../screens/CompanyPlanScreen", () => "CompanyPlanScreen");
 jest.mock("../../screens/TaskDetailScreen", () => "TaskDetailScreen");
 jest.mock("../../screens/ProjectsScreen", () => "ProjectsScreen");
 jest.mock("../../screens/CreateProjectScreen", () => "CreateProjectScreen");
@@ -304,6 +314,8 @@ describe("AppNavigator bottom-tab spacing", () => {
     expect(shouldHideTabBarOnCreateTaskRoute("UpdateProgress")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("InAppLibraryPicker")).toBe(true);
+    expect(shouldHideTabBarOnCreateTaskRoute("CaptureSession")).toBe(true);
+    expect(shouldHideTabBarOnCreateTaskRoute("CaptureTaskPicker")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoViewer")).toBe(false);
     expect(shouldHideTabBarOnCreateTaskRoute(undefined)).toBe(false);
   });

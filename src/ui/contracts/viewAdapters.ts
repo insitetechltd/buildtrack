@@ -60,6 +60,8 @@ export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   timestampLabel: string;
   statusLabel: string;
   previewPhotoUri?: string;
+  /** All photos for this event (create attachments or update uploads). */
+  previewPhotoUris?: string[];
   /** Display name of the user who performed this activity event. */
   actorLabel?: string;
 }
@@ -97,7 +99,8 @@ export interface DashboardQueueDashboardCell {
 
 export interface DashboardQueueDashboardGroup {
   id: string;
-  title: "My Queue" | "Team Queue";
+  /** Localized display title (e.g. My Queue / 我的佇列). */
+  title: string;
   cells: DashboardQueueDashboardCell[];
 }
 
@@ -210,7 +213,8 @@ export interface TasksQueueBucket {
 export interface TasksQueuePanel {
   id: string;
   queue: TasksQueueId;
-  title: "My Queue" | "Team Queue";
+  /** Localized display title. */
+  title: string;
   totalCountLabel: string;
   presentation: "primary" | "preview";
   isExpanded: boolean;
@@ -265,7 +269,8 @@ export interface TasksScreenRowItem extends PrimitiveReadyItemBase {
   attachmentUris: string[];
   indentationLevel?: number;
   queue?: TasksQueueId;
-  queueLabel?: "My Queue" | "Team Queue";
+  /** Localized queue display label. */
+  queueLabel?: string;
   bucket?: TasksQueueBucketId;
   bucketLabel?: string;
   contextLabel?: string;
@@ -1091,6 +1096,7 @@ export type DeveloperSettingsActionColor =
 
 export type DeveloperSettingsActionId =
   | "open-task-detail-verification"
+  | "open-capture-session-smoke"
   | "force-sync-all"
   | "clear-task-cache"
   | "clear-project-cache"

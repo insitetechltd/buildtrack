@@ -156,6 +156,7 @@ export function getProfileStackNavigation(navigation: {
     "ProfileMain",
     "CompanyManagement",
     "DeveloperSettings",
+    "CaptureSessionSmoke",
   ]);
 }
 

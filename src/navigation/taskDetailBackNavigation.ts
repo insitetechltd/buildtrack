@@ -1,7 +1,6 @@
 import { CommonActions, StackActions } from "@react-navigation/native";
-import { useAuthStore } from "../state/authStore";
-import { useTaskStore } from "../state/taskStore.supabase";
 import { exitUpdateProgressScreen, type PhotoFlowStackNav } from "./photoFlowNavigation";
+import { promptCaptureFirstSource } from "./captureFirstCameraFlow";
 import { resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
 import {
   navigateToCreateTaskRoute,
@@ -12,7 +11,6 @@ import {
   type TasksTaskDetailBackNavigation,
   popCurrentStack,
 } from "./rootNavigationHelpers";
-import { resolveTaskDetailUpdateLockState } from "./rootTabVisibility";
 import type { CreateTaskParams } from "./navigationTypes";
 
 export function returnToCreateTaskRoute(
@@ -92,33 +90,23 @@ export function handleCameraTabPress({
 }: {
   event: { preventDefault: () => void };
   navigation: {
-    getState: () => Parameters<typeof resolveTaskDetailUpdateShortcut>[0];
+    getState: () => {
+      index?: number;
+      routes?: Array<{ name?: string; state?: unknown }>;
+    };
     navigate: (screen: string, params?: unknown) => void;
   };
 }) {
-  const taskStoreState = useTaskStore.getState() as {
-    tasksById?: Record<string, any>;
-    tasks?: Array<any>;
-  };
-  const { shortcut: updateShortcut, isLocked } = resolveTaskDetailUpdateLockState({
-    tabState: navigation.getState() as Parameters<typeof resolveTaskDetailUpdateShortcut>[0],
-    userId: useAuthStore.getState().user?.id,
-    tasksById: taskStoreState.tasksById,
-    tasks: taskStoreState.tasks,
-  });
-
   event.preventDefault();
-
-  if (updateShortcut && !isLocked) {
+  const tabState = navigation.getState();
+  const updateShortcut = resolveTaskDetailUpdateShortcut(tabState);
+  if (updateShortcut) {
+    // Task Detail: + means start an update on this task.
     navigation.navigate(updateShortcut.tabName, {
       screen: "UpdateProgress",
       params: updateShortcut.params,
     });
     return;
   }
-
-  navigation.navigate("Camera", {
-    screen: "CreateTaskMain",
-    params: undefined,
-  });
+  promptCaptureFirstSource(navigation, tabState);
 }

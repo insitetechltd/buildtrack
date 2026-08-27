@@ -1,0 +1,49 @@
+# Part B — Runtime activity / feed strings (zh-TW)
+# Source: DeepSeek reply deepseek_text_20260827_bee06e.txt (2026-08-27)
+# Not all strings are wired into src/locales yet — keep for later i18n wiring.
+# Format: N. EN | ZH
+# Missing from DeepSeek: #32 Chinese (EN only), #33–#34 entirely.
+
+1. Task created by {creatorName} | {creatorName} 建立了工作
+2. Task accepted by {creatorName} | {creatorName} 接受了工作
+3. Task assigned to {assigneesList} by {assignerName} | {assignerName} 將工作指派給 {assigneesList}
+4. Task assignment updated by {assignerName} | {assignerName} 更新了工作指派
+5. Task accepted by {acceptingUser} | {acceptingUser} 接受了工作
+6. Task declined by {decliningUser}. Reason: {reason} | {decliningUser} 婉拒了工作，原因：{reason}
+7. Task submitted for review by {submittingUser} | {submittingUser} 提交工作送審
+8. Task completion accepted by {reviewerName} | {reviewerName} 接受了工作完成
+9. Task completion rejected by {reviewerName}. Reason: {reason} | {reviewerName} 拒絕了工作完成，原因：{reason}
+10. Task deleted by {deletingUser} | {deletingUser} 刪除了工作
+11. Task cancelled by {cancellingUser} | {cancellingUser} 取消了工作
+12. Task archived by {archivingUser} | {archivingUser} 封存了工作
+13. Task auto-accepted by {creatorName} | {creatorName} 自動接受了工作
+14. New Task | 新工作
+15. Task Accepted | 工作已接受
+16. Task In Progress | 工作進行中
+17. Submitted for Review | 已提交審核
+18. Task Rejected | 工作已拒絕
+19. Task Completed | 工作已完成
+20. Task Cancelled | 工作已取消
+21. photos captured | 已拍攝相片
+22. {count} photos captured | 已拍攝 {count} 張相片
+23. Saved to project | 已儲存至專案
+24. Task activity | 工項動態
+25. Recent Activity | 近期動態
+26. This Week's Critical Tasks | 本週緊急工項
+27. Team Queue | 團隊佇列
+28. My Queue | 我的佇列
+29. NEW | 新增
+30. DOING | 進行中
+31. REVIEW | 審核中
+32. No recent activity for the current project yet. | 目前專案尚無近期動態。
+33. Select a project to view recent activity. | 請選擇專案以檢視近期動態。
+34. Saved drafts | 已儲存草稿
+
+# Wired into src/locales/{en,zh-TW}.ts `activity` section + Dashboard/activityFeed (2026-08-27).
+# Overlap applied into src/locales/zh-TW.ts (exact EN value match):
+# - fab.newTask ← #14 新工作
+# - taskDetail.taskAccepted ← #15 工作已接受
+# - taskDetail.submittedForReview ← #17 已提交審核 (unchanged; already matched)
+# - taskDetail.taskRejected ← #18 工作已拒絕
+# - taskDetail.taskCompleted ← #19 工作已完成
+# - taskDetail.taskCancelled ← #20 工作已取消

@@ -241,4 +241,32 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByText("Install corridor lighting")).toBeTruthy();
     expect(screen.getByText("Alex Chen")).toBeTruthy();
   });
+
+  it("renders a swipeable multi-photo hero with pager dots", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:multi"
+        variant="activity"
+        layout="post"
+        title="Progress photos added"
+        subtitle="Install corridor lighting"
+        actorLabel="Alex Chen"
+        metaLabel="Jul 4, 9:40 AM"
+        imageUris={[
+          "https://example.com/progress-1.jpg",
+          "https://example.com/progress-2.jpg",
+        ]}
+      />,
+    );
+
+    const hero = screen.getByTestId("shared-card:multi:hero");
+    fireEvent(hero, "layout", {
+      nativeEvent: { layout: { width: 320, height: 240, x: 0, y: 0 } },
+    });
+
+    expect(screen.getByTestId("shared-card:multi:hero-swipe")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:multi:hero-pager")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:multi:hero-image")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:multi:hero-image-1")).toBeTruthy();
+  });
 });

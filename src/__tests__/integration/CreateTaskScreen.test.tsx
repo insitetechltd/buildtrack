@@ -43,6 +43,7 @@ const mockGetProjectUserAssignments = jest.fn();
 const mockFetchProjectUserAssignments = jest.fn();
 const mockShowPhotoSelectionDialog = jest.fn();
 const mockNavigate = jest.fn();
+const mockPush = jest.fn();
 const mockAddTaskUpdate = jest.fn();
 const mockAddSubTaskUpdate = jest.fn();
 const mockAddAssignerComment = jest.fn();
@@ -238,17 +239,31 @@ jest.mock('@react-native-community/slider', () => {
 const mockNavigationDispatch = jest.fn();
 const mockNavigationAddListener = jest.fn(() => jest.fn());
 
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({
-    navigate: mockNavigate,
-    setParams: jest.fn(),
-    dispatch: mockNavigationDispatch,
-    addListener: mockNavigationAddListener,
-  }),
-  useRoute: () => ({ params: {} }),
-  useFocusEffect: jest.fn((cb) => cb()),
-  NavigationContainer: ({ children }: any) => <>{children}</>
-}));
+jest.mock('@react-navigation/native', () => {
+  const React = require('react');
+  const actual = jest.requireActual('@react-navigation/native');
+  return {
+    ...actual,
+    useNavigation: () => ({
+      navigate: mockNavigate,
+      push: mockPush,
+      setParams: jest.fn(),
+      dispatch: mockNavigationDispatch,
+      addListener: mockNavigationAddListener,
+      goBack: jest.fn(),
+      getParent: jest.fn(),
+      getState: jest.fn(),
+    }),
+    useRoute: () => ({ params: {} }),
+    useFocusEffect: jest.fn((cb) => {
+      React.useEffect(() => {
+        const cleanup = cb();
+        return typeof cleanup === 'function' ? cleanup : undefined;
+      }, [cb]);
+    }),
+    NavigationContainer: ({ children }: any) => <>{children}</>,
+  };
+});
 
 jest.mock('../../components/ProfileMenu', () => {
   const { View } = require('react-native');
@@ -273,6 +288,7 @@ describe('CreateTaskScreen Integration', () => {
     mockIsAdmin = false;
     mockShowPhotoSelectionDialog.mockReset();
     mockNavigate.mockReset();
+    mockPush.mockReset();
     mockAddTaskUpdate.mockReset();
     mockAddSubTaskUpdate.mockReset();
     mockAddAssignerComment.mockReset();
@@ -2023,9 +2039,7 @@ describe('CreateTaskScreen Integration', () => {
     expect(onNavigateBack).toHaveBeenCalled();
   });
 
-  it('opens the create-task photo selection flow from the attachment CTA', async () => {
-    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(jest.fn());
-
+  it('opens CaptureSession from the attachment CTA (no Take/Library alert)', async () => {
     const { getByTestId } = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -2035,17 +2049,14 @@ describe('CreateTaskScreen Integration', () => {
     fireEvent.press(getByTestId('createTask-add-photos'));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith(
-        'Add Photos',
-        'Choose how you want to add photos',
-        expect.arrayContaining([
-          expect.objectContaining({ text: 'Take Photo' }),
-          expect.objectContaining({ text: 'Choose from Library' }),
-        ]),
+      expect(mockPush).toHaveBeenCalledWith(
+        'CaptureSession',
+        expect.objectContaining({
+          entry: 'addPhotos',
+          returnScreen: 'CreateTask',
+        }),
       );
     });
-
-    alertSpy.mockRestore();
   });
 
   it('renders translated attachment state for pending selected photos', () => {

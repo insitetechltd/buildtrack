@@ -10,6 +10,7 @@ import BrandHeaderTitle from "@/components/BrandHeaderTitle";
 import type { CreateTaskParams, TasksListParams } from "@/navigation/navigationTypes";
 import { useDashboardViewAdapter } from "@/ui/viewAdapters/useDashboardViewAdapter";
 import { usePullToRefresh } from "@/utils/usePullToRefresh";
+import { useTranslation } from "@/utils/useTranslation";
 
 interface DashboardScreenProps {
   onNavigateToTasks: (params?: TasksListParams) => void;
@@ -43,6 +44,7 @@ function DraftDeleteAction({
 }
 
 export default function DashboardScreen(props: DashboardScreenProps) {
+  const t = useTranslation();
   const { output, visibility, actions } = useDashboardViewAdapter();
   const { isPullRefreshing, handlePullRefresh } = usePullToRefresh();
   const [isDraftsExpanded, setIsDraftsExpanded] = useState(false);
@@ -96,23 +98,23 @@ export default function DashboardScreen(props: DashboardScreenProps) {
 
   const handleDraftDeletePress = useCallback(
     (localDraftId: string) => {
-      Alert.alert("Delete draft?", "This saved draft will be removed from this device.", [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t.activity.deleteDraftTitle, t.activity.deleteDraftMessage, [
+        { text: t.common.cancel, style: "cancel" },
         {
-          text: "Delete",
+          text: t.common.delete,
           style: "destructive",
           onPress: () => {
             void actions.deleteDraftTask(localDraftId).catch((error) => {
               Alert.alert(
-                "Unable to delete draft",
-                error instanceof Error ? error.message : "Please try again.",
+                t.activity.unableToDeleteDraft,
+                error instanceof Error ? error.message : t.activity.tryAgain,
               );
             });
           },
         },
       ]);
     },
-    [actions],
+    [actions, t],
   );
 
   return (
@@ -123,7 +125,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
     >
         <AppScreenHeader
           title="Taskr"
-          titleNode={<BrandHeaderTitle subtitle="Site activity" />}
+          titleNode={<BrandHeaderTitle subtitle={t.activity.siteActivity} />}
           showProfileTrigger={visibility.showProfileShortcut}
           onNavigateToProfile={props.onNavigateToProfile}
           onNavigateToProjectPicker={visibility.showProjectPickerShortcut ? props.onNavigateToProjectPicker : undefined}
@@ -173,7 +175,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
           {output.projectSummaryCard ? (
             <View className="mb-5">
               <Text className="mb-3 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-                This Week&apos;s Critical Tasks
+                {t.activity.criticalThisWeek}
               </Text>
               {output.projectSummaryCard.criticalDates.length > 0 ? (
                 <View className="gap-3">
@@ -251,12 +253,17 @@ export default function DashboardScreen(props: DashboardScreenProps) {
 
           <View className="mb-4">
             <Text className="mb-2 text-lg font-semibold uppercase tracking-wider text-[#497080]">
-              Recent Activity
+              {t.activity.recentActivity}
             </Text>
             <View className="gap-3">
               {output.activityItems.length > 0 ? (
                 output.activityItems.map((item) => {
-                  const hasEventPhoto = Boolean(item.previewPhotoUri);
+                  const photoUris =
+                    item.previewPhotoUris?.length
+                      ? item.previewPhotoUris
+                      : item.previewPhotoUri
+                        ? [item.previewPhotoUri]
+                        : [];
                   return (
                   <ActivityStyleRowCard
                     key={item.id}
@@ -267,7 +274,8 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                     subtitle={item.subtitle}
                     actorLabel={item.actorLabel}
                     metaLabel={item.timestampLabel}
-                    imageUri={hasEventPhoto ? item.previewPhotoUri : undefined}
+                    imageUri={photoUris[0]}
+                    imageUris={photoUris.length > 0 ? photoUris : undefined}
                     disabled={item.taskId?.startsWith("project:") ?? false}
                     onPress={() => {
                       actions.markActivityFeedSeen();
@@ -282,8 +290,8 @@ export default function DashboardScreen(props: DashboardScreenProps) {
                 <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
                   <Text className="text-lg leading-6 text-[#577783]">
                     {output.activeProject
-                      ? "No recent activity for the current project yet."
-                      : "Select a project to view recent activity."}
+                      ? t.activity.noRecentActivity
+                      : t.activity.selectProjectForActivity}
                   </Text>
                 </View>
               )}
@@ -295,19 +303,19 @@ export default function DashboardScreen(props: DashboardScreenProps) {
               <Pressable
                 testID="dashboard-screen__drafts_toggle"
                 accessibilityRole="button"
-                accessibilityLabel="Saved drafts"
+                accessibilityLabel={t.activity.savedDrafts}
                 onPress={() => setIsDraftsExpanded((current) => !current)}
                 className="mb-2 flex-row items-center justify-between"
                 hitSlop={12}
               >
                 <Text className="text-base font-semibold uppercase tracking-wider text-slate-500">
-                  Saved drafts
+                  {t.activity.savedDrafts}
                 </Text>
                 <Text
                   testID="dashboard-screen__drafts_show_hide"
                   className="text-base font-semibold text-slate-500"
                 >
-                  {isDraftsExpanded ? "Hide" : "Show"}
+                  {isDraftsExpanded ? t.activity.hide : t.activity.show}
                 </Text>
               </Pressable>
               {isDraftsExpanded ? (

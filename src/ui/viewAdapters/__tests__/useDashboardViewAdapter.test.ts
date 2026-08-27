@@ -1012,7 +1012,7 @@ describe("useDashboardViewAdapter", () => {
     );
   });
 
-  it("does not use task attachments as Recent Activity preview when this event has no photo upload", () => {
+  it("shows create-time attachments on the synthetic create activity row", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -1053,7 +1053,134 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.activityItems[0].previewPhotoUri).toBeUndefined();
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
+      "file:///activity-photo-object.jpg",
+    );
+    expect(result.current.output.activityItems[0].previewPhotoUris).toEqual([
+      "file:///activity-photo-object.jpg",
+    ]);
+  });
+
+  it("does not use task attachments on a status update that has no photo upload", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [
+            {
+              uri: "file:///create-only.jpg",
+              fileName: "create-only.jpg",
+              isAnnotated: false,
+            },
+          ],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-04T08:00:00.000Z",
+          updates: [
+            {
+              id: "update-accept",
+              description: "Task accepted by Tristan",
+              photos: [],
+              completionPercentage: 0,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:01:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 0,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    const acceptRow = result.current.output.activityItems.find(
+      (item: { id: string }) => item.id === "update-accept",
+    );
+    const createRow = result.current.output.activityItems.find(
+      (item: { id: string }) => item.id === "activity-task:task-1",
+    );
+
+    expect(acceptRow?.previewPhotoUri).toBeUndefined();
+    expect(createRow?.previewPhotoUri).toBe("file:///create-only.jpg");
+    expect(createRow?.previewPhotoUris).toEqual(["file:///create-only.jpg"]);
+  });
+
+  it("exposes all update photos for horizontal swipe on activity cards", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-04T08:00:00.000Z",
+          updates: [
+            {
+              id: "update-1",
+              description: "Pour completed for section A",
+              photos: [
+                "company-123/tasks/task-1/photo-1.jpg",
+                "company-123/tasks/task-1/photo-2.jpg",
+              ],
+              completionPercentage: 65,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 65,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+    const updateRow = result.current.output.activityItems.find(
+      (item: { id: string }) => item.id === "update-1",
+    );
+
+    expect(updateRow?.previewPhotoUri).toBe(
+      "https://cdn.example.com/company-123/tasks/task-1/photo-1.jpg",
+    );
+    expect(updateRow?.previewPhotoUris).toEqual([
+      "https://cdn.example.com/company-123/tasks/task-1/photo-1.jpg",
+      "https://cdn.example.com/company-123/tasks/task-1/photo-2.jpg",
+    ]);
   });
 
   it("resolves object-shaped photos on the update event for activity cards", () => {
@@ -1556,6 +1683,10 @@ describe("useDashboardViewAdapter", () => {
     expect(synthetic.subtitle).toBe("Main entry progress");
     expect(synthetic.statusLabel).toBe("Saved to project");
     expect(synthetic.previewPhotoUri).toBe("https://cdn.example.com/fresh-1.jpg");
+    expect(synthetic.previewPhotoUris).toEqual([
+      "https://cdn.example.com/fresh-1.jpg",
+      "https://cdn.example.com/fresh-2.jpg",
+    ]);
   });
 
   it("refetches tasks on Activity mount when the user is signed in", () => {

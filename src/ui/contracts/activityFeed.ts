@@ -1,4 +1,10 @@
 import type { Task } from "@/types/buildtrack";
+import {
+  formatLocalizedActivityHeadline,
+  formatPhotosCapturedLabel,
+  localizeStoredActivityDescription,
+} from "@/ui/contracts/localizeActivityText";
+import { getTranslations } from "@/utils/useTranslation";
 
 export const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
 
@@ -26,33 +32,7 @@ function formatStatusLabel(status: string): string {
 
 /** Activity-row lead line: clearer than a bare status token like "New". */
 export function formatActivityHeadline(status: string): string {
-  switch (status.trim().toLowerCase()) {
-    case "new":
-    case "not_started":
-    case "assigned":
-    case "received":
-      return "New Task";
-    case "accepted":
-      return "Task Accepted";
-    case "in_progress":
-      return "Task In Progress";
-    case "submitted_for_review":
-    case "pending_review":
-      return "Submitted for Review";
-    case "rejected":
-    case "declined":
-      return "Task Rejected";
-    case "approved":
-    case "completed":
-    case "done":
-      return "Task Completed";
-    case "cancelled":
-      return "Task Cancelled";
-    default: {
-      const label = formatStatusLabel(status);
-      return label.toLowerCase().includes("task") ? label : `${label} Task`;
-    }
-  }
+  return formatLocalizedActivityHeadline(status);
 }
 
 function formatTimestampLabel(isoTimestamp: string): string {
@@ -64,52 +44,112 @@ function formatTimestampLabel(isoTimestamp: string): string {
   });
 }
 
+function taskHasCreatePhotos(
+  attachments: Task["attachments"] | undefined,
+): boolean {
+  if (!Array.isArray(attachments) || attachments.length === 0) {
+    return false;
+  }
+  return attachments.some((entry) => {
+    if (typeof entry === "string") {
+      return entry.trim().length > 0;
+    }
+    if (entry && typeof entry === "object") {
+      const candidate = entry as {
+        uri?: string;
+        annotatedUri?: string;
+        public_url?: string;
+        publicUrl?: string;
+        storage_path?: string;
+        storagePath?: string;
+      };
+      return Boolean(
+        candidate.uri ||
+          candidate.annotatedUri ||
+          candidate.public_url ||
+          candidate.publicUrl ||
+          candidate.storage_path ||
+          candidate.storagePath,
+      );
+    }
+    return false;
+  });
+}
+
+function buildCreationFeedRow(
+  task: Pick<Task, "id" | "status" | "title" | "createdAt">,
+): ActivityFeedRow {
+  return {
+    id: `activity-task:${task.id}`,
+    taskId: task.id,
+    title: formatActivityHeadline("new"),
+    subtitle: task.title,
+    timestampLabel: formatTimestampLabel(task.createdAt),
+    statusLabel: formatStatusLabel(task.status),
+    sortTimestamp: task.createdAt,
+  };
+}
+
 function buildTaskActivityRows(
-  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "updates">,
+  task: Pick<Task, "id" | "status" | "title" | "createdAt" | "updates" | "attachments">,
 ): ActivityFeedRow[] {
   const updates = Array.isArray(task.updates) ? task.updates : [];
+  const rows: ActivityFeedRow[] = [];
+  const t = getTranslations();
 
-  if (updates.length === 0) {
-    return [
-      {
-        id: `activity-task:${task.id}`,
-        taskId: task.id,
-        title: formatActivityHeadline(task.status),
-        subtitle: task.title,
-        timestampLabel: "Task activity",
-        statusLabel: formatStatusLabel(task.status),
-        sortTimestamp: task.createdAt,
-      },
-    ];
+  // Creation activities are not mapped into `updates` (only progress/status).
+  // Emit a create row when there are no updates yet, or when create-time photos
+  // exist so Recent Activity can show those attachments.
+  if (updates.length === 0 || taskHasCreatePhotos(task.attachments)) {
+    rows.push(
+      updates.length === 0
+        ? {
+            id: `activity-task:${task.id}`,
+            taskId: task.id,
+            title: formatActivityHeadline(task.status),
+            subtitle: task.title,
+            timestampLabel: t.activity.taskActivity,
+            statusLabel: formatStatusLabel(task.status),
+            sortTimestamp: task.createdAt,
+          }
+        : buildCreationFeedRow(task),
+    );
   }
 
-  return updates.map((update) => {
-    const description = update.description?.trim() ?? "";
-    const changeLine =
-      description.length > 0 ? description : formatActivityHeadline(update.status);
+  rows.push(
+    ...updates.map((update) => {
+      const description = update.description?.trim() ?? "";
+      const changeLine =
+        description.length > 0
+          ? localizeStoredActivityDescription(description, t)
+          : formatActivityHeadline(update.status);
 
-    return {
-      id: update.id,
-      taskId: task.id,
-      title: changeLine,
-      subtitle: task.title,
-      timestampLabel: formatTimestampLabel(update.timestamp),
-      statusLabel: formatStatusLabel(update.status),
-      sortTimestamp: update.timestamp,
-    };
-  });
+      return {
+        id: update.id,
+        taskId: task.id,
+        title: changeLine,
+        subtitle: task.title,
+        timestampLabel: formatTimestampLabel(update.timestamp),
+        statusLabel: formatStatusLabel(update.status),
+        sortTimestamp: update.timestamp,
+      };
+    }),
+  );
+
+  return rows;
 }
 
 function buildPhotoBatchRows(batch: ActivityFeedPhotoBatch): ActivityFeedRow {
   const firstCaption = batch.captions.find((caption) => caption?.trim()) ?? "";
+  const t = getTranslations();
 
   return {
     id: `unattached-batch-${batch.id}`,
     taskId: `project:${batch.projectId}`,
-    title: `${batch.photoUrls.length} photos captured`,
+    title: formatPhotosCapturedLabel(batch.photoUrls.length, t),
     subtitle: firstCaption,
     timestampLabel: formatTimestampLabel(new Date(batch.savedAt).toISOString()),
-    statusLabel: "Saved to project",
+    statusLabel: t.activity.savedToProject,
     sortTimestamp: new Date(batch.savedAt).toISOString(),
   };
 }
@@ -117,7 +157,10 @@ function buildPhotoBatchRows(batch: ActivityFeedPhotoBatch): ActivityFeedRow {
 export function buildActivityFeedRows(params: {
   projectId: string;
   tasks: Array<
-    Pick<Task, "id" | "projectId" | "status" | "title" | "createdAt" | "updates">
+    Pick<
+      Task,
+      "id" | "projectId" | "status" | "title" | "createdAt" | "updates" | "attachments"
+    >
   >;
   photoBatches?: ActivityFeedPhotoBatch[];
   now?: number;

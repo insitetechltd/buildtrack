@@ -40,7 +40,6 @@ import ModernScreenHeader from "../components/ModernScreenHeader";
 import CompletionPercentageDialer from "../components/ui/CompletionPercentageDialer";
 import FileUploadHarness from "../components/ui/FileUploadHarness";
 import { useFileUpload, UploadResults } from "../utils/useFileUpload";
-import { usePhotoSelection } from "../utils/usePhotoSelection";
 import { useTranslation } from "../utils/useTranslation";
 import { useDateFormatter } from "../utils/dateFormatter";
 import { useTaskLLMAssistant } from "../hooks/useTaskLLMAssistant";
@@ -53,6 +52,7 @@ import type {
   InAppLibraryPickerParams,
   PhotoSelectionParams,
 } from "../navigation/navigationTypes";
+import { navigateToAddPhotosCaptureSession } from "../navigation/captureFirstCameraFlow";
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskInputField from "./createTask/CreateTaskInputField";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
@@ -186,9 +186,9 @@ function CreateTaskEditorScreen({
     NavigationProp<{
       PhotoSelection: PhotoSelectionParams;
       InAppLibraryPicker: InAppLibraryPickerParams;
+      CaptureSession: import("../navigation/navigationTypes").CaptureSessionParams;
     }>
   >();
-  const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const titleInputRef = useRef<TextInput>(null);
@@ -352,95 +352,21 @@ function CreateTaskEditorScreen({
   const handleAddPhotos = async () => {
     if (!user) return;
 
-    const goToPhotoSelection = (photos: SelectedPhoto[]) => {
-      const serializablePhotos = photos.map((photo) => ({
-        uri: photo.uri,
-        fileName: photo.fileName,
-        isAnnotated: photo.isAnnotated || false,
-        annotatedUri: photo.annotatedUri,
-        caption: photo.caption,
-        mediaLibraryAssetId: photo.mediaLibraryAssetId,
-      }));
-
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          navigation.navigate("PhotoSelection", {
-            taskId: editTaskId,
-            subTaskId: parentSubTaskId,
-            companyId: user.companyId,
-            userId: user.id,
-            initialCompletionPercentage: 0,
-            initialPhotos: serializablePhotos,
-            returnScreen: "CreateTask",
-            actionType: actionType,
-            parentTaskId,
-            parentSubTaskId,
-            editTaskId,
-            localDraftId: context.localDraftId,
-          });
-        }, 100);
-      });
-    };
-
-    Alert.alert("Add Photos", "Choose how you want to add photos", [
-      {
-        text: "Take Photo",
-        onPress: () => {
-          void showPhotoSelectionDialog({
-            source: "camera",
-            allowClipboard: false,
-            allowMultiple: false,
-            onPhotosSelected: (photos) => {
-              goToPhotoSelection(
-                photos.map((photo) => ({
-                  uri: photo.uri,
-                  fileName: photo.fileName,
-                  isAnnotated: photo.isAnnotated || false,
-                  annotatedUri: photo.annotatedUri,
-                  caption: photo.caption,
-                  mediaLibraryAssetId: photo.mediaLibraryAssetId,
-                })),
-              );
-            },
-          });
-        },
-      },
-      {
-        text: "Choose from Library",
-        onPress: () => {
-          const existingPhotos = (formData.attachments || []).filter(
-            (attachment): attachment is SelectedPhoto =>
-              typeof attachment !== "string",
-          );
-          // Spike: in-app MediaLibrary gallery (not Apple PHPicker)
-          navigation.navigate("InAppLibraryPicker", {
-            taskId: editTaskId,
-            subTaskId: parentSubTaskId,
-            companyId: user.companyId,
-            userId: user.id,
-            initialCompletionPercentage: 0,
-            returnScreen: "CreateTask",
-            actionType: actionType,
-            parentTaskId,
-            parentSubTaskId,
-            editTaskId,
-            localDraftId: context.localDraftId,
-            existingPhotos: existingPhotos.map((photo) => ({
-              uri: photo.uri,
-              fileName: photo.fileName,
-              isAnnotated: Boolean(photo.isAnnotated),
-              annotatedUri: photo.annotatedUri,
-              caption: photo.caption,
-              mediaLibraryAssetId: photo.mediaLibraryAssetId,
-            })),
-          });
-        },
-      },
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
-    ]);
+    navigateToAddPhotosCaptureSession(navigation, {
+      returnScreen: "CreateTask",
+      taskId: editTaskId,
+      subTaskId: parentSubTaskId,
+      companyId: user.companyId,
+      userId: user.id,
+      initialCompletionPercentage: 0,
+      actionType,
+      parentTaskId,
+      parentSubTaskId,
+      editTaskId,
+      localDraftId: context.localDraftId,
+      uploadImmediately: false,
+      entityType: "task",
+    });
   };
   
   const removePhoto = (index: number) => {

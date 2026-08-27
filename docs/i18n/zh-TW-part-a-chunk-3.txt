@@ -1,0 +1,494 @@
+# Chinese translation brief (Insite / Taskr mobile app) — PART A ONLY
+
+You are translating UI copy for a construction jobsite task app (photo evidence → task → review).
+Target: **Traditional Chinese (zh-TW)** — Taiwan/HK field tone, not Mainland marketing Chinese unless asked.
+
+## Rules
+1. Output format (one line per entry, exactly):
+   KEY | 繁體中文譯文
+   Example: auth.login | 登入
+2. Keep placeholders EXACTLY as in EN (do not translate brace names):
+   {creatorName}, {assigneesList}, {arg1}, {count}, {name}, etc.
+3. Keep emoji if present in EN.
+4. Preferred glossary:
+   - task → 工作 (or 任務 if already established in key context)
+   - project → 專案
+   - assign → 指派 / 分配
+   - review / approval → 審核 / 審批
+   - overdue → 逾期
+   - progress → 進度
+   - attachment / photo → 附件 / 相片
+5. Do NOT translate brand/product names: Taskr, Insite, BuildTrack.
+6. Do NOT invent new keys. Translate only the keys listed below.
+7. Return ONLY the KEY | 譯文 lines (no numbering, no EN reprint, no commentary).
+
+## Keys to translate
+Source: src/locales/en.ts → destination: src/locales/zh-TW.ts
+
+## Part A chunk 3/4 — phrases + validation + createTask + voiceInput + taskDetail
+Keys in this chunk: 231
+Sections: phrases, validation, createTask, voiceInput, taskDetail
+(Send chunks 1→4 in order; merge all KEY | 譯文 replies before apply.)
+
+1. phrases.comingSoon
+   EN: Coming Soon
+2. phrases.comingSoonMessage
+   EN: This feature will be available in a future update.
+3. phrases.project
+   EN: project
+4. phrases.projects
+   EN: projects
+5. phrases.task
+   EN: task
+6. phrases.tasks
+   EN: tasks
+7. phrases.user
+   EN: user
+8. phrases.users
+   EN: users
+9. validation.assigneeRequired
+   EN: Please select at least one person to assign this task
+10. validation.descriptionRequired
+   EN: Description is required
+11. validation.dueDateFuture
+   EN: Due date must be in the future
+12. validation.emailInvalid
+   EN: Please enter a valid email
+13. validation.emailRequired
+   EN: Email is required
+14. validation.passwordMismatch
+   EN: Passwords do not match
+15. validation.passwordRequired
+   EN: Password is required
+16. validation.passwordTooShort
+   EN: Password must be at least 6 characters
+17. validation.projectRequired
+   EN: Please select a project
+18. validation.required
+   EN: This field is required
+19. validation.titleRequired
+   EN: Title is required
+20. createTask.acceptField
+   EN: Accept
+21. createTask.accessRestricted
+   EN: Access Restricted
+22. createTask.addNewLocation
+   EN: Add new location
+23. createTask.addNewLocationPlaceholder
+   EN: Enter a new location on site
+24. createTask.addPhotos
+   EN: Add Photos
+25. createTask.addTeamMembersFirst
+   EN: Add team members to the project first
+26. createTask.aiSuggestions
+   EN: AI Suggestions
+27. createTask.applySuggestions
+   EN: Apply Suggestions
+28. createTask.assignTo
+   EN: Assign To
+29. createTask.attachments
+   EN: Attachments
+30. createTask.billable
+   EN: Billable
+31. createTask.billed
+   EN: Billed
+32. createTask.billingStatus
+   EN: Billing Status
+33. createTask.changeLocation
+   EN: Change location
+34. createTask.chooseFromLibrary
+   EN: Choose from Library
+35. createTask.clearSearch
+   EN: Clear Search
+36. createTask.clearSuggestions
+   EN: Clear AI Suggestions
+37. createTask.createNewTask
+   EN: Create New Task
+38. createTask.createSubTask
+   EN: Create Sub-Task
+39. createTask.createTaskButton
+   EN: Create Task
+40. createTask.creating
+   EN: Creating...
+41. createTask.descriptionPlaceholder
+   EN: Describe the task in detail...
+42. createTask.doneSelected
+   EN: Done ({arg1} selected)
+43. createTask.editTask
+   EN: Edit Task
+44. createTask.enterCantoneseOrEnglish
+   EN: Enter task details in Cantonese or English
+45. createTask.error
+   EN: Error
+46. createTask.failedToCreateTask
+   EN: Failed to create task. Please try again.
+47. createTask.failedToPaste
+   EN: Failed to paste from clipboard
+48. createTask.failedToPickImages
+   EN: Failed to pick images
+49. createTask.failedToTakePhoto
+   EN: Failed to take photo
+50. createTask.failedToUpdateTask
+   EN: Failed to update task. Please try again.
+51. createTask.fetchingTeamMembers
+   EN: Fetching project team members
+52. createTask.filesAdded
+   EN: {arg1} file(s) added
+53. createTask.goBack
+   EN: Go Back
+54. createTask.headerCreateSubtitle
+   EN: Create task
+55. createTask.headerEditSubtitle
+   EN: Task editor
+56. createTask.imagePasted
+   EN: Image pasted from clipboard!
+57. createTask.loadingUsers
+   EN: Loading users...
+58. createTask.locationOnSite
+   EN: Location on Site
+59. createTask.moreDetailsSubtitle
+   EN: Optional context for downstream work
+60. createTask.moreDetailsTitle
+   EN: More Details
+61. createTask.nestedSubTask
+   EN: Nested Sub-Task
+62. createTask.nestedSubTaskCreatedSuccess
+   EN: Nested sub-task created successfully and assigned to the selected users.
+63. createTask.nestedUnder
+   EN: Nested under:
+64. createTask.noAttachmentsAdded
+   EN: No attachments added
+65. createTask.noImageInClipboard
+   EN: No image found in clipboard. Copy an image first.
+66. createTask.noLocation
+   EN: No location
+67. createTask.noProjectsAvailable
+   EN: No projects available
+68. createTask.noSuggestions
+   EN: No suggestions available
+69. createTask.noUsersAssigned
+   EN: No users assigned to this project
+70. createTask.noUsersFound
+   EN: No users found
+71. createTask.nonBillable
+   EN: Non-Billable
+72. createTask.onlyCreatorCanEdit
+   EN: Only the task creator can edit this task.
+73. createTask.pasteFromClipboard
+   EN: Paste from Clipboard
+74. createTask.pasteImageError
+   EN: Could not paste image from clipboard
+75. createTask.permissionDenied
+   EN: Permission Denied
+76. createTask.photosFailedUpload
+   EN: photo(s) failed to upload. Please try again.
+77. createTask.photosUploadMessage
+   EN: Photos will be uploaded to cloud storage and visible to all assignees.
+78. createTask.processingText
+   EN: Processing text input...
+79. createTask.processingVoice
+   EN: Processing voice input...
+80. createTask.project
+   EN: Project
+81. createTask.rejectField
+   EN: Reject
+82. createTask.saveNewLocation
+   EN: Save location
+83. createTask.scheduleSubtitle
+   EN: Set the target date
+84. createTask.scheduleTitle
+   EN: Schedule
+85. createTask.searchPlaceholder
+   EN: Search by name, email, position, or role...
+86. createTask.selectBillingStatus
+   EN: Select Billing Status
+87. createTask.selectCategory
+   EN: Select Category
+88. createTask.selectLocationOnSite
+   EN: Select a location on site
+89. createTask.selectLocationOnSiteFirstProject
+   EN: Select a project to add a location on site
+90. createTask.selectPriority
+   EN: Select Priority
+91. createTask.selectProject
+   EN: Select a project
+92. createTask.selectUsersToAssign
+   EN: Select users to assign
+93. createTask.selectedUsers
+   EN: Selected Users:
+94. createTask.subTaskCreated
+   EN: Sub-Task Created
+95. createTask.subTaskCreatedSuccess
+   EN: Sub-task created successfully and assigned to the selected users.
+96. createTask.subTaskOf
+   EN: Sub-task of:
+97. createTask.suggestionPreview
+   EN: Suggestion Preview
+98. createTask.takePhoto
+   EN: Take Photo
+99. createTask.tapToAddFiles
+   EN: Tap to Add Files
+100. createTask.taskAlreadyAccepted
+   EN: This task has already been accepted. It can no longer be edited.
+101. createTask.taskAlreadyRejected
+   EN: This task has already been rejected. It can no longer be edited.
+102. createTask.taskBasicsSubtitle
+   EN: Start with the essentials
+103. createTask.taskBasicsTitle
+   EN: Task Basics
+104. createTask.taskCreated
+   EN: Task Created
+105. createTask.taskCreatedSuccess
+   EN: Task created successfully and assigned to the selected users.
+106. createTask.taskNotFound
+   EN: Task Not Found
+107. createTask.taskReference
+   EN: Task Reference #
+108. createTask.taskReferencePlaceholder
+   EN: Enter task reference information
+109. createTask.taskUpdated
+   EN: Task Updated
+110. createTask.taskUpdatedSuccess
+   EN: Task updated successfully.
+111. createTask.textInput
+   EN: Text Input
+112. createTask.textInputPlaceholder
+   EN: Describe the task...
+113. createTask.titlePlaceholder
+   EN: Enter task title
+114. createTask.tryAdjustingSearch
+   EN: Try adjusting your search
+115. createTask.unableToEditTask
+   EN: Unable to edit this task because it could not be loaded.
+116. createTask.updateTaskButton
+   EN: Update Task
+117. createTask.updating
+   EN: Updating...
+118. createTask.uploadWarning
+   EN: Upload Warning
+119. createTask.usersAvailable
+   EN: {arg1} users available (filtered from {arg2})
+120. createTask.usersSelected
+   EN: {arg1} user selected
+121. createTask.voiceInput
+   EN: Voice Input
+122. voiceInput.error
+   EN: Error
+123. voiceInput.extracting
+   EN: Extracting task information...
+124. voiceInput.failedToStartRecording
+   EN: Failed to start recording. Please try again.
+125. voiceInput.failedToStopRecording
+   EN: Failed to stop recording. Please try again.
+126. voiceInput.microphonePermissionRequired
+   EN: Microphone permission is required to record voice input.
+127. voiceInput.permissionDenied
+   EN: Permission Denied
+128. voiceInput.processing
+   EN: Processing...
+129. voiceInput.recordingHint
+   EN: Speak clearly in Cantonese or English
+130. voiceInput.startRecording
+   EN: Start Recording
+131. voiceInput.stopRecording
+   EN: Stop Recording
+132. voiceInput.title
+   EN: Voice Input
+133. voiceInput.transcribing
+   EN: Transcribing...
+134. taskDetail.accept
+   EN: Accept
+135. taskDetail.acceptCompletionConfirm
+   EN: Accept this task as completed?
+136. taskDetail.acceptTask
+   EN: Accept Task
+137. taskDetail.acceptTaskConfirm
+   EN: Are you sure you want to accept this task?
+138. taskDetail.addPhotos
+   EN: Add Photos
+139. taskDetail.addUpdate
+   EN: Add Update
+140. taskDetail.assignedBy
+   EN: Assigned By
+141. taskDetail.assignedTo
+   EN: Assigned To
+142. taskDetail.assigneeSubmitted
+   EN: The assignee has submitted this task for your approval
+143. taskDetail.assignees
+   EN: Assignees
+144. taskDetail.attachedFiles
+   EN: Attached Files
+145. taskDetail.awaitingApproval
+   EN: Your task has been submitted and is awaiting approval from the task creator
+146. taskDetail.cancel
+   EN: Cancel
+147. taskDetail.cancelTaskConfirm
+   EN: Are you sure you want to cancel this task?
+148. taskDetail.changesDetected
+   EN: Changes Detected
+149. taskDetail.children
+   EN: Children
+150. taskDetail.choosePhotoMethod
+   EN: Choose how you want to add photos
+151. taskDetail.compPercent
+   EN: Comp. %
+152. taskDetail.completionAccepted
+   EN: Completion Accepted
+153. taskDetail.completionPercentage
+   EN: Completion Percentage
+154. taskDetail.completionRejected
+   EN: Completion Rejected
+155. taskDetail.createdOn
+   EN: Created On
+156. taskDetail.current
+   EN: Current
+157. taskDetail.decline
+   EN: Decline
+158. taskDetail.declineSubTask
+   EN: Decline Sub-Task
+159. taskDetail.declineSubTaskReason
+   EN: Please provide a reason for declining this sub-task:
+160. taskDetail.declineTask
+   EN: Decline Task
+161. taskDetail.declineTaskConfirm
+   EN: Are you sure you want to decline this task?
+162. taskDetail.delete
+   EN: Delete
+163. taskDetail.deleteConfirm
+   EN: Are you sure you want to delete this task?
+164. taskDetail.due
+   EN: Due:
+165. taskDetail.dueDate
+   EN: Due Date
+166. taskDetail.editHistory
+   EN: Edit History
+167. taskDetail.editReason
+   EN: Edit Reason
+168. taskDetail.editReasonPlaceholder
+   EN: Enter reason for editing this task...
+169. taskDetail.editReasonPrompt
+   EN: Please provide a reason for editing this accepted task (optional)
+170. taskDetail.editReasonTitle
+   EN: Reason for Edit
+171. taskDetail.editTaskDetails
+   EN: Edit Task Details
+172. taskDetail.editedBy
+   EN: Edited by
+173. taskDetail.editedOn
+   EN: Edited on
+174. taskDetail.failedToSubmitUpdate
+   EN: Failed to submit update
+175. taskDetail.fieldChanged
+   EN: {field} changed
+176. taskDetail.from
+   EN: from
+177. taskDetail.markAsComplete
+   EN: Mark as Complete
+178. taskDetail.markCompleteConfirm
+   EN: Mark this task as complete?
+179. taskDetail.noAssignees
+   EN: No assignees
+180. taskDetail.noAttachments
+   EN: No attachments
+181. taskDetail.noChildren
+   EN: No sub-tasks
+182. taskDetail.noEditHistory
+   EN: No edit history available
+183. taskDetail.noFilesAdded
+   EN: No files added
+184. taskDetail.noReasonProvided
+   EN: No reason provided
+185. taskDetail.noUpdates
+   EN: No updates yet
+186. taskDetail.photosAndFiles
+   EN: Photos & Files
+187. taskDetail.photosUpdates
+   EN: Add Photos
+188. taskDetail.previous
+   EN: Previous
+189. taskDetail.progressDetails
+   EN: Progress Details
+190. taskDetail.progressUpdate
+   EN: Progress Update
+191. taskDetail.progressUpdateAdded
+   EN: Progress update added successfully!
+192. taskDetail.project
+   EN: Project
+193. taskDetail.readyForReview
+   EN: Ready for Review
+194. taskDetail.reason
+   EN: Reason:
+195. taskDetail.reassign
+   EN: Reassign
+196. taskDetail.reassignTo
+   EN: Reassign To
+197. taskDetail.reassignToAnotherUser
+   EN: Reassign to Another User
+198. taskDetail.recentChanges
+   EN: Recent Changes
+199. taskDetail.reject
+   EN: Reject
+200. taskDetail.rejectCompletionConfirm
+   EN: Reject this task completion?
+201. taskDetail.reviewedAndApproved
+   EN: Reviewed and approved by
+202. taskDetail.searchUsers
+   EN: Search users...
+203. taskDetail.selectUsers
+   EN: Select Users
+204. taskDetail.subTaskAccepted
+   EN: Sub-task accepted successfully! You can now start working on it.
+205. taskDetail.subTaskDeclined
+   EN: Sub-Task Declined
+206. taskDetail.subTaskDeclinedMessage
+   EN: The sub-task has been declined.
+207. taskDetail.submitForReview
+   EN: Submit for Review
+208. taskDetail.submitForReviewConfirm
+   EN: Submit this task for review?
+209. taskDetail.submitUpdate
+   EN: Submit Update
+210. taskDetail.submittedForReview
+   EN: Submitted for Review
+211. taskDetail.tapToAddFiles
+   EN: Tap to Add Files
+212. taskDetail.taskAccepted
+   EN: Task Accepted
+213. taskDetail.taskApproved
+   EN: Task Approved
+214. taskDetail.taskCancelled
+   EN: Task Cancelled
+215. taskDetail.taskCompleted
+   EN: Task Completed
+216. taskDetail.taskDeclined
+   EN: Task Declined
+217. taskDetail.taskDeclinedByAssignee
+   EN: This task was declined by the assignee
+218. taskDetail.taskDeclinedMessage
+   EN: This task was declined by the assignee
+219. taskDetail.taskDeleted
+   EN: Task Deleted
+220. taskDetail.taskReassigned
+   EN: Task Reassigned
+221. taskDetail.taskRejected
+   EN: Task Rejected
+222. taskDetail.taskSubmitted
+   EN: Task Submitted
+223. taskDetail.taskWasEdited
+   EN: This task was edited by {editor} on {date}
+224. taskDetail.tasksForMeNewRequest
+   EN: Tasks for me – New Request
+225. taskDetail.to
+   EN: to
+226. taskDetail.updateDescription
+   EN: Update Description
+227. taskDetail.updateDescriptionPlaceholder
+   EN: Describe what you've done...
+228. taskDetail.updateStatus
+   EN: Update Status
+229. taskDetail.updateTask
+   EN: Update Progress
+230. taskDetail.updates
+   EN: Updates
+231. taskDetail.viewEditHistory
+   EN: View Edit History

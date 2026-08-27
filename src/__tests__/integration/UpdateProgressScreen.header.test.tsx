@@ -6,14 +6,18 @@ import { useUpdateProgressViewAdapter } from "../../ui/viewAdapters/useUpdatePro
 
 const mockGoBack = jest.fn();
 
-jest.mock("@react-navigation/native", () => ({
-  useNavigation: () => ({
-    goBack: mockGoBack,
-  }),
-  useFocusEffect: (callback: () => void | (() => void)) => {
-    callback();
-  },
-}));
+jest.mock("@react-navigation/native", () => {
+  const actual = jest.requireActual("@react-navigation/native");
+  return {
+    ...actual,
+    useNavigation: () => ({
+      goBack: mockGoBack,
+    }),
+    useFocusEffect: (callback: () => void | (() => void)) => {
+      callback();
+    },
+  };
+});
 
 jest.mock("../../ui/viewAdapters/useUpdateProgressViewAdapter", () => ({
   useUpdateProgressViewAdapter: jest.fn(),
@@ -119,6 +123,7 @@ describe("UpdateProgressScreen header regression", () => {
       },
       task: {
         id: "task-1",
+        title: "Install lobby lighting",
       },
     } as ReturnType<typeof useUpdateProgressViewAdapter>);
 
@@ -126,6 +131,9 @@ describe("UpdateProgressScreen header regression", () => {
     const screen = render(<UpdateProgressScreen onNavigateBack={onNavigateBack} />);
 
     expect(screen.getByText("Progress Update")).toBeTruthy();
+    expect(screen.getByTestId("update-progress__task_title")).toHaveTextContent(
+      "Install lobby lighting",
+    );
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
     expect(screen.getByTestId("update-progress__take_photo")).toBeTruthy();
     expect(screen.getByTestId("file-upload-harness__plus_icon")).toBeTruthy();

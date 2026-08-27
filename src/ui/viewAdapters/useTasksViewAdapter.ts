@@ -33,6 +33,7 @@ import type {
 } from "@/ui/contracts/viewAdapters";
 import type { StatusSemanticToken } from "@/ui/contracts/primitives";
 import type { TasksSearchInputData } from "@/ui/mappers/tasksMappers";
+import { getTranslations, useTranslation } from "@/utils/useTranslation";
 
 type AppliedTasksFilters = {
   queue: TasksQueueFilterValue;
@@ -199,23 +200,25 @@ function matchesStatusFilter(status: TaskStatus, statusFilter: string): boolean 
   }
 }
 
-function getQueueTitle(queue: TasksQueueId): "My Queue" | "Team Queue" {
-  return queue === "my_queue" ? "My Queue" : "Team Queue";
+function getQueueTitle(queue: TasksQueueId): string {
+  const t = getTranslations();
+  return queue === "my_queue" ? t.activity.myQueue : t.activity.teamQueue;
 }
 
 function getBucketTitle(bucket: TasksQueueBucketId): string {
+  const t = getTranslations();
   switch (bucket) {
     case "new":
-      return "New";
+      return t.activity.bucketNew;
     case "wip":
-      return "Doing";
+      return t.activity.bucketDoing;
     case "review":
-      return "Review";
+      return t.activity.bucketReview;
     case "overdue":
-      return "Overdue";
+      return t.dashboard.overdue;
   }
 
-  return "New";
+  return t.activity.bucketNew;
 }
 
 function getLatestMeaningfulTimestamp(task: Task): string {
@@ -615,6 +618,7 @@ export interface TasksViewAdapterHookResult {
 }
 
 export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAdapterHookResult {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const taskStore = useTaskStore();
   const projectStore = useProjectStoreWithInit();
@@ -1064,6 +1068,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
     selectedProjectId,
     signedUrlEpoch,
     stagedFilters,
+    t,
     taskFetchError,
     tasks,
     user,

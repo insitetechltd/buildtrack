@@ -133,8 +133,8 @@ Run on iPhone 17 Pro Max + Metro `:8081`, `com.buildtrack.app.local`. Visual PNG
 | H03 | Place Bob on Project A (Detail) | No title picker; Bob appears as member | **PASS** (headed) |
 | H04 | Place Pat via User Management | Same; success copy does not cite trade role | **PASS** (headed) |
 | H05 | Name Sarah PA on Edit Project | Picker shows CA/PM on job only; Bob absent; prior PA demoted, still listed | **PASS** (headed) |
-| H06 | CA create task on job | Camera → Create Task form usable (not admin-ban screen) | headed — re-verify after Create Task fixes |
-| H07 | CA field list | On Project A only: peer tasks visible; tasks on Project B (not member) absent | headed — Tasks peer visibility fix shipped; confirm after reload |
+| H06 | CA create task on job | Camera → Create Task form usable (not admin-ban screen) | **PASS** (headed 2026-08-27) |
+| H07 | CA field list | On Project A only: peer tasks visible; tasks on Project B (not member) absent | **PASS** (headed 2026-08-27) |
 | H08 | Worker regression | Bob still sees assigned/created only | **PASS** (headed 2026-08-27) |
 
 ---
@@ -145,9 +145,9 @@ Run on iPhone 17 Pro Max + Metro `:8081`, `com.buildtrack.app.local`. Visual PNG
 |---|---|---|
 | Contract helpers (membership + visibility) | Strong | A03, A05, E06 |
 | Integration UI | Partial (Projects PA picker, Create Task CA) | B02–B03, B05, D02–D03, F05–F06 |
-| Headed smoke | H01–H05 + **H08** PASS; H06/H07 confirm remaining | Finish H06/H07 then RC claim |
+| Headed smoke | **H01–H08 all PASS** (2026-08-27) | **Milestone Closed** — see `docs/superpowers/reports/2026-08-27-m-authz-rc-close.md` |
 
-**Recommended next proof order:** close L2 gaps for B02/B03/D02 → run **H01–H08** → then F05 (PA-gated roster) if product wants that gate before RC claim.
+**Recommended next:** optional L2 backlog (B02/B03/D02, F05/F06) only if product wants harder gates; commercial sequence → **M-OPS-ENV-01** then **M-BILL-01**.
 
 ---
 

@@ -38,6 +38,7 @@ import {
   purgeExpiredLocalTaskDrafts,
   type LocalTaskDraft,
 } from "@/utils/localTaskDraftStore";
+import { useTranslation } from "@/utils/useTranslation";
 import { reconcileUnrecoverableWipTasks } from "@/utils/reconcileUnrecoverableWipTasks";
 
 function formatProjectStatusLabel(status: Project["status"] | string): string {
@@ -252,8 +253,32 @@ function collectTaskPhotoUris(task: Task): string[] {
   return [...(task.attachments ?? []), ...updatePhotos, ...activityPhotos]
     .map(resolveImageUri)
     .filter(
-    (value, index, collection): value is string => Boolean(value) && collection.indexOf(value) === index,
-  );
+      (value, index, collection): value is string =>
+        Boolean(value) && collection.indexOf(value) === index,
+    );
+}
+
+function collectAttachmentPhotoUris(task: Task): string[] {
+  return (task.attachments ?? [])
+    .map(resolveImageUri)
+    .filter(
+      (value, index, collection): value is string =>
+        Boolean(value) && collection.indexOf(value) === index,
+    );
+}
+
+function collectUpdatePhotoUris(
+  update: NonNullable<Task["updates"]>[number] | undefined,
+): string[] {
+  if (!update?.photos?.length) {
+    return [];
+  }
+  return update.photos
+    .map(resolveImageUri)
+    .filter(
+      (value, index, collection): value is string =>
+        Boolean(value) && collection.indexOf(value) === index,
+    );
 }
 
 export interface DashboardViewAdapterHookResult {
@@ -272,6 +297,7 @@ export interface DashboardViewAdapterHookResult {
 }
 
 export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
+  const t = useTranslation();
   const { user } = useAuthStore();
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
   const setSelectedProject = useProjectFilterStore((state) => state.setSelectedProject);
@@ -570,7 +596,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       : [];
     const taskById = new Map(activeProjectTasks.map((task) => [task.id, task]));
     const mappedActivityItems: DashboardActivityItem[] = activityFeedRows.map((row) => {
-      let previewPhotoUri: string | undefined;
+      let previewPhotoUris: string[] = [];
       let actorLabel: string | undefined;
 
       if (row.taskId.startsWith("project:")) {
@@ -580,7 +606,9 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
               .getBatchesForProject(resolvedActiveProject.id)
               .find((entry) => entry.id === batchId)
           : undefined;
-        previewPhotoUri = batch?.photoUrls[0];
+        previewPhotoUris = (batch?.photoUrls ?? [])
+          .map(resolveImageUri)
+          .filter((value): value is string => Boolean(value));
         actorLabel = batch?.userId
           ? getUserById(batch.userId)?.name
           : undefined;
@@ -588,13 +616,19 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         const task = taskById.get(row.taskId);
         if (task) {
           const update = task.updates?.find((entry) => entry.id === row.id);
-          // Recent Activity: only show a photo when THIS event uploaded one.
-          // Do not fall back to create-time / other task attachments.
-          previewPhotoUri = resolveImageUri(update?.photos?.[0]);
+          // Create rows (`activity-task:…`) are not mapped into updates — show
+          // create-time attachments. Update rows only show THIS event's photos.
+          previewPhotoUris = update
+            ? collectUpdatePhotoUris(update)
+            : row.id.startsWith("activity-task:")
+              ? collectAttachmentPhotoUris(task)
+              : [];
           const actorUserId = update?.userId ?? task.assignedBy;
           actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
         }
       }
+
+      const previewPhotoUri = previewPhotoUris[0];
 
       return {
         id: row.id,
@@ -604,6 +638,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         timestampLabel: row.timestampLabel,
         statusLabel: row.statusLabel,
         previewPhotoUri,
+        previewPhotoUris: previewPhotoUris.length > 0 ? previewPhotoUris : undefined,
         actorLabel,
         density: "standard" as const,
         structuralState,
@@ -695,54 +730,54 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
       groups: [
         {
           id: "dashboard-queue:my_queue",
-          title: "My Queue" as const,
+          title: t.activity.myQueue,
           cells: [
             {
               id: "dashboard-queue:my_queue:new",
               queue: "my_queue" as const,
               bucket: "new" as const,
-              title: "New",
+              title: t.activity.bucketNew,
               countLabel: String(queueCounts.my_queue.new),
             },
             {
               id: "dashboard-queue:my_queue:wip",
               queue: "my_queue" as const,
               bucket: "wip" as const,
-              title: "Doing",
+              title: t.activity.bucketDoing,
               countLabel: String(queueCounts.my_queue.wip),
             },
             {
               id: "dashboard-queue:my_queue:review",
               queue: "my_queue" as const,
               bucket: "review" as const,
-              title: "Review",
+              title: t.activity.bucketReview,
               countLabel: String(queueCounts.my_queue.review),
             },
           ],
         },
         {
           id: "dashboard-queue:team_queue",
-          title: "Team Queue" as const,
+          title: t.activity.teamQueue,
           cells: [
             {
               id: "dashboard-queue:team_queue:new",
               queue: "team_queue" as const,
               bucket: "new" as const,
-              title: "New",
+              title: t.activity.bucketNew,
               countLabel: String(queueCounts.team_queue.new),
             },
             {
               id: "dashboard-queue:team_queue:wip",
               queue: "team_queue" as const,
               bucket: "wip" as const,
-              title: "Doing",
+              title: t.activity.bucketDoing,
               countLabel: String(queueCounts.team_queue.wip),
             },
             {
               id: "dashboard-queue:team_queue:review",
               queue: "team_queue" as const,
               bucket: "review" as const,
-              title: "Review",
+              title: t.activity.bucketReview,
               countLabel: String(queueCounts.team_queue.review),
             },
           ],
@@ -815,6 +850,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     projects,
     selectedProjectId,
     signedUrlEpoch,
+    t,
     tasks,
     unattachedBatches,
   ]);

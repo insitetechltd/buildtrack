@@ -117,7 +117,9 @@ export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
     routeName === "CreateTaskMain" ||
     routeName === "UpdateProgress" ||
     routeName === "PhotoSelection" ||
-    routeName === "InAppLibraryPicker"
+    routeName === "InAppLibraryPicker" ||
+    routeName === "CaptureSession" ||
+    routeName === "CaptureTaskPicker"
   );
 }
 

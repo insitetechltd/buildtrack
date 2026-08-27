@@ -1,0 +1,662 @@
+key	en	kind
+auth.confirmPassword	Confirm Password	string
+auth.email	Email	string
+auth.forgotPassword	Forgot Password?	string
+auth.login	Login	string
+auth.logout	Logout	string
+auth.logoutConfirm	Are you sure you want to logout?	string
+auth.password	Password	string
+auth.register	Register	string
+auth.welcomeBack	Welcome Back! 👋	string
+common.all	All	string
+common.apply	Apply	string
+common.back	Back	string
+common.cancel	Cancel	string
+common.clear	Clear	string
+common.close	Close	string
+common.confirm	Confirm	string
+common.create	Create	string
+common.delete	Delete	string
+common.done	Done	string
+common.edit	Edit	string
+common.filter	Filter	string
+common.loading	Loading...	string
+common.next	Next	string
+common.no	No	string
+common.ok	OK	string
+common.save	Save	string
+common.search	Search	string
+common.seeAll	See All	string
+common.select	Select	string
+common.selected	Selected	string
+common.total	Total	string
+common.update	Update	string
+common.yes	Yes	string
+createCompany.backToLogin	Already have an account? Sign in	string
+createCompany.companyName	Company name	string
+createCompany.companyNamePlaceholder	Acme Construction	string
+createCompany.companyNameRequired	Company name is required	string
+createCompany.creating	Creating…	string
+createCompany.emailRequired	Email is required	string
+createCompany.failedMessage	Please try again.	string
+createCompany.failedTitle	Could not create company	string
+createCompany.invalidEmail	Enter a valid email	string
+createCompany.nameRequired	Your name is required	string
+createCompany.submit	Create company	string
+createCompany.subtitle	Start your company account. You will be the company admin.	string
+createCompany.title	Create company	string
+createCompany.workEmail	Work email	string
+createCompany.workEmailPlaceholder	you@company.com	string
+createCompany.yourName	Your name	string
+createCompany.yourNamePlaceholder	Full name	string
+createTask.acceptField	Accept	string
+createTask.accessRestricted	Access Restricted	string
+createTask.addNewLocation	Add new location	string
+createTask.addNewLocationPlaceholder	Enter a new location on site	string
+createTask.addPhotos	Add Photos	string
+createTask.addTeamMembersFirst	Add team members to the project first	string
+createTask.aiSuggestions	AI Suggestions	string
+createTask.applySuggestions	Apply Suggestions	string
+createTask.assignTo	Assign To	string
+createTask.attachments	Attachments	string
+createTask.billable	Billable	string
+createTask.billed	Billed	string
+createTask.billingStatus	Billing Status	string
+createTask.changeLocation	Change location	string
+createTask.chooseFromLibrary	Choose from Library	string
+createTask.clearSearch	Clear Search	string
+createTask.clearSuggestions	Clear AI Suggestions	string
+createTask.createNewTask	Create New Task	string
+createTask.createSubTask	Create Sub-Task	string
+createTask.createTaskButton	Create Task	string
+createTask.creating	Creating...	string
+createTask.descriptionPlaceholder	Describe the task in detail...	string
+createTask.doneSelected	Done ({arg1} selected)	function
+createTask.editTask	Edit Task	string
+createTask.enterCantoneseOrEnglish	Enter task details in Cantonese or English	string
+createTask.error	Error	string
+createTask.failedToCreateTask	Failed to create task. Please try again.	string
+createTask.failedToPaste	Failed to paste from clipboard	string
+createTask.failedToPickImages	Failed to pick images	string
+createTask.failedToTakePhoto	Failed to take photo	string
+createTask.failedToUpdateTask	Failed to update task. Please try again.	string
+createTask.fetchingTeamMembers	Fetching project team members	string
+createTask.filesAdded	{arg1} file(s) added	function
+createTask.goBack	Go Back	string
+createTask.headerCreateSubtitle	Create task	string
+createTask.headerEditSubtitle	Task editor	string
+createTask.imagePasted	Image pasted from clipboard!	string
+createTask.loadingUsers	Loading users...	string
+createTask.locationOnSite	Location on Site	string
+createTask.moreDetailsSubtitle	Optional context for downstream work	string
+createTask.moreDetailsTitle	More Details	string
+createTask.nestedSubTask	Nested Sub-Task	string
+createTask.nestedSubTaskCreatedSuccess	Nested sub-task created successfully and assigned to the selected users.	string
+createTask.nestedUnder	Nested under:	string
+createTask.noAttachmentsAdded	No attachments added	string
+createTask.noImageInClipboard	No image found in clipboard. Copy an image first.	string
+createTask.noLocation	No location	string
+createTask.noProjectsAvailable	No projects available	string
+createTask.noSuggestions	No suggestions available	string
+createTask.noUsersAssigned	No users assigned to this project	string
+createTask.noUsersFound	No users found	string
+createTask.nonBillable	Non-Billable	string
+createTask.onlyCreatorCanEdit	Only the task creator can edit this task.	string
+createTask.pasteFromClipboard	Paste from Clipboard	string
+createTask.pasteImageError	Could not paste image from clipboard	string
+createTask.permissionDenied	Permission Denied	string
+createTask.photosFailedUpload	photo(s) failed to upload. Please try again.	string
+createTask.photosUploadMessage	Photos will be uploaded to cloud storage and visible to all assignees.	string
+createTask.processingText	Processing text input...	string
+createTask.processingVoice	Processing voice input...	string
+createTask.project	Project	string
+createTask.rejectField	Reject	string
+createTask.saveNewLocation	Save location	string
+createTask.scheduleSubtitle	Set the target date	string
+createTask.scheduleTitle	Schedule	string
+createTask.searchPlaceholder	Search by name, email, position, or role...	string
+createTask.selectBillingStatus	Select Billing Status	string
+createTask.selectCategory	Select Category	string
+createTask.selectLocationOnSite	Select a location on site	string
+createTask.selectLocationOnSiteFirstProject	Select a project to add a location on site	string
+createTask.selectPriority	Select Priority	string
+createTask.selectProject	Select a project	string
+createTask.selectUsersToAssign	Select users to assign	string
+createTask.selectedUsers	Selected Users:	string
+createTask.subTaskCreated	Sub-Task Created	string
+createTask.subTaskCreatedSuccess	Sub-task created successfully and assigned to the selected users.	string
+createTask.subTaskOf	Sub-task of:	string
+createTask.suggestionPreview	Suggestion Preview	string
+createTask.takePhoto	Take Photo	string
+createTask.tapToAddFiles	Tap to Add Files	string
+createTask.taskAlreadyAccepted	This task has already been accepted. It can no longer be edited.	string
+createTask.taskAlreadyRejected	This task has already been rejected. It can no longer be edited.	string
+createTask.taskBasicsSubtitle	Start with the essentials	string
+createTask.taskBasicsTitle	Task Basics	string
+createTask.taskCreated	Task Created	string
+createTask.taskCreatedSuccess	Task created successfully and assigned to the selected users.	string
+createTask.taskNotFound	Task Not Found	string
+createTask.taskReference	Task Reference #	string
+createTask.taskReferencePlaceholder	Enter task reference information	string
+createTask.taskUpdated	Task Updated	string
+createTask.taskUpdatedSuccess	Task updated successfully.	string
+createTask.textInput	Text Input	string
+createTask.textInputPlaceholder	Describe the task...	string
+createTask.titlePlaceholder	Enter task title	string
+createTask.tryAdjustingSearch	Try adjusting your search	string
+createTask.unableToEditTask	Unable to edit this task because it could not be loaded.	string
+createTask.updateTaskButton	Update Task	string
+createTask.updating	Updating...	string
+createTask.uploadWarning	Upload Warning	string
+createTask.usersAvailable	{arg1} users available (filtered from {arg2})	function
+createTask.usersSelected	{arg1} user selected	function
+createTask.voiceInput	Voice Input	string
+dashboard.accomplishments	My Completed Work	string
+dashboard.active	On-going	string
+dashboard.allProjects	All Projects	string
+dashboard.assigned	Assigned	string
+dashboard.changeProject	Change Project	string
+dashboard.completed	Completed	string
+dashboard.currentTasks	Current\nTasks	string
+dashboard.currentTasksHeader	Current Tasks	string
+dashboard.dataRefreshed	Data refreshed successfully!	string
+dashboard.done	Done	string
+dashboard.error	Error	string
+dashboard.followUpNow	Follow Up\nNow	string
+dashboard.followUpNowHeader	Follow Up Now	string
+dashboard.inProgress	In Progress	string
+dashboard.inbox	Inbox	string
+dashboard.keyTasks	Key Tasks	string
+dashboard.loadingData	Loading data...	string
+dashboard.loadingProjects	Loading projects...	string
+dashboard.loadingTasks	Loading tasks...	string
+dashboard.loadingUsers	Loading users...	string
+dashboard.logout	Logout	string
+dashboard.logoutConfirm	Are you sure you want to logout?	string
+dashboard.myActionRequiredNow	My Action\nRequired Now	string
+dashboard.myActionRequiredNowHeader	My Action Required Now	string
+dashboard.myTasks	My Tasks	string
+dashboard.newRequests	New\nRequests	string
+dashboard.newRequestsHeader	New Requests	string
+dashboard.noProjectsMessage	You haven't been assigned to any projects yet. Contact your admin to get started.	string
+dashboard.noProjectsYet	No Projects Yet	string
+dashboard.noTasksMessage	Tasks assigned to you will appear here	string
+dashboard.noTasksYet	No tasks assigned yet	string
+dashboard.notStarted	Not Started	string
+dashboard.outbox	Outbox	string
+dashboard.overdue	Overdue	string
+dashboard.pendingAcceptance	Pending\nAcceptance	string
+dashboard.pendingAcceptanceHeader	Pending Acceptance	string
+dashboard.pendingApproval	Pending\nApproval	string
+dashboard.pendingApprovalHeader	Pending Approval	string
+dashboard.pendingMyReview	Pending\nmy review	string
+dashboard.pendingMyReviewHeader	Pending my review	string
+dashboard.planning	Planning	string
+dashboard.profileAndSettings	Profile & Settings	string
+dashboard.projectParticipation	Project Participation	string
+dashboard.quickOverview	Full Task List	string
+dashboard.received	Received	string
+dashboard.recentTasks	Recent Tasks	string
+dashboard.refreshFailed	Failed to refresh data. Please try again.	string
+dashboard.refreshingData	Refreshing all data for the new project	string
+dashboard.rejected	Rejected	string
+dashboard.reviewing	Reviewing	string
+dashboard.selectAProject	Select a Project	string
+dashboard.selectProject	Select Project	string
+dashboard.selectProjectMessage	Please select a project to view your dashboard	string
+dashboard.success	Success	string
+dashboard.switchingProject	Switching Project...	string
+dashboard.tapStarHint	Tap star in Tasks screen	string
+dashboard.tasksAssignedToMe	Task Inbox	string
+dashboard.tasksForMe	Tasks for me	string
+dashboard.tasksFromMe	Tasks from me	string
+dashboard.tasksIAssigned	Task Outbox	string
+dashboard.teamProceeding	Team\nProceeding	string
+dashboard.teamProceedingHeader	Team Proceeding	string
+dashboard.totalProjects	Total Projects	string
+dashboard.viewTasks	View tasks from all your projects	string
+dashboard.viewing	Viewing	string
+dashboard.welcomeBack	Welcome Back! 👋	string
+dashboard.wip	WIP	string
+dashboard.workAccepted	Work\nAccepted	string
+dashboard.workAcceptedHeader	Work Accepted	string
+dashboard.workRejected	Work\nRejected	string
+dashboard.workRejectedHeader	Work Rejected	string
+dashboard.yourProjects	Your Projects	string
+errors.error	Error	string
+errors.info	Info	string
+errors.success	Success	string
+errors.warning	Warning	string
+fab.addSubTask	Add Sub-task	string
+fab.cancelTask	Cancel Task	string
+fab.editTaskDetail	Edit Task Detail	string
+fab.newTask	New Task	string
+login.approvalPending	Approval Pending	string
+login.approvalPendingMessage	Your account is pending approval from your company administrator. You will be notified once your account is approved.	string
+login.buildTrack	BuildTrack	string
+login.constructionTaskManagement	Construction Task Management	string
+login.createCompany	Create company	string
+login.dontHaveAccount	Don't have an account?	string
+login.emailAddress	Email Address	string
+login.emailNotConfirmed	This email is not confirmed yet. Open the confirmation link from your invite email, or ask your admin to resend the invite.	string
+login.emailOrPhone	Email or Phone Number	string
+login.emailOrPhonePlaceholder	email@example.com or +1234567890	string
+login.emailOrPhoneRequired	Email or phone number is required	string
+login.emailPlaceholder	Enter your email	string
+login.failedToLogin	Failed to login with	string
+login.invalidCredentials	Invalid email or password. Please try again.	string
+login.invalidEmailOrPhone	Please enter a valid email or phone number	string
+login.loginFailed	Login Failed	string
+login.passwordPlaceholder	Enter your password	string
+login.phoneLookupFailed	Phone sign-in could not find that number. Sign in with the email from your invite instead.	string
+login.pleaseTryAgain	Please try again.	string
+login.profileMissing	Password was accepted but this account has no Taskr profile. Ask your admin to re-invite the seat, or contact support.	string
+login.quickLogin	Quick Login - Tap any user	string
+login.quickLoginFailed	Quick Login Failed	string
+login.signIn	Sign In	string
+login.signUp	Sign Up	string
+login.signingIn	Signing In...	string
+login.tapToLogin	Tap any name to login instantly	string
+nav.activity	Activity	string
+nav.dashboard	Dashboard	string
+nav.profile	Profile	string
+nav.projects	Projects	string
+nav.reports	Reports	string
+nav.settings	Settings	string
+nav.tasks	Tasks	string
+phrases.comingSoon	Coming Soon	string
+phrases.comingSoonMessage	This feature will be available in a future update.	string
+phrases.project	project	string
+phrases.projects	projects	string
+phrases.task	task	string
+phrases.tasks	tasks	string
+phrases.user	user	string
+phrases.users	users	string
+profile.about	About	string
+profile.companyPlan	Company plan	string
+profile.continueToCheckout	Continue to checkout	string
+profile.darkMode	Dark Mode	string
+profile.deleteAccount	Delete Account	string
+profile.deleteAccountConfirm	This permanently deletes your login and contact details. Your name stays on jobsite task history for the company record. This cannot be undone.	string
+profile.deleteAccountFailed	Could not delete account	string
+profile.editProfile	Edit Profile	string
+profile.english	English	string
+profile.englishUS	English (United States)	string
+profile.helpSupport	Help & Support	string
+profile.language	Language	string
+profile.languageChanged	Language Changed	string
+profile.languageChangedMessage	The app needs to reload to apply the new language. Reload now?	string
+profile.later	Later	string
+profile.lightMode	Light Mode	string
+profile.logout	Logout	string
+profile.memberSince	Member Since	string
+profile.notifications	Notifications	string
+profile.pleaseRestart	Please Restart	string
+profile.pleaseRestartMessage	Please close and reopen the app to see the new language.	string
+profile.privacySecurity	Privacy & Security	string
+profile.profile	Profile	string
+profile.reloadData	Reload Data	string
+profile.reloadNow	Reload Now	string
+profile.selectLanguage	Select Language	string
+profile.settings	Settings	string
+profile.tasksAssigned	Tasks Assigned	string
+profile.theme	Theme	string
+profile.traditionalChinese	繁體中文	string
+projects.active	On-going	string
+projects.all	All	string
+projects.assignedToYou	assigned to you	string
+projects.budget	Budget	string
+projects.cancelled	Cancelled	string
+projects.completed	Completed	string
+projects.create	Create	string
+projects.createFirstProject	Create your first project to get started	string
+projects.createNewProject	Create New Project	string
+projects.createProject	Create Project	string
+projects.createdBy	Created by	string
+projects.editProject	Edit Project	string
+projects.endDateError	End date must be after start date	string
+projects.enterFullAddress	Enter full address (street, city, state/province, postal code, country)	string
+projects.enterProjectName	Enter project name	string
+projects.estimatedEndDate	Estimated End Date	string
+projects.failedToCreateProject	Failed to create project. Please try again.	string
+projects.leadPM	Lead PM	string
+projects.leadPMDescription	The Lead PM has full visibility to all tasks and subtasks in this project	string
+projects.leadProjectManager	Lead Project Manager	string
+projects.loadingProjects	Loading projects...	string
+projects.location	Location	string
+projects.member	member	string
+projects.members	members	string
+projects.noLeadPM	No Lead PM (Select one)	string
+projects.noLocation	No location	string
+projects.noProjects	No projects yet	string
+projects.noProjectsAvailable	No projects available	string
+projects.noProjectsFound	No projects found	string
+projects.noProjectsMessage	You haven't been assigned to any projects yet	string
+projects.planning	Planning	string
+projects.project	project	string
+projects.projectCreated	Project Created	string
+projects.projectCreatedMessage	Your project was created successfully, but it may take a moment to appear in the list.	string
+projects.projectDescription	Project description	string
+projects.projectDetails	Project Details	string
+projects.projectInformation	Project Information	string
+projects.projectName	Project Name	string
+projects.projectNameRequired	Project name is required	string
+projects.projectTimeline	Project Timeline	string
+projects.projectUpdated	Project updated successfully	string
+projects.projects	Projects	string
+projects.projectsPlural	projects	string
+projects.searchProjects	Search projects...	string
+projects.selectProject	Select a Project	string
+projects.startDate	Start Date	string
+projects.status	Status	string
+projects.tryAdjustingSearch	Try adjusting your search or filters	string
+projects.unknown	Unknown	string
+projects.yourProjects	Your Projects	string
+registration.alreadyHaveAccount	Already have an account?	string
+registration.change	Change	string
+registration.company	Company	string
+registration.companyNameRequired	Company name is required	string
+registration.confirmPassword	Confirm Password	string
+registration.confirmPasswordPlaceholder	Confirm your password	string
+registration.confirmPasswordRequired	Please confirm your password	string
+registration.createAccount	Create your account to get started	string
+registration.createAccountButton	Create Account	string
+registration.createNew	Create New	string
+registration.creatingAccount	Creating Account...	string
+registration.emailAddress	Email Address	string
+registration.enterCompanyName	Enter your company name	string
+registration.enterEmailOptional	Enter your email (optional)	string
+registration.enterFullName	Enter your full name	string
+registration.enterPassword	Enter your password	string
+registration.enterPromoCode	Enter promo code to continue	string
+registration.firstUserAdmin	You will be the first user and administrator of this company.	string
+registration.fullName	Full Name	string
+registration.getStarted	Get Started	string
+registration.invalidEmail	Please enter a valid email address	string
+registration.invalidPromoCode	Invalid promo code	string
+registration.joinExisting	Join Existing	string
+registration.joinTaskr	Join Taskr	string
+registration.nameRequired	Name is required	string
+registration.noCompaniesAvailable	No companies available	string
+registration.optional	Optional	string
+registration.passwordRequired	Password is required	string
+registration.passwordTooShort	Password must be at least 6 characters	string
+registration.passwordsDoNotMatch	Passwords do not match	string
+registration.phoneInvalid	Phone number must be exactly 8 digits	string
+registration.phoneNumber	Phone Number	string
+registration.phoneNumberPlaceholder	Enter 8-digit phone number	string
+registration.phoneRequired	Phone number is required	string
+registration.promoCode	Promo Code	string
+registration.promoCodeRequired	Promo code is required	string
+registration.registrationFailed	Registration Failed	string
+registration.registrationSubmitted	Registration Submitted	string
+registration.registrationSubmittedMessage	Your registration request has been sent to the company administrator for approval. You will be notified once approved.	string
+registration.selectACompany	Select a company	string
+registration.selectCompany	Select Company	string
+registration.selectCompanyOption	Please select a company option	string
+registration.selectCompanyRequired	Please select a company	string
+registration.unexpectedError	An unexpected error occurred. Please try again.	string
+registration.validPromoCode	Valid promo code!	string
+registration.welcomeNewCompany	Welcome!	string
+registration.welcomeNewCompanyMessage	Your company has been created and you are now the administrator. You can start creating projects and inviting team members.	string
+reports.adjustDateRange	Adjust your date range or report type	string
+reports.assignedTasks	Assigned Tasks	string
+reports.avgCompletion	Avg Completion	string
+reports.complete	complete	string
+reports.completed	Completed	string
+reports.criticalPriority	Critical Priority	string
+reports.dateRange	Date Range	string
+reports.due	Due	string
+reports.exportAsPDF	In a production app, this would be exported as PDF or CSV.	string
+reports.from	From	string
+reports.inProgress	In Progress	string
+reports.moreTasksInReport	more tasks in full report	string
+reports.myTasks	My Tasks	string
+reports.noTasksFound	No tasks found	string
+reports.overdue	Overdue	string
+reports.reportConfiguration	Report Configuration	string
+reports.reportContains	Report contains	string
+reports.reportGenerated	Report Generated	string
+reports.reportSummary	Report Summary	string
+reports.reportType	Report Type	string
+reports.reports	Reports	string
+reports.statisticsOverview	Statistics Overview	string
+reports.taskPreview	Task Preview	string
+reports.tasksFrom	tasks from	string
+reports.to	To	string
+reports.toDate	to	string
+reports.totalTasks	Total Tasks	string
+reports.viewSummary	View Summary	string
+setPassword.confirmPassword	Confirm password	string
+setPassword.confirmPasswordPlaceholder	Re-enter your password	string
+setPassword.confirmPasswordRequired	Please confirm your password	string
+setPassword.failedTitle	Could not save password	string
+setPassword.password	New password	string
+setPassword.passwordPlaceholder	At least 6 characters	string
+setPassword.passwordRequired	Password is required	string
+setPassword.passwordTooShort	Password must be at least 6 characters	string
+setPassword.passwordsDoNotMatch	Passwords do not match	string
+setPassword.retryAfterAuth	Password saved. Tap Continue again to finish.	string
+setPassword.submit	Continue	string
+setPassword.submitting	Saving…	string
+setPassword.subtitle	Choose a password so you can sign in next time.	string
+setPassword.title	Set your password	string
+taskDetail.accept	Accept	string
+taskDetail.acceptCompletionConfirm	Accept this task as completed?	string
+taskDetail.acceptTask	Accept Task	string
+taskDetail.acceptTaskConfirm	Are you sure you want to accept this task?	string
+taskDetail.addPhotos	Add Photos	string
+taskDetail.addUpdate	Add Update	string
+taskDetail.assignedBy	Assigned By	string
+taskDetail.assignedTo	Assigned To	string
+taskDetail.assigneeSubmitted	The assignee has submitted this task for your approval	string
+taskDetail.assignees	Assignees	string
+taskDetail.attachedFiles	Attached Files	string
+taskDetail.awaitingApproval	Your task has been submitted and is awaiting approval from the task creator	string
+taskDetail.cancel	Cancel	string
+taskDetail.cancelTaskConfirm	Are you sure you want to cancel this task?	string
+taskDetail.changesDetected	Changes Detected	string
+taskDetail.children	Children	string
+taskDetail.choosePhotoMethod	Choose how you want to add photos	string
+taskDetail.compPercent	Comp. %	string
+taskDetail.completionAccepted	Completion Accepted	string
+taskDetail.completionPercentage	Completion Percentage	string
+taskDetail.completionRejected	Completion Rejected	string
+taskDetail.createdOn	Created On	string
+taskDetail.current	Current	string
+taskDetail.decline	Decline	string
+taskDetail.declineSubTask	Decline Sub-Task	string
+taskDetail.declineSubTaskReason	Please provide a reason for declining this sub-task:	string
+taskDetail.declineTask	Decline Task	string
+taskDetail.declineTaskConfirm	Are you sure you want to decline this task?	string
+taskDetail.delete	Delete	string
+taskDetail.deleteConfirm	Are you sure you want to delete this task?	string
+taskDetail.due	Due:	string
+taskDetail.dueDate	Due Date	string
+taskDetail.editHistory	Edit History	string
+taskDetail.editReason	Edit Reason	string
+taskDetail.editReasonPlaceholder	Enter reason for editing this task...	string
+taskDetail.editReasonPrompt	Please provide a reason for editing this accepted task (optional)	string
+taskDetail.editReasonTitle	Reason for Edit	string
+taskDetail.editTaskDetails	Edit Task Details	string
+taskDetail.editedBy	Edited by	string
+taskDetail.editedOn	Edited on	string
+taskDetail.failedToSubmitUpdate	Failed to submit update	string
+taskDetail.fieldChanged	{field} changed	string
+taskDetail.from	from	string
+taskDetail.markAsComplete	Mark as Complete	string
+taskDetail.markCompleteConfirm	Mark this task as complete?	string
+taskDetail.noAssignees	No assignees	string
+taskDetail.noAttachments	No attachments	string
+taskDetail.noChildren	No sub-tasks	string
+taskDetail.noEditHistory	No edit history available	string
+taskDetail.noFilesAdded	No files added	string
+taskDetail.noReasonProvided	No reason provided	string
+taskDetail.noUpdates	No updates yet	string
+taskDetail.photosAndFiles	Photos & Files	string
+taskDetail.photosUpdates	Add Photos	string
+taskDetail.previous	Previous	string
+taskDetail.progressDetails	Progress Details	string
+taskDetail.progressUpdate	Progress Update	string
+taskDetail.progressUpdateAdded	Progress update added successfully!	string
+taskDetail.project	Project	string
+taskDetail.readyForReview	Ready for Review	string
+taskDetail.reason	Reason:	string
+taskDetail.reassign	Reassign	string
+taskDetail.reassignTo	Reassign To	string
+taskDetail.reassignToAnotherUser	Reassign to Another User	string
+taskDetail.recentChanges	Recent Changes	string
+taskDetail.reject	Reject	string
+taskDetail.rejectCompletionConfirm	Reject this task completion?	string
+taskDetail.reviewedAndApproved	Reviewed and approved by	string
+taskDetail.searchUsers	Search users...	string
+taskDetail.selectUsers	Select Users	string
+taskDetail.subTaskAccepted	Sub-task accepted successfully! You can now start working on it.	string
+taskDetail.subTaskDeclined	Sub-Task Declined	string
+taskDetail.subTaskDeclinedMessage	The sub-task has been declined.	string
+taskDetail.submitForReview	Submit for Review	string
+taskDetail.submitForReviewConfirm	Submit this task for review?	string
+taskDetail.submitUpdate	Submit Update	string
+taskDetail.submittedForReview	Submitted for Review	string
+taskDetail.tapToAddFiles	Tap to Add Files	string
+taskDetail.taskAccepted	Task Accepted	string
+taskDetail.taskApproved	Task Approved	string
+taskDetail.taskCancelled	Task Cancelled	string
+taskDetail.taskCompleted	Task Completed	string
+taskDetail.taskDeclined	Task Declined	string
+taskDetail.taskDeclinedByAssignee	This task was declined by the assignee	string
+taskDetail.taskDeclinedMessage	This task was declined by the assignee	string
+taskDetail.taskDeleted	Task Deleted	string
+taskDetail.taskReassigned	Task Reassigned	string
+taskDetail.taskRejected	Task Rejected	string
+taskDetail.taskSubmitted	Task Submitted	string
+taskDetail.taskWasEdited	This task was edited by {editor} on {date}	string
+taskDetail.tasksForMeNewRequest	Tasks for me – New Request	string
+taskDetail.to	to	string
+taskDetail.updateDescription	Update Description	string
+taskDetail.updateDescriptionPlaceholder	Describe what you've done...	string
+taskDetail.updateStatus	Update Status	string
+taskDetail.updateTask	Update Progress	string
+taskDetail.updates	Updates	string
+taskDetail.viewEditHistory	View Edit History	string
+tasks.all	All	string
+tasks.assignTo	Assign To	string
+tasks.assigned	Assigned	string
+tasks.assignedBy	Assigned By	string
+tasks.assignedTasks	Assigned Tasks	string
+tasks.assignedTo	Assigned To	string
+tasks.attachments	Attachments	string
+tasks.category	Category	string
+tasks.commercial	Commercial	string
+tasks.comp	Comp.	string
+tasks.completed	Completed	string
+tasks.completion	Completion	string
+tasks.couldNotLoadTasks	Could not load tasks	string
+tasks.couldNotLoadTasksMessage	Pull to refresh and try again.	string
+tasks.createNewTask	Create New Task	string
+tasks.createTask	Create Task	string
+tasks.critical	Critical	string
+tasks.description	Description	string
+tasks.done	Done	string
+tasks.due	Due	string
+tasks.dueDate	Due Date	string
+tasks.electrical	Electrical	string
+tasks.general	General	string
+tasks.high	High	string
+tasks.inProgress	In Progress	string
+tasks.low	Low	string
+tasks.materials	Materials	string
+tasks.medium	Medium	string
+tasks.myTasks	My Tasks	string
+tasks.noMatchingTasks	No matching tasks	string
+tasks.noTasks	No tasks yet	string
+tasks.noTasksMessage	You haven't been assigned any tasks yet	string
+tasks.notStarted	Not Started	string
+tasks.overdue	Overdue	string
+tasks.plumbing	Plumbing	string
+tasks.priority	Priority	string
+tasks.progress	Progress	string
+tasks.received	Received	string
+tasks.rejected	Rejected	string
+tasks.reviewing	Reviewing	string
+tasks.safety	Safety	string
+tasks.searchTasks	Search tasks...	string
+tasks.selfAssigned	Self-Assigned	string
+tasks.status	Status	string
+tasks.structural	Structural	string
+tasks.task	task	string
+tasks.taskCreated	Task Created	string
+tasks.taskCreatedMessage	Task has been created successfully and assigned to the selected users.	string
+tasks.taskDetails	Task Details	string
+tasks.tasks	Tasks	string
+tasks.tasksPlural	tasks	string
+tasks.title	Title	string
+tasks.tryAdjustingFilters	Try adjusting your filters	string
+tasks.wip	WIP	string
+userManagement.accessDenied	Access denied. Admin role required.	string
+userManagement.admin	Admin	string
+userManagement.allRequestsProcessed	All user requests have been processed. New requests will appear here.	string
+userManagement.approve	Approve	string
+userManagement.approveFailed	Failed to approve user. Please try again.	string
+userManagement.approveMessage	Approve {name} to join your company?	string
+userManagement.approveSuccess	{name} has been approved and can now log in.	string
+userManagement.approveUser	Approve User	string
+userManagement.approved	Approved	string
+userManagement.architect	Architect	string
+userManagement.assignSuccess	{userName} has been assigned to {projectName} as {role}.	string
+userManagement.assignToProject	Assign to Project	string
+userManagement.assignUser	Assign User	string
+userManagement.contractor	Contractor	string
+userManagement.engineer	Engineer	string
+userManagement.foreman	Foreman	string
+userManagement.goBack	Go Back	string
+userManagement.inspector	Inspector	string
+userManagement.leadProjectManager	Lead Project Manager	string
+userManagement.manager	Manager	string
+userManagement.noPendingApprovals	No Pending Approvals	string
+userManagement.noProjectAssignments	No project assignments yet	string
+userManagement.pending	Pending	string
+userManagement.pendingApprovals	Pending Approvals	string
+userManagement.projectAssignments	Project Assignments	string
+userManagement.reject	Reject	string
+userManagement.rejectFailed	Failed to reject user. Please try again.	string
+userManagement.rejectMessage	Reject {name}'s request to join your company? This will delete their account.	string
+userManagement.rejectSuccess	{name}'s request has been rejected.	string
+userManagement.rejectUser	Reject User	string
+userManagement.removeConfirm	Are you sure you want to remove {userName} from {projectName}?	string
+userManagement.removeFromProject	Remove from Project	string
+userManagement.removeSuccess	{userName} has been removed from {projectName}.	string
+userManagement.removeUser	Remove User	string
+userManagement.searchUsers	Search users...	string
+userManagement.selectProject	Select Project	string
+userManagement.selectRole	Select Role	string
+userManagement.subcontractor	Subcontractor	string
+userManagement.user	user	string
+userManagement.userManagement	User Management	string
+userManagement.userWaiting	user waiting	string
+userManagement.users	Users	string
+userManagement.usersWaiting	users waiting	string
+userManagement.worker	Worker	string
+validation.assigneeRequired	Please select at least one person to assign this task	string
+validation.descriptionRequired	Description is required	string
+validation.dueDateFuture	Due date must be in the future	string
+validation.emailInvalid	Please enter a valid email	string
+validation.emailRequired	Email is required	string
+validation.passwordMismatch	Passwords do not match	string
+validation.passwordRequired	Password is required	string
+validation.passwordTooShort	Password must be at least 6 characters	string
+validation.projectRequired	Please select a project	string
+validation.required	This field is required	string
+validation.titleRequired	Title is required	string
+voiceInput.error	Error	string
+voiceInput.extracting	Extracting task information...	string
+voiceInput.failedToStartRecording	Failed to start recording. Please try again.	string
+voiceInput.failedToStopRecording	Failed to stop recording. Please try again.	string
+voiceInput.microphonePermissionRequired	Microphone permission is required to record voice input.	string
+voiceInput.permissionDenied	Permission Denied	string
+voiceInput.processing	Processing...	string
+voiceInput.recordingHint	Speak clearly in Cantonese or English	string
+voiceInput.startRecording	Start Recording	string
+voiceInput.stopRecording	Stop Recording	string
+voiceInput.title	Voice Input	string
+voiceInput.transcribing	Transcribing...	string

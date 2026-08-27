@@ -4,11 +4,11 @@ import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/nativ
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuthStore } from "../../state/authStore";
 import { useTaskStore } from "../../state/taskStore.supabase";
-import { usePhotoSelection } from "../../utils/usePhotoSelection";
 import { useTranslation } from "../../utils/useTranslation";
 import { TaskStatus } from "../../types/buildtrack";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
 import { returnToTaskDetailAfterUpdateProgress } from "../../navigation/photoFlowNavigation";
+import { navigateToAddPhotosCaptureSession } from "../../navigation/captureFirstCameraFlow";
 import type { 
   UpdateProgressScreenViewAdapterOutput,
   UpdateProgressPhotoModel
@@ -52,7 +52,6 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
   const fetchTaskById = useTaskStore(state => state.fetchTaskById);
   const addTaskUpdate = useTaskStore(state => state.addTaskUpdate);
   const addSubTaskUpdate = useTaskStore(state => state.addSubTaskUpdate);
-  const { showPhotoSelectionDialog } = usePhotoSelection();
 
   const task = tasks.find(t => t.id === taskId);
   const isViewingSubTask = !!subTaskId;
@@ -122,127 +121,22 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     }, [props.selectedPhotos, props.uploadedPhotoUrls, route.params, navigation])
   );
 
-  const handleAddPhotos = (source?: "camera" | "library") => {
+  const handleAddPhotos = (_source?: "camera" | "library") => {
     if (!user || !task) return;
 
-    const goToPhotoSelection = (selected: SelectedPhoto[]) => {
-      const serializablePhotos = selected.map((photo) => ({
-        uri: photo.uri,
-        fileName: photo.fileName,
-        isAnnotated: photo.isAnnotated || false,
-        annotatedUri: (photo as { annotatedUri?: string }).annotatedUri,
-        mediaLibraryAssetId: (photo as { mediaLibraryAssetId?: string }).mediaLibraryAssetId,
-      }));
-
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          try {
-            if (!navigation || !navigation.navigate) {
-              Alert.alert("Error", "Navigation is not available. Please try again.");
-              return;
-            }
-
-            navigation.navigate("PhotoSelection", {
-              taskId: task.id,
-              subTaskId: subTaskId,
-              companyId: user.companyId,
-              userId: user.id,
-              initialCompletionPercentage: task.completionPercentage || 0,
-              initialPhotos: serializablePhotos,
-              returnScreen: "UpdateProgress",
-              uploadImmediately: false,
-              sourceScreen: sourceScreen,
-              sourceTaskId: sourceTaskId || task.id,
-              sourceSubTaskId: sourceSubTaskId || subTaskId,
-            });
-          } catch (error: any) {
-            Alert.alert(
-              "Navigation Error",
-              `Failed to open photo selection: ${error.message || "Unknown error"}\n\nPlease try again.`,
-            );
-          }
-        }, 100);
-      });
-    };
-
-    const openInAppLibrary = () => {
-      if (!user || !task) return;
-
-      const libraryParams = {
-        taskId: task.id,
-        subTaskId: subTaskId,
-        companyId: user.companyId,
-        userId: user.id,
-        initialCompletionPercentage: task.completionPercentage || 0,
-        returnScreen: "UpdateProgress" as const,
-        uploadImmediately: false,
-        existingPhotos: photoObjects.map((photo) => ({
-          uri: photo.uri,
-          fileName: photo.fileName,
-          isAnnotated: Boolean(photo.isAnnotated),
-          annotatedUri: (photo as { annotatedUri?: string }).annotatedUri,
-          mediaLibraryAssetId: (photo as { mediaLibraryAssetId?: string })
-            .mediaLibraryAssetId,
-        })),
-        sourceScreen: sourceScreen,
-        sourceTaskId: sourceTaskId || task.id,
-        sourceSubTaskId: sourceSubTaskId || subTaskId,
-      };
-
-      try {
-        // Same SoT as Create Task: in-app MediaLibrary gallery (not Apple PHPicker).
-        // Prefer push so we never silently no-op if a prior library route is stuck.
-        if (typeof navigation.push === "function") {
-          navigation.push("InAppLibraryPicker", libraryParams);
-          return;
-        }
-        navigation.navigate("InAppLibraryPicker", libraryParams);
-      } catch (error: any) {
-        const parent = navigation.getParent?.();
-        if (parent?.navigate) {
-          parent.navigate("InAppLibraryPicker", libraryParams);
-          return;
-        }
-        Alert.alert(
-          "Navigation Error",
-          `Failed to open photo library: ${error.message || "Unknown error"}\n\nPlease try again.`,
-        );
-      }
-    };
-
-    if (source === "library") {
-      openInAppLibrary();
-      return;
-    }
-
-    if (source === "camera") {
-      showPhotoSelectionDialog({
-        onPhotosSelected: goToPhotoSelection,
-        allowClipboard: false,
-        allowMultiple: false,
-        source: "camera",
-      });
-      return;
-    }
-
-    Alert.alert("Add Photos", "Choose how you want to add photos", [
-      {
-        text: "Take Photo",
-        onPress: () => {
-          showPhotoSelectionDialog({
-            onPhotosSelected: goToPhotoSelection,
-            allowClipboard: false,
-            allowMultiple: false,
-            source: "camera",
-          });
-        },
-      },
-      {
-        text: "Choose from Library",
-        onPress: openInAppLibrary,
-      },
-      { text: "Cancel", style: "cancel" },
-    ]);
+    navigateToAddPhotosCaptureSession(navigation, {
+      returnScreen: "UpdateProgress",
+      taskId: task.id,
+      subTaskId,
+      companyId: user.companyId,
+      userId: user.id,
+      initialCompletionPercentage: task.completionPercentage || 0,
+      uploadImmediately: false,
+      sourceScreen: sourceScreen as "dashboard" | "tasks" | undefined,
+      sourceTaskId: sourceTaskId || task.id,
+      sourceSubTaskId: sourceSubTaskId || subTaskId,
+      entityType: "task-update",
+    });
   };
 
   const handleRetryUpload = async (failedUpload: { fileName: string; error: string; originalFile: any }) => {

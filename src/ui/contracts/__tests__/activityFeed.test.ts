@@ -55,6 +55,40 @@ describe("activityFeed", () => {
     expect(rows[0]?.title).toBe("Progress photo added");
   });
 
+  it("includes a create row when create-time photos exist alongside later updates", () => {
+    const recentTimestamp = new Date(now - 60_000).toISOString();
+    const createTimestamp = new Date(now - 120_000).toISOString();
+
+    const rows = buildActivityFeedRows({
+      projectId: "project-1",
+      tasks: [
+        {
+          id: "task-create-photos",
+          projectId: "project-1",
+          status: "in_progress",
+          title: "Camera flow task",
+          createdAt: createTimestamp,
+          attachments: ["company/tasks/a.jpg"],
+          updates: [
+            {
+              id: "update-accept",
+              timestamp: recentTimestamp,
+              status: "in_progress",
+              description: "Task accepted by Tristan",
+            },
+          ],
+        },
+      ],
+      now,
+    });
+
+    expect(rows.map((row) => row.id)).toEqual([
+      "update-accept",
+      "activity-task:task-create-photos",
+    ]);
+    expect(rows[1]?.title).toBe("New Task");
+  });
+
   it("includes saved photo batches in the feed", () => {
     const savedAt = now - 60_000;
 

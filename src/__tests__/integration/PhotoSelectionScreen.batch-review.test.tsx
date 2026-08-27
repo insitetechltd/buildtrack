@@ -56,9 +56,7 @@ jest.mock("@/components/photoEdit/SortablePhotoGrid", () => {
               key={`${photo.uri}-${index}`}
               testID={`photo-selection__tile_${index}`}
               onPress={() => onPressPhoto(index)}
-            >
-              <View testID={`photo-selection__drag_handle_${index}`} />
-            </Pressable>
+            />
           ))}
         </View>
       );
@@ -216,7 +214,7 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(adapter.handleSetSaveIntent).toHaveBeenCalledWith("attach_task");
   });
 
-  it("renders add tile, drag handles, and no up/down chevrons; tap tile opens edit", () => {
+  it("renders add tile and photo tiles without reorder chevrons; tap tile opens edit", () => {
     const adapter = buildAdapterOutput({});
     const { usePhotoSelectionViewAdapter } = require("@/ui/viewAdapters/usePhotoSelectionViewAdapter");
     usePhotoSelectionViewAdapter.mockReturnValue(adapter);
@@ -228,8 +226,9 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(screen.getByText("Add Photo")).toBeTruthy();
     expect(screen.queryByText("[ionicon:chevron-up]")).toBeNull();
     expect(screen.queryByText("[ionicon:chevron-down]")).toBeNull();
-    expect(screen.getByTestId("photo-selection__drag_handle_0")).toBeTruthy();
-    expect(screen.getByTestId("photo-selection__drag_handle_1")).toBeTruthy();
+    expect(screen.queryByTestId("photo-selection__drag_handle_0")).toBeNull();
+    expect(screen.getByTestId("photo-selection__tile_0")).toBeTruthy();
+    expect(screen.getByTestId("photo-selection__tile_1")).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("photo-selection__tile_1"));
     expect(adapter.handlePhotoPress).toHaveBeenCalledWith(1);

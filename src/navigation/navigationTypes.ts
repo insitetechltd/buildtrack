@@ -53,6 +53,8 @@ export type CreateTaskParams = {
   postCaptureDefault?: CameraPostCaptureDefault;
   clearForm?: boolean;
   _timestamp?: number;
+  /** Capture-first camera tab: back should return to Select Photos. */
+  captureFirstFlow?: boolean;
 };
 
 export type PhotoSelectionSaveIntent = "attach_task" | "project_unattached";
@@ -84,6 +86,11 @@ export type PhotoSelectionParams = {
   originRouteName?: string;
   /** Bumps when returning from in-app library with a new/merged batch. */
   selectionRevision?: number;
+  /**
+   * Global camera-tab capture-first flow: after Select Photos checkmark,
+   * ask Create new task vs Update existing (not return to a pre-opened form).
+   */
+  captureFirstFlow?: boolean;
 };
 
 export type PhotoViewerParams = {
@@ -118,7 +125,35 @@ export type InAppLibraryPickerParams = {
   selectedTaskId?: string;
   saveIntent?: PhotoSelectionParams["saveIntent"];
   originRouteName?: string;
+  captureFirstFlow?: boolean;
 };
+
+export type CaptureTaskPickerParams = {
+  selectedPhotos: SelectedPhoto[];
+};
+
+/** Hybrid capture session — Camera tab (capture-first) or Add Photos from Create/Update. */
+export type CaptureSessionParams =
+  | undefined
+  | {
+      entry?: "captureFirst" | "addPhotos";
+      returnScreen?: PhotoSelectionParams["returnScreen"];
+      taskId?: string;
+      subTaskId?: string;
+      companyId?: string;
+      userId?: string;
+      initialCompletionPercentage?: number;
+      actionType?: CreateTaskParams["actionType"];
+      parentTaskId?: string;
+      parentSubTaskId?: string;
+      editTaskId?: string;
+      localDraftId?: string;
+      uploadImmediately?: boolean;
+      sourceScreen?: PhotoSelectionParams["sourceScreen"];
+      sourceTaskId?: string;
+      sourceSubTaskId?: string;
+      entityType?: PhotoSelectionParams["entityType"];
+    };
 
 export type DashboardStackParamList = {
   DashboardMain: undefined;
@@ -132,6 +167,7 @@ export type DashboardStackParamList = {
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
   InAppLibraryPicker: InAppLibraryPickerParams;
+  CaptureSession: CaptureSessionParams;
 };
 
 export type TasksListParams =
@@ -161,6 +197,7 @@ export type TasksStackParamList = {
   ReassignTask: TaskDetailParams;
   CreateTask: CreateTaskParams;
   InAppLibraryPicker: InAppLibraryPickerParams;
+  CaptureSession: CaptureSessionParams;
 };
 
 export type ReportsStackParamList = {
@@ -171,6 +208,9 @@ export type CreateTaskStackParamList = {
   PhotoSelection: PhotoSelectionParams;
   PhotoViewer: PhotoViewerParams;
   InAppLibraryPicker: InAppLibraryPickerParams;
+  /** Hybrid camera + library session (Camera tab + Add Photos). */
+  CaptureSession: CaptureSessionParams;
+  CaptureTaskPicker: CaptureTaskPickerParams;
 };
 
 export type AdminDashboardStackParamList = {
@@ -199,6 +239,8 @@ export type ProfileStackParamList = {
   /** CA management shell (projects, users, KPIs) — not a root field tab. */
   CompanyManagement: NavigatorScreenParams<AdminDashboardStackParamList> | undefined;
   DeveloperSettings: undefined;
+  /** Dev-only CaptureSessionModule host (A/B smoke). Not production Camera. */
+  CaptureSessionSmoke: undefined;
   OwnerConsole: undefined;
   OwnerMonitoring: undefined;
   OwnerEconomics: undefined;

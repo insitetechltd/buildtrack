@@ -14,8 +14,8 @@ export const ACTIVITY_FAMILY = {
   railTrack: "#C8E6EF",
   badgeBg: "#E7F4F8",
   badgeText: "#0A728F",
-  placeholderBg: "#0D6E87",
-  placeholderIcon: "#E7F4F8",
+  placeholderBg: "#E7F4F8",
+  placeholderIcon: "#0D6E87",
   /** Primary content line (change on post/detail, task name on task card). */
   titleClassName: "text-lg font-semibold text-[#0D2630]",
   /** Secondary content line (task name on post). */

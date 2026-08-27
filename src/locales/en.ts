@@ -390,7 +390,7 @@ export const en = {
     nestedUnder: "Nested under:",
     titlePlaceholder: "Enter task title",
     descriptionPlaceholder: "Describe the task in detail...",
-    taskReference: "Task Reference # (Optional)",
+    taskReference: "Task Reference #",
     taskReferencePlaceholder: "Enter task reference information",
     billingStatus: "Billing Status",
     billable: "Billable",

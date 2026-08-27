@@ -110,7 +110,7 @@ export default function ActivityStyleRowCard({
           badge:
             "max-w-[140px] text-right text-sm font-semibold text-[#0A728F]",
           badgePill: ACTIVITY_FAMILY.badgePillClassName,
-          placeholder: "bg-[#0D6E87]",
+          placeholder: "bg-[#E7F4F8]",
           placeholderIcon: ACTIVITY_FAMILY.placeholderIcon,
         };
       case "task":
@@ -122,7 +122,7 @@ export default function ActivityStyleRowCard({
           badge:
             "max-w-[120px] text-right text-sm font-semibold text-[#0A728F]",
           badgePill: ACTIVITY_FAMILY.badgePillClassName,
-          placeholder: "bg-[#0D6E87]",
+          placeholder: "bg-[#E7F4F8]",
           placeholderIcon: ACTIVITY_FAMILY.placeholderIcon,
         };
       case "activity":
@@ -134,7 +134,7 @@ export default function ActivityStyleRowCard({
           badge:
             "max-w-[130px] text-right text-sm font-semibold text-[#0A728F]",
           badgePill: ACTIVITY_FAMILY.badgePillClassName,
-          placeholder: "bg-[#0D6E87]",
+          placeholder: "bg-[#E7F4F8]",
           placeholderIcon: ACTIVITY_FAMILY.placeholderIcon,
         };
     }
@@ -343,10 +343,11 @@ export default function ActivityStyleRowCard({
             <View
               testID={`${testID}:thumbnail-placeholder`}
               className={cn("h-full w-full items-center justify-center", recipeClasses.placeholder)}
+              accessibilityLabel="No photo"
             >
               <Ionicons
                 testID={`${testID}:no-photo-icon`}
-                name={variant === "critical" ? "flag-outline" : "image-outline"}
+                name="image-outline"
                 size={media.icon}
                 color={recipeClasses.placeholderIcon}
               />

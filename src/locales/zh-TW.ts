@@ -388,7 +388,7 @@ export const zhTW = {
     nestedUnder: "巢狀於：",
     titlePlaceholder: "輸入工作名稱",
     descriptionPlaceholder: "描述工作內容",
-    taskReference: "工作參考（選填）",
+    taskReference: "工作參考",
     taskReferencePlaceholder: "輸入工作參考資料",
     billingStatus: "賬單狀態",
     billable: "可收費",

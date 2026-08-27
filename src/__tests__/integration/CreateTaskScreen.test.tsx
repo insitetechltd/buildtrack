@@ -478,6 +478,61 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.queryByText('More Details')).toBeNull();
     expect(screen.queryByText('Attachments')).toBeNull();
     expect(screen.getByText('Add photos / files')).toBeTruthy();
+
+    const stackTree = JSON.stringify(screen.getByTestId('create-task__field-stack').toJSON());
+    const orderKeys = [
+      'createTask-title',
+      'createTask-description',
+      'createTask-priority-medium',
+      'create-task__assignee-picker-trigger',
+      'create-task__due-date-trigger',
+      'create-task__category-picker-trigger',
+      'create-task__billing-picker-trigger',
+      'create-task__location-picker-trigger',
+      'create-task__tags_editor',
+      'createTask-taskReference',
+    ];
+    let lastIndex = -1;
+    for (const key of orderKeys) {
+      const index = stackTree.indexOf(key);
+      expect(index).toBeGreaterThan(lastIndex);
+      lastIndex = index;
+    }
+  });
+
+  it('marks location and tags as optional while keeping assign-to required', () => {
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    const inputFields = screen.getAllByTestId('create-task__input-field');
+    const fieldJson = (node: unknown) => JSON.stringify(node);
+
+    const locationField = inputFields.find((field) =>
+      fieldJson(field).includes('Location on Site'),
+    );
+    const tagsField = inputFields.find((field) => fieldJson(field).includes('"Tags"'));
+    const assignField = inputFields.find((field) =>
+      fieldJson(field).includes('Assign To'),
+    );
+    const dueField = inputFields.find((field) => fieldJson(field).includes('Due Date'));
+
+    expect(locationField).toBeTruthy();
+    expect(tagsField).toBeTruthy();
+    expect(assignField).toBeTruthy();
+    expect(dueField).toBeTruthy();
+
+    // CreateTaskInputField renders required marker as a child Text "*".
+    expect(fieldJson(locationField)).not.toMatch(/"children"\s*:\s*"\*"/);
+    expect(fieldJson(tagsField)).not.toMatch(/"children"\s*:\s*"\*"/);
+    expect(fieldJson(assignField)).toMatch(/"children"\s*:\s*"\*"/);
+    expect(fieldJson(dueField)).toMatch(/"children"\s*:\s*"\*"/);
+    expect(
+      screen.getByTestId('create-task__field_taskReference').props.accessibilityLabel ||
+        fieldJson(screen.getByTestId('create-task__field_taskReference')),
+    ).toBeTruthy();
   });
 
   it('uses a shared field stack spacing rule instead of per-field bottom margins', () => {

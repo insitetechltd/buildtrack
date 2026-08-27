@@ -8,6 +8,7 @@ type CreateTaskInputFieldProps = {
   children: React.ReactNode;
 };
 
+/** Label + control stack aligned to TextField expanded density. */
 export default function CreateTaskInputField({
   label,
   required = true,
@@ -15,12 +16,15 @@ export default function CreateTaskInputField({
   children,
 }: CreateTaskInputFieldProps) {
   return (
-    <View testID="create-task__input-field">
-      <Text className="mb-2 text-lg font-semibold text-slate-900">
-        {label} {required && <Text className="text-red-600">*</Text>}
-      </Text>
+    <View testID="create-task__input-field" className="gap-2.5">
+      <View className="flex-row items-center gap-1">
+        <Text className="text-lg leading-7 font-semibold text-slate-900">{label}</Text>
+        {required ? (
+          <Text className="text-lg leading-7 font-semibold text-red-600">*</Text>
+        ) : null}
+      </View>
       {children}
-      {error && <Text className="mt-1 text-base text-red-500">{error}</Text>}
+      {error ? <Text className="text-base leading-6 text-red-500">{error}</Text> : null}
     </View>
   );
 }

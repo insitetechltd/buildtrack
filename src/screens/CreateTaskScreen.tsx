@@ -58,6 +58,15 @@ import type {
 import CreateTaskAttachmentSection from "./createTask/CreateTaskAttachmentSection";
 import CreateTaskInputField from "./createTask/CreateTaskInputField";
 import CreateTaskSuggestionPreview from "./createTask/CreateTaskSuggestionPreview";
+import {
+  CREATE_TASK_CONTROL_FONT_SIZE,
+  CREATE_TASK_CONTROL_INPUT,
+  CREATE_TASK_CONTROL_PLACEHOLDER,
+  CREATE_TASK_CONTROL_SHELL,
+  CREATE_TASK_CONTROL_SHELL_ERROR,
+  CREATE_TASK_CONTROL_SHELL_FOCUS,
+  CREATE_TASK_CONTROL_TEXT,
+} from "./createTask/createTaskFormChrome";
 import PrimaryActionBar from "../components/ui/PrimaryActionBar";
 import {
   createFormNavigationRegistry,
@@ -912,7 +921,7 @@ function CreateTaskEditorScreen({
                 blurOnSubmit={false}
               />
 
-              <CreateTaskInputField label={t.tasks.priority}>
+              <CreateTaskInputField label={t.tasks.priority} required>
                 <View className="flex-row flex-wrap gap-2">
                   {(["critical", "high", "medium", "low"] as Priority[]).map((priority) => {
                     const isSelected = formData.priority === priority;
@@ -973,40 +982,13 @@ function CreateTaskEditorScreen({
                 </View>
               </CreateTaskInputField>
 
-              <CreateTaskInputField label={t.createTask.locationOnSite}>
-                <Pressable
-                  testID="create-task__location-picker-trigger"
-                  onPress={() => {
-                    setIsEnteringCustomLocation(false);
-                    setCustomLocationDraft('');
-                    setShowLocationPicker(true);
-                  }}
-                  disabled={!locationPicker.projectId}
-                  className={cn(
-                    "border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                    !locationPicker.projectId && "bg-gray-100 opacity-60",
-                  )}
-                >
-                  <Text
-                    className={cn(
-                      "flex-1 text-lg",
-                      formData.locationOnSite ? "text-gray-900" : "text-gray-500",
-                    )}
-                  >
-                    {formData.locationOnSite || t.createTask.selectLocationOnSite}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
-                </Pressable>
-                {!locationPicker.projectId ? (
-                  <Text className="mt-2 text-sm text-gray-500">
-                    {t.createTask.selectLocationOnSiteFirstProject}
-                  </Text>
-                ) : null}
-              </CreateTaskInputField>
-
-              <CreateTaskInputField label={t.tasks.assignTo} error={errors.assignedTo}>
+              <CreateTaskInputField label={t.tasks.assignTo} required error={errors.assignedTo}>
                 {(() => {
                   const isDisabled = isLoadingUsers || context.assigneesLocked;
+                  const hasSelection =
+                    !isLoadingUsers && !context.assigneesLocked && selectedUsers.length > 0;
+                  const showPlaceholder =
+                    !isLoadingUsers && !context.assigneesLocked && selectedUsers.length === 0;
 
                   return (
                     <Pressable
@@ -1014,23 +996,26 @@ function CreateTaskEditorScreen({
                       onPress={handleOpenUserPicker}
                       disabled={isDisabled}
                       className={cn(
-                        "border rounded-lg px-3 py-3 flex-row items-center justify-between",
-                        context.assigneesLocked ? "bg-gray-100" : "bg-white",
-                        errors.assignedTo ? "border-red-300" : "border-gray-300",
-                        isDisabled && "opacity-50"
+                        errors.assignedTo
+                          ? CREATE_TASK_CONTROL_SHELL_ERROR
+                          : CREATE_TASK_CONTROL_SHELL,
+                        context.assigneesLocked && "bg-slate-100",
+                        isDisabled && "opacity-60",
                       )}
                     >
                       <Text
                         className={cn(
-                          "text-lg",
-                          context.assigneesLocked ? "text-gray-500" : "text-gray-900"
+                          showPlaceholder
+                            ? CREATE_TASK_CONTROL_PLACEHOLDER
+                            : CREATE_TASK_CONTROL_TEXT,
+                          context.assigneesLocked && "text-slate-500",
                         )}
                       >
                         {isLoadingUsers
                           ? t.createTask.loadingUsers
                           : context.assigneesLocked
                             ? t.createTask.assigneesLocked || "Assignees cannot be changed (task accepted)"
-                            : selectedUsers.length > 0
+                            : hasSelection
                               ? t.createTask.usersSelected(selectedUsers.length)
                               : t.createTask.selectUsersToAssign}
                       </Text>
@@ -1102,7 +1087,129 @@ function CreateTaskEditorScreen({
                 </View>
               )}
 
-              <CreateTaskInputField label="Tags">
+              <CreateTaskInputField label={t.tasks.dueDate} required error={errors.dueDate}>
+                <Pressable
+                  testID="create-task__due-date-trigger"
+                  onPress={() => {
+                    setShowDatePicker(!showDatePicker);
+                  }}
+                  className={cn(
+                    showDatePicker
+                      ? CREATE_TASK_CONTROL_SHELL_FOCUS
+                      : errors.dueDate
+                        ? CREATE_TASK_CONTROL_SHELL_ERROR
+                        : CREATE_TASK_CONTROL_SHELL,
+                  )}
+                >
+                  <Text
+                    className={cn(
+                      CREATE_TASK_CONTROL_TEXT,
+                      showDatePicker && "text-blue-600",
+                    )}
+                  >
+                    {dateFormatter.formatDateWithWeekday(formData.dueDate)}
+                  </Text>
+                  <Ionicons
+                    name={showDatePicker ? "calendar" : "calendar-outline"}
+                    size={20}
+                    color={showDatePicker ? "#3b82f6" : "#6b7280"}
+                  />
+                </Pressable>
+              </CreateTaskInputField>
+
+              {showDatePicker && (
+                <View className="overflow-hidden rounded-xl border border-blue-600 bg-white">
+                  <DateTimePicker
+                    value={formData.dueDate}
+                    mode="date"
+                    display="spinner"
+                    minimumDate={new Date()}
+                    locale={dateFormatter.locale}
+                    onChange={(_event, selectedDate) => {
+                      if (selectedDate) {
+                        handleDateChange(selectedDate);
+                      }
+                    }}
+                    textColor="#000000"
+                    style={{ height: 200 }}
+                  />
+                  <View className="flex-row justify-end border-t border-gray-200 p-3">
+                    <Pressable
+                      testID="create-task__due-date-done"
+                      onPress={() => setShowDatePicker(false)}
+                      className="rounded-lg bg-blue-600 px-6 py-2"
+                    >
+                      <Text className="font-semibold text-white">{t.common.done}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+
+              <CreateTaskInputField label={t.tasks.category} required>
+                <Pressable
+                  testID="create-task__category-picker-trigger"
+                  onPress={() => {
+                    setShowCategoryPicker(true);
+                  }}
+                  className={CREATE_TASK_CONTROL_SHELL}
+                >
+                  <Text className={CREATE_TASK_CONTROL_TEXT}>
+                    {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Pressable>
+              </CreateTaskInputField>
+
+              <CreateTaskInputField label={t.createTask.billingStatus} required>
+                <Pressable
+                  testID="create-task__billing-picker-trigger"
+                  onPress={() => setShowBillingStatusPicker(true)}
+                  className={CREATE_TASK_CONTROL_SHELL}
+                >
+                  <Text className={CREATE_TASK_CONTROL_TEXT}>
+                    {formData.billingStatus === "billable"
+                      ? t.createTask.billable
+                      : formData.billingStatus === "non_billable"
+                        ? t.createTask.nonBillable
+                        : t.createTask.billed}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={20} color="#6b7280" />
+                </Pressable>
+              </CreateTaskInputField>
+
+              <CreateTaskInputField label={t.createTask.locationOnSite} required={false}>
+                <Pressable
+                  testID="create-task__location-picker-trigger"
+                  onPress={() => {
+                    setIsEnteringCustomLocation(false);
+                    setCustomLocationDraft('');
+                    setShowLocationPicker(true);
+                  }}
+                  disabled={!locationPicker.projectId}
+                  className={cn(
+                    CREATE_TASK_CONTROL_SHELL,
+                    !locationPicker.projectId && "bg-slate-100 opacity-60",
+                  )}
+                >
+                  <Text
+                    className={
+                      formData.locationOnSite
+                        ? CREATE_TASK_CONTROL_TEXT
+                        : CREATE_TASK_CONTROL_PLACEHOLDER
+                    }
+                  >
+                    {formData.locationOnSite || t.createTask.selectLocationOnSite}
+                  </Text>
+                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                </Pressable>
+                {!locationPicker.projectId ? (
+                  <Text className="mt-2 text-sm text-gray-500">
+                    {t.createTask.selectLocationOnSiteFirstProject}
+                  </Text>
+                ) : null}
+              </CreateTaskInputField>
+
+              <CreateTaskInputField label="Tags" required={false}>
                 <View testID="create-task__tags_editor">
                   <View className="flex-row flex-wrap mb-2">
                     {formData.customTags.map((tag) => (
@@ -1122,13 +1229,17 @@ function CreateTaskEditorScreen({
                   </View>
                   <TextInput
                     testID="create-task__tag_input"
-                    className="border border-gray-300 rounded-lg px-3 py-3 bg-white text-lg text-gray-900"
+                    className={CREATE_TASK_CONTROL_INPUT}
                     placeholder="Add tag, press return"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor="#64748b"
                     value={tagDraft}
                     onChangeText={setTagDraft}
                     returnKeyType="done"
                     blurOnSubmit
+                    style={{
+                      fontSize: CREATE_TASK_CONTROL_FONT_SIZE,
+                      lineHeight: CREATE_TASK_CONTROL_FONT_SIZE + 6,
+                    }}
                     onSubmitEditing={() => {
                       addCustomTag(tagDraft);
                       setTagDraft("");
@@ -1136,58 +1247,6 @@ function CreateTaskEditorScreen({
                   />
                 </View>
               </CreateTaskInputField>
-            </View>
-
-            <View className="border-t border-gray-100 pt-4 gap-4">
-              <CreateTaskInputField label={t.tasks.dueDate} error={errors.dueDate}>
-              <Pressable
-                testID="create-task__due-date-trigger"
-                onPress={() => {
-                  setShowDatePicker(!showDatePicker);
-                }}
-                className={cn(
-                  "border-2 rounded-lg px-3 py-3 bg-white flex-row items-center justify-between",
-                  showDatePicker ? "border-blue-600" : errors.dueDate ? "border-red-300" : "border-gray-300"
-                )}
-              >
-                <Text className={cn("text-lg", showDatePicker ? "text-blue-600" : "text-gray-900")}>
-                  {dateFormatter.formatDateWithWeekday(formData.dueDate)}
-                </Text>
-                <Ionicons
-                  name={showDatePicker ? "calendar" : "calendar-outline"}
-                  size={20}
-                  color={showDatePicker ? "#3b82f6" : "#6b7280"}
-                />
-              </Pressable>
-              </CreateTaskInputField>
-
-              {showDatePicker && (
-                <View className="bg-white border-2 border-blue-600 rounded-lg overflow-hidden">
-                  <DateTimePicker
-                    value={formData.dueDate}
-                    mode="date"
-                    display="spinner"
-                    minimumDate={new Date()}
-                    locale={dateFormatter.locale}
-                    onChange={(_event, selectedDate) => {
-                      if (selectedDate) {
-                        handleDateChange(selectedDate);
-                      }
-                    }}
-                    textColor="#000000"
-                    style={{ height: 200 }}
-                  />
-                  <View className="flex-row justify-end p-3 border-t border-gray-200">
-                    <Pressable
-                      testID="create-task__due-date-done"
-                      onPress={() => setShowDatePicker(false)}
-                      className="bg-blue-600 px-6 py-2 rounded-lg"
-                    >
-                      <Text className="text-white font-semibold">{t.common.done}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
 
               <TextField
                 contract={buildFormTextFieldContract({
@@ -1213,36 +1272,6 @@ function CreateTaskEditorScreen({
                 }}
                 blurOnSubmit={true}
               />
-
-              <CreateTaskInputField label={t.createTask.billingStatus}>
-                <Pressable
-                  onPress={() => setShowBillingStatusPicker(true)}
-                  className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between border-gray-300"
-                >
-                  <Text className="text-lg text-gray-900">
-                    {formData.billingStatus === "billable"
-                      ? t.createTask.billable
-                      : formData.billingStatus === "non_billable"
-                        ? t.createTask.nonBillable
-                        : t.createTask.billed}
-                  </Text>
-                  <Ionicons name="chevron-forward" size={20} color="#6b7280" />
-                </Pressable>
-              </CreateTaskInputField>
-
-              <CreateTaskInputField label={t.tasks.category}>
-                <Pressable
-                  onPress={() => {
-                    setShowCategoryPicker(true);
-                  }}
-                  className="border rounded-lg px-3 py-3 bg-white flex-row items-center justify-between"
-                >
-                  <Text className="text-lg text-gray-900 flex-1">
-                    {t.tasks[formData.category as keyof typeof t.tasks] || formData.category}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#6b7280" />
-                </Pressable>
-              </CreateTaskInputField>
             </View>
           </View>
         </ScrollView>

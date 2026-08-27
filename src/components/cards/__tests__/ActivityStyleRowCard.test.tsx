@@ -22,6 +22,10 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:task-1:thumbnail")).toBeTruthy();
     expect(screen.getByTestId("shared-card:task-1:thumbnail-placeholder")).toBeTruthy();
     expect(screen.getByTestId("shared-card:task-1:no-photo-icon")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:task-1:no-photo-icon").props.name).toBe("image-outline");
+    expect(screen.getByTestId("shared-card:task-1:thumbnail-placeholder").props.className).toContain(
+      "bg-[#E7F4F8]",
+    );
     expect(screen.queryByTestId("shared-card:task-1:thumbnail-image")).toBeNull();
     expect(screen.getByText("Test critical date")).toBeTruthy();
     expect(screen.getByText("Task accepted by Herman")).toBeTruthy();

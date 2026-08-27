@@ -337,7 +337,7 @@ export default function TasksScreen(props: TasksScreenProps) {
         </View>
         <ScrollView
           testID="tasks-screen__task_list"
-          className="flex-1 bg-slate-50 px-4"
+          className="flex-1 bg-canvas px-4 dark:bg-canvas-dark"
           showsVerticalScrollIndicator={false}
           alwaysBounceVertical
           refreshControl={

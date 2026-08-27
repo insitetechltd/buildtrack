@@ -3,6 +3,7 @@ import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Swipeable } from "react-native-gesture-handler";
+import { useFocusEffect } from "@react-navigation/native";
 import AppScreenHeader from "@/components/AppScreenHeader";
 import ActivityStyleRowCard from "@/components/cards/ActivityStyleRowCard";
 import BrandHeaderTitle from "@/components/BrandHeaderTitle";
@@ -48,6 +49,12 @@ export default function DashboardScreen(props: DashboardScreenProps) {
   const [swipeBlockedDraftIds, setSwipeBlockedDraftIds] = useState<
     Record<string, "active" | "dismissed">
   >({});
+
+  useFocusEffect(
+    useCallback(() => {
+      actions.markActivityFeedSeen();
+    }, [actions.markActivityFeedSeen]),
+  );
 
   const setDraftSwipeBlockState = useCallback(
     (taskId: string, nextState?: "active" | "dismissed") => {
@@ -112,7 +119,7 @@ export default function DashboardScreen(props: DashboardScreenProps) {
     <SafeAreaView
       testID="dashboard-screen__root"
       edges={["left", "right", "bottom"]}
-      className="flex-1 bg-[#E7F4F8]"
+      className="flex-1 bg-canvas dark:bg-canvas-dark"
     >
         <AppScreenHeader
           title="Taskr"
@@ -248,22 +255,29 @@ export default function DashboardScreen(props: DashboardScreenProps) {
             </Text>
             <View className="gap-3">
               {output.activityItems.length > 0 ? (
-                output.activityItems.map((item) => (
+                output.activityItems.map((item) => {
+                  const hasEventPhoto = Boolean(item.previewPhotoUri);
+                  return (
                   <ActivityStyleRowCard
                     key={item.id}
                     testID={`dashboard-screen__activity_${item.id}`}
                     variant="activity"
+                    layout="post"
                     title={item.title}
                     subtitle={item.subtitle}
+                    actorLabel={item.actorLabel}
                     metaLabel={item.timestampLabel}
-                    badgeLabel={item.statusLabel}
-                    imageUri={item.previewPhotoUri}
-                    disabled={item.taskId.startsWith("project:")}
+                    imageUri={hasEventPhoto ? item.previewPhotoUri : undefined}
+                    disabled={item.taskId?.startsWith("project:") ?? false}
                     onPress={() => {
-                      props.onNavigateToTaskDetail?.(item.taskId);
+                      actions.markActivityFeedSeen();
+                      if (item.taskId) {
+                        props.onNavigateToTaskDetail?.(item.taskId);
+                      }
                     }}
                   />
-                ))
+                  );
+                })
               ) : (
                 <View className="rounded-2xl border border-[#C8E6EF] bg-white p-4">
                   <Text className="text-lg leading-6 text-[#577783]">

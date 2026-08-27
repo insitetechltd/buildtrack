@@ -13,6 +13,10 @@ import { Image as ExpoImage } from "expo-image";
 import { resolveActiveStageEntry } from "@/components/taskDetail/taskDetailActiveStage";
 import { cn } from "@/utils/cn";
 import { extractBuildtrackStoragePath } from "@/api/fileUploadService";
+import {
+  ACTIVITY_FAMILY,
+  activityActorInitial,
+} from "@/ui/contracts/activityFamily";
 import type {
   TaskDetailActivityModel,
   TaskDetailActivityThreadRow,
@@ -187,8 +191,19 @@ export default function TaskActivityTimeline({
               className="flex-row"
             >
               <View className="mr-3 items-start">
-                <View className="mt-1 h-3 w-3 rounded-full border-2 border-blue-100 bg-blue-600" />
-                {!isLastActivity ? <View className="mt-2 w-0.5 flex-1 bg-blue-100" /> : null}
+                <View
+                  className="mt-1 h-3 w-3 rounded-full border-2"
+                  style={{
+                    backgroundColor: ACTIVITY_FAMILY.railDot,
+                    borderColor: ACTIVITY_FAMILY.railTrack,
+                  }}
+                />
+                {!isLastActivity ? (
+                  <View
+                    className="mt-2 w-0.5 flex-1"
+                    style={{ backgroundColor: ACTIVITY_FAMILY.railTrack }}
+                  />
+                ) : null}
               </View>
 
               <View className="min-w-0 flex-1 pb-1">
@@ -205,19 +220,25 @@ export default function TaskActivityTimeline({
                         testID={`task-activity-timeline__actor-row-${activity.id}`}
                         className="min-w-0 flex-row items-center"
                       >
-                        <View className="mr-3 h-9 w-9 items-center justify-center rounded-full bg-slate-900">
+                        <View
+                          className="mr-3 h-8 w-8 items-center justify-center rounded-full"
+                          style={{ backgroundColor: ACTIVITY_FAMILY.avatarBg }}
+                        >
                           <Text className="text-sm font-semibold text-white">
-                            {activity.actorLabel.trim().slice(0, 1).toUpperCase() || "?"}
+                            {activityActorInitial(activity.actorLabel)}
                           </Text>
                         </View>
-                        <Text className="min-w-0 flex-1 text-base font-semibold text-slate-900" numberOfLines={1}>
+                        <Text
+                          className={cn("min-w-0 flex-1", ACTIVITY_FAMILY.actorNameClassName)}
+                          numberOfLines={1}
+                        >
                           {activity.actorLabel}
                         </Text>
                       </View>
                     </View>
                     {activity.statusLabel ? (
-                      <View className="rounded-full bg-slate-200 px-2.5 py-1">
-                        <Text className="text-sm font-semibold text-slate-700">
+                      <View className={ACTIVITY_FAMILY.badgePillClassName}>
+                        <Text className={ACTIVITY_FAMILY.badgeTextClassName}>
                           {activity.statusLabel}
                         </Text>
                       </View>
@@ -229,11 +250,11 @@ export default function TaskActivityTimeline({
                   >
                     <Text
                       testID={`task-activity-timeline__timestamp-${activity.id}`}
-                      className="min-w-0 flex-1 text-sm font-medium text-slate-400"
+                      className={cn("min-w-0 flex-1", ACTIVITY_FAMILY.metaClassName)}
                     >
                       {activity.timestampLabel}
                     </Text>
-                    <Text className="text-sm font-semibold text-slate-500">
+                    <Text className={cn("font-semibold", ACTIVITY_FAMILY.metaClassName)}>
                       {progressCompleteLabel}
                     </Text>
                   </View>
@@ -247,8 +268,8 @@ export default function TaskActivityTimeline({
                     {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
                       <View className="mb-3 flex-row flex-wrap items-center gap-2">
                         {activity.subtaskBadgeLabel ? (
-                          <View className="rounded-full bg-blue-50 px-2 py-1">
-                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                          <View className="rounded-full bg-[#E7F4F8] px-2 py-1">
+                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-[#0A728F]">
                               {activity.subtaskBadgeLabel}
                             </Text>
                           </View>
@@ -263,14 +284,14 @@ export default function TaskActivityTimeline({
 
                     <Text
                       testID={`task-activity-timeline__description-${activity.id}`}
-                      className="text-base font-semibold text-slate-900"
+                      className={ACTIVITY_FAMILY.titleClassName}
                     >
                       {activity.eventLabel}
                     </Text>
 
                     <View
                       testID={`task-activity-timeline__lead-photo-shell-${activity.id}`}
-                      className="mt-3 overflow-hidden rounded-3xl bg-slate-200"
+                      className="mt-3 overflow-hidden rounded-2xl bg-slate-200"
                       style={{ aspectRatio: 1 }}
                       onLayout={(event) => {
                         const width = event.nativeEvent.layout.width;
@@ -366,8 +387,8 @@ export default function TaskActivityTimeline({
                     {activity.subtaskBadgeLabel || activity.subtaskTitleLabel ? (
                       <View className="mb-3 flex-row flex-wrap items-center gap-2">
                         {activity.subtaskBadgeLabel ? (
-                          <View className="rounded-full bg-blue-50 px-2 py-1">
-                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-700">
+                          <View className="rounded-full bg-[#E7F4F8] px-2 py-1">
+                            <Text className="text-sm font-semibold uppercase tracking-[0.12em] text-[#0A728F]">
                               {activity.subtaskBadgeLabel}
                             </Text>
                           </View>
@@ -382,12 +403,12 @@ export default function TaskActivityTimeline({
 
                     <Text
                       testID={`task-activity-timeline__description-${activity.id}`}
-                      className="text-base font-semibold text-slate-900"
+                      className={ACTIVITY_FAMILY.titleClassName}
                     >
                       {activity.eventLabel}
                     </Text>
                     {activity.detailLabel ? (
-                      <Text className="mt-2 text-sm leading-6 text-slate-600">
+                      <Text className="mt-2 text-sm leading-6 text-[#577783]">
                         {activity.detailLabel}
                       </Text>
                     ) : null}

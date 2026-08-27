@@ -14,6 +14,11 @@ export const UPDATE_PROGRESS_EXIT_ROUTE_NAMES = new Set([
   "UpdateProgress",
 ]);
 
+const TASK_DETAIL_ROUTE_NAMES = new Set([
+  "TaskDetail",
+  "TaskDetailFromDashboard",
+]);
+
 export type PhotoFlowStackNav = {
   getState?: () =>
     | { index: number; routes: Array<{ key: string; name: string }> }
@@ -21,8 +26,8 @@ export type PhotoFlowStackNav = {
   dispatch: (action: any) => void;
   goBack: () => void;
   canGoBack?: () => boolean;
-  navigate?: (name: "PhotoSelection", params: PhotoSelectionParams) => void;
-  replace?: (name: "PhotoSelection", params: PhotoSelectionParams) => void;
+  navigate?: (name: string, params?: PhotoSelectionParams | Record<string, unknown>) => void;
+  replace?: (name: string, params?: PhotoSelectionParams | Record<string, unknown>) => void;
 };
 
 /**
@@ -55,6 +60,73 @@ export function dismissPhotoFlowScreens(navigation: PhotoFlowStackNav) {
   if (navigation.canGoBack?.() !== false) {
     navigation.goBack();
   }
+}
+
+/**
+ * After a successful Update Progress submit: return to the existing Task Detail
+ * underneath the update/photo flow. Do NOT push another Task Detail — that leaves
+ * Update Progress under the new detail and breaks header Back.
+ *
+ * If Task Detail is not on the stack (e.g. camera-tab shortcut), pop the update
+ * flow to its anchor then navigate to the correct detail route for this stack.
+ */
+export function returnToTaskDetailAfterUpdateProgress(
+  navigation: PhotoFlowStackNav,
+  params: { taskId: string; subTaskId?: string },
+) {
+  const state = navigation.getState?.();
+  if (!state?.routes?.length) {
+    navigation.navigate?.("TaskDetail", params);
+    return;
+  }
+
+  const currentIndex =
+    typeof state.index === "number" ? state.index : state.routes.length - 1;
+
+  let detailIndex = -1;
+  for (let i = currentIndex - 1; i >= 0; i -= 1) {
+    const routeName = state.routes[i]?.name;
+    if (routeName && TASK_DETAIL_ROUTE_NAMES.has(routeName)) {
+      detailIndex = i;
+      break;
+    }
+  }
+
+  if (detailIndex >= 0) {
+    const popCount = currentIndex - detailIndex;
+    if (popCount > 0 && navigation.dispatch) {
+      navigation.dispatch(StackActions.pop(popCount));
+      return;
+    }
+  }
+
+  const isDashboardStack = state.routes.some(
+    (route) =>
+      route.name === "DashboardMain" || route.name === "TaskDetailFromDashboard",
+  );
+  const detailRoute = isDashboardStack
+    ? "TaskDetailFromDashboard"
+    : "TaskDetail";
+
+  let anchorIndex = -1;
+  for (let i = currentIndex; i >= 0; i -= 1) {
+    const routeName = state.routes[i]?.name;
+    if (routeName && !UPDATE_PROGRESS_EXIT_ROUTE_NAMES.has(routeName)) {
+      anchorIndex = i;
+      break;
+    }
+  }
+
+  const popCount =
+    anchorIndex >= 0 ? currentIndex - anchorIndex : currentIndex + 1;
+
+  if (popCount > 0 && navigation.dispatch) {
+    navigation.dispatch(StackActions.pop(popCount));
+  } else if (navigation.canGoBack?.() !== false) {
+    navigation.goBack();
+  }
+
+  navigation.navigate?.(detailRoute, params);
 }
 
 /**

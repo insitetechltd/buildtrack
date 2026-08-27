@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "@/state/authStore";
+import { isPlatformSuperuser } from "@/config/platformSuperusers";
 import { useProjectStoreWithInit } from "@/state/projectStore.supabase";
 import { useProjectFilterStore } from "@/state/projectFilterStore";
 import { useTaskStore } from "@/state/taskStore.supabase";
 import { useUnattachedPhotoBatchStore } from "@/state/unattachedPhotoBatchStore";
-import { isAdmin, type Project, type Task } from "@/types/buildtrack";
+import { useUserStore } from "@/state/userStore.supabase";
+import { type Project, type Task } from "@/types/buildtrack";
+import { resolveWorkspaceProjectId } from "@/ui/contracts/workspaceProject";
+import {
+  buildActivityFeedRows,
+  resolveActivityFeedSeenAtMs,
+} from "@/ui/contracts/activityFeed";
+import { useActivityFeedReadStore } from "@/state/activityFeedReadStore";
 import { getResponsibilityToken, isTaskOverdue } from "@/utils/accountabilityEngine";
 import {
   extractBuildtrackStoragePath,
@@ -32,18 +40,22 @@ import {
 } from "@/utils/localTaskDraftStore";
 import { reconcileUnrecoverableWipTasks } from "@/utils/reconcileUnrecoverableWipTasks";
 
-function formatProjectStatusLabel(status: Project["status"]): string {
-  return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
+function formatProjectStatusLabel(status: Project["status"] | string): string {
+  const normalized = status === "on_hold" ? "active" : status;
+  if (normalized === "active") {
+    return "On-going";
+  }
+  return String(normalized)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function mapProjectStatusToToken(status: Project["status"]): StatusSemanticToken {
-  switch (status) {
+function mapProjectStatusToToken(status: Project["status"] | string): StatusSemanticToken {
+  switch (status === "on_hold" ? "active" : status) {
     case "planning":
       return "project_planning";
     case "active":
       return "project_active";
-    case "on_hold":
-      return "project_on_hold";
     case "completed":
       return "project_completed";
     case "cancelled":
@@ -102,37 +114,6 @@ function endOfLocalWeek(date: Date): Date {
 
 function formatStatusLabel(status: string): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
-}
-
-/** Activity-row lead line: clearer than a bare status token like "New". */
-function formatActivityHeadline(status: string): string {
-  switch (status.trim().toLowerCase()) {
-    case "new":
-    case "not_started":
-    case "assigned":
-    case "received":
-      return "New Task";
-    case "accepted":
-      return "Task Accepted";
-    case "in_progress":
-      return "Task In Progress";
-    case "submitted_for_review":
-    case "pending_review":
-      return "Submitted for Review";
-    case "rejected":
-    case "declined":
-      return "Task Rejected";
-    case "approved":
-    case "completed":
-    case "done":
-      return "Task Completed";
-    case "cancelled":
-      return "Task Cancelled";
-    default: {
-      const label = formatStatusLabel(status);
-      return label.toLowerCase().includes("task") ? label : `${label} Task`;
-    }
-  }
 }
 
 function formatElapsedDayLabel(startDate?: string): string {
@@ -275,8 +256,6 @@ function collectTaskPhotoUris(task: Task): string[] {
   );
 }
 
-const RECENT_ACTIVITY_WINDOW_MS = 1000 * 60 * 60 * 24 * 5;
-
 export interface DashboardViewAdapterHookResult {
   output: DashboardScreenViewAdapterOutput;
   visibility: {
@@ -288,15 +267,21 @@ export interface DashboardViewAdapterHookResult {
   actions: {
     deleteDraftTask: (localDraftId: string) => Promise<void>;
     refreshLocalDrafts: () => Promise<void>;
+    markActivityFeedSeen: () => void;
   };
 }
 
 export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   const { user } = useAuthStore();
   const selectedProjectId = useProjectFilterStore((state) => state.selectedProjectId);
+  const setSelectedProject = useProjectFilterStore((state) => state.setSelectedProject);
   const projectStore = useProjectStoreWithInit();
   const taskStore = useTaskStore();
   const unattachedBatchStore = useUnattachedPhotoBatchStore();
+  const getUserById = useUserStore((state) => state.getUserById);
+  const markActivityFeedSeenForScope = useActivityFeedReadStore(
+    (state) => state.markActivityFeedSeen,
+  );
   const currentUserId = user?.id ?? "";
   const [signedUrlEpoch, bumpSignedUrlEpoch] = useState(0);
   const [localDrafts, setLocalDrafts] = useState<LocalTaskDraft[]>([]);
@@ -313,6 +298,19 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   );
 
   const projects = user ? projectStore.getProjectsByUser(user.id) : [];
+
+  // Keep filter store aligned with Activity display (single-project auto-select).
+  useEffect(() => {
+    if (!currentUserId || selectedProjectId || projects.length !== 1) {
+      return;
+    }
+    const onlyProjectId = projects[0]?.id;
+    if (!onlyProjectId) {
+      return;
+    }
+    void setSelectedProject(onlyProjectId, currentUserId);
+  }, [currentUserId, projects, selectedProjectId, setSelectedProject]);
+
   const viewerProjectIds = user ? projectStore.projectIdsByUser?.[user.id] ?? [] : [];
   const projectsById = useMemo(() => {
     const byId: Record<string, { id: string; companyId?: string | null }> = {};
@@ -373,8 +371,10 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   }, [currentUserId, taskStore.cancelTask, taskStore.tasks]);
 
   useEffect(() => {
-    const prefetchProjectId =
-      selectedProjectId ?? (projects.length === 1 ? projects[0]?.id ?? null : null);
+    const prefetchProjectId = resolveWorkspaceProjectId(
+      selectedProjectId,
+      projects.map((project) => project.id),
+    );
     const refs = (
       prefetchProjectId ? tasks.filter((task) => task.projectId === prefetchProjectId) : []
     ).flatMap((task) => collectTaskPhotoRefs(task));
@@ -397,10 +397,13 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
   } = useMemo(() => {
     const hasProjects = projects.length > 0;
     const visibleProjectIds = new Set(projects.map((project) => project.id));
-    const resolvedActiveProject =
-      (selectedProjectId
-        ? projects.find((project) => project.id === selectedProjectId) ?? null
-        : null) ?? (projects.length === 1 ? projects[0] ?? null : null);
+    const resolvedActiveProjectId = resolveWorkspaceProjectId(
+      selectedProjectId,
+      projects.map((project) => project.id),
+    );
+    const resolvedActiveProject = resolvedActiveProjectId
+      ? projects.find((project) => project.id === resolvedActiveProjectId) ?? null
+      : null;
     const isInitialLoading = isLoadingProjects && !hasProjects;
     const isBackgroundRefreshing = isLoadingProjects && hasProjects;
     const structuralState: PrimitiveStructuralState = isInitialLoading
@@ -558,65 +561,54 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     const activeProjectOverdueTasks = activeProjectOpenTasks.filter((task) =>
       isTaskOverdue(task),
     );
-    const recentActivityThreshold = Date.now() - RECENT_ACTIVITY_WINDOW_MS;
-    const mappedActivityItems: DashboardActivityItem[] = activeProjectTasks
-      .flatMap((task) => {
-        const updates = Array.isArray(task.updates) ? task.updates : [];
+    const activityFeedRows = resolvedActiveProject
+      ? buildActivityFeedRows({
+          projectId: resolvedActiveProject.id,
+          tasks: activeProjectTasks,
+          photoBatches: unattachedBatchStore.getBatchesForProject(resolvedActiveProject.id),
+        })
+      : [];
+    const taskById = new Map(activeProjectTasks.map((task) => [task.id, task]));
+    const mappedActivityItems: DashboardActivityItem[] = activityFeedRows.map((row) => {
+      let previewPhotoUri: string | undefined;
+      let actorLabel: string | undefined;
 
-        if (updates.length === 0) {
-          return [
-            {
-              id: `activity-task:${task.id}`,
-              taskId: task.id,
-              // Activity recipe: lead with change headline, task title secondary
-              title: formatActivityHeadline(task.status),
-              subtitle: task.title,
-              timestampLabel: "Task activity",
-              statusLabel: formatStatusLabel(task.status),
-              previewPhotoUri: collectTaskPhotoUris(task)[0],
-              density: "standard" as const,
-              structuralState,
-              sortTimestamp: task.createdAt,
-            },
-          ];
+      if (row.taskId.startsWith("project:")) {
+        const batchId = row.id.replace(/^unattached-batch-/, "");
+        const batch = resolvedActiveProject
+          ? unattachedBatchStore
+              .getBatchesForProject(resolvedActiveProject.id)
+              .find((entry) => entry.id === batchId)
+          : undefined;
+        previewPhotoUri = batch?.photoUrls[0];
+        actorLabel = batch?.userId
+          ? getUserById(batch.userId)?.name
+          : undefined;
+      } else {
+        const task = taskById.get(row.taskId);
+        if (task) {
+          const update = task.updates?.find((entry) => entry.id === row.id);
+          // Recent Activity: only show a photo when THIS event uploaded one.
+          // Do not fall back to create-time / other task attachments.
+          previewPhotoUri = resolveImageUri(update?.photos?.[0]);
+          const actorUserId = update?.userId ?? task.assignedBy;
+          actorLabel = actorUserId ? getUserById(actorUserId)?.name : undefined;
         }
+      }
 
-        return updates.map((update) => {
-          const description = update.description?.trim() ?? "";
-          const changeLine = description.length > 0
-            ? description
-            : formatActivityHeadline(update.status);
-          return {
-            id: update.id,
-            taskId: task.id,
-            title: changeLine,
-            subtitle: task.title,
-            timestampLabel: new Date(update.timestamp).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            }),
-            statusLabel: formatStatusLabel(update.status),
-            previewPhotoUri: resolveImageUri(update.photos?.[0]) || collectTaskPhotoUris(task)[0],
-            density: "standard" as const,
-            structuralState,
-            sortTimestamp: update.timestamp,
-          };
-        });
-      })
-      .filter((item) => {
-        const timestamp = new Date(
-          (item as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp,
-        ).getTime();
-        return Number.isFinite(timestamp) && timestamp >= recentActivityThreshold;
-      })
-      .sort(
-        (left, right) =>
-          new Date((right as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime() -
-          new Date((left as DashboardActivityItem & { sortTimestamp: string }).sortTimestamp).getTime(),
-      )
-      .map(({ sortTimestamp: _sortTimestamp, ...item }) => item as DashboardActivityItem);
+      return {
+        id: row.id,
+        taskId: row.taskId,
+        title: row.title,
+        subtitle: row.subtitle,
+        timestampLabel: row.timestampLabel,
+        statusLabel: row.statusLabel,
+        previewPhotoUri,
+        actorLabel,
+        density: "standard" as const,
+        structuralState,
+      };
+    });
 
     const queueCounts = {
       my_queue: {
@@ -774,32 +766,7 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
             { id: "review", label: "Review", value: String(activeProjectReviewTasks.length) },
           ]
         : [],
-      activityItems: [
-        ...(resolvedActiveProject
-          ? unattachedBatchStore
-              .getBatchesForProject(resolvedActiveProject.id)
-              .map((batch) => {
-                const firstCaption = batch.captions.find((c) => c?.trim()) ?? "";
-                return {
-                  id: `unattached-batch-${batch.id}`,
-                  taskId: `project:${batch.projectId}`,
-                  title: `${batch.photoUrls.length} photos captured`,
-                  subtitle: firstCaption,
-                  timestampLabel: new Date(batch.savedAt).toLocaleString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  }),
-                  statusLabel: "Saved to project",
-                  previewPhotoUri: batch.photoUrls[0] ?? undefined,
-                  density: "standard" as const,
-                  structuralState,
-                };
-              })
-          : []),
-        ...mappedActivityItems,
-      ],
+      activityItems: mappedActivityItems,
       projectSummaryCard: resolvedProjectSummaryCard,
       queueDashboard: resolvedQueueDashboard,
       taskShortcut: resolvedActiveProject
@@ -842,7 +809,15 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
         freshnessLabel: isBackgroundRefreshing ? "Refreshing" : isInitialLoading ? "Loading" : "Ready",
       },
     };
-  }, [currentUserId, isLoadingProjects, projects, selectedProjectId, signedUrlEpoch, tasks, unattachedBatches]);
+  }, [
+    currentUserId,
+    isLoadingProjects,
+    projects,
+    selectedProjectId,
+    signedUrlEpoch,
+    tasks,
+    unattachedBatches,
+  ]);
 
   const readiness = useMemo(() => {
     return {
@@ -889,16 +864,50 @@ export function useDashboardViewAdapter(): DashboardViewAdapterHookResult {
     scalarMetrics,
   };
 
+  const markActivityFeedSeen = useCallback(() => {
+    if (!currentUserId) {
+      return;
+    }
+
+    const resolvedProjectId = resolveWorkspaceProjectId(
+      selectedProjectId,
+      projects.map((project) => project.id),
+    );
+    if (!resolvedProjectId) {
+      return;
+    }
+
+    const feedRows = buildActivityFeedRows({
+      projectId: resolvedProjectId,
+      tasks: tasks.filter((task) => task.projectId === resolvedProjectId),
+      photoBatches: unattachedBatchStore.getBatchesForProject(resolvedProjectId),
+    });
+
+    markActivityFeedSeenForScope(
+      currentUserId,
+      resolvedProjectId,
+      resolveActivityFeedSeenAtMs(feedRows),
+    );
+  }, [
+    currentUserId,
+    markActivityFeedSeenForScope,
+    projects,
+    selectedProjectId,
+    tasks,
+    unattachedBatchStore,
+  ]);
+
   return {
     output,
     visibility: {
-      showCreateTaskFab: Boolean(user && !isAdmin(user)),
+      showCreateTaskFab: Boolean(user),
       showProfileShortcut: Boolean(user),
       showProjectPickerShortcut: Boolean(user),
-      showDeveloperSettingsShortcut: __DEV__,
+      showDeveloperSettingsShortcut: isPlatformSuperuser(user),
     },
     actions: {
       refreshLocalDrafts,
+      markActivityFeedSeen,
       deleteDraftTask: async (localDraftId: string) => {
         if (!currentUserId) {
           throw new Error("Sign in to delete a draft.");

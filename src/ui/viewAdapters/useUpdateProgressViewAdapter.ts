@@ -8,6 +8,7 @@ import { usePhotoSelection } from "../../utils/usePhotoSelection";
 import { useTranslation } from "../../utils/useTranslation";
 import { TaskStatus } from "../../types/buildtrack";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
+import { returnToTaskDetailAfterUpdateProgress } from "../../navigation/photoFlowNavigation";
 import type { 
   UpdateProgressScreenViewAdapterOutput,
   UpdateProgressPhotoModel
@@ -357,29 +358,13 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
         Alert.alert(t.errors.success, t.taskDetail.progressUpdateAdded);
       }
 
-      const parentNav = navigation.getParent();
-      if (sourceScreen && sourceTaskId && parentNav) {
-        if (sourceScreen === 'dashboard') {
-          parentNav.navigate("Activity", {
-            screen: "TaskDetailFromDashboard",
-            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
-          });
-        } else if (sourceScreen === 'tasks') {
-          parentNav.navigate("Tasks", {
-            screen: "TaskDetail",
-            params: { taskId: sourceTaskId, subTaskId: sourceSubTaskId }
-          });
-        } else {
-          navigation.navigate("TaskDetail", { taskId: sourceTaskId, subTaskId: sourceSubTaskId });
-        }
-      } else {
-        try {
-          navigation.navigate("TaskDetail", { taskId: task.id, subTaskId: subTaskId });
-        } catch (e) {
-          navigation.goBack();
-          setTimeout(() => navigation.goBack(), 100);
-        }
-      }
+      // Pop back to the existing Task Detail under this update flow.
+      // Do not navigate/push another Task Detail — that leaves Update Progress
+      // underneath and makes header Back reopen the last update step.
+      returnToTaskDetailAfterUpdateProgress(navigation, {
+        taskId: sourceTaskId || task.id,
+        subTaskId: sourceSubTaskId || subTaskId,
+      });
     } catch (error) {
       Alert.alert(t.errors.error, t.taskDetail.failedToSubmitUpdate);
     } finally {

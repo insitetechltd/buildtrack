@@ -3,6 +3,7 @@ import {
   cancelInAppLibraryPicker,
   exitUpdateProgressScreen,
   returnToPhotoSelectionFlat,
+  returnToTaskDetailAfterUpdateProgress,
 } from "../photoFlowNavigation";
 
 describe("photoFlowNavigation", () => {
@@ -209,5 +210,90 @@ describe("photoFlowNavigation", () => {
         payload: expect.objectContaining({ count: 1 }),
       }),
     );
+  });
+
+  it("returnToTaskDetailAfterUpdateProgress pops to existing Task Detail instead of pushing another", () => {
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    returnToTaskDetailAfterUpdateProgress(
+      {
+        getState: () => ({
+          index: 2,
+          routes: [
+            { key: "a", name: "TasksList" },
+            { key: "b", name: "TaskDetail" },
+            { key: "c", name: "UpdateProgress" },
+          ],
+        }),
+        dispatch,
+        goBack: jest.fn(),
+        navigate,
+      },
+      { taskId: "task-1" },
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("returnToTaskDetailAfterUpdateProgress pops photo+update screens back to Task Detail", () => {
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    returnToTaskDetailAfterUpdateProgress(
+      {
+        getState: () => ({
+          index: 4,
+          routes: [
+            { key: "a", name: "DashboardMain" },
+            { key: "b", name: "TaskDetailFromDashboard" },
+            { key: "c", name: "UpdateProgress" },
+            { key: "d", name: "PhotoSelection" },
+            { key: "e", name: "UpdateProgress" },
+          ],
+        }),
+        dispatch,
+        goBack: jest.fn(),
+        navigate,
+      },
+      { taskId: "task-9", subTaskId: "sub-1" },
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 3 }),
+      }),
+    );
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it("returnToTaskDetailAfterUpdateProgress navigates to Task Detail when none is under the flow", () => {
+    const dispatch = jest.fn();
+    const navigate = jest.fn();
+    returnToTaskDetailAfterUpdateProgress(
+      {
+        getState: () => ({
+          index: 1,
+          routes: [
+            { key: "a", name: "TasksList" },
+            { key: "b", name: "UpdateProgress" },
+          ],
+        }),
+        dispatch,
+        goBack: jest.fn(),
+        navigate,
+      },
+      { taskId: "task-2" },
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "POP",
+        payload: expect.objectContaining({ count: 1 }),
+      }),
+    );
+    expect(navigate).toHaveBeenCalledWith("TaskDetail", { taskId: "task-2" });
   });
 });

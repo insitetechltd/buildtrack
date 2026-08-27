@@ -60,6 +60,8 @@ export interface DashboardActivityItem extends PrimitiveReadyItemBase {
   timestampLabel: string;
   statusLabel: string;
   previewPhotoUri?: string;
+  /** Display name of the user who performed this activity event. */
+  actorLabel?: string;
 }
 
 export interface DashboardSummaryPill {

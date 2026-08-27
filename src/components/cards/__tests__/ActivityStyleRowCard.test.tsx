@@ -116,10 +116,10 @@ describe("ActivityStyleRowCard", () => {
     expect(screen.getByTestId("shared-card:critical:badge-pill")).toBeTruthy();
     expect(screen.queryByTestId("shared-card:critical:accent-bar")).toBeNull();
     expect(screen.getByText("Aug 18")).toBeTruthy();
-    expect(screen.getByTestId("shared-card:critical:title").props.className).toContain("text-xl");
+    expect(screen.getByTestId("shared-card:critical:title").props.className).toContain("text-lg");
   });
 
-  it("uses enlarged activity typography without a left accent bar", () => {
+  it("uses family activity typography on rail without a left accent bar", () => {
     const screen = render(
       <ActivityStyleRowCard
         testID="shared-card:activity"
@@ -134,8 +134,8 @@ describe("ActivityStyleRowCard", () => {
 
     expect(screen.getByTestId("shared-card:activity:variant-activity")).toBeTruthy();
     expect(screen.queryByTestId("shared-card:activity:accent-bar")).toBeNull();
-    expect(screen.getByTestId("shared-card:activity:title").props.className).toContain("text-xl");
-    expect(screen.getByTestId("shared-card:activity:subtitle").props.className).toContain("text-lg");
+    expect(screen.getByTestId("shared-card:activity:title").props.className).toContain("text-lg");
+    expect(screen.getByTestId("shared-card:activity:subtitle").props.className).toContain("text-base");
   });
 
   it("does not render the top-left marker when none is provided", () => {
@@ -152,5 +152,89 @@ describe("ActivityStyleRowCard", () => {
     );
 
     expect(screen.queryByTestId("shared-card:task-4:top-left-marker")).toBeNull();
+  });
+
+  it("renders compact post layout without a photo placeholder rail", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:compact"
+        variant="activity"
+        layout="compact"
+        title="Task Accepted"
+        subtitle="Install corridor lighting"
+        actorLabel="Bob Worker"
+        metaLabel="Jul 4, 9:12 AM"
+        badgeLabel="Accepted"
+        badgeVariant="pill"
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:compact:layout-compact")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:compact:post-header")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:compact:hero-actor-label")).toHaveTextContent(
+      "Bob Worker",
+    );
+    expect(screen.queryByTestId("shared-card:compact:thumbnail")).toBeNull();
+    expect(screen.queryByTestId("shared-card:compact:thumbnail-placeholder")).toBeNull();
+    expect(screen.queryByTestId("shared-card:compact:hero")).toBeNull();
+    expect(screen.getByText("Task Accepted")).toBeTruthy();
+    expect(screen.getByText("Install corridor lighting")).toBeTruthy();
+  });
+
+  it("renders post photo layout with change primary, task secondary, photo below, actor in header", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:hero"
+        variant="activity"
+        layout="post"
+        title="Progress photo added — fixture row B complete"
+        subtitle="Install corridor lighting — Level 3"
+        actorLabel="Alex Chen"
+        metaLabel="Jul 4, 9:40 AM"
+        badgeLabel="In Progress"
+        badgeVariant="pill"
+        imageUri="https://example.com/progress.jpg"
+      />,
+    );
+
+    expect(screen.getByTestId("shared-card:hero:layout-photo-hero")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:hero:post-header")).toBeTruthy();
+    expect(screen.getByTestId("shared-card:hero:hero-actor-label")).toHaveTextContent(
+      "Alex Chen",
+    );
+    expect(screen.getByTestId("shared-card:hero:title")).toHaveTextContent(
+      "Progress photo added — fixture row B complete",
+    );
+    expect(screen.getByTestId("shared-card:hero:title").props.className).toContain("text-lg");
+    expect(screen.getByTestId("shared-card:hero:subtitle")).toHaveTextContent(
+      "Install corridor lighting — Level 3",
+    );
+    expect(screen.getByTestId("shared-card:hero:hero-image")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:hero:overlay-title")).toBeNull();
+    expect(screen.queryByTestId("shared-card:hero:thumbnail-placeholder")).toBeNull();
+  });
+
+  it("hides post photo when the hero image errors (text shell remains)", () => {
+    const screen = render(
+      <ActivityStyleRowCard
+        testID="shared-card:hero-fail"
+        variant="activity"
+        layout="photoHero"
+        title="Progress photo added"
+        subtitle="Install corridor lighting"
+        actorLabel="Alex Chen"
+        metaLabel="Jul 4, 9:40 AM"
+        badgeLabel="In Progress"
+        imageUri="https://example.com/broken.jpg"
+      />,
+    );
+
+    fireEvent(screen.getByTestId("shared-card:hero-fail:hero-image"), "error");
+
+    expect(screen.getByTestId("shared-card:hero-fail:layout-compact")).toBeTruthy();
+    expect(screen.queryByTestId("shared-card:hero-fail:hero")).toBeNull();
+    expect(screen.getByText("Progress photo added")).toBeTruthy();
+    expect(screen.getByText("Install corridor lighting")).toBeTruthy();
+    expect(screen.getByText("Alex Chen")).toBeTruthy();
   });
 });

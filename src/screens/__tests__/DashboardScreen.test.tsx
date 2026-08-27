@@ -4,6 +4,12 @@ import { fireEvent, render, within } from "@testing-library/react-native";
 import DashboardScreen from "../DashboardScreen";
 import type { DashboardScreenViewAdapterOutput } from "@/ui/contracts/viewAdapters";
 
+jest.mock("@react-navigation/native", () => ({
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    callback();
+  },
+}));
+
 jest.mock("@/ui/viewAdapters/useDashboardViewAdapter");
 jest.mock("@/utils/DataRefreshManager", () => ({
   triggerRefresh: jest.fn(() => Promise.resolve()),
@@ -217,6 +223,7 @@ describe("DashboardScreen", () => {
           timestampLabel: "Jul 7 at 6:48 PM",
           statusLabel: "in progress",
           previewPhotoUri: "https://example.com/activity-photo.jpg",
+          actorLabel: "Alex Chen",
           density: "standard",
           structuralState: "stale",
         },
@@ -227,6 +234,7 @@ describe("DashboardScreen", () => {
           subtitle: "No preview image",
           timestampLabel: "Task activity",
           statusLabel: "new",
+          actorLabel: "Bob Worker",
           density: "standard",
           structuralState: "stale",
         },
@@ -271,6 +279,7 @@ describe("DashboardScreen", () => {
       },
       actions: {
         deleteDraftTask: jest.fn(),
+        markActivityFeedSeen: jest.fn(),
       },
     });
 
@@ -303,9 +312,16 @@ describe("DashboardScreen", () => {
     expect(screen.queryByText("Active Project")).toBeNull();
     expect(screen.queryByText("Partly Cloudy")).toBeNull();
     expect(screen.queryByTestId("dashboard-screen__weather_tile")).toBeNull();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-2:no-photo-icon")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:layout-photo-hero")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-actor-label")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:post-header")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:hero-image")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:overlay-title")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-2:layout-compact")).toBeTruthy();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-2:post-header")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-2:thumbnail")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-2:thumbnail-placeholder")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-2:no-photo-icon")).toBeNull();
     expect(screen.getByTestId("dashboard-screen__drafts_toggle")).toBeTruthy();
     expect(screen.queryByTestId("dashboard-screen__draft_item_local-draft-1")).toBeNull();
     expect(screen.getByTestId("app-screen-header__profile-trigger")).toBeTruthy();
@@ -344,7 +360,7 @@ describe("DashboardScreen", () => {
     expect(onNavigateToDeveloperSettings).not.toHaveBeenCalled();
   });
 
-  it("falls back to the shared placeholder rail when the preview image cannot load", () => {
+  it("keeps post shell and drops photo when the preview image cannot load", () => {
     const { useDashboardViewAdapter } = require("@/ui/viewAdapters/useDashboardViewAdapter");
 
     useDashboardViewAdapter.mockReturnValue({
@@ -382,6 +398,7 @@ describe("DashboardScreen", () => {
             timestampLabel: "Jul 7 at 6:48 PM",
             statusLabel: "in progress",
             previewPhotoUri: "https://example.com/broken.jpg",
+            actorLabel: "Alex Chen",
             density: "standard",
             structuralState: "stale",
           },
@@ -423,6 +440,7 @@ describe("DashboardScreen", () => {
       },
       actions: {
         deleteDraftTask: jest.fn(),
+        markActivityFeedSeen: jest.fn(),
       },
     });
 
@@ -434,14 +452,15 @@ describe("DashboardScreen", () => {
       />,
     );
 
-    fireEvent(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail-image"), "error");
+    fireEvent(screen.getByTestId("dashboard-screen__activity_activity-1:hero-image"), "error");
 
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:thumbnail-placeholder")).toBeTruthy();
-    expect(screen.getByTestId("dashboard-screen__activity_activity-1:no-photo-icon")).toBeTruthy();
-    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail-image")).toBeNull();
+    expect(screen.getByTestId("dashboard-screen__activity_activity-1:layout-compact")).toBeTruthy();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:hero")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail")).toBeNull();
+    expect(screen.queryByTestId("dashboard-screen__activity_activity-1:thumbnail-placeholder")).toBeNull();
     expect(screen.getByText("Photo-backed activity")).toBeTruthy();
     expect(screen.getByText("Has a preview image")).toBeTruthy();
+    expect(screen.getByText("Alex Chen")).toBeTruthy();
   });
 
   it("shows swipe-left delete on draft rows and confirms before deleting", () => {
@@ -518,7 +537,7 @@ describe("DashboardScreen", () => {
         showProjectPickerShortcut: false,
         showDeveloperSettingsShortcut: false,
       },
-      actions: { deleteDraftTask },
+      actions: { deleteDraftTask, markActivityFeedSeen: jest.fn() },
     });
 
     const onNavigateToCreateTask = jest.fn();

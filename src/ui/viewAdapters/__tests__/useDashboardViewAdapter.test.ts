@@ -39,6 +39,10 @@ jest.mock("@/state/projectFilterStore", () => ({
   useProjectFilterStore: jest.fn(),
 }));
 
+jest.mock("@/state/userStore.supabase", () => ({
+  useUserStore: jest.fn(),
+}));
+
 const mockGetBatchesForProject = jest.fn().mockReturnValue([]);
 const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
@@ -88,12 +92,26 @@ describe("useDashboardViewAdapter", () => {
     id: string;
     name: string;
     location: string;
-    status: "active" | "planning" | "on_hold" | "completed" | "cancelled";
+    status: "active" | "planning" | "completed" | "cancelled";
     startDate?: string;
   }>) {
     const { useAuthStore } = require("@/state/authStore");
     const { useProjectStoreWithInit } = require("@/state/projectStore.supabase");
     const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const { useUserStore } = require("@/state/userStore.supabase");
+
+    useUserStore.mockImplementation((selector: any) =>
+      selector({
+        getUserById: (id: string) => {
+          const users: Record<string, { id: string; name: string }> = {
+            "user-1": { id: "user-1", name: "Alex Chen" },
+            "user-2": { id: "user-2", name: "Bob Worker" },
+            "user-3": { id: "user-3", name: "Carol PM" },
+          };
+          return users[id];
+        },
+      }),
+    );
 
     useAuthStore.mockReturnValue({
       user: {
@@ -116,7 +134,8 @@ describe("useDashboardViewAdapter", () => {
 
     useProjectFilterStore.mockImplementation((selector: any) =>
       selector({
-      selectedProjectId: visibleProjects[0]?.id ?? null,
+        selectedProjectId: visibleProjects[0]?.id ?? null,
+        setSelectedProject: jest.fn().mockResolvedValue(undefined),
       }),
     );
   }
@@ -901,7 +920,8 @@ describe("useDashboardViewAdapter", () => {
 
     useProjectFilterStore.mockImplementation((selector: any) =>
       selector({
-      selectedProjectId: null,
+        selectedProjectId: null,
+        setSelectedProject: jest.fn().mockResolvedValue(undefined),
       }),
     );
 
@@ -912,6 +932,34 @@ describe("useDashboardViewAdapter", () => {
     expect(result.current.output.taskShortcut).toBeNull();
     expect(result.current.output.activityItems).toEqual([]);
     expect(result.current.output.scalarMetrics.hasSelectedProject).toBe(false);
+  });
+
+  it("auto-selects the sole available project when Activity has no selection", async () => {
+    const { useProjectFilterStore } = require("@/state/projectFilterStore");
+    const setSelectedProject = jest.fn().mockResolvedValue(undefined);
+
+    setupBaseMocks([
+      {
+        id: "only-project",
+        name: "Skylight Renovation",
+        location: "Roof",
+        status: "active",
+      },
+    ]);
+
+    useProjectFilterStore.mockImplementation((selector: any) =>
+      selector({
+        selectedProjectId: null,
+        setSelectedProject,
+      }),
+    );
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activeProject?.id).toBe("only-project");
+    await waitFor(() => {
+      expect(setSelectedProject).toHaveBeenCalledWith("only-project", "user-1");
+    });
   });
 
   it("resolves storage paths into public preview-photo URLs for activity cards", () => {
@@ -964,7 +1012,7 @@ describe("useDashboardViewAdapter", () => {
     );
   });
 
-  it("extracts preview-photo URIs from object-shaped task attachments on activity cards", () => {
+  it("does not use task attachments as Recent Activity preview when this event has no photo upload", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -1005,12 +1053,10 @@ describe("useDashboardViewAdapter", () => {
 
     const { result } = renderHook(() => useDashboardViewAdapter());
 
-    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
-      "file:///activity-photo-object.jpg",
-    );
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBeUndefined();
   });
 
-  it("extracts preview-photo URIs from JSON-stringified attachment blobs on activity cards", () => {
+  it("resolves object-shaped photos on the update event for activity cards", () => {
     const { useTaskStore } = require("@/state/taskStore.supabase");
 
     setupBaseMocks([
@@ -1032,17 +1078,83 @@ describe("useDashboardViewAdapter", () => {
           priority: "high",
           dueDate: "2099-01-01T00:00:00.000Z",
           category: "general",
-          attachments: [
-            JSON.stringify({
-              uri: "file:///activity-photo-stringified.jpg",
-              fileName: "activity-photo-stringified.jpg",
-              isAnnotated: false,
-            }),
-          ],
+          attachments: [],
           assignedTo: ["user-1"],
           assignedBy: "user-2",
           createdAt: "2026-07-04T08:00:00.000Z",
-          updates: [],
+          updates: [
+            {
+              id: "update-1",
+              description: "Pour completed for section A",
+              photos: [
+                {
+                  uri: "file:///activity-photo-object.jpg",
+                  fileName: "activity-photo-object.jpg",
+                  isAnnotated: false,
+                },
+              ],
+              completionPercentage: 65,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
+          status: "in_progress",
+          completionPercentage: 65,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() => useDashboardViewAdapter());
+
+    expect(result.current.output.activityItems[0].previewPhotoUri).toBe(
+      "file:///activity-photo-object.jpg",
+    );
+  });
+
+  it("resolves JSON-stringified photos on the update event for activity cards", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    setupBaseMocks([
+      {
+        id: "project-1",
+        name: "North Tower",
+        location: "Site A",
+        status: "active",
+      },
+    ]);
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-1",
+          projectId: "project-1",
+          title: "Concrete pour",
+          description: "",
+          priority: "high",
+          dueDate: "2099-01-01T00:00:00.000Z",
+          category: "general",
+          attachments: [],
+          assignedTo: ["user-1"],
+          assignedBy: "user-2",
+          createdAt: "2026-07-04T08:00:00.000Z",
+          updates: [
+            {
+              id: "update-1",
+              description: "Pour completed for section A",
+              photos: [
+                JSON.stringify({
+                  uri: "file:///activity-photo-stringified.jpg",
+                  fileName: "activity-photo-stringified.jpg",
+                  isAnnotated: false,
+                }),
+              ],
+              completionPercentage: 65,
+              status: "in_progress",
+              timestamp: "2026-07-04T08:00:00.000Z",
+              userId: "user-1",
+            },
+          ],
           status: "in_progress",
           completionPercentage: 65,
         },

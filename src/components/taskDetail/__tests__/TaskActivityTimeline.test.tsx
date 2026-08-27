@@ -131,7 +131,7 @@ describe("TaskActivityTimeline", () => {
       "cover",
     );
     expect(screen.getByTestId("task-activity-timeline__lead-photo-shell-activity-2").props.className).toContain(
-      "rounded-3xl",
+      "rounded-2xl",
     );
     expect(screen.getByTestId("task-activity-timeline__photo_stack-activity-2")).toBeTruthy();
     expect(screen.getByTestId("task-activity-timeline__lead-photo-activity-2").props.style).toEqual(

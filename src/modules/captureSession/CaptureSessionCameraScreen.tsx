@@ -15,6 +15,10 @@ import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 
 import { pinDraftMedia } from "../../utils/draftMediaCache";
+import {
+  peekWarmLibraryThumbUri,
+  warmLibraryFirstPage,
+} from "../../utils/libraryWarmPrefetch";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 
@@ -44,13 +48,18 @@ export function CaptureSessionCameraScreen() {
     let cancelled = false;
     (async () => {
       try {
-        const current = await MediaLibrary.getPermissionsAsync();
-        let granted = current.granted;
-        if (!granted && current.canAskAgain) {
-          const requested = await MediaLibrary.requestPermissionsAsync();
-          granted = requested.granted;
+        await warmLibraryFirstPage();
+        if (cancelled) return;
+
+        const warmUri = peekWarmLibraryThumbUri();
+        if (warmUri) {
+          setLibraryThumbUri(warmUri);
+          return;
         }
-        if (!granted || cancelled) return;
+
+        const current = await MediaLibrary.getPermissionsAsync();
+        if (!current.granted || cancelled) return;
+
         const page = await MediaLibrary.getAssetsAsync({
           first: 1,
           mediaType: MediaLibrary.MediaType.photo,

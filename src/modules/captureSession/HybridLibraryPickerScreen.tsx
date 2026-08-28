@@ -12,6 +12,7 @@ import {
   Linking,
   Modal,
   Platform,
+  PixelRatio,
   type ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +28,12 @@ import {
   DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
   useProgressiveGridPaint,
 } from "@/utils/useProgressiveGridPaint";
+import {
+  clearLibraryThumbnailMemoryCache,
+  computeLibraryThumbPixelSize,
+} from "@/utils/libraryThumbnailCache";
+import { consumeWarmLibraryPage } from "@/utils/libraryWarmPrefetch";
+import { useLibraryThumbnailUri } from "@/utils/useLibraryThumbnailUri";
 
 const PAGE_SIZE = 36;
 const COLUMNS = 3;
@@ -34,6 +41,8 @@ const GAP = 2;
 /** FlatList `initialNumToRender` counts rows when numColumns > 1. */
 const INITIAL_GRID_ROWS = 3;
 const INITIAL_GRID_ITEM_FILL = INITIAL_GRID_ROWS * COLUMNS;
+/** FlatList row window — 4 balances recycle speed vs scroll refill. */
+const GRID_WINDOW_SIZE = 4;
 /** One FlatList row per pump tick (3 items). */
 const GRID_RENDER_ROWS_PER_BATCH = 1;
 const VIEWPORT_LOOKAHEAD_ROWS = 2;
@@ -57,6 +66,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId,
   uri,
   tileSize,
+  thumbPixelSize,
   selected,
   order,
   showImage,
@@ -65,20 +75,28 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId: string;
   uri: string;
   tileSize: number;
+  thumbPixelSize: number;
   selected: boolean;
   order: number | undefined;
   showImage: boolean;
   onPress: (assetId: string) => void;
 }) {
+  const thumbUri = useLibraryThumbnailUri(
+    assetId,
+    thumbPixelSize,
+    uri,
+    showImage,
+  );
+  const displayUri = thumbUri ?? null;
+
   return (
     <Pressable
       onPress={() => onPress(assetId)}
       style={{ width: tileSize, height: tileSize }}
     >
-      {showImage ? (
-        /* RN Image + explicit size: expo-image 2.2 loads ph:// at PHImageManagerMaximumSize. */
+      {showImage && displayUri ? (
         <Image
-          source={{ uri }}
+          source={{ uri: displayUri }}
           resizeMode="cover"
           style={{ width: tileSize, height: tileSize }}
         />
@@ -134,6 +152,11 @@ export function HybridLibraryPickerScreen() {
   const tileSize = useMemo(
     () => (width - GAP * (COLUMNS - 1)) / COLUMNS,
     [width],
+  );
+
+  const thumbPixelSize = useMemo(
+    () => computeLibraryThumbPixelSize(tileSize, PixelRatio.get()),
+    [tileSize],
   );
 
   /** Session strip uses same cell size as the 3-column library grid. */
@@ -326,6 +349,20 @@ export function HybridLibraryPickerScreen() {
     }
     let cancelled = false;
     (async () => {
+      clearLibraryThumbnailMemoryCache();
+      const warm = consumeWarmLibraryPage();
+      if (warm && selectedAlbumId === ALL_PHOTOS_ALBUM_ID) {
+        setAssets(warm.assets);
+        setEndCursor(warm.endCursor);
+        setHasNextPage(warm.hasNextPage);
+        const map = new Map<string, MediaLibrary.Asset>();
+        for (const asset of warm.assets) {
+          map.set(asset.id, asset);
+        }
+        assetsByIdRef.current = map;
+        return;
+      }
+
       setAssets([]);
       setEndCursor(undefined);
       setHasNextPage(true);
@@ -344,6 +381,7 @@ export function HybridLibraryPickerScreen() {
 
   const onSelectAlbum = useCallback((albumId: string) => {
     setAlbumPickerOpen(false);
+    clearLibraryThumbnailMemoryCache();
     setSelectedAlbumId(albumId);
   }, []);
 
@@ -409,6 +447,7 @@ export function HybridLibraryPickerScreen() {
         assetId={item.id}
         uri={item.uri}
         tileSize={tileSize}
+        thumbPixelSize={thumbPixelSize}
         selected={selectedLibraryIds.has(item.id)}
         order={selectionOrderByKey.get(item.id)}
         showImage={shouldShowLibraryImage(index)}
@@ -420,6 +459,7 @@ export function HybridLibraryPickerScreen() {
       selectedLibraryIds,
       selectionOrderByKey,
       shouldShowLibraryImage,
+      thumbPixelSize,
       tileSize,
     ],
   );
@@ -586,7 +626,7 @@ export function HybridLibraryPickerScreen() {
               ? DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS
               : 50
           }
-          windowSize={PROGRESSIVE_LIBRARY_PAINT_ENABLED ? 3 : 5}
+          windowSize={PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_WINDOW_SIZE : 5}
           removeClippedSubviews={PROGRESSIVE_LIBRARY_PAINT_ENABLED}
           onViewableItemsChanged={
             PROGRESSIVE_LIBRARY_PAINT_ENABLED

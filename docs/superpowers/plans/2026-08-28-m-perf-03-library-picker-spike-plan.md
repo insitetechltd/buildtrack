@@ -1,21 +1,46 @@
 # M-PERF-03 spike — progressive library grid paint
 
 **Milestone:** `WS-PERF / M-PERF-03`  
-**Status:** Phase A spike implemented (2026-08-28) — device proof pending  
+**Status:** Phase A shipped (2026-08-28); **Phase B shipped (2026-08-28)** — device proof pending  
 **Related:** `M-PERF-01` remote evidence thumbs (tabled Phase B — see overlap § below)
 
 ---
 
-## Phase A delivered (this PR)
+## Phase A delivered (2026-08-28)
 
 | Change | File |
 |--------|------|
 | Progressive paint hook (3 indices / 48ms + viewport bypass) | `src/utils/useProgressiveGridPaint.ts` |
 | Jest unit tests | `src/utils/__tests__/useProgressiveGridPaint.test.ts` |
 | Hybrid library grid: skeleton → staggered `Image` bind | `src/modules/captureSession/HybridLibraryPickerScreen.tsx` |
-| FlatList tuning: `initialNumToRender=9`, batch=3, `windowSize=3` | same |
+| FlatList tuning: `initialNumToRender=3` rows, batch=1 row, `windowSize=3` | same |
 
-**Not in Phase A:** PhotoKit `targetSize` native thumbs, FlashList, Select Photos path (`InAppLibraryPickerScreen`), Maestro flow.
+---
+
+## Phase B delivered (2026-08-28)
+
+| Change | File |
+|--------|------|
+| LRU `file://` thumb cache (resize via ImageManipulator, concurrency 3) | `src/utils/libraryThumbnailCache.ts` |
+| Thumb cache unit tests | `src/utils/__tests__/libraryThumbnailCache.test.ts` |
+| Grid tile hook (cache + progressive gate) | `src/utils/useLibraryThumbnailUri.ts` |
+| Camera warm prefetch (first page metadata + 12 thumbs) | `src/utils/libraryWarmPrefetch.ts` |
+| Hybrid grid wired to cached thumbs + warm consume | `HybridLibraryPickerScreen.tsx` |
+| Camera screen starts warm prefetch on mount | `CaptureSessionCameraScreen.tsx` |
+| Tunables: progressive paint **6 / 32ms** (was 3 / 48ms); FlatList `windowSize=4` | `useProgressiveGridPaint.ts`, hybrid grid |
+
+**Not in Phase B:** FlashList, Select Photos path (`InAppLibraryPickerScreen`), Maestro flow, native PhotoKit `targetSize` module.
+
+**Tuning knobs (Phase B defaults):**
+
+| Knob | Value | Notes |
+|------|-------|-------|
+| `DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE` | 6 | Indices unlocked per pump tick |
+| `DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS` | 32 | Pump + FlatList batching period |
+| `LIBRARY_THUMB_DECODE_CONCURRENCY` | 3 | Real PhotoKit/resize cap |
+| `LIBRARY_THUMB_MAX_PIXELS` | 384 | Long-edge cap for grid thumbs |
+| `LIBRARY_WARM_THUMB_COUNT` | 12 | Pre-decoded while on camera |
+| `GRID_WINDOW_SIZE` | 4 | FlatList recycle window (iOS) |
 
 ---
 
@@ -121,13 +146,14 @@ Maestro: no dedicated hybrid-library flow yet — headed manual script above is 
 
 ---
 
-## Phase B candidates (library — not started)
+## Phase B candidates (library — partial)
 
-- PhotoKit explicit `targetSize` or LRU `file://` thumb cache  
-- Warm `getAssetsAsync` first page on camera screen  
+- ~~PhotoKit explicit `targetSize` or LRU `file://` thumb cache~~ **Done (ImageManipulator resize cache)**
+- ~~Warm `getAssetsAsync` first page on camera screen~~ **Done**
 - FlashList migration  
 - Port pattern to `InAppLibraryPickerScreen` or replace `expo-image-multiple-picker`  
 - Maestro: `capture-session-library-smoke.yaml`
+- Native PhotoKit `targetSize` thin module (optional — JS resize cache shipped first)
 
 ---
 

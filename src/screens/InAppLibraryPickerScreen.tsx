@@ -6,15 +6,12 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  useWindowDimensions,
-  PixelRatio,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 
-import { computeLibraryThumbPixelSize } from "@/utils/libraryThumbnailCache";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
@@ -80,9 +77,6 @@ export default function InAppLibraryPickerScreen({
   initiallySelectedPhotos = [],
 }: InAppLibraryPickerScreenProps) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const tileSize = (width - 2 * 2) / 3;
-  const thumbPixelSize = computeLibraryThumbPixelSize(tileSize, PixelRatio.get());
 
   const [isPinning, setIsPinning] = useState(false);
   const [permissionPhase, setPermissionPhase] = useState<PermissionPhase>("checking");
@@ -101,7 +95,6 @@ export default function InAppLibraryPickerScreen({
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: gridEnabled,
-    thumbPixelSize,
     consumeWarmPage: false,
   });
 

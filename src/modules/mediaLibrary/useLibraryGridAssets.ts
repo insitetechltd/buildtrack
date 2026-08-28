@@ -1,10 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import * as MediaLibrary from "expo-media-library";
 
-import {
-  consumeWarmLibraryPage,
-  prefetchLibraryPageThumbnails,
-} from "@/utils/libraryWarmPrefetch";
+import { consumeWarmLibraryPage } from "@/utils/libraryWarmPrefetch";
 import {
   ALL_PHOTOS_ALBUM_ID,
   LIBRARY_ASSET_SORT,
@@ -15,14 +12,12 @@ import {
 type UseLibraryGridAssetsOptions = {
   enabled: boolean;
   selectedAlbumId: string;
-  thumbPixelSize: number;
   consumeWarmPage?: boolean;
 };
 
 export function useLibraryGridAssets({
   enabled,
   selectedAlbumId,
-  thumbPixelSize,
   consumeWarmPage = false,
 }: UseLibraryGridAssetsOptions) {
   const [albums, setAlbums] = useState<LibraryAlbumChoice[]>([]);
@@ -91,7 +86,6 @@ export function useLibraryGridAssets({
         });
         setEndCursor(page.endCursor);
         setHasNextPage(page.hasNextPage);
-        prefetchLibraryPageThumbnails(page.assets, thumbPixelSize);
       } catch (error) {
         console.warn("[LibraryGrid] library page failed", error);
       } finally {
@@ -100,7 +94,7 @@ export function useLibraryGridAssets({
         }
       }
     },
-    [thumbPixelSize],
+    [selectedAlbumId],
   );
 
   const ensurePermission = useCallback(async (): Promise<boolean> => {
@@ -150,7 +144,6 @@ export function useLibraryGridAssets({
             map.set(asset.id, asset);
           }
           assetsByIdRef.current = map;
-          prefetchLibraryPageThumbnails(warm.assets, thumbPixelSize);
           return;
         }
       }
@@ -170,7 +163,6 @@ export function useLibraryGridAssets({
     loadPage,
     permission,
     selectedAlbumId,
-    thumbPixelSize,
   ]);
 
   const onEndReached = useCallback(() => {

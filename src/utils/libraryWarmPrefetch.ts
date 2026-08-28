@@ -1,18 +1,8 @@
 import * as MediaLibrary from "expo-media-library";
 
 import {
-  computeLibraryThumbPixelSize,
-  prefetchLibraryThumbnails,
-  requestLibraryThumbnail,
-} from "./libraryThumbnailCache";
-import {
-  LIBRARY_THUMB_PRIORITY_BACKGROUND,
   LIBRARY_WARM_PAGE_SIZE,
-  LIBRARY_WARM_THUMB_COUNT,
 } from "./libraryPickerPerf";
-
-const DEFAULT_TILE_PT = 130;
-const DEFAULT_SCALE = 3;
 
 type WarmSnapshot = {
   assets: MediaLibrary.Asset[];
@@ -23,16 +13,14 @@ type WarmSnapshot = {
 let warmSnapshot: WarmSnapshot | null = null;
 let warmRun: Promise<void> | null = null;
 
-export { LIBRARY_WARM_PAGE_SIZE, LIBRARY_WARM_THUMB_COUNT } from "./libraryPickerPerf";
+export { LIBRARY_WARM_PAGE_SIZE } from "./libraryPickerPerf";
 
 /**
- * Prefetch first-page metadata (+ lower-res thumbs) from the camera screen so
- * hybrid library open feels instant.
+ * Prefetch first-page metadata from the camera screen so hybrid library open
+ * skips the initial getAssetsAsync wait. Grid tiles use system ph:// thumbs —
+ * no ImageManipulator warm decode.
  */
-export function warmLibraryFirstPage(options?: {
-  tileSizePt?: number;
-  scale?: number;
-}): Promise<void> {
+export function warmLibraryFirstPage(): Promise<void> {
   if (warmRun) {
     return warmRun;
   }
@@ -60,34 +48,6 @@ export function warmLibraryFirstPage(options?: {
         endCursor: page.endCursor,
         hasNextPage: page.hasNextPage,
       };
-
-      const pixelSize = computeLibraryThumbPixelSize(
-        options?.tileSizePt ?? DEFAULT_TILE_PT,
-        options?.scale ?? DEFAULT_SCALE,
-      );
-
-      const warmAssets = page.assets.slice(0, LIBRARY_WARM_THUMB_COUNT);
-      prefetchLibraryThumbnails(
-        warmAssets.map((asset) => ({
-          assetId: asset.id,
-          pixelSize,
-          fallbackUri: asset.uri,
-          shouldDownloadFromNetwork: false,
-          priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
-        })),
-      );
-
-      await Promise.allSettled(
-        warmAssets.map((asset) =>
-          requestLibraryThumbnail({
-            assetId: asset.id,
-            pixelSize,
-            fallbackUri: asset.uri,
-            shouldDownloadFromNetwork: false,
-            priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
-          }),
-        ),
-      );
     } catch (error) {
       console.warn("[libraryWarmPrefetch] warm failed", error);
     } finally {
@@ -108,21 +68,4 @@ export function consumeWarmLibraryPage(): WarmSnapshot | null {
 /** Peek first asset URI for camera library button (does not consume warm page). */
 export function peekWarmLibraryThumbUri(): string | null {
   return warmSnapshot?.assets[0]?.uri ?? null;
-}
-
-/** Prefetch thumbs for newly paginated assets (scroll continuity). */
-export function prefetchLibraryPageThumbnails(
-  assets: MediaLibrary.Asset[],
-  pixelSize: number,
-  count = 12,
-): void {
-  prefetchLibraryThumbnails(
-    assets.slice(0, count).map((asset) => ({
-      assetId: asset.id,
-      pixelSize,
-      fallbackUri: asset.uri,
-      shouldDownloadFromNetwork: false,
-      priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
-    })),
-  );
 }

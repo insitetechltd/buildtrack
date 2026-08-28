@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo, useRef } from "react";
+import React, { memo, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -9,26 +9,16 @@ import {
   StyleSheet,
   Platform,
   useWindowDimensions,
-  PixelRatio,
-  type ViewToken,
 } from "react-native";
 import type * as MediaLibrary from "expo-media-library";
 
-import {
-  computeLibraryThumbPixelSize,
-  prefetchLibraryThumbnails,
-} from "@/utils/libraryThumbnailCache";
+import { libraryGridDisplayUri } from "@/utils/libraryDisplayUri";
 import {
   LIBRARY_GRID_BATCH_MS,
   LIBRARY_GRID_BATCH_ROWS,
   LIBRARY_GRID_INITIAL_ROWS,
   LIBRARY_GRID_WINDOW_SIZE,
-  LIBRARY_SCROLL_LOOKAHEAD_ITEMS,
-  LIBRARY_THUMB_PRIORITY_VIEWPORT,
-  LIBRARY_VIEWABILITY_MIN_TIME_MS,
-  LIBRARY_VIEWABILITY_THRESHOLD,
 } from "@/utils/libraryPickerPerf";
-import { useLibraryThumbnailUri } from "@/utils/useLibraryThumbnailUri";
 import {
   LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
@@ -52,7 +42,6 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId,
   uri,
   tileSize,
-  thumbPixelSize,
   selected,
   order,
   onPress,
@@ -62,15 +51,13 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId: string;
   uri: string;
   tileSize: number;
-  thumbPixelSize: number;
   selected: boolean;
   order: number | undefined;
   onPress: (assetId: string) => void;
   testIdPrefix: string;
   theme: LibraryGridTileTheme;
 }) {
-  const thumbUri = useLibraryThumbnailUri(assetId, thumbPixelSize, uri, true);
-  const displayUri = thumbUri ?? null;
+  const displayUri = libraryGridDisplayUri(uri);
 
   return (
     <Pressable
@@ -146,56 +133,6 @@ export function LibraryPhotoGrid({
     [width],
   );
 
-  const thumbPixelSize = useMemo(
-    () => computeLibraryThumbPixelSize(tileSize, PixelRatio.get()),
-    [tileSize],
-  );
-
-  const prefetchScrollAhead = useCallback(
-    (indices: number[]) => {
-      if (indices.length === 0 || assets.length === 0) {
-        return;
-      }
-      const minIndex = Math.min(...indices);
-      const maxIndex = Math.max(...indices);
-      const end = Math.min(
-        assets.length - 1,
-        maxIndex + LIBRARY_SCROLL_LOOKAHEAD_ITEMS,
-      );
-      const requests = [];
-      for (let index = minIndex; index <= end; index += 1) {
-        const asset = assets[index];
-        if (!asset) {
-          continue;
-        }
-        requests.push({
-          assetId: asset.id,
-          pixelSize: thumbPixelSize,
-          fallbackUri: asset.uri,
-          shouldDownloadFromNetwork: false,
-          priority: LIBRARY_THUMB_PRIORITY_VIEWPORT,
-        });
-      }
-      prefetchLibraryThumbnails(requests);
-    },
-    [assets, thumbPixelSize],
-  );
-
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      const indices = viewableItems
-        .map((token) => token.index)
-        .filter((index): index is number => typeof index === "number");
-      prefetchScrollAhead(indices);
-    },
-    [prefetchScrollAhead],
-  );
-
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: LIBRARY_VIEWABILITY_THRESHOLD,
-    minimumViewTime: LIBRARY_VIEWABILITY_MIN_TIME_MS,
-  }).current;
-
   const extraData = useMemo(
     () => ({ selectedIds, selectionOrderByKey }),
     [selectedIds, selectionOrderByKey],
@@ -207,7 +144,6 @@ export function LibraryPhotoGrid({
         assetId={item.id}
         uri={item.uri}
         tileSize={tileSize}
-        thumbPixelSize={thumbPixelSize}
         selected={selectedIds.has(item.id)}
         order={selectionOrderByKey.get(item.id)}
         onPress={onPressAsset}
@@ -215,15 +151,7 @@ export function LibraryPhotoGrid({
         theme={theme}
       />
     ),
-    [
-      onPressAsset,
-      selectedIds,
-      selectionOrderByKey,
-      testIdPrefix,
-      theme,
-      thumbPixelSize,
-      tileSize,
-    ],
+    [onPressAsset, selectedIds, selectionOrderByKey, testIdPrefix, theme, tileSize],
   );
 
   if (assets.length === 0 && !loadingPage) {
@@ -249,8 +177,6 @@ export function LibraryPhotoGrid({
         updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
         windowSize={LIBRARY_GRID_WINDOW_SIZE}
         removeClippedSubviews={Platform.OS === "ios"}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={
           loadingPage ? (

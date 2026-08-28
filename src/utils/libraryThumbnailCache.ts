@@ -3,6 +3,11 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
 
+/**
+ * Optional file:// thumb cache (ImageManipulator resize). Grid browse uses system
+ * ph:// / content:// URIs — full resolution at Accept via resolveLibraryLocalUri.
+ */
+
 import {
   LIBRARY_THUMB_DECODE_CONCURRENCY,
   LIBRARY_THUMB_LRU_MAX,

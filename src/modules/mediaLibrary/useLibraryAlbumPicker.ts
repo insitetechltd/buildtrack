@@ -10,13 +10,11 @@ import { useLibraryGridAssets } from "./useLibraryGridAssets";
 
 type UseLibraryAlbumPickerOptions = {
   enabled: boolean;
-  thumbPixelSize: number;
   consumeWarmPage?: boolean;
 };
 
 export function useLibraryAlbumPicker({
   enabled,
-  thumbPixelSize,
   consumeWarmPage = false,
 }: UseLibraryAlbumPickerOptions) {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>(
@@ -27,7 +25,6 @@ export function useLibraryAlbumPicker({
   const grid = useLibraryGridAssets({
     enabled,
     selectedAlbumId,
-    thumbPixelSize,
     consumeWarmPage,
   });
 

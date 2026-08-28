@@ -5,14 +5,18 @@ import type { CaptureSessionPhoto } from "./types";
 type CaptureSessionState = {
   photos: CaptureSessionPhoto[];
   selectionLimit: number;
+  pinGeneration: number;
   setSelectionLimit: (limit: number) => void;
-  addCameraPhoto: (photo: Omit<CaptureSessionPhoto, "source" | "selected">) => void;
+  addCameraPhoto: (
+    photo: Omit<CaptureSessionPhoto, "source" | "selected">,
+  ) => boolean;
   addOrSelectLibraryPhoto: (
     photo: Omit<CaptureSessionPhoto, "source" | "selected">,
   ) => void;
   toggleSelected: (id: string) => void;
   setSelected: (id: string, selected: boolean) => void;
   selectAllSessionCamera: () => void;
+  updatePhotoUri: (id: string, uri: string) => void;
   removePhoto: (id: string) => void;
   reset: () => void;
 };
@@ -22,6 +26,7 @@ const DEFAULT_LIMIT = 20;
 export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => ({
   photos: [],
   selectionLimit: DEFAULT_LIMIT,
+  pinGeneration: 0,
 
   setSelectionLimit: (limit) =>
     set({ selectionLimit: Math.max(1, Math.min(limit, 50)) }),
@@ -29,7 +34,7 @@ export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => 
   addCameraPhoto: (photo) => {
     const { photos, selectionLimit } = get();
     if (photos.length >= selectionLimit) {
-      return;
+      return false;
     }
     set({
       photos: [
@@ -41,6 +46,7 @@ export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => 
         },
       ],
     });
+    return true;
   },
 
   addOrSelectLibraryPhoto: (photo) => {
@@ -142,7 +148,18 @@ export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => 
   removePhoto: (id) =>
     set({ photos: get().photos.filter((p) => p.id !== id) }),
 
-  reset: () => set({ photos: [] }),
+  updatePhotoUri: (id, uri) => {
+    const row = get().photos.find((p) => p.id === id);
+    if (!row || row.uri === uri) {
+      return;
+    }
+    set({
+      photos: get().photos.map((p) => (p.id === id ? { ...p, uri } : p)),
+    });
+  },
+
+  reset: () =>
+    set({ photos: [], pinGeneration: get().pinGeneration + 1 }),
 }));
 
 export function resetCaptureSession(): void {

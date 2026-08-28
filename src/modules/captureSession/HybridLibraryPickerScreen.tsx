@@ -18,7 +18,7 @@ import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import { LIBRARY_GRID_COLUMNS, LIBRARY_GRID_GAP } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
-import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
+import { prepareCaptureSessionAccept } from "./cameraDraftPinQueue";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 
 function newLibrarySessionId(assetId: string): string {
@@ -132,19 +132,30 @@ export function HybridLibraryPickerScreen() {
   );
 
   const handleAccept = useCallback(async () => {
-    if (selectedCount === 0) {
-      Alert.alert("Select photos", "Highlight at least one photo to continue.");
-      return;
-    }
     if (acceptingRef.current) {
       return;
     }
     acceptingRef.current = true;
     setAccepting(true);
     try {
-      const mapped = await materializeSelectedCapturePhotos(
-        useCaptureSessionStore.getState().photos,
-      );
+      const { photos: mapped, failedCount } = await prepareCaptureSessionAccept();
+      if (failedCount > 0) {
+        Alert.alert(
+          "Camera",
+          failedCount === 1
+            ? "Could not save 1 photo."
+            : `Could not save ${failedCount} photos.`,
+        );
+      }
+      if (mapped.length === 0) {
+        if (failedCount === 0) {
+          Alert.alert(
+            "Select photos",
+            "Highlight at least one photo to continue.",
+          );
+        }
+        return;
+      }
       onComplete({ photos: mapped });
     } catch (error) {
       console.warn("[CaptureSession] accept pin failed", error);
@@ -153,7 +164,7 @@ export function HybridLibraryPickerScreen() {
       acceptingRef.current = false;
       setAccepting(false);
     }
-  }, [onComplete, selectedCount]);
+  }, [onComplete]);
 
   const sessionHeader = sessionCameraPhotos.length > 0 ? (
     <View style={styles.sessionBlock}>
@@ -189,7 +200,7 @@ export function HybridLibraryPickerScreen() {
           >
             <ExpoImage
               source={{ uri: item.uri }}
-              recyclingKey={item.id}
+              recyclingKey={`${item.id}:${item.uri}`}
               cachePolicy="memory-disk"
               contentFit="cover"
               transition={0}

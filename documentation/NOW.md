@@ -8,7 +8,7 @@
 
 **Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
-**Idle-parallel — picker lag:** M-PERF-03 Phase C on master (shared `mediaLibrary` grid, Select Photos port). FlashList v2 reverted (old arch). Device proof pending. Native FastFormat still later.
+**Idle-parallel — photo funnel:** **M-PERF-04 C1+C2 shipping to TestFlight (2026-08-28).** Camera persist overlay; shutter no longer awaits pin. Headed iPhone 17 Pro Max: library overlay ×3 + 5 shutter → Done → Accept (5 on Select Photos). Login-badge still local.
 
 ## Next (definitive)
 
@@ -24,7 +24,11 @@
 
 **Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos). TF199.
 
-**M-PERF-03 Phase C (2026-08-28):** Select Photos port + shared `LibraryPhotoGrid` (`src/modules/mediaLibrary/`). FlashList v2 reverted to FlatList (`newArchEnabled: false`). Sort = creationTime DESC. Device proof pending.
+**M-PERF-03 Gate A follow-up (2026-08-28):** System `ph://` grid thumbs (no per-cell ImageManipulator); permission singleton; first page 12; deferred albums; wake warm. Merged + pushed `35d90e2`. **TF 1.1.3 (204)** submitted to ASC (processing). Cloud: `cbd1939` + `49e176f`.
+
+**M-PERF-03 Phase C (2026-08-28):** Select Photos port + shared `LibraryPhotoGrid`. FlashList v2 reverted to FlatList. Merged + pushed `1a7ec1b`. **TF 1.1.3 (203)**. Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-phase-c-select-photos-flashlist-plan.md`.
+
+**M-PERF-03 Phase B (2026-08-28):** LRU resized `file://` thumb cache + camera warm prefetch. TF202. Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
 
 **M-PERF-03 scroll continuity (2026-08-28):** Viewport prefetch + priority decode queue. Tunables: `libraryPickerPerf.ts`.
 

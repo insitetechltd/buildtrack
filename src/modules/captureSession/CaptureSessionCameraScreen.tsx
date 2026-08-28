@@ -14,11 +14,11 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 
-import { pinDraftMedia } from "../../utils/draftMediaCache";
 import {
   peekWarmLibraryThumbUri,
   warmLibraryFirstPage,
 } from "../../utils/libraryWarmPrefetch";
+import { enqueueCameraDraftPin } from "./cameraDraftPinQueue";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 
@@ -30,14 +30,13 @@ export function CaptureSessionCameraScreen() {
   const insets = useSafeAreaInsets();
   const { onCancel, goToHybridLibrary } = useCaptureSessionHost();
   const cameraRef = useRef<CameraView>(null);
+  const isCapturingRef = useRef(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCapturing, setIsCapturing] = useState(false);
   const [libraryThumbUri, setLibraryThumbUri] = useState<string | null>(null);
   const [cameraNativeError, setCameraNativeError] = useState<string | null>(null);
 
   const photos = useCaptureSessionStore((s) => s.photos);
-  const selectionLimit = useCaptureSessionStore((s) => s.selectionLimit);
-  const addCameraPhoto = useCaptureSessionStore((s) => s.addCameraPhoto);
   const selectAllSessionCamera = useCaptureSessionStore(
     (s) => s.selectAllSessionCamera,
   );
@@ -102,14 +101,18 @@ export function CaptureSessionCameraScreen() {
   }
 
   const handleShutter = useCallback(async () => {
-    if (!cameraRef.current || isCapturing) return;
-    if (photos.length >= selectionLimit) {
+    if (!cameraRef.current || isCapturingRef.current) {
+      return;
+    }
+    const store = useCaptureSessionStore.getState();
+    if (store.photos.length >= store.selectionLimit) {
       Alert.alert(
         "Limit reached",
-        `You can select up to ${selectionLimit} photos.`,
+        `You can select up to ${store.selectionLimit} photos.`,
       );
       return;
     }
+    isCapturingRef.current = true;
     setIsCapturing(true);
     try {
       const shot = await cameraRef.current.takePictureAsync({
@@ -119,25 +122,44 @@ export function CaptureSessionCameraScreen() {
       if (!shot?.uri) {
         throw new Error("No image from camera");
       }
-      const fileName = `capture_${Date.now()}.jpg`;
-      const pinnedUri = await pinDraftMedia(shot.uri, fileName);
-      addCameraPhoto({
-        id: newSessionId(),
-        uri: pinnedUri,
+      const id = newSessionId();
+      const fileName = `capture_${id}.jpg`;
+      const added = useCaptureSessionStore.getState().addCameraPhoto({
+        id,
+        uri: shot.uri,
+        fileName,
+      });
+      if (!added) {
+        return;
+      }
+      enqueueCameraDraftPin({
+        id,
+        sourceUri: shot.uri,
         fileName,
       });
     } catch (error) {
       console.warn("[CaptureSession] shutter failed", error);
       Alert.alert("Camera", "Could not take photo. Try again.");
     } finally {
+      isCapturingRef.current = false;
       setIsCapturing(false);
     }
-  }, [addCameraPhoto, isCapturing, photos.length, selectionLimit]);
+  }, []);
 
   const handleDone = useCallback(() => {
+    if (isCapturingRef.current) {
+      return;
+    }
     selectAllSessionCamera();
     goToHybridLibrary();
   }, [goToHybridLibrary, selectAllSessionCamera]);
+
+  const handleLibraryPeek = useCallback(() => {
+    if (isCapturingRef.current) {
+      return;
+    }
+    goToHybridLibrary();
+  }, [goToHybridLibrary]);
 
   if (!permission) {
     return (
@@ -204,8 +226,9 @@ export function CaptureSessionCameraScreen() {
         <Pressable
           testID="capture-session__done"
           onPress={handleDone}
+          disabled={isCapturing}
           hitSlop={12}
-          style={styles.doneHit}
+          style={[styles.doneHit, isCapturing && styles.shutterDisabled]}
         >
           <Text style={styles.doneText}>Done</Text>
         </Pressable>
@@ -218,9 +241,9 @@ export function CaptureSessionCameraScreen() {
             .slice(-6)
             .map((p) => (
               <ExpoImage
-                key={p.id}
+                key={`${p.id}:${p.uri}`}
                 source={{ uri: p.uri }}
-                recyclingKey={p.id}
+                recyclingKey={`${p.id}:${p.uri}`}
                 cachePolicy="memory-disk"
                 contentFit="cover"
                 transition={0}
@@ -238,8 +261,9 @@ export function CaptureSessionCameraScreen() {
       >
         <Pressable
           testID="capture-session__library_peek"
-          onPress={goToHybridLibrary}
-          style={styles.libraryPeek}
+          onPress={handleLibraryPeek}
+          disabled={isCapturing}
+          style={[styles.libraryPeek, isCapturing && styles.shutterDisabled]}
           accessibilityLabel="Choose from library"
         >
           {libraryThumbUri ? (

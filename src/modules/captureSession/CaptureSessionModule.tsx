@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { BackHandler, Platform, StyleSheet, View } from "react-native";
 
 import {
   CaptureSessionHostProvider,
@@ -7,6 +8,7 @@ import {
 import { CaptureSessionCameraScreen } from "./CaptureSessionCameraScreen";
 import { HybridLibraryPickerScreen } from "./HybridLibraryPickerScreen";
 import { resetCaptureSession, useCaptureSessionStore } from "./sessionDraftStore";
+import { warmLibraryFirstPage } from "../../utils/libraryWarmPrefetch";
 
 export type { CaptureSessionHostProps } from "./CaptureSessionHostContext";
 
@@ -14,7 +16,8 @@ type Step = "camera" | "hybridLibrary";
 
 /**
  * Self-contained capture flow (camera → hybrid library).
- * No AppNavigator routes — mount this root when A/B-swapping.
+ * Camera stays mounted under an opaque library overlay so CameraView does not
+ * remount (M-PERF-04 C1). No AppNavigator routes — mount this root when A/B-swapping.
  */
 export function CaptureSessionModule({
   onCancel,
@@ -23,6 +26,7 @@ export function CaptureSessionModule({
 }: CaptureSessionHostProps) {
   const [step, setStep] = useState<Step>("camera");
   const setSelectionLimit = useCaptureSessionStore((s) => s.setSelectionLimit);
+  const libraryOpen = step === "hybridLibrary";
 
   useEffect(() => {
     resetCaptureSession();
@@ -33,24 +37,76 @@ export function CaptureSessionModule({
     };
   }, [selectionLimit, setSelectionLimit]);
 
+  const goToHybridLibrary = useCallback(() => {
+    setStep("hybridLibrary");
+  }, []);
+
+  const goToCamera = useCallback(() => {
+    setStep("camera");
+    void warmLibraryFirstPage();
+  }, []);
+
+  useEffect(() => {
+    if (!libraryOpen || Platform.OS !== "android") {
+      return;
+    }
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      goToCamera();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goToCamera, libraryOpen]);
+
   const value = useMemo(
     () => ({
       onCancel,
       onComplete,
       selectionLimit,
-      goToHybridLibrary: () => setStep("hybridLibrary"),
-      goToCamera: () => setStep("camera"),
+      goToHybridLibrary,
+      goToCamera,
     }),
-    [onCancel, onComplete, selectionLimit],
+    [onCancel, onComplete, selectionLimit, goToHybridLibrary, goToCamera],
   );
 
   return (
     <CaptureSessionHostProvider value={value}>
-      {step === "camera" ? (
-        <CaptureSessionCameraScreen />
-      ) : (
-        <HybridLibraryPickerScreen />
-      )}
+      <View style={styles.root}>
+        <View
+          testID="capture-session__camera_layer"
+          style={styles.cameraLayer}
+          pointerEvents={libraryOpen ? "none" : "auto"}
+          accessibilityElementsHidden={libraryOpen}
+          importantForAccessibility={
+            libraryOpen ? "no-hide-descendants" : "auto"
+          }
+        >
+          <CaptureSessionCameraScreen />
+        </View>
+        {libraryOpen ? (
+          <View
+            testID="capture-session__library_overlay"
+            style={styles.libraryOverlay}
+            pointerEvents="auto"
+          >
+            <HybridLibraryPickerScreen />
+          </View>
+        ) : null}
+      </View>
     </CaptureSessionHostProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  cameraLayer: {
+    flex: 1,
+  },
+  libraryOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "#ffffff",
+    zIndex: 10,
+    elevation: 10,
+  },
+});

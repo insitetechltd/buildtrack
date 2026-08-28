@@ -25,6 +25,18 @@ describe("captureSession sessionDraftStore", () => {
     expect(photos.every((p) => p.source === "camera" && p.selected)).toBe(true);
   });
 
+  it("patches camera uri in place and ignores missing ids", () => {
+    const store = useCaptureSessionStore.getState();
+    store.addCameraPhoto({ id: "1", uri: "file://cache.jpg", fileName: "a.jpg" });
+    store.updatePhotoUri("1", "file://draft/a.jpg");
+    expect(useCaptureSessionStore.getState().photos[0].uri).toBe(
+      "file://draft/a.jpg",
+    );
+    expect(useCaptureSessionStore.getState().photos[0].selected).toBe(true);
+    store.updatePhotoUri("missing", "file://nope.jpg");
+    expect(useCaptureSessionStore.getState().photos).toHaveLength(1);
+  });
+
   it("toggles library asset selection by mediaLibraryAssetId", () => {
     const { addOrSelectLibraryPhoto } = useCaptureSessionStore.getState();
     const base = {

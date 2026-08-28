@@ -32,7 +32,7 @@
     "test:uploads": "jest src/api/__tests__/fileUploadService",
     "test:components": "jest src/components/__tests__",
     "test:integration": "jest src/__tests__/integration",
-    "test:photo-flow": "jest --runInBand src/screens/__tests__/InAppLibraryPickerScreen.permission.test.tsx src/navigation/__tests__/photoFlowNavigation.test.ts src/utils/__tests__/bakePhotoDraw.test.ts src/utils/__tests__/mergeTaskAttachments.test.ts src/utils/__tests__/photoPreviewEdit.test.ts src/utils/__tests__/photoPreviewDraw.test.ts src/ui/viewAdapters/__tests__/usePhotoSelectionViewAdapter.test.ts src/__tests__/integration/PhotoSelectionScreen.batch-review.test.tsx",
+    "test:photo-flow": "jest --runInBand src/modules/captureSession/__tests__/CaptureSessionModule.overlay.test.tsx src/modules/captureSession/__tests__/cameraDraftPinQueue.test.ts src/modules/captureSession/__tests__/sessionDraftStore.test.ts src/modules/captureSession/__tests__/CaptureSessionCameraScreen.shutter.test.tsx src/screens/__tests__/InAppLibraryPickerScreen.permission.test.tsx src/navigation/__tests__/photoFlowNavigation.test.ts src/utils/__tests__/bakePhotoDraw.test.ts src/utils/__tests__/mergeTaskAttachments.test.ts src/utils/__tests__/photoPreviewEdit.test.ts src/utils/__tests__/photoPreviewDraw.test.ts src/ui/viewAdapters/__tests__/usePhotoSelectionViewAdapter.test.ts src/__tests__/integration/PhotoSelectionScreen.batch-review.test.tsx",
     "test:regression": "npm run test:tasks && npm run test:uploads && npm run test:components && npm run test:integration",
     "test:e2e:journeys": "jest src/__tests__/journeys --runInBand",
     "test:e2e:maestro:smoke": "bash ./scripts/maestro/run-local.sh test maestro/flows/launch-smoke.yaml",

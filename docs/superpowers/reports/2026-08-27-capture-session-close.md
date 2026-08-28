@@ -31,7 +31,7 @@
 
 JS-only: pin library `ph://` on **Accept** (not first tap); grid uses RN `Image` with explicit tile size (`expo-image` 2.2 still requests `PHImageManagerMaximumSize` for `ph://`). Camera `file://` thumbs stay on `expo-image`. Headed smoke on iPhone 17 Pro: grid tiles populated, tap → `1 selected` badge, Accept → Select Photos (1). Evidence: `.dbg/picker-lag-smoke/evidence/picker-lag-0{2,3,5}-*.png`.
 
-**Residual:** iCloud-only assets / limited-library not headed; FlashList and expo-image target-size parked (SDK lock).
+**Residual:** iCloud-only assets / limited-library not headed; FlashList and expo-image target-size parked (SDK lock). **2026-08-28:** further library perf/UX tracked as **M-PERF-03** (discussion, no design lock) — `docs/superpowers/analysis/2026-08-28-device-photo-library-picker-perf-discussion.md`.
 
 ## Residual
 

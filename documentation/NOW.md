@@ -14,7 +14,7 @@
 2. App Store submit → Stripe **live** on PROD
 3. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
 
-**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01).
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e; **M-PERF-03** device library picker (progressive paint / lower-res thumbs — discussion on ROADMAP, priority TBD). **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01).
 
 ## Recently closed / shipped this session
 

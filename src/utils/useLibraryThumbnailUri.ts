@@ -1,9 +1,14 @@
 import { useEffect, useState } from "react";
 
-import { requestLibraryThumbnail } from "./libraryThumbnailCache";
+import {
+  peekLibraryThumbnailUri,
+  requestLibraryThumbnail,
+} from "./libraryThumbnailCache";
+import { LIBRARY_THUMB_PRIORITY_VIEWPORT } from "./libraryPickerPerf";
 
 /**
- * Resolve a grid-sized library thumb URI when progressive paint unlocks the tile.
+ * Resolve a grid-sized library thumb URI for a mounted tile.
+ * Uses sync memory peek so recycled FlatList cells paint instantly.
  */
 export function useLibraryThumbnailUri(
   assetId: string,
@@ -11,11 +16,19 @@ export function useLibraryThumbnailUri(
   fallbackUri: string,
   enabled: boolean,
 ): string | null {
-  const [uri, setUri] = useState<string | null>(null);
+  const [uri, setUri] = useState<string | null>(() =>
+    enabled ? peekLibraryThumbnailUri(assetId, pixelSize) : null,
+  );
 
   useEffect(() => {
     if (!enabled) {
       setUri(null);
+      return;
+    }
+
+    const cached = peekLibraryThumbnailUri(assetId, pixelSize);
+    if (cached) {
+      setUri(cached);
       return;
     }
 
@@ -27,6 +40,7 @@ export function useLibraryThumbnailUri(
       pixelSize,
       fallbackUri,
       shouldDownloadFromNetwork: false,
+      priority: LIBRARY_THUMB_PRIORITY_VIEWPORT,
     })
       .then((resolved) => {
         if (!cancelled) {

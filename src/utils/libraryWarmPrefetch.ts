@@ -2,13 +2,15 @@ import * as MediaLibrary from "expo-media-library";
 
 import {
   computeLibraryThumbPixelSize,
+  prefetchLibraryThumbnails,
   requestLibraryThumbnail,
 } from "./libraryThumbnailCache";
+import {
+  LIBRARY_THUMB_PRIORITY_BACKGROUND,
+  LIBRARY_WARM_PAGE_SIZE,
+  LIBRARY_WARM_THUMB_COUNT,
+} from "./libraryPickerPerf";
 
-/** Matches HybridLibraryPickerScreen PAGE_SIZE. */
-export const LIBRARY_WARM_PAGE_SIZE = 36;
-/** Thumbnails to pre-decode while the user is still on the camera screen. */
-export const LIBRARY_WARM_THUMB_COUNT = 12;
 const DEFAULT_TILE_PT = 130;
 const DEFAULT_SCALE = 3;
 
@@ -20,6 +22,8 @@ type WarmSnapshot = {
 
 let warmSnapshot: WarmSnapshot | null = null;
 let warmRun: Promise<void> | null = null;
+
+export { LIBRARY_WARM_PAGE_SIZE, LIBRARY_WARM_THUMB_COUNT } from "./libraryPickerPerf";
 
 /**
  * Prefetch first-page metadata (+ lower-res thumbs) from the camera screen so
@@ -63,6 +67,16 @@ export function warmLibraryFirstPage(options?: {
       );
 
       const warmAssets = page.assets.slice(0, LIBRARY_WARM_THUMB_COUNT);
+      prefetchLibraryThumbnails(
+        warmAssets.map((asset) => ({
+          assetId: asset.id,
+          pixelSize,
+          fallbackUri: asset.uri,
+          shouldDownloadFromNetwork: false,
+          priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
+        })),
+      );
+
       await Promise.allSettled(
         warmAssets.map((asset) =>
           requestLibraryThumbnail({
@@ -70,6 +84,7 @@ export function warmLibraryFirstPage(options?: {
             pixelSize,
             fallbackUri: asset.uri,
             shouldDownloadFromNetwork: false,
+            priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
           }),
         ),
       );
@@ -93,4 +108,21 @@ export function consumeWarmLibraryPage(): WarmSnapshot | null {
 /** Peek first asset URI for camera library button (does not consume warm page). */
 export function peekWarmLibraryThumbUri(): string | null {
   return warmSnapshot?.assets[0]?.uri ?? null;
+}
+
+/** Prefetch thumbs for newly paginated assets (scroll continuity). */
+export function prefetchLibraryPageThumbnails(
+  assets: MediaLibrary.Asset[],
+  pixelSize: number,
+  count = 12,
+): void {
+  prefetchLibraryThumbnails(
+    assets.slice(0, count).map((asset) => ({
+      assetId: asset.id,
+      pixelSize,
+      fallbackUri: asset.uri,
+      shouldDownloadFromNetwork: false,
+      priority: LIBRARY_THUMB_PRIORITY_BACKGROUND,
+    })),
+  );
 }

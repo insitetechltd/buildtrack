@@ -35,6 +35,7 @@ import * as MediaLibrary from "expo-media-library";
 import {
   clearLibraryThumbnailMemoryCache,
   computeLibraryThumbPixelSize,
+  peekLibraryThumbnailUri,
   requestLibraryThumbnail,
 } from "../libraryThumbnailCache";
 
@@ -49,8 +50,8 @@ describe("libraryThumbnailCache", () => {
   });
 
   it("computes clamped pixel size", () => {
-    expect(computeLibraryThumbPixelSize(120, 3)).toBe(360);
-    expect(computeLibraryThumbPixelSize(200, 3)).toBe(384);
+    expect(computeLibraryThumbPixelSize(120, 3)).toBe(320);
+    expect(computeLibraryThumbPixelSize(200, 3)).toBe(320);
   });
 
   it("builds and caches a resized thumb file", async () => {
@@ -65,8 +66,21 @@ describe("libraryThumbnailCache", () => {
     expect(MediaLibrary.getAssetInfoAsync).toHaveBeenCalledWith("asset-1", {
       shouldDownloadFromNetwork: false,
     });
-    expect(ImageManipulator.manipulateAsync).toHaveBeenCalled();
+    expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+      expect.any(String),
+      [{ resize: { width: 256 } }],
+      expect.objectContaining({ format: "jpeg" }),
+    );
     expect(FileSystem.copyAsync).toHaveBeenCalled();
+  });
+
+  it("returns sync memory peek after cache warm", async () => {
+    await requestLibraryThumbnail({
+      assetId: "asset-peek",
+      pixelSize: 200,
+      fallbackUri: "ph://asset-peek",
+    });
+    expect(peekLibraryThumbnailUri("asset-peek", 200)).toContain("library-thumbs");
   });
 
   it("returns memory cache on second request without re-decoding", async () => {

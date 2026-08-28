@@ -24,30 +24,29 @@ import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 import {
-  DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
-  DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
-  useProgressiveGridPaint,
-} from "@/utils/useProgressiveGridPaint";
-import {
   clearLibraryThumbnailMemoryCache,
   computeLibraryThumbPixelSize,
+  prefetchLibraryThumbnails,
 } from "@/utils/libraryThumbnailCache";
-import { consumeWarmLibraryPage } from "@/utils/libraryWarmPrefetch";
+import {
+  consumeWarmLibraryPage,
+  prefetchLibraryPageThumbnails,
+} from "@/utils/libraryWarmPrefetch";
+import {
+  LIBRARY_GRID_BATCH_MS,
+  LIBRARY_GRID_BATCH_ROWS,
+  LIBRARY_GRID_INITIAL_ROWS,
+  LIBRARY_GRID_WINDOW_SIZE,
+  LIBRARY_SCROLL_LOOKAHEAD_ITEMS,
+  LIBRARY_THUMB_PRIORITY_VIEWPORT,
+  LIBRARY_VIEWABILITY_MIN_TIME_MS,
+  LIBRARY_VIEWABILITY_THRESHOLD,
+} from "@/utils/libraryPickerPerf";
 import { useLibraryThumbnailUri } from "@/utils/useLibraryThumbnailUri";
 
 const PAGE_SIZE = 36;
 const COLUMNS = 3;
 const GAP = 2;
-/** FlatList `initialNumToRender` counts rows when numColumns > 1. */
-const INITIAL_GRID_ROWS = 3;
-const INITIAL_GRID_ITEM_FILL = INITIAL_GRID_ROWS * COLUMNS;
-/** FlatList row window — 4 balances recycle speed vs scroll refill. */
-const GRID_WINDOW_SIZE = 4;
-/** One FlatList row per pump tick (3 items). */
-const GRID_RENDER_ROWS_PER_BATCH = 1;
-const VIEWPORT_LOOKAHEAD_ROWS = 2;
-/** PhotoKit progressive paint is iOS-specific; Android shows tiles immediately. */
-const PROGRESSIVE_LIBRARY_PAINT_ENABLED = Platform.OS === "ios";
 
 /** Sentinel: all photos (no album filter). */
 const ALL_PHOTOS_ALBUM_ID = "__all__";
@@ -69,7 +68,6 @@ const LibraryGridTile = memo(function LibraryGridTile({
   thumbPixelSize,
   selected,
   order,
-  showImage,
   onPress,
 }: {
   assetId: string;
@@ -78,14 +76,13 @@ const LibraryGridTile = memo(function LibraryGridTile({
   thumbPixelSize: number;
   selected: boolean;
   order: number | undefined;
-  showImage: boolean;
   onPress: (assetId: string) => void;
 }) {
   const thumbUri = useLibraryThumbnailUri(
     assetId,
     thumbPixelSize,
     uri,
-    showImage,
+    true,
   );
   const displayUri = thumbUri ?? null;
 
@@ -94,7 +91,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
       onPress={() => onPress(assetId)}
       style={{ width: tileSize, height: tileSize }}
     >
-      {showImage && displayUri ? (
+      {displayUri ? (
         <Image
           source={{ uri: displayUri }}
           resizeMode="cover"
@@ -213,41 +210,54 @@ export function HybridLibraryPickerScreen() {
     return match?.title ?? "All photos";
   }, [albums, selectedAlbumId]);
 
-  const { shouldDecodeIndex, onViewableIndicesChanged, maxUnlockedIndex } =
-    useProgressiveGridPaint({
-      itemCount: assets.length,
-      batchSize: DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
-      intervalMs: DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
-      resetKey: selectedAlbumId,
-      columns: COLUMNS,
-      lookaheadRows: VIEWPORT_LOOKAHEAD_ROWS,
-      initialFillCount: INITIAL_GRID_ITEM_FILL,
-    });
+  const prefetchScrollAhead = useCallback(
+    (indices: number[]) => {
+      if (indices.length === 0 || assets.length === 0) {
+        return;
+      }
+      const minIndex = Math.min(...indices);
+      const maxIndex = Math.max(...indices);
+      const end = Math.min(
+        assets.length - 1,
+        maxIndex + LIBRARY_SCROLL_LOOKAHEAD_ITEMS,
+      );
+      const requests = [];
+      for (let index = minIndex; index <= end; index += 1) {
+        const asset = assets[index];
+        if (!asset) {
+          continue;
+        }
+        requests.push({
+          assetId: asset.id,
+          pixelSize: thumbPixelSize,
+          fallbackUri: asset.uri,
+          shouldDownloadFromNetwork: false,
+          priority: LIBRARY_THUMB_PRIORITY_VIEWPORT,
+        });
+      }
+      prefetchLibraryThumbnails(requests);
+    },
+    [assets, thumbPixelSize],
+  );
 
   const onGridViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {
       const indices = viewableItems
         .map((token) => token.index)
         .filter((index): index is number => typeof index === "number");
-      onViewableIndicesChanged(indices);
+      prefetchScrollAhead(indices);
     },
-    [onViewableIndicesChanged],
+    [prefetchScrollAhead],
   );
 
   const gridViewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 10,
-    minimumViewTime: 32,
+    itemVisiblePercentThreshold: LIBRARY_VIEWABILITY_THRESHOLD,
+    minimumViewTime: LIBRARY_VIEWABILITY_MIN_TIME_MS,
   }).current;
 
-  const shouldShowLibraryImage = useCallback(
-    (index: number) =>
-      !PROGRESSIVE_LIBRARY_PAINT_ENABLED || shouldDecodeIndex(index),
-    [shouldDecodeIndex],
-  );
-
   const gridExtraData = useMemo(
-    () => ({ maxUnlockedIndex, selectedCount, selectionOrderByKey }),
-    [maxUnlockedIndex, selectedCount, selectionOrderByKey],
+    () => ({ selectedCount, selectionOrderByKey }),
+    [selectedCount, selectionOrderByKey],
   );
 
   const ensurePermission = useCallback(async (): Promise<boolean> => {
@@ -322,6 +332,7 @@ export function HybridLibraryPickerScreen() {
       });
       setEndCursor(page.endCursor);
       setHasNextPage(page.hasNextPage);
+      prefetchLibraryPageThumbnails(page.assets, thumbPixelSize);
     } catch (error) {
       console.warn("[CaptureSession] library page failed", error);
     } finally {
@@ -329,7 +340,7 @@ export function HybridLibraryPickerScreen() {
         setLoadingPage(false);
       }
     }
-  }, []);
+  }, [thumbPixelSize]);
 
   useEffect(() => {
     let cancelled = false;
@@ -442,7 +453,7 @@ export function HybridLibraryPickerScreen() {
   }, [onComplete, selectedCount]);
 
   const renderLibraryGridItem = useCallback(
-    ({ item, index }: { item: MediaLibrary.Asset; index: number }) => (
+    ({ item }: { item: MediaLibrary.Asset; index: number }) => (
       <LibraryGridTile
         assetId={item.id}
         uri={item.uri}
@@ -450,7 +461,6 @@ export function HybridLibraryPickerScreen() {
         thumbPixelSize={thumbPixelSize}
         selected={selectedLibraryIds.has(item.id)}
         order={selectionOrderByKey.get(item.id)}
-        showImage={shouldShowLibraryImage(index)}
         onPress={onPressLibraryAsset}
       />
     ),
@@ -458,7 +468,6 @@ export function HybridLibraryPickerScreen() {
       onPressLibraryAsset,
       selectedLibraryIds,
       selectionOrderByKey,
-      shouldShowLibraryImage,
       thumbPixelSize,
       tileSize,
     ],
@@ -615,24 +624,12 @@ export function HybridLibraryPickerScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           extraData={gridExtraData}
-          initialNumToRender={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? INITIAL_GRID_ROWS : 18
-          }
-          maxToRenderPerBatch={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_RENDER_ROWS_PER_BATCH : 12
-          }
-          updateCellsBatchingPeriod={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED
-              ? DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS
-              : 50
-          }
-          windowSize={PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_WINDOW_SIZE : 5}
-          removeClippedSubviews={PROGRESSIVE_LIBRARY_PAINT_ENABLED}
-          onViewableItemsChanged={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED
-              ? onGridViewableItemsChanged
-              : undefined
-          }
+          initialNumToRender={LIBRARY_GRID_INITIAL_ROWS}
+          maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS}
+          updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
+          windowSize={LIBRARY_GRID_WINDOW_SIZE}
+          removeClippedSubviews={Platform.OS === "ios"}
+          onViewableItemsChanged={onGridViewableItemsChanged}
           viewabilityConfig={gridViewabilityConfig}
           ListFooterComponent={
             loadingPage ? (

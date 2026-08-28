@@ -31,16 +31,26 @@
 
 **Not in Phase B:** FlashList, Select Photos path (`InAppLibraryPickerScreen`), Maestro flow, native PhotoKit `targetSize` module.
 
-**Tuning knobs (Phase B defaults):**
+### Phase B scroll continuity (2026-08-28 follow-up)
 
-| Knob | Value | Notes |
-|------|-------|-------|
-| `DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE` | 6 | Indices unlocked per pump tick |
-| `DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS` | 32 | Pump + FlatList batching period |
-| `LIBRARY_THUMB_DECODE_CONCURRENCY` | 3 | Real PhotoKit/resize cap |
-| `LIBRARY_THUMB_MAX_PIXELS` | 384 | Long-edge cap for grid thumbs |
-| `LIBRARY_WARM_THUMB_COUNT` | 12 | Pre-decoded while on camera |
-| `GRID_WINDOW_SIZE` | 4 | FlatList recycle window (iOS) |
+| Change | File |
+|--------|------|
+| Central scroll tunables | `src/utils/libraryPickerPerf.ts` |
+| Priority decode queue + viewport prefetch API | `libraryThumbnailCache.ts` |
+| Sync memory peek on cell recycle | `useLibraryThumbnailUri.ts` |
+| Removed progressive paint gate (cache caps decode) | `HybridLibraryPickerScreen.tsx` |
+| Scroll-ahead prefetch on viewability + pagination | same |
+
+**Scroll continuity defaults** (`libraryPickerPerf.ts`):
+
+| Knob | Value | Purpose |
+|------|-------|---------|
+| `LIBRARY_GRID_WINDOW_SIZE` | 7 | Larger FlatList buffer |
+| `LIBRARY_GRID_BATCH_ROWS` | 3 | Faster row mount while scrolling |
+| `LIBRARY_SCROLL_LOOKAHEAD_ITEMS` | 15 | Prefetch ~5 rows ahead |
+| `LIBRARY_THUMB_DECODE_CONCURRENCY` | 5 | Parallel thumb builds |
+| `LIBRARY_THUMB_MAX_PIXELS` | 320 | Faster resize vs 384 |
+| `LIBRARY_WARM_THUMB_COUNT` | 24 | Warm full first screen |
 
 ---
 

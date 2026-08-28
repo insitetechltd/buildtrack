@@ -3,15 +3,21 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as MediaLibrary from "expo-media-library";
 
-/** Max concurrent PhotoKit → resize jobs for grid browse. */
-export const LIBRARY_THUMB_DECODE_CONCURRENCY = 3;
-/** In-memory LRU cap (disk entries may exceed until next trim). */
-export const LIBRARY_THUMB_LRU_MAX = 150;
-/** Upper bound on long-edge pixels for grid thumbs. */
-export const LIBRARY_THUMB_MAX_PIXELS = 384;
+import {
+  LIBRARY_THUMB_DECODE_CONCURRENCY,
+  LIBRARY_THUMB_LRU_MAX,
+  LIBRARY_THUMB_MAX_PIXELS,
+  LIBRARY_THUMB_PRIORITY_BACKGROUND,
+} from "./libraryPickerPerf";
 
 const THUMB_DIR_NAME = "library-thumbs";
-const THUMB_QUALITY = 0.72;
+const THUMB_QUALITY = 0.68;
+
+export {
+  LIBRARY_THUMB_DECODE_CONCURRENCY,
+  LIBRARY_THUMB_LRU_MAX,
+  LIBRARY_THUMB_MAX_PIXELS,
+} from "./libraryPickerPerf";
 
 export type LibraryThumbnailRequest = {
   assetId: string;
@@ -19,6 +25,8 @@ export type LibraryThumbnailRequest = {
   fallbackUri: string;
   /** Grid browse defaults false — do not block on iCloud during scroll. */
   shouldDownloadFromNetwork?: boolean;
+  /** Lower = higher priority in decode queue (viewport prefetch uses 0). */
+  priority?: number;
 };
 
 type CacheEntry = {
@@ -26,11 +34,18 @@ type CacheEntry = {
   lastAccess: number;
 };
 
+type QueueEntry = {
+  priority: number;
+  seq: number;
+  run: () => void;
+};
+
 const memoryCache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<string>>();
 
-let decodeQueue: Array<() => void> = [];
+let decodeQueue: QueueEntry[] = [];
 let activeDecodes = 0;
+let queueSeq = 0;
 
 function cacheKey(assetId: string, pixelSize: number): string {
   return `${assetId}@${pixelSize}`;
@@ -69,6 +84,13 @@ function trimMemoryCache(): void {
   }
 }
 
+function enqueueDecode(priority: number, run: () => void): void {
+  queueSeq += 1;
+  decodeQueue.push({ priority, seq: queueSeq, run });
+  decodeQueue.sort((a, b) => a.priority - b.priority || a.seq - b.seq);
+  runDecodeQueue();
+}
+
 function runDecodeQueue(): void {
   while (activeDecodes < LIBRARY_THUMB_DECODE_CONCURRENCY && decodeQueue.length > 0) {
     const next = decodeQueue.shift();
@@ -76,22 +98,20 @@ function runDecodeQueue(): void {
       return;
     }
     activeDecodes += 1;
-    next();
+    next.run();
   }
 }
 
-function scheduleDecode<T>(task: () => Promise<T>): Promise<T> {
+function scheduleDecode<T>(priority: number, task: () => Promise<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    const run = () => {
+    enqueueDecode(priority, () => {
       task()
         .then(resolve, reject)
         .finally(() => {
           activeDecodes -= 1;
           runDecodeQueue();
         });
-    };
-    decodeQueue.push(run);
-    runDecodeQueue();
+    });
   });
 }
 
@@ -100,6 +120,20 @@ function clampPixelSize(pixelSize: number): number {
     LIBRARY_THUMB_MAX_PIXELS,
     Math.max(64, Math.ceil(pixelSize)),
   );
+}
+
+/** Sync memory hit — instant paint when FlatList recycles a cell. */
+export function peekLibraryThumbnailUri(
+  assetId: string,
+  pixelSize: number,
+): string | null {
+  const key = cacheKey(assetId, clampPixelSize(pixelSize));
+  const cached = memoryCache.get(key);
+  if (!cached) {
+    return null;
+  }
+  cached.lastAccess = Date.now();
+  return cached.uri;
 }
 
 async function resolveLocalSourceUri(
@@ -136,28 +170,9 @@ async function buildThumbnailFile(
     return targetUri;
   }
 
-  const probe = await ImageManipulator.manipulateAsync(sourceUri, [], {
-    compress: 1,
-    format: ImageManipulator.SaveFormat.JPEG,
-  });
-
-  const actions: ImageManipulator.Action[] = [];
-  const longEdge = Math.max(probe.width, probe.height);
-  if (longEdge > pixelSize) {
-    if (probe.width >= probe.height) {
-      actions.push({
-        resize: { width: pixelSize },
-      });
-    } else {
-      actions.push({
-        resize: { height: pixelSize },
-      });
-    }
-  }
-
   const result = await ImageManipulator.manipulateAsync(
     sourceUri,
-    actions,
+    [{ resize: { width: pixelSize } }],
     {
       compress: THUMB_QUALITY,
       format: ImageManipulator.SaveFormat.JPEG,
@@ -203,7 +218,6 @@ async function decodeThumbnail(request: LibraryThumbnailRequest): Promise<string
 
 /**
  * Returns a cached `file://` thumb when possible; falls back to `ph://` / original URI.
- * Decode work is capped at {@link LIBRARY_THUMB_DECODE_CONCURRENCY}.
  */
 export async function requestLibraryThumbnail(
   request: LibraryThumbnailRequest,
@@ -222,11 +236,23 @@ export async function requestLibraryThumbnail(
     return existing;
   }
 
-  const promise = scheduleDecode(() => decodeThumbnail(request)).finally(() => {
-    inflight.delete(key);
-  });
+  const priority = request.priority ?? LIBRARY_THUMB_PRIORITY_BACKGROUND;
+  const promise = scheduleDecode(priority, () => decodeThumbnail(request)).finally(
+    () => {
+      inflight.delete(key);
+    },
+  );
   inflight.set(key, promise);
   return promise;
+}
+
+/** Queue viewport + scroll-ahead thumbs without awaiting (continuous scroll). */
+export function prefetchLibraryThumbnails(
+  requests: LibraryThumbnailRequest[],
+): void {
+  for (const request of requests) {
+    void requestLibraryThumbnail(request);
+  }
 }
 
 /** Drop in-memory LRU entries (disk cache preserved). Call on album switch. */

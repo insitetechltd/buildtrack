@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   Alert,
   Linking,
-  PixelRatio,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image as ExpoImage } from "expo-image";
@@ -18,7 +17,6 @@ import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPick
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import { LIBRARY_GRID_COLUMNS, LIBRARY_GRID_GAP } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
-import { computeLibraryThumbPixelSize } from "@/utils/libraryThumbnailCache";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
 import { useCaptureSessionStore } from "./sessionDraftStore";
@@ -50,14 +48,9 @@ export function HybridLibraryPickerScreen() {
     () => (width - LIBRARY_GRID_GAP * (LIBRARY_GRID_COLUMNS - 1)) / LIBRARY_GRID_COLUMNS,
     [width],
   );
-  const thumbPixelSize = useMemo(
-    () => computeLibraryThumbPixelSize(tileSize, PixelRatio.get()),
-    [tileSize],
-  );
 
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,
-    thumbPixelSize,
     consumeWarmPage: true,
   });
 

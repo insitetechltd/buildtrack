@@ -20,8 +20,8 @@ export const LIBRARY_THUMB_DECODE_CONCURRENCY = 5;
 export const LIBRARY_THUMB_LRU_MAX = 200;
 export const LIBRARY_THUMB_MAX_PIXELS = 320;
 
-/** Camera warm prefetch — first screen + one scroll batch. */
-export const LIBRARY_WARM_PAGE_SIZE = 36;
+/** Camera / app-wake warm prefetch — match initial grid page. */
+export const LIBRARY_WARM_PAGE_SIZE = 12;
 export const LIBRARY_WARM_THUMB_COUNT = 24;
 
 /** Priority decode: viewport tiles beat background warm/pump. */

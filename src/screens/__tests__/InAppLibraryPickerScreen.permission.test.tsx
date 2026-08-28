@@ -57,6 +57,7 @@ jest.mock("../../utils/draftMediaCache", () => ({
 import InAppLibraryPickerScreen, {
   ensureMediaLibraryAccess,
 } from "../InAppLibraryPickerScreen";
+import { invalidateMediaLibraryPermissionCache } from "../../utils/mediaLibraryPermission";
 
 const sampleAsset = {
   id: "asset-42",
@@ -67,6 +68,7 @@ const sampleAsset = {
 describe("ensureMediaLibraryAccess", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateMediaLibraryPermissionCache();
   });
 
   it("returns true when already granted without prompting", async () => {
@@ -92,6 +94,7 @@ describe("ensureMediaLibraryAccess", () => {
 describe("InAppLibraryPickerScreen permission gate", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateMediaLibraryPermissionCache();
     mockGetAlbumsAsync.mockResolvedValue([]);
     mockGetAssetsAsync.mockResolvedValue({
       assets: [sampleAsset],
@@ -150,6 +153,7 @@ describe("InAppLibraryPickerScreen permission gate", () => {
 describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    invalidateMediaLibraryPermissionCache();
     mockGetPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
     mockGetAlbumsAsync.mockResolvedValue([]);
     mockGetAssetsAsync.mockResolvedValue({

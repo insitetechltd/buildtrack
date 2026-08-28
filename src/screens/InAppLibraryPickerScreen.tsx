@@ -6,15 +6,13 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
-  useWindowDimensions,
-  PixelRatio,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import * as MediaLibrary from "expo-media-library";
 
-import { computeLibraryThumbPixelSize } from "@/utils/libraryThumbnailCache";
+import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
@@ -48,20 +46,17 @@ async function loadAssetsByIds(assetIds: string[]): Promise<MediaLibrary.Asset[]
   return assets;
 }
 
-/**
- * Ensure MediaLibrary access BEFORE mounting the library grid.
- */
-export async function ensureMediaLibraryAccess(): Promise<boolean> {
-  const current = await MediaLibrary.getPermissionsAsync();
-  if (current.granted) {
-    return true;
+function permissionPhaseFrom(permission: string | null): PermissionPhase {
+  if (permission === null) {
+    return "checking";
   }
-  if (!current.canAskAgain) {
-    return false;
+  if (permission === "granted") {
+    return "granted";
   }
-  const requested = await MediaLibrary.requestPermissionsAsync();
-  return requested.granted;
+  return "denied";
 }
+
+export { ensureMediaLibraryAccess };
 
 const IN_APP_THEME = {
   skeletonColor: "#E5E7EB",
@@ -80,12 +75,8 @@ export default function InAppLibraryPickerScreen({
   initiallySelectedPhotos = [],
 }: InAppLibraryPickerScreenProps) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const tileSize = (width - 2 * 2) / 3;
-  const thumbPixelSize = computeLibraryThumbPixelSize(tileSize, PixelRatio.get());
 
   const [isPinning, setIsPinning] = useState(false);
-  const [permissionPhase, setPermissionPhase] = useState<PermissionPhase>("checking");
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(
     () => new Map<string, number>(),
   );
@@ -97,13 +88,12 @@ export default function InAppLibraryPickerScreen({
     .filter(Boolean)
     .join("|");
 
-  const gridEnabled = permissionPhase === "granted";
-
   const albumPicker = useLibraryAlbumPicker({
-    enabled: gridEnabled,
-    thumbPixelSize,
-    consumeWarmPage: false,
+    enabled: true,
+    consumeWarmPage: true,
   });
+
+  const permissionPhase = permissionPhaseFrom(albumPicker.permission);
 
   const selectedIds = useMemo(
     () => new Set(selectionOrderByKey.keys()),
@@ -113,42 +103,36 @@ export default function InAppLibraryPickerScreen({
   const selectedCount = selectionOrderByKey.size;
 
   useEffect(() => {
+    if (albumPicker.permission !== "granted") {
+      return;
+    }
     let cancelled = false;
     (async () => {
-      const granted = await ensureMediaLibraryAccess();
-      if (cancelled) return;
-      if (!granted) {
-        setPermissionPhase("denied");
-        return;
-      }
-
       const assetIds = initiallySelectedPhotos
         .map((photo) => photo.mediaLibraryAssetId)
         .filter((id): id is string => Boolean(id));
 
-      if (assetIds.length > 0) {
-        const assets = await loadAssetsByIds(assetIds);
-        if (!cancelled && assets.length > 0) {
-          const restored = new Map<string, MediaLibrary.Asset>();
-          const next = new Map<string, number>();
-          assets.forEach((asset, index) => {
-            restored.set(asset.id, asset);
-            next.set(asset.id, index + 1);
-          });
-          restoredAssetsByIdRef.current = restored;
-          setSelectionOrderByKey(next);
-        }
+      if (assetIds.length === 0) {
+        return;
       }
 
-      if (!cancelled) {
-        setPermissionPhase("granted");
+      const assets = await loadAssetsByIds(assetIds);
+      if (!cancelled && assets.length > 0) {
+        const restored = new Map<string, MediaLibrary.Asset>();
+        const next = new Map<string, number>();
+        assets.forEach((asset, index) => {
+          restored.set(asset.id, asset);
+          next.set(asset.id, index + 1);
+        });
+        restoredAssetsByIdRef.current = restored;
+        setSelectionOrderByKey(next);
       }
     })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialAssetIdKey]);
+  }, [initialAssetIdKey, albumPicker.permission]);
 
   const onPressAsset = useCallback(
     (assetId: string) => {

@@ -20,6 +20,8 @@
 
 **Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos).
 
+**M-PERF-03 Phase A (2026-08-28):** Progressive library grid paint (`useProgressiveGridPaint` 3/48ms + skeletons) in PR #3 — **device proof pending** on iPhone via Metro reload. Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
+
 **`M-BILL-01` Closed (2026-08-27) — DEV MVP:** Catalog HK$160/400; human Checkout Starter; Extra people +1; invite caps; stripe-webhook empty-meters fix deployed. Close: `docs/superpowers/reports/2026-08-27-m-bill-01-close.md`.
 
 **CA→worker + `on_hold` policy Closed (2026-08-27):** Live DEV audit — CA already worker (rules + `deployable_seat` + enforce). Drop-`on_hold` migration **dormant** (keep CHECK slot). Close: `docs/superpowers/reports/2026-08-27-ca-worker-on-hold-dormant-close.md`.

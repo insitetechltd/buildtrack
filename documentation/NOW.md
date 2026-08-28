@@ -8,17 +8,21 @@
 
 **Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
+**Idle-parallel — picker lag TF:** JS cut committed (2× thumbs, page 18, defer albums, flatter first paint). Local EAS → TestFlight (remote autoIncrement past 199). Native FastFormat still later.
+
 ## Next (definitive)
 
 1. **`M-OPS-ENV-01`** — create empty PROD (say **start cutover**)
 2. App Store submit → Stripe **live** on PROD
 3. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
 
-**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01).
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01). **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 
 ## Recently closed / shipped this session
 
-**Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos).
+**Capture picker lag JS cut (2026-08-28, idle-parallel):** 2× inner RN `Image` + scale-up; `PAGE_SIZE=18`; `initialNumToRender=9`; defer `getAlbumsAsync` until album sheet. Default stays All photos. Native FastFormat = later TF.
+
+**Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos). TF199.
 
 **`M-BILL-01` Closed (2026-08-27) — DEV MVP:** Catalog HK$160/400; human Checkout Starter; Extra people +1; invite caps; stripe-webhook empty-meters fix deployed. Close: `docs/superpowers/reports/2026-08-27-m-bill-01-close.md`.
 
@@ -50,3 +54,4 @@
 ## Parked notes
 
 Optional AUTHZ L2 matrix gaps (F05/F06 etc.) = backlog, not reopen.
+**M-CAPTURE-01 / M-CAPTURE-02** = tabled; no plan until product GO after picker-lag TF feedback.

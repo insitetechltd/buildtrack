@@ -18,10 +18,11 @@ import { Image as ExpoImage } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
+import { libraryThumbDecode } from "./libraryThumbDecode";
 import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 
-const PAGE_SIZE = 36;
+const PAGE_SIZE = 18;
 const COLUMNS = 3;
 const GAP = 2;
 
@@ -42,6 +43,8 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId,
   uri,
   tileSize,
+  decodeLayout,
+  decodeScale,
   selected,
   order,
   onPress,
@@ -49,20 +52,30 @@ const LibraryGridTile = memo(function LibraryGridTile({
   assetId: string;
   uri: string;
   tileSize: number;
+  decodeLayout: number;
+  decodeScale: number;
   selected: boolean;
   order: number | undefined;
   onPress: (assetId: string) => void;
 }) {
+  const offset = (tileSize - decodeLayout) / 2;
   return (
     <Pressable
       onPress={() => onPress(assetId)}
-      style={{ width: tileSize, height: tileSize }}
+      style={{ width: tileSize, height: tileSize, overflow: "hidden" }}
     >
-      {/* RN Image + explicit size: expo-image 2.2 loads ph:// at PHImageManagerMaximumSize. */}
+      {/* Smaller Image frame → PhotoKit targetSize = layout × scale (~2×). Scale up to fill the tile. */}
       <Image
         source={{ uri }}
         resizeMode="cover"
-        style={{ width: tileSize, height: tileSize }}
+        style={{
+          position: "absolute",
+          width: decodeLayout,
+          height: decodeLayout,
+          left: offset,
+          top: offset,
+          transform: [{ scale: decodeScale }],
+        }}
       />
       {selected && order != null ? (
         <View
@@ -94,6 +107,8 @@ export function HybridLibraryPickerScreen() {
 
   const [permission, setPermission] = useState<string | null>(null);
   const [albums, setAlbums] = useState<AlbumChoice[]>([]);
+  const [albumsLoading, setAlbumsLoading] = useState(false);
+  const albumsLoadedRef = useRef(false);
   const [selectedAlbumId, setSelectedAlbumId] =
     useState<string>(ALL_PHOTOS_ALBUM_ID);
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
@@ -111,6 +126,7 @@ export function HybridLibraryPickerScreen() {
     () => (width - GAP * (COLUMNS - 1)) / COLUMNS,
     [width],
   );
+  const thumbDecode = useMemo(() => libraryThumbDecode(tileSize), [tileSize]);
 
   /** Session strip uses same cell size as the 3-column library grid. */
   const sessionTileSize = tileSize;
@@ -182,6 +198,7 @@ export function HybridLibraryPickerScreen() {
   }, []);
 
   const loadAlbums = useCallback(async () => {
+    setAlbumsLoading(true);
     try {
       const list = await MediaLibrary.getAlbumsAsync({
         includeSmartAlbums: true,
@@ -209,6 +226,8 @@ export function HybridLibraryPickerScreen() {
       setAlbums([
         { id: ALL_PHOTOS_ALBUM_ID, title: "All photos", assetCount: 0 },
       ]);
+    } finally {
+      setAlbumsLoading(false);
     }
   }, []);
 
@@ -252,12 +271,11 @@ export function HybridLibraryPickerScreen() {
     (async () => {
       const granted = await ensurePermission();
       if (cancelled || !granted) return;
-      await loadAlbums();
     })();
     return () => {
       cancelled = true;
     };
-  }, [ensurePermission, loadAlbums]);
+  }, [ensurePermission]);
 
   useEffect(() => {
     if (permission !== "granted") {
@@ -285,6 +303,14 @@ export function HybridLibraryPickerScreen() {
     setAlbumPickerOpen(false);
     setSelectedAlbumId(albumId);
   }, []);
+
+  const openAlbumPicker = useCallback(() => {
+    setAlbumPickerOpen(true);
+    if (!albumsLoadedRef.current) {
+      albumsLoadedRef.current = true;
+      void loadAlbums();
+    }
+  }, [loadAlbums]);
 
   const onPressLibraryAsset = useCallback(
     (assetId: string) => {
@@ -472,7 +498,7 @@ export function HybridLibraryPickerScreen() {
 
       <Pressable
         testID="capture-session__album_picker"
-        onPress={() => setAlbumPickerOpen(true)}
+        onPress={openAlbumPicker}
         style={styles.albumRow}
         accessibilityRole="button"
         accessibilityLabel={`Album ${selectedAlbumTitle}`}
@@ -493,9 +519,9 @@ export function HybridLibraryPickerScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           extraData={selectionOrderByKey}
-          initialNumToRender={18}
-          maxToRenderPerBatch={12}
-          windowSize={5}
+          initialNumToRender={9}
+          maxToRenderPerBatch={6}
+          windowSize={3}
           removeClippedSubviews
           ListFooterComponent={
             loadingPage ? (
@@ -520,6 +546,8 @@ export function HybridLibraryPickerScreen() {
               assetId={item.id}
               uri={item.uri}
               tileSize={tileSize}
+              decodeLayout={thumbDecode.layout}
+              decodeScale={thumbDecode.scale}
               selected={selectedLibraryIds.has(item.id)}
               order={selectionOrderByKey.get(item.id)}
               onPress={onPressLibraryAsset}
@@ -549,6 +577,16 @@ export function HybridLibraryPickerScreen() {
             data={albums}
             keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+            ListEmptyComponent={
+              albumsLoading ? (
+                <ActivityIndicator
+                  style={{ marginVertical: 24 }}
+                  color="#08576E"
+                />
+              ) : (
+                <Text style={styles.emptyAlbum}>No albums</Text>
+              )
+            }
             renderItem={({ item }) => {
               const active = item.id === selectedAlbumId;
               return (

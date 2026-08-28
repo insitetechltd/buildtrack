@@ -1,8 +1,7 @@
 import * as MediaLibrary from "expo-media-library";
 
-import {
-  LIBRARY_WARM_PAGE_SIZE,
-} from "./libraryPickerPerf";
+import { ensureMediaLibraryChecked } from "./mediaLibraryPermission";
+import { LIBRARY_WARM_PAGE_SIZE } from "./libraryPickerPerf";
 
 type WarmSnapshot = {
   assets: MediaLibrary.Asset[];
@@ -16,9 +15,8 @@ let warmRun: Promise<void> | null = null;
 export { LIBRARY_WARM_PAGE_SIZE } from "./libraryPickerPerf";
 
 /**
- * Prefetch first-page metadata from the camera screen so hybrid library open
- * skips the initial getAssetsAsync wait. Grid tiles use system ph:// thumbs —
- * no ImageManipulator warm decode.
+ * Prefetch first-page metadata (no permission prompt). Used on app wake and from
+ * CaptureSession camera so library grids can skip the initial getAssetsAsync wait.
  */
 export function warmLibraryFirstPage(): Promise<void> {
   if (warmRun) {
@@ -27,13 +25,8 @@ export function warmLibraryFirstPage(): Promise<void> {
 
   warmRun = (async () => {
     try {
-      const current = await MediaLibrary.getPermissionsAsync();
-      let granted = current.granted;
-      if (!granted && current.canAskAgain) {
-        const requested = await MediaLibrary.requestPermissionsAsync();
-        granted = requested.granted;
-      }
-      if (!granted) {
+      const permission = await ensureMediaLibraryChecked();
+      if (!permission.granted) {
         return;
       }
 

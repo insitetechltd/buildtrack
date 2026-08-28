@@ -1,5 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
-import * as MediaLibrary from "expo-media-library";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { clearLibraryThumbnailMemoryCache } from "@/utils/libraryThumbnailCache";
 import {
@@ -27,6 +26,12 @@ export function useLibraryAlbumPicker({
     selectedAlbumId,
     consumeWarmPage,
   });
+
+  useEffect(() => {
+    if (albumPickerOpen && enabled) {
+      void grid.loadAlbumsIfNeeded();
+    }
+  }, [albumPickerOpen, enabled, grid.loadAlbumsIfNeeded]);
 
   const selectedAlbumTitle = useMemo(() => {
     const match = grid.albums.find((a) => a.id === selectedAlbumId);

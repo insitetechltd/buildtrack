@@ -4,6 +4,8 @@ import * as MediaLibrary from "expo-media-library";
 export const ALL_PHOTOS_ALBUM_ID = "__all__";
 
 export const LIBRARY_PAGE_SIZE = 36;
+/** First grid paint — smaller than scroll pages for faster time-to-first-tiles. */
+export const LIBRARY_INITIAL_PAGE_SIZE = 12;
 export const LIBRARY_GRID_COLUMNS = 3;
 export const LIBRARY_GRID_GAP = 2;
 

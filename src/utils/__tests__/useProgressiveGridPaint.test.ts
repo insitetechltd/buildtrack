@@ -1,9 +1,6 @@
 import { act, renderHook } from "@testing-library/react-native";
 
-import {
-  DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
-  useProgressiveGridPaint,
-} from "../useProgressiveGridPaint";
+import { useProgressiveGridPaint } from "../useProgressiveGridPaint";
 
 describe("useProgressiveGridPaint", () => {
   beforeEach(() => {
@@ -34,7 +31,7 @@ describe("useProgressiveGridPaint", () => {
   it("resets when resetKey changes", () => {
     const { result, rerender } = renderHook(
       ({ resetKey }: { resetKey: string }) =>
-        useProgressiveGridPaint({ itemCount: 9, resetKey }),
+        useProgressiveGridPaint({ itemCount: 9, resetKey, batchSize: 3 }),
       { initialProps: { resetKey: "album-a" } },
     );
 
@@ -52,7 +49,7 @@ describe("useProgressiveGridPaint", () => {
     const { result } = renderHook(() =>
       useProgressiveGridPaint({
         itemCount: 30,
-        batchSize: DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
+        batchSize: 3,
         columns: 3,
         lookaheadRows: 2,
         initialFillCount: 9,

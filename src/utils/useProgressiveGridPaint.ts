@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export const DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE = 3;
+/** Phase B tuned: faster first paint; decode concurrency capped in libraryThumbnailCache. */
+export const DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE = 6;
 /** Intentionally shared with FlatList `updateCellsBatchingPeriod` in library grids. */
-export const DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS = 48;
+export const DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS = 32;
 
 export type UseProgressiveGridPaintOptions = {
   /** Total grid items currently rendered. */

@@ -117,10 +117,6 @@ export function useProgressiveGridPaint({
     pumpTimerRef.current = setInterval(() => {
       setMaxUnlockedIndex((current) => {
         if (current >= itemCount - 1) {
-          if (pumpTimerRef.current) {
-            clearInterval(pumpTimerRef.current);
-            pumpTimerRef.current = null;
-          }
           return current;
         }
         return Math.min(current + batchSize, itemCount - 1);
@@ -134,6 +130,16 @@ export function useProgressiveGridPaint({
       }
     };
   }, [batchSize, intervalMs, itemCount, resetKey]);
+
+  useEffect(() => {
+    if (itemCount <= 0 || maxUnlockedIndex < itemCount - 1) {
+      return;
+    }
+    if (pumpTimerRef.current) {
+      clearInterval(pumpTimerRef.current);
+      pumpTimerRef.current = null;
+    }
+  }, [itemCount, maxUnlockedIndex]);
 
   useEffect(() => {
     if (maxUnlockedIndex >= initialUnlockTarget) {
@@ -160,13 +166,17 @@ export function useProgressiveGridPaint({
       const lookahead = Math.max(0, lookaheadRows) * Math.max(1, columns);
       setPriorityIndices((current) => {
         const next = new Set(current);
+        let changed = false;
         for (const index of indices) {
           const upper = Math.min(itemCount - 1, index + lookahead);
           for (let cursor = index; cursor <= upper; cursor += 1) {
-            next.add(cursor);
+            if (!next.has(cursor)) {
+              next.add(cursor);
+              changed = true;
+            }
           }
         }
-        return next;
+        return changed ? next : current;
       });
     },
     [columns, initialFillComplete, itemCount, lookaheadRows],

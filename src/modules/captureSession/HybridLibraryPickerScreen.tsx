@@ -31,9 +31,11 @@ import {
 const PAGE_SIZE = 36;
 const COLUMNS = 3;
 const GAP = 2;
-/** First paint: 3 rows × 3 cols — progressive pump adds 3 more every tick. */
-const INITIAL_GRID_RENDER = COLUMNS * 3;
-const GRID_RENDER_BATCH = DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE;
+/** FlatList `initialNumToRender` counts rows when numColumns > 1. */
+const INITIAL_GRID_ROWS = 3;
+const INITIAL_GRID_ITEM_FILL = INITIAL_GRID_ROWS * COLUMNS;
+/** One FlatList row per pump tick (3 items). */
+const GRID_RENDER_ROWS_PER_BATCH = 1;
 const VIEWPORT_LOOKAHEAD_ROWS = 2;
 /** PhotoKit progressive paint is iOS-specific; Android shows tiles immediately. */
 const PROGRESSIVE_LIBRARY_PAINT_ENABLED = Platform.OS === "ios";
@@ -191,12 +193,12 @@ export function HybridLibraryPickerScreen() {
   const { shouldDecodeIndex, onViewableIndicesChanged, maxUnlockedIndex } =
     useProgressiveGridPaint({
       itemCount: assets.length,
-      batchSize: GRID_RENDER_BATCH,
+      batchSize: DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
       intervalMs: DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
       resetKey: selectedAlbumId,
       columns: COLUMNS,
       lookaheadRows: VIEWPORT_LOOKAHEAD_ROWS,
-      initialFillCount: INITIAL_GRID_RENDER,
+      initialFillCount: INITIAL_GRID_ITEM_FILL,
     });
 
   const onGridViewableItemsChanged = useCallback(
@@ -401,6 +403,27 @@ export function HybridLibraryPickerScreen() {
     }
   }, [onComplete, selectedCount]);
 
+  const renderLibraryGridItem = useCallback(
+    ({ item, index }: { item: MediaLibrary.Asset; index: number }) => (
+      <LibraryGridTile
+        assetId={item.id}
+        uri={item.uri}
+        tileSize={tileSize}
+        selected={selectedLibraryIds.has(item.id)}
+        order={selectionOrderByKey.get(item.id)}
+        showImage={shouldShowLibraryImage(index)}
+        onPress={onPressLibraryAsset}
+      />
+    ),
+    [
+      onPressLibraryAsset,
+      selectedLibraryIds,
+      selectionOrderByKey,
+      shouldShowLibraryImage,
+      tileSize,
+    ],
+  );
+
   if (permission === "denied") {
     return (
       <View
@@ -553,10 +576,10 @@ export function HybridLibraryPickerScreen() {
           onEndReachedThreshold={0.4}
           extraData={gridExtraData}
           initialNumToRender={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? INITIAL_GRID_RENDER : 18
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? INITIAL_GRID_ROWS : 18
           }
           maxToRenderPerBatch={
-            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_RENDER_BATCH : 12
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_RENDER_ROWS_PER_BATCH : 12
           }
           updateCellsBatchingPeriod={
             PROGRESSIVE_LIBRARY_PAINT_ENABLED
@@ -589,17 +612,7 @@ export function HybridLibraryPickerScreen() {
             gap: GAP,
             paddingBottom: insets.bottom + 24,
           }}
-          renderItem={({ item, index }) => (
-            <LibraryGridTile
-              assetId={item.id}
-              uri={item.uri}
-              tileSize={tileSize}
-              selected={selectedLibraryIds.has(item.id)}
-              order={selectionOrderByKey.get(item.id)}
-              showImage={shouldShowLibraryImage(index)}
-              onPress={onPressLibraryAsset}
-            />
-          )}
+          renderItem={renderLibraryGridItem}
         />
       )}
 

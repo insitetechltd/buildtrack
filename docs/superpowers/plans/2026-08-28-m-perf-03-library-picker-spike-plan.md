@@ -1,7 +1,7 @@
 # M-PERF-03 spike — progressive library grid paint
 
 **Milestone:** `WS-PERF / M-PERF-03`  
-**Status:** Phase A shipped (2026-08-28); **Phase B shipped (2026-08-28)** — device proof pending  
+**Status:** Phase C shipped (2026-08-28) — Select Photos port + FlashList; device proof pending  
 **Related:** `M-PERF-01` remote evidence thumbs (tabled Phase B — see overlap § below)
 
 ---
@@ -156,7 +156,18 @@ Maestro: no dedicated hybrid-library flow yet — headed manual script above is 
 
 ---
 
-## Phase B candidates (library — partial)
+## Phase C delivered (2026-08-28)
+
+| Change | File |
+|--------|------|
+| Shared media library module | `src/modules/mediaLibrary/*` |
+| FlashList grid + thumb cache | `LibraryPhotoGrid.tsx` |
+| Select Photos owned grid (replaces third-party picker) | `InAppLibraryPickerScreen.tsx` |
+| Hybrid grid uses shared module | `HybridLibraryPickerScreen.tsx` |
+| Sort fix: `creationTime` DESC | `libraryAlbumConstants.ts` |
+| `@shopify/flash-list` dependency | `package.json` |
+
+**Deferred:** Remove orphan `expo-image-multiple-picker` dep; Maestro tile testIDs now available (`in-app-library__tile_${assetId}`).
 
 - ~~PhotoKit explicit `targetSize` or LRU `file://` thumb cache~~ **Done (ImageManipulator resize cache)**
 - ~~Warm `getAssetsAsync` first page on camera screen~~ **Done**

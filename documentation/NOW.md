@@ -20,9 +20,9 @@
 
 **Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos).
 
-**M-PERF-03 Phase B (2026-08-28):** LRU resized `file://` thumb cache + camera warm prefetch + paint 6/32ms — PR #3 branch; **device proof pending** (Metro reload). Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
+**M-PERF-03 Phase C (2026-08-28):** Select Photos port + FlashList shared grid (`src/modules/mediaLibrary/`). Sort = creationTime. Device proof pending.
 
-**M-PERF-03 Phase A (2026-08-28):** Progressive library grid paint (`useProgressiveGridPaint` + skeletons) in PR #3.
+**M-PERF-03 scroll continuity (2026-08-28):** Viewport prefetch + priority decode queue. Tunables: `libraryPickerPerf.ts`.
 
 **`M-BILL-01` Closed (2026-08-27) — DEV MVP:** Catalog HK$160/400; human Checkout Starter; Extra people +1; invite caps; stripe-webhook empty-meters fix deployed. Close: `docs/superpowers/reports/2026-08-27-m-bill-01-close.md`.
 

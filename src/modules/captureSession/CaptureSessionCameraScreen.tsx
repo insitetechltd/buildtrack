@@ -63,7 +63,7 @@ export function CaptureSessionCameraScreen() {
         const page = await MediaLibrary.getAssetsAsync({
           first: 1,
           mediaType: MediaLibrary.MediaType.photo,
-          sortBy: [[MediaLibrary.SortBy.modificationTime, false]],
+          sortBy: [[MediaLibrary.SortBy.creationTime, false]],
         });
         if (!cancelled && page.assets[0]?.uri) {
           setLibraryThumbUri(page.assets[0].uri);

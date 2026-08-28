@@ -4,63 +4,58 @@ import { act, render, waitFor, fireEvent } from "@testing-library/react-native";
 const mockGetPermissionsAsync = jest.fn();
 const mockRequestPermissionsAsync = jest.fn();
 const mockGetAssetInfoAsync = jest.fn();
+const mockGetAssetsAsync = jest.fn();
+const mockGetAlbumsAsync = jest.fn();
 const mockPinDraftMedia = jest.fn(async (uri: string) => `pinned:${uri}`);
-const mockImagePicker = jest.fn(() => null);
 
 jest.mock("expo-media-library", () => ({
+  SortBy: {
+    creationTime: "creationTime",
+    modificationTime: "modificationTime",
+  },
+  MediaType: { photo: "photo" },
   getPermissionsAsync: (...args: unknown[]) => mockGetPermissionsAsync(...args),
-  requestPermissionsAsync: (...args: unknown[]) => mockRequestPermissionsAsync(...args),
+  requestPermissionsAsync: (...args: unknown[]) =>
+    mockRequestPermissionsAsync(...args),
   getAssetInfoAsync: (...args: unknown[]) => mockGetAssetInfoAsync(...args),
+  getAssetsAsync: (...args: unknown[]) => mockGetAssetsAsync(...args),
+  getAlbumsAsync: (...args: unknown[]) => mockGetAlbumsAsync(...args),
 }));
 
-jest.mock("expo-image-multiple-picker", () => ({
-  ImagePicker: (props: Record<string, unknown>) => {
-    mockImagePicker(props);
-    const React = require("react");
-    const { View, Text, Pressable } = require("react-native");
-    const theme = props.theme as any;
-    const headerEl =
-      theme && typeof theme.header === "function"
-        ? theme.header({
-            view: "gallery",
-            imagesPicked: 0,
-            multiple: true,
-            picked: false,
-            noAlbums: true,
-            goToAlbum: () => {},
-            save: () => {},
-          })
-        : null;
-    return React.createElement(
-      View,
-      { testID: "mock-image-picker" },
-      headerEl,
-      React.createElement(Text, null, "picker-mounted"),
-      React.createElement(Pressable, {
-        testID: "mock-image-picker-save",
-        onPress: () => {
-          if (typeof props.onSave === "function") {
-            props.onSave([
-              {
-                id: "asset-42",
-                uri: "ph://asset-42",
-                filename: "site.jpg",
-              },
-            ]);
-          }
-        },
-      }),
-      React.createElement(Pressable, {
-        testID: "mock-image-picker-cancel",
-        onPress: () => {
-          if (typeof props.onCancel === "function") {
-            props.onCancel();
-          }
-        },
-      }),
-    );
-  },
+jest.mock("@shopify/flash-list", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  return {
+    FlashList: ({ ListHeaderComponent, ListFooterComponent }: any) =>
+      React.createElement(
+        View,
+        { testID: "mock-flash-list" },
+        ListHeaderComponent,
+        ListFooterComponent,
+      ),
+  };
+});
+
+jest.mock("@/modules/mediaLibrary/LibraryAlbumPickerModal", () => ({
+  LibraryAlbumPickerModal: () => null,
 }));
+
+jest.mock("@/modules/mediaLibrary/LibraryPhotoGrid", () => {
+  const React = require("react");
+  const { View, Pressable } = require("react-native");
+  return {
+    LibraryPhotoGrid: ({ ListHeaderComponent, onPressAsset }: any) =>
+      React.createElement(
+        View,
+        { testID: "in-app-library__grid" },
+        ListHeaderComponent,
+        React.createElement(Pressable, {
+          testID: "in-app-library__tile_asset-42",
+          onPress: () => onPressAsset?.("asset-42"),
+        }),
+      ),
+  };
+});
 
 jest.mock("expo-status-bar", () => ({ StatusBar: () => null }));
 jest.mock("@expo/vector-icons", () => ({
@@ -76,6 +71,12 @@ jest.mock("../../utils/draftMediaCache", () => ({
 import InAppLibraryPickerScreen, {
   ensureMediaLibraryAccess,
 } from "../InAppLibraryPickerScreen";
+
+const sampleAsset = {
+  id: "asset-42",
+  uri: "ph://asset-42",
+  filename: "site.jpg",
+};
 
 describe("ensureMediaLibraryAccess", () => {
   beforeEach(() => {
@@ -105,9 +106,15 @@ describe("ensureMediaLibraryAccess", () => {
 describe("InAppLibraryPickerScreen permission gate", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetAlbumsAsync.mockResolvedValue([]);
+    mockGetAssetsAsync.mockResolvedValue({
+      assets: [sampleAsset],
+      endCursor: "cursor",
+      hasNextPage: false,
+    });
   });
 
-  it("does not mount ImagePicker until MediaLibrary permission is granted", async () => {
+  it("does not mount library grid until MediaLibrary permission is granted", async () => {
     let resolveRequest: (value: { granted: boolean }) => void = () => {};
     mockGetPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: true });
     mockRequestPermissionsAsync.mockImplementation(
@@ -122,8 +129,7 @@ describe("InAppLibraryPickerScreen permission gate", () => {
     );
 
     expect(getByTestId("in-app-library__loading")).toBeTruthy();
-    expect(queryByTestId("mock-image-picker")).toBeNull();
-    expect(mockImagePicker).not.toHaveBeenCalled();
+    expect(queryByTestId("in-app-library__grid")).toBeNull();
 
     await waitFor(() => {
       expect(mockRequestPermissionsAsync).toHaveBeenCalled();
@@ -134,7 +140,7 @@ describe("InAppLibraryPickerScreen permission gate", () => {
     });
 
     await waitFor(() => {
-      expect(getByTestId("mock-image-picker")).toBeTruthy();
+      expect(getByTestId("in-app-library__grid")).toBeTruthy();
     });
     expect(getByTestId("in-app-library__screen")).toBeTruthy();
   });
@@ -148,7 +154,7 @@ describe("InAppLibraryPickerScreen permission gate", () => {
     );
 
     expect(await findByTestId("in-app-library__permission_denied")).toBeTruthy();
-    expect(queryByTestId("mock-image-picker")).toBeNull();
+    expect(queryByTestId("in-app-library__grid")).toBeNull();
 
     fireEvent.press(await findByTestId("in-app-library__permission_cancel"));
     expect(onCancel).toHaveBeenCalled();
@@ -159,11 +165,15 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetPermissionsAsync.mockResolvedValue({ granted: true, canAskAgain: true });
+    mockGetAlbumsAsync.mockResolvedValue([]);
+    mockGetAssetsAsync.mockResolvedValue({
+      assets: [sampleAsset],
+      endCursor: "cursor",
+      hasNextPage: false,
+    });
     mockGetAssetInfoAsync.mockResolvedValue({
-      id: "asset-42",
-      uri: "ph://asset-42",
+      ...sampleAsset,
       localUri: "file:///tmp/site.jpg",
-      filename: "site.jpg",
     });
   });
 
@@ -173,9 +183,13 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
       <InAppLibraryPickerScreen onCancel={jest.fn()} onSave={onSave} />,
     );
 
-    await findByTestId("mock-image-picker");
+    await findByTestId("in-app-library__grid");
+    await waitFor(() => {
+      expect(mockGetAssetsAsync).toHaveBeenCalled();
+    });
+    fireEvent.press(await findByTestId("in-app-library__tile_asset-42"));
     await act(async () => {
-      fireEvent.press(await findByTestId("mock-image-picker-save"));
+      fireEvent.press(await findByTestId("in-app-library__accept"));
     });
 
     await waitFor(() => {

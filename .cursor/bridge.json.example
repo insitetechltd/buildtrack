@@ -1,0 +1,6 @@
+{
+  "permissionDefault": "allow-once",
+  "askQuestionDefault": "skipped",
+  "createPlanDefault": "accepted",
+  "bindLocalhostOnly": true
+}

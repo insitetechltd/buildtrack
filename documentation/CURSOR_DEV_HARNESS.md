@@ -109,6 +109,7 @@ npm run validate:local:confidence  # local confidence wrapper
 ## Related
 
 - Handoff packet (Trae exit context): `cursor-handoff-2026-08-08.md`
+- **Local Cursor bridge:** `documentation/CURSOR_LOCAL_BRIDGE.md` — command desktop agent via HTTP/CLI (ACP)
 - Testing: `TESTING_STRATEGY.md`, `documentation/MAESTRO_LOCAL_SETUP.md`
 - Docs governance: `documentation/SOURCE_OF_TRUTH.md`
 - Portable seed: `bash ~/.cursor/skills/solo-dev-harness/scripts/seed-project.sh <repo>`

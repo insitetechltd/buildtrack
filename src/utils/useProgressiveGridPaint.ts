@@ -16,6 +16,12 @@ export type UseProgressiveGridPaintOptions = {
   columns?: number;
   /** Extra rows beyond the viewport to eagerly unlock while scrolling. */
   lookaheadRows?: number;
+  /**
+   * Indices 0..initialFillCount-1 unlock via the pump only until complete.
+   * Viewport bypass is ignored until then so FlatList's first viewability
+   * callback does not decode the whole above-the-fold grid at once.
+   */
+  initialFillCount?: number;
 };
 
 export type UseProgressiveGridPaintResult = {
@@ -25,11 +31,14 @@ export type UseProgressiveGridPaintResult = {
   onViewableIndicesChanged: (indices: number[]) => void;
   /** Highest index unlocked by the progressive pump (diagnostics / tests). */
   maxUnlockedIndex: number;
+  /** Pump finished unlocking the configured initial above-the-fold window. */
+  initialFillComplete: boolean;
 };
 
 /**
  * Spreads thumbnail decode work across frames for device photo library grids.
- * Viewport indices always decode immediately so fast scroll does not show blanks.
+ * Viewport bypass activates only after the initial fill window completes so
+ * fast scroll still gets lookahead without defeating the first-paint cadence.
  */
 export function useProgressiveGridPaint({
   itemCount,
@@ -38,16 +47,25 @@ export function useProgressiveGridPaint({
   resetKey = "",
   columns = 3,
   lookaheadRows = 2,
+  initialFillCount = batchSize * 3,
 }: UseProgressiveGridPaintOptions): UseProgressiveGridPaintResult {
+  const initialUnlockTarget = Math.max(
+    0,
+    Math.min(initialFillCount - 1, Math.max(itemCount - 1, 0)),
+  );
   const initialUnlock = Math.max(0, Math.min(batchSize - 1, itemCount - 1));
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(initialUnlock);
   const [priorityIndices, setPriorityIndices] = useState<Set<number>>(() => new Set());
+  const [initialFillComplete, setInitialFillComplete] = useState(
+    () => itemCount > 0 && initialUnlock >= initialUnlockTarget,
+  );
   const pumpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setMaxUnlockedIndex(Math.max(0, Math.min(batchSize - 1, Math.max(itemCount - 1, 0))));
     setPriorityIndices(new Set());
-  }, [batchSize, itemCount, resetKey]);
+    setInitialFillComplete(itemCount > 0 && initialUnlock >= initialUnlockTarget);
+  }, [batchSize, initialUnlock, initialUnlockTarget, itemCount, resetKey]);
 
   useEffect(() => {
     if (pumpTimerRef.current) {
@@ -80,6 +98,12 @@ export function useProgressiveGridPaint({
     };
   }, [batchSize, intervalMs, itemCount, resetKey]);
 
+  useEffect(() => {
+    if (maxUnlockedIndex >= initialUnlockTarget) {
+      setInitialFillComplete(true);
+    }
+  }, [initialUnlockTarget, maxUnlockedIndex]);
+
   const shouldDecodeIndex = useCallback(
     (index: number) => {
       if (index < 0 || index >= itemCount) {
@@ -92,7 +116,7 @@ export function useProgressiveGridPaint({
 
   const onViewableIndicesChanged = useCallback(
     (indices: number[]) => {
-      if (indices.length === 0) {
+      if (indices.length === 0 || !initialFillComplete) {
         return;
       }
 
@@ -108,12 +132,13 @@ export function useProgressiveGridPaint({
         return next;
       });
     },
-    [columns, itemCount, lookaheadRows],
+    [columns, initialFillComplete, itemCount, lookaheadRows],
   );
 
   return {
     shouldDecodeIndex,
     onViewableIndicesChanged,
     maxUnlockedIndex,
+    initialFillComplete,
   };
 }

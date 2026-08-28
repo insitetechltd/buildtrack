@@ -48,23 +48,36 @@ describe("useProgressiveGridPaint", () => {
     expect(result.current.shouldDecodeIndex(3)).toBe(false);
   });
 
-  it("prioritizes viewport indices immediately", () => {
+  it("ignores viewport until the initial above-the-fold fill completes", () => {
     const { result } = renderHook(() =>
       useProgressiveGridPaint({
         itemCount: 30,
         batchSize: DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
         columns: 3,
         lookaheadRows: 2,
+        initialFillCount: 9,
       }),
     );
 
-    expect(result.current.shouldDecodeIndex(20)).toBe(false);
+    expect(result.current.initialFillComplete).toBe(false);
+    expect(result.current.shouldDecodeIndex(8)).toBe(false);
 
     act(() => {
       result.current.onViewableIndicesChanged([18]);
     });
 
-    // index 18 + 2 rows * 3 cols = up to 24
+    expect(result.current.shouldDecodeIndex(20)).toBe(false);
+
+    act(() => {
+      jest.advanceTimersByTime(200);
+    });
+
+    expect(result.current.initialFillComplete).toBe(true);
+
+    act(() => {
+      result.current.onViewableIndicesChanged([18]);
+    });
+
     expect(result.current.shouldDecodeIndex(20)).toBe(true);
     expect(result.current.shouldDecodeIndex(24)).toBe(true);
     expect(result.current.shouldDecodeIndex(25)).toBe(false);

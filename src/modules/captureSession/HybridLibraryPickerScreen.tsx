@@ -187,13 +187,14 @@ export function HybridLibraryPickerScreen() {
 
   const { shouldDecodeIndex, onViewableIndicesChanged, maxUnlockedIndex } =
     useProgressiveGridPaint({
-    itemCount: assets.length,
-    batchSize: GRID_RENDER_BATCH,
-    intervalMs: DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
-    resetKey: selectedAlbumId,
-    columns: COLUMNS,
-    lookaheadRows: VIEWPORT_LOOKAHEAD_ROWS,
-  });
+      itemCount: assets.length,
+      batchSize: GRID_RENDER_BATCH,
+      intervalMs: DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
+      resetKey: selectedAlbumId,
+      columns: COLUMNS,
+      lookaheadRows: VIEWPORT_LOOKAHEAD_ROWS,
+      initialFillCount: INITIAL_GRID_RENDER,
+    });
 
   const onGridViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken[] }) => {

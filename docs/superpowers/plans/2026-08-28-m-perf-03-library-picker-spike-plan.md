@@ -59,6 +59,20 @@ On iPhone:
 
 **Pass bar (subjective until instrumented):** first row of real thumbs visible &lt; ~500ms; grid feels “alive” vs frozen white flash.
 
+### Device A/B protocol (Gate A validation critique)
+
+Record screen video + note timings on the **same iPhone / album / permission mode**:
+
+| Metric | How to measure |
+|--------|----------------|
+| T0 skeleton | Library tap → gray tiles visible |
+| T1 first 3 thumbs | Library tap → 3 real photos |
+| T2 first 9 thumbs | Library tap → 9 real photos |
+
+Run ≥5 cold (force-quit between) and ≥5 warm trials; report **median and worst**. Alternate against TF200/baseline if still available. iCloud-only + limited-library = explicit pass or deferred note.
+
+**Note:** progressive paint throttles URI binding (3/48ms); it does not guarantee PhotoKit decode concurrency without a completion-aware queue (Phase B candidate).
+
 ### Option B — TestFlight build
 
 Only needed if you **don't** have a dev client pointing at Metro. For this spike alone, **Option A is enough**.

@@ -22,20 +22,6 @@ jest.mock("expo-media-library", () => ({
   getAlbumsAsync: (...args: unknown[]) => mockGetAlbumsAsync(...args),
 }));
 
-jest.mock("@shopify/flash-list", () => {
-  const React = require("react");
-  const { View } = require("react-native");
-  return {
-    FlashList: ({ ListHeaderComponent, ListFooterComponent }: any) =>
-      React.createElement(
-        View,
-        { testID: "mock-flash-list" },
-        ListHeaderComponent,
-        ListFooterComponent,
-      ),
-  };
-});
-
 jest.mock("@/modules/mediaLibrary/LibraryAlbumPickerModal", () => ({
   LibraryAlbumPickerModal: () => null,
 }));
@@ -215,5 +201,60 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     await findByTestId("in-app-library__screen");
     fireEvent.press(await findByTestId("in-app-library__cancel"));
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("accepts preselected photos not present in the first paginated grid page", async () => {
+    const preselectedAsset = {
+      id: "asset-old-page-99",
+      uri: "ph://asset-old-page-99",
+      filename: "old-site.jpg",
+    };
+    const onSave = jest.fn();
+
+    mockGetAssetsAsync.mockResolvedValue({
+      assets: [sampleAsset],
+      endCursor: "cursor",
+      hasNextPage: true,
+    });
+    mockGetAssetInfoAsync.mockResolvedValue({
+      ...preselectedAsset,
+      localUri: "file:///tmp/old-site.jpg",
+    });
+
+    const { findByTestId } = render(
+      <InAppLibraryPickerScreen
+        onCancel={jest.fn()}
+        onSave={onSave}
+        initiallySelectedPhotos={[
+          {
+            uri: "pinned:file:///tmp/old-site.jpg",
+            fileName: "old-site.jpg",
+            isAnnotated: false,
+            mediaLibraryAssetId: preselectedAsset.id,
+          },
+        ]}
+      />,
+    );
+
+    await findByTestId("in-app-library__grid");
+    await waitFor(() => {
+      expect(mockGetAssetInfoAsync).toHaveBeenCalledWith(preselectedAsset.id);
+    });
+
+    await act(async () => {
+      fireEvent.press(await findByTestId("in-app-library__accept"));
+    });
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+    expect(onSave).toHaveBeenCalledWith([
+      expect.objectContaining({
+        fileName: "old-site.jpg",
+        mediaLibraryAssetId: preselectedAsset.id,
+        isAnnotated: false,
+      }),
+    ]);
+    expect(mockPinDraftMedia).not.toHaveBeenCalled();
   });
 });

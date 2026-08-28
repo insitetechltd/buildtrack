@@ -4,13 +4,14 @@ import {
   Text,
   Pressable,
   Image,
+  FlatList,
   ActivityIndicator,
   StyleSheet,
+  Platform,
   useWindowDimensions,
   PixelRatio,
   type ViewToken,
 } from "react-native";
-import { FlashList } from "@shopify/flash-list";
 import type * as MediaLibrary from "expo-media-library";
 
 import {
@@ -19,6 +20,9 @@ import {
 } from "@/utils/libraryThumbnailCache";
 import {
   LIBRARY_GRID_BATCH_MS,
+  LIBRARY_GRID_BATCH_ROWS,
+  LIBRARY_GRID_INITIAL_ROWS,
+  LIBRARY_GRID_WINDOW_SIZE,
   LIBRARY_SCROLL_LOOKAHEAD_ITEMS,
   LIBRARY_THUMB_PRIORITY_VIEWPORT,
   LIBRARY_VIEWABILITY_MIN_TIME_MS,
@@ -147,8 +151,6 @@ export function LibraryPhotoGrid({
     [tileSize],
   );
 
-  const rowHeight = tileSize + LIBRARY_GRID_GAP;
-
   const prefetchScrollAhead = useCallback(
     (indices: number[]) => {
       if (indices.length === 0 || assets.length === 0) {
@@ -235,15 +237,18 @@ export function LibraryPhotoGrid({
 
   return (
     <View style={styles.listRoot} testID={listTestID}>
-      <FlashList
+      <FlatList
         data={assets}
         keyExtractor={(item) => item.id}
         numColumns={LIBRARY_GRID_COLUMNS}
-        estimatedItemSize={rowHeight}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.4}
         extraData={extraData}
-        drawDistance={rowHeight * 8}
+        initialNumToRender={LIBRARY_GRID_INITIAL_ROWS * LIBRARY_GRID_COLUMNS}
+        maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS * LIBRARY_GRID_COLUMNS}
+        updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
+        windowSize={LIBRARY_GRID_WINDOW_SIZE}
+        removeClippedSubviews={Platform.OS === "ios"}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         ListHeaderComponent={ListHeaderComponent}
@@ -255,7 +260,11 @@ export function LibraryPhotoGrid({
             />
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: contentPaddingBottom }}
+        columnWrapperStyle={assets.length ? { gap: LIBRARY_GRID_GAP } : undefined}
+        contentContainerStyle={{
+          gap: LIBRARY_GRID_GAP,
+          paddingBottom: contentPaddingBottom,
+        }}
         renderItem={renderItem}
       />
     </View>

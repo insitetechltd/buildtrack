@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -89,6 +89,8 @@ export default function InAppLibraryPickerScreen({
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(
     () => new Map<string, number>(),
   );
+  /** Restored selections may not appear in the first paginated grid page. */
+  const restoredAssetsByIdRef = useRef(new Map<string, MediaLibrary.Asset>());
 
   const initialAssetIdKey = initiallySelectedPhotos
     .map((photo) => photo.mediaLibraryAssetId)
@@ -127,10 +129,13 @@ export default function InAppLibraryPickerScreen({
       if (assetIds.length > 0) {
         const assets = await loadAssetsByIds(assetIds);
         if (!cancelled && assets.length > 0) {
+          const restored = new Map<string, MediaLibrary.Asset>();
           const next = new Map<string, number>();
           assets.forEach((asset, index) => {
+            restored.set(asset.id, asset);
             next.set(asset.id, index + 1);
           });
+          restoredAssetsByIdRef.current = restored;
           setSelectionOrderByKey(next);
         }
       }
@@ -183,7 +188,9 @@ export default function InAppLibraryPickerScreen({
       const drafts = [...selectionOrderByKey.entries()]
         .sort((a, b) => a[1] - b[1])
         .map(([assetId, order]) => {
-          const asset = albumPicker.assetsByIdRef.current.get(assetId);
+          const asset =
+            albumPicker.assetsByIdRef.current.get(assetId) ??
+            restoredAssetsByIdRef.current.get(assetId);
           if (!asset) {
             throw new Error(`Missing asset ${assetId}`);
           }

@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
   Modal,
+  Platform,
   type ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,6 +35,8 @@ const GAP = 2;
 const INITIAL_GRID_RENDER = COLUMNS * 3;
 const GRID_RENDER_BATCH = DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE;
 const VIEWPORT_LOOKAHEAD_ROWS = 2;
+/** PhotoKit progressive paint is iOS-specific; Android shows tiles immediately. */
+const PROGRESSIVE_LIBRARY_PAINT_ENABLED = Platform.OS === "ios";
 
 /** Sentinel: all photos (no album filter). */
 const ALL_PHOTOS_ALBUM_ID = "__all__";
@@ -210,6 +213,17 @@ export function HybridLibraryPickerScreen() {
     itemVisiblePercentThreshold: 10,
     minimumViewTime: 32,
   }).current;
+
+  const shouldShowLibraryImage = useCallback(
+    (index: number) =>
+      !PROGRESSIVE_LIBRARY_PAINT_ENABLED || shouldDecodeIndex(index),
+    [shouldDecodeIndex],
+  );
+
+  const gridExtraData = useMemo(
+    () => ({ maxUnlockedIndex, selectedCount, selectionOrderByKey }),
+    [maxUnlockedIndex, selectedCount, selectionOrderByKey],
+  );
 
   const ensurePermission = useCallback(async (): Promise<boolean> => {
     const current = await MediaLibrary.getPermissionsAsync();
@@ -537,13 +551,25 @@ export function HybridLibraryPickerScreen() {
           numColumns={COLUMNS}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
-          extraData={[selectionOrderByKey, maxUnlockedIndex, selectedCount]}
-          initialNumToRender={INITIAL_GRID_RENDER}
-          maxToRenderPerBatch={GRID_RENDER_BATCH}
-          updateCellsBatchingPeriod={DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS}
-          windowSize={3}
-          removeClippedSubviews
-          onViewableItemsChanged={onGridViewableItemsChanged}
+          extraData={gridExtraData}
+          initialNumToRender={
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? INITIAL_GRID_RENDER : 18
+          }
+          maxToRenderPerBatch={
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED ? GRID_RENDER_BATCH : 12
+          }
+          updateCellsBatchingPeriod={
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED
+              ? DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS
+              : 50
+          }
+          windowSize={PROGRESSIVE_LIBRARY_PAINT_ENABLED ? 3 : 5}
+          removeClippedSubviews={PROGRESSIVE_LIBRARY_PAINT_ENABLED}
+          onViewableItemsChanged={
+            PROGRESSIVE_LIBRARY_PAINT_ENABLED
+              ? onGridViewableItemsChanged
+              : undefined
+          }
           viewabilityConfig={gridViewabilityConfig}
           ListFooterComponent={
             loadingPage ? (
@@ -570,7 +596,7 @@ export function HybridLibraryPickerScreen() {
               tileSize={tileSize}
               selected={selectedLibraryIds.has(item.id)}
               order={selectionOrderByKey.get(item.id)}
-              showImage={shouldDecodeIndex(index)}
+              showImage={shouldShowLibraryImage(index)}
               onPress={onPressLibraryAsset}
             />
           )}

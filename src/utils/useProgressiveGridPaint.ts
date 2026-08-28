@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export const DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE = 3;
+/** Intentionally shared with FlatList `updateCellsBatchingPeriod` in library grids. */
 export const DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS = 48;
 
 export type UseProgressiveGridPaintOptions = {
@@ -35,10 +36,17 @@ export type UseProgressiveGridPaintResult = {
   initialFillComplete: boolean;
 };
 
+function computeInitialUnlock(batchSize: number, itemCount: number): number {
+  return Math.max(0, Math.min(batchSize - 1, Math.max(itemCount - 1, 0)));
+}
+
 /**
  * Spreads thumbnail decode work across frames for device photo library grids.
  * Viewport bypass activates only after the initial fill window completes so
  * fast scroll still gets lookahead without defeating the first-paint cadence.
+ *
+ * Reset semantics: full reset on `resetKey` change or fresh load (0 → N).
+ * Pagination (N → N+M, same key) preserves earned unlock state.
  */
 export function useProgressiveGridPaint({
   itemCount,
@@ -53,19 +61,48 @@ export function useProgressiveGridPaint({
     0,
     Math.min(initialFillCount - 1, Math.max(itemCount - 1, 0)),
   );
-  const initialUnlock = Math.max(0, Math.min(batchSize - 1, itemCount - 1));
+  const initialUnlock = computeInitialUnlock(batchSize, itemCount);
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(initialUnlock);
   const [priorityIndices, setPriorityIndices] = useState<Set<number>>(() => new Set());
   const [initialFillComplete, setInitialFillComplete] = useState(
     () => itemCount > 0 && initialUnlock >= initialUnlockTarget,
   );
   const pumpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevResetKeyRef = useRef(resetKey);
+  const prevItemCountRef = useRef(itemCount);
 
   useEffect(() => {
-    setMaxUnlockedIndex(Math.max(0, Math.min(batchSize - 1, Math.max(itemCount - 1, 0))));
-    setPriorityIndices(new Set());
-    setInitialFillComplete(itemCount > 0 && initialUnlock >= initialUnlockTarget);
-  }, [batchSize, initialUnlock, initialUnlockTarget, itemCount, resetKey]);
+    const resetKeyChanged = prevResetKeyRef.current !== resetKey;
+    const previousCount = prevItemCountRef.current;
+    const freshLoad = previousCount === 0 && itemCount > 0;
+
+    if (resetKeyChanged || freshLoad) {
+      const nextInitial = computeInitialUnlock(batchSize, itemCount);
+      setMaxUnlockedIndex(nextInitial);
+      setPriorityIndices(new Set());
+      setInitialFillComplete(itemCount > 0 && nextInitial >= initialUnlockTarget);
+    } else if (itemCount === 0) {
+      setMaxUnlockedIndex(0);
+      setPriorityIndices(new Set());
+      setInitialFillComplete(false);
+    } else if (itemCount > previousCount) {
+      // Pagination append — keep unlock/priority state; pump continues below.
+    } else if (itemCount < previousCount) {
+      setMaxUnlockedIndex((current) => Math.min(current, Math.max(itemCount - 1, 0)));
+      setPriorityIndices((current) => {
+        const next = new Set<number>();
+        current.forEach((index) => {
+          if (index < itemCount) {
+            next.add(index);
+          }
+        });
+        return next;
+      });
+    }
+
+    prevResetKeyRef.current = resetKey;
+    prevItemCountRef.current = itemCount;
+  }, [batchSize, initialUnlockTarget, itemCount, resetKey]);
 
   useEffect(() => {
     if (pumpTimerRef.current) {

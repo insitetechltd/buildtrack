@@ -83,6 +83,60 @@ describe("useProgressiveGridPaint", () => {
     expect(result.current.shouldDecodeIndex(25)).toBe(false);
   });
 
+  it("preserves unlock state when itemCount grows via pagination", () => {
+    const { result, rerender } = renderHook(
+      ({ itemCount }: { itemCount: number }) =>
+        useProgressiveGridPaint({
+          itemCount,
+          batchSize: 3,
+          intervalMs: 50,
+          resetKey: "album-a",
+          initialFillCount: 9,
+        }),
+      { initialProps: { itemCount: 36 } },
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(600);
+    });
+
+    expect(result.current.maxUnlockedIndex).toBe(35);
+    expect(result.current.shouldDecodeIndex(30)).toBe(true);
+
+    act(() => {
+      result.current.onViewableIndicesChanged([30]);
+    });
+
+    expect(result.current.shouldDecodeIndex(30)).toBe(true);
+
+    rerender({ itemCount: 72 });
+
+    expect(result.current.maxUnlockedIndex).toBe(35);
+    expect(result.current.shouldDecodeIndex(30)).toBe(true);
+    expect(result.current.shouldDecodeIndex(35)).toBe(true);
+    expect(result.current.shouldDecodeIndex(36)).toBe(false);
+  });
+
+  it("resets cleanly across rapid resetKey changes", () => {
+    const { result, rerender } = renderHook(
+      ({ resetKey }: { resetKey: string }) =>
+        useProgressiveGridPaint({ itemCount: 12, resetKey, batchSize: 3 }),
+      { initialProps: { resetKey: "album-a" } },
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    rerender({ resetKey: "album-b" });
+    expect(result.current.shouldDecodeIndex(2)).toBe(true);
+    expect(result.current.shouldDecodeIndex(3)).toBe(false);
+
+    rerender({ resetKey: "album-c" });
+    expect(result.current.shouldDecodeIndex(2)).toBe(true);
+    expect(result.current.shouldDecodeIndex(5)).toBe(false);
+  });
+
   it("returns false for out-of-range indices", () => {
     const { result } = renderHook(() =>
       useProgressiveGridPaint({ itemCount: 3 }),

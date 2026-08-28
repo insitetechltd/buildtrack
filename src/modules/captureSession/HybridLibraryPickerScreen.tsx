@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
   Modal,
+  type ViewToken,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as MediaLibrary from "expo-media-library";
@@ -20,10 +21,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
 import { useCaptureSessionStore } from "./sessionDraftStore";
+import {
+  DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE,
+  DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
+  useProgressiveGridPaint,
+} from "@/utils/useProgressiveGridPaint";
 
 const PAGE_SIZE = 36;
 const COLUMNS = 3;
 const GAP = 2;
+/** First paint: 3 rows × 3 cols — progressive pump adds 3 more every tick. */
+const INITIAL_GRID_RENDER = COLUMNS * 3;
+const GRID_RENDER_BATCH = DEFAULT_PROGRESSIVE_PAINT_BATCH_SIZE;
+const VIEWPORT_LOOKAHEAD_ROWS = 2;
 
 /** Sentinel: all photos (no album filter). */
 const ALL_PHOTOS_ALBUM_ID = "__all__";
@@ -44,6 +54,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   tileSize,
   selected,
   order,
+  showImage,
   onPress,
 }: {
   assetId: string;
@@ -51,6 +62,7 @@ const LibraryGridTile = memo(function LibraryGridTile({
   tileSize: number;
   selected: boolean;
   order: number | undefined;
+  showImage: boolean;
   onPress: (assetId: string) => void;
 }) {
   return (
@@ -58,12 +70,19 @@ const LibraryGridTile = memo(function LibraryGridTile({
       onPress={() => onPress(assetId)}
       style={{ width: tileSize, height: tileSize }}
     >
-      {/* RN Image + explicit size: expo-image 2.2 loads ph:// at PHImageManagerMaximumSize. */}
-      <Image
-        source={{ uri }}
-        resizeMode="cover"
-        style={{ width: tileSize, height: tileSize }}
-      />
+      {showImage ? (
+        /* RN Image + explicit size: expo-image 2.2 loads ph:// at PHImageManagerMaximumSize. */
+        <Image
+          source={{ uri }}
+          resizeMode="cover"
+          style={{ width: tileSize, height: tileSize }}
+        />
+      ) : (
+        <View
+          testID={`capture-session__library_tile_skeleton_${assetId}`}
+          style={[styles.tileSkeleton, { width: tileSize, height: tileSize }]}
+        />
+      )}
       {selected && order != null ? (
         <View
           testID={`capture-session__order_badge_${assetId}`}
@@ -165,6 +184,31 @@ export function HybridLibraryPickerScreen() {
     const match = albums.find((a) => a.id === selectedAlbumId);
     return match?.title ?? "All photos";
   }, [albums, selectedAlbumId]);
+
+  const { shouldDecodeIndex, onViewableIndicesChanged, maxUnlockedIndex } =
+    useProgressiveGridPaint({
+    itemCount: assets.length,
+    batchSize: GRID_RENDER_BATCH,
+    intervalMs: DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS,
+    resetKey: selectedAlbumId,
+    columns: COLUMNS,
+    lookaheadRows: VIEWPORT_LOOKAHEAD_ROWS,
+  });
+
+  const onGridViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const indices = viewableItems
+        .map((token) => token.index)
+        .filter((index): index is number => typeof index === "number");
+      onViewableIndicesChanged(indices);
+    },
+    [onViewableIndicesChanged],
+  );
+
+  const gridViewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 10,
+    minimumViewTime: 32,
+  }).current;
 
   const ensurePermission = useCallback(async (): Promise<boolean> => {
     const current = await MediaLibrary.getPermissionsAsync();
@@ -492,11 +536,14 @@ export function HybridLibraryPickerScreen() {
           numColumns={COLUMNS}
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
-          extraData={selectionOrderByKey}
-          initialNumToRender={18}
-          maxToRenderPerBatch={12}
-          windowSize={5}
+          extraData={[selectionOrderByKey, maxUnlockedIndex, selectedCount]}
+          initialNumToRender={INITIAL_GRID_RENDER}
+          maxToRenderPerBatch={GRID_RENDER_BATCH}
+          updateCellsBatchingPeriod={DEFAULT_PROGRESSIVE_PAINT_INTERVAL_MS}
+          windowSize={3}
           removeClippedSubviews
+          onViewableItemsChanged={onGridViewableItemsChanged}
+          viewabilityConfig={gridViewabilityConfig}
           ListFooterComponent={
             loadingPage ? (
               <ActivityIndicator
@@ -515,13 +562,14 @@ export function HybridLibraryPickerScreen() {
             gap: GAP,
             paddingBottom: insets.bottom + 24,
           }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <LibraryGridTile
               assetId={item.id}
               uri={item.uri}
               tileSize={tileSize}
               selected={selectedLibraryIds.has(item.id)}
               order={selectionOrderByKey.get(item.id)}
+              showImage={shouldDecodeIndex(index)}
               onPress={onPressLibraryAsset}
             />
           )}
@@ -699,6 +747,9 @@ const styles = StyleSheet.create({
     color: "#888",
     marginTop: 32,
     fontSize: 14,
+  },
+  tileSkeleton: {
+    backgroundColor: "#E2E8F0",
   },
   orderBadge: {
     position: "absolute",

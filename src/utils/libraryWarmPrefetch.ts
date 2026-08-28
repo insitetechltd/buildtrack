@@ -52,7 +52,7 @@ export function warmLibraryFirstPage(options?: {
       const page = await MediaLibrary.getAssetsAsync({
         first: LIBRARY_WARM_PAGE_SIZE,
         mediaType: MediaLibrary.MediaType.photo,
-        sortBy: [[MediaLibrary.SortBy.modificationTime, false]],
+        sortBy: [[MediaLibrary.SortBy.creationTime, false]],
       });
 
       warmSnapshot = {

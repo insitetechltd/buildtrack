@@ -8,7 +8,7 @@
 
 **Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
-**Idle-parallel — picker lag:** M-PERF-03 Phase B (thumb cache + scroll prefetch) merged onto master. Page size 18. Device proof pending. Native FastFormat still later.
+**Idle-parallel — picker lag:** M-PERF-03 Phase C on master (shared `mediaLibrary` grid, Select Photos port). FlashList v2 reverted (old arch). Device proof pending. Native FastFormat still later.
 
 ## Next (definitive)
 
@@ -24,9 +24,9 @@
 
 **Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos). TF199.
 
-**M-PERF-03 Phase B (2026-08-28):** LRU resized `file://` thumb cache + camera warm prefetch + paint 6/32ms — PR #3 branch; **device proof pending** (Metro reload). Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
+**M-PERF-03 Phase C (2026-08-28):** Select Photos port + shared `LibraryPhotoGrid` (`src/modules/mediaLibrary/`). FlashList v2 reverted to FlatList (`newArchEnabled: false`). Sort = creationTime DESC. Device proof pending.
 
-**M-PERF-03 Phase A (2026-08-28):** Progressive library grid paint (`useProgressiveGridPaint` + skeletons) in PR #3.
+**M-PERF-03 scroll continuity (2026-08-28):** Viewport prefetch + priority decode queue. Tunables: `libraryPickerPerf.ts`.
 
 **`M-BILL-01` Closed (2026-08-27) — DEV MVP:** Catalog HK$160/400; human Checkout Starter; Extra people +1; invite caps; stripe-webhook empty-meters fix deployed. Close: `docs/superpowers/reports/2026-08-27-m-bill-01-close.md`.
 

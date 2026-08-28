@@ -8,7 +8,7 @@
 
 **Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
-**Idle-parallel — picker lag TF:** JS cut committed (2× thumbs, page 18, defer albums, flatter first paint). Local EAS → TestFlight (remote autoIncrement past 199). Native FastFormat still later.
+**Idle-parallel — picker lag:** TF200 JS cut (2× thumbs, page 18) plus M-PERF-03 progressive paint (3 tiles / 48ms) now on local master. Device proof pending. Native FastFormat still later.
 
 ## Next (definitive)
 
@@ -23,6 +23,8 @@
 **Capture picker lag JS cut (2026-08-28, idle-parallel):** 2× inner RN `Image` + scale-up; `PAGE_SIZE=18`; `initialNumToRender=9`; defer `getAlbumsAsync` until album sheet. Default stays All photos. Native FastFormat = later TF.
 
 **Capture picker lag (2026-08-28, idle-parallel):** Defer library pin to Accept; RN `Image` sized tiles (not expo-image `ph://`); headed 17 Pro smoke PASS (tap badge + Accept → Select Photos). TF199.
+
+**M-PERF-03 Phase A (2026-08-28):** Progressive library grid paint (`useProgressiveGridPaint` 3/48ms + skeletons) in PR #3 — **device proof pending** on iPhone via Metro reload. Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
 
 **`M-BILL-01` Closed (2026-08-27) — DEV MVP:** Catalog HK$160/400; human Checkout Starter; Extra people +1; invite caps; stripe-webhook empty-meters fix deployed. Close: `docs/superpowers/reports/2026-08-27-m-bill-01-close.md`.
 

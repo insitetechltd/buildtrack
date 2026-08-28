@@ -69,7 +69,8 @@ Dual-loader convention (Cursor):
 - `WS-FIELD / M-CAPTURE-01` **Tabled (2026-08-28):** Camera zoom control (pinch/slider). Idle-parallel; must not jump `M-OPS-ENV-01`.
 - `WS-UX / M-CAPTURE-02` **Tabled (2026-08-28):** Library picker tile resizing. Idle-parallel; must not jump `M-OPS-ENV-01`.
 - `WS-DATA / M-DATA-03` **Pipeline (app-side 2026-08-20)**: Session-gated refresh, scoped activities, reconcile, honest empty. Broader visibility hardening deferred post-RC. Not closed.
-- `WS-PERF / M-PERF-01` **Pipeline (app-side 2026-08-20)**: expo-image list thumbs, persisted signed URLs, visible-row prefetch. Not a close until optional Maestro no-clear is decided.
+- `WS-PERF / M-PERF-03` **Pipeline (Phase A spike 2026-08-28)**: Device library progressive paint (`useProgressiveGridPaint`, hybrid grid skeletons). Device proof pending. Plan: `docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md`.
+- `WS-PERF / M-PERF-01` **Pipeline (Phase A landed 2026-08-20; Phase B tabled)**: Remote evidence thumbs — Phase B backlog (transform/_thumb, Tasks FlatList, viewport prefetch). Overlap with M-PERF-03: viewport/skeleton patterns only.
 - `WS-UX / S-UX-01R` **Pipeline (2026-08-19)**: Retire Add Comment dead path — Update Description is field narrative SoT; delete AddComment screen/nav post-RC. Plan: `docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`. Idle-parallel ok.
 - `WS-FIELD / M-DAILY-01` **Pipeline — Phase 0 locked (2026-08-27)**: Camera + voice memo → first-class daily report → PM → AI corpus. Build parked (no DDL). Vision: `docs/superpowers/analysis/2026-08-27-daily-capture-memo-vision.md`. Kickoff: `docs/superpowers/plans/2026-08-27-daily-report-phases-1-3-kickoff.md`. After AUTHZ-02; Phase 3 with M-AI-01.
 - `WS-AI / M-AI-01` **Pipeline (2026-08-19)**: On-site Q&A against project tasks/photos/activity (+ daily reports when M-DAILY-01 submits). Isolation wall applies. Create Task LLM is on-ramp only.

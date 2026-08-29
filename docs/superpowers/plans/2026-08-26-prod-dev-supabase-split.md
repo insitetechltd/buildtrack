@@ -87,6 +87,8 @@ DEV (current project)              PROD (new empty)
 - [ ] Stripe Dashboard webhook → PROD function URL  
 - [ ] Rebuild/submit `production`  
 
+**Operator checklist (2026-08-29):** `docs/superpowers/plans/2026-08-29-env01-phase-d-app-store-checklist.md`
+
 ### E — Ops hygiene
 - [x] Runbooks: dual-project + promotion path (`documentation/PROD_DEV_PROMOTION.md`)  
 - [x] Maestro/CI: **DEV only** (policy locked; never clearState against PROD)  

@@ -130,8 +130,8 @@ export const triggerRefresh = async (options?: { force?: boolean }) => {
 
         // Fetch all data in parallel for maximum speed
         await Promise.all([
-          projectStore.fetchProjects(true),
-          projectStore.fetchUserProjectAssignments(user.id, true),
+          projectStore.fetchProjects(force),
+          projectStore.fetchUserProjectAssignments(user.id, force),
           taskStore.fetchTasks(force),
           userStore.fetchUsers()
         ]);

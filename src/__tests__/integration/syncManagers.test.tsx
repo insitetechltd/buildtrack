@@ -80,7 +80,8 @@ describe('sync manager regression tests', () => {
 
     expect(invalidateResourceKeys).not.toHaveBeenCalled();
     expect(fetchProjects).toHaveBeenCalledTimes(1);
-    expect(fetchUserProjectAssignments).toHaveBeenCalledWith('user-1', true);
+    expect(fetchProjects).toHaveBeenCalledWith(false);
+    expect(fetchUserProjectAssignments).toHaveBeenCalledWith('user-1', false);
     expect(fetchTasks).toHaveBeenCalledWith(false);
     expect(fetchUsers).toHaveBeenCalledTimes(1);
 
@@ -88,7 +89,8 @@ describe('sync manager regression tests', () => {
     await triggerRefresh();
 
     expect(fetchProjects).toHaveBeenCalledTimes(2);
-    expect(fetchUserProjectAssignments).toHaveBeenNthCalledWith(2, 'user-1', true);
+    expect(fetchProjects).toHaveBeenNthCalledWith(2, false);
+    expect(fetchUserProjectAssignments).toHaveBeenNthCalledWith(2, 'user-1', false);
     expect(fetchTasks).toHaveBeenNthCalledWith(2, false);
     expect(fetchUsers).toHaveBeenCalledTimes(2);
   });

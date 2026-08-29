@@ -8,21 +8,22 @@
 
 **Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / `production-local` → EAS `preview` → **DEV**. App Store profile `production` → **PROD**. Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → `M-OPS-03` → `M-AUTHZ-02` → …
 
-**This session:** TF in flight stays on whatever URL was baked at build time; **next** `production-local` build uses EAS preview→DEV.
+**This session:** ENV-01 A–C committed (`a0697e4`). Phase D checklist filed. **M-DATA-05 Phase A code-complete** (still uncommitted — hold commit until TF 212 / photo terminal clears).
 
-**Idle-parallel photo funnel:** **TF 1.1.3 (211) submitted to ASC** with L3 `PhotokitThumbs` in the binary. Skip **210** (native sources were gitignored). Apple processing. **Not** public App Store. Do not run Maestro/CI against PROD.
+**Idle-parallel photo funnel:** **TF 1.1.3 (212) submitted to ASC** (processing). FastFormat thumbs + HUD `up` / `1st 12`. Daily `production-local` → DEV. **Not** public App Store. This chat must not edit picker/photokit while that build runs.
 
 ## Next (definitive)
 
-1. App Store submit → Stripe **live** on PROD (ENV-01 Phase D)
-2. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
-3. Idle-parallel: `M-PERF-03` / `M-DATA-05` as capacity allows
+1. **After TF 212 free:** scoped commit **DATA-05 A + Phase D docs only** (exclude photo/photokit)
+2. **ENV-01 Phase D / App Store** — checklist: `docs/superpowers/plans/2026-08-29-env01-phase-d-app-store-checklist.md` (Human GO for `sk_live` + submit)
+3. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
+4. Idle later: **M-DATA-05 Phase B** (post-Store) — logout GC
 
-**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01 cutover). **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 
 ## Recently closed / shipped this session
 
-**TF 1.1.3 (211) (2026-08-29):** Local EAS production-local IPA submitted to ASC (processing). L3 PhotoKit native thumbs (`PhotokitThumbs` in binary). Script footer still prints `app.json` **194**; EAS remote **211**. IPA: `.eas/artifacts/build-1787984830968.ipa`. Submit: `28bbd033-0134-4a61-8d38-9868b7180ae1`. **Not** public App Store. **Skip TF 210** — native module was missing from that IPA.
+**TF 1.1.3 (212) (2026-08-29):** Local EAS `production-local` (EAS env `preview` → DEV) IPA submitted to ASC. FastFormat PhotoKit thumbs + HUD `up` / `1st 12`. Script footer still prints `app.json` **194**; EAS remote **212**. IPA: `.eas/artifacts/build-1787988623406.ipa`. Submit: `04944bdf-5838-4744-bf20-57e2c8f65f15`. **Not** public App Store.
 
 **L1+L2 (2026-08-29, idle-parallel):** Timing HUD on hybrid library + skeleton first screen + stagger URI bind.
 
@@ -52,7 +53,7 @@
 
 **`M-DATA-04` Closed (2026-08-27):** Realtime churn gate PASS — close: `docs/superpowers/reports/2026-08-27-m-data-04-close.md`.
 
-**`M-DATA-05` Pipeline (2026-08-27):** Folded multi-LLM cache recs → action plan + ROADMAP Order **15.0551**. Plan: `docs/superpowers/plans/2026-08-27-m-data-05-cache-hygiene-action-plan.md`. Not started.
+**`M-DATA-05` Phase A landed (2026-08-29):** List fetch skips `task_activities`; SWR uses `{ background: true }` (no force loop); poll passes `force` through to projects/assignments; reconcile preserves hydrated activities. `test:tasks` + syncManagers PASS. Phase B still Pipeline (logout GC).
 
 **Docs:** **M-DAILY-01 Phase 0** — `docs/superpowers/analysis/2026-08-27-daily-capture-memo-vision.md`.
 

@@ -106,10 +106,10 @@ interface TaskStore {
   evictTaskFromCache: (taskId: string) => void;
   
   // Fetching
-  fetchTasks: (forceRefresh?: boolean) => Promise<void>;
+  fetchTasks: (forceRefresh?: boolean, options?: { background?: boolean }) => Promise<void>;
   fetchArchivedTasks: (forceRefresh?: boolean) => Promise<void>;
-  fetchTasksByProject: (projectId: string, forceRefresh?: boolean) => Promise<void>;
-  fetchTasksByUser: (userId: string, forceRefresh?: boolean) => Promise<void>;
+  fetchTasksByProject: (projectId: string, forceRefresh?: boolean, options?: { background?: boolean }) => Promise<void>;
+  fetchTasksByUser: (userId: string, forceRefresh?: boolean, options?: { background?: boolean }) => Promise<void>;
   fetchTaskById: (id: string, forceRefresh?: boolean) => Promise<Task | null>;
   fetchProjectLocations: (projectId: string) => Promise<ProjectLocationRecord[]>;
   fetchProjectContainers: (projectId: string) => Promise<ProjectContainerRecord[]>;
@@ -314,7 +314,19 @@ export const useTaskStore = create<TaskStore>()(
           const existingById = new Map(state.tasks.map((task) => [task.id, task]));
           const nextTasks = normalizedTasks.map((incoming) => {
             const previous = existingById.get(incoming.id);
-            return previous && taskSnapshotsMatch(previous, incoming) ? previous : incoming;
+            // M-DATA-05 Phase A: list fetches omit activity history — keep hydrated timeline.
+            const listSlim =
+              previous &&
+              (incoming.activities?.length ?? 0) === 0 &&
+              (previous.activities?.length ?? 0) > 0;
+            const merged = listSlim
+              ? {
+                  ...incoming,
+                  activities: previous.activities,
+                  updates: previous.updates,
+                }
+              : incoming;
+            return previous && taskSnapshotsMatch(previous, merged) ? previous : merged;
           });
           const nextTaskFetchTimestamps = nextTasks.reduce<Record<string, number>>((accumulator, task) => {
             accumulator[task.id] = now;
@@ -408,7 +420,8 @@ export const useTaskStore = create<TaskStore>()(
       },
 
       // FETCH from Supabase
-      fetchTasks: async (forceRefresh: boolean = false) => {
+      fetchTasks: async (forceRefresh: boolean = false, options?: { background?: boolean }) => {
+        const background = options?.background === true;
         const sessionClient = await getSessionScopedSupabase();
         if (!sessionClient) {
           console.warn('📊 [tasks] Skipping fetchTasks — no Supabase session (avoids anon 42501)');
@@ -426,14 +439,14 @@ export const useTaskStore = create<TaskStore>()(
         const cachedIds = get().queryTaskIds[resourceKey] || get().tasks.map((task) => task.id);
         const hasCachedData = cachedIds.length > 0;
 
-        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
           get().completeTaskQuerySuccess(resourceKey, cachedIds);
           return;
         }
 
-        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
           get().beginTaskQuery(resourceKey, true);
-          void get().fetchTasks(true);
+          void get().fetchTasks(false, { background: true });
           return;
         }
 
@@ -452,39 +465,8 @@ export const useTaskStore = create<TaskStore>()(
 
               if (tasksError) throw tasksError;
 
-              const fetchedTaskIds = (allTasksData || []).map((task: { id: string }) => task.id);
-              const { data: taskActivitiesData, error: taskActivitiesError } =
-                fetchedTaskIds.length > 0
-                  ? await supabaseClient
-                      .from('task_activities')
-                      .select('*')
-                      .in('task_id', fetchedTaskIds)
-                      .order('timestamp', { ascending: true })
-                  : { data: [], error: null };
-
-              if (taskActivitiesError) throw taskActivitiesError;
-
+              // M-DATA-05 Phase A: list path skips full activity history (detail uses fetchTaskById).
               const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-              (taskActivitiesData || []).forEach((activity: any) => {
-                const taskId = activity.task_id;
-                if (!activitiesByTaskId[taskId]) {
-                  activitiesByTaskId[taskId] = [];
-                }
-                activitiesByTaskId[taskId].push({
-                  id: activity.id,
-                  taskId: activity.task_id,
-                  userId: activity.user_id,
-                  activityType: activity.activity_type as ActivityType,
-                  timestamp: activity.timestamp,
-                  data: activity.data,
-                  description: activity.description || '',
-                  completionPercentage: activity.completion_percentage,
-                  status: activity.status as TaskStatus | undefined,
-                  notificationsSent: activity.notifications_sent || false,
-                  notifiedAt: activity.notified_at,
-                  createdAt: activity.created_at,
-                });
-              });
 
               const transformedTasks = (allTasksData || []).map(task => {
                 const normalizedAssignedTo = Array.isArray(task.assigned_to)
@@ -738,7 +720,8 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      fetchTasksByProject: async (projectId: string, forceRefresh: boolean = false) => {
+      fetchTasksByProject: async (projectId: string, forceRefresh: boolean = false, options?: { background?: boolean }) => {
+        const background = options?.background === true;
         if (!supabase) {
           console.error('Supabase not configured, no data available');
           set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
@@ -750,14 +733,14 @@ export const useTaskStore = create<TaskStore>()(
         const cachedIds = get().queryTaskIds[resourceKey] || get().taskIdsByProject[projectId] || [];
         const hasCachedData = cachedIds.length > 0;
 
-        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
           get().completeTaskQuerySuccess(resourceKey, cachedIds);
           return;
         }
 
-        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
           get().beginTaskQuery(resourceKey, true);
-          void get().fetchTasksByProject(projectId, true);
+          void get().fetchTasksByProject(projectId, false, { background: true });
           return;
         }
 
@@ -777,38 +760,8 @@ export const useTaskStore = create<TaskStore>()(
 
               if (tasksError) throw tasksError;
 
-              const taskIds = (allTasksData || []).map(t => t.id);
-              const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
-                ? await supabaseClient
-                    .from('task_activities')
-                    .select('*')
-                    .in('task_id', taskIds)
-                    .order('timestamp', { ascending: true })
-                : { data: [], error: null };
-
-              if (taskActivitiesError) throw taskActivitiesError;
-
+              // M-DATA-05 Phase A: list path skips full activity history.
               const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-              (taskActivitiesData || []).forEach((activity: any) => {
-                const taskId = activity.task_id;
-                if (!activitiesByTaskId[taskId]) {
-                  activitiesByTaskId[taskId] = [];
-                }
-                activitiesByTaskId[taskId].push({
-                  id: activity.id,
-                  taskId: activity.task_id,
-                  userId: activity.user_id,
-                  activityType: activity.activity_type as ActivityType,
-                  timestamp: activity.timestamp,
-                  data: activity.data,
-                  description: activity.description || '',
-                  completionPercentage: activity.completion_percentage,
-                  status: activity.status as TaskStatus | undefined,
-                  notificationsSent: activity.notifications_sent || false,
-                  notifiedAt: activity.notified_at,
-                  createdAt: activity.created_at,
-                });
-              });
 
               const scopedTaskIds = new Set(get().taskIdsByProject[projectId] || []);
               const transformedTasks = (allTasksData || []).map(task => normalizeTaskActivityCompatibility({
@@ -900,7 +853,8 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
 
-      fetchTasksByUser: async (userId: string, forceRefresh: boolean = false) => {
+      fetchTasksByUser: async (userId: string, forceRefresh: boolean = false, options?: { background?: boolean }) => {
+        const background = options?.background === true;
         if (!supabase) {
           console.error('Supabase not configured, no data available');
           set({ tasks: [], isLoading: false, error: 'Supabase not configured' });
@@ -912,14 +866,14 @@ export const useTaskStore = create<TaskStore>()(
         const cachedIds = get().queryTaskIds[resourceKey] || get().taskIdsByUser[userId] || [];
         const hasCachedData = cachedIds.length > 0;
 
-        if (get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldServeCachedTasks(resourceKey, cachedIds, forceRefresh)) {
           get().completeTaskQuerySuccess(resourceKey, cachedIds);
           return;
         }
 
-        if (get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
+        if (!background && get().shouldRefreshTasksInBackground(resourceKey, cachedIds, forceRefresh)) {
           get().beginTaskQuery(resourceKey, true);
-          void get().fetchTasksByUser(userId, true);
+          void get().fetchTasksByUser(userId, false, { background: true });
           return;
         }
 
@@ -939,38 +893,8 @@ export const useTaskStore = create<TaskStore>()(
 
               if (error) throw error;
 
-              const taskIds = (data || []).map(t => t.id);
-              const { data: taskActivitiesData, error: taskActivitiesError } = taskIds.length > 0
-                ? await supabaseClient
-                    .from('task_activities')
-                    .select('*')
-                    .in('task_id', taskIds)
-                    .order('timestamp', { ascending: true })
-                : { data: [], error: null };
-
-              if (taskActivitiesError) throw taskActivitiesError;
-
+              // M-DATA-05 Phase A: list path skips full activity history.
               const activitiesByTaskId: { [key: string]: TaskActivity[] } = {};
-              (taskActivitiesData || []).forEach((activity: any) => {
-                const taskId = activity.task_id;
-                if (!activitiesByTaskId[taskId]) {
-                  activitiesByTaskId[taskId] = [];
-                }
-                activitiesByTaskId[taskId].push({
-                  id: activity.id,
-                  taskId: activity.task_id,
-                  userId: activity.user_id,
-                  activityType: activity.activity_type as ActivityType,
-                  timestamp: activity.timestamp,
-                  data: activity.data,
-                  description: activity.description || '',
-                  completionPercentage: activity.completion_percentage,
-                  status: activity.status as TaskStatus | undefined,
-                  notificationsSent: activity.notifications_sent || false,
-                  notifiedAt: activity.notified_at,
-                  createdAt: activity.created_at,
-                });
-              });
 
               const scopedTaskIds = new Set(get().taskIdsByUser[userId] || []);
               const transformedTasks = (data || []).map(task => normalizeTaskActivityCompatibility({

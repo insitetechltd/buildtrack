@@ -137,7 +137,6 @@ describe('taskStore.supabase unit tests', () => {
 
   it('fetches tasks from Supabase, caches them, and only refetches on force refresh', async () => {
     const taskRow = createTaskRow();
-    const activityRow = createTaskActivityRow();
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
@@ -145,14 +144,6 @@ describe('taskStore.supabase unit tests', () => {
           select: jest.fn().mockReturnThis(),
           is: jest.fn().mockReturnThis(),
           order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
-        };
-      }
-
-      if (table === 'task_activities') {
-        return {
-          select: jest.fn().mockReturnThis(),
-          in: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: [activityRow], error: null }),
         };
       }
 
@@ -170,26 +161,75 @@ describe('taskStore.supabase unit tests', () => {
     });
 
     expect(result.current.tasks[0].id).toBe(taskRow.id);
-    expect(result.current.tasks[0].activities).toHaveLength(1);
-    expect(mockFrom).toHaveBeenCalledTimes(2);
+    // M-DATA-05 Phase A: list path skips task_activities (detail hydrates via fetchTaskById).
+    expect(result.current.tasks[0].activities).toHaveLength(0);
+    expect(mockFrom).toHaveBeenCalledTimes(1);
+    expect(mockFrom).not.toHaveBeenCalledWith('task_activities');
 
     await act(async () => {
       await result.current.fetchTasks();
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(2);
+    expect(mockFrom).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       await result.current.fetchTasks(true);
     });
 
-    expect(mockFrom).toHaveBeenCalledTimes(4);
+    expect(mockFrom).toHaveBeenCalledTimes(2);
 
     const firstRef = result.current.tasks[0];
     await act(async () => {
       await result.current.fetchTasks(true);
     });
     expect(result.current.tasks[0]).toBe(firstRef);
+  });
+
+  it('preserves hydrated activities when a slim list refetch reconciles', async () => {
+    const taskRow = createTaskRow();
+    const hydratedActivity = {
+      id: 'activity-hydrated-1',
+      taskId: taskRow.id,
+      userId: managerId,
+      activityType: 'progress_update' as const,
+      description: 'Field update',
+      data: {},
+      timestamp: baseTimestamp,
+      completionPercentage: 40,
+      status: 'in_progress' as const,
+    };
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    act(() => {
+      result.current.mergeTask(
+        createTaskState({
+          status: 'in_progress',
+          completionPercentage: 40,
+          activities: [hydratedActivity],
+        })
+      );
+    });
+
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks[0].activities).toEqual([
+      expect.objectContaining({ id: 'activity-hydrated-1' }),
+    ]);
   });
 
   it('fetches archived tasks into archivedTasks without merging them into the active task list', async () => {

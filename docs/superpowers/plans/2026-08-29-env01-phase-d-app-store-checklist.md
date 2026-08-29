@@ -15,39 +15,34 @@ Ship the first **App Store** binary that talks to **PROD** Supabase with **live*
 
 ## Pre-flight (before touch Stripe live)
 
-- [x] Confirm PROD ref `jcnzjigxgkzhjsaekoqz` healthy; anon REST denied on tasks (401); plan_prices table present (seed USD rows only — HKD live pending)
-- [x] Confirm EAS env: `production` → `https://jcnzjigxgkzhjsaekoqz.supabase.co`; `preview` → DEV
+- [x] Confirm PROD ref `jcnzjigxgkzhjsaekoqz` healthy; anon REST denied on tasks (401)
+- [x] Confirm EAS env: `production` → PROD host; `preview` → DEV
 - [x] Confirm `eas.json`: profile **`production`** → `"environment": "production"`; **`production-local`** → `"preview"` (DEV)
 - [x] PROD service role + DB password in `.cache/env-cutover/insite-prod.env.local` (gitignored)
 - [ ] Apple: ASC app `6754898737`, privacy policy URL, screenshots / metadata ready
-- [ ] Optional: one-shot PROD founding-CA smoke with **test** Stripe still OK — or skip until live
+- [ ] Optional: one-shot PROD founding-CA smoke — skip until live Checkout works
 
-**Human GO:** 2026-08-29 (this chat).
-
-**Blocked (need from operator):** Stripe **live** `sk_live_…` + live webhook `whsec_…` (local `.env` is `sk_test` only; Stripe MCP connected in test mode only). Put live keys in gitignored `.cache/env-cutover/insite-prod-stripe.env.local` then continue D1–D2.
+**Human GO:** 2026-08-29 (this chat). Stripe MCP **livemode** authorized.
 
 ---
 
 ## Checklist D1 — Live catalog on PROD
 
-- [ ] Create/verify Stripe **live** HKD Products/Prices (Starter HK$160 / Pro HK$400 + add-ons) — charge **HKD only**
-- [ ] Bootstrap `plan_tiers` / `plan_prices` / meters on PROD with **`livemode=true`** (do not copy DEV test-mode `stripe_price_id` blindly)
-- [ ] Sync script against PROD DB (or documented SQL) — see `documentation/billing-catalog-ops-runbook.md`
-- [ ] Verify sellable rows: Company Plan would show correct HKD amounts if pointed at PROD
+- [x] Create Stripe **live** HKD Products/Prices (Starter HK$160 / Pro HK$400 + worker/PM add-ons) via MCP livemode
+- [x] Upsert `plan_prices` / meters on PROD with **`livemode=true`** (4 sellable HKD; USD live sellable deprecated)
+- [x] Verify sellable rows: 16000 / 40000 / 2000 / 10000 cents HKD
 
 ---
 
 ## Checklist D2 — Live Stripe on PROD Edge
 
-- [ ] Set PROD Edge secrets (explicit `--project-ref jcnzjigxgkzhjsaekoqz`):
-  - `STRIPE_SECRET_KEY=sk_live_…`
-  - `STRIPE_WEBHOOK_SECRET=whsec_…` (from live endpoint)
-  - Keep `BILLING_CURRENCY=hkd` + checkout deep links
-- [ ] Stripe Dashboard → **live** webhook → `https://jcnzjigxgkzhjsaekoqz.supabase.co/functions/v1/stripe-webhook`
-  - Events: subscription + invoice family used by `stripe-webhook` today
-- [ ] Redeploy Edge on PROD after secrets:  
-  `bash scripts/supabase/deploy-edge-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz`
-- [ ] Smoke (PROD, careful): Checkout Starter once as founding CA → webhook writes entitlements → cancel/refund policy understood
+- [x] Live webhook endpoint → `https://jcnzjigxgkzhjsaekoqz.supabase.co/functions/v1/stripe-webhook` (`we_1U9h2y…`)
+- [x] `STRIPE_WEBHOOK_SECRET` + `BILLING_CURRENCY=hkd` + checkout URL secrets set on PROD (secret in `.cache/env-cutover/insite-prod-stripe.env.local`)
+- [x] Edge redeployed: `deploy-edge-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz`
+- [ ] **`STRIPE_SECRET_KEY=sk_live_…`** on PROD Edge — **blocked** (MCP OAuth cannot export API keys)
+  - Add `STRIPE_SECRET_KEY=sk_live_…` to `.cache/env-cutover/insite-prod-stripe.env.local`
+  - Then: `APP_STORE_STRIPE_GO=1 STRIPE_ENV_FILE=.cache/env-cutover/insite-prod-stripe.env.local bash scripts/supabase/sync-stripe-secrets.sh --project-ref jcnzjigxgkzhjsaekoqz`
+- [ ] Smoke (PROD, careful): Checkout Starter once as founding CA → webhook writes entitlements
 
 **Guard:** `sync-stripe-secrets.sh` refuses `sk_live` → PROD unless `APP_STORE_STRIPE_GO=1`.
 

@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Push Stripe secrets to an explicit Supabase project.
-# Prefer: --project-ref <ref>  (keys still read from .env)
+# Prefer: --project-ref <ref>  (keys from .env or STRIPE_ENV_FILE)
 # DEV shortcut: --use-env
+#
+# Pairing law (never mix):
+#   DEV  (zusulknbhaumougqckec)  ↔  sk_test
+#   PROD (jcnzjigxgkzhjsaekoqz)  ↔  sk_live  (requires APP_STORE_STRIPE_GO=1)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 # shellcheck disable=SC1091
 source "$ROOT/scripts/supabase/_resolve_project_ref.sh"
 resolve_project_ref "$@" || exit 1
+
+DEV_REF="zusulknbhaumougqckec"
+PROD_REF="jcnzjigxgkzhjsaekoqz"
 
 if [[ -n "${STRIPE_ENV_FILE:-}" ]]; then
   if [[ ! -f "$STRIPE_ENV_FILE" ]]; then
@@ -33,9 +40,27 @@ if [[ -z "${STRIPE_SECRET_KEY:-}" ]]; then
   exit 1
 fi
 
-if [[ "$REF" == "jcnzjigxgkzhjsaekoqz" && "${STRIPE_SECRET_KEY}" == sk_live* && "${APP_STORE_STRIPE_GO:-}" != "1" ]]; then
-  echo "Refusing to push sk_live to PROD without APP_STORE_STRIPE_GO=1" >&2
-  exit 1
+KEY_MODE="other"
+if [[ "${STRIPE_SECRET_KEY}" == sk_live* ]]; then
+  KEY_MODE="live"
+elif [[ "${STRIPE_SECRET_KEY}" == sk_test* ]]; then
+  KEY_MODE="test"
+fi
+
+if [[ "$REF" == "$PROD_REF" ]]; then
+  if [[ "$KEY_MODE" != "live" ]]; then
+    echo "Refusing to push non-live Stripe key to PROD (want sk_live_, got ${KEY_MODE})" >&2
+    exit 1
+  fi
+  if [[ "${APP_STORE_STRIPE_GO:-}" != "1" ]]; then
+    echo "Refusing to push sk_live to PROD without APP_STORE_STRIPE_GO=1" >&2
+    exit 1
+  fi
+elif [[ "$REF" == "$DEV_REF" ]]; then
+  if [[ "$KEY_MODE" != "test" ]]; then
+    echo "Refusing to push non-test Stripe key to DEV (want sk_test_, got ${KEY_MODE})" >&2
+    exit 1
+  fi
 fi
 
 ARGS=(secrets set --project-ref "$REF" "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}")
@@ -43,6 +68,6 @@ ARGS=(secrets set --project-ref "$REF" "STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}")
 [[ -n "${STRIPE_TRIAL_PERIOD_DAYS:-}" ]] && ARGS+=("STRIPE_TRIAL_PERIOD_DAYS=${STRIPE_TRIAL_PERIOD_DAYS}")
 [[ -n "${BILLING_CURRENCY:-}" ]] && ARGS+=("BILLING_CURRENCY=${BILLING_CURRENCY}")
 
-echo "Syncing Stripe secrets to project_ref length=${#REF}…"
+echo "Syncing Stripe secrets to project_ref length=${#REF} (mode=${KEY_MODE})…"
 supabase "${ARGS[@]}"
 echo "Secrets synced."

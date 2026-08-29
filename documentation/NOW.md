@@ -8,15 +8,16 @@
 
 **Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / `production-local` → EAS `preview` → **DEV**. App Store profile `production` → **PROD**. Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → `M-OPS-03` → `M-AUTHZ-02` → …
 
-**This session:** ENV-01 A–C (`a0697e4`). **M-DATA-05 Phase A committed** (`de6e626`). **ENV-01 Phase D GO** — preflight PASS (EAS production→PROD, preview→DEV; PROD anon denied). **Blocked on Stripe live keys** (`sk_live` + live `whsec`) — not on disk; MCP test-mode only.
+**This session:** ENV-01 A–C (`a0697e4`). DATA-05 A (`de6e626`). **Phase D:** live HKD catalog ✅ · live webhook + Edge redeploy ✅ · **blocked on `sk_live` for Edge** (MCP cannot export API keys).
 
-**Idle-parallel photo funnel:** **TF 1.1.3 (212) submitted to ASC** (processing). FastFormat thumbs. Daily `production-local` → DEV. **Not** public App Store.
+**Idle-parallel photo funnel:** **TF 1.1.3 (213) in flight** — lookahead-only PhotoKit cache, 256px cap, no warm `startCaching`. Daily `production-local` → DEV. **Not** public App Store.
 
 ## Next (definitive)
 
-1. **Phase D unblock:** add live Stripe keys to `.cache/env-cutover/insite-prod-stripe.env.local` (gitignored) **or** complete Stripe MCP livemode consent — then D1 catalog bootstrap → D2 Edge secrets (`APP_STORE_STRIPE_GO=1`) → D3 `eas build --profile production` + ASC submit
-2. **M-OPS-03** → **M-AUTHZ-02** → **M-AI-01** → Wave 2
-3. Idle later: **M-DATA-05 Phase B** (post-Store) — logout GC
+1. **Unblock D2:** add `STRIPE_SECRET_KEY=sk_live_…` to `.cache/env-cutover/insite-prod-stripe.env.local` (webhook secret already there) → sync with `APP_STORE_STRIPE_GO=1`
+2. **D3:** `eas build --profile production` → ASC submit
+3. **M-OPS-03** → **M-AUTHZ-02** → **M-AI-01** → Wave 2
+4. Idle later: **M-DATA-05 Phase B** (post-Store) — logout GC
 
 **Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 

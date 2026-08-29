@@ -6,19 +6,27 @@
 
 ## Doing
 
-**Priority #1 — `M-OPS-ENV-01` Prod DB:** LOCKED plan — current = DEV, new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. Waiting: **start cutover** to create PROD. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
+**Priority #1 — `M-OPS-ENV-01` Prod DB:** **Owned by another chat (2026-08-29).** This chat must **not** start cutover, create PROD, touch live secrets, or edit the split plan. LOCKED: current = DEV; new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
 
-**Idle-parallel — photo funnel:** **M-PERF-04 C1+C2 shipping to TestFlight (2026-08-28).** Camera persist overlay; shutter no longer awaits pin. Headed iPhone 17 Pro Max: library overlay ×3 + 5 shutter → Done → Accept (5 on Select Photos). Login-badge still local.
+**This chat — idle-parallel photo funnel:** **L1+L2 shipping to TF** (stop before L3). HUD on hybrid library: open→meta / row / 12. Skeletons + stagger URI bind (3 / 32ms). First page **12** / scroll **18**. SoT: `docs/superpowers/analysis/2026-08-29-instagram-class-picker-e2e.md`. Do **not** jump ENV-01; do **not** edit ENV-01 files.
 
 ## Next (definitive)
 
-1. **`M-OPS-ENV-01`** — create empty PROD (say **start cutover**)
+1. **`M-OPS-ENV-01`** — other chat (create empty PROD)
 2. App Store submit → Stripe **live** on PROD
 3. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
 
 **Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01). **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 
 ## Recently closed / shipped this session
+
+**L1+L2 (2026-08-29, idle-parallel):** Timing HUD on hybrid library + skeleton first screen + stagger URI bind. **Stop before L3.** TF next.
+
+**TF 1.1.3 (207) (2026-08-28):** Local EAS production-local IPA submitted to ASC (processing). Row-sized library pages (3 then 6), smaller decode window. Script footer still prints `app.json` **194**; EAS remote **207**. IPA: `.eas/artifacts/build-1787926602506.ipa`. Submit: `a5a3f824-a4aa-4bfa-931b-1786c728afc9` FINISHED. **Not** public App Store.
+
+**TF 1.1.3 (206) (2026-08-28):** Local EAS production-local IPA submitted to ASC (processing). Includes camera app-level permission cache, no-camera library fallback, library first-row stream. Script footer still prints `app.json` **194**; EAS remote **206**. IPA: `.eas/artifacts/build-1787924071965.ipa`. Submit: `713442f8-fbac-43e2-9213-199db5674508`. **Not** public App Store.
+
+**M-PERF-04 C1+C2 (2026-08-28, idle-parallel):** Camera persist overlay + async shutter pin. Headed 17 Pro Max PASS. Commit `47e2e05`. **TF 1.1.3 (205)** submitted to ASC.
 
 **Capture picker lag JS cut (2026-08-28, idle-parallel):** 2× inner RN `Image` + scale-up; `PAGE_SIZE=18`; `initialNumToRender=9`; defer `getAlbumsAsync` until album sheet. Default stays All photos. Native FastFormat = later TF.
 
@@ -57,7 +65,8 @@
 
 ## Sims / locks
 
-(none claimed)
+- **`M-OPS-ENV-01`:** other chat (single-writer). This chat: photo funnel only (`src/modules/captureSession/`, `src/modules/mediaLibrary/`, picker docs). Do not edit `eas.json` / `app.json` env, Supabase project create, or the prod-dev split plan.
+- Sims: (none claimed)
 
 ## Parked notes
 

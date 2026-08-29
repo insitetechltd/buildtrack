@@ -3,9 +3,12 @@ import * as MediaLibrary from "expo-media-library";
 /** Sentinel: all photos (no album filter). */
 export const ALL_PHOTOS_ALBUM_ID = "__all__";
 
-export const LIBRARY_PAGE_SIZE = 36;
-/** First grid paint — smaller than scroll pages for faster time-to-first-tiles. */
+/** Follow-up pages while scrolling — one extra screen, not 6-at-a-time (too slow) or 36 (one long stall). */
+export const LIBRARY_PAGE_SIZE = 18;
+/** First PhotoKit request = one screen. Same wait as a tiny page, but a usable batch. */
 export const LIBRARY_INITIAL_PAGE_SIZE = 12;
+/** Stop auto-fill once the first screen is in. Scroll uses LIBRARY_PAGE_SIZE. */
+export const LIBRARY_FILL_UNTIL_COUNT = 12;
 export const LIBRARY_GRID_COLUMNS = 3;
 export const LIBRARY_GRID_GAP = 2;
 

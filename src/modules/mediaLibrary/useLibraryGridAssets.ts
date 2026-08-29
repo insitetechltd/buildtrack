@@ -6,6 +6,7 @@ import { consumeWarmLibraryPage } from "@/utils/libraryWarmPrefetch";
 import {
   ALL_PHOTOS_ALBUM_ID,
   LIBRARY_ASSET_SORT,
+  LIBRARY_FILL_UNTIL_COUNT,
   LIBRARY_INITIAL_PAGE_SIZE,
   LIBRARY_PAGE_SIZE,
   type LibraryAlbumChoice,
@@ -32,10 +33,12 @@ export function useLibraryGridAssets({
   const [hasNextPage, setHasNextPage] = useState(true);
   const [loadingPage, setLoadingPage] = useState(false);
   const [permission, setPermission] = useState<string | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const pageRequestRef = useRef(0);
   const assetsByIdRef = useRef(new Map<string, MediaLibrary.Asset>());
   const albumsLoadedRef = useRef(false);
   const albumsLoadingRef = useRef(false);
+  const autoFillCursorRef = useRef<string | undefined>(undefined);
 
   const loadAlbumsIfNeeded = useCallback(async () => {
     if (albumsLoadedRef.current || albumsLoadingRef.current) {
@@ -125,6 +128,7 @@ export function useLibraryGridAssets({
     }
     let cancelled = false;
     (async () => {
+      setInitialLoadDone(false);
       if (consumeWarmPage && selectedAlbumId === ALL_PHOTOS_ALBUM_ID) {
         const warm = consumeWarmLibraryPage();
         if (warm) {
@@ -136,6 +140,7 @@ export function useLibraryGridAssets({
             map.set(asset.id, asset);
           }
           assetsByIdRef.current = map;
+          setInitialLoadDone(true);
           return;
         }
       }
@@ -143,24 +148,62 @@ export function useLibraryGridAssets({
       setAssets([]);
       setEndCursor(undefined);
       setHasNextPage(true);
+      autoFillCursorRef.current = undefined;
       await loadPage(selectedAlbumId);
       if (cancelled) return;
+      setInitialLoadDone(true);
     })();
     return () => {
       cancelled = true;
     };
   }, [consumeWarmPage, enabled, loadPage, permission, selectedAlbumId]);
 
+  useEffect(() => {
+    if (!enabled || permission !== "granted") {
+      return;
+    }
+    if (loadingPage || !hasNextPage || !endCursor) {
+      return;
+    }
+    if (assets.length >= LIBRARY_FILL_UNTIL_COUNT) {
+      return;
+    }
+    if (autoFillCursorRef.current === endCursor) {
+      return;
+    }
+    autoFillCursorRef.current = endCursor;
+    void loadPage(selectedAlbumId, endCursor);
+  }, [
+    assets.length,
+    enabled,
+    endCursor,
+    hasNextPage,
+    loadPage,
+    loadingPage,
+    permission,
+    selectedAlbumId,
+  ]);
+
   const onEndReached = useCallback(() => {
     if (!hasNextPage || loadingPage || !endCursor) return;
+    // Mount + a short grid fires onEndReached immediately. Auto-fill owns the first screens.
+    if (assets.length < LIBRARY_FILL_UNTIL_COUNT) return;
     void loadPage(selectedAlbumId, endCursor);
-  }, [endCursor, hasNextPage, loadPage, loadingPage, selectedAlbumId]);
+  }, [
+    assets.length,
+    endCursor,
+    hasNextPage,
+    loadPage,
+    loadingPage,
+    selectedAlbumId,
+  ]);
 
   return {
     albums,
     assets,
     assetsByIdRef,
     loadingPage,
+    initialLoadDone,
     permission,
     onEndReached,
     loadAlbumsIfNeeded,

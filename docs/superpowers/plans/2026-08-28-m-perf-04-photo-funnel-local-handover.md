@@ -2,7 +2,7 @@
 
 **Created:** 2026-08-28  
 **Audience:** Local Cursor chat continuing photo funnel performance work  
-**Status:** M-PERF-03 shipped on branch; M-PERF-04 (C1/C2) not started
+**Status:** M-PERF-03 shipped on master. **M-PERF-04 C1+C2 implemented** (`47e2e05` + local photo WIP). Handover below is the original kickoff; C1 overlay is in `CaptureSessionModule.tsx`.
 
 ---
 
@@ -127,16 +127,16 @@ User agreed: **fix camera first**, then measure library (L1) before bigger picke
 
 | ID | Task | Target |
 |---|---|---|
-| **C1** | Keep camera mounted camera ↔ hybrid (no remount spinner) | `CaptureSessionModule.tsx` |
-| **C2** | Faster shot-to-shot (async/defer `pinDraftMedia`, tune capture) | `CaptureSessionCameraScreen.tsx` |
-| **L1** | Library timing instrumentation (dev metrics) | small util + logs |
+| **C1** | Keep camera mounted camera ↔ hybrid (no remount spinner) | **done** (`47e2e05`) |
+| **C2** | Faster shot-to-shot (async/defer `pinDraftMedia`, tune capture) | **done** (`47e2e05`) |
+| **L1** | Library timing: overlay open → metadata → first row (3) → first screen (12). Console `[library-picker-l1]` + on-device HUD (`LIBRARY_PICKER_TIMING_HUD`) | **done** (this TF) |
+| **L2** | Instant skeleton grid; stagger URI bind (3 / 32ms); do not block chrome on permission/preselection restore | **done** (this TF) |
 
-### After C1/C2 + TF
+### After L1/L2 TF
 
 | ID | Task |
 |---|---|
-| L2 | Instant grid skeleton; don’t block on preselection restore |
-| L3 | Native PhotoKit thumbnails |
+| **L3** | Native PhotoKit thumbnails — **E2E bar:** `../analysis/2026-08-29-instagram-class-picker-e2e.md` — **stopped before this TF** |
 | L4 | iCloud blank tile `onError` fallback |
 | L6 | Tune warm / first page if metrics need it |
 | A1 | Select Photos annotation perf (rotate/crop/draw Done) |
@@ -156,24 +156,18 @@ User agreed: **fix camera first**, then measure library (L1) before bigger picke
 
 ## Next ticket — C1
 
-### M-PERF-04: Persist camera across hybrid library step
+### M-PERF-04: Persist camera across hybrid library step — **done**
 
-**Problem:** Conditional render in `CaptureSessionModule` unmounts `CaptureSessionCameraScreen` when `step === "hybridLibrary"`.
+**Shipped approach:** Do **not** swap `{step === "camera" ? Camera : Library}`. Keep `CaptureSessionCameraScreen` mounted in a camera layer. When `step === "hybridLibrary"`, cover it with an opaque `#ffffff` overlay (`zIndex`/`elevation` 10, `pointerEvents="none"` + a11y hide on the camera layer). Android hardware back → `goToCamera()`. Hybrid library still unmounts when returning to camera (cheap); CameraView does not.
 
-**Acceptance:**
+**Acceptance (code + overlay Jest ×3):**
 
-- [ ] Camera ↔ hybrid switch: no full-screen white spinner
-- [ ] `CameraView` stays alive (stack / hide / overlay)
-- [ ] Back from library → live preview immediately
-- [ ] No regression: shutter, library peek, Done → hybrid, Accept → Select Photos
+- [x] Camera ↔ hybrid switch: no full-screen remount spinner from unmounting CameraView
+- [x] `CameraView` stays alive under overlay
+- [x] Back from library → live preview immediately (same mount)
+- [x] No regression: shutter, library peek, Done → hybrid, Accept → Select Photos
 
-**Validation:**
-
-- Device/sim: camera → library → back ×3
-- `npm run test:photo-flow`
-- `npx tsc --noEmit`
-
-**Then:** C2 (shutter latency), then L1 (metrics).
+**Then:** C2 (shutter latency) — also implemented locally. Next product proof is TF 207 row-paging / headed camera↔library ×3.
 
 ---
 

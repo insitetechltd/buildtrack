@@ -9,7 +9,18 @@ jest.mock("expo-camera", () => {
   const React = require("react");
   const { View } = require("react-native");
   return {
-    useCameraPermissions: () => [{ granted: true, status: "granted" }, jest.fn()],
+    Camera: {
+      getCameraPermissionsAsync: jest.fn(async () => ({
+        granted: true,
+        status: "granted",
+        canAskAgain: true,
+      })),
+      requestCameraPermissionsAsync: jest.fn(async () => ({
+        granted: true,
+        status: "granted",
+        canAskAgain: true,
+      })),
+    },
     CameraView: React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
       React.useImperativeHandle(ref, () => ({
         takePictureAsync: mockTakePictureAsync,
@@ -56,9 +67,15 @@ import {
   useCaptureSessionStore,
 } from "../sessionDraftStore";
 import { resetCameraDraftPinQueueForTests } from "../cameraDraftPinQueue";
+import {
+  ensureCameraPermissionChecked,
+  invalidateCameraPermissionCache,
+} from "../../../utils/cameraPermission";
 
 describe("CaptureSessionCameraScreen shutter C2", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    invalidateCameraPermissionCache();
+    await ensureCameraPermissionChecked();
     resetCameraDraftPinQueueForTests();
     resetCaptureSession();
     useCaptureSessionStore.getState().setSelectionLimit(20);

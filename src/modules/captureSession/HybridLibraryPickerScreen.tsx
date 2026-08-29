@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,8 +15,14 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
-import { LIBRARY_GRID_COLUMNS, LIBRARY_GRID_GAP } from "@/modules/mediaLibrary/libraryAlbumConstants";
+import { LibraryPickerTimingHud } from "@/modules/mediaLibrary/LibraryPickerTimingHud";
+import {
+  LIBRARY_FILL_UNTIL_COUNT,
+  LIBRARY_GRID_COLUMNS,
+  LIBRARY_GRID_GAP,
+} from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
+import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { prepareCaptureSessionAccept } from "./cameraDraftPinQueue";
 import { useCaptureSessionStore } from "./sessionDraftStore";
@@ -53,6 +59,12 @@ export function HybridLibraryPickerScreen() {
     enabled: true,
     consumeWarmPage: true,
   });
+
+  useEffect(() => {
+    if (albumPicker.assets.length > 0) {
+      markLibraryPickerMetadata(albumPicker.assets.length);
+    }
+  }, [albumPicker.assets.length]);
 
   const sessionCameraPhotos = useMemo(
     () => photos.filter((p) => p.source === "camera"),
@@ -290,12 +302,7 @@ export function HybridLibraryPickerScreen() {
         </Pressable>
       </View>
 
-      {albumPicker.permission === null && albumPicker.assets.length === 0 ? (
-        <View style={styles.centeredFlex}>
-          <ActivityIndicator color="#08576E" />
-        </View>
-      ) : (
-        <LibraryPhotoGrid
+      <LibraryPhotoGrid
           listTestID="capture-session__library_grid"
           testIdPrefix="capture-session"
           assets={albumPicker.assets}
@@ -305,6 +312,12 @@ export function HybridLibraryPickerScreen() {
           selectionOrderByKey={selectionOrderByKey}
           onPressAsset={onPressLibraryAsset}
           contentPaddingBottom={insets.bottom + 24}
+          placeholderCount={
+            albumPicker.assets.length === 0 && !albumPicker.initialLoadDone
+              ? LIBRARY_FILL_UNTIL_COUNT
+              : 0
+          }
+          paintResetKey={albumPicker.selectedAlbumId}
           ListHeaderComponent={
             <View>
               {sessionHeader}
@@ -312,7 +325,8 @@ export function HybridLibraryPickerScreen() {
             </View>
           }
         />
-      )}
+
+      <LibraryPickerTimingHud />
 
       <LibraryAlbumPickerModal
         visible={albumPicker.albumPickerOpen}
@@ -338,11 +352,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
-  },
-  centeredFlex: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   permTitle: {
     fontSize: 18,

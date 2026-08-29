@@ -9,6 +9,7 @@ import { CaptureSessionCameraScreen } from "./CaptureSessionCameraScreen";
 import { HybridLibraryPickerScreen } from "./HybridLibraryPickerScreen";
 import { resetCaptureSession, useCaptureSessionStore } from "./sessionDraftStore";
 import { warmLibraryFirstPage } from "../../utils/libraryWarmPrefetch";
+import { beginLibraryPickerSession } from "../../utils/libraryPickerTiming";
 
 export type { CaptureSessionHostProps } from "./CaptureSessionHostContext";
 
@@ -38,6 +39,7 @@ export function CaptureSessionModule({
   }, [selectionLimit, setSelectionLimit]);
 
   const goToHybridLibrary = useCallback(() => {
+    beginLibraryPickerSession();
     setStep("hybridLibrary");
   }, []);
 

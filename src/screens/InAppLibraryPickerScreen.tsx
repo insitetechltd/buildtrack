@@ -16,6 +16,9 @@ import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
+  LIBRARY_FILL_UNTIL_COUNT,
+} from "@/modules/mediaLibrary/libraryAlbumConstants";
+import {
   assetToSelectionDraft,
   materializeLibrarySelections,
 } from "@/modules/mediaLibrary/materializeLibrarySave";
@@ -44,6 +47,21 @@ async function loadAssetsByIds(assetIds: string[]): Promise<MediaLibrary.Asset[]
     }
   }
   return assets;
+}
+
+function selectionMapFromPhotos(
+  photos: SelectedPhoto[],
+): Map<string, number> {
+  const next = new Map<string, number>();
+  let order = 0;
+  for (const photo of photos) {
+    if (!photo.mediaLibraryAssetId) {
+      continue;
+    }
+    order += 1;
+    next.set(photo.mediaLibraryAssetId, order);
+  }
+  return next;
 }
 
 function permissionPhaseFrom(permission: string | null): PermissionPhase {
@@ -77,8 +95,8 @@ export default function InAppLibraryPickerScreen({
   const insets = useSafeAreaInsets();
 
   const [isPinning, setIsPinning] = useState(false);
-  const [selectionOrderByKey, setSelectionOrderByKey] = useState(
-    () => new Map<string, number>(),
+  const [selectionOrderByKey, setSelectionOrderByKey] = useState(() =>
+    selectionMapFromPhotos(initiallySelectedPhotos),
   );
   /** Restored selections may not appear in the first paginated grid page. */
   const restoredAssetsByIdRef = useRef(new Map<string, MediaLibrary.Asset>());
@@ -119,13 +137,10 @@ export default function InAppLibraryPickerScreen({
       const assets = await loadAssetsByIds(assetIds);
       if (!cancelled && assets.length > 0) {
         const restored = new Map<string, MediaLibrary.Asset>();
-        const next = new Map<string, number>();
-        assets.forEach((asset, index) => {
+        assets.forEach((asset) => {
           restored.set(asset.id, asset);
-          next.set(asset.id, index + 1);
         });
         restoredAssetsByIdRef.current = restored;
-        setSelectionOrderByKey(next);
       }
     })();
     return () => {
@@ -169,6 +184,17 @@ export default function InAppLibraryPickerScreen({
     }
     setIsPinning(true);
     try {
+      const missingIds = [...selectionOrderByKey.keys()].filter(
+        (assetId) =>
+          !albumPicker.assetsByIdRef.current.get(assetId) &&
+          !restoredAssetsByIdRef.current.get(assetId),
+      );
+      if (missingIds.length > 0) {
+        const loaded = await loadAssetsByIds(missingIds);
+        for (const asset of loaded) {
+          restoredAssetsByIdRef.current.set(asset.id, asset);
+        }
+      }
       const drafts = [...selectionOrderByKey.entries()]
         .sort((a, b) => a[1] - b[1])
         .map(([assetId, order]) => {
@@ -223,18 +249,6 @@ export default function InAppLibraryPickerScreen({
       <Ionicons name="chevron-down" size={18} color="#666" />
     </Pressable>
   );
-
-  if (permissionPhase === "checking") {
-    return (
-      <View
-        testID="in-app-library__loading"
-        style={{ flex: 1, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" }}
-      >
-        <StatusBar style="dark" />
-        <ActivityIndicator size="large" color="#2563EB" />
-      </View>
-    );
-  }
 
   if (permissionPhase === "denied") {
     return (
@@ -332,14 +346,7 @@ export default function InAppLibraryPickerScreen({
         </Pressable>
       </View>
 
-      {albumPicker.permission !== "granted" &&
-      albumPicker.assets.length === 0 &&
-      albumPicker.loadingPage ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#2563EB" />
-        </View>
-      ) : (
-        <LibraryPhotoGrid
+      <LibraryPhotoGrid
           listTestID="in-app-library__grid"
           testIdPrefix="in-app-library"
           assets={albumPicker.assets}
@@ -350,9 +357,14 @@ export default function InAppLibraryPickerScreen({
           onPressAsset={onPressAsset}
           theme={IN_APP_THEME}
           contentPaddingBottom={insets.bottom + 24}
+          placeholderCount={
+            albumPicker.assets.length === 0 && !albumPicker.initialLoadDone
+              ? LIBRARY_FILL_UNTIL_COUNT
+              : 0
+          }
+          paintResetKey={albumPicker.selectedAlbumId}
           ListHeaderComponent={albumRow}
         />
-      )}
 
       <LibraryAlbumPickerModal
         visible={albumPicker.albumPickerOpen}

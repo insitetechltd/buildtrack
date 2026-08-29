@@ -5,12 +5,11 @@ import {
   Text,
   Pressable,
   Image,
-  ActivityIndicator,
   StyleSheet,
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { CameraView } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -18,6 +17,12 @@ import {
   peekWarmLibraryThumbUri,
   warmLibraryFirstPage,
 } from "../../utils/libraryWarmPrefetch";
+import {
+  peekCameraPermission,
+  ensureCameraPermissionChecked,
+  requestCameraPermission,
+} from "../../utils/cameraPermission";
+import { probeCameraAvailable } from "./cameraAvailability";
 import { enqueueCameraDraftPin } from "./cameraDraftPinQueue";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { useCaptureSessionStore } from "./sessionDraftStore";
@@ -31,10 +36,12 @@ export function CaptureSessionCameraScreen() {
   const { onCancel, goToHybridLibrary } = useCaptureSessionHost();
   const cameraRef = useRef<CameraView>(null);
   const isCapturingRef = useRef(false);
-  const [permission, requestPermission] = useCameraPermissions();
+  const autoOpenedLibraryRef = useRef(false);
+  const [permission, setPermission] = useState(peekCameraPermission);
   const [isCapturing, setIsCapturing] = useState(false);
   const [libraryThumbUri, setLibraryThumbUri] = useState<string | null>(null);
   const [cameraNativeError, setCameraNativeError] = useState<string | null>(null);
+  const [cameraUnavailable, setCameraUnavailable] = useState(false);
 
   const photos = useCaptureSessionStore((s) => s.photos);
   const selectAllSessionCamera = useCaptureSessionStore(
@@ -42,6 +49,37 @@ export function CaptureSessionCameraScreen() {
   );
 
   const sessionCount = photos.filter((p) => p.source === "camera").length;
+
+  const openLibraryOnly = useCallback(() => {
+    goToHybridLibrary();
+  }, [goToHybridLibrary]);
+
+  const skipToLibraryOnce = useCallback(() => {
+    if (autoOpenedLibraryRef.current) {
+      return;
+    }
+    autoOpenedLibraryRef.current = true;
+    goToHybridLibrary();
+  }, [goToHybridLibrary]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const available = await probeCameraAvailable();
+      if (cancelled || available) {
+        return;
+      }
+      setCameraUnavailable(true);
+      skipToLibraryOnce();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [skipToLibraryOnce]);
+
+  useEffect(() => {
+    void ensureCameraPermissionChecked().then(setPermission);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,30 +113,6 @@ export function CaptureSessionCameraScreen() {
       cancelled = true;
     };
   }, []);
-
-  if (cameraNativeError) {
-    return (
-      <View
-        style={[
-          styles.centered,
-          { paddingTop: insets.top, paddingBottom: insets.bottom },
-        ]}
-      >
-        <Text style={styles.permTitle}>Camera module unavailable</Text>
-        <Text style={styles.permBody}>{cameraNativeError}</Text>
-        <Pressable
-          testID="capture-session__open_library_fallback"
-          onPress={goToHybridLibrary}
-          style={styles.permButton}
-        >
-          <Text style={styles.permButtonText}>Open library only</Text>
-        </Pressable>
-        <Pressable onPress={onCancel} style={styles.cancelLink}>
-          <Text style={styles.cancelLinkText}>Cancel</Text>
-        </Pressable>
-      </View>
-    );
-  }
 
   const handleShutter = useCallback(async () => {
     if (!cameraRef.current || isCapturingRef.current) {
@@ -161,15 +175,42 @@ export function CaptureSessionCameraScreen() {
     goToHybridLibrary();
   }, [goToHybridLibrary]);
 
-  if (!permission) {
+  const handleRequestCamera = useCallback(async () => {
+    const next = await requestCameraPermission();
+    setPermission(next);
+  }, []);
+
+  if (cameraNativeError || cameraUnavailable) {
     return (
-      <View style={[styles.centered, { paddingTop: insets.top }]}>
-        <ActivityIndicator color="#fff" />
+      <View
+        style={[
+          styles.centered,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}
+      >
+        <Text style={styles.permTitle}>
+          {cameraUnavailable ? "No camera on this device" : "Camera module unavailable"}
+        </Text>
+        <Text style={styles.permBody}>
+          {cameraUnavailable
+            ? "Use the photo library to attach jobsite photos."
+            : cameraNativeError}
+        </Text>
+        <Pressable
+          testID="capture-session__open_library_fallback"
+          onPress={openLibraryOnly}
+          style={styles.permButton}
+        >
+          <Text style={styles.permButtonText}>Choose from library</Text>
+        </Pressable>
+        <Pressable onPress={onCancel} style={styles.cancelLink}>
+          <Text style={styles.cancelLinkText}>Cancel</Text>
+        </Pressable>
       </View>
     );
   }
 
-  if (!permission.granted) {
+  if (permission && !permission.granted) {
     return (
       <View
         style={[
@@ -183,10 +224,19 @@ export function CaptureSessionCameraScreen() {
         </Text>
         <Pressable
           testID="capture-session__request_camera"
-          onPress={() => requestPermission()}
+          onPress={() => {
+            void handleRequestCamera();
+          }}
           style={styles.permButton}
         >
           <Text style={styles.permButtonText}>Allow Camera</Text>
+        </Pressable>
+        <Pressable
+          testID="capture-session__open_library_fallback"
+          onPress={openLibraryOnly}
+          style={styles.permButtonSecondary}
+        >
+          <Text style={styles.permButtonSecondaryText}>Choose from library</Text>
         </Pressable>
         <Pressable onPress={onCancel} style={styles.cancelLink}>
           <Text style={styles.cancelLinkText}>Cancel</Text>
@@ -195,8 +245,11 @@ export function CaptureSessionCameraScreen() {
     );
   }
 
+  const cameraReady = Boolean(permission?.granted);
+
   return (
     <View style={styles.root} testID="capture-session__camera">
+      {cameraReady ? (
       <CameraView
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -208,8 +261,10 @@ export function CaptureSessionCameraScreen() {
             "CameraView failed to mount. Native rebuild may be required.";
           console.error("[CaptureSession] CameraView onMountError", message);
           setCameraNativeError(message);
+          skipToLibraryOnce();
         }}
       />
+      ) : null}
 
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Pressable
@@ -282,8 +337,8 @@ export function CaptureSessionCameraScreen() {
         <Pressable
           testID="capture-session__shutter"
           onPress={handleShutter}
-          disabled={isCapturing}
-          style={[styles.shutterOuter, isCapturing && styles.shutterDisabled]}
+          disabled={isCapturing || !cameraReady}
+          style={[styles.shutterOuter, (isCapturing || !cameraReady) && styles.shutterDisabled]}
         >
           <View style={styles.shutterInner} />
         </Pressable>
@@ -324,6 +379,18 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   permButtonText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  permButtonSecondary: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  permButtonSecondaryText: {
     color: "#fff",
     fontWeight: "600",
   },

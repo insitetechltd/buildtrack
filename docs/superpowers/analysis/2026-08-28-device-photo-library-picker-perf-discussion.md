@@ -1,5 +1,7 @@
 # Device photo library picker — performance & UX discussion (2026-08-28)
 
+**Product bar (2026-08-29):** Instagram / Threads–class feel — user must not sense the app *processing* inside the picker. Knobs in this note are Layer A only. E2E bar + why JS cannot close it: `2026-08-29-instagram-class-picker-e2e.md`.
+
 **Status:** Discussion only — **no design lock**. Priority TBD on ROADMAP (`WS-PERF / M-PERF-03`).
 
 **Scope:** On-device Photos access (PhotoKit / `expo-media-library`), **not** remote `buildtrack-files` evidence thumbs (`M-PERF-01`).

@@ -103,7 +103,7 @@ describe("InAppLibraryPickerScreen permission gate", () => {
     });
   });
 
-  it("does not mount library grid until MediaLibrary permission is granted", async () => {
+  it("shows skeleton grid chrome while permission is pending and does not fetch assets yet", async () => {
     let resolveRequest: (value: { granted: boolean }) => void = () => {};
     mockGetPermissionsAsync.mockResolvedValue({ granted: false, canAskAgain: true });
     mockRequestPermissionsAsync.mockImplementation(
@@ -117,8 +117,11 @@ describe("InAppLibraryPickerScreen permission gate", () => {
       <InAppLibraryPickerScreen onCancel={jest.fn()} onSave={jest.fn()} />,
     );
 
-    expect(getByTestId("in-app-library__loading")).toBeTruthy();
-    expect(queryByTestId("in-app-library__grid")).toBeNull();
+    expect(getByTestId("in-app-library__screen")).toBeTruthy();
+    expect(getByTestId("in-app-library__grid")).toBeTruthy();
+    expect(queryByTestId("in-app-library__loading")).toBeNull();
+    expect(queryByTestId("in-app-library__permission_denied")).toBeNull();
+    expect(mockGetAssetsAsync).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(mockRequestPermissionsAsync).toHaveBeenCalled();
@@ -129,8 +132,9 @@ describe("InAppLibraryPickerScreen permission gate", () => {
     });
 
     await waitFor(() => {
-      expect(getByTestId("in-app-library__grid")).toBeTruthy();
+      expect(mockGetAssetsAsync).toHaveBeenCalled();
     });
+    expect(getByTestId("in-app-library__grid")).toBeTruthy();
     expect(getByTestId("in-app-library__screen")).toBeTruthy();
   });
 

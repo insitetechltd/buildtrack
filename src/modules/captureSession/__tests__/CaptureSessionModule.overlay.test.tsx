@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { act, fireEvent, render } from "@testing-library/react-native";
 
 const mockWarmLibraryFirstPage = jest.fn(async () => undefined);
+let mockCameraMountCount = 0;
 
 jest.mock("../../../utils/libraryWarmPrefetch", () => ({
   warmLibraryFirstPage: (...args: unknown[]) => mockWarmLibraryFirstPage(...args),
@@ -15,6 +16,9 @@ jest.mock("../CaptureSessionCameraScreen", () => {
   return {
     CaptureSessionCameraScreen: () => {
       const { goToHybridLibrary } = useCaptureSessionHost();
+      React.useEffect(() => {
+        mockCameraMountCount += 1;
+      }, []);
       return React.createElement(
         View,
         { testID: "capture-session__camera" },
@@ -50,11 +54,17 @@ jest.mock("../HybridLibraryPickerScreen", () => {
 
 import { CaptureSessionModule } from "../CaptureSessionModule";
 import { resetCaptureSession } from "../sessionDraftStore";
+import {
+  getLibraryPickerTimingSnapshot,
+  resetLibraryPickerTimingForTests,
+} from "../../../utils/libraryPickerTiming";
 
 describe("CaptureSessionModule C1 overlay", () => {
   beforeEach(() => {
     resetCaptureSession();
+    resetLibraryPickerTimingForTests();
     mockWarmLibraryFirstPage.mockClear();
+    mockCameraMountCount = 0;
   });
 
   it("keeps the camera mounted under an opaque library overlay", () => {
@@ -67,6 +77,7 @@ describe("CaptureSessionModule C1 overlay", () => {
 
     fireEvent.press(getByTestId("capture-session__library_peek"));
 
+    expect(getLibraryPickerTimingSnapshot()?.overlayOpenAt).toBeGreaterThan(0);
     expect(
       getByTestId("capture-session__camera", { includeHiddenElements: true }),
     ).toBeTruthy();
@@ -106,5 +117,29 @@ describe("CaptureSessionModule C1 overlay", () => {
       "auto",
     );
     expect(mockWarmLibraryFirstPage).toHaveBeenCalled();
+  });
+
+  it("keeps a single camera mount across three library round trips", () => {
+    const { getByTestId, queryByTestId } = render(
+      <CaptureSessionModule onCancel={jest.fn()} onComplete={jest.fn()} />,
+    );
+
+    expect(mockCameraMountCount).toBe(1);
+
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.press(getByTestId("capture-session__library_peek"));
+      expect(getByTestId("capture-session__library_overlay")).toBeTruthy();
+      expect(
+        getByTestId("capture-session__camera", { includeHiddenElements: true }),
+      ).toBeTruthy();
+
+      act(() => {
+        fireEvent.press(getByTestId("capture-session__hybrid_back"));
+      });
+      expect(queryByTestId("capture-session__library_overlay")).toBeNull();
+      expect(getByTestId("capture-session__camera")).toBeTruthy();
+    }
+
+    expect(mockCameraMountCount).toBe(1);
   });
 });

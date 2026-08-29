@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from "react";
+import React, { memo, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Platform,
   useWindowDimensions,
+  type ViewToken,
 } from "react-native";
 import type * as MediaLibrary from "expo-media-library";
 
@@ -18,8 +19,15 @@ import {
   LIBRARY_GRID_BATCH_ROWS,
   LIBRARY_GRID_INITIAL_ROWS,
   LIBRARY_GRID_WINDOW_SIZE,
+  LIBRARY_PAINT_BATCH_SIZE,
+  LIBRARY_PAINT_INTERVAL_MS,
+  LIBRARY_VIEWABILITY_MIN_TIME_MS,
+  LIBRARY_VIEWABILITY_THRESHOLD,
 } from "@/utils/libraryPickerPerf";
+import { markLibraryPickerTilePainted } from "@/utils/libraryPickerTiming";
+import { useProgressiveGridPaint } from "@/utils/useProgressiveGridPaint";
 import {
+  LIBRARY_FILL_UNTIL_COUNT,
   LIBRARY_GRID_COLUMNS,
   LIBRARY_GRID_GAP,
 } from "./libraryAlbumConstants";
@@ -38,12 +46,22 @@ const DEFAULT_THEME: LibraryGridTileTheme = {
   loadingIndicator: "#08576E",
 };
 
+const VIEWABILITY_CONFIG = {
+  minimumViewTime: LIBRARY_VIEWABILITY_MIN_TIME_MS,
+  itemVisiblePercentThreshold: LIBRARY_VIEWABILITY_THRESHOLD,
+};
+
+type GridListItem =
+  | { kind: "asset"; id: string; asset: MediaLibrary.Asset; index: number }
+  | { kind: "placeholder"; id: string; index: number };
+
 const LibraryGridTile = memo(function LibraryGridTile({
   assetId,
   uri,
   tileSize,
   selected,
   order,
+  bindImage,
   onPress,
   testIdPrefix,
   theme,
@@ -53,11 +71,12 @@ const LibraryGridTile = memo(function LibraryGridTile({
   tileSize: number;
   selected: boolean;
   order: number | undefined;
+  bindImage: boolean;
   onPress: (assetId: string) => void;
   testIdPrefix: string;
   theme: LibraryGridTileTheme;
 }) {
-  const displayUri = libraryGridDisplayUri(uri);
+  const displayUri = bindImage ? libraryGridDisplayUri(uri) : null;
 
   return (
     <Pressable
@@ -67,9 +86,11 @@ const LibraryGridTile = memo(function LibraryGridTile({
     >
       {displayUri ? (
         <Image
+          testID={`${testIdPrefix}__tile_image_${assetId}`}
           source={{ uri: displayUri }}
           resizeMode="cover"
           style={{ width: tileSize, height: tileSize }}
+          onLoad={() => markLibraryPickerTilePainted(assetId)}
         />
       ) : (
         <View
@@ -95,6 +116,30 @@ const LibraryGridTile = memo(function LibraryGridTile({
   );
 });
 
+const LibraryPlaceholderTile = memo(function LibraryPlaceholderTile({
+  id,
+  tileSize,
+  testIdPrefix,
+  theme,
+}: {
+  id: string;
+  tileSize: number;
+  testIdPrefix: string;
+  theme: LibraryGridTileTheme;
+}) {
+  return (
+    <View
+      testID={`${testIdPrefix}__tile_skeleton_${id}`}
+      style={{
+        width: tileSize,
+        height: tileSize,
+        marginBottom: LIBRARY_GRID_GAP,
+        backgroundColor: theme.skeletonColor,
+      }}
+    />
+  );
+});
+
 export type LibraryPhotoGridProps = {
   assets: MediaLibrary.Asset[];
   loadingPage: boolean;
@@ -107,6 +152,10 @@ export type LibraryPhotoGridProps = {
   contentPaddingBottom?: number;
   ListHeaderComponent?: React.ReactElement | null;
   listTestID?: string;
+  /** Instant first-screen chrome while metadata is still loading. */
+  placeholderCount?: number;
+  /** Album / session key — resets URI stagger. */
+  paintResetKey?: string;
 };
 
 export function LibraryPhotoGrid({
@@ -121,6 +170,8 @@ export function LibraryPhotoGrid({
   contentPaddingBottom = 24,
   ListHeaderComponent,
   listTestID,
+  placeholderCount = 0,
+  paintResetKey = "",
 }: LibraryPhotoGridProps) {
   const { width } = useWindowDimensions();
   const theme = useMemo(
@@ -133,28 +184,101 @@ export function LibraryPhotoGrid({
     [width],
   );
 
+  const paint = useProgressiveGridPaint({
+    itemCount: assets.length,
+    batchSize: LIBRARY_PAINT_BATCH_SIZE,
+    intervalMs: LIBRARY_PAINT_INTERVAL_MS,
+    resetKey: paintResetKey,
+    columns: LIBRARY_GRID_COLUMNS,
+    initialFillCount: LIBRARY_FILL_UNTIL_COUNT,
+  });
+
   const extraData = useMemo(
-    () => ({ selectedIds, selectionOrderByKey }),
-    [selectedIds, selectionOrderByKey],
+    () => ({
+      selectedIds,
+      selectionOrderByKey,
+      maxUnlockedIndex: paint.maxUnlockedIndex,
+    }),
+    [paint.maxUnlockedIndex, selectedIds, selectionOrderByKey],
   );
+
+  const listData = useMemo((): GridListItem[] => {
+    if (assets.length > 0) {
+      return assets.map((asset, index) => ({
+        kind: "asset",
+        id: asset.id,
+        asset,
+        index,
+      }));
+    }
+    if (placeholderCount > 0) {
+      return Array.from({ length: placeholderCount }, (_, index) => ({
+        kind: "placeholder" as const,
+        id: `__sk_${index}`,
+        index,
+      }));
+    }
+    return [];
+  }, [assets, placeholderCount]);
+
+  const viewabilityRef = useRef(paint.onViewableIndicesChanged);
+  viewabilityRef.current = paint.onViewableIndicesChanged;
+
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const indices = viewableItems
+        .map((token) => token.index)
+        .filter((index): index is number => typeof index === "number");
+      viewabilityRef.current(indices);
+    },
+    [],
+  );
+
+  const handleEndReached = useCallback(() => {
+    if (assets.length === 0) {
+      return;
+    }
+    onEndReached();
+  }, [assets.length, onEndReached]);
 
   const renderItem = useCallback(
-    ({ item }: { item: MediaLibrary.Asset }) => (
-      <LibraryGridTile
-        assetId={item.id}
-        uri={item.uri}
-        tileSize={tileSize}
-        selected={selectedIds.has(item.id)}
-        order={selectionOrderByKey.get(item.id)}
-        onPress={onPressAsset}
-        testIdPrefix={testIdPrefix}
-        theme={theme}
-      />
-    ),
-    [onPressAsset, selectedIds, selectionOrderByKey, testIdPrefix, theme, tileSize],
+    ({ item }: { item: GridListItem }) => {
+      if (item.kind === "placeholder") {
+        return (
+          <LibraryPlaceholderTile
+            id={item.id}
+            tileSize={tileSize}
+            testIdPrefix={testIdPrefix}
+            theme={theme}
+          />
+        );
+      }
+      return (
+        <LibraryGridTile
+          assetId={item.asset.id}
+          uri={item.asset.uri}
+          tileSize={tileSize}
+          selected={selectedIds.has(item.asset.id)}
+          order={selectionOrderByKey.get(item.asset.id)}
+          bindImage={paint.shouldDecodeIndex(item.index)}
+          onPress={onPressAsset}
+          testIdPrefix={testIdPrefix}
+          theme={theme}
+        />
+      );
+    },
+    [
+      onPressAsset,
+      paint.shouldDecodeIndex,
+      selectedIds,
+      selectionOrderByKey,
+      testIdPrefix,
+      theme,
+      tileSize,
+    ],
   );
 
-  if (assets.length === 0 && !loadingPage) {
+  if (assets.length === 0 && placeholderCount === 0 && !loadingPage) {
     return (
       <View style={styles.emptyWrap}>
         {ListHeaderComponent}
@@ -166,27 +290,29 @@ export function LibraryPhotoGrid({
   return (
     <View style={styles.listRoot} testID={listTestID}>
       <FlatList
-        data={assets}
+        data={listData}
         keyExtractor={(item) => item.id}
         numColumns={LIBRARY_GRID_COLUMNS}
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.4}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
         extraData={extraData}
         initialNumToRender={LIBRARY_GRID_INITIAL_ROWS * LIBRARY_GRID_COLUMNS}
         maxToRenderPerBatch={LIBRARY_GRID_BATCH_ROWS * LIBRARY_GRID_COLUMNS}
         updateCellsBatchingPeriod={LIBRARY_GRID_BATCH_MS}
         windowSize={LIBRARY_GRID_WINDOW_SIZE}
         removeClippedSubviews={Platform.OS === "ios"}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={VIEWABILITY_CONFIG}
         ListHeaderComponent={ListHeaderComponent}
         ListFooterComponent={
-          loadingPage ? (
+          loadingPage && assets.length >= LIBRARY_FILL_UNTIL_COUNT ? (
             <ActivityIndicator
               style={{ marginVertical: 16 }}
               color={theme.loadingIndicator}
             />
           ) : null
         }
-        columnWrapperStyle={assets.length ? { gap: LIBRARY_GRID_GAP } : undefined}
+        columnWrapperStyle={listData.length ? { gap: LIBRARY_GRID_GAP } : undefined}
         contentContainerStyle={{
           gap: LIBRARY_GRID_GAP,
           paddingBottom: contentPaddingBottom,

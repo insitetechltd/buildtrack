@@ -6,6 +6,7 @@ import {
   refreshMediaLibraryPermission,
 } from "./mediaLibraryPermission";
 import { warmLibraryFirstPage } from "./libraryWarmPrefetch";
+import { refreshCameraPermission } from "./cameraPermission";
 
 /** App launch + foreground: refresh permission cache and warm library metadata. */
 export function useMediaLibraryWakeWarm(): void {
@@ -13,6 +14,7 @@ export function useMediaLibraryWakeWarm(): void {
     let cancelled = false;
 
     const run = async () => {
+      void refreshCameraPermission();
       invalidateMediaLibraryPermissionCache();
       const permission = await refreshMediaLibraryPermission();
       if (cancelled || !permission.granted) {

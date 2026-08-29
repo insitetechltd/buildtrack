@@ -39,9 +39,9 @@ Ship the first **App Store** binary that talks to **PROD** Supabase with **live*
 - [x] Live webhook endpoint → `https://jcnzjigxgkzhjsaekoqz.supabase.co/functions/v1/stripe-webhook` (`we_1U9h2y…`)
 - [x] `STRIPE_WEBHOOK_SECRET` + `BILLING_CURRENCY=hkd` + checkout URL secrets set on PROD (secret in `.cache/env-cutover/insite-prod-stripe.env.local`)
 - [x] Edge redeployed: `deploy-edge-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz`
-- [ ] **`STRIPE_SECRET_KEY=sk_live_…`** on PROD Edge — **blocked** (MCP OAuth cannot export API keys)
-  - Add `STRIPE_SECRET_KEY=sk_live_…` to `.cache/env-cutover/insite-prod-stripe.env.local`
-  - Then: `APP_STORE_STRIPE_GO=1 STRIPE_ENV_FILE=.cache/env-cutover/insite-prod-stripe.env.local bash scripts/supabase/sync-stripe-secrets.sh --project-ref jcnzjigxgkzhjsaekoqz`
+- [x] **`STRIPE_SECRET_KEY=sk_live_…`** on PROD Edge — synced 2026-08-30 (`APP_STORE_STRIPE_GO=1`)
+- [x] `pk_live` on EAS `production` (catalog prefers live rows)
+- [x] Edge redeployed after live secret sync
 - [ ] Smoke (PROD, careful): Checkout Starter once as founding CA → webhook writes entitlements
 
 **Guard:** `sync-stripe-secrets.sh` refuses `sk_live` → PROD unless `APP_STORE_STRIPE_GO=1`.
@@ -50,10 +50,12 @@ Ship the first **App Store** binary that talks to **PROD** Supabase with **live*
 
 ## Checklist D3 — App Store binary
 
-- [ ] `eas build --profile production` (or cloud equivalent) — **not** `production-local`
-- [ ] Confirm build logs show PROD Supabase host (not `zusulknbhaumougqckec`)
-- [ ] Submit to App Store Connect / review
-- [ ] Keep daily internal TF on **`production-local`** → DEV forever for junk/Maestro
+- [x] `eas build --profile production` started (cloud iOS) — build **217**  
+  https://expo.dev/accounts/insitetech/projects/buildtrack/builds/3164a87c-6a67-4b27-995a-d6661dced1cb  
+  EAS env loaded: `EXPO_PUBLIC_SUPABASE_URL` + anon + `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (production)
+- [ ] Confirm build logs show PROD Supabase host `jcnzjigxgkzhjsaekoqz` (not DEV)
+- [ ] Submit to App Store Connect / review (`eas submit --profile production` when build finishes)
+- [x] Keep daily internal TF on **`production-local`** → DEV forever for junk/Maestro
 
 ---
 

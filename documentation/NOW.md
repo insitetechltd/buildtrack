@@ -8,22 +8,26 @@
 
 **Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / `production-local` → EAS `preview` → **DEV**. App Store profile `production` → **PROD**. Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → `M-OPS-03` → `M-AUTHZ-02` → …
 
-**This session:** ENV-01 A–C (`a0697e4`). DATA-05 A (`de6e626`). **Phase D:** live HKD catalog ✅ · live webhook + Edge redeploy ✅ · **blocked on `sk_live` for Edge** (MCP cannot export API keys).
+**This session:** ENV-01 A–C + DATA-05 A. **Phase D D1–D2 done** — live HKD catalog, webhook, `sk_live`+`pk_live` on PROD Edge / EAS production. **Next: D3** App Store `eas build --profile production`.
 
-**Idle-parallel photo funnel:** **TF 1.1.3 (213) in flight** — lookahead-only PhotoKit cache, 256px cap, no warm `startCaching`. Daily `production-local` → DEV. **Not** public App Store.
+**Idle-parallel photo funnel:** TF **214** headed — first 12 ~11s then continuous (jumpy). Fix in flight (async Recents + row FlatList) → TF 215. Monitor `documentation/PICKER_PROGRESS.md`. Daily DEV. **Not** public App Store.
 
 ## Next (definitive)
 
-1. **Unblock D2:** add `STRIPE_SECRET_KEY=sk_live_…` to `.cache/env-cutover/insite-prod-stripe.env.local` (webhook secret already there) → sync with `APP_STORE_STRIPE_GO=1`
-2. **D3:** `eas build --profile production` → ASC submit
+1. **D3:** `eas build --profile production` → confirm PROD Supabase host in build → ASC submit
+2. PROD Checkout smoke (founding CA) after binary exists
 3. **M-OPS-03** → **M-AUTHZ-02** → **M-AI-01** → Wave 2
-4. Idle later: **M-DATA-05 Phase B** (post-Store) — logout GC
+4. Idle later: **M-DATA-05 Phase B** (post-Store)
 
 **Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 
 ## Recently closed / shipped this session
 
-**TF 1.1.3 (212) (2026-08-29):** Local EAS `production-local` (EAS env `preview` → DEV) IPA submitted to ASC. FastFormat PhotoKit thumbs + HUD `up` / `1st 12`. Script footer still prints `app.json` **194**; EAS remote **212**. IPA: `.eas/artifacts/build-1787988623406.ipa`. Submit: `04944bdf-5838-4744-bf20-57e2c8f65f15`. **Not** public App Store.
+**TF 1.1.3 (214) (2026-08-29):** Local EAS `production-local` (EAS env `preview` → DEV) IPA submitted to ASC. Photos index (`PHFetchResult` + virtual count). Script footer still prints `app.json` **194**; EAS remote **214**. IPA: `.eas/artifacts/build-1787998679710.ipa`. Submit: `ba723776-e311-4638-bebb-b7ae5a7f9caa`. PhotokitThumbs 0.1.0 in pods. **Not** public App Store. Whole-library scroll not proven on device.
+
+**TF 1.1.3 (213) (2026-08-29):** Local EAS `production-local` (EAS env `preview` → DEV) IPA submitted to ASC. Lookahead-only PhotoKit cache + 256px cap; no camera-warm `startCaching`. Script footer still prints `app.json` **194**; EAS remote **213**. IPA: `.eas/artifacts/build-1787990042930.ipa`. Submit: `1c202f03-413d-4a22-8887-75462d5f711e`. PhotokitThumbs 0.1.0 in pods. **Not** public App Store.
+
+**TF 1.1.3 (212) (2026-08-29):** Local EAS `production-local` (EAS env `preview` → DEV) IPA submitted to ASC. FastFormat PhotoKit thumbs + HUD `up` / `1st 12`. Script footer still prints `app.json` **194**; EAS remote **212**. IPA: `.eas/artifacts/build-1787988623406.ipa`. Submit: `04944bdf-5838-4744-bf20-57e2c8f65f15`. **Not** public App Store. Skip for picker proof (cache starved visible tiles).
 
 **L1+L2 (2026-08-29, idle-parallel):** Timing HUD on hybrid library + skeleton first screen + stagger URI bind.
 

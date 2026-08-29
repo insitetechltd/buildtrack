@@ -2,6 +2,8 @@
 
 This document is the single canonical milestone inventory for the repository's WS/M/S execution queue.
 
+**Start here for commercial path:** [§ Commercial sequence map](#commercial-sequence-map-visual-sot) (build order + idle gates + dependency graph). Full ledger: [§ Milestone Inventory](#milestone-inventory).
+
 ## Taxonomy
 
 - `WS` = Workstream
@@ -13,6 +15,95 @@ This document is the single canonical milestone inventory for the repository's W
 - `Closed`: milestone is complete and should be skipped unless a real regression forces reopening.
 - `Pipeline`: milestone is pending execution.
 - `Deferred`: explicitly out of the near-term queue; do not execute unless promoted back into `Pipeline`.
+
+## Commercial sequence map (visual SoT)
+
+**Purpose:** one glance at *build order* and *how ideas depend on each other*. Inventory table below remains the ledger; this section is the **authoritative commercial path + idle gates**. Snapshot **2026-08-29**. Session pick-up still lives in `./NOW.md`.
+
+**Interactive companion (local Cursor canvas, not git):** open beside chat → `~/.cursor/projects/Volumes-KooDrive-InsiteApp/canvases/master-pipeline-consolidated.canvas.tsx`. When the canvas and this section disagree, **update both** — this file wins for agents/CI/docs.
+
+### Build order (spine — do not jump)
+
+```mermaid
+flowchart LR
+  ENV["1 · M-OPS-ENV-01 ✓<br/>empty PROD"] --> STORE["2 · App Store<br/>Stripe live PROD"]
+  STORE --> OPS03["3 · M-OPS-03<br/>Owner mgmt"]
+  OPS03 --> AUTHZ02["4 · M-AUTHZ-02<br/>multi-company"]
+  AUTHZ02 --> AI01["5 · M-AI-01<br/>field Q&A"]
+  AI01 --> WAVE2["6 · Wave 2<br/>WEB + DMS"]
+
+  style ENV fill:#f5a623,stroke:#333,color:#111
+  style STORE fill:#e8e8e8,stroke:#333,color:#111
+  style OPS03 fill:#e8e8e8,stroke:#333,color:#111
+  style AUTHZ02 fill:#e8e8e8,stroke:#333,color:#111
+  style AI01 fill:#e8e8e8,stroke:#333,color:#111
+  style WAVE2 fill:#c9b3e6,stroke:#333,color:#111
+```
+
+**Foundation already Closed (feeds the spine):** `M-OPS-02`, `M-BILL-01` DEV MVP, `M-AUTHZ-RC`, `M-DATA-04`, `captureSession`.
+
+### Idle-parallel gates (start only under the unlock)
+
+```mermaid
+flowchart TB
+  subgraph gateA ["Gate A — NOW while ENV-01 elsewhere"]
+    P03["M-PERF-03 L3 native thumbs"] --> D05A["M-DATA-05 Phase A"]
+    D05A --> UX01R["S-UX-01R optional"]
+  end
+
+  subgraph gateB ["Gate B — after App Store + live Stripe"]
+    D05B["M-DATA-05 Phase B"]
+    RLS["Privilege RLS Human GO"]
+    P01B["M-PERF-01 Phase B if needed"]
+    P02["M-PERF-02 upload scale"]
+  end
+
+  subgraph gateC ["Gate C — after M-AUTHZ-02"]
+    DAILY["M-DAILY-01 build Ph 1–2"]
+  end
+
+  ENV1["M-OPS-ENV-01"] -.-> gateA
+  STORE1["App Store"] -.-> gateB
+  A02["M-AUTHZ-02"] -.-> gateC
+```
+
+| Gate | When | Start | Do not start |
+| --- | --- | --- | --- |
+| **A · NOW** | While `M-OPS-ENV-01` owned elsewhere | `M-PERF-03` (L3 idle-parallel) → `M-DATA-05` A → optional `S-UX-01R` | Secrets / PROD create / ENV plan edits |
+| **B · Post-Store** | After App Store + Stripe live on PROD | `M-DATA-05` B · privilege RLS · `M-PERF-01` B if dogfood hurts · `M-PERF-02` | During ENV cutover week |
+| **C · Post-AUTHZ** | After `M-AUTHZ-02` | `M-DAILY-01` Phases 1–2 (Phase 3 with `M-AI-01`) | Daily DDL before Human Gate |
+
+**Frozen until product GO / later gate:** `M-CAPTURE-01` / `M-CAPTURE-02`, `M-BILL-F` / `M-BILL-01G`, `M-SEC-03`, `WS-STORAGE`, Wave 2 live DDL, privilege RLS **apply** during ENV-01, `M-AI-01` **build** before `M-AUTHZ-02`.
+
+### How ideas connect (dependency, not calendar)
+
+```mermaid
+flowchart TB
+  BILL01["M-BILL-01 ✓ DEV"] --> STORE2["App Store + Stripe live"]
+  ENV01["M-OPS-ENV-01"] --> STORE2
+  STORE2 --> OPS032["M-OPS-03"]
+  OPS032 --> AUTHZ022["M-AUTHZ-02"]
+  AUTHZRC["M-AUTHZ-RC ✓"] --> AUTHZ022
+  AUTHZ022 --> AI012["M-AI-01"]
+  AUTHZ022 --> DAILY2["M-DAILY-01"]
+  DAILY2 --> AI012
+  CAP["captureSession ✓"] --> PERF03["M-PERF-03"]
+  CAP --> DAILY2
+  DATA04["M-DATA-04 ✓"] --> DATA03["M-DATA-03 app ✓"]
+  DATA03 --> DATA05["M-DATA-05"]
+  DATA05 --> RLS2["Privilege RLS"]
+  DATA05 --> PERF01["M-PERF-01"]
+  STORE2 --> RLS2
+  AI012 --> WAVE22["Wave 2 DMS/web"]
+```
+
+**Read:** solid arrows = unlocks / feeds. Cyan idle tracks hang off foundation or spine gates above — they must not reorder the orange commercial path.
+
+### Cheat sheet
+
+1. **#1 spine:** `M-OPS-ENV-01` (other chat may own cutover).
+2. **#1 idle (this chat pattern):** `M-PERF-03` → then `M-DATA-05` Phase A.
+3. **Next commercial:** App Store → Stripe live PROD → `M-OPS-03` → `M-AUTHZ-02` → `M-AI-01` → Wave 2.
 
 ## Milestone Inventory
 
@@ -89,7 +180,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-UX / M-UX-01 / S-UX-01Q2 | Uninstall IMGLY + remove dead PhotoAnnotation route | Closed (2026-08-15) | S-UX-01Q Phase 2 Draw Closed | 13.20 | Dead path: no navigators called `PhotoAnnotation` after Select Photos Draw shipped. Removed `@imgly/editor-react-native`, `PhotoAnnotationScreen` / `usePhotoAnnotationViewAdapter`, stack routes + params, img.ly Android Maven repo, `useFrameworks: static`, and EAS IMGLY LICENSE.md pod patch. Photo edit SoT remains Select Photos (rotate/crop/draw → `annotatedUri`). Kept `ios.buildReactNativeFromSource=true` for Skia until a follow-up rebuild proves it optional without static frameworks. Tradeoff accepted: no IMGLY text/stickers; pen-only draw. **Requires native rebuild** (`npx expo run:ios` / EAS) after pod refresh. |
 | WS-DMS / M-DMS-00 | DMS infrastructure investigation + backend decision | Closed (2026-08-17) — docs; **Wave 2 kickoff** | Product spec 2026-08-06 | 15.0 | **Wave 2** (after first commercial ship — not week-rank R2/RC). **Decision: stay on Supabase** for document register (Postgres) + blobs (`buildtrack-documents`). No second document DB for Phase 2. Evidence: `../docs/superpowers/analysis/2026-08-17-dms-infrastructure-investigation.md`. Spec: `../docs/superpowers/specs/2026-08-06-web-admin-and-dms-product-spec.md`. Alternatives (R2/S3 blobs-only, external search) deferred until cost/scale evidence. |
 | WS-OPS / M-OPS-01 | Platform owner command console | **v1 Closed (2026-08-22)** — in-app bootstrap only | First commercial RC shipped | 15.05 | **Owner-only** (Tristan). **v1 (Taskr mobile):** Profile → Owner Console shell; Monitoring/Economics/Tenant stubs; Gaps + F-003 session. **Bootstrap only — do not grow owner admin inside Taskr.** **Target (locked 2026-08-24):** dedicated **Owner management interface** → **M-OPS-03**. v2+ KPI RPC, tenant writes, economics = M-OPS-03 app+web / Edge — not field app Profile. SoT: `../docs/superpowers/plans/2026-08-22-owner-console-modules-complete.md`, `../docs/superpowers/plans/2026-08-22-owner-monitoring-architecture.md`. Billing↔access = **M-BILL-01**. |
-| WS-OPS / M-OPS-ENV-01 | Prod vs Dev Supabase split (empty PROD project) | **Active — FIRST for commercial readiness** (2026-08-26) | Before App Store / production TestFlight dogfood | 14.94 | **LOCKED 2026-08-26:** current project = **DEV**; create **new empty PROD** (no test data copy — ~37 *schema migrations*, not accounts). Daily internal TestFlight → DEV only. Stripe **live only at App Store submit**. Optional one-shot PROD founding-CA smoke. Effort ~1–2 days empty + Edge. Plan: `../docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. Close when: PROD project exists, migrations applied, Edge deployed, EAS preview→DEV / production→PROD secrets, deploy scripts require `--project-ref`, Maestro/CI DEV-only. Live Stripe catalog = submit gate (not this close). |
+| WS-OPS / M-OPS-ENV-01 | Prod vs Dev Supabase split (empty PROD project) | **Closed (2026-08-29)** — Phases A–C | Before App Store / production TestFlight dogfood | 14.94 | **Closed:** PROD `insite-prod` / `jcnzjigxgkzhjsaekoqz` empty + migrations + Edge; DEV remains `insite-dev` / `zusulknbhaumougqckec`. EAS: `production-local`/`preview`→preview(DEV); `production`→production(PROD). Deploy scripts require `--project-ref`. Promotion SoT: `./PROD_DEV_PROMOTION.md`. Plan: `../docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. **Not in this close:** Stripe `sk_live` / live catalog (App Store submit = Phase D). |
 | WS-OPS / M-OPS-03 | **Owner management interface** (platform operator app + web) | Pipeline — **post-RC** (after M-BILL-01 MVP) | M-OPS-01 v1 Closed; M-BILL-01 MVP | 15.059 | **Locked 2026-08-24; naming 2026-08-26:** **M-OPS-03 IS the owner’s management interface** — dedicated operator **app + web `/owner/*`** (one IA), never mixed with field Taskr. **Separate bundle ID + TestFlight** from store Taskr. Same Supabase; **no service-role in client** — Edge/RPC only. IA: Monitoring / Economics / Tenant ops (plans, users/companies, usage, audit, **test-env purge §3e**). Retire Taskr Profile → Owner Console when this ships. Does **not** block RC or M-AUTHZ-02. **Not** M-WEB-01 (Henry company admin). SoT: `../docs/superpowers/plans/2026-08-22-owner-console-modules-complete.md`. |
 | WS-BILL / M-BILL-01 | Commercial E2E: Stripe → entitlements → seat enforcement | **Closed (2026-08-27) — DEV MVP** | M-OPS-02 MVP; Human Gate before live schema/webhook | 15.048 | **DEV MVP closed:** HKD catalog UI + Checkout + Extra people +1 + invite caps PASS. Close: `../docs/superpowers/reports/2026-08-27-m-bill-01-close.md`. **HK lock:** Starter HK$160 / Pro HK$400 + add-ons; charge **HKD only**. **Polish:** stripe-webhook RPC destructure (empty meters wipe). **2026-08-27:** CA→worker live on DEV; `on_hold` CHECK drop **dormant**. SoT: `../docs/superpowers/plans/2026-08-24-billing-hkd-pricing-lock.md`. Out of MVP / still parked: hard project/upload gates (**M-BILL-F**); FX display (**M-BILL-01G**); PROD/live Stripe (after **M-OPS-ENV-01** + App Store). |
 | WS-BILL / M-BILL-01G | Display-only FX (view other currencies; charge HKD) | Pipeline — **tabled** (next billing slice after HKD MVP) | M-BILL-01 HKD MVP | 15.049 | **Tabled 2026-08-24.** Show approximate USD/EUR/etc. under HKD list price for viewing only. **Charge stays HKD** via Stripe Checkout. **No** per-country VAT/GST/sales-tax collection; **no** tax-inclusive local Prices; **no** Stripe Tax until accountant GO. Label estimates as approximate. Does not block AUTHZ-02 / RC smoke. |
@@ -100,7 +191,7 @@ This document is the single canonical milestone inventory for the repository's W
 | WS-DATA / M-DATA-05 | Client cache hygiene & bandwidth (folded multi-LLM recs) | Pipeline — **plan locked 2026-08-27**; idle-parallel post-RC | M-DATA-01 Closed; M-DATA-03 app-side; M-DATA-04 Closed | 15.0551 | **Opened 2026-08-27** from caching deep-dive + multi-LLM fold. **Does not block** commercial sequence (`M-OPS-ENV-01` / BILL / App Store). **Phase A:** list fetch without full activity history; stop always-force project/assignment polls; kill SWR→`force` loop. **Phase B:** logout/identity clear (coordinator, signed URLs, batches, upload-failures, `draft-media/`); 5d batch prune write-path; one-shot delete legacy `buildtrack-tasks`. **Phase C (defer/measure):** project-scoped hot path; optional identity-bound slim disk index. Plan: `../docs/superpowers/plans/2026-08-27-m-data-05-cache-hygiene-action-plan.md`. Investigation canvas (local): `data-caching-policy`. |
 | WS-DATA / M-DATA-04 | Realtime subscription / reconnect storm (compute + auth outage) | **Closed (2026-08-27)** | Before commercial RC | 14.95 | **Opened 2026-08-20.** App dampening + reconnect hygiene. **2026-08-21:** 30s idle PASS. **2026-08-27 close sample:** after `pg_stat_statements_reset`, `list_changes` ~218 calls / **~1.2 s** total (not 81k/486s); `with sub_tables` 28 calls; no INSERT subscription flood; REST tasks/activities/users single-digit. Airplane + 10‑min seq_scan re-proof waived by owner. Close: `../docs/superpowers/reports/2026-08-27-m-data-04-close.md`. Gate SQL: `../docs/superpowers/sql/2026-08-20-m-data-04-realtime-gate.md`. Investigation: `../docs/superpowers/analysis/2026-08-20-db-spike-realtime-churn.md`. |
 | WS-PERF / M-PERF-01 | Evidence photo display performance (signed-URL + thumbnail cache) | Pipeline — **app-side landed 2026-08-20**; **Phase B tabled 2026-08-28** | M-SUPABASE-03c Closed | 15.056 | **2026-08-20 Phase A:** list/activity thumbs use `expo-image` `memory-disk` keyed by storage path; signed URLs persist in AsyncStorage (cap 200); prefetch Tasks visible rows + Dashboard selected project only. **Phase B tabled (priority TBD):** smaller remote thumb bytes (transform/`_thumb`), Tasks/Dashboard FlatList + viewport `prefetchSignedUrls`, lazy activity carousel, batch `createSignedUrls`, blurhash placeholders. Overlap with **M-PERF-03:** viewport-gating + skeleton UX patterns only — study: `../docs/superpowers/plans/2026-08-28-m-perf-03-library-picker-spike-plan.md` § M-PERF-01 overlap. **Not closed:** Maestro `_boot-no-clear` optional. Does **not** block RC. |
-| WS-PERF / M-PERF-03 | Device photo library picker perf & progressive grid UX | Pipeline — **L1+L2 TF 2026-08-29**; L3 not started | captureSession Closed; TF200 hybrid lag fix | 15.0561 | **On-device Photos.** Phase C: shared `LibraryPhotoGrid` + album hooks, Select Photos path off `expo-image-multiple-picker`, `creationTime` DESC. FlashList v2 blocked (`newArchEnabled: false`) — grid stays FlatList. Plan: `../docs/superpowers/plans/2026-08-28-m-perf-03-phase-c-select-photos-flashlist-plan.md`. **E2E bar (2026-08-29):** Instagram/Threads–class continuous picker — `../docs/superpowers/analysis/2026-08-29-instagram-class-picker-e2e.md`. **L1+L2:** on-device timing HUD + skeleton/stagger URI (JS honesty). **L3 native PhotoKit thumbs not in this TF.** Idle-parallel ok. Does **not** block RC. |
+| WS-PERF / M-PERF-03 | Device photo library picker perf & progressive grid UX | Pipeline — **L3 in progress 2026-08-29** (JS+module; device proof pending) | captureSession Closed; TF200 hybrid lag fix | 15.0561 | **On-device Photos.** Phase C: shared `LibraryPhotoGrid` + album hooks, Select Photos path off `expo-image-multiple-picker`, `creationTime` DESC. FlashList v2 blocked (`newArchEnabled: false`) — grid stays FlatList. Plan: `../docs/superpowers/plans/2026-08-28-m-perf-03-phase-c-select-photos-flashlist-plan.md`. **E2E bar:** `../docs/superpowers/analysis/2026-08-29-instagram-class-picker-e2e.md`. **L1+L2:** HUD + skeleton/stagger URI. **L3:** local `photokit-thumbs` Expo module (`PHCachingImageManager` + tile `targetSize`) — `../docs/superpowers/plans/2026-08-29-m-perf-03-l3-photokit-thumbs.md`. Needs native rebuild. Idle-parallel ok. Does **not** block RC. |
 | WS-FIELD / M-CAPTURE-01 | Camera zoom control | Pipeline — **tabled 2026-08-28** | captureSession Closed | 15.0562 | Pinch/slider zoom on the hybrid capture camera. **Do not plan or build now.** Idle-parallel later; must not jump `M-OPS-ENV-01`. |
 | WS-UX / M-CAPTURE-02 | Library picker tile resize | Pipeline — **tabled 2026-08-28** | captureSession Closed | 15.0563 | User-resizable tiles in the hybrid photo picker grid. **Do not plan or build now.** Idle-parallel later; must not jump `M-OPS-ENV-01`. |
 | WS-PERF / M-PERF-02 | Evidence photo upload downscaling (storage conservation) | Pipeline — **post-RC cost hygiene** (idle-parallel ok) | M-SUPABASE-03c Closed; M-PERF-01 app-side | 15.058 | **Opened 2026-08-24.** Downscale/compress task evidence photos **before** upload to `buildtrack-files` to slow tenant storage growth and align with plan-cap metering (**M-DMS-DATA**). **Today:** `src/api/imageCompressionService.ts` adapts JPEG quality toward a **5 MB file-size cap** and may shrink dimensions ~70% as a last resort — **not** a consistent max-edge / jobsite-legibility policy. **Scope:** define upload policy (max long edge, quality floor, HEIC→JPEG, orientation/EXIF, skip double-compress on draw bakes/edits); wire at upload SoT (`fileUploadService`, create/update progress paths). **Must not** degrade field inspection detail (fasteners, labels/barcode path for **M-AI-03**). Human Gate only if stored artifact contract changes. Does **not** block RC. |
@@ -168,7 +259,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 - Deferred branch follow-on: `origin/feature/local-file-cache` remains a remote-only legacy branch on unrelated history; do not delete or promote it until its scope is reviewed and mapped into a future workstream or explicitly retired.
 - WS-FUTURE: MCP Hub architecture, AI task automation, and construction platform integrations.
 - **Roadmap discussion lock (2026-08-19):** `../docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` — revisit this file when discussing sequence, AI, DMS, drawings, cost, or owner console. Append addenda; do not silently replace. Execution order: `../docs/superpowers/plans/2026-08-19-post-rc-boring-loop.md`.
-- Post-RC / commercial readiness sequence (2026-08-26; **M-AUTHZ-RC Closed 2026-08-27**): **M-OPS-ENV-01** (PROD empty DB first) → finish **M-BILL-01** on DEV → App Store submit flips PROD to Stripe live → **M-OPS-03** Owner management interface + **M-AUTHZ-02** → **M-DAILY-01** (capture/memo/report; Phase 0 locked) / **M-AI-01** → Wave 2 **DMS**. Drawing inference stays out of scope. Membership product SoT: `./multi-company-project-membership.md`.
+- Post-RC / commercial readiness sequence (2026-08-26; **M-AUTHZ-RC Closed 2026-08-27**; **visual SoT 2026-08-29**): see **§ Commercial sequence map** above. Text spine: **M-OPS-ENV-01** (PROD empty DB first) → App Store submit flips PROD to Stripe live → **M-OPS-03** Owner management interface → **M-AUTHZ-02** → **M-DAILY-01** / **M-AI-01** → Wave 2 **DMS**. (`M-BILL-01` DEV MVP Closed 2026-08-27 — live Stripe stays Store gate.) Drawing inference stays out of scope. Membership product SoT: `./multi-company-project-membership.md`.
 - **Customer-managed storage (2026-08-21):** Premium enterprise/privacy capability (`WS-STORAGE / M-STORAGE-01`…`05`, Deferred). **Must not jump** RC, `M-OPS-01`, `M-OPS-02`, `M-AI-01`, or Wave 2 / `M-DMS-01`. Reopen only after DMS starts and demand justifies architecture cost. Slotting plan: `../docs/superpowers/plans/2026-08-21-customer-managed-storage-slotting.md`. Clarification addendum: `../docs/superpowers/analysis/2026-08-19-roadmap-clarification.md`.
 - **Post-RC resilience/perf/hygiene (2026-08-19; + M-DATA-05 2026-08-27):** **M-DATA-03** pull/sync resilience + **M-DATA-05** client cache hygiene & bandwidth (Phase A list/activities + TTL polls; Phase B logout/GC) + **M-PERF-01** evidence photo display + **M-PERF-02** upload downscaling (storage conservation) + **S-UX-01R** Add Comment dead-code removal — Pipeline idle-parallel; **must not jump** `M-OPS-ENV-01` / BILL / App Store. M-DATA-05 plan: `../docs/superpowers/plans/2026-08-27-m-data-05-cache-hygiene-action-plan.md`. Investigation: `../docs/superpowers/analysis/2026-08-19-photo-sync-resilience-investigation.md`. S-UX-01R plan: `../docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`.
 - **Device library picker (2026-08-28):** **M-PERF-03** — progressive grid paint + 2× thumbs on the hybrid library. Device proof pending. Study: `../docs/superpowers/analysis/2026-08-28-device-photo-library-picker-perf-discussion.md`. Separate from **M-PERF-01** remote evidence track.
@@ -178,6 +269,7 @@ These are intentionally outside the WS/M/S milestone inventory and current execu
 ## Governance
 
 - This file is the single source of truth for milestone inventory and execution order.
+- **Commercial build order + idle gates** are summarized in **§ Commercial sequence map** (mermaid). Keep that section synchronized with `./NOW.md` and the local Cursor canvas `master-pipeline-consolidated.canvas.tsx` when the path changes.
 - Canonical approved product UI/UX logic belongs in `../docs/INSITE_UI_UX_SOURCE_OF_TRUTH.md`, not in this roadmap ledger.
 - Planning documents under `docs/superpowers/` may describe slices or execution detail, but must not become competing roadmap inventories.
 - Before changing any milestone or slice status to `Closed`, explicitly assess whether the app must be relaunched to validate the completed work.

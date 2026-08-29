@@ -1,7 +1,7 @@
 # Prod vs Dev Supabase split (pre-commercial RC)
 
 **Date:** 2026-08-26  
-**Status:** **Decisions locked** (2026-08-26 evening) — execute create when operator starts cutover  
+**Status:** **Phases A–C Closed (2026-08-29)** — empty PROD live; migrations + Edge on PROD; EAS preview→DEV / production→PROD. Phase D (live Stripe) = App Store submit gate, not this close.  
 **Why now:** Test tenants + Stripe test ops clutter the only DB; commercial RC needs an isolated production tenant plane.
 
 ### Decisions locked (2026-08-26)
@@ -65,19 +65,21 @@ DEV (current project)              PROD (new empty)
 
 ### A — Projects
 - [x] Decision: current = DEV, new = PROD  
-- [ ] Create `insite-prod`; store URL/anon/service role in password manager (not git)  
-- [ ] Label Dashboard: `insite-dev` / `insite-prod`  
+- [x] Create `insite-prod`; store URL/anon/service role in password manager (not git) — **2026-08-29** ref `jcnzjigxgkzhjsaekoqz` (ap-south-1); local secrets in gitignored `.cache/env-cutover/insite-prod.env.local`  
+- [x] Label Dashboard: rename `buildtrack-production` display → `insite-dev` (user confirmed 2026-08-29); PROD named `insite-prod`  
 
 ### B — PROD schema + Edge (no live Stripe yet)
-- [ ] Apply `supabase/migrations` to PROD  
-- [ ] Deploy: create-checkout-session, stripe-webhook, invite-user, invite-open, update-company-addons  
-- [ ] Edge secrets: trial/currency as needed; Stripe **test or omit** until submit  
-- [ ] Storage bucket + policies  
+- [x] Apply `supabase/migrations` to PROD (2026-08-29) via `scripts/supabase/apply-migrations-to-project.sh` + pooler `aws-0-ap-south-1`; skipped DRAFT/ROLLBACK/`20260825000600` on_hold drop; dual-path seat triggers for greenfield `system_permission`  
+- [x] Deploy: create-checkout-session, stripe-webhook, invite-user, invite-open, update-company-addons → PROD (`scripts/supabase/deploy-edge-to-project.sh --project-ref`)  
+- [x] Edge secrets: `BILLING_CURRENCY=hkd` + checkout deep links; Stripe **omitted** until App Store submit  
+- [x] Storage bucket `buildtrack-files` public=false + policies (from migrations)  
 
 ### C — App builds
-- [ ] EAS preview/simulator → **DEV** URL (explicit)  
-- [ ] EAS production → **PROD** URL (set when first store/RC build; not for daily TF)  
-- [ ] Deploy scripts require `--project-ref` (no silent `.env` → wrong plane)  
+- [x] EAS `preview` / `simulator` / **`production-local`** → EAS env **`preview`** → **DEV** URL (explicit in `eas.json`)  
+- [x] EAS **`production`** → EAS env **`production`** → **PROD** URL  
+- [x] Sync: `bash scripts/eas/sync-supabase-env-to-eas.sh` (2026-08-29)  
+- [x] Deploy scripts require `--project-ref` (or `--use-env` DEV-only): see `scripts/supabase/_resolve_project_ref.sh`  
+- [x] Promotion runbook: `documentation/PROD_DEV_PROMOTION.md`  
 
 ### D — App Store submit (later)
 - [ ] Live HKD catalog bootstrap + `plan_prices` livemode=true on PROD  
@@ -86,8 +88,8 @@ DEV (current project)              PROD (new empty)
 - [ ] Rebuild/submit `production`  
 
 ### E — Ops hygiene
-- [ ] Runbooks: dual-project placeholders  
-- [ ] Maestro/CI: **DEV only**  
+- [x] Runbooks: dual-project + promotion path (`documentation/PROD_DEV_PROMOTION.md`)  
+- [x] Maestro/CI: **DEV only** (policy locked; never clearState against PROD)  
 
 ---
 

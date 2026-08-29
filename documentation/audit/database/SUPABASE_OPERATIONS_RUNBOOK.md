@@ -34,6 +34,7 @@ This runbook covers:
 
 - secure access conventions
 - environment variable placeholders
+- **Prod vs Dev promotion:** see [`documentation/PROD_DEV_PROMOTION.md`](../../PROD_DEV_PROMOTION.md) (no automatic DEV→PROD data copy)
 - read-only audit workflow
 - policy and schema verification workflow
 - index and query review workflow

@@ -6,21 +6,25 @@
 
 ## Doing
 
-**Priority #1 — `M-OPS-ENV-01` Prod DB:** **Owned by another chat (2026-08-29).** This chat must **not** start cutover, create PROD, touch live secrets, or edit the split plan. LOCKED: current = DEV; new empty = PROD. Daily TF → DEV. Stripe live @ App Store submit only. SoT: `docs/superpowers/plans/2026-08-26-prod-dev-supabase-split.md`. ROADMAP Order **14.94**.
+**Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / `production-local` → EAS `preview` → **DEV**. App Store profile `production` → **PROD**. Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → `M-OPS-03` → `M-AUTHZ-02` → …
 
-**This chat — idle-parallel photo funnel:** **L1+L2 shipping to TF** (stop before L3). HUD on hybrid library: open→meta / row / 12. Skeletons + stagger URI bind (3 / 32ms). First page **12** / scroll **18**. SoT: `docs/superpowers/analysis/2026-08-29-instagram-class-picker-e2e.md`. Do **not** jump ENV-01; do **not** edit ENV-01 files.
+**This session:** TF in flight stays on whatever URL was baked at build time; **next** `production-local` build uses EAS preview→DEV.
+
+**Idle-parallel photo funnel:** **TF 1.1.3 (211) submitted to ASC** with L3 `PhotokitThumbs` in the binary. Skip **210** (native sources were gitignored). Apple processing. **Not** public App Store. Do not run Maestro/CI against PROD.
 
 ## Next (definitive)
 
-1. **`M-OPS-ENV-01`** — other chat (create empty PROD)
-2. App Store submit → Stripe **live** on PROD
-3. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
+1. App Store submit → Stripe **live** on PROD (ENV-01 Phase D)
+2. **M-OPS-03** Owner management → **M-AUTHZ-02** → **M-AI-01** → Wave 2
+3. Idle-parallel: `M-PERF-03` / `M-DATA-05` as capacity allows
 
-**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01). **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
+**Parked:** **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01** (Phase 0 locked); custom company banner; **M-SEC-03**; DEV tenant purge → **M-OPS-03** §3e. **`on_hold` status slot = dormant** — UI removed; DB CHECK keeps the slug reserved (do **not** apply `20260825000600`; revive later if we need a fifth status). **CA→worker (`20260825000500`) already live on DEV**. **M-DATA-05** cache hygiene (plan locked; idle-parallel — Phase A when bandwidth work is free; must not jump ENV-01 cutover). **`M-CAPTURE-01` camera zoom** and **`M-CAPTURE-02` picker tile resize** tabled 2026-08-28 — do not plan/build now.
 
 ## Recently closed / shipped this session
 
-**L1+L2 (2026-08-29, idle-parallel):** Timing HUD on hybrid library + skeleton first screen + stagger URI bind. **Stop before L3.** TF next.
+**TF 1.1.3 (211) (2026-08-29):** Local EAS production-local IPA submitted to ASC (processing). L3 PhotoKit native thumbs (`PhotokitThumbs` in binary). Script footer still prints `app.json` **194**; EAS remote **211**. IPA: `.eas/artifacts/build-1787984830968.ipa`. Submit: `28bbd033-0134-4a61-8d38-9868b7180ae1`. **Not** public App Store. **Skip TF 210** — native module was missing from that IPA.
+
+**L1+L2 (2026-08-29, idle-parallel):** Timing HUD on hybrid library + skeleton first screen + stagger URI bind.
 
 **TF 1.1.3 (207) (2026-08-28):** Local EAS production-local IPA submitted to ASC (processing). Row-sized library pages (3 then 6), smaller decode window. Script footer still prints `app.json` **194**; EAS remote **207**. IPA: `.eas/artifacts/build-1787926602506.ipa`. Submit: `a5a3f824-a4aa-4bfa-931b-1786c728afc9` FINISHED. **Not** public App Store.
 
@@ -56,7 +60,7 @@
 
 ## Locked
 
-- **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md`
+- **Master plan:** `docs/superpowers/plans/2026-08-22-master-plan-parallel.md` (historical lock; **current visual path** = `documentation/ROADMAP.md` § Commercial sequence map + canvas `master-pipeline-consolidated`)
 - **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ submit
 - **HK billing:** charge HKD; no grandfathering
 - **ACL:** CA authority; default seat Worker; PA on CA|PM only; on-job roster = PA
@@ -65,7 +69,7 @@
 
 ## Sims / locks
 
-- **`M-OPS-ENV-01`:** other chat (single-writer). This chat: photo funnel only (`src/modules/captureSession/`, `src/modules/mediaLibrary/`, picker docs). Do not edit `eas.json` / `app.json` env, Supabase project create, or the prod-dev split plan.
+- **`M-OPS-ENV-01`:** **Closed A–C** this chat. Secrets in `.cache/env-cutover/` + password manager. Other chats: promote with `documentation/PROD_DEV_PROMOTION.md` — never silent `.env` → PROD.
 - Sims: (none claimed)
 
 ## Parked notes

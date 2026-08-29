@@ -3,7 +3,8 @@
 **Status:** **LOCKED** — definitive sequence, outcomes, and parallel rules.  
 **Authority:** Technical necessity + feasibility. Business reprioritization requires explicit user GO + doc update.  
 **Pick-up:** `documentation/NOW.md`  
-**Slice detail:** `2026-08-22-session-consolidation.md`
+**Slice detail:** `2026-08-22-session-consolidation.md`  
+**Visual sequence SoT (2026-08-29):** `documentation/ROADMAP.md` § **Commercial sequence map** (mermaid spine + idle gates + dependency graph). Local canvas companion: `master-pipeline-consolidated.canvas.tsx`. Prefer that section over the Aug-22 text spine below when they drift (ENV-01 + Store now precede OPS-03 / AUTHZ-02).
 
 ---
 

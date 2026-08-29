@@ -151,6 +151,8 @@ DECLARE
   v_new_role text;
   v_new_active boolean;
   v_new_deploy text;
+  v_new jsonb;
+  v_old jsonb;
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RETURN OLD;
@@ -161,14 +163,35 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  v_new_role := NEW.role;
+  -- Dual-path: live tenants use users.role; greenfield uses system_permission.
+  v_new := to_jsonb(NEW);
+  v_new_role := lower(coalesce(
+    nullif(v_new->>'role', ''),
+    CASE v_new->>'system_permission'
+      WHEN 'admin' THEN 'admin'
+      WHEN 'manager' THEN 'manager'
+      WHEN 'member' THEN 'worker'
+      ELSE v_new->>'system_permission'
+    END,
+    ''
+  ));
   v_new_active := COALESCE(NEW.is_active, true);
-  v_new_deploy := NEW.deployable_seat;
+  v_new_deploy := v_new->>'deployable_seat';
 
   IF TG_OP = 'UPDATE' THEN
-    v_old_role := OLD.role;
+    v_old := to_jsonb(OLD);
+    v_old_role := lower(coalesce(
+      nullif(v_old->>'role', ''),
+      CASE v_old->>'system_permission'
+        WHEN 'admin' THEN 'admin'
+        WHEN 'manager' THEN 'manager'
+        WHEN 'member' THEN 'worker'
+        ELSE v_old->>'system_permission'
+      END,
+      ''
+    ));
     v_old_active := COALESCE(OLD.is_active, true);
-    v_old_deploy := OLD.deployable_seat;
+    v_old_deploy := v_old->>'deployable_seat';
     -- No seat footprint change → skip (allows edits while already over-cap).
     IF v_old_role IS NOT DISTINCT FROM v_new_role
        AND v_old_active IS NOT DISTINCT FROM v_new_active
@@ -191,15 +214,24 @@ BEGIN
 
   FOR v_row IN
     SELECT
-      u.role,
+      lower(coalesce(
+        nullif(to_jsonb(u)->>'role', ''),
+        CASE to_jsonb(u)->>'system_permission'
+          WHEN 'admin' THEN 'admin'
+          WHEN 'manager' THEN 'manager'
+          WHEN 'member' THEN 'worker'
+          ELSE to_jsonb(u)->>'system_permission'
+        END,
+        ''
+      )) AS seat_role,
       COALESCE(u.is_active, true) AS is_active,
-      u.deployable_seat
+      to_jsonb(u)->>'deployable_seat' AS deployable_seat
     FROM public.users u
     WHERE u.company_id = v_company_id
       AND u.id IS DISTINCT FROM NEW.id
   LOOP
     SELECT * INTO v_contrib
-    FROM public.user_seat_contribution(v_row.role, v_row.is_active, v_row.deployable_seat);
+    FROM public.user_seat_contribution(v_row.seat_role, v_row.is_active, v_row.deployable_seat);
     v_others_pm := v_others_pm + COALESCE(v_contrib.pm_seats, 0);
     v_others_worker := v_others_worker + COALESCE(v_contrib.worker_seats, 0);
   END LOOP;
@@ -223,14 +255,15 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_users_enforce_company_seat_limits ON public.users;
+-- No UPDATE OF column list: greenfield has system_permission; live has role.
 CREATE TRIGGER trg_users_enforce_company_seat_limits
-  BEFORE INSERT OR UPDATE OF role, is_active, company_id, deployable_seat
+  BEFORE INSERT OR UPDATE
   ON public.users
   FOR EACH ROW
   EXECUTE FUNCTION public.enforce_company_seat_limits();
 
 COMMENT ON FUNCTION public.enforce_company_seat_limits() IS
-  'Hard seat gate: reject INSERT/UPDATE that would exceed company_entitlements PM/worker limits. CA defaults to worker seat.';
+  'Hard seat gate: reject INSERT/UPDATE that would exceed company_entitlements PM/worker limits. CA defaults to worker seat. Dual-path role|system_permission.';
 
 -- Backfill: leave deployable_seat NULL so CA→worker via seat_class_rules.
 -- Existing CAs previously counted as PM seats now count as worker (no row rewrite needed).

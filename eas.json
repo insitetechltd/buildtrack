@@ -14,6 +14,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1"
@@ -26,6 +27,7 @@
     },
     "simulator": {
       "distribution": "internal",
+      "environment": "preview",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1",
@@ -39,6 +41,7 @@
     },
     "expo-go": {
       "distribution": "internal",
+      "environment": "development",
       "ios": {
         "simulator": true,
         "buildConfiguration": "Debug",
@@ -52,6 +55,7 @@
     "production": {
       "autoIncrement": true,
       "distribution": "store",
+      "environment": "production",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1"
@@ -69,6 +73,7 @@
     "production-local": {
       "extends": "production",
       "distribution": "store",
+      "environment": "preview",
       "ios": {
         "credentialsSource": "remote",
         "cocoapods": "1.16.1",

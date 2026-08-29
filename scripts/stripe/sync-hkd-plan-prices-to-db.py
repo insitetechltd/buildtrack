@@ -116,8 +116,13 @@ def find_price_by_lookup(secret: str, lookup: str) -> dict | None:
 def main() -> int:
     file_env = load_env(ENV_PATH)
     stripe_secret = os.environ.get("STRIPE_SECRET_KEY") or file_env.get("STRIPE_SECRET_KEY", "")
-    supabase_url = file_env.get("EXPO_PUBLIC_SUPABASE_URL", "").rstrip("/")
-    service_key = file_env.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    # Prefer process env so PROD cutover can source insite-prod.env.local without rewriting .env (DEV).
+    supabase_url = (
+        os.environ.get("EXPO_PUBLIC_SUPABASE_URL") or file_env.get("EXPO_PUBLIC_SUPABASE_URL", "")
+    ).rstrip("/")
+    service_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or file_env.get(
+        "SUPABASE_SERVICE_ROLE_KEY", ""
+    )
 
     if not stripe_secret:
         print("Missing STRIPE_SECRET_KEY", file=sys.stderr)

@@ -15,12 +15,16 @@ Ship the first **App Store** binary that talks to **PROD** Supabase with **live*
 
 ## Pre-flight (before touch Stripe live)
 
-- [ ] Confirm PROD ref `jcnzjigxgkzhjsaekoqz` healthy; migrations still current vs `supabase/migrations/` (apply any new DEV migrations to PROD first)
-- [ ] Confirm EAS env: `eas env:list --environment production` → PROD URL; `preview` → DEV URL
-- [ ] Confirm `eas.json`: profile **`production`** has `"environment": "production"`; **`production-local`** stays `"preview"` (DEV)
-- [ ] Password manager has PROD service role + DB password (`.cache/env-cutover/insite-prod.env.local` is gitignored)
+- [x] Confirm PROD ref `jcnzjigxgkzhjsaekoqz` healthy; anon REST denied on tasks (401); plan_prices table present (seed USD rows only — HKD live pending)
+- [x] Confirm EAS env: `production` → `https://jcnzjigxgkzhjsaekoqz.supabase.co`; `preview` → DEV
+- [x] Confirm `eas.json`: profile **`production`** → `"environment": "production"`; **`production-local`** → `"preview"` (DEV)
+- [x] PROD service role + DB password in `.cache/env-cutover/insite-prod.env.local` (gitignored)
 - [ ] Apple: ASC app `6754898737`, privacy policy URL, screenshots / metadata ready
 - [ ] Optional: one-shot PROD founding-CA smoke with **test** Stripe still OK — or skip until live
+
+**Human GO:** 2026-08-29 (this chat).
+
+**Blocked (need from operator):** Stripe **live** `sk_live_…` + live webhook `whsec_…` (local `.env` is `sk_test` only; Stripe MCP connected in test mode only). Put live keys in gitignored `.cache/env-cutover/insite-prod-stripe.env.local` then continue D1–D2.
 
 ---
 

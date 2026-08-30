@@ -13,6 +13,7 @@
 9. ✅ Phase 1b `platform_owners` + Economics Edge + Phase 1d write Edge on DEV (JWT smoke create/deactivate/ban/403)
 10. ✅ Phase 1b/Econ/1d local IPA submitted — `.eas/artifacts/hq-phase1b-econ-1d-20260830-143300.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/4406b2cf-a836-4f41-887a-05de058fbfff) (build **7**)
 11. ✅ Read-only ops enrich (`owner-ops-read`) — local IPA `.eas/artifacts/hq-ops-read-20260830-160800.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/c066fe87-7880-4c45-bb8a-3a8ec7f8755d) (build **10**)
+12. ✅ Tenant drill-down IA — local IPA `.eas/artifacts/hq-tenant-drill-20260831-001808.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/21f4c3d6-b44c-439f-ae30-5e46c2530e17) (build **11**)
 
 ## You (headed)
 

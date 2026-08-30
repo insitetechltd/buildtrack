@@ -8,11 +8,11 @@
 
 **Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / **`dev`** → EAS `preview` → **DEV**. App Store profile **`production`** → **PROD** (requires confirm). Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → finish `M-OPS-03` parked writes → `M-AUTHZ-02` → …
 
-**This session:** **M-OPS-03** — Tenant drill-down IA (hub + triangle + list cross-over + card stats).
-- Tenant hub: Companies / Projects / Users (+ Audit)
-- Cards: company→projects·users; project→tasks·members; user→projects; tap = detail
-- Edges: `listAllProjects` / `listAllUsers` / `listProjectMembers` on DEV
-- Standing rule: **commit + push before every HQ TF build**
+**This session:** **M-OPS-03** — Tenant drill-down IA shipped; **Internal TF build 11 submitted**.
+- Commit: `e5a0acb` · IPA: `apps/owner/.eas/artifacts/hq-tenant-drill-20260831-001808.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/21f4c3d6-b44c-439f-ae30-5e46c2530e17)
+- Tenant hub: Companies / Projects / Users (+ Audit); list footers cross hubs; detail triangle closed
+- Cards: company→projects·users; project→tasks·members; user→projects
+- **You:** Install TF **11** when ASC finishes processing
 - Parked writes: soft suspend, entitlement override, company freeze, §3e purge (Human Gate)
 
 **Idle-parallel photo funnel:** **TF 239 submitted** (2× thumbs). Install Internal TF **239**, confirm HUD `thumb 512px`, compare `1st`/`12`/`p2` to TF237. **Not** the App Store binary.

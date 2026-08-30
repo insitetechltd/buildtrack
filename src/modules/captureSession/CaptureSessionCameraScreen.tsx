@@ -15,8 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import {
   peekWarmLibraryThumbUri,
-  warmLibraryFirstPage,
 } from "../../utils/libraryWarmPrefetch";
+import { startLibraryCapturePrefetch } from "../../utils/libraryCapturePrefetch";
 import {
   peekCameraPermission,
   ensureCameraPermissionChecked,
@@ -85,7 +85,7 @@ export function CaptureSessionCameraScreen() {
     let cancelled = false;
     (async () => {
       try {
-        await warmLibraryFirstPage();
+        startLibraryCapturePrefetch();
         if (cancelled) return;
 
         const warmUri = peekWarmLibraryThumbUri();

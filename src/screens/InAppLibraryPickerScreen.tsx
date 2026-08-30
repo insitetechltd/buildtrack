@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -16,8 +17,10 @@ import { ensureMediaLibraryAccess } from "@/utils/mediaLibraryPermission";
 import { LibraryAlbumPickerModal } from "@/modules/mediaLibrary/LibraryAlbumPickerModal";
 import { LibraryPhotoGrid } from "@/modules/mediaLibrary/LibraryPhotoGrid";
 import {
-  LIBRARY_FILL_UNTIL_COUNT,
+  LIBRARY_GRID_COLUMNS,
+  LIBRARY_GRID_GAP,
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
+import { librarySkeletonTileCount } from "@/utils/libraryPickerPerf";
 import {
   assetToSelectionDraft,
   materializeLibrarySelections,
@@ -93,6 +96,15 @@ export default function InAppLibraryPickerScreen({
   initiallySelectedPhotos = [],
 }: InAppLibraryPickerScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+
+  const skeletonTileCount = useMemo(() => {
+    const tileSize =
+      (width - LIBRARY_GRID_GAP * (LIBRARY_GRID_COLUMNS - 1)) / LIBRARY_GRID_COLUMNS;
+    const rowHeight = tileSize + LIBRARY_GRID_GAP;
+    const gridArea = Math.max(200, height - insets.top - insets.bottom - 120);
+    return librarySkeletonTileCount(gridArea, rowHeight, LIBRARY_GRID_COLUMNS);
+  }, [height, insets.bottom, insets.top, width]);
 
   const [isPinning, setIsPinning] = useState(false);
   const [selectionOrderByKey, setSelectionOrderByKey] = useState(() =>
@@ -350,6 +362,7 @@ export default function InAppLibraryPickerScreen({
           listTestID="in-app-library__grid"
           testIdPrefix="in-app-library"
           assets={albumPicker.assets}
+          indexSession={albumPicker.indexSession}
           loadingPage={albumPicker.loadingPage}
           onEndReached={albumPicker.onEndReached}
           selectedIds={selectedIds}
@@ -358,11 +371,9 @@ export default function InAppLibraryPickerScreen({
           theme={IN_APP_THEME}
           contentPaddingBottom={insets.bottom + 24}
           placeholderCount={
-            albumPicker.assets.length === 0 && !albumPicker.initialLoadDone
-              ? LIBRARY_FILL_UNTIL_COUNT
-              : 0
+            albumPicker.indexSession ? 0 : skeletonTileCount
           }
-          paintResetKey={albumPicker.selectedAlbumId}
+          paintResetKey={`${albumPicker.selectedAlbumId}:${albumPicker.indexSession?.token ?? "paged"}`}
           ListHeaderComponent={albumRow}
         />
 

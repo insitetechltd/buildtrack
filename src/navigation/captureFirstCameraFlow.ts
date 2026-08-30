@@ -2,6 +2,7 @@ import { Alert, Linking, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { CommonActions } from "@react-navigation/native";
 import { pinDraftMedia } from "../utils/draftMediaCache";
+import { startLibraryCapturePrefetch } from "../utils/libraryCapturePrefetch";
 import type { SelectedPhoto } from "./navigationTypes";
 
 export type CaptureFirstNavigation = {
@@ -110,6 +111,8 @@ export function launchCaptureFirstSession(
   } | null,
 ): void {
   rememberCaptureFirstOrigin(tabState ?? null);
+  // Start library warm + index open only after camera tab press — never at app launch.
+  startLibraryCapturePrefetch();
   navigation.navigate("Camera", {
     screen: "CaptureSession",
   });
@@ -132,6 +135,7 @@ export function navigateToAddPhotosCaptureSession(
     returnScreen: "CreateTask" | "UpdateProgress";
   },
 ): void {
+  startLibraryCapturePrefetch();
   const payload = {
     ...params,
     entry: "addPhotos" as const,

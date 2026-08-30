@@ -1,4 +1,5 @@
 import {
+  beginLibraryPickerScrollUp,
   beginLibraryPickerSession,
   formatLibraryPickerTimingHud,
   getLibraryPickerTimingSnapshot,
@@ -86,7 +87,57 @@ describe("libraryPickerTiming", () => {
     expect(hud).toContain("L1 timing");
     expect(hud).toContain("meta +12ms");
     expect(hud).toContain("row —");
+    expect(hud).toContain("up —");
+    expect(hud).toContain("p2 —");
+    expect(hud).not.toContain("1st 12");
     expect(seen.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the previous open's 12 on a second pull", () => {
+    beginLibraryPickerSession();
+    markLibraryPickerMetadata(12);
+    now += 400;
+    for (let i = 0; i < 12; i += 1) {
+      markLibraryPickerTilePainted(`a${i}`);
+    }
+    now += 50;
+    beginLibraryPickerSession();
+    const snap = getLibraryPickerTimingSnapshot();
+    expect(snap?.prevScreenMs).toBe(400);
+    expect(formatLibraryPickerTimingHud(snap)).toContain("1st 12 +400ms");
+  });
+
+  it("times scroll-up recycle from leaving the first screen", () => {
+    beginLibraryPickerSession();
+    markLibraryPickerMetadata(12);
+    for (let i = 0; i < 12; i += 1) {
+      markLibraryPickerTilePainted(`a${i}`);
+    }
+    now += 500;
+    beginLibraryPickerScrollUp();
+    now += 40;
+    markLibraryPickerTilePainted("a0");
+    markLibraryPickerTilePainted("a1");
+    expect(getLibraryPickerTimingSnapshot()?.scrollUpRowAt).toBeNull();
+    markLibraryPickerTilePainted("a2");
+    const snap = getLibraryPickerTimingSnapshot();
+    expect(snap?.scrollUpRowAt).toBe(10_540);
+    expect(formatLibraryPickerTimingHud(snap)).toContain("up +40ms");
+  });
+
+  it("times the second wave from first screen, not overlay open", () => {
+    beginLibraryPickerSession();
+    markLibraryPickerMetadata(12);
+    for (let i = 0; i < 12; i += 1) {
+      markLibraryPickerTilePainted(`a${i}`);
+    }
+    now += 80;
+    for (let i = 12; i < 18; i += 1) {
+      markLibraryPickerTilePainted(`b${i}`);
+    }
+    const snap = getLibraryPickerTimingSnapshot();
+    expect(snap?.secondWaveAt).toBe(10_080);
+    expect(formatLibraryPickerTimingHud(snap)).toContain("p2 +80ms");
   });
 });
 

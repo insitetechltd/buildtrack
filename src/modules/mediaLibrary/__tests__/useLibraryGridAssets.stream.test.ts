@@ -15,6 +15,7 @@ jest.mock("expo-media-library", () => ({
 
 jest.mock("@/utils/libraryWarmPrefetch", () => ({
   consumeWarmLibraryPage: jest.fn(() => null),
+  consumeWarmLibraryPageAsync: jest.fn(async () => null),
 }));
 
 const mockGetAssetsAsync = MediaLibrary.getAssetsAsync as jest.Mock;
@@ -43,51 +44,9 @@ describe("useLibraryGridAssets first screen", () => {
     });
   });
 
-  it("loads one screen (12) in the first PhotoKit request and does not auto-chain", async () => {
-    const ids = Array.from({ length: 12 }, (_, i) => `p${i}`);
-    mockGetAssetsAsync.mockResolvedValue(page(ids, "c1", true));
-
-    const { result } = renderHook(() =>
-      useLibraryGridAssets({
-        enabled: true,
-        selectedAlbumId: "__all__",
-        consumeWarmPage: false,
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.assets).toHaveLength(12);
-      expect(result.current.initialLoadDone).toBe(true);
-    });
-    expect(mockGetAssetsAsync).toHaveBeenCalledTimes(1);
-    expect(mockGetAssetsAsync.mock.calls[0][0].first).toBe(12);
-  });
-
-  it("does not let onEndReached fetch until the first screen is filled", async () => {
-    mockGetAssetsAsync.mockResolvedValue(page(["a", "b", "c"], "c1", true));
-
-    const { result } = renderHook(() =>
-      useLibraryGridAssets({
-        enabled: true,
-        selectedAlbumId: "__all__",
-        consumeWarmPage: false,
-      }),
-    );
-
-    await waitFor(() => {
-      expect(result.current.assets.length).toBeGreaterThanOrEqual(3);
-      expect(result.current.assets.length).toBeLessThan(12);
-    });
-    const callsBefore = mockGetAssetsAsync.mock.calls.length;
-    act(() => {
-      result.current.onEndReached();
-    });
-    expect(mockGetAssetsAsync.mock.calls.length).toBe(callsBefore);
-  });
-
-  it("loads 18 more when scrolling after the first screen", async () => {
-    const first = Array.from({ length: 12 }, (_, i) => `a${i}`);
-    const second = Array.from({ length: 18 }, (_, i) => `b${i}`);
+  it("loads one screen (12) then auto-chains one scroll-buffer page of 18", async () => {
+    const first = Array.from({ length: 12 }, (_, i) => `p${i}`);
+    const second = Array.from({ length: 18 }, (_, i) => `q${i}`);
     mockGetAssetsAsync
       .mockResolvedValueOnce(page(first, "c1", true))
       .mockResolvedValueOnce(page(second, "c2", true));
@@ -101,7 +60,34 @@ describe("useLibraryGridAssets first screen", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.assets).toHaveLength(12);
+      expect(result.current.assets).toHaveLength(30);
+      expect(result.current.initialLoadDone).toBe(true);
+    });
+    expect(mockGetAssetsAsync).toHaveBeenCalledTimes(2);
+    expect(mockGetAssetsAsync.mock.calls[0][0].first).toBe(12);
+    expect(mockGetAssetsAsync.mock.calls[1][0].first).toBe(18);
+    expect(mockGetAssetsAsync.mock.calls[1][0].after).toBe("c1");
+  });
+
+  it("loads another 18 onEndReached after the scroll-buffer page", async () => {
+    const first = Array.from({ length: 12 }, (_, i) => `a${i}`);
+    const buffer = Array.from({ length: 18 }, (_, i) => `b${i}`);
+    const third = Array.from({ length: 18 }, (_, i) => `c${i}`);
+    mockGetAssetsAsync
+      .mockResolvedValueOnce(page(first, "c1", true))
+      .mockResolvedValueOnce(page(buffer, "c2", true))
+      .mockResolvedValueOnce(page(third, "c3", true));
+
+    const { result } = renderHook(() =>
+      useLibraryGridAssets({
+        enabled: true,
+        selectedAlbumId: "__all__",
+        consumeWarmPage: false,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.assets).toHaveLength(30);
       expect(result.current.loadingPage).toBe(false);
     });
 
@@ -110,8 +96,8 @@ describe("useLibraryGridAssets first screen", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.assets).toHaveLength(30);
+      expect(result.current.assets).toHaveLength(48);
     });
-    expect(mockGetAssetsAsync.mock.calls[1][0].first).toBe(18);
+    expect(mockGetAssetsAsync.mock.calls[2][0].first).toBe(18);
   });
 });

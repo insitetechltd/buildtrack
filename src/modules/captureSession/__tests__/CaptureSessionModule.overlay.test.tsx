@@ -2,11 +2,12 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { act, fireEvent, render } from "@testing-library/react-native";
 
-const mockWarmLibraryFirstPage = jest.fn(async () => undefined);
+const mockStartLibraryCapturePrefetch = jest.fn();
 let mockCameraMountCount = 0;
 
-jest.mock("../../../utils/libraryWarmPrefetch", () => ({
-  warmLibraryFirstPage: (...args: unknown[]) => mockWarmLibraryFirstPage(...args),
+jest.mock("../../../utils/libraryCapturePrefetch", () => ({
+  startLibraryCapturePrefetch: (...args: unknown[]) =>
+    mockStartLibraryCapturePrefetch(...args),
 }));
 
 jest.mock("../CaptureSessionCameraScreen", () => {
@@ -63,7 +64,7 @@ describe("CaptureSessionModule C1 overlay", () => {
   beforeEach(() => {
     resetCaptureSession();
     resetLibraryPickerTimingForTests();
-    mockWarmLibraryFirstPage.mockClear();
+    mockStartLibraryCapturePrefetch.mockClear();
     mockCameraMountCount = 0;
   });
 
@@ -116,7 +117,7 @@ describe("CaptureSessionModule C1 overlay", () => {
     expect(getByTestId("capture-session__camera_layer").props.pointerEvents).toBe(
       "auto",
     );
-    expect(mockWarmLibraryFirstPage).toHaveBeenCalled();
+    expect(mockStartLibraryCapturePrefetch).toHaveBeenCalled();
   });
 
   it("keeps a single camera mount across three library round trips", () => {

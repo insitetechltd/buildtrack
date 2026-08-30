@@ -8,7 +8,8 @@ import {
 import { CaptureSessionCameraScreen } from "./CaptureSessionCameraScreen";
 import { HybridLibraryPickerScreen } from "./HybridLibraryPickerScreen";
 import { resetCaptureSession, useCaptureSessionStore } from "./sessionDraftStore";
-import { warmLibraryFirstPage } from "../../utils/libraryWarmPrefetch";
+import { startLibraryCapturePrefetch } from "../../utils/libraryCapturePrefetch";
+import { clearPhotokitLibraryIndexPrefetch } from "../../utils/libraryIndexPrefetch";
 import { beginLibraryPickerSession } from "../../utils/libraryPickerTiming";
 
 export type { CaptureSessionHostProps } from "./CaptureSessionHostContext";
@@ -33,8 +34,10 @@ export function CaptureSessionModule({
     resetCaptureSession();
     setSelectionLimit(selectionLimit);
     setStep("camera");
+    startLibraryCapturePrefetch();
     return () => {
       resetCaptureSession();
+      clearPhotokitLibraryIndexPrefetch();
     };
   }, [selectionLimit, setSelectionLimit]);
 
@@ -45,7 +48,7 @@ export function CaptureSessionModule({
 
   const goToCamera = useCallback(() => {
     setStep("camera");
-    void warmLibraryFirstPage();
+    startLibraryCapturePrefetch();
   }, []);
 
   useEffect(() => {

@@ -1,0 +1,14 @@
+{
+  "name": "photokit-thumbs",
+  "version": "0.1.0",
+  "description": "PhotoKit target-size thumbnails for the Insite hybrid library grid (L3)",
+  "main": "src/index.ts",
+  "license": "UNLICENSED",
+  "homepage": "https://github.com/insitetechltd/buildtrack",
+  "author": "Insite",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

@@ -86,7 +86,8 @@
       "env": {
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "COCOAPODS_DISABLE_STATS": "true",
-        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
+        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1",
+        "EXPO_PUBLIC_LIBRARY_PICKER_PATH": "native2b"
       }
     }
   },

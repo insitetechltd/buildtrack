@@ -55,6 +55,10 @@ jest.mock("../../../utils/draftMediaCache", () => ({
   pinDraftMedia: (...args: unknown[]) => mockPinDraftMedia(...args),
 }));
 
+jest.mock("../../../utils/libraryCapturePrefetch", () => ({
+  startLibraryCapturePrefetch: jest.fn(),
+}));
+
 jest.mock("../../../utils/libraryWarmPrefetch", () => ({
   warmLibraryFirstPage: jest.fn(async () => undefined),
   peekWarmLibraryThumbUri: jest.fn(() => null),

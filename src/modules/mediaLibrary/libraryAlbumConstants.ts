@@ -7,8 +7,14 @@ export const ALL_PHOTOS_ALBUM_ID = "__all__";
 export const LIBRARY_PAGE_SIZE = 18;
 /** First PhotoKit request = one screen. Same wait as a tiny page, but a usable batch. */
 export const LIBRARY_INITIAL_PAGE_SIZE = 12;
-/** Stop auto-fill once the first screen is in. Scroll uses LIBRARY_PAGE_SIZE. */
+/** Stop first-screen auto-fill here. Scroll pages use LIBRARY_PAGE_SIZE. */
 export const LIBRARY_FILL_UNTIL_COUNT = 12;
+/**
+ * One extra PhotoKit page in memory so scroll is not blocked on getAssetsAsync.
+ * Further pages stay onEndReached.
+ */
+export const LIBRARY_PREFETCH_UNTIL_COUNT =
+  LIBRARY_FILL_UNTIL_COUNT + LIBRARY_PAGE_SIZE;
 export const LIBRARY_GRID_COLUMNS = 3;
 export const LIBRARY_GRID_GAP = 2;
 

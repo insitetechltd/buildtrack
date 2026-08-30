@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { LIBRARY_PICKER_TIMING_HUD } from "@/utils/libraryPickerPerf";
+import {
+  getLibraryPickerPath,
+  LIBRARY_PICKER_TIMING_HUD,
+} from "@/utils/libraryPickerPerf";
+import { isPhotokitThumbsAvailable } from "./PhotokitThumbView";
 import {
   formatLibraryPickerTimingHud,
   subscribeLibraryPickerTiming,
@@ -16,7 +20,10 @@ export function LibraryPickerTimingHud() {
       return;
     }
     return subscribeLibraryPickerTiming((snap) => {
-      setText(formatLibraryPickerTimingHud(snap));
+      const path = isPhotokitThumbsAvailable()
+        ? `native/${getLibraryPickerPath()}`
+        : "image";
+      setText(`${formatLibraryPickerTimingHud(snap)}\npath ${path}`);
     });
   }, []);
 

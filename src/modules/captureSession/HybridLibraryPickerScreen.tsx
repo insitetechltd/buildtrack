@@ -23,6 +23,7 @@ import {
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
+import { librarySkeletonTileCount } from "@/utils/libraryPickerPerf";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { prepareCaptureSessionAccept } from "./cameraDraftPinQueue";
 import { useCaptureSessionStore } from "./sessionDraftStore";
@@ -37,7 +38,7 @@ function newLibrarySessionId(assetId: string): string {
  */
 export function HybridLibraryPickerScreen() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const { onCancel, onComplete, goToCamera } = useCaptureSessionHost();
 
   const photos = useCaptureSessionStore((s) => s.photos);
@@ -55,16 +56,26 @@ export function HybridLibraryPickerScreen() {
     [width],
   );
 
+  const skeletonTileCount = useMemo(() => {
+    const rowHeight = tileSize + LIBRARY_GRID_GAP;
+    const gridArea = Math.max(200, height - insets.top - insets.bottom - 160);
+    return librarySkeletonTileCount(gridArea, rowHeight, LIBRARY_GRID_COLUMNS);
+  }, [height, insets.bottom, insets.top, tileSize]);
+
   const albumPicker = useLibraryAlbumPicker({
     enabled: true,
     consumeWarmPage: true,
   });
 
   useEffect(() => {
+    if (albumPicker.indexSession) {
+      markLibraryPickerMetadata(albumPicker.indexSession.count);
+      return;
+    }
     if (albumPicker.assets.length > 0) {
       markLibraryPickerMetadata(albumPicker.assets.length);
     }
-  }, [albumPicker.assets.length]);
+  }, [albumPicker.assets.length, albumPicker.indexSession]);
 
   const sessionCameraPhotos = useMemo(
     () => photos.filter((p) => p.source === "camera"),
@@ -130,14 +141,11 @@ export function HybridLibraryPickerScreen() {
         return;
       }
       const asset = albumPicker.assetsByIdRef.current.get(assetId);
-      if (!asset) {
-        return;
-      }
       addOrSelectLibraryPhoto({
-        id: newLibrarySessionId(asset.id),
-        uri: asset.uri,
-        fileName: asset.filename || `library_${Date.now()}.jpg`,
-        mediaLibraryAssetId: asset.id,
+        id: newLibrarySessionId(assetId),
+        uri: asset?.uri ?? `ph://${assetId}`,
+        fileName: asset?.filename || `library_${assetId}.jpg`,
+        mediaLibraryAssetId: assetId,
       });
     },
     [addOrSelectLibraryPhoto, albumPicker.assetsByIdRef, toggleSelected],
@@ -306,6 +314,7 @@ export function HybridLibraryPickerScreen() {
           listTestID="capture-session__library_grid"
           testIdPrefix="capture-session"
           assets={albumPicker.assets}
+          indexSession={albumPicker.indexSession}
           loadingPage={albumPicker.loadingPage}
           onEndReached={albumPicker.onEndReached}
           selectedIds={selectedLibraryIds}
@@ -313,11 +322,9 @@ export function HybridLibraryPickerScreen() {
           onPressAsset={onPressLibraryAsset}
           contentPaddingBottom={insets.bottom + 24}
           placeholderCount={
-            albumPicker.assets.length === 0 && !albumPicker.initialLoadDone
-              ? LIBRARY_FILL_UNTIL_COUNT
-              : 0
+            albumPicker.indexSession ? 0 : skeletonTileCount
           }
-          paintResetKey={albumPicker.selectedAlbumId}
+          paintResetKey={`${albumPicker.selectedAlbumId}:${albumPicker.indexSession?.token ?? "paged"}`}
           ListHeaderComponent={
             <View>
               {sessionHeader}

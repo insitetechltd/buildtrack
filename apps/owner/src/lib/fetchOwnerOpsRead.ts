@@ -76,6 +76,7 @@ export type OwnerSearchUser = {
   role: string;
   isActive: boolean;
   isPending: boolean;
+  projectCount: number;
 };
 
 export type OwnerSupportSnapshot = {
@@ -407,6 +408,7 @@ export async function searchOwnerUsers(
       role: asString(u.role) ?? "member",
       isActive: u.isActive !== false,
       isPending: asBool(u.isPending),
+      projectCount: asNumber(u.projectCount) ?? 0,
     };
   });
 }

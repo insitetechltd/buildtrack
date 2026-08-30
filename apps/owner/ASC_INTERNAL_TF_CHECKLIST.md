@@ -19,7 +19,7 @@
 1. Wait Apple processing → Internal TF install latest hq build (**10**)
 2. Login → **Monitoring** → provider health + secret presence + auth signals
 3. **Economics** → Stripe card (Not configured / withheld MRR OK) + Postgres counts
-4. **Companies** → Audit log + Find user + company support snapshot + user session debug
+4. **Tenant hub** → Companies / Projects / Users (+ Audit). Cards show encapsulated counts (company: projects·users; project: tasks·members; user: projects). Detail closes the triangle; list footers cross hubs.
 5. No External / Public / App Review
 
 ## Standing rule

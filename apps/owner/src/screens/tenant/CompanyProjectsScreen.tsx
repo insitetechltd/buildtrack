@@ -96,7 +96,7 @@ export default function CompanyProjectsScreen({ navigation, route }: Props) {
           >
             <Text style={s.cardTitle}>{item.name}</Text>
             <Text style={s.cardSub}>
-              {item.status} · {item.taskCount} tasks
+              {item.taskCount} tasks · {item.memberCount} members · {item.status}
             </Text>
             {item.location ? <Text style={s.rowMeta}>{item.location}</Text> : null}
           </Pressable>

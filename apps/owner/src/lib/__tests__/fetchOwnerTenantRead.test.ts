@@ -1,8 +1,11 @@
 import {
   parseCompanyDetail,
   parseCompanyListResult,
+  parseGlobalProjectListResult,
+  parseGlobalUserListResult,
   parseProjectDetail,
   parseProjectListResult,
+  parseProjectMembersResult,
   parseUserDetail,
   parseUserListResult,
   OwnerTenantError,
@@ -102,6 +105,93 @@ describe("parseProjectDetail", () => {
   });
 });
 
+describe("parseGlobalProjectListResult", () => {
+  it("parses cross-company projects with company fields", () => {
+    const result = parseGlobalProjectListResult({
+      projects: [
+        {
+          id: "p1",
+          name: "Tower",
+          status: "active",
+          startDate: "2026-01-01",
+          endDate: null,
+          location: "HK",
+          createdAt: "2026-01-01",
+          taskCount: 4,
+          memberCount: 2,
+          companyId: "c1",
+          companyName: "Acme",
+        },
+      ],
+      total: 12,
+      limit: 50,
+      offset: 0,
+      truncated: true,
+    });
+    expect(result.projects[0].companyName).toBe("Acme");
+    expect(result.projects[0].companyId).toBe("c1");
+    expect(result.projects[0].memberCount).toBe(2);
+    expect(result.total).toBe(12);
+    expect(result.truncated).toBe(true);
+  });
+});
+
+describe("parseGlobalUserListResult", () => {
+  it("parses cross-company users with project counts", () => {
+    const result = parseGlobalUserListResult({
+      users: [
+        {
+          id: "u1",
+          name: "Pat",
+          email: "p@x.com",
+          phone: "",
+          role: "admin",
+          position: "",
+          isPending: false,
+          isActive: true,
+          seatClass: "worker",
+          createdAt: "2026-01-01",
+          projectCount: 5,
+          companyId: "c1",
+          companyName: "Acme",
+        },
+      ],
+      total: 9,
+      limit: 50,
+      offset: 0,
+      truncated: false,
+    });
+    expect(result.users[0].projectCount).toBe(5);
+    expect(result.users[0].companyName).toBe("Acme");
+    expect(result.total).toBe(9);
+  });
+});
+
+describe("parseProjectMembersResult", () => {
+  it("parses members", () => {
+    const result = parseProjectMembersResult({
+      members: [
+        {
+          userId: "u1",
+          name: "Pat",
+          email: "p@x.com",
+          phone: "",
+          role: "admin",
+          position: "",
+          isPending: false,
+          isActive: true,
+          seatClass: "pm",
+          projectRole: "project_admin",
+        },
+      ],
+      truncated: false,
+      limit: 100,
+    });
+    expect(result.members[0].userId).toBe("u1");
+    expect(result.members[0].projectRole).toBe("project_admin");
+  });
+});
+
 describe("parseUserListResult", () => {
   it("parses users", () => {
     const result = parseUserListResult({
@@ -117,12 +207,14 @@ describe("parseUserListResult", () => {
           isActive: true,
           seatClass: "worker",
           createdAt: "2026-01-01",
+          projectCount: 3,
         },
       ],
       truncated: false,
       limit: 100,
     });
     expect(result.users[0].seatClass).toBe("worker");
+    expect(result.users[0].projectCount).toBe(3);
   });
 });
 

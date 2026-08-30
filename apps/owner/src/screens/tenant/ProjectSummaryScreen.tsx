@@ -24,7 +24,7 @@ import { tenantStyles as s } from "./tenantScreenStyles";
 type Props = NativeStackScreenProps<OwnerStackParamList, "ProjectSummary">;
 
 export default function ProjectSummaryScreen({ navigation, route }: Props) {
-  const { companyId, projectId, projectName } = route.params;
+  const { companyId, companyName, projectId, projectName } = route.params;
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -81,6 +81,34 @@ export default function ProjectSummaryScreen({ navigation, route }: Props) {
               ) : null}
               <Text style={s.rowMeta}>{detail.taskTotal} tasks total</Text>
             </View>
+            <Pressable
+              testID="owner-tenant-project-summary__company"
+              style={s.linkCard}
+              onPress={() =>
+                navigation.navigate("CompanyDetail", {
+                  companyId,
+                  companyName,
+                })
+              }
+            >
+              <Text style={s.linkTitle}>Company</Text>
+              <Text style={s.linkSub}>{companyName} · open company</Text>
+            </Pressable>
+            <Pressable
+              testID="owner-tenant-project-summary__members"
+              style={s.linkCard}
+              onPress={() =>
+                navigation.navigate("ProjectMembers", {
+                  companyId,
+                  companyName,
+                  projectId,
+                  projectName,
+                })
+              }
+            >
+              <Text style={s.linkTitle}>Members</Text>
+              <Text style={s.linkSub}>Open assignees for this project</Text>
+            </Pressable>
             <View style={s.card} testID="owner-tenant-project-summary__status_bars">
               <Text style={s.sectionTitle}>Tasks by status</Text>
               <StatusCountBars tasksByStatus={detail.tasksByStatus} testID="owner-tenant-project-summary__histogram" />

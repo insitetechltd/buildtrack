@@ -4,8 +4,11 @@ export type TenantAction =
   | "listCompanies"
   | "getCompany"
   | "listProjects"
+  | "listAllProjects"
   | "getProject"
+  | "listProjectMembers"
   | "listUsers"
+  | "listAllUsers"
   | "getUser";
 
 export type OwnerTenantErrorCode =
@@ -89,12 +92,28 @@ export type ProjectListItem = {
   location: string | null;
   createdAt: string;
   taskCount: number;
+  /** Active assignees on this project. */
+  memberCount: number;
 };
 
 export type ProjectListResult = {
   projects: ProjectListItem[];
   truncated: boolean;
   limit: number;
+};
+
+/** Cross-company project row for Tenant → All projects. */
+export type GlobalProjectListItem = ProjectListItem & {
+  companyId: string | null;
+  companyName: string | null;
+};
+
+export type GlobalProjectListResult = {
+  projects: GlobalProjectListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  truncated: boolean;
 };
 
 export type ProjectDetail = {
@@ -126,10 +145,44 @@ export type UserListItem = {
   isActive: boolean;
   seatClass: string;
   createdAt: string;
+  /** Active project assignments for this user. */
+  projectCount: number;
 };
 
 export type UserListResult = {
   users: UserListItem[];
+  truncated: boolean;
+  limit: number;
+};
+
+export type GlobalUserListItem = UserListItem & {
+  companyId: string | null;
+  companyName: string | null;
+};
+
+export type GlobalUserListResult = {
+  users: GlobalUserListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  truncated: boolean;
+};
+
+export type ProjectMemberItem = {
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  position: string;
+  isPending: boolean;
+  isActive: boolean;
+  seatClass: string;
+  projectRole: string;
+};
+
+export type ProjectMembersResult = {
+  members: ProjectMemberItem[];
   truncated: boolean;
   limit: number;
 };
@@ -301,12 +354,51 @@ export function parseProjectListResult(payload: unknown): ProjectListResult {
       location: asString(row.location),
       createdAt: asString(row.createdAt) ?? "",
       taskCount: asNumber(row.taskCount) ?? 0,
+      memberCount: asNumber(row.memberCount) ?? 0,
     };
   });
   return {
     projects,
     truncated: asBool(payload.truncated),
     limit: asNumber(payload.limit) ?? 100,
+  };
+}
+
+export function parseGlobalProjectListResult(
+  payload: unknown,
+): GlobalProjectListResult {
+  if (!isRecord(payload) || !Array.isArray(payload.projects)) {
+    throw new OwnerTenantError("bad_response", "Global project list invalid");
+  }
+  const projects = payload.projects.map((row, i) => {
+    if (!isRecord(row)) {
+      throw new OwnerTenantError("bad_response", `Project row ${i} invalid`);
+    }
+    const id = asString(row.id);
+    const name = asString(row.name);
+    if (!id || !name) {
+      throw new OwnerTenantError("bad_response", `Project row ${i} missing id/name`);
+    }
+    return {
+      id,
+      name,
+      status: asString(row.status) ?? "active",
+      startDate: asString(row.startDate) ?? "",
+      endDate: asString(row.endDate),
+      location: asString(row.location),
+      createdAt: asString(row.createdAt) ?? "",
+      taskCount: asNumber(row.taskCount) ?? 0,
+      memberCount: asNumber(row.memberCount) ?? 0,
+      companyId: asString(row.companyId),
+      companyName: asString(row.companyName),
+    };
+  });
+  return {
+    projects,
+    total: asNumber(payload.total) ?? projects.length,
+    limit: asNumber(payload.limit) ?? 50,
+    offset: asNumber(payload.offset) ?? 0,
+    truncated: asBool(payload.truncated),
   };
 }
 
@@ -370,10 +462,87 @@ export function parseUserListResult(payload: unknown): UserListResult {
       isActive: asBool(row.isActive, true),
       seatClass: asString(row.seatClass) ?? "worker",
       createdAt: asString(row.createdAt) ?? "",
+      projectCount: asNumber(row.projectCount) ?? 0,
     };
   });
   return {
     users,
+    truncated: asBool(payload.truncated),
+    limit: asNumber(payload.limit) ?? 100,
+  };
+}
+
+export function parseGlobalUserListResult(
+  payload: unknown,
+): GlobalUserListResult {
+  if (!isRecord(payload) || !Array.isArray(payload.users)) {
+    throw new OwnerTenantError("bad_response", "Global user list invalid");
+  }
+  const users = payload.users.map((row, i) => {
+    if (!isRecord(row)) {
+      throw new OwnerTenantError("bad_response", `User row ${i} invalid`);
+    }
+    const id = asString(row.id);
+    const name = asString(row.name);
+    const email = asString(row.email);
+    if (!id || !name || !email) {
+      throw new OwnerTenantError("bad_response", `User row ${i} missing fields`);
+    }
+    return {
+      id,
+      name,
+      email,
+      phone: asString(row.phone) ?? "",
+      role: asString(row.role) ?? "member",
+      position: asString(row.position) ?? "",
+      isPending: asBool(row.isPending),
+      isActive: asBool(row.isActive, true),
+      seatClass: asString(row.seatClass) ?? "worker",
+      createdAt: asString(row.createdAt) ?? "",
+      projectCount: asNumber(row.projectCount) ?? 0,
+      companyId: asString(row.companyId),
+      companyName: asString(row.companyName),
+    };
+  });
+  return {
+    users,
+    total: asNumber(payload.total) ?? users.length,
+    limit: asNumber(payload.limit) ?? 50,
+    offset: asNumber(payload.offset) ?? 0,
+    truncated: asBool(payload.truncated),
+  };
+}
+
+export function parseProjectMembersResult(
+  payload: unknown,
+): ProjectMembersResult {
+  if (!isRecord(payload) || !Array.isArray(payload.members)) {
+    throw new OwnerTenantError("bad_response", "Project members invalid");
+  }
+  const members = payload.members.map((row, i) => {
+    if (!isRecord(row)) {
+      throw new OwnerTenantError("bad_response", `Member row ${i} invalid`);
+    }
+    const userId = asString(row.userId);
+    const name = asString(row.name);
+    if (!userId || !name) {
+      throw new OwnerTenantError("bad_response", `Member row ${i} missing fields`);
+    }
+    return {
+      userId,
+      name,
+      email: asString(row.email) ?? "",
+      phone: asString(row.phone) ?? "",
+      role: asString(row.role) ?? "member",
+      position: asString(row.position) ?? "",
+      isPending: asBool(row.isPending),
+      isActive: asBool(row.isActive, true),
+      seatClass: asString(row.seatClass) ?? "worker",
+      projectRole: asString(row.projectRole) ?? "",
+    };
+  });
+  return {
+    members,
     truncated: asBool(payload.truncated),
     limit: asNumber(payload.limit) ?? 100,
   };
@@ -528,6 +697,25 @@ export async function fetchProjectList(
   );
 }
 
+export async function fetchAllProjects(
+  client: InvokeClient | null,
+  opts?: { query?: string; limit?: number; offset?: number },
+): Promise<GlobalProjectListResult> {
+  if (!client) {
+    throw new OwnerTenantError("not_configured", "Supabase not configured");
+  }
+  return invokeTenant(
+    client,
+    {
+      action: "listAllProjects",
+      query: opts?.query ?? "",
+      limit: opts?.limit ?? 50,
+      offset: opts?.offset ?? 0,
+    },
+    parseGlobalProjectListResult,
+  );
+}
+
 export async function fetchProjectDetail(
   client: InvokeClient | null,
   projectId: string,
@@ -554,6 +742,40 @@ export async function fetchUserList(
     client,
     { action: "listUsers", companyId },
     parseUserListResult,
+  );
+}
+
+export async function fetchAllUsers(
+  client: InvokeClient | null,
+  opts?: { query?: string; limit?: number; offset?: number },
+): Promise<GlobalUserListResult> {
+  if (!client) {
+    throw new OwnerTenantError("not_configured", "Supabase not configured");
+  }
+  return invokeTenant(
+    client,
+    {
+      action: "listAllUsers",
+      query: opts?.query ?? "",
+      limit: opts?.limit ?? 50,
+      offset: opts?.offset ?? 0,
+    },
+    parseGlobalUserListResult,
+  );
+}
+
+export async function fetchProjectMembers(
+  client: InvokeClient | null,
+  projectId: string,
+  companyId: string,
+): Promise<ProjectMembersResult> {
+  if (!client) {
+    throw new OwnerTenantError("not_configured", "Supabase not configured");
+  }
+  return invokeTenant(
+    client,
+    { action: "listProjectMembers", projectId, companyId },
+    parseProjectMembersResult,
   );
 }
 

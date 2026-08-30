@@ -5,14 +5,17 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import EconomicsScreen from "../screens/EconomicsScreen";
 import MonitoringScreen from "../screens/MonitoringScreen";
 import OwnerHomeScreen from "../screens/OwnerHomeScreen";
-import StubSectionScreen from "../screens/StubSectionScreen";
 import AuditLogScreen from "../screens/tenant/AuditLogScreen";
+import AllProjectsScreen from "../screens/tenant/AllProjectsScreen";
+import AllUsersScreen from "../screens/tenant/AllUsersScreen";
 import CompanyDetailScreen from "../screens/tenant/CompanyDetailScreen";
 import CompanyListScreen from "../screens/tenant/CompanyListScreen";
 import CompanyProjectsScreen from "../screens/tenant/CompanyProjectsScreen";
 import CompanyUsersScreen from "../screens/tenant/CompanyUsersScreen";
 import CreateUserScreen from "../screens/tenant/CreateUserScreen";
+import ProjectMembersScreen from "../screens/tenant/ProjectMembersScreen";
 import ProjectSummaryScreen from "../screens/tenant/ProjectSummaryScreen";
+import TenantHubScreen from "../screens/tenant/TenantHubScreen";
 import UserDetailScreen from "../screens/tenant/UserDetailScreen";
 import UserSearchScreen from "../screens/tenant/UserSearchScreen";
 
@@ -22,11 +25,19 @@ export type OwnerStackParamList = {
   Economics: undefined;
   TenantOps: undefined;
   CompanyList: undefined;
+  AllProjects: undefined;
+  AllUsers: undefined;
   AuditLog: undefined;
   UserSearch: undefined;
   CompanyDetail: { companyId: string; companyName: string };
   CompanyProjects: { companyId: string; companyName: string };
   ProjectSummary: {
+    companyId: string;
+    companyName: string;
+    projectId: string;
+    projectName: string;
+  };
+  ProjectMembers: {
     companyId: string;
     companyName: string;
     projectId: string;
@@ -58,7 +69,7 @@ export default function OwnerAppNavigator({ onSignOut }: Props) {
               onSignOut={onSignOut}
               onOpenMonitoring={() => navigation.navigate("Monitoring")}
               onOpenEconomics={() => navigation.navigate("Economics")}
-              onOpenTenantOps={() => navigation.navigate("CompanyList")}
+              onOpenTenantOps={() => navigation.navigate("TenantOps")}
             />
           )}
         </Stack.Screen>
@@ -72,22 +83,16 @@ export default function OwnerAppNavigator({ onSignOut }: Props) {
             <EconomicsScreen onBack={() => navigation.goBack()} />
           )}
         </Stack.Screen>
-        <Stack.Screen name="TenantOps">
-          {({ navigation }) => (
-            <StubSectionScreen
-              title="Tenant ops"
-              testID="owner-tenant__root"
-              body="Use Companies from home — full drill-down is live in Phase 1c."
-              onBack={() => navigation.goBack()}
-            />
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="TenantOps" component={TenantHubScreen} />
         <Stack.Screen name="CompanyList" component={CompanyListScreen} />
+        <Stack.Screen name="AllProjects" component={AllProjectsScreen} />
+        <Stack.Screen name="AllUsers" component={AllUsersScreen} />
         <Stack.Screen name="AuditLog" component={AuditLogScreen} />
         <Stack.Screen name="UserSearch" component={UserSearchScreen} />
         <Stack.Screen name="CompanyDetail" component={CompanyDetailScreen} />
         <Stack.Screen name="CompanyProjects" component={CompanyProjectsScreen} />
         <Stack.Screen name="ProjectSummary" component={ProjectSummaryScreen} />
+        <Stack.Screen name="ProjectMembers" component={ProjectMembersScreen} />
         <Stack.Screen name="CompanyUsers" component={CompanyUsersScreen} />
         <Stack.Screen name="CreateUser" component={CreateUserScreen} />
         <Stack.Screen name="UserDetail" component={UserDetailScreen} />

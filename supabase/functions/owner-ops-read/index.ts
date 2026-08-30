@@ -589,8 +589,41 @@ async function handleSearchUsers(
     }
   }
 
+  if (error) throw error;
+
+  const rows = data ?? [];
+  const projectCounts = new Map<string, number>();
+  for (const row of rows) {
+    projectCounts.set((row as { id: string }).id, 0);
+  }
+  const userIds = [...projectCounts.keys()];
+  if (userIds.length > 0) {
+    let assignRes = await admin
+      .from("user_project_assignments")
+      .select("user_id, project_id")
+      .in("user_id", userIds)
+      .eq("is_active", true);
+    if (assignRes.error) {
+      assignRes = await admin
+        .from("user_project_assignments")
+        .select("user_id, project_id")
+        .in("user_id", userIds);
+    }
+    if (assignRes.error) throw assignRes.error;
+    const seen = new Map<string, Set<string>>();
+    for (const a of assignRes.data ?? []) {
+      const r = a as { user_id?: string; project_id?: string };
+      if (!r.user_id || !r.project_id) continue;
+      if (!seen.has(r.user_id)) seen.set(r.user_id, new Set());
+      seen.get(r.user_id)!.add(r.project_id);
+    }
+    for (const [uid, projects] of seen) {
+      projectCounts.set(uid, projects.size);
+    }
+  }
+
   return jsonResponse({
-    users: (data ?? []).map((row) => {
+    users: rows.map((row) => {
       const u = row as {
         id: string;
         name: string;
@@ -612,6 +645,7 @@ async function handleSearchUsers(
         role: u.role || u.system_permission || "member",
         isActive: u.is_active !== false,
         isPending: Boolean(u.is_pending),
+        projectCount: projectCounts.get(u.id) ?? 0,
       };
     }),
     limit,

@@ -170,6 +170,8 @@ async function edgeSmoke(ownerJwt) {
   for (const [name, body] of [
     ["listProjects", { action: "listProjects", companyId }],
     ["listUsers", { action: "listUsers", companyId }],
+    ["listAllProjects", { action: "listAllProjects", limit: 5 }],
+    ["listAllUsers", { action: "listAllUsers", limit: 5 }],
   ]) {
     const r = await fetch(`${url}/functions/v1/owner-tenant-read`, {
       method: "POST",

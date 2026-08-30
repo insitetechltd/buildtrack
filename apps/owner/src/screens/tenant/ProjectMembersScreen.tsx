@@ -5,7 +5,6 @@ import {
   Pressable,
   RefreshControl,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,45 +12,41 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
-  fetchCompanyList,
+  fetchProjectMembers,
   OwnerTenantError,
-  type CompanyListItem,
+  type ProjectMemberItem,
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import CategoryCrossOverFooter from "./CategoryCrossOverFooter";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
-type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyList">;
+type Props = NativeStackScreenProps<OwnerStackParamList, "ProjectMembers">;
 
-export default function CompanyListScreen({ navigation }: Props) {
-  const [query, setQuery] = useState("");
-  const [companies, setCompanies] = useState<CompanyListItem[]>([]);
-  const [total, setTotal] = useState(0);
+export default function ProjectMembersScreen({ navigation, route }: Props) {
+  const { companyId, companyName, projectId, projectName } = route.params;
+  const [members, setMembers] = useState<ProjectMemberItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(
-    async (opts?: { soft?: boolean; search?: string }) => {
+    async (opts?: { soft?: boolean }) => {
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
-        const result = await fetchCompanyList(supabase, {
-          query: opts?.search ?? query,
-          limit: 25,
-        });
-        setCompanies(result.companies);
-        setTotal(result.total);
+        const result = await fetchProjectMembers(supabase, projectId, companyId);
+        setMembers(result.members);
       } catch (err) {
-        setCompanies([]);
-        setError(err instanceof OwnerTenantError ? err.message : "Could not load companies");
+        setMembers([]);
+        setError(
+          err instanceof OwnerTenantError ? err.message : "Could not load members",
+        );
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [query],
+    [companyId, projectId],
   );
 
   useFocusEffect(
@@ -61,18 +56,24 @@ export default function CompanyListScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-companies__root">
+    <SafeAreaView
+      style={s.safe}
+      edges={["top", "bottom"]}
+      testID="owner-tenant-project-members__root"
+    >
       <View style={s.header}>
-        <Pressable testID="owner-tenant-companies__back" onPress={() => navigation.goBack()} style={s.back}>
+        <Pressable onPress={() => navigation.goBack()} style={s.back}>
           <Text style={s.backText}>Back</Text>
         </Pressable>
-        <Text style={s.title}>Companies</Text>
+        <Text style={s.title} numberOfLines={1}>
+          Members
+        </Text>
         <View style={s.backSpacer} />
       </View>
       <FlatList
         contentContainerStyle={s.scroll}
-        data={companies}
-        keyExtractor={(item) => item.id}
+        data={members}
+        keyExtractor={(item) => item.userId}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -87,20 +88,10 @@ export default function CompanyListScreen({ navigation }: Props) {
           <>
             <View style={s.banner}>
               <Text style={s.bannerText}>
-                Read-only tenant drill-down on DEV. {total} companies total.
+                Assignees on {projectName} · {companyName}
               </Text>
             </View>
-            <TextInput
-              testID="owner-tenant-companies__search"
-              style={s.search}
-              placeholder="Search by name…"
-              placeholderTextColor="#8AA3AD"
-              value={query}
-              onChangeText={setQuery}
-              onSubmitEditing={() => void load({ search: query })}
-              returnKeyType="search"
-            />
-            {loading && companies.length === 0 ? (
+            {loading && members.length === 0 ? (
               <View style={s.center}>
                 <ActivityIndicator size="large" color="#0A556B" />
               </View>
@@ -117,34 +108,32 @@ export default function CompanyListScreen({ navigation }: Props) {
         }
         renderItem={({ item }) => (
           <Pressable
-            testID={`owner-tenant-companies__card_${item.id}`}
+            testID={`owner-tenant-project-members__row_${item.userId}`}
             style={s.card}
             onPress={() =>
-              navigation.navigate("CompanyDetail", {
-                companyId: item.id,
-                companyName: item.name,
+              navigation.navigate("UserDetail", {
+                companyId,
+                companyName,
+                userId: item.userId,
+                userName: item.name,
               })
             }
           >
             <Text style={s.cardTitle}>{item.name}</Text>
             <Text style={s.cardSub}>
-              {item.projectCount} projects · {item.userCount} users
+              {item.email} · {item.role} · {item.seatClass} seat
             </Text>
-            <Text style={s.rowMeta}>{item.type.replace(/_/g, " ")}</Text>
-            <View style={[s.badge, !item.isActive && s.badgeInactive]}>
-              <Text style={[s.badgeText, !item.isActive && s.badgeInactiveText]}>
-                {item.isActive ? "Active" : "Inactive"}
+            {item.projectRole ? (
+              <Text style={s.rowMeta}>
+                Project role: {item.projectRole.replace(/_/g, " ")}
               </Text>
-            </View>
+            ) : null}
           </Pressable>
         )}
         ListEmptyComponent={
           !loading && !error ? (
-            <Text style={s.meta}>No companies match this search.</Text>
+            <Text style={s.meta}>No active members on this project.</Text>
           ) : null
-        }
-        ListFooterComponent={
-          <CategoryCrossOverFooter current="companies" navigation={navigation} />
         }
       />
     </SafeAreaView>

@@ -13,21 +13,22 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
-  fetchCompanyList,
+  fetchAllUsers,
   OwnerTenantError,
-  type CompanyListItem,
+  type GlobalUserListItem,
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
 import CategoryCrossOverFooter from "./CategoryCrossOverFooter";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
-type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyList">;
+type Props = NativeStackScreenProps<OwnerStackParamList, "AllUsers">;
 
-export default function CompanyListScreen({ navigation }: Props) {
+export default function AllUsersScreen({ navigation }: Props) {
   const [query, setQuery] = useState("");
-  const [companies, setCompanies] = useState<CompanyListItem[]>([]);
+  const [users, setUsers] = useState<GlobalUserListItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [truncated, setTruncated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,15 +38,18 @@ export default function CompanyListScreen({ navigation }: Props) {
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
-        const result = await fetchCompanyList(supabase, {
+        const result = await fetchAllUsers(supabase, {
           query: opts?.search ?? query,
-          limit: 25,
+          limit: 50,
         });
-        setCompanies(result.companies);
+        setUsers(result.users);
         setTotal(result.total);
+        setTruncated(result.truncated);
       } catch (err) {
-        setCompanies([]);
-        setError(err instanceof OwnerTenantError ? err.message : "Could not load companies");
+        setUsers([]);
+        setError(
+          err instanceof OwnerTenantError ? err.message : "Could not load users",
+        );
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -61,17 +65,21 @@ export default function CompanyListScreen({ navigation }: Props) {
   );
 
   return (
-    <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-companies__root">
+    <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-all-users__root">
       <View style={s.header}>
-        <Pressable testID="owner-tenant-companies__back" onPress={() => navigation.goBack()} style={s.back}>
+        <Pressable
+          testID="owner-tenant-all-users__back"
+          onPress={() => navigation.goBack()}
+          style={s.back}
+        >
           <Text style={s.backText}>Back</Text>
         </Pressable>
-        <Text style={s.title}>Companies</Text>
+        <Text style={s.title}>All users</Text>
         <View style={s.backSpacer} />
       </View>
       <FlatList
         contentContainerStyle={s.scroll}
-        data={companies}
+        data={users}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl
@@ -87,20 +95,24 @@ export default function CompanyListScreen({ navigation }: Props) {
           <>
             <View style={s.banner}>
               <Text style={s.bannerText}>
-                Read-only tenant drill-down on DEV. {total} companies total.
+                Every user on DEV, across companies. {total} total
+                {truncated ? " · showing first page" : ""}. Search by name or email.
               </Text>
             </View>
             <TextInput
-              testID="owner-tenant-companies__search"
+              testID="owner-tenant-all-users__search"
               style={s.search}
-              placeholder="Search by name…"
+              placeholder="Search name or email…"
               placeholderTextColor="#8AA3AD"
               value={query}
               onChangeText={setQuery}
               onSubmitEditing={() => void load({ search: query })}
               returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
             />
-            {loading && companies.length === 0 ? (
+            {loading && users.length === 0 ? (
               <View style={s.center}>
                 <ActivityIndicator size="large" color="#0A556B" />
               </View>
@@ -113,38 +125,41 @@ export default function CompanyListScreen({ navigation }: Props) {
                 </Pressable>
               </View>
             ) : null}
+            {!loading && !error && users.length === 0 ? (
+              <Text style={s.meta} testID="owner-tenant-all-users__empty">
+                No users matched.
+              </Text>
+            ) : null}
           </>
         }
         renderItem={({ item }) => (
           <Pressable
-            testID={`owner-tenant-companies__card_${item.id}`}
+            testID={`owner-tenant-all-users__row_${item.id}`}
             style={s.card}
-            onPress={() =>
-              navigation.navigate("CompanyDetail", {
-                companyId: item.id,
-                companyName: item.name,
-              })
-            }
+            onPress={() => {
+              if (!item.companyId) return;
+              navigation.navigate("UserDetail", {
+                companyId: item.companyId,
+                companyName: item.companyName ?? "Company",
+                userId: item.id,
+                userName: item.name,
+              });
+            }}
           >
             <Text style={s.cardTitle}>{item.name}</Text>
             <Text style={s.cardSub}>
-              {item.projectCount} projects · {item.userCount} users
+              {item.projectCount} projects
+              {item.companyName ? ` · ${item.companyName}` : ""}
             </Text>
-            <Text style={s.rowMeta}>{item.type.replace(/_/g, " ")}</Text>
-            <View style={[s.badge, !item.isActive && s.badgeInactive]}>
-              <Text style={[s.badgeText, !item.isActive && s.badgeInactiveText]}>
-                {item.isActive ? "Active" : "Inactive"}
-              </Text>
-            </View>
+            <Text style={s.rowMeta}>
+              {item.email} · {item.role} · {item.seatClass} seat
+              {!item.isActive ? " · inactive" : ""}
+              {item.isPending ? " · pending" : ""}
+            </Text>
           </Pressable>
         )}
-        ListEmptyComponent={
-          !loading && !error ? (
-            <Text style={s.meta}>No companies match this search.</Text>
-          ) : null
-        }
         ListFooterComponent={
-          <CategoryCrossOverFooter current="companies" navigation={navigation} />
+          <CategoryCrossOverFooter current="users" navigation={navigation} />
         }
       />
     </SafeAreaView>

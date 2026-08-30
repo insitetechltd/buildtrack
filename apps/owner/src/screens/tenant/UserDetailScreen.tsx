@@ -132,12 +132,24 @@ export default function UserDetailScreen({ navigation, route }: Props) {
                 Role: {detail.user.role} · Seat: {detail.user.seatClass}
               </Text>
               <Text style={s.rowMeta}>
-                Company ID: {detail.user.companyId ?? "—"} (read-only)
-              </Text>
-              <Text style={s.rowMeta}>
                 {detail.user.isPending ? "Pending approval" : detail.user.isActive ? "Active" : "Inactive"}
               </Text>
             </View>
+            <Pressable
+              testID="owner-tenant-user-detail__company"
+              style={s.linkCard}
+              onPress={() => {
+                const cid = detail.user.companyId ?? companyId;
+                if (!cid) return;
+                navigation.navigate("CompanyDetail", {
+                  companyId: cid,
+                  companyName: route.params.companyName,
+                });
+              }}
+            >
+              <Text style={s.linkTitle}>Company</Text>
+              <Text style={s.linkSub}>{route.params.companyName}</Text>
+            </Pressable>
             {session ? (
               <View style={s.card} testID="owner-tenant-user-detail__session">
                 <Text style={s.sectionTitle}>Session debug (sanitized)</Text>
@@ -184,12 +196,25 @@ export default function UserDetailScreen({ navigation, route }: Props) {
               <Text style={s.meta}>No active project assignments.</Text>
             ) : (
               detail.assignments.map((a, i) => (
-                <View key={`${a.projectId}-${i}`} style={s.card}>
+                <Pressable
+                  key={`${a.projectId}-${i}`}
+                  testID={`owner-tenant-user-detail__assignment_${a.projectId ?? i}`}
+                  style={s.card}
+                  onPress={() => {
+                    if (!a.projectId) return;
+                    navigation.navigate("ProjectSummary", {
+                      companyId: detail.user.companyId ?? companyId,
+                      companyName: route.params.companyName,
+                      projectId: a.projectId,
+                      projectName: a.projectName,
+                    });
+                  }}
+                >
                   <Text style={s.cardTitle}>{a.projectName}</Text>
                   <Text style={s.cardSub}>
                     {a.projectRole.replace(/_/g, " ")} · {a.projectStatus}
                   </Text>
-                </View>
+                </Pressable>
               ))
             )}
           </>

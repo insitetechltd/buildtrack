@@ -28,8 +28,11 @@ type TenantAction =
   | "listCompanies"
   | "getCompany"
   | "listProjects"
+  | "listAllProjects"
   | "getProject"
+  | "listProjectMembers"
   | "listUsers"
+  | "listAllUsers"
   | "getUser";
 
 type CompanyUserRow = {
@@ -53,8 +56,11 @@ function parseAction(raw: unknown): TenantAction | null {
     "listCompanies",
     "getCompany",
     "listProjects",
+    "listAllProjects",
     "getProject",
+    "listProjectMembers",
     "listUsers",
+    "listAllUsers",
     "getUser",
   ];
   return typeof raw === "string" && actions.includes(raw as TenantAction)
@@ -229,6 +235,82 @@ async function countByCompanyIds(
   for (const row of data ?? []) {
     const cid = (row as { company_id?: string }).company_id;
     if (cid) counts.set(cid, (counts.get(cid) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Distinct active project assignments per user (list cards). */
+async function countAssignedProjectsByUserIds(
+  admin: ReturnType<typeof createClient>,
+  userIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (const id of userIds) counts.set(id, 0);
+  if (userIds.length === 0) return counts;
+
+  let { data, error } = await admin
+    .from("user_project_assignments")
+    .select("user_id, project_id")
+    .in("user_id", userIds)
+    .eq("is_active", true);
+
+  if (error) {
+    const alt = await admin
+      .from("user_project_assignments")
+      .select("user_id, project_id")
+      .in("user_id", userIds);
+    data = alt.data;
+    error = alt.error;
+  }
+  if (error) throw error;
+
+  const seen = new Map<string, Set<string>>();
+  for (const row of data ?? []) {
+    const r = row as { user_id?: string; project_id?: string };
+    if (!r.user_id || !r.project_id) continue;
+    if (!seen.has(r.user_id)) seen.set(r.user_id, new Set());
+    seen.get(r.user_id)!.add(r.project_id);
+  }
+  for (const [uid, projects] of seen) {
+    counts.set(uid, projects.size);
+  }
+  return counts;
+}
+
+/** Distinct active assignees per project (project list cards). */
+async function countMembersByProjectIds(
+  admin: ReturnType<typeof createClient>,
+  projectIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (const id of projectIds) counts.set(id, 0);
+  if (projectIds.length === 0) return counts;
+
+  let { data, error } = await admin
+    .from("user_project_assignments")
+    .select("user_id, project_id")
+    .in("project_id", projectIds)
+    .eq("is_active", true);
+
+  if (error) {
+    const alt = await admin
+      .from("user_project_assignments")
+      .select("user_id, project_id")
+      .in("project_id", projectIds);
+    data = alt.data;
+    error = alt.error;
+  }
+  if (error) throw error;
+
+  const seen = new Map<string, Set<string>>();
+  for (const row of data ?? []) {
+    const r = row as { user_id?: string; project_id?: string };
+    if (!r.user_id || !r.project_id) continue;
+    if (!seen.has(r.project_id)) seen.set(r.project_id, new Set());
+    seen.get(r.project_id)!.add(r.user_id);
+  }
+  for (const [pid, users] of seen) {
+    counts.set(pid, users.size);
   }
   return counts;
 }
@@ -455,6 +537,8 @@ async function handleListProjects(
     }
   }
 
+  const memberCounts = await countMembersByProjectIds(admin, pids);
+
   return jsonResponse({
     projects: rows.map((row) => {
       const r = row as {
@@ -475,10 +559,111 @@ async function handleListProjects(
         location: r.location,
         createdAt: r.created_at,
         taskCount: taskCounts.get(r.id) ?? 0,
+        memberCount: memberCounts.get(r.id) ?? 0,
       };
     }),
     truncated: rows.length >= limit,
     limit,
+  });
+}
+
+/** Platform-wide project list (all companies) for hq Tenant → Projects. */
+async function handleListAllProjects(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+) {
+  const limit = clampInt(body.limit, 50, 100);
+  const offset = clampInt(body.offset, 0, 10_000);
+  const rawQuery = typeof body.query === "string" ? body.query.trim() : "";
+  // No user wildcards — same discipline as owner-ops-read email search
+  const query = rawQuery.replace(/[%*_]/g, "").slice(0, 80);
+
+  let q = admin
+    .from("projects")
+    .select(
+      "id, name, status, start_date, end_date, location, created_at, company_id",
+      { count: "exact" },
+    )
+    .order("name", { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (query) {
+    q = q.ilike("name", `%${query}%`);
+  }
+
+  const { data: projects, error, count } = await q;
+  if (error) throw error;
+
+  const rows = projects ?? [];
+  const companyIds = [
+    ...new Set(
+      rows
+        .map((p) => (p as { company_id?: string | null }).company_id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const nameByCompany = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: cos, error: cosErr } = await admin
+      .from("companies")
+      .select("id, name")
+      .in("id", companyIds);
+    if (cosErr) throw cosErr;
+    for (const c of cos ?? []) {
+      const row = c as { id: string; name: string };
+      nameByCompany.set(row.id, row.name);
+    }
+  }
+
+  const pids = rows.map((p) => (p as { id: string }).id);
+  const taskCounts = new Map<string, number>();
+  for (const pid of pids) taskCounts.set(pid, 0);
+  if (pids.length > 0) {
+    const { data: tasks, error: taskError } = await admin
+      .from("tasks")
+      .select("project_id")
+      .in("project_id", pids);
+    if (taskError) throw taskError;
+    for (const t of tasks ?? []) {
+      const pid = (t as { project_id: string }).project_id;
+      taskCounts.set(pid, (taskCounts.get(pid) ?? 0) + 1);
+    }
+  }
+
+  const memberCounts = await countMembersByProjectIds(admin, pids);
+
+  return jsonResponse({
+    projects: rows.map((row) => {
+      const r = row as {
+        id: string;
+        name: string;
+        status: string;
+        start_date: string;
+        end_date: string | null;
+        location: string | null;
+        created_at: string;
+        company_id: string | null;
+      };
+      return {
+        id: r.id,
+        name: r.name,
+        status: r.status,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        location: r.location,
+        createdAt: r.created_at,
+        taskCount: taskCounts.get(r.id) ?? 0,
+        memberCount: memberCounts.get(r.id) ?? 0,
+        companyId: r.company_id,
+        companyName: r.company_id
+          ? nameByCompany.get(r.company_id) ?? null
+          : null,
+      };
+    }),
+    total: count ?? rows.length,
+    limit,
+    offset,
+    truncated: (count ?? 0) > offset + rows.length,
   });
 }
 
@@ -584,8 +769,14 @@ async function handleListUsers(
 
   if (error) throw error;
 
+  const rows = users ?? [];
+  const projectCounts = await countAssignedProjectsByUserIds(
+    admin,
+    rows.map((row) => (row as { id: string }).id),
+  );
+
   return jsonResponse({
-    users: (users ?? []).map((row) => {
+    users: rows.map((row) => {
       const u = row as CompanyUserRow & {
         name: string;
         email: string;
@@ -604,9 +795,10 @@ async function handleListUsers(
         isActive: u.is_active !== false,
         seatClass: seatClassForUser(u),
         createdAt: u.created_at,
+        projectCount: projectCounts.get(u.id) ?? 0,
       };
     }),
-    truncated: (users ?? []).length >= limit,
+    truncated: rows.length >= limit,
     limit,
   });
 }
@@ -754,6 +946,217 @@ async function handleGetUser(
   });
 }
 
+async function handleListProjectMembers(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+) {
+  const projectId = parseUuid(body.projectId);
+  const companyId = parseUuid(body.companyId);
+  if (!projectId) return jsonResponse({ error: "invalid_project_id" }, 400);
+  if (!companyId) return jsonResponse({ error: "invalid_company_id" }, 400);
+  const limit = clampInt(body.limit, 100, 100);
+
+  const { data: project, error: projectError } = await admin
+    .from("projects")
+    .select("id, company_id, name")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (projectError) throw projectError;
+  if (!project) return jsonResponse({ error: "not_found" }, 404);
+  if ((project as { company_id: string }).company_id !== companyId) {
+    return jsonResponse({ error: "forbidden" }, 403);
+  }
+
+  let assignRes = await admin
+    .from("user_project_assignments")
+    .select("user_id, project_role, category, is_active")
+    .eq("project_id", projectId)
+    .eq("is_active", true)
+    .limit(limit);
+  if (assignRes.error) {
+    assignRes = await admin
+      .from("user_project_assignments")
+      .select("user_id, project_role, category, is_active")
+      .eq("project_id", projectId)
+      .limit(limit);
+  }
+  if (assignRes.error) throw assignRes.error;
+
+  const assignRows = (assignRes.data ?? []) as {
+    user_id: string;
+    project_role?: string;
+    category?: string;
+    is_active?: boolean;
+  }[];
+  const userIds = [...new Set(assignRows.map((a) => a.user_id).filter(Boolean))];
+  const userById = new Map<string, CompanyUserRow & {
+    name: string;
+    email: string;
+    phone: string;
+    position: string;
+  }>();
+
+  if (userIds.length > 0) {
+    const { data: users, error: usersError } = await queryUsersWithPermissionColumn(
+      () =>
+        admin
+          .from("users")
+          .select(
+            "id, name, email, phone, role, position, is_pending, is_active, deployable_seat",
+          )
+          .in("id", userIds),
+      () =>
+        admin
+          .from("users")
+          .select(
+            "id, name, email, phone, system_permission, position, is_pending, is_active, deployable_seat",
+          )
+          .in("id", userIds),
+    );
+    if (usersError) throw usersError;
+    for (const u of users ?? []) {
+      const row = u as CompanyUserRow & {
+        name: string;
+        email: string;
+        phone: string;
+        position: string;
+      };
+      userById.set(row.id, row);
+    }
+  }
+
+  return jsonResponse({
+    members: assignRows.map((a) => {
+      const u = userById.get(a.user_id);
+      return {
+        userId: a.user_id,
+        name: u?.name ?? "Unknown",
+        email: u?.email ?? "",
+        phone: u?.phone ?? "",
+        role: u ? displayRole(u) : "member",
+        position: u?.position ?? "",
+        isPending: Boolean(u?.is_pending),
+        isActive: u?.is_active !== false,
+        seatClass: u ? seatClassForUser(u) : "worker",
+        projectRole: a.project_role ?? a.category ?? "",
+      };
+    }),
+    truncated: assignRows.length >= limit,
+    limit,
+  });
+}
+
+async function handleListAllUsers(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+) {
+  const limit = clampInt(body.limit, 50, 100);
+  const offset = clampInt(body.offset, 0, 10_000);
+  const rawQuery = typeof body.query === "string" ? body.query.trim() : "";
+  const query = rawQuery.replace(/[%*_]/g, "").slice(0, 80);
+
+  let q = admin
+    .from("users")
+    .select(
+      "id, name, email, phone, company_id, role, position, is_pending, is_active, deployable_seat, created_at",
+      { count: "exact" },
+    )
+    .order("name", { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (query) {
+    if (query.includes("@")) {
+      q = q.ilike("email", `%${query}%`);
+    } else {
+      q = q.or(`name.ilike.%${query}%,email.ilike.%${query}%`);
+    }
+  }
+
+  let { data: users, error, count } = await q;
+  if (error && isMissingColumnError(error)) {
+    let alt = admin
+      .from("users")
+      .select(
+        "id, name, email, phone, company_id, system_permission, position, is_pending, is_active, deployable_seat, created_at",
+        { count: "exact" },
+      )
+      .order("name", { ascending: true })
+      .range(offset, offset + limit - 1);
+    if (query) {
+      if (query.includes("@")) {
+        alt = alt.ilike("email", `%${query}%`);
+      } else {
+        alt = alt.or(`name.ilike.%${query}%,email.ilike.%${query}%`);
+      }
+    }
+    const retry = await alt;
+    users = retry.data;
+    error = retry.error;
+    count = retry.count;
+  }
+  if (error) throw error;
+
+  const rows = users ?? [];
+  const companyIds = [
+    ...new Set(
+      rows
+        .map((u) => (u as { company_id?: string | null }).company_id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const nameByCompany = new Map<string, string>();
+  if (companyIds.length > 0) {
+    const { data: cos, error: cosErr } = await admin
+      .from("companies")
+      .select("id, name")
+      .in("id", companyIds);
+    if (cosErr) throw cosErr;
+    for (const c of cos ?? []) {
+      const row = c as { id: string; name: string };
+      nameByCompany.set(row.id, row.name);
+    }
+  }
+
+  const projectCounts = await countAssignedProjectsByUserIds(
+    admin,
+    rows.map((u) => (u as { id: string }).id),
+  );
+
+  return jsonResponse({
+    users: rows.map((row) => {
+      const u = row as CompanyUserRow & {
+        name: string;
+        email: string;
+        phone: string;
+        company_id: string | null;
+        position: string;
+        created_at: string;
+      };
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        role: displayRole(u),
+        position: u.position,
+        isPending: Boolean(u.is_pending),
+        isActive: u.is_active !== false,
+        seatClass: seatClassForUser(u),
+        createdAt: u.created_at,
+        companyId: u.company_id,
+        companyName: u.company_id
+          ? nameByCompany.get(u.company_id) ?? null
+          : null,
+        projectCount: projectCounts.get(u.id) ?? 0,
+      };
+    }),
+    total: count ?? rows.length,
+    limit,
+    offset,
+    truncated: (count ?? 0) > offset + rows.length,
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -805,10 +1208,19 @@ Deno.serve(async (req) => {
         return await handleGetCompany(adminClient, body as Record<string, unknown>);
       case "listProjects":
         return await handleListProjects(adminClient, body as Record<string, unknown>);
+      case "listAllProjects":
+        return await handleListAllProjects(adminClient, body as Record<string, unknown>);
       case "getProject":
         return await handleGetProject(adminClient, body as Record<string, unknown>);
+      case "listProjectMembers":
+        return await handleListProjectMembers(
+          adminClient,
+          body as Record<string, unknown>,
+        );
       case "listUsers":
         return await handleListUsers(adminClient, body as Record<string, unknown>);
+      case "listAllUsers":
+        return await handleListAllUsers(adminClient, body as Record<string, unknown>);
       case "getUser":
         return await handleGetUser(adminClient, body as Record<string, unknown>);
       default:

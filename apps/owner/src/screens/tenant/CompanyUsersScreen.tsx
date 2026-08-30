@@ -105,7 +105,8 @@ export default function CompanyUsersScreen({ navigation, route }: Props) {
             }
           >
             <Text style={s.cardTitle}>{item.name}</Text>
-            <Text style={s.cardSub}>
+            <Text style={s.cardSub}>{item.projectCount} projects</Text>
+            <Text style={s.rowMeta}>
               {item.email} · {item.role} · {item.seatClass} seat
             </Text>
             <View style={{ flexDirection: "row", gap: 6, marginTop: 8 }}>

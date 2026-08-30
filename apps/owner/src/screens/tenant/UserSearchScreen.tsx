@@ -120,7 +120,8 @@ export default function UserSearchScreen({ navigation }: Props) {
             <Text style={s.cardTitle}>{item.name}</Text>
             <Text style={s.cardSub}>{item.email}</Text>
             <Text style={s.rowMeta}>
-              {item.companyName ?? "No company"} · {item.role}
+              {item.companyName ?? "No company"} · {item.role} ·{" "}
+              {item.projectCount} projects
               {!item.isActive ? " · inactive" : ""}
               {item.isPending ? " · pending" : ""}
             </Text>

@@ -157,57 +157,73 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Option 2B: newest `limit` assets via reverse enum (early stop). Same token API.
+  /// Option 2B: newest `limit` assets. Prefer fetchLimit+creationDate (capped set).
+  /// Fall back to Recents reverse-enum if sorted fetch returns empty.
+  /// Do not call stopCachingImagesForAllAssets unless replacing an existing session
+  /// (cold open was paying a multi-second cache flush — TF 233).
   static func openLibraryLimited(
     albumId: String,
     limit: Int,
     seq: Int
   ) -> PhotokitLibrarySession? {
     let capped = max(1, min(limit, 200))
-    let assets: [PHAsset]
+    var assets: [PHAsset] = []
+    assets.reserveCapacity(capped)
+
     if albumId.isEmpty || albumId == "__all__" {
-      let (result, reversed) = fetchRecentsOrAll()
-      var collected: [PHAsset] = []
-      collected.reserveCapacity(capped)
-      if reversed {
-        result.enumerateObjects(options: .reverse) { asset, _, stop in
-          collected.append(asset)
-          if collected.count >= capped {
-            stop.pointee = true
-          }
-        }
-      } else {
-        result.enumerateObjects { asset, _, stop in
-          collected.append(asset)
-          if collected.count >= capped {
+      let recents = PHAssetCollection.fetchAssetCollections(
+        with: .smartAlbum,
+        subtype: .smartAlbumUserLibrary,
+        options: nil
+      )
+      if let collection = recents.firstObject {
+        let limitedOpts = fetchOptions(sorted: true)
+        limitedOpts.fetchLimit = capped
+        let limitedResult = PHAsset.fetchAssets(in: collection, options: limitedOpts)
+        limitedResult.enumerateObjects { asset, _, stop in
+          assets.append(asset)
+          if assets.count >= capped {
             stop.pointee = true
           }
         }
       }
-      assets = collected
+      if assets.isEmpty {
+        let (result, reversed) = fetchRecentsOrAll()
+        if reversed {
+          result.enumerateObjects(options: .reverse) { asset, _, stop in
+            assets.append(asset)
+            if assets.count >= capped {
+              stop.pointee = true
+            }
+          }
+        } else {
+          result.enumerateObjects { asset, _, stop in
+            assets.append(asset)
+            if assets.count >= capped {
+              stop.pointee = true
+            }
+          }
+        }
+      }
     } else {
       let collections = PHAssetCollection.fetchAssetCollections(
         withLocalIdentifiers: [albumId],
         options: nil
       )
+      let limitedOpts = fetchOptions(sorted: true)
+      limitedOpts.fetchLimit = capped
       let result: PHFetchResult<PHAsset>
       if let collection = collections.firstObject {
-        result = PHAsset.fetchAssets(
-          in: collection,
-          options: fetchOptions(sorted: true)
-        )
+        result = PHAsset.fetchAssets(in: collection, options: limitedOpts)
       } else {
         result = PHAsset.fetchAssets(withLocalIdentifiers: [], options: nil)
       }
-      var collected: [PHAsset] = []
-      collected.reserveCapacity(capped)
       result.enumerateObjects { asset, _, stop in
-        collected.append(asset)
-        if collected.count >= capped {
+        assets.append(asset)
+        if assets.count >= capped {
           stop.pointee = true
         }
       }
-      assets = collected
     }
 
     sessionLock.lock()
@@ -215,7 +231,9 @@ enum PhotokitThumbEngine {
     guard seq == openSeq else {
       return nil
     }
-    manager.stopCachingImagesForAllAssets()
+    if librarySession != nil {
+      manager.stopCachingImagesForAllAssets()
+    }
     cachedRange = nil
     let session = PhotokitLibrarySession(
       token: nextToken,

@@ -7,7 +7,7 @@
 
 | Plane | Supabase | Stripe | Typical builds |
 |---|---|---|---|
-| **Testing** | **DEV** `zusulknbhaumougqckec` | **`sk_test` / `pk_test`** | Metro, sim, Maestro, `production-local`, `preview` |
+| **Testing** | **DEV** `zusulknbhaumougqckec` | **`sk_test` / `pk_test`** | Metro, sim, Maestro, `dev`, `preview` |
 | **Commercial** | **PROD** `jcnzjigxgkzhjsaekoqz` | **`sk_live` / `pk_live`** | `eas build --profile production` (App Store only) |
 
 Do **not** mix (DEV+live or PROD+test). Edge `create-checkout-session` / `stripe-webhook` derive livemode from `STRIPE_SECRET_KEY` and only match `plan_prices.livemode` for that mode. Client catalog prefers rows via `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY` (`pk_test` → test rows, `pk_live` → live rows).
@@ -24,7 +24,7 @@ There is **no automatic sync**. Each layer is promoted deliberately:
 
 | What you changed on DEV | How it gets to PROD |
 |---|---|
-| **App code** (screens, stores, RN) | Ship a build whose EAS env is `production` → profile **`production`** (App Store). Daily TF uses **`production-local`** / **`preview`** → EAS env `preview` → **DEV**. |
+| **App code** (screens, stores, RN) | Ship a build whose EAS env is `production` → profile **`production`** (App Store). Daily TF uses **`dev`** / **`preview`** → EAS env `preview` → **DEV**. |
 | **SQL schema / RLS** | Add file under `supabase/migrations/`. Apply to DEV while iterating. When ready: apply the **same file(s)** to PROD with `scripts/supabase/apply-migrations-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz --env-file .cache/env-cutover/insite-prod.env.local` (or `--from` resume). Human Gate for risky DDL. |
 | **Edge Functions** | Deploy to DEV with `--project-ref zusulknbhaumougqckec` or `--use-env`. When ready: `bash scripts/supabase/deploy-edge-to-project.sh --project-ref jcnzjigxgkzhjsaekoqz`. |
 | **Edge secrets** (Stripe, etc.) | DEV: `sk_test` via `sync-stripe-secrets.sh --use-env`. PROD live: only at App Store submit (`sk_live` + webhook) — separate GO. |
@@ -46,7 +46,7 @@ There is **no automatic sync**. Each layer is promoted deliberately:
 
 | Build profile | EAS `environment` | Supabase | Stripe |
 |---|---|---|---|
-| `preview`, `simulator`, **`production-local`** | `preview` | **DEV** | **test** (`pk_test` in EAS + DEV Edge `sk_test`) |
+| `preview`, `simulator`, **`dev`** | `preview` | **DEV** | **test** (`pk_test` in EAS + DEV Edge `sk_test`) |
 | `expo-go` | `development` | **DEV** | **test** |
 | **`production`** (App Store) | `production` | **PROD** | **live** (`pk_live` in EAS + PROD Edge `sk_live`) |
 
@@ -58,7 +58,9 @@ eas env:list --environment preview
 eas env:list --environment production
 ```
 
-Local `.env` stays **DEV + sk_test/pk_test** for Metro / sim. In-flight TestFlight builds keep whatever was baked at build time; **next** `production-local` build picks up EAS `preview` → DEV + test Stripe.
+Local `.env` stays **DEV + sk_test/pk_test** for Metro / sim. In-flight TestFlight builds keep whatever was baked at build time; **next** `dev` build picks up EAS `preview` → DEV + test Stripe.
+
+**Daily TF:** `./build-and-submit.sh ios` (or `ios dev`). **App Store / PROD:** `./build-and-submit.sh ios production true` (confirm required). Profile `production-local` was renamed to `dev`.
 
 ---
 

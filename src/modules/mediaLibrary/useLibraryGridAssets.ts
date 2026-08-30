@@ -212,12 +212,62 @@ export function useLibraryGridAssets({
         const albumArg =
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID ? null : selectedAlbumId;
 
-        // Option 2B A/B: limited native open → same-token expand (no MediaLibrary warm).
+        // Option 2B: warm bridge for first paint, then limited native → same-token expand.
         if (
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
           isLibraryPickerNative2b() &&
           isPhotokitLibrary2bAvailable()
         ) {
+          bridgeBootstrappingRef.current = true;
+          try {
+            const peekWarm = peekWarmLibraryPage();
+            if (peekWarm && peekWarm.assets.length > 0) {
+              applyBridgeAssets(peekWarm.assets);
+              setEndCursor(peekWarm.endCursor);
+              setHasNextPage(peekWarm.hasNextPage);
+              endCursorRef.current = peekWarm.endCursor;
+              hasNextPageRef.current = peekWarm.hasNextPage;
+            }
+            if (consumeWarmPage) {
+              const warm = await consumeWarmLibraryPageAsync();
+              if (cancelled || openGenRef.current !== openGen) {
+                return;
+              }
+              if (warm && warm.assets.length > 0) {
+                applyBridgeAssets(warm.assets);
+                setEndCursor(warm.endCursor);
+                setHasNextPage(warm.hasNextPage);
+                endCursorRef.current = warm.endCursor;
+                hasNextPageRef.current = warm.hasNextPage;
+              }
+            }
+            if (
+              assetsByIdRef.current.size === 0 &&
+              (isWarmLibraryPrefetchInFlight() ||
+                isPhotokitLibraryIndexPrefetchInFlight(null))
+            ) {
+              const warmLate = await awaitWarmLibraryPage();
+              if (cancelled || openGenRef.current !== openGen) {
+                return;
+              }
+              if (warmLate && warmLate.assets.length > 0) {
+                applyBridgeAssets(warmLate.assets);
+                setEndCursor(warmLate.endCursor);
+                setHasNextPage(warmLate.hasNextPage);
+                endCursorRef.current = warmLate.endCursor;
+                hasNextPageRef.current = warmLate.hasNextPage;
+                if (consumeWarmPage) {
+                  consumeWarmLibraryPage();
+                }
+              }
+            }
+            if (assetsByIdRef.current.size > 0) {
+              setInitialLoadDone(true);
+            }
+          } finally {
+            bridgeBootstrappingRef.current = false;
+          }
+
           indexOpeningRef.current = true;
           setLoadingPage(true);
           pageRequestRef.current += 1;

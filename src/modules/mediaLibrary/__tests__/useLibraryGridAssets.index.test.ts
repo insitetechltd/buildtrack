@@ -38,8 +38,10 @@ jest.mock("@/utils/libraryWarmPrefetch", () => ({
     endCursor: "w1",
     hasNextPage: true,
   })),
+  consumeWarmLibraryPage: jest.fn(() => null),
   peekWarmLibraryPage: jest.fn(() => null),
   awaitWarmLibraryPage: jest.fn(async () => null),
+  isWarmLibraryPrefetchInFlight: jest.fn(() => false),
 }));
 
 jest.mock("../PhotokitThumbView", () => ({

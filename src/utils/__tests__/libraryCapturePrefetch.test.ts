@@ -52,13 +52,21 @@ describe("startLibraryCapturePrefetch", () => {
     expect(order).toEqual(["warm", "index"]);
   });
 
-  it("skips warm on native2b path and only prefetches index", async () => {
+  it("warms then indexes on native2b path (serialized first paint)", async () => {
     mockIs2b.mockReturnValue(true);
+    const order: string[] = [];
+    mockWarm.mockImplementation(async () => {
+      order.push("warm");
+    });
+    mockPrefetchIndex.mockImplementation(() => {
+      order.push("index");
+      return Promise.resolve(null);
+    });
     startLibraryCapturePrefetch();
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
-    expect(mockWarm).not.toHaveBeenCalled();
-    expect(mockPrefetchIndex).toHaveBeenCalled();
+    await Promise.resolve();
+    expect(order).toEqual(["warm", "index"]);
   });
 
   it("skips warm and index when permission denied", async () => {

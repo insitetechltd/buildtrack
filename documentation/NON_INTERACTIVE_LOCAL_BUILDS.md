@@ -1,5 +1,10 @@
 # Non-Interactive Local iOS Builds Configuration
 
+> **Profile rename (2026-08-30):** `dev` → **`dev`** (daily Internal TestFlight → EAS `preview` → DEV).  
+> **`production`** = App Store / PROD only.  
+> Daily: `./build-local.sh ios dev` or `./build-and-submit.sh ios`.  
+> Release: `./build-and-submit.sh ios production true`.
+
 ## Overview
 
 This guide explains how to run local iOS builds without any terminal interaction, using EAS remote credentials automatically.
@@ -22,24 +27,26 @@ Configure EAS to use **remote credentials** with **non-interactive mode** for lo
 
 ### 1. eas.json
 
-Added a new `production-local` profile that:
-- Extends the `production` profile
-- Uses `credentialsSource: "remote"` to fetch credentials from EAS
-- Uses `distribution: "internal"` for local builds
-- Inherits all environment variables and settings
+Daily DEV TestFlight uses the **`dev`** profile:
+- Store-signed IPA (required for TestFlight)
+- `environment: "preview"` → DEV backend
+- `credentialsSource: "remote"` for non-interactive local builds
+- Does **not** extend `production` (avoids inheriting PROD env)
 
 ```json
 {
   "build": {
-    "production-local": {
-      "extends": "production",
-      "distribution": "internal",
+    "dev": {
+      "autoIncrement": true,
+      "distribution": "store",
+      "environment": "preview",
       "ios": {
         "credentialsSource": "remote",
-        "cocoapods": "1.16.1"
+        "cocoapods": "1.16.1",
+        "autoIncrement": true
       },
       "android": {
-        "credentialsSource": "remote",
+        "credentialsSource": "local",
         "gradleCommand": ":app:bundleRelease"
       }
     }
@@ -52,7 +59,7 @@ Added a new `production-local` profile that:
 Enhanced the build script to:
 - Check for `EXPO_TOKEN` in environment or `.env` file
 - Run builds in `--non-interactive` mode
-- Use the `production-local` profile by default
+- Use the `dev` profile by default
 - Provide clear error messages if credentials are missing
 
 ## Prerequisites
@@ -102,14 +109,14 @@ Your credentials should include:
 ### Basic Usage
 
 ```bash
-# Build iOS using production-local profile (default)
+# Build iOS using dev profile (default)
 ./build-local.sh
 
 # Build iOS explicitly
-./build-local.sh production-local ios
+./build-local.sh dev ios
 
 # Build Android
-./build-local.sh production-local android
+./build-local.sh dev android
 ```
 
 ### Advanced Usage
@@ -119,7 +126,7 @@ Your credentials should include:
 ./build-local.sh preview ios
 
 # Set EXPO_TOKEN inline (for CI/CD)
-EXPO_TOKEN=your_token ./build-local.sh production-local ios
+EXPO_TOKEN=your_token ./build-local.sh dev ios
 ```
 
 ## How It Works
@@ -183,7 +190,7 @@ npx eas credentials --platform ios
 **Solution:**
 ```bash
 # Ensure you're using the correct profile
-./build-local.sh production-local ios
+./build-local.sh dev ios
 
 # Check eas.json has credentialsSource: "remote"
 ```
@@ -204,7 +211,7 @@ npx eas credentials --platform ios
 | Profile | Distribution | Credentials | Use Case |
 |---------|-------------|-------------|----------|
 | `production` | store | remote | EAS cloud builds for App Store |
-| `production-local` | internal | remote | Local builds with EAS credentials |
+| `dev` | internal | remote | Local builds with EAS credentials |
 | `preview` | internal | remote | Testing builds |
 | `simulator` | internal | remote | iOS Simulator builds |
 
@@ -259,7 +266,7 @@ jobs:
       - name: Build iOS
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
-        run: ./build-local.sh production-local ios
+        run: ./build-local.sh dev ios
       
       - name: Upload IPA
         uses: actions/upload-artifact@v3
@@ -276,7 +283,7 @@ build-ios:
   image: macos-latest
   script:
     - npm ci
-    - ./build-local.sh production-local ios
+    - ./build-local.sh dev ios
   artifacts:
     paths:
       - build-*.ipa

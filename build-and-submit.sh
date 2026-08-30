@@ -1,24 +1,14 @@
 #!/bin/bash
 
-# BuildTrack - Build and Submit Script (REFACTORED)
-# Calls build-local-FIXED.sh for building, then submits to TestFlight
-# This ensures consistent build process across all scripts
+# BuildTrack - Build and Submit
+#   default / `dev`  → daily Internal TestFlight (EAS preview = DEV backend)
+#   `production`     → App Store / PROD release (Human Gate: CONFIRM=true)
 
 set -e
 
-echo "🚀 BuildTrack - Build and Submit to TestFlight (Refactored)"
-echo "==========================================================="
-echo ""
-
-# Default values
 PLATFORM="${1:-ios}"
-PROFILE="${2:-production}"
+PROFILE="${2:-dev}"
 CONFIRM="${3:-false}"
-
-echo "📋 Configuration:"
-echo "  Platform: $PLATFORM"
-echo "  Profile: $PROFILE"
-echo ""
 
 PROJECT_ROOT="$(pwd)"
 if [[ "$PROJECT_ROOT" == *" "* ]]; then
@@ -28,28 +18,54 @@ if [[ "$PROJECT_ROOT" == *" "* ]]; then
     exit 1
 fi
 
-# Determine which build-local script to use
+# Legacy name — hard-cut to `dev`
+if [ "$PROFILE" = "production-local" ]; then
+    echo "❌ Profile 'production-local' was renamed to 'dev'."
+    echo "   Daily Internal TF:  ./build-and-submit.sh ios dev"
+    echo "   App Store / PROD:   ./build-and-submit.sh ios production true"
+    exit 1
+fi
+
+if [ "$PROFILE" != "dev" ] && [ "$PROFILE" != "production" ]; then
+    echo "❌ Unknown profile: $PROFILE"
+    echo "   Use:  dev  (daily Internal TestFlight → DEV)"
+    echo "     or: production  (App Store / PROD — requires CONFIRM=true)"
+    exit 1
+fi
+
+if [ "$PROFILE" = "production" ] && [ "$CONFIRM" != "true" ]; then
+    echo "❌ Refusing production (App Store / PROD) without confirm."
+    echo "   Daily Internal TF (DEV):  ./build-and-submit.sh ios"
+    echo "                          or ./build-and-submit.sh ios dev"
+    echo "   Release path:             ./build-and-submit.sh ios production true"
+    exit 1
+fi
+
+if [ "$PROFILE" = "dev" ]; then
+    echo "🚀 BuildTrack — DEV Internal TestFlight"
+    echo "======================================="
+    echo "  EAS env: preview → DEV backend + Stripe test"
+    echo "  Destination: TestFlight Internal"
+else
+    echo "🚀 BuildTrack — PRODUCTION / App Store release"
+    echo "=============================================="
+    echo "  EAS env: production → PROD backend + Stripe live"
+    echo "  Destination: App Store Connect (release path)"
+fi
+echo ""
+echo "📋 Configuration:"
+echo "  Platform: $PLATFORM"
+echo "  Profile:  $PROFILE"
+echo ""
 
 BUILD_LOCAL_SCRIPT="./build-local.sh"
+BUILD_PROFILE="$PROFILE"
 
-
-# Step 1: Build using build-local script
 echo "🔨 Step 1/2: Building (calling $BUILD_LOCAL_SCRIPT)..."
 echo "=========================================================="
 echo ""
 
-# Map profile for build-local
-# build-and-submit uses "production" but build-local expects "production-local" for local builds
-if [ "$PROFILE" = "production" ]; then
-    BUILD_PROFILE="production-local"
-else
-    BUILD_PROFILE="$PROFILE"
-fi
-
-# Call build-local script
 $BUILD_LOCAL_SCRIPT "$PLATFORM" "$BUILD_PROFILE"
-
-# Check if build succeeded
 if [ $? -ne 0 ]; then
     echo ""
     echo "❌ Build failed. Aborting submission."
@@ -60,7 +76,6 @@ echo ""
 echo "✅ Build completed successfully!"
 echo ""
 
-# Locate the freshly built IPA
 ARTIFACT_DIR="${EAS_LOCAL_BUILD_ARTIFACTS_DIR:-"$PROJECT_ROOT/.eas/artifacts"}"
 LATEST_IPA=$(ls -t "$ARTIFACT_DIR"/*.ipa 2>/dev/null | head -1 || true)
 if [ -z "$LATEST_IPA" ]; then
@@ -72,7 +87,6 @@ fi
 echo "📦 Using build artifact: $LATEST_IPA"
 echo ""
 
-# Step 2: Get build info for confirmation
 echo "🔍 Verifying build..."
 echo "----------------------------------------"
 
@@ -82,8 +96,8 @@ APP_BUILD=$(grep -o '"buildNumber"[[:space:]]*:[[:space:]]*"[0-9]*"' app.json | 
 echo "Built: Version $APP_VERSION (Build $APP_BUILD)"
 echo ""
 
-if [ "$CONFIRM" = "true" ]; then
-    read -p "Submit this build to App Store Connect? (Y/n): " CONFIRM_SUBMIT
+if [ "$PROFILE" = "production" ]; then
+    read -p "Submit this PRODUCTION / App Store build to App Store Connect? (Y/n): " CONFIRM_SUBMIT
     if [[ "$CONFIRM_SUBMIT" =~ ^[Nn]$ ]]; then
         echo ""
         echo "⏹️  Submission cancelled by user"
@@ -93,11 +107,13 @@ if [ "$CONFIRM" = "true" ]; then
 fi
 
 echo ""
-
-# Step 3: Submit to TestFlight
 echo "📤 Step 2/2: Submitting to App Store Connect..."
 echo "=========================================================="
-echo "Uploading build to App Store Connect for TestFlight distribution..."
+if [ "$PROFILE" = "dev" ]; then
+    echo "Uploading DEV build for TestFlight Internal..."
+else
+    echo "Uploading PRODUCTION build to App Store Connect..."
+fi
 echo ""
 
 npx eas submit --platform "$PLATFORM" --path "$LATEST_IPA" --profile "$PROFILE" --non-interactive
@@ -131,7 +147,11 @@ echo "  └─ Profile:        $PROFILE"
 echo ""
 echo "📤 Submission Status:"
 echo "  ├─ Destination:    App Store Connect"
-echo "  ├─ Distribution:   TestFlight"
+if [ "$PROFILE" = "dev" ]; then
+    echo "  ├─ Distribution:   TestFlight Internal (DEV)"
+else
+    echo "  ├─ Distribution:   App Store / PROD release path"
+fi
 echo "  └─ Status:         ✅ Uploaded successfully"
 echo ""
 echo "🎉 Your build is now processing in App Store Connect!"
@@ -144,10 +164,6 @@ echo "  2. 📱 Check TestFlight tab for your app"
 echo "     - Build will appear after processing"
 echo "     - Status will change: Processing → Ready to Test"
 echo "     - Verify build number shows: $APP_BUILD"
-echo ""
-echo "  3. 👥 Add internal/external testers (if needed)"
-echo ""
-echo "  4. 📧 Send test invitation to testers"
 echo ""
 echo "═══════════════════════════════════════════════════════"
 echo "Version $APP_VERSION (Build $APP_BUILD) submitted successfully!"

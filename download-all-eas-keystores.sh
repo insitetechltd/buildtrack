@@ -46,8 +46,8 @@ PROFILES=$(jq -r '.build | keys[]' eas.json 2>/dev/null | grep -v "^_" || echo "
 
 if [ -z "$PROFILES" ]; then
     echo -e "${YELLOW}⚠️  No profiles found in eas.json${NC}"
-    echo -e "${BLUE}Will try common profiles: production, production-local, preview${NC}"
-    PROFILES="production production-local preview"
+    echo -e "${BLUE}Will try common profiles: production, dev, preview${NC}"
+    PROFILES="production dev preview"
 fi
 
 echo -e "${GREEN}Found profiles:${NC}"

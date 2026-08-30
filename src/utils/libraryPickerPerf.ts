@@ -13,9 +13,9 @@ export const LIBRARY_GRID_BATCH_MS = 16;
 export const LIBRARY_PAINT_BATCH_SIZE = 3;
 /** L2: ms between URI-bind ticks (index mode — fast once pipeline ready). */
 export const LIBRARY_PAINT_INTERVAL_MS = 32;
-/** Bridge / preview phase: one tile per tick so load feels continuous. */
-export const LIBRARY_BRIDGE_PAINT_BATCH_SIZE = 1;
-export const LIBRARY_BRIDGE_PAINT_INTERVAL_MS = 450;
+/** Bridge / preview phase: tight ticks so fill feels continuous (not batchy). */
+export const LIBRARY_BRIDGE_PAINT_BATCH_SIZE = 2;
+export const LIBRARY_BRIDGE_PAINT_INTERVAL_MS = 48;
 /**
  * Skeleton tiles while waiting for index (≥ one screen).
  * Keep in sync with LIBRARY_WARM_PAGE_SIZE / columns so bridge paint
@@ -62,14 +62,33 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 
 /**
  * A/B picker fill path (M-PERF-03).
- * - `warm`: MediaLibrary warm bridge → full openLibrary (TF 232 serialize)
- * - `native2b`: openLibraryLimited(60) → expandLibraryFull same token (Option 2B)
+ * - `warm`: MediaLibrary warm bridge → full openLibrary
+ * - `native2b`: warm bridge (first paint) → openLibraryLimited → expandLibraryFull (same token)
  *
  * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
  */
 export type LibraryPickerPath = "warm" | "native2b";
 
-export const LIBRARY_PICKER_2B_FIRST_BATCH = 60;
+/** First limited native batch — keep modest so fetchLimit stays cheap. */
+export const LIBRARY_PICKER_2B_FIRST_BATCH = 30;
+
+/** Product budget: first painted tile after library overlay open. */
+export const LIBRARY_FIRST_PHOTO_BUDGET_MS = 3000;
+
+export function isWithinFirstPhotoBudget(
+  overlayOpenAtMs: number,
+  firstPaintAtMs: number,
+  budgetMs: number = LIBRARY_FIRST_PHOTO_BUDGET_MS,
+): boolean {
+  if (
+    !Number.isFinite(overlayOpenAtMs) ||
+    !Number.isFinite(firstPaintAtMs) ||
+    overlayOpenAtMs <= 0
+  ) {
+    return false;
+  }
+  return firstPaintAtMs - overlayOpenAtMs <= budgetMs;
+}
 
 function resolveLibraryPickerPath(): LibraryPickerPath {
   const fromTest = (

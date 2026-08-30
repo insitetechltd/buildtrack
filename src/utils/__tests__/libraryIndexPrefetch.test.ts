@@ -5,7 +5,7 @@ import {
 } from "../libraryIndexPrefetch";
 
 const mockOpen = jest.fn(async () => ({ token: 2, count: 100 }));
-const mockOpenLimited = jest.fn(async () => ({ token: 5, count: 60 }));
+const mockOpenLimited = jest.fn(async () => ({ token: 5, count: 30 }));
 const mockExpand = jest.fn(async () => ({ token: 5, count: 50000 }));
 const mockIs2b = jest.fn(() => false);
 const mockIs2bApi = jest.fn(() => true);
@@ -19,7 +19,7 @@ jest.mock("@/modules/mediaLibrary/PhotokitThumbView", () => ({
 }));
 
 jest.mock("@/utils/libraryPickerPerf", () => ({
-  LIBRARY_PICKER_2B_FIRST_BATCH: 60,
+  LIBRARY_PICKER_2B_FIRST_BATCH: 30,
   isLibraryPickerNative2b: () => mockIs2b(),
 }));
 
@@ -30,7 +30,7 @@ describe("libraryIndexPrefetch", () => {
     mockIs2b.mockReturnValue(false);
     mockIs2bApi.mockReturnValue(true);
     mockOpen.mockResolvedValue({ token: 2, count: 100 });
-    mockOpenLimited.mockResolvedValue({ token: 5, count: 60 });
+    mockOpenLimited.mockResolvedValue({ token: 5, count: 30 });
     mockExpand.mockResolvedValue({ token: 5, count: 50000 });
   });
 
@@ -55,8 +55,8 @@ describe("libraryIndexPrefetch", () => {
   it("native2b returns limited session then expands same token", async () => {
     mockIs2b.mockReturnValue(true);
     const limited = await prefetchPhotokitLibraryIndex(null);
-    expect(limited).toEqual({ token: 5, count: 60 });
-    expect(mockOpenLimited).toHaveBeenCalledWith(null, 60);
+    expect(limited).toEqual({ token: 5, count: 30 });
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 30);
     expect(mockOpen).not.toHaveBeenCalled();
 
     await new Promise((r) => setTimeout(r, 0));

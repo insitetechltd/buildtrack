@@ -15,6 +15,8 @@ export type LibraryPickerTimingSnapshot = {
   overlayOpenAt: number;
   metadataAt: number | null;
   metadataCount: number | null;
+  /** First single tile painted (product ≤3s budget). */
+  firstTileAt: number | null;
   firstRowAt: number | null;
   firstScreenAt: number | null;
   secondWaveAt: number | null;
@@ -36,6 +38,7 @@ let sessionId = 0;
 let overlayOpenAt = 0;
 let metadataAt: number | null = null;
 let metadataCount: number | null = null;
+let firstTileAt: number | null = null;
 let firstRowAt: number | null = null;
 let firstScreenAt: number | null = null;
 let secondWaveAt: number | null = null;
@@ -69,6 +72,7 @@ function snapshot(): LibraryPickerTimingSnapshot | null {
     overlayOpenAt,
     metadataAt,
     metadataCount,
+    firstTileAt,
     firstRowAt,
     firstScreenAt,
     secondWaveAt,
@@ -130,6 +134,7 @@ export function resetLibraryPickerTimingForTests(): void {
   overlayOpenAt = 0;
   metadataAt = null;
   metadataCount = null;
+  firstTileAt = null;
   firstRowAt = null;
   firstScreenAt = null;
   secondWaveAt = null;
@@ -153,6 +158,7 @@ export function beginLibraryPickerSession(): void {
   overlayOpenAt = nowMs();
   metadataAt = null;
   metadataCount = null;
+  firstTileAt = null;
   firstRowAt = null;
   firstScreenAt = null;
   secondWaveAt = null;
@@ -220,6 +226,10 @@ export function markLibraryPickerTilePainted(assetId: string): void {
   paintedIds.add(assetId);
   const painted = paintedIds.size;
   const at = nowMs();
+  if (firstTileAt == null) {
+    firstTileAt = at;
+    emit("first_tile");
+  }
   if (firstRowAt == null && expectedRow > 0 && painted >= expectedRow) {
     firstRowAt = at;
     emit("first_row");
@@ -269,6 +279,7 @@ export function formatLibraryPickerTimingHud(
   const lines = [
     "L1 timing",
     line("meta", current.metadataAt),
+    line("1st", current.firstTileAt),
     line("row", current.firstRowAt),
     line("12", current.firstScreenAt),
     current.firstScreenAt == null

@@ -1,0 +1,35 @@
+# M-PERF-03 — first library assets must appear within 3s of open.
+# Requires Photos on the sim and captureSession hybrid library.
+# Run: bash scripts/maestro/run-local.sh test maestro/flows/perf/library-first-photo-budget.yaml
+appId: com.buildtrack.app.local
+---
+- runFlow:
+    when:
+      visible: "Choose how you want to add photos"
+    commands:
+      - tapOn: "Cancel"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 20000
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 2000
+# Prefer camera-tab library entry (starts warm+index prefetch).
+- runFlow:
+    when:
+      visible:
+        id: "capture-session__library_button"
+    commands:
+      - tapOn:
+          id: "capture-session__library_button"
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__hybrid_library"
+    timeout: 8000
+# Product budget: first assets (warm bridge or limited index) ≤ 3s.
+- extendedWaitUntil:
+    visible:
+      id: "capture-session__library_first_ready"
+    timeout: 3000

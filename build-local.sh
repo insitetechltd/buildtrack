@@ -11,16 +11,29 @@ echo "=========================================="
 echo ""
 
 # Arguments: PLATFORM PROFILE [SKIP_INCREMENT] [CHANGE_VERSION]
-# Example: ./build-local.sh ios production
+# Example (daily DEV TF): ./build-local.sh ios dev
+# Example (App Store / PROD): ./build-local.sh ios production
 # To change version: ./build-local.sh ios production false true
 PLATFORM="${1:-ios}"
-PROFILE="${2:-production-local}"
+PROFILE="${2:-dev}"
 SKIP_INCREMENT="${3:-true}"  # Default: EAS remote build number auto-increments
 CHANGE_VERSION="${4:-false}"  # Set to true to prompt for version change
+
+if [ "$PROFILE" = "production-local" ]; then
+    echo "❌ Profile 'production-local' was renamed to 'dev'."
+    echo "   Daily DEV TF:     ./build-local.sh ios dev"
+    echo "   App Store / PROD: ./build-local.sh ios production"
+    exit 1
+fi
 
 echo "📋 Configuration:"
 echo "  Platform: $PLATFORM"
 echo "  Profile: $PROFILE"
+if [ "$PROFILE" = "dev" ]; then
+    echo "  Intent:  DEV Internal TestFlight (EAS preview)"
+elif [ "$PROFILE" = "production" ]; then
+    echo "  Intent:  App Store / PROD (EAS production)"
+fi
 echo ""
 
 # Step 1: Increment build number (unless skipped)

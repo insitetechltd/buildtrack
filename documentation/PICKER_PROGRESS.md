@@ -1,38 +1,42 @@
 # Picker progress (monitor this file)
 
 **Refresh this file from the iOS Cursor app.** Path: `documentation/PICKER_PROGRESS.md`  
-**Milestone:** `WS-PERF / M-PERF-03` — Photos index. Idle-parallel. Does **not** jump App Store / Stripe.
+**Milestone:** `WS-PERF / M-PERF-03` — Photos index. Idle-parallel.
 
-**Last updated:** 2026-08-30 15:10 +08
+**Last updated:** 2026-08-30 15:50 +08
 
 ---
+
+## Goal (orchestrator)
+
+1. **First photo ≤ 3s** (`1st` HUD / `LIBRARY_FIRST_PHOTO_BUDGET_MS`)
+2. **Continuous fill** until full library (limited → same-token expand)
+3. **≤10 code/TF iterations** then stop if unmet
 
 ## Status
 
-**NOW:** **TF 233** — `native2b` on `production-local` + **exclusive PhotoKit gate** (no parallel Photos jobs).
+**Iteration 1 (code, pending TF234):**  
+- Warm-first on `native2b` capture prefetch + bridge before limited await  
+- Limited open: `fetchLimit`+sorted; skip cold `stopCachingImagesForAllAssets`  
+- Batch 60→30; bridge paint interval 450→48ms  
+- HUD adds `1st` (first tile)  
+- Automated: `npm run test:picker-timing` + Maestro `maestro/flows/perf/library-first-photo-budget.yaml` (3s `library_first_ready`)
 
-**Expect HUD:** `path native/native2b`; first paint from limited open (~60) then same-token expand.
+**TF233 baseline:** meta/12 ~11s, p2 +74ms, path `native/native2b`
 
-**Invariant (do not regress):** every Photos-heavy call (`warm` / `openLibrary*` / `previewNewestIds` / `expandLibraryFull`) goes through `runExclusivePhotokitJob` in `src/utils/libraryPhotokitGate.ts`. Capture prefetch is single-flight. Never “race timeout” an in-flight warm into another job.
-
-**Parked:** reuse write-up until picker satisfactory.
+**Daily TF:** `./build-and-submit.sh ios` (profile `dev`)
 
 ---
 
-## Remaining plan
+## Iteration log
 
-| # | Slice | Status |
+| # | Change | Proof |
 |---|---|---|
-| 1h | Defer warm / serialize | **232** — still raced on open-during-warm |
-| 2b | Limited open + same-token expand | **233** A/B arm |
-| gate | Exclusive Photos queue | **233** |
-| — | Reuse write-up | After satisfactory |
+| 0 | TF233 native2b | meta ~11s |
+| 1 | warm bridge + fetchLimit limited + tests | Jest picker-timing PASS; TF234 next |
 
 ---
 
-## Log
+## Invariant
 
-- **231:** warm∥openLibrary starve; `12 ≈ meta ~21s`
-- **232:** serialize warm→open in capture; open-during-warm only waited 2.5s → warm miss → meta ~20s
-- **233:** PhotoKit gate + single-flight capture prefetch + native2b TF default; stop patching timeouts
-- **2B Critical:** no token swap on expand
+Photos-heavy work only via `runExclusivePhotokitJob`. Never parallel warm∥open.

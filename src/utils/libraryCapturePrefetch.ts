@@ -9,8 +9,8 @@ let capturePrefetchRun: Promise<void> | null = null;
  * Camera tab / Add Photos entry — single-flight.
  * Module + CameraScreen both call this; a second call joins the same run.
  *
- * - warm path: serialize warm then full openLibrary (via PhotoKit gate)
- * - native2b: skip MediaLibrary warm; limited open + background expand
+ * Always warm first (cheap MediaLibrary page for ≤3s first paint), then
+ * PhotoKit index (full open or limited+expand) on the exclusive gate.
  */
 export function startLibraryCapturePrefetch(): void {
   if (capturePrefetchRun) {
@@ -21,11 +21,8 @@ export function startLibraryCapturePrefetch(): void {
     if (!permission.granted) {
       return;
     }
-    if (isLibraryPickerNative2b()) {
-      await prefetchPhotokitLibraryIndex(null);
-      return;
-    }
     await warmLibraryFirstPage();
+    // Index after warm — never parallel with warm (PhotoKit gate / daemon).
     await prefetchPhotokitLibraryIndex(null);
   })().finally(() => {
     capturePrefetchRun = null;

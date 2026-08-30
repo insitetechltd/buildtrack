@@ -91,4 +91,4 @@ else
 fi
 
 echo "Done. Verify with: eas env:list --environment preview && eas env:list --environment production"
-echo "Pairing: production-local/preview/simulator → DEV+pk_test; production → PROD+pk_live."
+echo "Pairing: dev/preview/simulator → DEV+pk_test; production → PROD+pk_live."

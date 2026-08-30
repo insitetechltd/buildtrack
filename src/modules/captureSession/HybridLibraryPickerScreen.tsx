@@ -333,6 +333,15 @@ export function HybridLibraryPickerScreen() {
           }
         />
 
+      {(albumPicker.assets.length > 0 || albumPicker.indexSession != null) && (
+        <View
+          pointerEvents="none"
+          testID="capture-session__library_first_ready"
+          accessibilityLabel="library first assets ready"
+          style={styles.firstReadyProbe}
+        />
+      )}
+
       <LibraryPickerTimingHud />
 
       <LibraryAlbumPickerModal
@@ -352,6 +361,12 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: "#fff",
+  },
+  firstReadyProbe: {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    opacity: 0,
   },
   centered: {
     flex: 1,

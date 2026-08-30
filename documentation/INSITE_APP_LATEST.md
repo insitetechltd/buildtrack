@@ -123,7 +123,7 @@ Consolidated from screens + stores + docs that match the code:
 
 ## 8. Build, EAS, and stores (summary)
 
-- **EAS** profiles in `eas.json` include `preview`, `simulator`, `production`, `production-local`, etc.; **production** uses store distribution, remote credentials, Android **App Bundle** (`:app:bundleRelease`), iOS **CocoaPods** pinned in config.  
+- **EAS** profiles in `eas.json` include `preview`, `simulator`, **`dev`** (daily Internal TF → DEV), **`production`** (App Store / PROD), etc.; **production** uses store distribution, remote credentials, Android **App Bundle** (`:app:bundleRelease`), iOS **CocoaPods** pinned in config.  
 - **Submit** targets include Apple ASC app id and Google Play **service account** JSON path (`google-service-account.json`).  
 - Detailed procedural docs live under the repo root (`ANDROID_BUILD_AND_SUBMIT_GUIDE.md`, `EAS_SUBMIT_GUIDE.md`, `APP_STORE_SUBMISSION_CHECKLIST.md`, etc.) and in `documentation/` (`README.md`, build guides). These are **operational runbooks**, not product behavior specs.
 

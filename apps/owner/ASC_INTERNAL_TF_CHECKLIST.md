@@ -21,4 +21,8 @@
 4. **System monitoring** → KPIs + histograms
 5. No External / Public / App Review
 
+## Standing rule
+
+**Before every HQ TF build:** commit the ship slice and `git push origin` so the IPA’s embedded commit matches remote.
+
 Kickoff: `docs/superpowers/plans/2026-08-30-m-ops-03-owner-internal-tf-kickoff.md`

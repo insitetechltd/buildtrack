@@ -57,8 +57,9 @@ Dual-loader convention (Cursor):
 - `WS-UX / S-UX-01Q` **Pipeline (P0 + upload Phase 1+2 closed; Phase C C1–C4 delivered 2026-08-16; C5 Closed 2026-08-17)**: UI/UX consistency — audit `docs/superpowers/analysis/2026-08-14-ui-ux-consistency-audit.md`. Phase C: shells, TextField, TaskAction retirement, ActivityStyleRowCard SoT. **C5 Closed:** Insite=company, Taskr=app (no rename); attribution/Tailwind tokens tabled. **Still deferred:** C6/`S-UX-01P`; Option B; caption. Idle-parallel ok vs 04b.
 - `WS-UX / S-UX-01Q2` **Closed (2026-08-15)**: Uninstall `@imgly/editor-react-native` + dead `PhotoAnnotation` route/screen/adapter; drop static frameworks / img.ly Maven / EAS IMGLY pod patch. Select Photos remains edit SoT. Native rebuild required after pod refresh; `buildReactNativeFromSource` retained pending Skia-without-static proof.
 - Roadmap discussion lock: `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` (read before changing post-RC / AI / Wave 2 order).
-- Current pipeline focus precedence: **visual SoT** = `documentation/ROADMAP.md` § **Commercial sequence map**. (1) **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C — promotion: `documentation/PROD_DEV_PROMOTION.md`. (2) App Store → Stripe **live** on PROD (ENV Phase D checklist). (3) **M-OPS-03** → **M-AUTHZ-02** → **M-AI-01** / Wave 2. **Idle:** `M-DATA-05` Phase A landed; Phase B post-Store. **Customer-managed storage (`WS-STORAGE`) Deferred.** Maestro/CI against **DEV only**.
-- `WS-OPS / M-OPS-01` **Pipeline**: In-app owner console after RC.
+- Current pipeline focus precedence: **visual SoT** = `documentation/ROADMAP.md` § **Commercial sequence map**. (1) **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C — promotion: `documentation/PROD_DEV_PROMOTION.md`. (2) App Store → Stripe **live** on PROD (ENV Phase D). (3) **`M-OPS-03` Phase 0** Owner Admin **Internal TF only** (`com.insite.hq` / **hq**, `apps/owner/` — never App Store) → **M-AUTHZ-02** → **M-AI-01** / Wave 2. **Idle:** `M-DATA-05` Phase A landed; Phase B post-Store. **Customer-managed storage (`WS-STORAGE`) Deferred.** Maestro/CI against **DEV only**.
+- `WS-OPS / M-OPS-01` **Closed v1 bootstrap** — do not grow Owner Console inside Taskr; target = **M-OPS-03**.
+- `WS-OPS / M-OPS-03` **Pipeline (Phase 1a–1d + read-only ops enrich 2026-08-30):** **hq** Monitoring/Economics/Tenant + Edge `owner-ops-read` (no DDL). **Parked:** soft suspend, resend invite, entitlement override, company freeze, §3e purge, cost-ledger writes (Human Gate). Kickoff: `docs/superpowers/plans/2026-08-30-m-ops-03-owner-internal-tf-kickoff.md`. Next commercial: App Store + Stripe live PROD → **M-AUTHZ-02**.
 - `WS-OPS / M-OPS-02` **Closed (2026-08-22)**: Hot-file shrink + create/update guards + local drafts + draft discard fix. OPS02-D: `test:tasks` 38/38, ops Jest subset 111/111. Commit `e3eeb6d`. Kickoff: `docs/superpowers/plans/2026-08-22-m-ops-02-kickoff.md`.
 - `WS-STORAGE / M-STORAGE-01`…`05` **Deferred (2026-08-21)**: Customer-managed / Enterprise Privacy storage — discovery → abstraction → pilot → export → DMS converge. After Wave 2 / `M-DMS-01`. Must not jump RC or OPS. Slotting: `docs/superpowers/plans/2026-08-21-customer-managed-storage-slotting.md`. Clarification addendum in `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md`.
 - `WS-SEC / M-SEC-03` **Deferred (2026-08-25)**: Single active mobile login per account (new login displaces prior device). Not RC. Do not schedule ahead of AUTHZ-RC / BILL / AUTHZ-02.
@@ -69,7 +70,7 @@ Dual-loader convention (Cursor):
 - `WS-FIELD / M-CAPTURE-01` **Tabled (2026-08-28):** Camera zoom control (pinch/slider). Idle-parallel; must not jump `M-OPS-ENV-01`.
 - `WS-UX / M-CAPTURE-02` **Tabled (2026-08-28):** Library picker tile resizing. Idle-parallel; must not jump `M-OPS-ENV-01`.
 - `WS-DATA / M-DATA-03` **Pipeline (app-side 2026-08-20)**: Session-gated refresh, scoped activities, reconcile, honest empty. Broader visibility hardening deferred post-RC. Not closed.
-- `WS-PERF / M-PERF-03` **Pipeline (L3 in progress 2026-08-29)**: Native PhotoKit tile thumbs (`modules/photokit-thumbs`) + L1 HUD + L2 skeletons. Device native rebuild pending. Plan: `docs/superpowers/plans/2026-08-29-m-perf-03-l3-photokit-thumbs.md`.
+- `WS-PERF / M-PERF-03` **Pipeline (TF 225 submitted 2026-08-30)**: L3 native thumbs + Photos index; **221–224** first 12 OK then `p2 ~10–22s`; **225** native preview + warm 30 (headed next). Plan: `docs/superpowers/plans/2026-08-29-photos-index-slice.md` + `documentation/PICKER_PROGRESS.md`.
 - `WS-PERF / M-PERF-01` **Pipeline (Phase A landed 2026-08-20; Phase B tabled)**: Remote evidence thumbs — Phase B backlog (transform/_thumb, Tasks FlatList, viewport prefetch). Overlap with M-PERF-03: viewport/skeleton patterns only.
 - `WS-UX / S-UX-01R` **Pipeline (2026-08-19)**: Retire Add Comment dead path — Update Description is field narrative SoT; delete AddComment screen/nav post-RC. Plan: `docs/superpowers/plans/2026-08-19-s-ux-01r-retire-add-comment-dead-path.md`. Idle-parallel ok.
 - `WS-FIELD / M-DAILY-01` **Pipeline — Phase 0 locked (2026-08-27)**: Camera + voice memo → first-class daily report → PM → AI corpus. Build parked (no DDL). Vision: `docs/superpowers/analysis/2026-08-27-daily-capture-memo-vision.md`. Kickoff: `docs/superpowers/plans/2026-08-27-daily-report-phases-1-3-kickoff.md`. After AUTHZ-02; Phase 3 with M-AI-01.
@@ -91,6 +92,7 @@ These constraints apply across the agent pack unless a role narrows them further
 - Task domain source of truth: `src/state/taskStore.supabase.ts`.
 - Backend integration root: `src/api/supabase.ts`.
 - Build and release sources of truth: `package.json`, `app.json`, `eas.json`, `patches/`, root build scripts, `documentation/`.
+- **Quality loop (2026-08-30):** Intake → Spec → Implement → Prove → Judge. Close = Judge GO, not Reviewer alone. User is not required to fill a kickoff template.
 - Shared safety rules:
   - Never revert unrelated user changes.
   - Prefer small, targeted edits over broad rewrites.
@@ -122,12 +124,13 @@ These constraints apply across the agent pack unless a role narrows them further
 
 **Hard Constraints:**
 - Must not be the default implementer for non-trivial work.
-- Must start with `Planner` for non-trivial requests.
-- Must require `Reviewer` before considering work complete.
+- Must run **intake** before Planner. Must not dispatch the quality loop on a THIN prompt.
+- Must start with `Planner` for non-trivial requests after intake READY.
+- Must require `Reviewer` 0 C/H to leave Implement; **Quality Judge GO** to close.
 - Must require `Test Engineer` for behavioral changes unless the task is documentation-only.
-- Must require `QA Validator` for user-visible mobile flows, navigation changes, uploads, or task-flow changes.
+- Must require `QA Validator` for user-visible mobile flows, navigation changes, uploads, or task-flow changes (skip = written Judge waiver).
 - Must require `Release Manager` for build, deployment, environment, versioning, or release-readiness work.
-- Must stop for clarification when a task is ambiguous instead of dispatching blindly.
+- Must stop for clarification when intake is THIN or a task is FATAL (autonomy/danger) — not for recoverable defaults.
 - **Concurrent by default:** when work partitions cleanly (disjoint files / independent Maestro `P##` / idle-parallel milestones), partition ownership and run tracks in parallel (≤2 **distinct** Maestro UDIDs on this host; **1 job per UDID** — never two Maestro processes on the same sim). Prefer one-shot case runs while developing; full sequential suites are a final gate. Single-writer for shared helpers, product SoT, schema/auth/release, and Photos `FORCE_PURGE`. See `solo-dev-harness` workflows.md § Concurrent development and `.cursor/skills/insite-dev/SKILL.md`.
 
 ### 2. Agent Identifier & Role Name: `planner` / Planner
@@ -338,20 +341,19 @@ These constraints apply across the agent pack unless a role narrows them further
 
 ## Operating Sequence Summary
 
-Default workflow expectations (Cursor roles via `solo-dev-harness` + `.cursor/rules/workflow-*.md`; after Reviewer pass run commit gate only when the user asks to commit, then **push by default**, before Test Engineer):
+Default workflow (Cursor roles via `solo-dev-harness` SOP §11–12). **Intake first.** Commit only after **Judge GO**, and only if the user asked, then **push by default**.
 
-- Feature work: `@planner [→ brainstorming → writing-plans] -> @builder [→ executing-plans | test-driven-development | react-native-skills] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer [→ test-driven-development additions] -> @qa-validator [→ TRAE-debugger | figma for WS-UX/M-UX-01]`
-- Bug fix: `@planner [→ brainstorming if fuzzy | TRAE-debugger] -> @builder [→ test-driven-development | TRAE-debugger] -> @reviewer [+ TRAE-code-review parallel] -> [git-commit skill: COMMIT GATE] -> @test-engineer`
-- Refactor: `@planner [→ writing-plans] -> @reviewer` pre-check when risky `[+ TRAE-code-review] -> @builder [→ executing-plans] -> @reviewer [+ TRAE-code-review] -> [git-commit skill: COMMIT GATE] -> @test-engineer`
-- Release/deployment: `@planner` when scope unclear, then `@reviewer -> [git-commit skill: COMMIT GATE if files changed] -> @test-engineer -> @qa-validator` when needed `-> @release-manager [→ gh-cli]`
-- Documentation-only work: `@planner -> @docs-curator [→ defuddle] -> @reviewer [→ TRAE-code-review for technical accuracy]`
+- Feature: intake → lock spec → Plan Adversary ×2 → Builder → Reviewer → Prove (Test + QA + Evidence) → Proof Adversary → Quality Judge → [commit if asked]
+- Bug fix: intake → Planner + delta gate → Builder → Reviewer → Prove → Judge → [commit if asked]
+- Refactor: intake → Planner → Reviewer pre-check if risky → Builder → Reviewer → Prove → Judge → [commit if asked]
+- Release: intake (version/submit always ask) → Reviewer → Prove → Judge → Release Manager
+- Docs: intake → Planner → Docs Curator → Reviewer → Judge light → [commit if asked]
 
-Milestone Gate (mandatory pre-planner dispatch on all workflows):
+Milestone Gate (mandatory before Planner):
 - Read documentation/NOW.md, then AGENTS.md § Current Delivery Status + documentation/ROADMAP.md
-- If task falls under WS-UX/M-UX-01, WS-QA/M-QA-01/02/03, or WS-SUPABASE/M-SUPABASE-01: Planner cites milestone; Test Engineer classifies tests per TESTING_STRATEGY.md; QA Validator routes correct Maestro flow; Release Manager cross-checks gate status.
+- **Intake completeness** — Orchestrator writes the brief; user is not required to fill a template; THIN → ≤4 A/B/C or GO = defaults
 
-Autonomy Policy (ratified from SOLO_OPERATING_PROCEDURE.md §0):
-- Default = autonomous. Ask user ONLY for: (1) product behavior choices with multiple valid irresolvable outcomes; (2) schema/persistence changes with user-facing impact; (3) auth/security changes with no precedent; (4) release/deploy/version/submission decisions; (5) scope expansion > one bounded extension. Non-blocking uncertainty → choose repo-aligned default, log as assumption, CONTINUE.
+Autonomy: default autonomous after intake READY. Ask only for: (1) irresolvable product forks; (2) user-facing schema; (3) unprecedented auth; (4) release/store; (5) scope > one extension; (6) intake THIN slots. Non-blocking uncertainty → assume, CONTINUE.
 
 ## Scope Of This Inventory
 

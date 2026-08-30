@@ -1,0 +1,54 @@
+{
+  "cli": {
+    "version": ">= 16.23.1",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "simulator": {
+      "distribution": "internal",
+      "environment": "preview",
+      "ios": {
+        "simulator": true,
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    },
+    "internal": {
+      "autoIncrement": true,
+      "distribution": "store",
+      "environment": "preview",
+      "ios": {
+        "credentialsSource": "remote"
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    },
+    "internal-local": {
+      "extends": "internal",
+      "distribution": "store",
+      "environment": "preview",
+      "ios": {
+        "credentialsSource": "remote",
+        "autoIncrement": true
+      },
+      "env": {
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "COCOAPODS_DISABLE_STATS": "true",
+        "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
+      }
+    }
+  },
+  "submit": {
+    "internal": {
+      "ios": {
+        "ascAppId": "6806629041",
+        "ascApiKeyIssuerId": "169799ef-c185-49f3-8c48-7d82e7ba7683",
+        "ascApiKeyId": "57D87U9MQ2",
+        "ascApiKeyPath": "/Volumes/KooDrive/Users/tristan/.appstoreconnect/private_keys/AuthKey_57D87U9MQ2.p8"
+      }
+    }
+  }
+}

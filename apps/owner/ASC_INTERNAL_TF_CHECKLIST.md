@@ -1,0 +1,24 @@
+# ASC setup — hq (Human checklist)
+
+## Done
+
+1. ✅ Bundle ID **`com.insite.hq`** (`832V68UPKV`)
+2. ✅ ASC App **`6806629041`** in `eas.json`
+3. ✅ iOS Dist Cert + Provisioning Profile
+4. ✅ Phase 0 TF smoke — login `tristan@insitetech.co` PASS (build 2)
+5. ✅ Phase 1a Edge `owner-kpi-snapshot` on DEV — owner 200 / non-owner 403 / bad window 400
+6. ✅ Phase 1a local IPA submitted — `apps/owner/.eas/artifacts/hq-phase1a-20260830-024958.ipa`
+7. ✅ Phase 1c Edge `owner-tenant-read` on DEV — listCompanies / getCompany / drill actions
+8. ✅ Phase 1c local IPA submitted — `apps/owner/.eas/artifacts/hq-phase1c-20260830-111922.ipa`
+9. ✅ Phase 1b `platform_owners` + Economics Edge + Phase 1d write Edge on DEV (JWT smoke create/deactivate/ban/403)
+10. ✅ Phase 1b/Econ/1d local IPA submitted — `.eas/artifacts/hq-phase1b-econ-1d-20260830-143300.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/4406b2cf-a836-4f41-887a-05de058fbfff) (build **7**)
+
+## You (headed)
+
+1. Wait Apple processing → Internal TF install latest hq build (**7**)
+2. Login → **Economics** → subscription/tier counts (no $)
+3. **Tenant operations** → company → Users → **Add** → create → open user → **Deactivate**
+4. **System monitoring** → KPIs + histograms
+5. No External / Public / App Review
+
+Kickoff: `docs/superpowers/plans/2026-08-30-m-ops-03-owner-internal-tf-kickoff.md`

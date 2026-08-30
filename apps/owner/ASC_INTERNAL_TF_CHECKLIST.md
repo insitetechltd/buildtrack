@@ -12,13 +12,14 @@
 8. ✅ Phase 1c local IPA submitted — `apps/owner/.eas/artifacts/hq-phase1c-20260830-111922.ipa`
 9. ✅ Phase 1b `platform_owners` + Economics Edge + Phase 1d write Edge on DEV (JWT smoke create/deactivate/ban/403)
 10. ✅ Phase 1b/Econ/1d local IPA submitted — `.eas/artifacts/hq-phase1b-econ-1d-20260830-143300.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/4406b2cf-a836-4f41-887a-05de058fbfff) (build **7**)
+11. ✅ Read-only ops enrich (`owner-ops-read`) — local IPA `.eas/artifacts/hq-ops-read-20260830-160800.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/c066fe87-7880-4c45-bb8a-3a8ec7f8755d) (build **10**)
 
 ## You (headed)
 
-1. Wait Apple processing → Internal TF install latest hq build (**7**)
-2. Login → **Economics** → subscription/tier counts (no $)
-3. **Tenant operations** → company → Users → **Add** → create → open user → **Deactivate**
-4. **System monitoring** → KPIs + histograms
+1. Wait Apple processing → Internal TF install latest hq build (**10**)
+2. Login → **Monitoring** → provider health + secret presence + auth signals
+3. **Economics** → Stripe card (Not configured / withheld MRR OK) + Postgres counts
+4. **Companies** → Audit log + Find user + company support snapshot + user session debug
 5. No External / Public / App Review
 
 ## Standing rule

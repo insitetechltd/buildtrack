@@ -14,13 +14,14 @@
 10. ✅ Phase 1b/Econ/1d local IPA submitted — `.eas/artifacts/hq-phase1b-econ-1d-20260830-143300.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/4406b2cf-a836-4f41-887a-05de058fbfff) (build **7**)
 11. ✅ Read-only ops enrich (`owner-ops-read`) — local IPA `.eas/artifacts/hq-ops-read-20260830-160800.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/c066fe87-7880-4c45-bb8a-3a8ec7f8755d) (build **10**)
 12. ✅ Tenant drill-down IA — local IPA `.eas/artifacts/hq-tenant-drill-20260831-001808.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/21f4c3d6-b44c-439f-ae30-5e46c2530e17) (build **11**)
+13. ✅ Phase A1 company-first IA shell — local IPA `.eas/artifacts/hq-a1-ia-20260831-114114.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/acdf37af-b565-492d-b3fb-46fb646f86bb) (build **12**)
 
 ## You (headed)
 
-1. Wait Apple processing → Internal TF install latest hq build (**10**)
+1. Wait Apple processing → Internal TF install latest hq build (**12**)
 2. Login → **Monitoring** → provider health + secret presence + auth signals
 3. **Economics** → Stripe card (Not configured / withheld MRR OK) + Postgres counts
-4. **Tenant hub** → Companies / Projects / Users (+ Audit). Cards show encapsulated counts (company: projects·users; project: tasks·members; user: projects). Detail closes the triangle; list footers cross hubs.
+4. **Tenant hub** → Companies hero (company-first). Detail screens: stat tiles only (Projects/Users/Tasks); Tasks tile shows Soon. Home resets to Tenant hub. No list footers. Entitlement read-only banner on company detail.
 5. No External / Public / App Review
 
 ## Standing rule

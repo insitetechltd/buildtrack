@@ -18,7 +18,7 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import { goBackTenant, navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
@@ -63,7 +63,11 @@ export default function ProjectMembersScreen({ navigation, route }: Props) {
       edges={["top", "bottom"]}
       testID="owner-tenant-project-members__root"
     >
-      <TenantScreenHeader title="Members" onHome={() => resetToTenantHome(navigation)} />
+      <TenantScreenHeader
+        title="Members"
+        onBack={() => goBackTenant(navigation)}
+        onHome={() => resetToTenantHome(navigation)}
+      />
       <FlatList
         contentContainerStyle={s.scroll}
         data={members}

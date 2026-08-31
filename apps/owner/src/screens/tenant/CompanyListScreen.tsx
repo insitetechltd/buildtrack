@@ -19,7 +19,7 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import { goBackTenant, navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
@@ -65,6 +65,7 @@ export default function CompanyListScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-companies__root">
       <TenantScreenHeader
         title="Companies"
+        onBack={() => goBackTenant(navigation)}
         onHome={() => resetToTenantHome(navigation)}
         backTestID="owner-tenant-companies__back"
         homeTestID="owner-tenant-companies__home"

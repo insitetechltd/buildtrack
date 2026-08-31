@@ -20,23 +20,34 @@ import {
   fetchSupportSnapshot,
   type OwnerSupportSnapshot,
 } from "../../lib/fetchOwnerOpsRead";
-import { formatSeatUsageLine } from "../../lib/ownerEntitlementView";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
-import StatTileRow from "./StatTileRow";
+import { goBackTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import CompanyHeroDeck from "./CompanyHeroDeck";
+import CompanyOverviewPane from "./CompanyOverviewPane";
+import CompanyProjectsPane from "./CompanyProjectsPane";
+import CompanySegmentControl from "./CompanySegmentControl";
+import CompanyTasksPane from "./CompanyTasksPane";
+import CompanyUsersPane from "./CompanyUsersPane";
+import {
+  parseCompanyDetailSegment,
+  type CompanyDetailSegment,
+} from "./companyDetailSegments";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyDetail">;
 
 export default function CompanyDetailScreen({ navigation, route }: Props) {
-  const { companyId, companyName } = route.params;
+  const { companyId, companyName, initialSegment } = route.params;
   const [detail, setDetail] = useState<CompanyDetail | null>(null);
   const [support, setSupport] = useState<OwnerSupportSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [segment, setSegment] = useState<CompanyDetailSegment>(() =>
+    parseCompanyDetailSegment(initialSegment),
+  );
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
@@ -66,132 +77,97 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
     }, [load]),
   );
 
+  React.useEffect(() => {
+    if (initialSegment) {
+      setSegment(parseCompanyDetailSegment(initialSegment));
+    }
+  }, [initialSegment]);
+
+  const onSelectSegment = (next: CompanyDetailSegment) => {
+    setSegment(next);
+  };
+
+  const heroVariant = segment === "overview" ? "full" : "compact";
+  const compactFocus =
+    segment === "users" ? "users" : segment === "tasks" ? "tasks" : "projects";
+
+  const overviewContent = detail ? (
+    <ScrollView
+      contentContainerStyle={[s.scroll, { paddingTop: 0 }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            setRefreshing(true);
+            void load({ soft: true });
+          }}
+          tintColor="#0A556B"
+        />
+      }
+    >
+      <CompanyOverviewPane detail={detail} support={support} onJumpSegment={onSelectSegment} />
+    </ScrollView>
+  ) : null;
+
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-company-detail__root">
       <TenantScreenHeader
         title={companyName}
+        onBack={() => goBackTenant(navigation)}
         onHome={() => resetToTenantHome(navigation)}
         backTestID="owner-tenant-company-detail__back"
         homeTestID="owner-tenant-company-detail__home"
       />
-      <ScrollView
-        contentContainerStyle={s.scroll}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); void load({ soft: true }); }} tintColor="#0A556B" />
-        }
-      >
-        {loading && !detail ? (
-          <View style={s.center}>
-            <ActivityIndicator size="large" color="#0A556B" />
-          </View>
-        ) : null}
-        {error ? (
-          <View style={s.errorBox}>
-            <Text style={s.errorText}>{error}</Text>
-            <Pressable onPress={() => void load()} style={s.retry}>
-              <Text style={s.retryText}>Retry</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {detail ? (
-          <>
-            <View style={s.card}>
-              <Text style={s.sectionTitle}>Metadata</Text>
-              <Text style={s.cardTitle}>{detail.company.name}</Text>
-              <Text style={s.cardSub}>{detail.company.type.replace(/_/g, " ")}</Text>
-              {detail.company.email ? <Text style={s.rowMeta}>{detail.company.email}</Text> : null}
-              {detail.company.phone ? <Text style={s.rowMeta}>{detail.company.phone}</Text> : null}
-              {detail.company.address ? <Text style={s.rowMeta}>{detail.company.address}</Text> : null}
-            </View>
-            <View
-              style={s.card}
-              testID="owner-tenant-company-detail__entitlement"
-              accessibilityState={{ disabled: true }}
-            >
-              <Text style={s.sectionTitle}>Entitlement</Text>
-              <Text style={s.cardTitle}>{detail.entitlement.statusLabel}</Text>
-              <Text style={s.cardSub}>{detail.entitlement.limitsLabel}</Text>
-              <Text style={s.rowMeta}>
-                Seats:{" "}
-                {formatSeatUsageLine(
-                  detail.usage.pmSeats,
-                  detail.usage.pmSeatLimit,
-                  detail.usage.workerSeats,
-                  detail.usage.workerSeatLimit,
-                )}
-              </Text>
-              <Text style={s.rowMeta}>
-                Projects: {detail.usage.projectCount}
-                {detail.usage.projectLimit != null ? ` / ${detail.usage.projectLimit}` : " / ∞"}
-              </Text>
-              <View style={s.entitlementReadOnlyBanner}>
-                <Text style={s.entitlementReadOnlyText}>
-                  Plan changes require operator approval — read-only until entitlement management ships.
-                </Text>
-              </View>
-            </View>
-            {support ? (
-              <View style={s.card} testID="owner-tenant-company-detail__support">
-                <Text style={s.sectionTitle}>Support snapshot</Text>
-                {support.sections?.subscription === "unavailable" ? (
-                  <Text style={s.rowMeta}>Subscription: unavailable</Text>
-                ) : (
-                  <Text style={s.rowMeta}>
-                    Sub: {support.subscription.status ?? "—"}
-                    {support.subscription.stripeSubscriptionId
-                      ? ` · ${support.subscription.stripeSubscriptionId.slice(0, 14)}…`
-                      : ""}
-                  </Text>
-                )}
-                <Text style={s.rowMeta}>
-                  Users{" "}
-                  {support.usage.activeUsers == null || support.usage.userCount == null
-                    ? "unavailable"
-                    : `${support.usage.activeUsers}/${support.usage.userCount} active`}
-                  {" · projects "}
-                  {support.usage.projectCount == null
-                    ? "unavailable"
-                    : `${support.usage.projectCount}${
-                      support.usage.projectLimit != null
-                        ? ` / ${support.usage.projectLimit}`
-                        : " / ∞"
-                    }`}
-                </Text>
-                {support.subscription.stripeCustomerId ? (
-                  <Text style={s.rowMeta}>
-                    Customer {support.subscription.stripeCustomerId}
-                  </Text>
-                ) : null}
-              </View>
-            ) : null}
-            <StatTileRow
-              tiles={[
-                {
-                  label: "Projects",
-                  value: detail.stats.projects,
-                  testID: "owner-tenant-company-detail__stat_projects",
-                  onPress: () =>
-                    navigateTenant(navigation, "CompanyProjects", { companyId, companyName }),
-                },
-                {
-                  label: "Users",
-                  value: detail.stats.users,
-                  testID: "owner-tenant-company-detail__stat_users",
-                  onPress: () =>
-                    navigateTenant(navigation, "CompanyUsers", { companyId, companyName }),
-                },
-                {
-                  label: "Tasks",
-                  value: detail.stats.tasks,
-                  testID: "owner-tenant-company-detail__stat_tasks",
-                  disabled: true,
-                  disabledHint: "Task lists and detail ship in the next tenant release.",
-                },
-              ]}
+      {loading && !detail ? (
+        <View style={s.center}>
+          <ActivityIndicator size="large" color="#0A556B" />
+        </View>
+      ) : null}
+      {error && !detail ? (
+        <View style={[s.scroll, s.errorBox, { margin: 16 }]}>
+          <Text style={s.errorText}>{error}</Text>
+          <Pressable onPress={() => void load()} style={s.retry}>
+            <Text style={s.retryText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {detail ? (
+        <>
+          <CompanyHeroDeck
+            detail={detail}
+            variant={heroVariant}
+            compactFocus={compactFocus}
+          />
+          <CompanySegmentControl
+            active={segment}
+            projectCount={detail.stats.projects}
+            userCount={detail.stats.users}
+            onSelect={onSelectSegment}
+          />
+          {segment === "overview" ? overviewContent : null}
+          {segment === "projects" ? (
+            <CompanyProjectsPane
+              key="projects"
+              companyId={companyId}
+              companyName={companyName}
+              navigation={navigation}
             />
-          </>
-        ) : null}
-      </ScrollView>
+          ) : null}
+          {segment === "users" ? (
+            <CompanyUsersPane
+              key="users"
+              companyId={companyId}
+              companyName={companyName}
+              navigation={navigation}
+            />
+          ) : null}
+          {segment === "tasks" ? (
+            <ScrollView contentContainerStyle={s.scroll} key="tasks">
+              <CompanyTasksPane />
+            </ScrollView>
+          ) : null}
+        </>
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -19,6 +19,7 @@ import TenantHubScreen from "../screens/tenant/TenantHubScreen";
 import UserAssignmentsScreen from "../screens/tenant/UserAssignmentsScreen";
 import UserDetailScreen from "../screens/tenant/UserDetailScreen";
 import UserSearchScreen from "../screens/tenant/UserSearchScreen";
+import { buildOwnerStackScreenOptions } from "./nativeStackOptions";
 
 export type OwnerStackParamList = {
   Home: undefined;
@@ -30,7 +31,11 @@ export type OwnerStackParamList = {
   AllUsers: undefined;
   AuditLog: undefined;
   UserSearch: undefined;
-  CompanyDetail: { companyId: string; companyName: string };
+  CompanyDetail: {
+    companyId: string;
+    companyName: string;
+    initialSegment?: "overview" | "projects" | "users" | "tasks";
+  };
   CompanyProjects: { companyId: string; companyName: string };
   ProjectSummary: {
     companyId: string;
@@ -69,7 +74,7 @@ type Props = {
 export default function OwnerAppNavigator({ onSignOut }: Props) {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
+      <Stack.Navigator screenOptions={buildOwnerStackScreenOptions()}>
         <Stack.Screen name="Home">
           {({ navigation }) => (
             <OwnerHomeScreen

@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant } from "../../navigation/tenantNavigation";
+import { goBackTenant, navigateTenant } from "../../navigation/tenantNavigation";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
@@ -33,12 +33,12 @@ const GLOBAL_BROWSE: {
 export default function TenantHubScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-hub__root">
-      <TenantScreenHeader title="Tenant" onBack={() => navigation.goBack()} />
+      <TenantScreenHeader title="Tenant" onBack={() => goBackTenant(navigation)} />
       <ScrollView contentContainerStyle={s.scroll}>
         <View style={s.banner}>
           <Text style={s.bannerText}>
-            Company-first drill-down. Open a company, then use stat tiles on detail screens
-            to reach projects, users, and tasks. Task lists ship in the next release.
+            Company-first drill-down. Open a company, then use Overview · Projects · Users ·
+            Tasks on the company file. Task lists ship in the next release.
           </Text>
         </View>
         <Pressable

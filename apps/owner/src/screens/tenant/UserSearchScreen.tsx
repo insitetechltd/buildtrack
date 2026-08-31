@@ -17,6 +17,7 @@ import {
 } from "../../lib/fetchOwnerOpsRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { goBackTenant } from "../../navigation/tenantNavigation";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "UserSearch">;
@@ -47,7 +48,7 @@ export default function UserSearchScreen({ navigation }: Props) {
       <View style={s.header}>
         <Pressable
           testID="owner-user-search__back"
-          onPress={() => navigation.goBack()}
+          onPress={() => goBackTenant(navigation)}
           style={s.back}
         >
           <Text style={s.backText}>Back</Text>

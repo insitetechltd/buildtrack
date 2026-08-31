@@ -18,7 +18,7 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import { goBackTenant, navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
@@ -64,6 +64,7 @@ export default function UserAssignmentsScreen({ navigation, route }: Props) {
     >
       <TenantScreenHeader
         title="Projects"
+        onBack={() => goBackTenant(navigation)}
         onHome={() => resetToTenantHome(navigation)}
       />
       <FlatList

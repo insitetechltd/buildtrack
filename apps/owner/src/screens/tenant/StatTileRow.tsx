@@ -1,6 +1,7 @@
 import React from "react";
-import { Alert, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 
+import { handleStatTilePress, isStatTileDisabled } from "./statTileLogic";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 export type StatTileConfig = {
@@ -16,31 +17,17 @@ type Props = {
   tiles: StatTileConfig[];
 };
 
-function onDisabledPress(hint?: string) {
-  Alert.alert(
-    "Coming soon",
-    hint ?? "Task lists and detail will ship in the next tenant release.",
-  );
-}
-
 export default function StatTileRow({ tiles }: Props) {
   return (
     <View style={s.statRow}>
       {tiles.map((tile) => {
-        const disabled = tile.disabled || !tile.onPress;
-        const handlePress = () => {
-          if (disabled) {
-            onDisabledPress(tile.disabledHint);
-            return;
-          }
-          tile.onPress?.();
-        };
+        const disabled = isStatTileDisabled(tile);
 
         return (
           <Pressable
             key={tile.testID}
             testID={tile.testID}
-            onPress={handlePress}
+            onPress={() => handleStatTilePress(tile)}
             style={[s.statTile, s.statTilePressable, disabled && s.statTileDisabled]}
             accessibilityRole="button"
             accessibilityState={{ disabled }}

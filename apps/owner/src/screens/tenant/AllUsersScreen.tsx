@@ -19,7 +19,7 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import { goBackTenant, navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
@@ -69,6 +69,7 @@ export default function AllUsersScreen({ navigation }: Props) {
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-all-users__root">
       <TenantScreenHeader
         title="All users"
+        onBack={() => goBackTenant(navigation)}
         onHome={() => resetToTenantHome(navigation)}
         backTestID="owner-tenant-all-users__back"
         homeTestID="owner-tenant-all-users__home"

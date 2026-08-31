@@ -18,6 +18,7 @@ import {
 } from "../../lib/fetchOwnerTenantWrite";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { goBackTenant } from "../../navigation/tenantNavigation";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CreateUser">;
@@ -43,7 +44,7 @@ export default function CreateUserScreen({ navigation, route }: Props) {
       Alert.alert("User created", `${created.name} · ${created.email}`, [
         {
           text: "OK",
-          onPress: () => navigation.goBack(),
+          onPress: () => goBackTenant(navigation),
         },
       ]);
     } catch (err) {
@@ -60,7 +61,7 @@ export default function CreateUserScreen({ navigation, route }: Props) {
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-create-user__root">
       <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.back}>
+        <Pressable onPress={() => goBackTenant(navigation)} style={s.back}>
           <Text style={s.backText}>Back</Text>
         </Pressable>
         <Text style={s.title} numberOfLines={1}>Add user</Text>

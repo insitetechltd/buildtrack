@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { isPlatformSuperuser } from "./src/config/platformSuperusers";
@@ -56,6 +57,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.root}>
       <StatusBar style={gate === "home" ? "light" : "dark"} />
       {gate === "loading" ? (
         <View style={styles.loading}>
@@ -69,11 +71,13 @@ export default function App() {
       {gate === "home" && session ? (
         <OwnerAppNavigator onSignOut={() => void signOut()} />
       ) : null}
+      </GestureHandlerRootView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   loading: {
     flex: 1,
     alignItems: "center",

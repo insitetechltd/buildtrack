@@ -1,5 +1,7 @@
 import {
+  buildPopToRouteState,
   buildTenantHomeResetState,
+  findRouteIndexInStack,
   getTenantStackDepth,
   resolveNavigationMode,
   shouldReplaceAtDepth,
@@ -47,6 +49,55 @@ describe("buildTenantHomeResetState", () => {
     expect(buildTenantHomeResetState()).toEqual({
       index: 1,
       routes: [{ name: "Home" }, { name: TENANT_HOME_ROUTE }],
+    });
+  });
+});
+
+describe("findRouteIndexInStack", () => {
+  it("finds topmost matching route", () => {
+    expect(
+      findRouteIndexInStack(
+        {
+          index: 3,
+          routes: [
+            { name: "Home" },
+            { name: "TenantOps" },
+            { name: "CompanyDetail", params: { companyId: "a" } },
+            { name: "ProjectSummary" },
+          ],
+        },
+        "CompanyDetail",
+      ),
+    ).toBe(2);
+  });
+
+  it("returns -1 when missing", () => {
+    expect(findRouteIndexInStack({ index: 0, routes: [{ name: "Home" }] }, "CompanyDetail")).toBe(
+      -1,
+    );
+  });
+});
+
+describe("buildPopToRouteState", () => {
+  it("truncates stack and merges params", () => {
+    const next = buildPopToRouteState(
+      {
+        index: 3,
+        routes: [
+          { name: "Home" },
+          { name: "TenantOps" },
+          { name: "CompanyDetail", params: { companyId: "a", companyName: "Old" } },
+          { name: "ProjectSummary" },
+        ],
+      },
+      2,
+      { companyName: "New" },
+    );
+    expect(next.index).toBe(2);
+    expect(next.routes).toHaveLength(3);
+    expect(next.routes[2]).toEqual({
+      name: "CompanyDetail",
+      params: { companyId: "a", companyName: "New" },
     });
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "../../lib/fetchOwnerOpsRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { goBackTenant } from "../../navigation/tenantNavigation";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "AuditLog">;
@@ -51,7 +52,7 @@ export default function AuditLogScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-audit__root">
       <View style={s.header}>
-        <Pressable testID="owner-audit__back" onPress={() => navigation.goBack()} style={s.back}>
+        <Pressable testID="owner-audit__back" onPress={() => goBackTenant(navigation)} style={s.back}>
           <Text style={s.backText}>Back</Text>
         </Pressable>
         <Text style={s.title}>Audit log</Text>

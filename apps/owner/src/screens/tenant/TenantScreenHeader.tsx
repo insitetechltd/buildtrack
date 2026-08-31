@@ -20,17 +20,23 @@ export default function TenantScreenHeader({
   homeTestID = "owner-tenant-header__home",
   right,
 }: Props) {
-  const left = onHome ? (
-    <Pressable testID={homeTestID} onPress={onHome} style={s.back} accessibilityLabel="Home">
-      <Text style={s.backText}>Home</Text>
-    </Pressable>
-  ) : onBack ? (
-    <Pressable testID={backTestID} onPress={onBack} style={s.back}>
+  const left = onBack ? (
+    <Pressable testID={backTestID} onPress={onBack} style={s.back} accessibilityLabel="Back">
       <Text style={s.backText}>Back</Text>
     </Pressable>
   ) : (
     <View style={s.backSpacer} />
   );
+
+  const rightSlot =
+    right ??
+    (onHome ? (
+      <Pressable testID={homeTestID} onPress={onHome} style={s.back} accessibilityLabel="Home">
+        <Text style={s.backText}>Home</Text>
+      </Pressable>
+    ) : (
+      <View style={s.backSpacer} />
+    ));
 
   return (
     <View style={s.header}>
@@ -38,7 +44,7 @@ export default function TenantScreenHeader({
       <Text style={s.title} numberOfLines={1}>
         {title}
       </Text>
-      {right ?? <View style={s.backSpacer} />}
+      {rightSlot}
     </View>
   );
 }

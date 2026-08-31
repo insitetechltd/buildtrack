@@ -5,8 +5,8 @@
   "private": true,
   "scripts": {
     "start": "expo start",
-    "ios": "expo start --ios",
-    "android": "expo start --android",
+    "ios": "expo run:ios",
+    "android": "expo run:android",
     "test": "node ../../node_modules/jest/bin/jest.js --config jest.config.js",
     "eas-build-post-install": "node ./scripts/eas/eas-build-post-install.js"
   },

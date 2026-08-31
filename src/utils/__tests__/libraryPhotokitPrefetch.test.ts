@@ -17,8 +17,8 @@ describe("photokitLookaheadRange", () => {
     expect(photokitLookaheadRange(11, 30)).toEqual({ from: 12, to: 27 });
   });
 
-  it("does not include the first screen when viewability has not fired", () => {
-    expect(photokitLookaheadRange(-1, 30)).toEqual({ from: 12, to: 27 });
+  it("does not prefetch page 2 before viewability", () => {
+    expect(photokitLookaheadRange(-1, 30)).toBeNull();
   });
 
   it("moves the window past the new last visible while scrolling", () => {

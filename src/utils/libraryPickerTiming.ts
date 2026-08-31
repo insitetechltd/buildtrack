@@ -28,6 +28,8 @@ export type LibraryPickerTimingSnapshot = {
   expectedScreen: number;
   /** Set when MediaLibrary.getAssetsAsync loadPage runs (diagnostic). */
   loadPageReason: LibraryPickerLoadPageReason;
+  /** PhotoKit targetSize px requested this layout (HUD A/B). */
+  thumbRequestPx: number | null;
 };
 
 type Listener = (snapshot: LibraryPickerTimingSnapshot) => void;
@@ -50,6 +52,7 @@ let scrollUpPaintedIds = new Set<string>();
 let expectedRow = LIBRARY_GRID_COLUMNS;
 let expectedScreen = LIBRARY_FILL_UNTIL_COUNT;
 let loadPageReason: LibraryPickerLoadPageReason = null;
+let thumbRequestPx: number | null = null;
 const listeners = new Set<Listener>();
 
 function nowMs(): number {
@@ -83,6 +86,7 @@ function snapshot(): LibraryPickerTimingSnapshot | null {
     expectedRow,
     expectedScreen,
     loadPageReason,
+    thumbRequestPx,
   };
 }
 
@@ -146,7 +150,18 @@ export function resetLibraryPickerTimingForTests(): void {
   expectedRow = LIBRARY_GRID_COLUMNS;
   expectedScreen = LIBRARY_FILL_UNTIL_COUNT;
   loadPageReason = null;
+  thumbRequestPx = null;
   listeners.clear();
+}
+
+/** Grid layout → HUD `thumb Npx` so TF237 (256) vs 2× (512) is visible. */
+export function markLibraryThumbRequestPx(px: number): void {
+  const next = Math.max(1, Math.round(px));
+  if (thumbRequestPx === next) {
+    return;
+  }
+  thumbRequestPx = next;
+  emit("thumb_px", { thumbRequestPx: next });
 }
 
 /** Call at library overlay open (tap), before React mount work. */
@@ -292,6 +307,11 @@ export function formatLibraryPickerTimingHud(
   if (current.prevScreenMs != null) {
     lines.push(`1st 12 +${current.prevScreenMs}ms`);
   }
+  lines.push(
+    current.thumbRequestPx != null
+      ? `thumb ${current.thumbRequestPx}px`
+      : "thumb —",
+  );
   lines.push(
     current.loadPageReason ? `loadPage ${current.loadPageReason}` : "loadPage —",
   );

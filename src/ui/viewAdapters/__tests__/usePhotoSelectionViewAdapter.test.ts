@@ -9,6 +9,7 @@ const mockDismissBatch = jest.fn();
 const mockManipulateAsync = jest.fn();
 const mockPinDraftMedia = jest.fn();
 const mockBakeStrokesOntoPhoto = jest.fn();
+const mockEnsureCappedLocalPhoto = jest.fn();
 
 jest.mock("expo-image-manipulator", () => ({
   manipulateAsync: (...args: unknown[]) => mockManipulateAsync(...args),
@@ -21,6 +22,10 @@ jest.mock("../../../utils/draftMediaCache", () => ({
 
 jest.mock("../../../utils/bakePhotoDraw", () => ({
   bakeStrokesOntoPhoto: (...args: unknown[]) => mockBakeStrokesOntoPhoto(...args),
+}));
+
+jest.mock("../../../utils/ensureCappedLocalPhoto", () => ({
+  ensureCappedLocalPhoto: (...args: unknown[]) => mockEnsureCappedLocalPhoto(...args),
 }));
 
 jest.mock("../../../api/fileUploadService", () => ({
@@ -84,6 +89,17 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     mockManipulateAsync.mockResolvedValue({ uri: "file://edited.jpg" });
     mockPinDraftMedia.mockImplementation(async (uri: string) => `pinned:${uri}`);
     mockBakeStrokesOntoPhoto.mockResolvedValue("file://drawn.jpg");
+    mockEnsureCappedLocalPhoto.mockImplementation(
+      async (photo: { uri: string; annotatedUri?: string }) => {
+        if (photo.annotatedUri?.startsWith("file://")) {
+          return photo.annotatedUri;
+        }
+        if (photo.uri.startsWith("file://")) {
+          return photo.uri;
+        }
+        return "file://capped.jpg";
+      },
+    );
   });
 
   it("handleRotatePhoto bakes a 90° rotate into annotatedUri", async () => {
@@ -106,6 +122,35 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://edited.jpg");
     expect(result.current.output.photos[0].isAnnotated).toBe(true);
     expect(result.current.output.photos[0].uri).toBe("file://a.jpg");
+  });
+
+  it("exports a capped file before rotate when the row is still ph://", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          {
+            uri: "ph://keep",
+            fileName: "keep.jpg",
+            isAnnotated: false,
+            mediaLibraryAssetId: "keep",
+          },
+        ],
+      } as any),
+    );
+
+    await act(async () => {
+      await result.current.handleRotatePhoto(0);
+    });
+
+    expect(mockEnsureCappedLocalPhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: "ph://keep", mediaLibraryAssetId: "keep" }),
+    );
+    expect(mockManipulateAsync).toHaveBeenCalledWith(
+      "file://capped.jpg",
+      [{ rotate: 90 }],
+      expect.objectContaining({ format: "jpeg" }),
+    );
   });
 
   it("handleApplyCrop writes crop actions then pins annotatedUri", async () => {

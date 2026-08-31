@@ -6,11 +6,15 @@ import {
   isPhotokitThumbsAvailable,
   openPhotokitLibrary,
   openPhotokitLibraryLimited,
+  openPhotokitLibraryWithIds,
   photokitIdAt,
   previewPhotokitNewestIds,
   startPhotokitRangeCaching,
   startPhotokitThumbCaching,
   stopPhotokitThumbCaching,
+  pausePhotokitLibraryForAccept,
+  resumePhotokitLibraryAfterAccept,
+  exportPhotokitCappedJpeg,
 } from "../PhotokitThumbView";
 
 describe("PhotokitThumbView JS gate", () => {
@@ -26,9 +30,13 @@ describe("PhotokitThumbView JS gate", () => {
       startPhotokitThumbCaching(["a"], 120);
       startPhotokitRangeCaching(1, 12, 27, 120);
       stopPhotokitThumbCaching();
+      pausePhotokitLibraryForAccept();
+      resumePhotokitLibraryAfterAccept();
     }).not.toThrow();
+    await expect(exportPhotokitCappedJpeg("a", 1920)).resolves.toBeNull();
     await expect(openPhotokitLibrary(null)).resolves.toBeNull();
     await expect(openPhotokitLibraryLimited(null, 60)).resolves.toBeNull();
+    await expect(openPhotokitLibraryWithIds(["a"])).resolves.toBeNull();
     await expect(expandPhotokitLibraryFull(1)).resolves.toBeNull();
     await expect(previewPhotokitNewestIds(30)).resolves.toEqual([]);
     expect(photokitIdAt(1, 0)).toBeNull();

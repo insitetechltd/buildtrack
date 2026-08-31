@@ -62,8 +62,9 @@ describe("LibraryPhotoGrid L2 paint", () => {
     );
 
     expect(getByTestId("g__tile_image_p0")).toBeTruthy();
-    expect(queryByTestId("g__tile_image_p1")).toBeNull();
-    expect(getByTestId("g__tile_skeleton_p1")).toBeTruthy();
+    expect(getByTestId("g__tile_image_p1")).toBeTruthy();
+    expect(queryByTestId("g__tile_image_p2")).toBeNull();
+    expect(getByTestId("g__tile_skeleton_p2")).toBeTruthy();
   });
 
   it("unlocks the next tiles after the bridge paint interval", () => {
@@ -73,7 +74,7 @@ describe("LibraryPhotoGrid L2 paint", () => {
     );
 
     act(() => {
-      jest.advanceTimersByTime(450 * 5);
+      jest.advanceTimersByTime(48 * 2);
     });
 
     expect(getByTestId("g__tile_image_p5")).toBeTruthy();

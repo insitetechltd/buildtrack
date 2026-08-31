@@ -20,6 +20,9 @@ type PhotokitThumbsNative = {
   expandLibraryFull?: (
     token: number,
   ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
+  openLibraryWithIds?: (
+    ids: string[],
+  ) => { token: number; count: number } | Promise<{ token: number; count: number }>;
   previewNewestIds?: (limit: number) => string[] | Promise<string[]>;
   idAt?: (token: number, index: number) => string;
   startCachingRange?: (
@@ -28,6 +31,9 @@ type PhotokitThumbsNative = {
     to: number,
     pixelSize: number,
   ) => void;
+  pauseLibraryForAccept?: () => void;
+  resumeLibraryAfterAccept?: () => void;
+  exportCappedJpeg?: (assetId: string, maxPixel: number) => string | Promise<string>;
 };
 
 export type PhotokitLibrarySession = {
@@ -114,6 +120,11 @@ export function isPhotokitLibrary2bAvailable(): boolean {
   );
 }
 
+export function isPhotokitLibraryWithIdsAvailable(): boolean {
+  const native = loadNativeModule();
+  return typeof native?.openLibraryWithIds === "function";
+}
+
 function parseSession(
   opened: { token: number; count: number } | null | undefined,
 ): PhotokitLibrarySession | null {
@@ -145,7 +156,7 @@ export async function openPhotokitLibrary(
   });
 }
 
-/** Option 2B: newest `limit` via reverse enum; early return before full count. */
+/** Option 2B: newest `limit` Recents via unsorted index-from-end (no sort). */
 export async function openPhotokitLibraryLimited(
   albumId: string | null,
   limit: number,
@@ -164,6 +175,22 @@ export async function openPhotokitLibraryLimited(
       return null;
     }
   });
+}
+
+/** Fast path: persisted local IDs. Not exclusive — 30 ids must not wait behind expand. */
+export async function openPhotokitLibraryWithIds(
+  ids: string[],
+): Promise<PhotokitLibrarySession | null> {
+  const native = loadNativeModule();
+  if (!native?.openLibraryWithIds || ids.length < 1) {
+    return null;
+  }
+  try {
+    const opened = await Promise.resolve(native.openLibraryWithIds(ids));
+    return parseSession(opened);
+  } catch {
+    return null;
+  }
 }
 
 /** Option 2B: grow session to full Recents; token must stay the same. */
@@ -246,4 +273,36 @@ export function startPhotokitRangeCaching(
 
 export function stopPhotokitThumbCaching(): void {
   loadNativeModule()?.stopCaching?.();
+}
+
+/** Cancel in-flight grid thumbs so Accept can export originals. */
+export function pausePhotokitLibraryForAccept(): void {
+  stopPhotokitThumbCaching();
+  loadNativeModule()?.pauseLibraryForAccept?.();
+}
+
+export function resumePhotokitLibraryAfterAccept(): void {
+  loadNativeModule()?.resumeLibraryAfterAccept?.();
+}
+
+/**
+ * Capped JPEG for annotation/upload. Not first-paint thumbs (those stay .fastFormat).
+ * Empty string / null = native missing or asset unresolved.
+ */
+export async function exportPhotokitCappedJpeg(
+  assetId: string,
+  maxPixel: number,
+): Promise<string | null> {
+  const native = loadNativeModule();
+  if (!native?.exportCappedJpeg || !assetId || maxPixel < 1) {
+    return null;
+  }
+  return runExclusivePhotokitJob("exportCappedJpeg", async () => {
+    try {
+      const uri = await Promise.resolve(native.exportCappedJpeg!(assetId, maxPixel));
+      return typeof uri === "string" && uri.startsWith("file://") ? uri : null;
+    } catch {
+      return null;
+    }
+  });
 }

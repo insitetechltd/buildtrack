@@ -47,7 +47,8 @@ async function materializeOne(photo: CaptureSessionPhoto): Promise<SelectedPhoto
 
 /**
  * Pin selected drafts for Select Photos. Camera rows are already file://.
- * Library rows may still be ph:// until Accept.
+ * Library rows may still be ph:// until annotation or upload — Accept must
+ * not call this.
  */
 export async function materializeSelectedCapturePhotos(
   photos: CaptureSessionPhoto[],

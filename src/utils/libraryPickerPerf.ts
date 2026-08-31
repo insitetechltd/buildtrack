@@ -52,6 +52,31 @@ export const LIBRARY_THUMB_DECODE_CONCURRENCY = 5;
 export const LIBRARY_THUMB_LRU_MAX = 200;
 export const LIBRARY_THUMB_MAX_PIXELS = 320;
 
+/**
+ * Native grid thumbs (PhotokitThumbEngine.maxThumbPixel).
+ * TF237 delivered min(tile×scale, 256). LINEAR_SCALE 2 = 512px (4× pixels).
+ * Keep Swift `maxThumbPixel` = BASE_CAP_PX × LINEAR_SCALE.
+ */
+export const LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX = 256;
+export const LIBRARY_PHOTOKIT_THUMB_LINEAR_SCALE = 2;
+
+export function libraryPhotokitThumbMaxPx(): number {
+  return LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LIBRARY_PHOTOKIT_THUMB_LINEAR_SCALE;
+}
+
+/** Requested PhotoKit targetSize after the TF237-equivalent cap, then scaled. */
+export function libraryPhotokitThumbPixelSize(
+  tileSize: number,
+  screenScale: number,
+): number {
+  const requested = Math.max(1, Math.round(tileSize * screenScale));
+  const baseline = Math.min(LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX, requested);
+  return Math.min(
+    libraryPhotokitThumbMaxPx(),
+    baseline * LIBRARY_PHOTOKIT_THUMB_LINEAR_SCALE,
+  );
+}
+
 /** Camera warm prefetch — first screen + p2 wave (6 rows × 3 cols). */
 export const LIBRARY_WARM_PAGE_SIZE = 18;
 export const LIBRARY_WARM_THUMB_COUNT = 24;
@@ -63,13 +88,13 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
 /**
  * A/B picker fill path (M-PERF-03).
  * - `warm`: MediaLibrary warm bridge → full openLibrary
- * - `native2b`: warm bridge (first paint) → openLibraryLimited → expandLibraryFull (same token)
+ * - `native2b`: openLibraryLimited (Recents unsorted newest-N) → first paint → expandLibraryFull (same token)
  *
  * Override: EXPO_PUBLIC_LIBRARY_PICKER_PATH=warm|native2b
  */
 export type LibraryPickerPath = "warm" | "native2b";
 
-/** First limited native batch — keep modest so fetchLimit stays cheap. */
+/** First limited native batch — Recents newest-N via index-from-end (no sort). */
 export const LIBRARY_PICKER_2B_FIRST_BATCH = 30;
 
 /** Product budget: first painted tile after library overlay open. */

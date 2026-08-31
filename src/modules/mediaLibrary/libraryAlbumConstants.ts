@@ -1,7 +1,10 @@
 import * as MediaLibrary from "expo-media-library";
 
-/** Sentinel: all photos (no album filter). */
+/** Sentinel: Recents (Camera Roll). UI title is Recents; fetch is still unsorted Recents. */
 export const ALL_PHOTOS_ALBUM_ID = "__all__";
+
+/** User-facing name for `ALL_PHOTOS_ALBUM_ID` — keep fetch on Recents, not “All Photos”. */
+export const RECENTS_ALBUM_TITLE = "Recents";
 
 /** Follow-up pages while scrolling — one extra screen, not 6-at-a-time (too slow) or 36 (one long stall). */
 export const LIBRARY_PAGE_SIZE = 18;

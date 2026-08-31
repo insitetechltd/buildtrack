@@ -1,6 +1,7 @@
 import { ensureMediaLibraryChecked } from "./mediaLibraryPermission";
 import { warmLibraryFirstPage } from "./libraryWarmPrefetch";
 import { prefetchPhotokitLibraryIndex } from "./libraryIndexPrefetch";
+import { hydratePhotokitPreviewIds } from "./libraryPreviewIds";
 import { isLibraryPickerNative2b } from "./libraryPickerPerf";
 
 let capturePrefetchRun: Promise<void> | null = null;
@@ -9,8 +10,8 @@ let capturePrefetchRun: Promise<void> | null = null;
  * Camera tab / Add Photos entry — single-flight.
  * Module + CameraScreen both call this; a second call joins the same run.
  *
- * Always warm first (cheap MediaLibrary page for ≤3s first paint), then
- * PhotoKit index (full open or limited+expand) on the exclusive gate.
+ * native2b: hydrate persisted Recents ids, then limited index (no MediaLibrary warm).
+ * warm path: MediaLibrary first page, then full openLibrary — never parallel.
  */
 export function startLibraryCapturePrefetch(): void {
   if (capturePrefetchRun) {
@@ -21,8 +22,12 @@ export function startLibraryCapturePrefetch(): void {
     if (!permission.granted) {
       return;
     }
+    if (isLibraryPickerNative2b()) {
+      await hydratePhotokitPreviewIds();
+      await prefetchPhotokitLibraryIndex(null);
+      return;
+    }
     await warmLibraryFirstPage();
-    // Index after warm — never parallel with warm (PhotoKit gate / daemon).
     await prefetchPhotokitLibraryIndex(null);
   })().finally(() => {
     capturePrefetchRun = null;
@@ -32,4 +37,9 @@ export function startLibraryCapturePrefetch(): void {
 /** Test helper. */
 export function isLibraryCapturePrefetchInFlight(): boolean {
   return capturePrefetchRun != null;
+}
+
+/** Jest only. */
+export function resetLibraryCapturePrefetchForTests(): void {
+  capturePrefetchRun = null;
 }

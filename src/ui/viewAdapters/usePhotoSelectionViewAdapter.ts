@@ -6,6 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 import { uploadFileWithVerification } from '../../api/fileUploadService';
 import { pinDraftMedia } from '../../utils/draftMediaCache';
+import { ensureCappedLocalPhoto } from '../../utils/ensureCappedLocalPhoto';
 import type { SourceCrop } from '../../utils/photoPreviewEdit';
 import { bakeStrokesOntoPhoto } from '../../utils/bakePhotoDraw';
 import type { DrawStroke } from '../../utils/photoPreviewDraw';
@@ -232,7 +233,12 @@ export function usePhotoSelectionViewAdapter({
     setEnlargedPhotoIndex(index);
   };
 
-  const workingUri = (photo: SelectedPhoto) => photo.annotatedUri || photo.uri;
+  const sourceUriForEdit = async (photo: SelectedPhoto): Promise<string> => {
+    if (photo.annotatedUri?.startsWith("file://")) {
+      return photo.annotatedUri;
+    }
+    return ensureCappedLocalPhoto(photo);
+  };
 
   const commitEditedUri = async (index: number, resultUri: string) => {
     const fileName = `edited_${Date.now()}.jpg`;
@@ -259,7 +265,7 @@ export function usePhotoSelectionViewAdapter({
     try {
       setIsEditingPhoto(true);
       const result = await ImageManipulator.manipulateAsync(
-        workingUri(photo),
+        await sourceUriForEdit(photo),
         [{ rotate: 90 }],
         { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
       );
@@ -283,7 +289,7 @@ export function usePhotoSelectionViewAdapter({
     try {
       setIsEditingPhoto(true);
       const result = await ImageManipulator.manipulateAsync(
-        workingUri(photo),
+        await sourceUriForEdit(photo),
         [
           {
             crop: {
@@ -315,7 +321,10 @@ export function usePhotoSelectionViewAdapter({
 
     try {
       setIsEditingPhoto(true);
-      const bakedUri = await bakeStrokesOntoPhoto(workingUri(photo), strokes);
+      const bakedUri = await bakeStrokesOntoPhoto(
+        await sourceUriForEdit(photo),
+        strokes,
+      );
       await commitEditedUri(index, bakedUri);
       return true;
     } catch (error: any) {
@@ -514,7 +523,7 @@ export function usePhotoSelectionViewAdapter({
       for (let i = 0; i < selectedPhotos.length; i++) {
         const photo = selectedPhotos[i];
         try {
-          const uriToUpload = photo.annotatedUri || photo.uri;
+          const uriToUpload = await ensureCappedLocalPhoto(photo);
           
           const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
           if (!fileInfo.exists) {

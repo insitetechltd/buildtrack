@@ -317,6 +317,7 @@ export function HybridLibraryPickerScreen() {
           indexSession={albumPicker.indexSession}
           loadingPage={albumPicker.loadingPage}
           onEndReached={albumPicker.onEndReached}
+          onIndexNearEnd={albumPicker.onIndexNearEnd}
           selectedIds={selectedLibraryIds}
           selectionOrderByKey={selectionOrderByKey}
           onPressAsset={onPressLibraryAsset}

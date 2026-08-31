@@ -16,14 +16,14 @@ appId: com.buildtrack.app.local
     id: "root-tab__camera_icon_surface"
 - waitForAnimationToEnd:
     timeout: 2000
-# Prefer camera-tab library entry (starts warm+index prefetch).
+# Prefer camera-tab library entry (starts limited Recents index prefetch on native2b).
 - runFlow:
     when:
       visible:
-        id: "capture-session__library_button"
+        id: "capture-session__library_peek"
     commands:
       - tapOn:
-          id: "capture-session__library_button"
+          id: "capture-session__library_peek"
 - extendedWaitUntil:
     visible:
       id: "capture-session__hybrid_library"

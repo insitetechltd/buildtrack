@@ -53,6 +53,10 @@ export function photokitLookaheadRange(
   if (itemCount <= fillUntil || lookahead < 1) {
     return null;
   }
+  // TF 234: lastVisible -1 is pre-viewability — do not cache page 2 during first paint.
+  if (lastVisibleIndex < 0) {
+    return null;
+  }
   const from = Math.max(lastVisibleIndex + 1, fillUntil);
   const to = Math.min(itemCount, from + lookahead);
   if (to <= from) {

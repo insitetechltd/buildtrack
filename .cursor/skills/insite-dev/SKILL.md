@@ -19,11 +19,12 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 1. Read `documentation/NOW.md` (doing / next / locked / parked)
 2. Read `AGENTS.md` § Current Delivery Status
 3. Skim active rows in `documentation/ROADMAP.md`
-4. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
-5. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
-6. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
-7. **Before Maestro:** SOP §10 — `npm run maestro:locks` (or sim-lock + resource-lock status); check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
-8. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft / multi-company membership:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock (plus dated addenda); append addenda when the user revisits. Multi-company product SoT: `documentation/multi-company-project-membership.md`.
+4. **Intake** — extract a 5-line brief; if THIN, ask ≤4 A/B/C (or GO = defaults) before Planner/Builder. See `~/.cursor/skills/solo-dev-harness/intake.md`.
+5. Run `npm run dev:doctor` — if FAIL, fix machine before Maestro/release claims
+6. State pipeline focus in ≤5 lines (milestone + next proof) — must match NOW
+7. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
+8. **Before Maestro:** SOP §10 — `npm run maestro:locks` (or sim-lock + resource-lock status); check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
+9. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft / multi-company membership:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock (plus dated addenda); append addenda when the user revisits. Multi-company product SoT: `documentation/multi-company-project-membership.md`.
 
 ## Session teardown
 
@@ -45,10 +46,10 @@ Canonical policy: `TESTING_STRATEGY.md`, `maestro/README.md`, `documentation/MAE
 
 ## Multi-critique (orchestrator)
 
-For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/multi-critique-validation.mdc`:
+For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/multi-critique-validation.mdc` **after intake READY**:
 
-- **Plan:** ≥2 parallel critiques (prefer different models) before Builder
-- **Validation:** ≥1 independent critique before “done”; prove focus/keyboard/submit for form primitives
+- **Plan Adversary (Gate A):** ≥2 parallel critiques (prefer different models) before Builder
+- **Proof Adversary (Gate B):** ≥1 independent critique before Judge GO; prove focus/keyboard/submit for form primitives
 - Jest `changeText` alone ≠ tap/focus proof
 
 ## SoT paths
@@ -111,3 +112,7 @@ Prefer concurrent tracks whenever file ownership partitions cleanly.
 ## Trae migration
 
 `.trae/` is legacy. Project law is `.cursor/rules/`. Do not add new Trae-only agents.
+
+## PhotoKit / library picker HUD
+
+When the task is hybrid picker, Recents, `PhotokitThumbs`, HUD `1st`/`meta`/`1st 12`, or Accept spinner after checkmark: read `.cursor/skills/photokit-picker-perf/SKILL.md` and `~/.cursor/skills/native-photos-first-paint/SKILL.md`. Do not sort Recents for first paint. HUD legend: `docs/superpowers/analysis/2026-08-30-photokit-first-paint-journey.md`.

@@ -5,6 +5,7 @@ import {
   getLibraryPickerTimingSnapshot,
   markLibraryPickerMetadata,
   markLibraryPickerTilePainted,
+  markLibraryThumbRequestPx,
   resetLibraryPickerTimingForTests,
   subscribeLibraryPickerTiming,
 } from "../libraryPickerTiming";
@@ -89,6 +90,7 @@ describe("libraryPickerTiming", () => {
     expect(hud).toContain("row —");
     expect(hud).toContain("up —");
     expect(hud).toContain("p2 —");
+    expect(hud).toContain("thumb —");
     expect(hud).not.toContain("1st 12");
     expect(seen.length).toBeGreaterThan(0);
   });
@@ -138,6 +140,15 @@ describe("libraryPickerTiming", () => {
     const snap = getLibraryPickerTimingSnapshot();
     expect(snap?.secondWaveAt).toBe(10_080);
     expect(formatLibraryPickerTimingHud(snap)).toContain("p2 +80ms");
+  });
+
+  it("shows requested PhotoKit thumb pixels on the HUD", () => {
+    beginLibraryPickerSession();
+    markLibraryThumbRequestPx(512);
+    expect(getLibraryPickerTimingSnapshot()?.thumbRequestPx).toBe(512);
+    expect(formatLibraryPickerTimingHud(getLibraryPickerTimingSnapshot())).toContain(
+      "thumb 512px",
+    );
   });
 });
 

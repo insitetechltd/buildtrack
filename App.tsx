@@ -8,7 +8,6 @@ import { autoBootstrapSprint7SandboxForMaestroIfNeeded } from "./src/test-utils/
 import { parseInviteSignInUrl } from "./src/auth/inviteSignInLink";
 import { Linking } from "react-native";
 import ThemeRoot from "./src/theme/ThemeRoot";
-import { useMediaLibraryWakeWarm } from "./src/utils/useMediaLibraryWakeWarm";
 
 // VERSION CONTROL - Increment this to force a fresh app state
 const APP_VERSION = "93.1";
@@ -38,8 +37,6 @@ Last Updated: v13.0
 */
 
 export default function App() {
-  useMediaLibraryWakeWarm();
-
   useEffect(() => {
     const initAuth = async () => {
       try {

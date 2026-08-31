@@ -10,10 +10,10 @@ import {
   peekWarmLibraryPage,
 } from "@/utils/libraryWarmPrefetch";
 import {
-  awaitPhotokitLibraryExpand,
   awaitPhotokitLibraryIndex,
   isPhotokitLibraryIndexPrefetchInFlight,
   peekPhotokitLibraryIndex,
+  requestPhotokitLibraryExpandIfScrolled,
 } from "@/utils/libraryIndexPrefetch";
 import { markLibraryPickerLoadPage } from "@/utils/libraryPickerTiming";
 import { isLibraryPickerNative2b } from "@/utils/libraryPickerPerf";
@@ -31,10 +31,13 @@ import {
   LIBRARY_PREFETCH_UNTIL_COUNT,
   type LibraryAlbumChoice,
 } from "./libraryAlbumConstants";
+import { albumsWithRecentsSentinel, recentsSentinelAlbum } from "./libraryAlbumSearch";
+import {
+  peekRememberedAlbums,
+  rememberAlbums,
+} from "./libraryAlbumPickerMemory";
 
-const DEFAULT_ALBUMS: LibraryAlbumChoice[] = [
-  { id: ALL_PHOTOS_ALBUM_ID, title: "All photos", assetCount: 0 },
-];
+const DEFAULT_ALBUMS: LibraryAlbumChoice[] = [recentsSentinelAlbum()];
 
 function stubAssetFromId(id: string): MediaLibrary.Asset {
   return {
@@ -62,7 +65,9 @@ export function useLibraryGridAssets({
   selectedAlbumId,
   consumeWarmPage = false,
 }: UseLibraryGridAssetsOptions) {
-  const [albums, setAlbums] = useState<LibraryAlbumChoice[]>(DEFAULT_ALBUMS);
+  const [albums, setAlbums] = useState<LibraryAlbumChoice[]>(
+    () => peekRememberedAlbums() ?? DEFAULT_ALBUMS,
+  );
   const [assets, setAssets] = useState<MediaLibrary.Asset[]>([]);
   const [endCursor, setEndCursor] = useState<string | undefined>();
   const [hasNextPage, setHasNextPage] = useState(true);
@@ -115,7 +120,9 @@ export function useLibraryGridAssets({
         .sort((a, b) => a.title.localeCompare(b.title));
 
       albumsLoadedRef.current = true;
-      setAlbums([...DEFAULT_ALBUMS, ...mapped]);
+      const next = albumsWithRecentsSentinel(mapped);
+      rememberAlbums(next);
+      setAlbums(next);
     } catch (error) {
       console.warn("[LibraryGrid] albums failed", error);
       albumsLoadedRef.current = true;
@@ -212,60 +219,20 @@ export function useLibraryGridAssets({
         const albumArg =
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID ? null : selectedAlbumId;
 
-        // Option 2B: warm bridge for first paint, then limited native → same-token expand.
+        // Option 2B: limited Recents first (no sorted warm wait). Expand after first screen.
         if (
           selectedAlbumId === ALL_PHOTOS_ALBUM_ID &&
           isLibraryPickerNative2b() &&
           isPhotokitLibrary2bAvailable()
         ) {
-          bridgeBootstrappingRef.current = true;
-          try {
-            const peekWarm = peekWarmLibraryPage();
-            if (peekWarm && peekWarm.assets.length > 0) {
-              applyBridgeAssets(peekWarm.assets);
-              setEndCursor(peekWarm.endCursor);
-              setHasNextPage(peekWarm.hasNextPage);
-              endCursorRef.current = peekWarm.endCursor;
-              hasNextPageRef.current = peekWarm.hasNextPage;
-            }
-            if (consumeWarmPage) {
-              const warm = await consumeWarmLibraryPageAsync();
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              if (warm && warm.assets.length > 0) {
-                applyBridgeAssets(warm.assets);
-                setEndCursor(warm.endCursor);
-                setHasNextPage(warm.hasNextPage);
-                endCursorRef.current = warm.endCursor;
-                hasNextPageRef.current = warm.hasNextPage;
-              }
-            }
-            if (
-              assetsByIdRef.current.size === 0 &&
-              (isWarmLibraryPrefetchInFlight() ||
-                isPhotokitLibraryIndexPrefetchInFlight(null))
-            ) {
-              const warmLate = await awaitWarmLibraryPage();
-              if (cancelled || openGenRef.current !== openGen) {
-                return;
-              }
-              if (warmLate && warmLate.assets.length > 0) {
-                applyBridgeAssets(warmLate.assets);
-                setEndCursor(warmLate.endCursor);
-                setHasNextPage(warmLate.hasNextPage);
-                endCursorRef.current = warmLate.endCursor;
-                hasNextPageRef.current = warmLate.hasNextPage;
-                if (consumeWarmPage) {
-                  consumeWarmLibraryPage();
-                }
-              }
-            }
-            if (assetsByIdRef.current.size > 0) {
-              setInitialLoadDone(true);
-            }
-          } finally {
-            bridgeBootstrappingRef.current = false;
+          const peekWarm = peekWarmLibraryPage();
+          if (peekWarm && peekWarm.assets.length > 0) {
+            applyBridgeAssets(peekWarm.assets);
+            setEndCursor(peekWarm.endCursor);
+            setHasNextPage(peekWarm.hasNextPage);
+            endCursorRef.current = peekWarm.endCursor;
+            hasNextPageRef.current = peekWarm.hasNextPage;
+            setInitialLoadDone(true);
           }
 
           indexOpeningRef.current = true;
@@ -285,21 +252,6 @@ export function useLibraryGridAssets({
             setInitialLoadDone(true);
             setLoadingPage(false);
             indexOpeningRef.current = false;
-            const expanded = await awaitPhotokitLibraryExpand(
-              albumArg,
-              limited.token,
-            );
-            if (cancelled || openGenRef.current !== openGen) {
-              return;
-            }
-            if (
-              expanded &&
-              expanded.token === limited.token &&
-              expanded.count !== limited.count
-            ) {
-              indexSessionRef.current = expanded;
-              setIndexSession(expanded);
-            }
             return;
           }
           indexOpeningRef.current = false;
@@ -514,6 +466,35 @@ export function useLibraryGridAssets({
     selectedAlbumId,
   ]);
 
+  const onIndexNearEnd = useCallback(
+    (lastVisibleIndex: number, userScrolled: boolean) => {
+      const session = indexSessionRef.current;
+      if (!session) {
+        return;
+      }
+      const albumArg =
+        selectedAlbumId === ALL_PHOTOS_ALBUM_ID ? null : selectedAlbumId;
+      requestPhotokitLibraryExpandIfScrolled(
+        albumArg,
+        session.token,
+        lastVisibleIndex,
+        session.count,
+        userScrolled,
+        (expanded) => {
+          if (expanded.token !== session.token) {
+            return;
+          }
+          if (expanded.count === session.count) {
+            return;
+          }
+          indexSessionRef.current = expanded;
+          setIndexSession(expanded);
+        },
+      );
+    },
+    [selectedAlbumId],
+  );
+
   return {
     albums,
     assets,
@@ -522,6 +503,7 @@ export function useLibraryGridAssets({
     initialLoadDone,
     permission,
     onEndReached,
+    onIndexNearEnd,
     loadAlbumsIfNeeded,
     indexSession,
   };

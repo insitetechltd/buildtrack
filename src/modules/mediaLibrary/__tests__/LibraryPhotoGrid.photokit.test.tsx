@@ -63,10 +63,11 @@ describe("LibraryPhotoGrid L3 native thumbs", () => {
     );
 
     expect(getByTestId("g__tile_image_p0")).toBeTruthy();
-    expect(queryByTestId("g__tile_image_p1")).toBeNull();
+    expect(getByTestId("g__tile_image_p1")).toBeTruthy();
+    expect(queryByTestId("g__tile_image_p2")).toBeNull();
 
     act(() => {
-      jest.advanceTimersByTime(450 * 12);
+      jest.advanceTimersByTime(48 * 12);
     });
 
     expect(getByTestId("g__tile_image_p11")).toBeTruthy();
@@ -74,7 +75,7 @@ describe("LibraryPhotoGrid L3 native thumbs", () => {
     jest.useRealTimers();
   });
 
-  it("caches page-2 IDs without binding them until viewable", () => {
+  it("does not cache page-2 IDs before the first screen is visible", () => {
     jest.useFakeTimers();
     const assets = Array.from({ length: 30 }, (_, i) => asset(`p${i}`));
     const { getByTestId, queryByTestId } = render(
@@ -91,11 +92,8 @@ describe("LibraryPhotoGrid L3 native thumbs", () => {
     );
 
     expect(getByTestId("g__tile_image_p0")).toBeTruthy();
-    expect(queryByTestId("g__tile_image_p1")).toBeNull();
-
-    const cached = (startPhotokitThumbCaching as jest.Mock).mock.calls[0][0] as string[];
-    expect(cached[0]).toBe("p12");
-    expect(cached).not.toContain("p0");
+    expect(queryByTestId("g__tile_image_p12")).toBeNull();
+    expect(startPhotokitThumbCaching).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 });

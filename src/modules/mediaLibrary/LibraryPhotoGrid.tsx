@@ -10,6 +10,8 @@ import {
   Platform,
   PixelRatio,
   useWindowDimensions,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type ViewToken,
 } from "react-native";
 import type * as MediaLibrary from "expo-media-library";
@@ -27,10 +29,12 @@ import {
   LIBRARY_SKELETON_MIN_ROWS,
   LIBRARY_VIEWABILITY_MIN_TIME_MS,
   LIBRARY_VIEWABILITY_THRESHOLD,
+  libraryPhotokitThumbPixelSize,
 } from "@/utils/libraryPickerPerf";
 import {
   beginLibraryPickerScrollUp,
   markLibraryPickerTilePainted,
+  markLibraryThumbRequestPx,
 } from "@/utils/libraryPickerTiming";
 import { useProgressiveGridPaint } from "@/utils/useProgressiveGridPaint";
 import {
@@ -225,6 +229,8 @@ export type LibraryPhotoGridProps = {
   paintResetKey?: string;
   /** Native PHFetchResult session — virtual count, no JS Asset page. */
   indexSession?: PhotokitLibrarySession | null;
+  /** User scrolled near the end of a limited index session. */
+  onIndexNearEnd?: (lastVisibleIndex: number, userScrolled: boolean) => void;
 };
 
 export function LibraryPhotoGrid({
@@ -242,6 +248,7 @@ export function LibraryPhotoGrid({
   placeholderCount = 0,
   paintResetKey = "",
   indexSession = null,
+  onIndexNearEnd,
 }: LibraryPhotoGridProps) {
   const { width } = useWindowDimensions();
   const theme = useMemo(
@@ -254,9 +261,12 @@ export function LibraryPhotoGrid({
     return Math.max(1, Math.floor(inner / LIBRARY_GRID_COLUMNS));
   }, [width]);
   const pixelSize = useMemo(
-    () => Math.max(1, Math.round(tileSize * PixelRatio.get())),
+    () => libraryPhotokitThumbPixelSize(tileSize, PixelRatio.get()),
     [tileSize],
   );
+  useEffect(() => {
+    markLibraryThumbRequestPx(pixelSize);
+  }, [pixelSize]);
   const rowHeight = tileSize + LIBRARY_GRID_GAP;
   const indexMode = indexSession != null;
   const indexCount = indexSession?.count ?? 0;
@@ -278,6 +288,9 @@ export function LibraryPhotoGrid({
   const [visibleRange, setVisibleRange] = useState({ min: 0, max: -1 });
   const [bindBeyondFirstScreen, setBindBeyondFirstScreen] = useState(false);
   const leftFirstScreenRef = useRef(false);
+  const userScrolledRef = useRef(false);
+  const onIndexNearEndRef = useRef(onIndexNearEnd);
+  onIndexNearEndRef.current = onIndexNearEnd;
   const idCacheRef = useRef<{ token: number; ids: Map<number, string> }>({
     token: 0,
     ids: new Map(),
@@ -390,6 +403,7 @@ export function LibraryPhotoGrid({
 
   useEffect(() => {
     leftFirstScreenRef.current = false;
+    userScrolledRef.current = false;
     setVisibleRange({ min: 0, max: -1 });
     setBindBeyondFirstScreen(false);
     idCacheRef.current = { token: indexToken, ids: new Map() };
@@ -400,15 +414,7 @@ export function LibraryPhotoGrid({
       return;
     }
     if (indexSession) {
-      const range = photokitLookaheadRange(-1, indexSession.count);
-      if (range) {
-        startPhotokitRangeCaching(
-          indexSession.token,
-          range.from,
-          range.to,
-          pixelSize,
-        );
-      }
+      // TF 234: do not startCachingRange for page 2 while first 12 decode.
       return;
     }
     const range = photokitLookaheadRange(-1, assets.length);
@@ -463,15 +469,18 @@ export function LibraryPhotoGrid({
         if (leftFirstScreenRef.current && minIdx < 1) {
           beginLibraryPickerScrollUp();
         }
-        const range = photokitLookaheadRange(lastItem, session.count);
-        if (range) {
-          startPhotokitRangeCaching(
-            session.token,
-            range.from,
-            range.to,
-            pixelSizeRef.current,
-          );
+        if (leftFirstScreenRef.current) {
+          const range = photokitLookaheadRange(lastItem, session.count);
+          if (range) {
+            startPhotokitRangeCaching(
+              session.token,
+              range.from,
+              range.to,
+              pixelSizeRef.current,
+            );
+          }
         }
+        onIndexNearEndRef.current?.(lastItem, userScrolledRef.current);
         return;
       }
       viewabilityRef.current(indices);
@@ -506,6 +515,15 @@ export function LibraryPhotoGrid({
     }
     onEndReached();
   }, [assets.length, indexSession, onEndReached]);
+
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (event.nativeEvent.contentOffset.y > 8) {
+        userScrolledRef.current = true;
+      }
+    },
+    [],
+  );
 
   const getItemLayout = useCallback(
     (_: unknown, row: number) => photokitGridRowLayout(row, rowHeight),
@@ -629,6 +647,7 @@ export function LibraryPhotoGrid({
   if (bindTokenRef.current !== indexToken) {
     bindTokenRef.current = indexToken;
     leftFirstScreenRef.current = false;
+    userScrolledRef.current = false;
     idCacheRef.current = { token: indexToken, ids: new Map() };
     if (bindBeyondFirstScreen) {
       setBindBeyondFirstScreen(false);
@@ -661,6 +680,8 @@ export function LibraryPhotoGrid({
           numColumns={1}
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           extraData={extraData}
           getItemLayout={getItemLayout}
           initialNumToRender={LIBRARY_GRID_INITIAL_ROWS}

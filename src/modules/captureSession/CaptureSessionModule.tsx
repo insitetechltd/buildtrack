@@ -9,7 +9,6 @@ import { CaptureSessionCameraScreen } from "./CaptureSessionCameraScreen";
 import { HybridLibraryPickerScreen } from "./HybridLibraryPickerScreen";
 import { resetCaptureSession, useCaptureSessionStore } from "./sessionDraftStore";
 import { startLibraryCapturePrefetch } from "../../utils/libraryCapturePrefetch";
-import { clearPhotokitLibraryIndexPrefetch } from "../../utils/libraryIndexPrefetch";
 import { beginLibraryPickerSession } from "../../utils/libraryPickerTiming";
 
 export type { CaptureSessionHostProps } from "./CaptureSessionHostContext";
@@ -37,7 +36,6 @@ export function CaptureSessionModule({
     startLibraryCapturePrefetch();
     return () => {
       resetCaptureSession();
-      clearPhotokitLibraryIndexPrefetch();
     };
   }, [selectionLimit, setSelectionLimit]);
 

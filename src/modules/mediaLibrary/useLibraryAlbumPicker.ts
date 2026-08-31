@@ -3,8 +3,13 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { clearLibraryThumbnailMemoryCache } from "@/utils/libraryThumbnailCache";
 import {
   ALL_PHOTOS_ALBUM_ID,
+  RECENTS_ALBUM_TITLE,
   type LibraryAlbumChoice,
 } from "./libraryAlbumConstants";
+import {
+  peekRememberedAlbumId,
+  rememberAlbumId,
+} from "./libraryAlbumPickerMemory";
 import { useLibraryGridAssets } from "./useLibraryGridAssets";
 
 type UseLibraryAlbumPickerOptions = {
@@ -17,7 +22,7 @@ export function useLibraryAlbumPicker({
   consumeWarmPage = false,
 }: UseLibraryAlbumPickerOptions) {
   const [selectedAlbumId, setSelectedAlbumId] = useState<string>(
-    ALL_PHOTOS_ALBUM_ID,
+    () => peekRememberedAlbumId() || ALL_PHOTOS_ALBUM_ID,
   );
   const [albumPickerOpen, setAlbumPickerOpen] = useState(false);
 
@@ -28,17 +33,22 @@ export function useLibraryAlbumPicker({
   });
 
   useEffect(() => {
-    if (albumPickerOpen && enabled) {
+    if (enabled) {
       void grid.loadAlbumsIfNeeded();
     }
   }, [albumPickerOpen, enabled, grid.loadAlbumsIfNeeded]);
 
+  useEffect(() => {
+    rememberAlbumId(selectedAlbumId);
+  }, [selectedAlbumId]);
+
   const selectedAlbumTitle = useMemo(() => {
     const match = grid.albums.find((a) => a.id === selectedAlbumId);
-    return match?.title ?? "All photos";
+    return match?.title ?? RECENTS_ALBUM_TITLE;
   }, [grid.albums, selectedAlbumId]);
 
   const onSelectAlbum = useCallback((albumId: string) => {
+    rememberAlbumId(albumId);
     setAlbumPickerOpen(false);
     clearLibraryThumbnailMemoryCache();
     setSelectedAlbumId(albumId);

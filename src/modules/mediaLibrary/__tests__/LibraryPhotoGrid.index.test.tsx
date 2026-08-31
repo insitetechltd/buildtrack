@@ -76,10 +76,7 @@ describe("LibraryPhotoGrid Photos index", () => {
     expect(getByTestId("g__tile_image_t7_17")).toBeTruthy();
     expect(queryByTestId("g__tile_image_t7_18")).toBeNull();
 
-    const range = mockStartPhotokitRangeCaching.mock.calls[0];
-    expect(range[0]).toBe(7);
-    expect(range[1]).toBe(12);
-    expect(range[2]).toBe(27);
+    expect(mockStartPhotokitRangeCaching).not.toHaveBeenCalled();
 
     jest.useRealTimers();
   });

@@ -8,8 +8,9 @@ import * as FileSystem from 'expo-file-system/legacy';
  */
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
-const MAX_IMAGE_WIDTH = 1920; // Max width for images
-const MAX_IMAGE_HEIGHT = 1920; // Max height for images
+/** Jobsite evidence long-edge cap (M-PERF-02). PhotoKit export must match. */
+export const MAX_IMAGE_WIDTH = 1920;
+export const MAX_IMAGE_HEIGHT = 1920;
 const INITIAL_QUALITY = 0.8; // Initial compression quality (80%)
 const MIN_QUALITY = 0.3; // Minimum quality we'll go (30%)
 

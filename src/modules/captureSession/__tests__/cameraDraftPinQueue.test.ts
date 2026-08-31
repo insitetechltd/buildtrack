@@ -1,5 +1,4 @@
 import { pinDraftMedia } from "../../../utils/draftMediaCache";
-import { materializeSelectedCapturePhotos } from "../materializeLibrarySelection";
 import {
   enqueueCameraDraftPin,
   flushCameraDraftPins,
@@ -13,18 +12,6 @@ import {
 
 jest.mock("../../../utils/draftMediaCache", () => ({
   pinDraftMedia: jest.fn(),
-}));
-
-jest.mock("../materializeLibrarySelection", () => ({
-  materializeSelectedCapturePhotos: jest.fn(async (photos: { uri: string }[]) =>
-    photos
-      .filter((photo: { selected?: boolean }) => photo.selected !== false)
-      .map((photo) => ({
-        uri: photo.uri,
-        fileName: "x.jpg",
-        isAnnotated: false,
-      })),
-  ),
 }));
 
 function deferred<T>() {
@@ -150,7 +137,7 @@ describe("cameraDraftPinQueue", () => {
     expect(photos[0].uri).toBe("file://cache-b.jpg");
   });
 
-  it("prepareCaptureSessionAccept flushes then re-reads store before materialize", async () => {
+  it("prepareCaptureSessionAccept flushes camera pins and maps library ph:// without export", async () => {
     const pin = deferred<string>();
     (pinDraftMedia as jest.Mock).mockReturnValue(pin.promise);
     useCaptureSessionStore.getState().addCameraPhoto({
@@ -163,17 +150,32 @@ describe("cameraDraftPinQueue", () => {
       sourceUri: "file://cache-a.jpg",
       fileName: "a.jpg",
     });
+    useCaptureSessionStore.getState().addOrSelectLibraryPhoto({
+      id: "lib_1",
+      uri: "ph://keep",
+      fileName: "keep.jpg",
+      mediaLibraryAssetId: "keep",
+    });
 
     const acceptPromise = prepareCaptureSessionAccept();
     pin.resolve("file://draft/a.jpg");
     const result = await acceptPromise;
 
-    expect(materializeSelectedCapturePhotos).toHaveBeenCalledTimes(1);
-    const passed = (materializeSelectedCapturePhotos as jest.Mock).mock
-      .calls[0][0];
-    expect(passed[0].uri).toBe("file://draft/a.jpg");
     expect(result.failedCount).toBe(0);
-    expect(result.photos[0].uri).toBe("file://draft/a.jpg");
+    expect(result.photos).toEqual([
+      {
+        uri: "file://draft/a.jpg",
+        fileName: "a.jpg",
+        isAnnotated: false,
+        mediaLibraryAssetId: undefined,
+      },
+      {
+        uri: "ph://keep",
+        fileName: "keep.jpg",
+        isAnnotated: false,
+        mediaLibraryAssetId: "keep",
+      },
+    ]);
   });
 
   it("does not wait on a previous session's hung pin", async () => {

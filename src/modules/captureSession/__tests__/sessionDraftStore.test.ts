@@ -6,6 +6,10 @@ import {
   useCaptureSessionStore,
 } from "../sessionDraftStore";
 import type { CaptureSessionPhoto } from "../types";
+import {
+  peekRememberedAlbumId,
+  rememberAlbumId,
+} from "../../mediaLibrary/libraryAlbumPickerMemory";
 
 describe("captureSession sessionDraftStore", () => {
   beforeEach(() => {
@@ -70,7 +74,7 @@ describe("captureSession sessionDraftStore", () => {
     expect(photos.find((p) => p.id === "lib_1")?.selected).toBe(true);
   });
 
-  it("records library picks without requiring a file:// uri (defer pin to Accept)", () => {
+  it("records library picks without requiring a file:// uri (defer pin to annotation/upload)", () => {
     const { addOrSelectLibraryPhoto } = useCaptureSessionStore.getState();
     addOrSelectLibraryPhoto({
       id: "lib_ph",
@@ -120,5 +124,11 @@ describe("mapSessionSelectionToSelectedPhotos", () => {
         mediaLibraryAssetId: "C",
       },
     ]);
+  });
+
+  it("clears remembered library album when the capture session resets", () => {
+    rememberAlbumId("shots");
+    resetCaptureSession();
+    expect(peekRememberedAlbumId()).toBe("__all__");
   });
 });

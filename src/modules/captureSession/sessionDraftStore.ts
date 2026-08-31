@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import { resetLibraryAlbumPickerMemory } from "../mediaLibrary/libraryAlbumPickerMemory";
 import type { CaptureSessionPhoto } from "./types";
 
 type CaptureSessionState = {
@@ -164,4 +165,5 @@ export const useCaptureSessionStore = create<CaptureSessionState>((set, get) => 
 
 export function resetCaptureSession(): void {
   useCaptureSessionStore.getState().reset();
+  resetLibraryAlbumPickerMemory();
 }

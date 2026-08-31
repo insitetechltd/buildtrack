@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import * as MediaLibrary from "expo-media-library";
 
 import { invalidateMediaLibraryPermissionCache } from "@/utils/mediaLibraryPermission";
+import { resetLibraryAlbumPickerMemory } from "../libraryAlbumPickerMemory";
 import { useLibraryGridAssets } from "../useLibraryGridAssets";
 
 jest.mock("expo-media-library", () => ({
@@ -36,6 +37,7 @@ function page(ids: string[], endCursor: string, hasNextPage: boolean) {
 describe("useLibraryGridAssets first screen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetLibraryAlbumPickerMemory();
     invalidateMediaLibraryPermissionCache();
     mockGetPermissionsAsync.mockResolvedValue({
       granted: true,

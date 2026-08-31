@@ -22,6 +22,7 @@ That is a **feel** bar, not a “first `getAssetsAsync` returned” bar. Spinner
 | Open hybrid library (from camera overlay) | First row of **placeholders** immediately; thumbs replace them in a stream | Full-screen spinner, blank white, or 1–2 thumbs then a long freeze |
 | Stay still on first screen | Remaining first-screen tiles appear continuously (row-scale), no “thinking” chrome | Footer spinner as the main signal; then a wave of tiles |
 | Scroll down | Next rows already decoded or appear as they enter the viewport | Hit the bottom → wait → spinner → batch dump |
+| Scroll indicator | Thumb travels the **whole library** (tens of thousands). Drag-jump lands on that index. | Indicator only covers pages already fetched (12, then 30, …) |
 | Scroll back up | Recycled tiles paint from cache, no re-decode hitch | Blank holes, re-decode flash |
 | Leave picker (Accept) | Pin / iCloud export may take time **with** a determinate affordance | Freeze the grid itself to pin |
 
@@ -49,7 +50,7 @@ getAssetsAsync (IDs + ph://)  →  FlatList  →  RN Image { uri: ph:// }
 - Metadata pages are cheap.
 - Each mounted `Image` asks PhotoKit **through the RN image pipeline** with **no explicit target size** (we already avoided expo-image’s maximum-size bug; we still do not pass `PHImageManager` targetSize).
 - JS schedules mounts (`initialNumToRender`, `windowSize`, page size). Too many at once → PhotoKit queue → user waits → then a **wave**. Too few without prefetch → user hits a spinner at the bottom.
-- `LIBRARY_SCROLL_LOOKAHEAD_ITEMS` exists in `libraryPickerPerf.ts` but is **not wired** to decode-ahead (viewport prefetch was dropped when grid moved to system `ph://`).
+- `LIBRARY_SCROLL_LOOKAHEAD_ITEMS` exists in `libraryPickerPerf.ts`. On iOS L3 it feeds `PHCachingImageManager.startCachingImages`; the RN `Image` + `ph://` fallback still does not decode-ahead.
 
 So: C1 (camera stays mounted) and permission cache **reduce** “processing” chrome. They cannot make the grid feel native, because decode still happens one RN view at a time on the wrong API.
 
@@ -97,19 +98,41 @@ Thin native module (or Expo module) used **only for grid browse**:
 
 **Cost:** native rebuild / TF; iOS first (jobsite). Android: Glide/`content://` thumbnailer in a later slice.
 
-### Layer C — Native collection view (optional, later)
+### Layer C — The library itself (not another page size)
 
-Replace FlatList with a native grid that owns scrolling + cells. Maximum Instagram parity; largest product/QA surface. Only if Layer B on FlatList is still short.
+Instagram is not “faster paging.” It is **tapped into Photos**:
+
+- `PHFetchResult` is a live index. `count` is known immediately (10k–100k). `object(at: i)` does not require loading 0…i.
+- `UICollectionView` `contentSize` uses that count, so the **scrollbar is the whole library**.
+- Cells call `requestImage` as they appear. There is no `getAssetsAsync` cursor, no footer spinner, no “second batch.”
+
+Our path still **copies** a window of IDs into JS (`12` then `18`). FlatList can only scroll what we have copied. Prefetching one extra page hides one hitch. It cannot make a 50k-photo scrollbar.
+
+**C1 (recommended next, idle-parallel):** keep RN FlatList + Insite chrome. Native module holds one `PHFetchResult`. JS gets `count` on open; list length = count; `getItemLayout`; native thumb view takes **index** (or id-at-index). No page spinner. Android stays paged `Image` until a MediaStore cursor slice.
+
+**C1 locks from Gate B on prefetch-18 (NO-GO as the Instagram fix):**
+
+- Do not claim a paged JS list is continuous. A wall at 30 is the same stall as a wall at 12.
+- Do not bind thumbs only after JS `onViewableItemsChanged` — that flashes skeletons on fling and on scroll-back.
+- Do not treat HUD `p2` as proof of decode; it includes time-to-scroll.
+- Keep first-screen `requestImage` uncontested (TF 212: do not `startCaching` the visible 0–11).
+
+**C2 (later, only if C1 scroll physics still fail):** native `UICollectionView` owns the scroll view too.
+
+Do **not** load 50k asset objects into JS. Do **not** PHPicker. Do **not** New Arch / FlashList v2.
 
 ---
 
 ## Recommended sequence (idle-parallel vs ENV-01)
 
-1. **Do not** make L3 jump `M-OPS-ENV-01`. Idle-parallel is OK.
-2. **Stop** `PAGE_SIZE` experiments. First screen **12** / scroll **18** is the JS baseline.
-3. **L1+L2 (this TF):** HUD + skeletons + stagger URI. **Stop before L3.**
-4. **L3 spike** after TF timings: iOS native thumbs for hybrid grid browse.
-5. Port thumbs to `InAppLibraryPicker` only after hybrid is proven (L7).
+Does **not** jump `M-OPS-ENV-01` Phase D.
+
+1. **Stop.** No more `PAGE_SIZE`, prefetch-18, or JS page walls.
+2. **L1–L3 (done on TF 213):** HUD, skeletons, native tile thumbs. First screen is fast. List is still 12-then-18.
+3. **Next (one slice) — Photos index:** native `PHFetchResult`; JS `count` + FlatList length = whole library; existing `PhotokitThumbView` takes **index**. No footer spinner. Android stays paged. Headed pass: scrollbar spans the library; fling hundreds of rows with no wait; first 12 stays in the TF 213 band.
+4. **Only if 3 still feels like JS scrolling:** native `UICollectionView` owns the scroll view.
+5. **After browse is continuous (order):** iCloud-only blank tiles (L4) → Select Photos annotate lag (A1) → retire duplicate `InAppLibraryPicker` (L7) → Android MediaStore index.
+6. **Stay tabled:** `M-CAPTURE-01` zoom, `M-CAPTURE-02` tile resize, PHPicker as UI, New Arch / FlashList v2.
 
 `M-CAPTURE-02` (user-resizable tiles) stays tabled — resizing fights cache keys until L3 `targetSize` exists.
 
@@ -141,6 +164,8 @@ Shared brief sent identically to three evaluators. **Consensus, not one model as
 **Orchestrator recommendation:** **Do not GO-NOW as pipeline #1.** **Do GO L3 as idle-parallel spike** (hybrid grid only, iOS `PHCachingImageManager` + tile `targetSize`). Same-session stopwatch (overlay open → first row → 12 visible) is enough L1 — user already reported long first batch; do not wait a week of metrics. Layer A skeletons can ship in JS beside L3. **`M-OPS-ENV-01` stays #1.**
 
 **Disagreement:** Gemini listed keep-mounted + skeletons + start L3 in the same next-three. GPT/Grok wanted timed proof before native. Fold: start L3 spike **and** a 5-minute headed stopwatch; do not block the spike on a new metrics framework.
+
+**User lock (2026-08-29, headed 213):** first screen is native-fast. Remaining miss is whole-library scroll. Recommended remaining sequence is the Photos-index slice, then UICollectionView only if that still fails.
 
 Updated: 2026-08-29
 

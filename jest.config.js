@@ -22,6 +22,8 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
+  // Keep crawl out of .eas local-build trees (Haste stalls on KooDrive).
+  roots: ['<rootDir>/src', '<rootDir>/__tests__'],
   testMatch: [
     '**/__tests__/**/*.(test|spec).[jt]s?(x)',
     '**/?(*.)+(spec|test).[jt]s?(x)',
@@ -29,8 +31,20 @@ module.exports = {
   testPathIgnorePatterns: [
     '<rootDir>/.tmp/',
     '<rootDir>/.worktrees/',
-    '<rootDir>/.eas/local-build/',
+    '<rootDir>/.eas/',
     '<rootDir>/.cache/',
+    '<rootDir>/.dbg/',
+    '<rootDir>/archived-tests/',
+    '<rootDir>/apps/owner/',
+  ],
+  modulePathIgnorePatterns: [
+    '<rootDir>/.eas/',
+    '<rootDir>/.tmp/',
+    '<rootDir>/.worktrees/',
+    '<rootDir>/.cache/',
+    '<rootDir>/.dbg/',
+    '<rootDir>/archived-tests/',
+    '<rootDir>/apps/owner/',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
 };

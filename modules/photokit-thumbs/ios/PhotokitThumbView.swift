@@ -24,6 +24,7 @@ public final class PhotokitThumbView: ExpoView {
     imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     imageView.frame = bounds
     addSubview(imageView)
+    PhotokitThumbEngine.liveThumbViews.add(self)
   }
 
   public override func layoutSubviews() {
@@ -33,6 +34,9 @@ public final class PhotokitThumbView: ExpoView {
   }
 
   func requestIfNeeded() {
+    if PhotokitThumbEngine.pausedForAccept {
+      return
+    }
     guard pixelSize >= 1 else {
       return
     }
@@ -97,7 +101,12 @@ public final class PhotokitThumbView: ExpoView {
   }
 
   deinit {
+    cancelPendingRequest()
+  }
+
+  func cancelPendingRequest() {
     cancelRequest()
+    requestedKey = ""
   }
 
   private func cancelRequest() {

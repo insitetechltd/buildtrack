@@ -136,7 +136,7 @@ User agreed: **fix camera first**, then measure library (L1) before bigger picke
 
 | ID | Task |
 |---|---|
-| **L3** | Native PhotoKit thumbnails — **E2E bar:** `../analysis/2026-08-29-instagram-class-picker-e2e.md` — **stopped before this TF** |
+| **L3** | Native PhotoKit thumbnails — `modules/photokit-thumbs` + `LibraryPhotoGrid` native view. **In progress (2026-08-29).** Needs native rebuild (`npx expo run:ios` or TF). Android stays RN `Image` + `ph://`. |
 | L4 | iCloud blank tile `onError` fallback |
 | L6 | Tune warm / first page if metrics need it |
 | A1 | Select Photos annotation perf (rotate/crop/draw Done) |

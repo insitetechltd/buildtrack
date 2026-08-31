@@ -171,7 +171,7 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     });
   });
 
-  it("pins library assets and passes mediaLibraryAssetId through onSave", async () => {
+  it("returns ph:// library rows on Accept without exporting originals", async () => {
     const onSave = jest.fn();
     const { findByTestId } = render(
       <InAppLibraryPickerScreen onCancel={jest.fn()} onSave={onSave} />,
@@ -189,10 +189,11 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
-    expect(mockPinDraftMedia).toHaveBeenCalledWith("file:///tmp/site.jpg", "site.jpg");
+    expect(mockPinDraftMedia).not.toHaveBeenCalled();
+    expect(mockGetAssetInfoAsync).not.toHaveBeenCalled();
     expect(onSave).toHaveBeenCalledWith([
       expect.objectContaining({
-        uri: "pinned:file:///tmp/site.jpg",
+        uri: "ph://asset-42",
         fileName: "site.jpg",
         mediaLibraryAssetId: "asset-42",
         isAnnotated: false,
@@ -245,9 +246,6 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     );
 
     await findByTestId("in-app-library__grid");
-    await waitFor(() => {
-      expect(mockGetAssetInfoAsync).toHaveBeenCalledWith(preselectedAsset.id);
-    });
 
     await act(async () => {
       fireEvent.press(await findByTestId("in-app-library__accept"));
@@ -256,8 +254,10 @@ describe("InAppLibraryPickerScreen save / cancel (upload-flow handoff)", () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledTimes(1);
     });
+    expect(mockGetAssetInfoAsync).not.toHaveBeenCalled();
     expect(onSave).toHaveBeenCalledWith([
       expect.objectContaining({
+        uri: "pinned:file:///tmp/old-site.jpg",
         fileName: "old-site.jpg",
         mediaLibraryAssetId: preselectedAsset.id,
         isAnnotated: false,

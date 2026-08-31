@@ -59,9 +59,9 @@ current-task-detail-runtime.png
 # typescript
 *.tsbuildinfo
 
-# iOS & Android
-ios/
-android/
+# Expo prebuild output only (do not ignore modules/*/ios — that drops local Expo pods)
+/ios/
+/android/
 
 # Android Keystore (explicit - android/ is already ignored but being explicit)
 *.keystore
@@ -112,3 +112,8 @@ test_output.txt
 
 # Parity run scratch (not golden baseline)
 src/__tests__/parity/matrix/golden-old/.run-*
+
+# ASC automation scratch
+.cache/asc-venv/
+.cache/asc-api/
+.cache/owner-asc-app.json

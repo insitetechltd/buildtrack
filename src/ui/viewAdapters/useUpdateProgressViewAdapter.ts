@@ -7,6 +7,7 @@ import { useTaskStore } from "../../state/taskStore.supabase";
 import { useTranslation } from "../../utils/useTranslation";
 import { TaskStatus } from "../../types/buildtrack";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
+import { ensureCappedLocalPhoto } from "../../utils/ensureCappedLocalPhoto";
 import { returnToTaskDetailAfterUpdateProgress } from "../../navigation/photoFlowNavigation";
 import { navigateToAddPhotosCaptureSession } from "../../navigation/captureFirstCameraFlow";
 import type { 
@@ -170,7 +171,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
     for (let i = 0; i < photosToUpload.length; i++) {
       const photo = photosToUpload[i];
       try {
-        const uriToUpload = photo.annotatedUri || photo.uri;
+        const uriToUpload = await ensureCappedLocalPhoto(photo);
         const fileInfo = await FileSystem.getInfoAsync(uriToUpload);
         if (!fileInfo.exists) continue;
 

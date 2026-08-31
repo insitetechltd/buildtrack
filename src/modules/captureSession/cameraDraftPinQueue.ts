@@ -1,5 +1,5 @@
 import { pinDraftMedia } from "../../utils/draftMediaCache";
-import { materializeSelectedCapturePhotos } from "./materializeLibrarySelection";
+import { mapSessionSelectionToSelectedPhotos } from "./mapToSelectedPhotos";
 import { useCaptureSessionStore } from "./sessionDraftStore";
 import type { CaptureSessionResult } from "./types";
 
@@ -73,14 +73,16 @@ export async function flushCameraDraftPins(): Promise<{ failedCount: number }> {
   return { failedCount: failedNow.length };
 }
 
-/** Accept path: settle camera pins, re-read store, then materialize. */
+/** Accept: camera pins only. Library rows stay ph:// until Draw/upload. */
 export async function prepareCaptureSessionAccept(): Promise<
   CaptureSessionResult & { failedCount: number }
 > {
   const { failedCount } = await flushCameraDraftPins();
   const photos = useCaptureSessionStore.getState().photos;
-  const mapped = await materializeSelectedCapturePhotos(photos);
-  return { photos: mapped, failedCount };
+  return {
+    photos: mapSessionSelectionToSelectedPhotos(photos),
+    failedCount,
+  };
 }
 
 /** Test helper — not used in production UI. */

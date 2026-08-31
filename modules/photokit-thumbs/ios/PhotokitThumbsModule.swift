@@ -61,6 +61,31 @@ enum PhotokitThumbEngine {
     label: "insite.photokit.library",
     qos: .userInitiated
   )
+  /// TF 235: expand/openLibrary + live thumbs starve `getAssetInfoAsync` on Accept.
+  static var pausedForAccept = false
+  static let liveThumbViews = NSHashTable<PhotokitThumbView>.weakObjects()
+
+  static func pauseLibraryForAccept() {
+    pausedForAccept = true
+    let apply = {
+      sessionLock.lock()
+      cachedRange = nil
+      sessionLock.unlock()
+      manager.stopCachingImagesForAllAssets()
+      for view in liveThumbViews.allObjects {
+        view.cancelPendingRequest()
+      }
+    }
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.sync(execute: apply)
+    }
+  }
+
+  static func resumeLibraryAfterAccept() {
+    pausedForAccept = false
+  }
 
   static func beginOpen() -> Int {
     sessionLock.lock()
@@ -79,7 +104,8 @@ enum PhotokitThumbEngine {
     return options
   }
 
-  static let maxThumbPixel: CGFloat = 256
+  /// Keep in sync with JS `LIBRARY_PHOTOKIT_THUMB_BASE_CAP_PX * LINEAR_SCALE` (TF237=256, 2× experiment=512).
+  static let maxThumbPixel: CGFloat = 512
 
   static func targetSize(pixelSize: Double) -> CGSize {
     let n = min(max(pixelSize, 1), maxThumbPixel)
@@ -101,6 +127,15 @@ enum PhotokitThumbEngine {
         NSSortDescriptor(key: "creationDate", ascending: false),
       ]
     }
+    return options
+  }
+
+  /// TF 235: `mediaType == image` on Recents still scanned the album (~9–14s).
+  /// Camera Roll physical order is indexed; filter images while walking from the end.
+  static func recentsPhysicalOptions() -> PHFetchOptions {
+    let options = PHFetchOptions()
+    options.includeHiddenAssets = false
+    options.wantsIncrementalChangeDetails = false
     return options
   }
 
@@ -157,8 +192,45 @@ enum PhotokitThumbEngine {
     return session
   }
 
-  /// Option 2B: newest `limit` assets. Prefer fetchLimit+creationDate (capped set).
-  /// Fall back to Recents reverse-enum if sorted fetch returns empty.
+  /// Newest `limit` Recents without `creationDate` sort.
+  /// TF 220 / TF 234: fetchLimit + sort still scanned the library (~7–13s).
+  /// Recents is oldest-first physically; display 0 = `object(at: count-1)`.
+  static func newestRecents(limit: Int) -> [PHAsset] {
+    let capped = max(1, min(limit, 200))
+    let recents = PHAssetCollection.fetchAssetCollections(
+      with: .smartAlbum,
+      subtype: .smartAlbumUserLibrary,
+      options: nil
+    )
+    guard let collection = recents.firstObject else {
+      return []
+    }
+    let result = PHAsset.fetchAssets(
+      in: collection,
+      options: recentsPhysicalOptions()
+    )
+    let total = result.count
+    guard total > 0 else {
+      return []
+    }
+    var assets: [PHAsset] = []
+    assets.reserveCapacity(capped)
+    var physical = total - 1
+    let maxWalk = min(total, max(capped * 8, 200))
+    var walked = 0
+    while physical >= 0, assets.count < capped, walked < maxWalk {
+      let asset = result.object(at: physical)
+      if asset.mediaType == .image {
+        assets.append(asset)
+      }
+      physical -= 1
+      walked += 1
+    }
+    return assets
+  }
+
+  /// Option 2B: newest `limit` assets. Recents = unsorted + index-from-end.
+  /// Named albums keep fetchLimit + creationDate (usually small).
   /// Do not call stopCachingImagesForAllAssets unless replacing an existing session
   /// (cold open was paying a multi-second cache flush — TF 233).
   static func openLibraryLimited(
@@ -171,40 +243,7 @@ enum PhotokitThumbEngine {
     assets.reserveCapacity(capped)
 
     if albumId.isEmpty || albumId == "__all__" {
-      let recents = PHAssetCollection.fetchAssetCollections(
-        with: .smartAlbum,
-        subtype: .smartAlbumUserLibrary,
-        options: nil
-      )
-      if let collection = recents.firstObject {
-        let limitedOpts = fetchOptions(sorted: true)
-        limitedOpts.fetchLimit = capped
-        let limitedResult = PHAsset.fetchAssets(in: collection, options: limitedOpts)
-        limitedResult.enumerateObjects { asset, _, stop in
-          assets.append(asset)
-          if assets.count >= capped {
-            stop.pointee = true
-          }
-        }
-      }
-      if assets.isEmpty {
-        let (result, reversed) = fetchRecentsOrAll()
-        if reversed {
-          result.enumerateObjects(options: .reverse) { asset, _, stop in
-            assets.append(asset)
-            if assets.count >= capped {
-              stop.pointee = true
-            }
-          }
-        } else {
-          result.enumerateObjects { asset, _, stop in
-            assets.append(asset)
-            if assets.count >= capped {
-              stop.pointee = true
-            }
-          }
-        }
-      }
+      assets = newestRecents(limit: capped)
     } else {
       let collections = PHAssetCollection.fetchAssetCollections(
         withLocalIdentifiers: [albumId],
@@ -234,6 +273,44 @@ enum PhotokitThumbEngine {
     if librarySession != nil {
       manager.stopCachingImagesForAllAssets()
     }
+    cachedRange = nil
+    let session = PhotokitLibrarySession(
+      token: nextToken,
+      backing: .displayOrder(assets)
+    )
+    nextToken += 1
+    librarySession = session
+    return session
+  }
+
+  /// Fast path: resolve a persisted newest-N id list (no Recents scan).
+  /// Must not sit on `workQueue` behind expandLibraryFull (TF 235 reopen tax).
+  static func openLibraryWithIds(_ ids: [String]) -> PhotokitLibrarySession? {
+    let capped = ids.prefix(200).filter { !$0.isEmpty }
+    guard !capped.isEmpty else {
+      return nil
+    }
+    let result = PHAsset.fetchAssets(
+      withLocalIdentifiers: Array(capped),
+      options: nil
+    )
+    var map: [String: PHAsset] = [:]
+    map.reserveCapacity(result.count)
+    result.enumerateObjects { asset, _, _ in
+      map[asset.localIdentifier] = asset
+    }
+    var assets: [PHAsset] = []
+    assets.reserveCapacity(capped.count)
+    for id in capped {
+      if let asset = map[id], asset.mediaType == .image {
+        assets.append(asset)
+      }
+    }
+    guard !assets.isEmpty else {
+      return nil
+    }
+    sessionLock.lock()
+    defer { sessionLock.unlock() }
     cachedRange = nil
     let session = PhotokitLibrarySession(
       token: nextToken,
@@ -359,6 +436,49 @@ enum PhotokitThumbEngine {
     }
     return ids
   }
+
+  /// Jobsite evidence export (M-PERF-02). Independent of grid `maxThumbPixel`.
+  static func exportCappedJpeg(assetId: String, maxPixel: Double) -> String? {
+    let fetched = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+    guard let asset = fetched.firstObject else {
+      return nil
+    }
+    let options = PHImageRequestOptions()
+    options.deliveryMode = .highQualityFormat
+    options.resizeMode = .exact
+    options.isNetworkAccessAllowed = true
+    options.isSynchronous = true
+    options.version = .current
+    let cap = min(max(maxPixel, 1), 4096)
+    let target = CGSize(width: cap, height: cap)
+    var rendered: UIImage?
+    PHImageManager.default().requestImage(
+      for: asset,
+      targetSize: target,
+      contentMode: .aspectFit,
+      options: options
+    ) { image, info in
+      let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+      let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+      if cancelled || degraded {
+        return
+      }
+      rendered = image
+    }
+    guard let image = rendered, let data = image.jpegData(compressionQuality: 0.85) else {
+      return nil
+    }
+    guard let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+      return nil
+    }
+    let url = dir.appendingPathComponent("insite-export-\(UUID().uuidString).jpg")
+    do {
+      try data.write(to: url, options: .atomic)
+      return url.absoluteString
+    } catch {
+      return nil
+    }
+  }
 }
 
 public final class PhotokitThumbsModule: Module {
@@ -385,6 +505,14 @@ public final class PhotokitThumbsModule: Module {
       PhotokitThumbEngine.manager.stopCachingImagesForAllAssets()
     }
 
+    Function("pauseLibraryForAccept") {
+      PhotokitThumbEngine.pauseLibraryForAccept()
+    }
+
+    Function("resumeLibraryAfterAccept") {
+      PhotokitThumbEngine.resumeLibraryAfterAccept()
+    }
+
     AsyncFunction("openLibrary") { (albumId: String) async -> [String: Int] in
       let seq = PhotokitThumbEngine.beginOpen()
       return await withCheckedContinuation { (continuation: CheckedContinuation<[String: Int], Never>) in
@@ -404,7 +532,7 @@ public final class PhotokitThumbsModule: Module {
       }
     }
 
-    /// Option 2B: reverse-enum first `limit` newest; early return before full count.
+    /// Option 2B: newest `limit` Recents via unsorted index-from-end (no sort).
     AsyncFunction("openLibraryLimited") { (albumId: String, limit: Int) async -> [String: Int] in
       let seq = PhotokitThumbEngine.beginOpen()
       return await withCheckedContinuation { (continuation: CheckedContinuation<[String: Int], Never>) in
@@ -426,6 +554,20 @@ public final class PhotokitThumbsModule: Module {
           }
         }
       }
+    }
+
+    /// Persisted newest-N ids — sync, not on workQueue (must not wait behind expand).
+    Function("openLibraryWithIds") { (ids: [String]) -> [String: Int] in
+      if let session = PhotokitThumbEngine.openLibraryWithIds(ids) {
+        return [
+          "token": session.token,
+          "count": session.backing.count,
+        ]
+      }
+      return [
+        "token": 0,
+        "count": 0,
+      ]
     }
 
     /// Option 2B: full Recents behind the **same** token (no FlatList remount).
@@ -469,6 +611,20 @@ public final class PhotokitThumbsModule: Module {
         to: to,
         pixelSize: pixelSize
       )
+    }
+
+    /// Annotation / upload only. Do not use `maxThumbPixel` (grid fast path).
+    AsyncFunction("exportCappedJpeg") { (assetId: String, maxPixel: Double) async -> String in
+      await withCheckedContinuation { (continuation: CheckedContinuation<String, Never>) in
+        PhotokitThumbEngine.workQueue.async {
+          continuation.resume(
+            returning: PhotokitThumbEngine.exportCappedJpeg(
+              assetId: assetId,
+              maxPixel: maxPixel
+            ) ?? ""
+          )
+        }
+      }
     }
 
     View(PhotokitThumbView.self) {

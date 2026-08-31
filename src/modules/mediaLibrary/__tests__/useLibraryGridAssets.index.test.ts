@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react-native";
 import * as MediaLibrary from "expo-media-library";
 
 import { invalidateMediaLibraryPermissionCache } from "@/utils/mediaLibraryPermission";
+import { resetLibraryAlbumPickerMemory } from "../libraryAlbumPickerMemory";
 import {
   consumeWarmLibraryPageAsync,
   peekWarmLibraryPage,
@@ -21,6 +22,7 @@ jest.mock("@/utils/libraryIndexPrefetch", () => ({
     mockAwaitPhotokitLibraryIndex(...args),
   peekPhotokitLibraryIndex: jest.fn(() => null),
   isPhotokitLibraryIndexPrefetchInFlight: jest.fn(() => false),
+  requestPhotokitLibraryExpandIfScrolled: jest.fn(),
 }));
 
 jest.mock("expo-media-library", () => ({
@@ -61,6 +63,7 @@ const mockIndexInFlight = isPhotokitLibraryIndexPrefetchInFlight as jest.Mock;
 describe("useLibraryGridAssets Photos index", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetLibraryAlbumPickerMemory();
     invalidateMediaLibraryPermissionCache();
     mockGetPermissionsAsync.mockResolvedValue({
       granted: true,

@@ -7,6 +7,7 @@ import { useProjectStoreWithCompanyInit } from '../../state/projectStore.supabas
 import { useUserStoreWithInit } from '../../state/userStore.supabase';
 import { useProjectFilterStore } from '../../state/projectFilterStore';
 import { uploadFileWithVerification } from '../../api/fileUploadService';
+import { ensureCappedLocalPhoto } from '../../utils/ensureCappedLocalPhoto';
 import { useFileUpload } from '../../utils/useFileUpload';
 import { usePhotoSelection, SelectedPhoto } from '../../utils/usePhotoSelection';
 import { useTaskLLMAssistant } from '../../hooks/useTaskLLMAssistant';
@@ -898,9 +899,10 @@ export function useCreateTaskViewAdapter({
     const uploadedAttachments: string[] = [];
 
     for (const photo of localPhotos) {
+      const uri = await ensureCappedLocalPhoto(photo);
       const result = await uploadFileWithVerification({
         file: {
-          uri: photo.annotatedUri || photo.uri,
+          uri,
           name: photo.fileName,
           type: 'image/jpeg',
         },

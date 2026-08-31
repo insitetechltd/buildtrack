@@ -18,6 +18,8 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyUsers">;
@@ -50,21 +52,21 @@ export default function CompanyUsersScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-users__root">
-      <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title} numberOfLines={1}>Users</Text>
-        <Pressable
-          testID="owner-tenant-users__add"
-          onPress={() =>
-            navigation.navigate("CreateUser", { companyId, companyName })
-          }
-          style={s.back}
-        >
-          <Text style={s.backText}>Add</Text>
-        </Pressable>
-      </View>
+      <TenantScreenHeader
+        title="Users"
+        onHome={() => resetToTenantHome(navigation)}
+        right={
+          <Pressable
+            testID="owner-tenant-users__add"
+            onPress={() =>
+              navigateTenant(navigation, "CreateUser", { companyId, companyName })
+            }
+            style={s.back}
+          >
+            <Text style={s.backText}>Add</Text>
+          </Pressable>
+        }
+      />
       <FlatList
         contentContainerStyle={s.scroll}
         data={users}
@@ -96,7 +98,7 @@ export default function CompanyUsersScreen({ navigation, route }: Props) {
             testID={`owner-tenant-users__row_${item.id}`}
             style={s.card}
             onPress={() =>
-              navigation.navigate("UserDetail", {
+              navigateTenant(navigation, "UserDetail", {
                 companyId,
                 companyName,
                 userId: item.id,

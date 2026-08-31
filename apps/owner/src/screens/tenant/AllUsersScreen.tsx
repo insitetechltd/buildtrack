@@ -19,7 +19,8 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import CategoryCrossOverFooter from "./CategoryCrossOverFooter";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "AllUsers">;
@@ -66,17 +67,12 @@ export default function AllUsersScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-all-users__root">
-      <View style={s.header}>
-        <Pressable
-          testID="owner-tenant-all-users__back"
-          onPress={() => navigation.goBack()}
-          style={s.back}
-        >
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title}>All users</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title="All users"
+        onHome={() => resetToTenantHome(navigation)}
+        backTestID="owner-tenant-all-users__back"
+        homeTestID="owner-tenant-all-users__home"
+      />
       <FlatList
         contentContainerStyle={s.scroll}
         data={users}
@@ -138,7 +134,7 @@ export default function AllUsersScreen({ navigation }: Props) {
             style={s.card}
             onPress={() => {
               if (!item.companyId) return;
-              navigation.navigate("UserDetail", {
+              navigateTenant(navigation, "UserDetail", {
                 companyId: item.companyId,
                 companyName: item.companyName ?? "Company",
                 userId: item.id,
@@ -158,9 +154,6 @@ export default function AllUsersScreen({ navigation }: Props) {
             </Text>
           </Pressable>
         )}
-        ListFooterComponent={
-          <CategoryCrossOverFooter current="users" navigation={navigation} />
-        }
       />
     </SafeAreaView>
   );

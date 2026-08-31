@@ -23,6 +23,9 @@ import {
 import { formatSeatUsageLine } from "../../lib/ownerEntitlementView";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import StatTileRow from "./StatTileRow";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyDetail">;
@@ -65,15 +68,12 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-company-detail__root">
-      <View style={s.header}>
-        <Pressable testID="owner-tenant-company-detail__back" onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title} numberOfLines={1}>
-          {companyName}
-        </Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title={companyName}
+        onHome={() => resetToTenantHome(navigation)}
+        backTestID="owner-tenant-company-detail__back"
+        homeTestID="owner-tenant-company-detail__home"
+      />
       <ScrollView
         contentContainerStyle={s.scroll}
         refreshControl={
@@ -103,7 +103,11 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
               {detail.company.phone ? <Text style={s.rowMeta}>{detail.company.phone}</Text> : null}
               {detail.company.address ? <Text style={s.rowMeta}>{detail.company.address}</Text> : null}
             </View>
-            <View style={s.card} testID="owner-tenant-company-detail__entitlement">
+            <View
+              style={s.card}
+              testID="owner-tenant-company-detail__entitlement"
+              accessibilityState={{ disabled: true }}
+            >
               <Text style={s.sectionTitle}>Entitlement</Text>
               <Text style={s.cardTitle}>{detail.entitlement.statusLabel}</Text>
               <Text style={s.cardSub}>{detail.entitlement.limitsLabel}</Text>
@@ -120,6 +124,11 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
                 Projects: {detail.usage.projectCount}
                 {detail.usage.projectLimit != null ? ` / ${detail.usage.projectLimit}` : " / ∞"}
               </Text>
+              <View style={s.entitlementReadOnlyBanner}>
+                <Text style={s.entitlementReadOnlyText}>
+                  Plan changes require operator approval — read-only until entitlement management ships.
+                </Text>
+              </View>
             </View>
             {support ? (
               <View style={s.card} testID="owner-tenant-company-detail__support">
@@ -155,36 +164,31 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
                 ) : null}
               </View>
             ) : null}
-            <View style={s.statRow}>
-              <View style={s.statTile}>
-                <Text style={s.statValue}>{detail.stats.projects}</Text>
-                <Text style={s.statLabel}>Projects</Text>
-              </View>
-              <View style={s.statTile}>
-                <Text style={s.statValue}>{detail.stats.tasks}</Text>
-                <Text style={s.statLabel}>Tasks</Text>
-              </View>
-              <View style={s.statTile}>
-                <Text style={s.statValue}>{detail.stats.users}</Text>
-                <Text style={s.statLabel}>Users</Text>
-              </View>
-            </View>
-            <Pressable
-              testID="owner-tenant-company-detail__projects"
-              style={s.linkCard}
-              onPress={() => navigation.navigate("CompanyProjects", { companyId, companyName })}
-            >
-              <Text style={s.linkTitle}>Projects</Text>
-              <Text style={s.linkSub}>{detail.stats.projects} projects · tap for list</Text>
-            </Pressable>
-            <Pressable
-              testID="owner-tenant-company-detail__users"
-              style={s.linkCard}
-              onPress={() => navigation.navigate("CompanyUsers", { companyId, companyName })}
-            >
-              <Text style={s.linkTitle}>Users</Text>
-              <Text style={s.linkSub}>{detail.stats.users} users · read-only roster</Text>
-            </Pressable>
+            <StatTileRow
+              tiles={[
+                {
+                  label: "Projects",
+                  value: detail.stats.projects,
+                  testID: "owner-tenant-company-detail__stat_projects",
+                  onPress: () =>
+                    navigateTenant(navigation, "CompanyProjects", { companyId, companyName }),
+                },
+                {
+                  label: "Users",
+                  value: detail.stats.users,
+                  testID: "owner-tenant-company-detail__stat_users",
+                  onPress: () =>
+                    navigateTenant(navigation, "CompanyUsers", { companyId, companyName }),
+                },
+                {
+                  label: "Tasks",
+                  value: detail.stats.tasks,
+                  testID: "owner-tenant-company-detail__stat_tasks",
+                  disabled: true,
+                  disabledHint: "Task lists and detail ship in the next tenant release.",
+                },
+              ]}
+            />
           </>
         ) : null}
       </ScrollView>

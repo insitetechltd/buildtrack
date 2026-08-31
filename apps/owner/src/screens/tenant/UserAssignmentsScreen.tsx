@@ -12,9 +12,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
-  fetchProjectMembers,
+  fetchUserDetail,
   OwnerTenantError,
-  type ProjectMemberItem,
+  type UserDetail,
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
@@ -22,11 +22,11 @@ import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNaviga
 import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
-type Props = NativeStackScreenProps<OwnerStackParamList, "ProjectMembers">;
+type Props = NativeStackScreenProps<OwnerStackParamList, "UserAssignments">;
 
-export default function ProjectMembersScreen({ navigation, route }: Props) {
-  const { companyId, companyName, projectId, projectName } = route.params;
-  const [members, setMembers] = useState<ProjectMemberItem[]>([]);
+export default function UserAssignmentsScreen({ navigation, route }: Props) {
+  const { companyId, companyName, userId, userName } = route.params;
+  const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +36,16 @@ export default function ProjectMembersScreen({ navigation, route }: Props) {
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
-        const result = await fetchProjectMembers(supabase, projectId, companyId);
-        setMembers(result.members);
+        setDetail(await fetchUserDetail(supabase, userId, companyId));
       } catch (err) {
-        setMembers([]);
-        setError(
-          err instanceof OwnerTenantError ? err.message : "Could not load members",
-        );
+        setDetail(null);
+        setError(err instanceof OwnerTenantError ? err.message : "Could not load assignments");
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [companyId, projectId],
+    [companyId, userId],
   );
 
   useFocusEffect(
@@ -57,17 +54,22 @@ export default function ProjectMembersScreen({ navigation, route }: Props) {
     }, [load]),
   );
 
+  const assignments = detail?.assignments ?? [];
+
   return (
     <SafeAreaView
       style={s.safe}
       edges={["top", "bottom"]}
-      testID="owner-tenant-project-members__root"
+      testID="owner-tenant-user-assignments__root"
     >
-      <TenantScreenHeader title="Members" onHome={() => resetToTenantHome(navigation)} />
+      <TenantScreenHeader
+        title="Projects"
+        onHome={() => resetToTenantHome(navigation)}
+      />
       <FlatList
         contentContainerStyle={s.scroll}
-        data={members}
-        keyExtractor={(item) => item.userId}
+        data={assignments}
+        keyExtractor={(item, i) => `${item.projectId ?? "p"}-${i}`}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -82,10 +84,10 @@ export default function ProjectMembersScreen({ navigation, route }: Props) {
           <>
             <View style={s.banner}>
               <Text style={s.bannerText}>
-                Assignees on {projectName} · {companyName}
+                {userName} · {companyName}
               </Text>
             </View>
-            {loading && members.length === 0 ? (
+            {loading && assignments.length === 0 ? (
               <View style={s.center}>
                 <ActivityIndicator size="large" color="#0A556B" />
               </View>
@@ -100,33 +102,29 @@ export default function ProjectMembersScreen({ navigation, route }: Props) {
             ) : null}
           </>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable
-            testID={`owner-tenant-project-members__row_${item.userId}`}
+            testID={`owner-tenant-user-assignments__row_${item.projectId ?? index}`}
             style={s.card}
-            onPress={() =>
-              navigateTenant(navigation, "UserDetail", {
-                companyId,
+            onPress={() => {
+              if (!item.projectId) return;
+              navigateTenant(navigation, "ProjectSummary", {
+                companyId: detail?.user.companyId ?? companyId,
                 companyName,
-                userId: item.userId,
-                userName: item.name,
-              })
-            }
+                projectId: item.projectId,
+                projectName: item.projectName,
+              });
+            }}
           >
-            <Text style={s.cardTitle}>{item.name}</Text>
+            <Text style={s.cardTitle}>{item.projectName}</Text>
             <Text style={s.cardSub}>
-              {item.email} · {item.role} · {item.seatClass} seat
+              {item.projectRole.replace(/_/g, " ")} · {item.projectStatus}
             </Text>
-            {item.projectRole ? (
-              <Text style={s.rowMeta}>
-                Project role: {item.projectRole.replace(/_/g, " ")}
-              </Text>
-            ) : null}
           </Pressable>
         )}
         ListEmptyComponent={
           !loading && !error ? (
-            <Text style={s.meta}>No active members on this project.</Text>
+            <Text style={s.meta}>No active project assignments.</Text>
           ) : null
         }
       />

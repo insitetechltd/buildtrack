@@ -19,7 +19,8 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import CategoryCrossOverFooter from "./CategoryCrossOverFooter";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "AllProjects">;
@@ -66,17 +67,12 @@ export default function AllProjectsScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-all-projects__root">
-      <View style={s.header}>
-        <Pressable
-          testID="owner-tenant-all-projects__back"
-          onPress={() => navigation.goBack()}
-          style={s.back}
-        >
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title}>All projects</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title="All projects"
+        onHome={() => resetToTenantHome(navigation)}
+        backTestID="owner-tenant-all-projects__back"
+        homeTestID="owner-tenant-all-projects__home"
+      />
       <FlatList
         contentContainerStyle={s.scroll}
         data={projects}
@@ -135,7 +131,7 @@ export default function AllProjectsScreen({ navigation }: Props) {
             style={s.card}
             onPress={() => {
               if (!item.companyId) return;
-              navigation.navigate("ProjectSummary", {
+              navigateTenant(navigation, "ProjectSummary", {
                 companyId: item.companyId,
                 companyName: item.companyName ?? "Company",
                 projectId: item.id,
@@ -151,9 +147,6 @@ export default function AllProjectsScreen({ navigation }: Props) {
             <Text style={s.rowMeta}>{item.status}{item.location ? ` · ${item.location}` : ""}</Text>
           </Pressable>
         )}
-        ListFooterComponent={
-          <CategoryCrossOverFooter current="projects" navigation={navigation} />
-        }
       />
     </SafeAreaView>
   );

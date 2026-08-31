@@ -14,11 +14,15 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import StatusCountBars from "../../components/StatusCountBars";
 import {
   fetchProjectDetail,
+  fetchProjectMembers,
   OwnerTenantError,
   type ProjectDetail,
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import StatTileRow from "./StatTileRow";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "ProjectSummary">;
@@ -26,6 +30,7 @@ type Props = NativeStackScreenProps<OwnerStackParamList, "ProjectSummary">;
 export default function ProjectSummaryScreen({ navigation, route }: Props) {
   const { companyId, companyName, projectId, projectName } = route.params;
   const [detail, setDetail] = useState<ProjectDetail | null>(null);
+  const [memberCount, setMemberCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +39,15 @@ export default function ProjectSummaryScreen({ navigation, route }: Props) {
     if (!opts?.soft) setLoading(true);
     setError(null);
     try {
-      setDetail(await fetchProjectDetail(supabase, projectId, companyId));
+      const [projectDetail, membersResult] = await Promise.all([
+        fetchProjectDetail(supabase, projectId, companyId),
+        fetchProjectMembers(supabase, projectId, companyId).catch(() => null),
+      ]);
+      setDetail(projectDetail);
+      setMemberCount(membersResult?.members.length ?? null);
     } catch (err) {
       setDetail(null);
+      setMemberCount(null);
       setError(err instanceof OwnerTenantError ? err.message : "Could not load project");
     } finally {
       setLoading(false);
@@ -48,13 +59,10 @@ export default function ProjectSummaryScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-project-summary__root">
-      <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title} numberOfLines={1}>{projectName}</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title={projectName}
+        onHome={() => resetToTenantHome(navigation)}
+      />
       <ScrollView
         contentContainerStyle={s.scroll}
         refreshControl={
@@ -79,36 +87,37 @@ export default function ProjectSummaryScreen({ navigation, route }: Props) {
               {detail.project.description ? (
                 <Text style={s.rowMeta}>{detail.project.description}</Text>
               ) : null}
-              <Text style={s.rowMeta}>{detail.taskTotal} tasks total</Text>
             </View>
-            <Pressable
-              testID="owner-tenant-project-summary__company"
-              style={s.linkCard}
-              onPress={() =>
-                navigation.navigate("CompanyDetail", {
-                  companyId,
-                  companyName,
-                })
-              }
-            >
-              <Text style={s.linkTitle}>Company</Text>
-              <Text style={s.linkSub}>{companyName} · open company</Text>
-            </Pressable>
-            <Pressable
-              testID="owner-tenant-project-summary__members"
-              style={s.linkCard}
-              onPress={() =>
-                navigation.navigate("ProjectMembers", {
-                  companyId,
-                  companyName,
-                  projectId,
-                  projectName,
-                })
-              }
-            >
-              <Text style={s.linkTitle}>Members</Text>
-              <Text style={s.linkSub}>Open assignees for this project</Text>
-            </Pressable>
+            <StatTileRow
+              tiles={[
+                {
+                  label: "Members",
+                  value: memberCount ?? "…",
+                  testID: "owner-tenant-project-summary__stat_members",
+                  onPress: () =>
+                    navigateTenant(navigation, "ProjectMembers", {
+                      companyId,
+                      companyName,
+                      projectId,
+                      projectName,
+                    }),
+                },
+                {
+                  label: "Tasks",
+                  value: detail.taskTotal,
+                  testID: "owner-tenant-project-summary__stat_tasks",
+                  disabled: true,
+                  disabledHint: "Task lists and detail ship in the next tenant release.",
+                },
+                {
+                  label: "Company",
+                  value: "1",
+                  testID: "owner-tenant-project-summary__stat_company",
+                  onPress: () =>
+                    navigateTenant(navigation, "CompanyDetail", { companyId, companyName }),
+                },
+              ]}
+            />
             <View style={s.card} testID="owner-tenant-project-summary__status_bars">
               <Text style={s.sectionTitle}>Tasks by status</Text>
               <StatusCountBars tasksByStatus={detail.tasksByStatus} testID="owner-tenant-project-summary__histogram" />

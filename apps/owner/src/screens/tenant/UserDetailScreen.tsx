@@ -27,6 +27,9 @@ import {
 } from "../../lib/fetchOwnerOpsRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import StatTileRow from "./StatTileRow";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "UserDetail">;
@@ -93,15 +96,15 @@ export default function UserDetailScreen({ navigation, route }: Props) {
     );
   };
 
+  const resolvedCompanyId = detail?.user.companyId ?? companyId;
+  const resolvedCompanyName = route.params.companyName;
+
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-user-detail__root">
-      <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title} numberOfLines={1}>{userName}</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title={userName}
+        onHome={() => resetToTenantHome(navigation)}
+      />
       <ScrollView
         contentContainerStyle={s.scroll}
         refreshControl={
@@ -135,21 +138,41 @@ export default function UserDetailScreen({ navigation, route }: Props) {
                 {detail.user.isPending ? "Pending approval" : detail.user.isActive ? "Active" : "Inactive"}
               </Text>
             </View>
-            <Pressable
-              testID="owner-tenant-user-detail__company"
-              style={s.linkCard}
-              onPress={() => {
-                const cid = detail.user.companyId ?? companyId;
-                if (!cid) return;
-                navigation.navigate("CompanyDetail", {
-                  companyId: cid,
-                  companyName: route.params.companyName,
-                });
-              }}
-            >
-              <Text style={s.linkTitle}>Company</Text>
-              <Text style={s.linkSub}>{route.params.companyName}</Text>
-            </Pressable>
+            <StatTileRow
+              tiles={[
+                {
+                  label: "Projects",
+                  value: detail.assignments.length,
+                  testID: "owner-tenant-user-detail__stat_projects",
+                  onPress: () =>
+                    navigateTenant(navigation, "UserAssignments", {
+                      companyId: resolvedCompanyId,
+                      companyName: resolvedCompanyName,
+                      userId,
+                      userName,
+                    }),
+                },
+                {
+                  label: "Tasks",
+                  value: "—",
+                  testID: "owner-tenant-user-detail__stat_tasks",
+                  disabled: true,
+                  disabledHint: "Task lists and detail ship in the next tenant release.",
+                },
+                {
+                  label: "Company",
+                  value: "1",
+                  testID: "owner-tenant-user-detail__stat_company",
+                  onPress: () => {
+                    if (!resolvedCompanyId) return;
+                    navigateTenant(navigation, "CompanyDetail", {
+                      companyId: resolvedCompanyId,
+                      companyName: resolvedCompanyName,
+                    });
+                  },
+                },
+              ]}
+            />
             {session ? (
               <View style={s.card} testID="owner-tenant-user-detail__session">
                 <Text style={s.sectionTitle}>Session debug (sanitized)</Text>
@@ -191,32 +214,6 @@ export default function UserDetailScreen({ navigation, route }: Props) {
                 )}
               </Pressable>
             ) : null}
-            <Text style={s.sectionTitle}>Project assignments</Text>
-            {detail.assignments.length === 0 ? (
-              <Text style={s.meta}>No active project assignments.</Text>
-            ) : (
-              detail.assignments.map((a, i) => (
-                <Pressable
-                  key={`${a.projectId}-${i}`}
-                  testID={`owner-tenant-user-detail__assignment_${a.projectId ?? i}`}
-                  style={s.card}
-                  onPress={() => {
-                    if (!a.projectId) return;
-                    navigation.navigate("ProjectSummary", {
-                      companyId: detail.user.companyId ?? companyId,
-                      companyName: route.params.companyName,
-                      projectId: a.projectId,
-                      projectName: a.projectName,
-                    });
-                  }}
-                >
-                  <Text style={s.cardTitle}>{a.projectName}</Text>
-                  <Text style={s.cardSub}>
-                    {a.projectRole.replace(/_/g, " ")} · {a.projectStatus}
-                  </Text>
-                </Pressable>
-              ))
-            )}
           </>
         ) : null}
       </ScrollView>

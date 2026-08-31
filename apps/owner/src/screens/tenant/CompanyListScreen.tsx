@@ -19,7 +19,8 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
-import CategoryCrossOverFooter from "./CategoryCrossOverFooter";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyList">;
@@ -62,13 +63,12 @@ export default function CompanyListScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-companies__root">
-      <View style={s.header}>
-        <Pressable testID="owner-tenant-companies__back" onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title}>Companies</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader
+        title="Companies"
+        onHome={() => resetToTenantHome(navigation)}
+        backTestID="owner-tenant-companies__back"
+        homeTestID="owner-tenant-companies__home"
+      />
       <FlatList
         contentContainerStyle={s.scroll}
         data={companies}
@@ -120,7 +120,7 @@ export default function CompanyListScreen({ navigation }: Props) {
             testID={`owner-tenant-companies__card_${item.id}`}
             style={s.card}
             onPress={() =>
-              navigation.navigate("CompanyDetail", {
+              navigateTenant(navigation, "CompanyDetail", {
                 companyId: item.id,
                 companyName: item.name,
               })
@@ -142,9 +142,6 @@ export default function CompanyListScreen({ navigation }: Props) {
           !loading && !error ? (
             <Text style={s.meta}>No companies match this search.</Text>
           ) : null
-        }
-        ListFooterComponent={
-          <CategoryCrossOverFooter current="companies" navigation={navigation} />
         }
       />
     </SafeAreaView>

@@ -16,6 +16,7 @@ import CreateUserScreen from "../screens/tenant/CreateUserScreen";
 import ProjectMembersScreen from "../screens/tenant/ProjectMembersScreen";
 import ProjectSummaryScreen from "../screens/tenant/ProjectSummaryScreen";
 import TenantHubScreen from "../screens/tenant/TenantHubScreen";
+import UserAssignmentsScreen from "../screens/tenant/UserAssignmentsScreen";
 import UserDetailScreen from "../screens/tenant/UserDetailScreen";
 import UserSearchScreen from "../screens/tenant/UserSearchScreen";
 
@@ -51,6 +52,12 @@ export type OwnerStackParamList = {
     userId: string;
     userName: string;
   };
+  UserAssignments: {
+    companyId: string;
+    companyName: string;
+    userId: string;
+    userName: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<OwnerStackParamList>();
@@ -62,7 +69,7 @@ type Props = {
 export default function OwnerAppNavigator({ onSignOut }: Props) {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, gestureEnabled: true }}>
         <Stack.Screen name="Home">
           {({ navigation }) => (
             <OwnerHomeScreen
@@ -96,6 +103,7 @@ export default function OwnerAppNavigator({ onSignOut }: Props) {
         <Stack.Screen name="CompanyUsers" component={CompanyUsersScreen} />
         <Stack.Screen name="CreateUser" component={CreateUserScreen} />
         <Stack.Screen name="UserDetail" component={UserDetailScreen} />
+        <Stack.Screen name="UserAssignments" component={UserAssignmentsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

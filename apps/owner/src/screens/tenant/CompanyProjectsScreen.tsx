@@ -18,6 +18,8 @@ import {
 } from "../../lib/fetchOwnerTenantRead";
 import { supabase } from "../../lib/supabase";
 import type { OwnerStackParamList } from "../../navigation/OwnerAppNavigator";
+import { navigateTenant, resetToTenantHome } from "../../navigation/tenantNavigation";
+import TenantScreenHeader from "./TenantScreenHeader";
 import { tenantStyles as s } from "./tenantScreenStyles";
 
 type Props = NativeStackScreenProps<OwnerStackParamList, "CompanyProjects">;
@@ -50,13 +52,7 @@ export default function CompanyProjectsScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={s.safe} edges={["top", "bottom"]} testID="owner-tenant-projects__root">
-      <View style={s.header}>
-        <Pressable onPress={() => navigation.goBack()} style={s.back}>
-          <Text style={s.backText}>Back</Text>
-        </Pressable>
-        <Text style={s.title} numberOfLines={1}>Projects</Text>
-        <View style={s.backSpacer} />
-      </View>
+      <TenantScreenHeader title="Projects" onHome={() => resetToTenantHome(navigation)} />
       <FlatList
         contentContainerStyle={s.scroll}
         data={projects}
@@ -86,7 +82,7 @@ export default function CompanyProjectsScreen({ navigation, route }: Props) {
             testID={`owner-tenant-projects__row_${item.id}`}
             style={s.card}
             onPress={() =>
-              navigation.navigate("ProjectSummary", {
+              navigateTenant(navigation, "ProjectSummary", {
                 companyId,
                 companyName,
                 projectId: item.id,

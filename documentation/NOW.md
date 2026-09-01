@@ -6,50 +6,50 @@
 
 ## Doing
 
-**Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / **`dev`** → EAS `preview` → **DEV**. App Store profile **`production`** → **PROD** (requires confirm). Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → finish `M-OPS-03` parked writes → `M-AUTHZ-02` → …
+**Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / **`dev`** → EAS `preview` → **DEV**. App Store profile **`production`** → **PROD**. Promotion: `documentation/PROD_DEV_PROMOTION.md`.
 
-**This session:** Taskr **Create Task keyboard** + **prod picker HUD mute** landing on git; Internal TF submitting (`dev` / DEV). HQ **Home landing** mockups done, **not implemented**. HQ A3–A5 still uncommitted.
-- Keyboard: action bar rides above the IME; headed smoke PASS on 17 Pro Max
-- HUD: Metro/`__DEV__` only; `eas.json` production sets `EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD=0`
-- Mocks: `.dbg/hq-home-healthy-mock.png` · `.dbg/hq-home-emergency-mock.png`
-- Awaiting **implement** GO for `OwnerHomeScreen`
-- A3–A5 (effective status / title search / parity Jest) still in working tree; Edge already on DEV
+**This session — public commercial leftovers (not a new binary):**
 
-**Prior this session:** **M-OPS-03** HQ task-query contract A3–A5 implemented (repo + DEV Edge). A1/A2 already shipped. **Not committed** (user did not ask).
-- Contract SoT: `documentation/owner-task-query-contract.md`
-- A3 `TASK_EFFECTIVE_STATUS`: Taskr 8 read-maps + HQ list/detail/project buckets; Edge `listTasks` status filter uses PostgREST `status ?? current_status`
-- A4 HQ `TaskListPane`: placeholder “Search by title”; submit-only Edge search; no client-side assignee/project/status filter
-- A5: `src/__tests__/parity/task-query-contract.parity.test.ts` T1–T7 dual-impl
-- Edge `owner-tenant-read` redeployed DEV `zusulknbhaumougqckec` (includes `taskQueryPredicates.ts`)
-- Schema smoke PASS; JWT/`listTasks.statusFilter` smoke SKIPPED (no `SMOKE_OWNER_EMAIL` in env)
-- HQ Internal TF **12** does **not** include A3–A5 client UI — next TF when asked
+- App Store **243** (v1.1.3) already on ASC. Internal TF **242** on DEV.
+- Honest GitHub Pages + legal + `support@insiteworks.co` (in-app constant; **243 still has Gmail** until the next production build).
+- ASC paste pack: `docs/superpowers/plans/2026-09-01-asc-listing-paste.md` + `docs/assets/store/iphone-67/`.
+- Live Stripe account `acct_1U5aiTDH5K85GHQi`: **0 coupons / 0 promotion codes**. 60-day pilots need a Human GO to create them.
+- `www.insiteworks.co` was HTTP **500** — keep Pages URLs; do not add `docs/CNAME` yet.
+- HQ Home landing + A3–A5 still **uncommitted**. Do not mix into Taskr listing work.
 
-**You:** say **commit** when you want this slice on git; optional headed HQ after next Internal TF (search-by-title + User→Tasks relation roles). Parked writes still Human Gate.
+**You (Human-only — agent cannot click ASC / DNS / live charge):**
 
-**Idle-parallel photo funnel:** Camera **zoom** (pinch + 1×/2×) in capture session — EV parked. TF240 Accept defer + 1920 export; warm/ID batch **30 → 90** (JS). **Picker L1 HUD is Metro/`__DEV__` only** (muted on App Store `production` compiles). HQ thumbs + tile grip parked. **Not** the App Store binary.
+1. Paste EN + zh-HK + upload 6.7" JPEGs in ASC (`6754898737`). Do not Submit for Review until you intend to.
+2. Point `www.insiteworks.co` at GitHub Pages; confirm 200; then 301 old Pages URLs.
+3. Extra GO: create live 60-day 100% promo codes; founding-CA Starter Checkout smoke on PROD.
+4. Optional: 6.1" physical shots, iPad shots (`supportsTablet`), honest Company frame as Sara.
+5. Apple org / D-U-N-S (Gate 2) stays OPEN — paperwork-now, flip **after** this listing ships.
+
+**Idle-parallel:** picker HUD is Metro/`__DEV__` only. HQ thumbs parked. **Not** the App Store binary.
 
 ## Next (definitive)
 
-1. Optional: JWT smoke (`SMOKE_OWNER_EMAIL` + password) for `listTasks.statusFilter`; HQ headed on next Internal TF
-2. User-requested **commit** of HQ A3–A5 (then default push)
-3. Headed HQ: Monitoring ops panel + Economics Stripe empty/configured + Audit + Find user + support/session
-4. **GTM locked (2026-08-30):** store name **A**; promo **60d**; domain **www.insiteworks.co**; ASC paste **after new screenshots**. Plan: `docs/superpowers/plans/2026-08-30-taskr-soft-launch-gtm.md`
+1. Human: ASC paste + screenshot upload (pack is ready)
+2. Human: DNS for `www.insiteworks.co`
+3. Extra GO: Stripe 60d promo + founding-CA Checkout
+4. User-requested **commit** of HQ Home / A3–A5 (separate)
+5. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
 
 **Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**.
 
 ## Recently closed / shipped this session
 
-**M-OPS-03 task-query A3–A5 (2026-09-01, uncommitted):** effective status + title-only HQ search + parity Jest. Edge deployed DEV.
+**Public site honesty (2026-09-01):** landing + privacy/terms/support rewritten to HKD / 60-day invite / iOS-only / Insite Works Limited. Store 6.7" JPEGs + ASC paste card.
 
-**Quality Loop SOP + intake gate (2026-08-30):** dual-write to `solo-dev-harness` SOP §11–12 + `intake.md` + always-on `intake-gate.mdc`. Commit after Judge GO. User is not required to fill a kickoff template.
+**Taskr TF 242 + App Store 243 (2026-09-01):** Create Task footer above keyboard + picker HUD muted on production. Commit `7fe78cc`.
 
-**M-OPS-03 read-only ops enrich (2026-08-30):** no migrations; Edge `owner-ops-read` + hq surfaces.
+**M-OPS-03 HQ Home + A3–A5 (uncommitted):** do not ship with this public-site commit.
 
 ## Locked
 
 - **Master plan:** visual SoT = `documentation/ROADMAP.md` § Commercial sequence map
-- **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ submit
-- **Owner task query contract:** `documentation/owner-task-query-contract.md` — assigner owns (`assigned_by`); assignee executes; `primary_assignee_id` is assignee
+- **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ Store
+- **GTM:** `docs/superpowers/plans/2026-08-30-taskr-soft-launch-gtm.md` — name A, 60d promo, domain `www.insiteworks.co`
 - **HK billing:** charge HKD; no grandfathering
 - **ACL:** CA authority; default seat Worker; PA on CA|PM only
 - **AUTHZ-RC construct:** Closed
@@ -61,4 +61,4 @@
 
 ## Parked notes
 
-Optional AUTHZ L2 matrix gaps = backlog. **Later camera/picker phase:** zoom, tile grip, HQ/opportunistic thumbs.
+Joe (`joe@insite.com`) is **DEV only**, role **worker**. Do not recapture Company as Joe. Password reset for Joe does not exist on PROD.

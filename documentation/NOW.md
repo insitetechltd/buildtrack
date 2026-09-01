@@ -15,7 +15,7 @@
 - ASC paste pack: `docs/superpowers/plans/2026-09-01-asc-listing-paste.md` + `docs/assets/store/iphone-67/`.
 - Live Stripe account `acct_1U5aiTDH5K85GHQi`: **0 coupons / 0 promotion codes**. 60-day pilots need a Human GO to create them.
 - `www.insiteworks.co` was HTTP **500** — keep Pages URLs; do not add `docs/CNAME` yet.
-- HQ Home landing + A3–A5 still **uncommitted**. Do not mix into Taskr listing work.
+- HQ task-query **A3–A5** on master (`a6c7922`). HQ **Home landing** on master with this session (pulse hero + P0/P1). Next HQ Internal TF to pick up both.
 
 **You (Human-only — agent cannot click ASC / DNS / live charge):**
 
@@ -32,7 +32,7 @@
 1. Human: ASC paste + screenshot upload (pack is ready)
 2. Human: DNS for `www.insiteworks.co`
 3. Extra GO: Stripe 60d promo + founding-CA Checkout
-4. User-requested **commit** of HQ Home / A3–A5 (separate)
+4. Next HQ Internal TF (Home pulse + A3–A5 client). JWT smoke optional (`SMOKE_OWNER_EMAIL`)
 5. After listing ships: finish `M-OPS-03` parked writes → **M-AUTHZ-02** — do not jump
 
 **Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**.
@@ -43,7 +43,9 @@
 
 **Taskr TF 242 + App Store 243 (2026-09-01):** Create Task footer above keyboard + picker HUD muted on production. Commit `7fe78cc`.
 
-**M-OPS-03 HQ Home + A3–A5 (uncommitted):** do not ship with this public-site commit.
+**M-OPS-03 HQ task-query A3–A5 (2026-09-01):** effective status + title-only HQ search + parity Jest. `a6c7922`. Edge already on DEV.
+
+**M-OPS-03 HQ Home landing (2026-09-01):** Platform pulse hero + 3 category cards + P0/P1 alerts. Headed HQ still pending next Internal TF.
 
 ## Locked
 

@@ -5,7 +5,7 @@ Apple size: **1320 × 2868** JPEG. Upload in this order to the **1.1.3** version
 | File | Slot | Honest? |
 |------|------|---------|
 | `01-activity.jpg` | Activity / this week’s work | Yes — Joe on Insite Office |
-| `02-camera.jpg` | Capture | **Composite** — real camera chrome + a pasted site photo (sim viewfinder is black) |
+| `02-camera.jpg` | Capture | **Composite** — real camera chrome + site scaffolding photo (sim viewfinder is black) |
 | `03-tasks.jpg` | Task list with photos | Yes — upscaled from the same 6.7" crop |
 | `04-task-thread.jpg` | Task thread with proof | Yes — scaffolding thread |
 

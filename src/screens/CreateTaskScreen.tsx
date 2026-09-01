@@ -8,6 +8,7 @@ import {
   Pressable,
   Alert,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Modal as RNModal,
   ActivityIndicator,
@@ -194,6 +195,15 @@ function CreateTaskEditorScreen({
   const titleInputRef = useRef<TextInput>(null);
   const descriptionInputRef = useRef<TextInput>(null);
   const taskReferenceInputRef = useRef<TextInput>(null);
+  const tagInputRef = useRef<TextInput>(null);
+
+  const dismissCreateTaskKeyboard = useCallback(() => {
+    titleInputRef.current?.blur?.();
+    descriptionInputRef.current?.blur?.();
+    taskReferenceInputRef.current?.blur?.();
+    tagInputRef.current?.blur?.();
+    Keyboard.dismiss();
+  }, []);
   const [activeFormFocusTarget, setActiveFormFocusTarget] = useState<CreateTaskFormFieldId | null>(null);
   const [submitSuccessState, setSubmitSuccessState] = useState<null | {
     title: string;
@@ -294,9 +304,7 @@ function CreateTaskEditorScreen({
     setActiveFormFocusTarget(fieldId);
 
     if (fieldId === "submit") {
-      titleInputRef.current?.blur?.();
-      descriptionInputRef.current?.blur?.();
-      taskReferenceInputRef.current?.blur?.();
+      dismissCreateTaskKeyboard();
       return;
     }
 
@@ -307,7 +315,7 @@ function CreateTaskEditorScreen({
     };
 
     focusTargetMap[fieldId].current?.focus?.();
-  }, []);
+  }, [dismissCreateTaskKeyboard]);
 
   const moveFormFocus = useCallback(
     (activeFieldId: CreateTaskFormFieldId, direction: "next" | "previous" = "next") => {
@@ -496,6 +504,7 @@ function CreateTaskEditorScreen({
   };
 
   const handleSubmit = async () => {
+    dismissCreateTaskKeyboard();
     if (shouldShowPostCaptureRoutingSheet && captureRoutingChoice === "existing_task") {
       const photos: SelectedPhoto[] =
         (selectedPhotosProp?.length ? selectedPhotosProp : []) as SelectedPhoto[];
@@ -524,6 +533,7 @@ function CreateTaskEditorScreen({
   };
 
   const handleSaveDraft = async () => {
+    dismissCreateTaskKeyboard();
     const saved = await saveDraft();
     if (!saved) {
       return;
@@ -571,7 +581,7 @@ function CreateTaskEditorScreen({
   return (
     <SafeAreaView
       testID="create-task__root"
-      edges={['bottom', 'left', 'right']}
+      edges={['left', 'right']}
       className="flex-1 bg-[#E7F4F8]"
     >
       <StatusBar style="light" />
@@ -604,14 +614,17 @@ function CreateTaskEditorScreen({
       )}
 
       <KeyboardAvoidingView
+        testID="create-task__keyboard_avoid"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         <ScrollView 
           ref={scrollViewRef}
+          testID="create-task__form_scroll"
           className="flex-1 py-4"
           keyboardShouldPersistTaps="always"
-          contentContainerStyle={{ paddingBottom: 100 }}
+          keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+          contentContainerStyle={{ paddingBottom: 24 }}
         >
           {/* Voice Input - Temporarily disabled due to expo-av CMake build issues */}
           {/* <VoiceTaskInput
@@ -1163,6 +1176,7 @@ function CreateTaskEditorScreen({
                   </View>
                   <TextInput
                     testID="create-task__tag_input"
+                    ref={tagInputRef}
                     className={CREATE_TASK_CONTROL_INPUT}
                     placeholder="Add tag, press return"
                     placeholderTextColor="#64748b"
@@ -1214,34 +1228,37 @@ function CreateTaskEditorScreen({
             </View>
           </View>
         </ScrollView>
+        {isExistingEdit ? (
+          <PrimaryActionBar
+            testID="create-task__action_bar"
+            absolute={false}
+            primaryTestID="create-task__submit"
+            primarySelected={activeFormFocusTarget === "submit"}
+            primaryLabel={
+              isSubmitting ? t.common.loading : t.createTask.updateTaskButton
+            }
+            onPrimaryPress={handleSubmit}
+            isPrimaryDisabled={isSubmitting}
+          />
+        ) : (
+          <PrimaryActionBar
+            testID="create-task__action_bar"
+            absolute={false}
+            secondaryLabel="Save draft"
+            secondaryTestID="create-task__save-draft"
+            onSecondaryPress={() => {
+              void handleSaveDraft();
+            }}
+            primaryTestID="create-task__submit"
+            primarySelected={activeFormFocusTarget === "submit"}
+            primaryLabel={
+              isSubmitting ? t.common.loading : t.createTask.createTaskButton
+            }
+            onPrimaryPress={handleSubmit}
+            isPrimaryDisabled={isSubmitting}
+          />
+        )}
       </KeyboardAvoidingView>
-
-      {isExistingEdit ? (
-        <PrimaryActionBar
-          testID="create-task__action_bar"
-          primaryTestID="create-task__submit"
-          primaryLabel={
-            isSubmitting ? t.common.loading : t.createTask.updateTaskButton
-          }
-          onPrimaryPress={handleSubmit}
-          isPrimaryDisabled={isSubmitting}
-        />
-      ) : (
-        <PrimaryActionBar
-          testID="create-task__action_bar"
-          secondaryLabel="Save draft"
-          secondaryTestID="create-task__save-draft"
-          onSecondaryPress={() => {
-            void handleSaveDraft();
-          }}
-          primaryTestID="create-task__submit"
-          primaryLabel={
-            isSubmitting ? t.common.loading : t.createTask.createTaskButton
-          }
-          onPrimaryPress={handleSubmit}
-          isPrimaryDisabled={isSubmitting}
-        />
-      )}
 
       <Modal
         visible={submitSuccessState !== null}

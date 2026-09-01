@@ -36,10 +36,30 @@ export function librarySkeletonTileCount(
   return Math.max(minTiles, rows * Math.max(1, columns));
 }
 /**
- * On-device L1 HUD for TestFlight (hybrid library). Turn off after timings
- * are collected — not product chrome.
+ * L1 picker timing HUD — Metro/debug only (`__DEV__`).
+ * Release compiles (Internal TF + App Store) mute it unless
+ * `EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD=1` is set for a diagnostic binary.
  */
-export const LIBRARY_PICKER_TIMING_HUD = true;
+export function resolveLibraryPickerTimingHudEnabled(
+  isDev: boolean,
+  flag?: string | null,
+): boolean {
+  if (isDev) {
+    return true;
+  }
+  const raw = String(flag ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true";
+}
+
+export function isLibraryPickerTimingHudEnabled(): boolean {
+  return resolveLibraryPickerTimingHudEnabled(
+    typeof __DEV__ !== "undefined" && __DEV__,
+    process.env.EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD,
+  );
+}
+
+/** Snapshot at module load — prefer isLibraryPickerTimingHudEnabled() at render. */
+export const LIBRARY_PICKER_TIMING_HUD = isLibraryPickerTimingHudEnabled();
 
 /** Items to prefetch beyond the last visible index while scrolling. */
 export const LIBRARY_SCROLL_LOOKAHEAD_ITEMS = 15;
@@ -94,8 +114,13 @@ export const LIBRARY_THUMB_PRIORITY_BACKGROUND = 10;
  */
 export type LibraryPickerPath = "warm" | "native2b";
 
-/** First limited native batch — Recents newest-N via index-from-end (no sort). */
-export const LIBRARY_PICKER_2B_FIRST_BATCH = 30;
+/**
+ * First limited native batch — Recents newest-N via index-from-end (no sort).
+ * Also the persisted-ID warm set (`openLibraryWithIds`). 90 ≈ 30 rows (3-col)
+ * so scroll stays on the fast path longer; full `openLibrary` still waits
+ * until the user is near the end of this set. Native cap is 200.
+ */
+export const LIBRARY_PICKER_2B_FIRST_BATCH = 90;
 
 /** Product budget: first painted tile after library overlay open. */
 export const LIBRARY_FIRST_PHOTO_BUDGET_MS = 3000;

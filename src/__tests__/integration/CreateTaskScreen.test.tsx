@@ -20,7 +20,7 @@ jest.mock('react/jsx-runtime', () => {
 });
 
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Keyboard } from 'react-native';
 
 const originalCreateElement = React.createElement;
 React.createElement = function (type, ...args) {
@@ -669,20 +669,27 @@ describe('CreateTaskScreen Integration', () => {
     expect(screen.getByTestId('create-task__attachment_preview_0')).toBeTruthy();
     expect(screen.getByTestId('createTask-add-photos').props.className).toContain('w-24 h-24');
     expect(screen.getByTestId('create-task__attachments_cta_plus_icon')).toBeTruthy();
+    expect(
+      within(screen.getByTestId('create-task__keyboard_avoid')).getByTestId(
+        'create-task__action_bar',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('create-task__save-draft')).toBeNull();
   });
 
-  it('renders the submit action inline below attachments instead of using the old bottom action layer', () => {
+  it('renders Save draft and Create Task on the bottom action bar', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
       </NavigationContainer>
     );
 
-    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
-    expect(screen.getByTestId('createTask-submit-focus-target')).toBeTruthy();
+    expect(screen.getByTestId('create-task__action_bar')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit')).toBeTruthy();
+    expect(screen.getByTestId('create-task__save-draft')).toBeTruthy();
   });
 
-  it('keeps the branded create-task shell styling while preserving the inline submit flow', () => {
+  it('keeps the branded create-task shell styling while preserving the bottom action bar', () => {
     const screen = render(
       <NavigationContainer>
         <CreateTaskScreen onNavigateBack={jest.fn()} />
@@ -691,8 +698,35 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
     expect(screen.getByTestId('create-task__header')).toBeTruthy();
-    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit')).toBeTruthy();
     expect(screen.queryByTestId('create-task__bottom_action_bar')).toBeNull();
+  });
+
+  it('lifts Save draft / Create Task with the keyboard instead of pinning them under it', () => {
+    const dismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(jest.fn());
+    const screen = render(
+      <NavigationContainer>
+        <CreateTaskScreen onNavigateBack={jest.fn()} />
+      </NavigationContainer>
+    );
+
+    expect(
+      within(screen.getByTestId('create-task__keyboard_avoid')).getByTestId(
+        'create-task__action_bar',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByTestId('create-task__action_bar').props.className).not.toContain(
+      'absolute',
+    );
+    expect(screen.getByTestId('create-task__form_scroll').props.keyboardDismissMode).toBeTruthy();
+    expect(screen.getByTestId('create-task__form_scroll').props.keyboardShouldPersistTaps).toBe(
+      'always',
+    );
+
+    fireEvent.press(screen.getByTestId('create-task__save-draft'));
+    expect(dismissSpy).toHaveBeenCalled();
+
+    dismissSpy.mockRestore();
   });
 
   it('allows company admins to use the create-task form (same field UI)', () => {
@@ -706,7 +740,7 @@ describe('CreateTaskScreen Integration', () => {
 
     expect(screen.getByTestId('create-task__root').props.className).toContain('bg-[#E7F4F8]');
     expect(screen.getByTestId('create-task__header')).toBeTruthy();
-    expect(screen.getByTestId('create-task__submit-inline')).toBeTruthy();
+    expect(screen.getByTestId('create-task__submit')).toBeTruthy();
     expect(
       screen.queryByText(
         'Administrator accounts cannot create or be assigned tasks. This function is reserved for managers and workers.',
@@ -790,7 +824,7 @@ describe('CreateTaskScreen Integration', () => {
     const title = screen.getByTestId('createTask-title');
     const description = screen.getByTestId('createTask-description');
     const taskReference = screen.getByTestId('createTask-taskReference');
-    const submitFocusTarget = screen.getByTestId('createTask-submit-focus-target');
+    const submitFocusTarget = screen.getByTestId('create-task__submit');
 
     fireEvent(title, 'onKeyPress', {
       nativeEvent: { key: 'Tab', shiftKey: false },

@@ -21,11 +21,14 @@ jest.mock("expo-camera", () => {
         canAskAgain: true,
       })),
     },
-    CameraView: React.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
+    CameraView: React.forwardRef((props: { zoom?: number }, ref: React.Ref<unknown>) => {
       React.useImperativeHandle(ref, () => ({
         takePictureAsync: mockTakePictureAsync,
       }));
-      return React.createElement(View, { testID: "mock-camera-view" });
+      return React.createElement(View, {
+        testID: "mock-camera-view",
+        accessibilityValue: { text: String(props.zoom ?? 0) },
+      });
     }),
   };
 });
@@ -46,6 +49,31 @@ jest.mock("expo-media-library", () => ({
 jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
+
+jest.mock("react-native-reanimated", () => ({
+  runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+}));
+
+jest.mock("react-native-gesture-handler", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const chain = () => {
+    const api: { onBegin: () => unknown; onUpdate: () => unknown } = {
+      onBegin() {
+        return api;
+      },
+      onUpdate() {
+        return api;
+      },
+    };
+    return api;
+  };
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(View, null, children),
+    Gesture: { Pinch: chain },
+  };
+});
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
@@ -161,6 +189,34 @@ describe("CaptureSessionCameraScreen shutter C2", () => {
     });
     await waitFor(() => {
       expect(useCaptureSessionStore.getState().photos).toHaveLength(1);
+    });
+  });
+
+  it("applies 1x and 2x zoom pills to CameraView", async () => {
+    const { getByTestId } = render(
+      <CaptureSessionHostProvider
+        value={{
+          onCancel: jest.fn(),
+          onComplete: jest.fn(),
+          selectionLimit: 20,
+          goToHybridLibrary: mockGoToHybridLibrary,
+          goToCamera: jest.fn(),
+        }}
+      >
+        <CaptureSessionCameraScreen />
+      </CaptureSessionHostProvider>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("capture-session__zoom_2x")).toBeTruthy();
+    });
+    fireEvent.press(getByTestId("capture-session__zoom_2x"));
+    expect(getByTestId("mock-camera-view").props.accessibilityValue).toEqual({
+      text: "0.22",
+    });
+    fireEvent.press(getByTestId("capture-session__zoom_1x"));
+    expect(getByTestId("mock-camera-view").props.accessibilityValue).toEqual({
+      text: "0",
     });
   });
 });

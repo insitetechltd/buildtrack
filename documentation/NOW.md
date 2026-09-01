@@ -8,37 +8,48 @@
 
 **Priority #1 — commercial spine:** **`M-OPS-ENV-01` Closed (2026-08-29)** Phases A–C. DEV=`insite-dev` / `zusulknbhaumougqckec`; PROD=`insite-prod` / `jcnzjigxgkzhjsaekoqz`. Daily TF / **`dev`** → EAS `preview` → **DEV**. App Store profile **`production`** → **PROD** (requires confirm). Promotion: `documentation/PROD_DEV_PROMOTION.md`. **Next spine:** App Store submit → Stripe live on PROD (ENV Phase D) → finish `M-OPS-03` parked writes → `M-AUTHZ-02` → …
 
-**This session:** **M-OPS-03** — Phase A1 company-first IA shell shipped; **Internal TF build 12 submitted**.
-- Commit: `20f4e2b` · IPA: `apps/owner/.eas/artifacts/hq-a1-ia-20260831-114114.ipa` · [submission](https://expo.dev/accounts/insitetech/projects/insite-owner/submissions/acdf37af-b565-492d-b3fb-46fb646f86bb)
-- Stat-tile-only drill on company/project/user detail; Home reset + depth cap; hub company-first; crossover footers removed; Tasks placeholder
-- **You:** Install TF **12** when ASC finishes processing; headed smoke per `apps/owner/ASC_INTERNAL_TF_CHECKLIST.md` § You
-- Parked writes: soft suspend, entitlement override, company freeze, §3e purge (Human Gate)
+**This session:** Taskr **Create Task keyboard** + **prod picker HUD mute** landing on git; Internal TF submitting (`dev` / DEV). HQ **Home landing** mockups done, **not implemented**. HQ A3–A5 still uncommitted.
+- Keyboard: action bar rides above the IME; headed smoke PASS on 17 Pro Max
+- HUD: Metro/`__DEV__` only; `eas.json` production sets `EXPO_PUBLIC_LIBRARY_PICKER_TIMING_HUD=0`
+- Mocks: `.dbg/hq-home-healthy-mock.png` · `.dbg/hq-home-emergency-mock.png`
+- Awaiting **implement** GO for `OwnerHomeScreen`
+- A3–A5 (effective status / title search / parity Jest) still in working tree; Edge already on DEV
 
-**Idle-parallel photo funnel:** **Must-have** — Accept → Select Photos must not export full-res; cap 1920 at Draw/upload. HQ thumbs + camera zoom (`M-CAPTURE-01`) + tile grip (`M-CAPTURE-02`) parked as one later camera/picker phase. **Not** the App Store binary.
+**Prior this session:** **M-OPS-03** HQ task-query contract A3–A5 implemented (repo + DEV Edge). A1/A2 already shipped. **Not committed** (user did not ask).
+- Contract SoT: `documentation/owner-task-query-contract.md`
+- A3 `TASK_EFFECTIVE_STATUS`: Taskr 8 read-maps + HQ list/detail/project buckets; Edge `listTasks` status filter uses PostgREST `status ?? current_status`
+- A4 HQ `TaskListPane`: placeholder “Search by title”; submit-only Edge search; no client-side assignee/project/status filter
+- A5: `src/__tests__/parity/task-query-contract.parity.test.ts` T1–T7 dual-impl
+- Edge `owner-tenant-read` redeployed DEV `zusulknbhaumougqckec` (includes `taskQueryPredicates.ts`)
+- Schema smoke PASS; JWT/`listTasks.statusFilter` smoke SKIPPED (no `SMOKE_OWNER_EMAIL` in env)
+- HQ Internal TF **12** does **not** include A3–A5 client UI — next TF when asked
+
+**You:** say **commit** when you want this slice on git; optional headed HQ after next Internal TF (search-by-title + User→Tasks relation roles). Parked writes still Human Gate.
+
+**Idle-parallel photo funnel:** Camera **zoom** (pinch + 1×/2×) in capture session — EV parked. TF240 Accept defer + 1920 export; warm/ID batch **30 → 90** (JS). **Picker L1 HUD is Metro/`__DEV__` only** (muted on App Store `production` compiles). HQ thumbs + tile grip parked. **Not** the App Store binary.
 
 ## Next (definitive)
 
-1. Headed HQ: Monitoring ops panel + Economics Stripe empty/configured + Audit + Find user + support/session
-2. **GTM locked (2026-08-30):** store name **A**; promo **60d**; domain **www.insiteworks.co**; ASC paste **after new screenshots**. Plan: `docs/superpowers/plans/2026-08-30-taskr-soft-launch-gtm.md`
-3. Next product cycle uses Quality Loop: messy one-liners OK; agent writes the Intake Brief or asks ≤4 questions
-4. Idle later: **M-DATA-05 Phase B** (post-Store)
+1. Optional: JWT smoke (`SMOKE_OWNER_EMAIL` + password) for `listTasks.statusFilter`; HQ headed on next Internal TF
+2. User-requested **commit** of HQ A3–A5 (then default push)
+3. Headed HQ: Monitoring ops panel + Economics Stripe empty/configured + Audit + Find user + support/session
+4. **GTM locked (2026-08-30):** store name **A**; promo **60d**; domain **www.insiteworks.co**; ASC paste **after new screenshots**. Plan: `docs/superpowers/plans/2026-08-30-taskr-soft-launch-gtm.md`
 
 **Parked:** soft suspend / resend invite / entitlement override / company freeze / §3e purge / cost ledger writes → **M-OPS-03** future. **M-BILL-F**; **M-BILL-01G**; **M-AI-01 build**; **M-DAILY-01**; **M-SEC-03**; **`M-CAPTURE-01` / `M-CAPTURE-02` tabled**.
 
 ## Recently closed / shipped this session
 
+**M-OPS-03 task-query A3–A5 (2026-09-01, uncommitted):** effective status + title-only HQ search + parity Jest. Edge deployed DEV.
+
 **Quality Loop SOP + intake gate (2026-08-30):** dual-write to `solo-dev-harness` SOP §11–12 + `intake.md` + always-on `intake-gate.mdc`. Commit after Judge GO. User is not required to fill a kickoff template.
 
-**M-OPS-03 read-only ops enrich (2026-08-30):** no migrations; Edge `owner-ops-read` + hq surfaces. Gate A folded (sanitize auth, honest Management placeholders, Stripe bulk+orphans, audit via Edge).
-
-**M-OPS-03 Phase 1b/Economics/1d (2026-08-30):** `platform_owners` + audit + tenant-write + Economics counts. HQ brand TF working.
-
-**M-OPS-03 Phase 1c (2026-08-30):** Tenant read Edge + drill-down.
+**M-OPS-03 read-only ops enrich (2026-08-30):** no migrations; Edge `owner-ops-read` + hq surfaces.
 
 ## Locked
 
 - **Master plan:** visual SoT = `documentation/ROADMAP.md` § Commercial sequence map
 - **Env:** current = DEV; new = PROD; TF daily = DEV; Stripe live @ submit
+- **Owner task query contract:** `documentation/owner-task-query-contract.md` — assigner owns (`assigned_by`); assignee executes; `primary_assignee_id` is assignee
 - **HK billing:** charge HKD; no grandfathering
 - **ACL:** CA authority; default seat Worker; PA on CA|PM only
 - **AUTHZ-RC construct:** Closed

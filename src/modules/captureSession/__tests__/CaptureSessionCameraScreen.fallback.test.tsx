@@ -45,6 +45,31 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
 
+jest.mock("react-native-reanimated", () => ({
+  runOnJS: (fn: (...args: unknown[]) => unknown) => fn,
+}));
+
+jest.mock("react-native-gesture-handler", () => {
+  const React = require("react");
+  const { View } = require("react-native");
+  const chain = () => {
+    const api: { onBegin: () => unknown; onUpdate: () => unknown } = {
+      onBegin() {
+        return api;
+      },
+      onUpdate() {
+        return api;
+      },
+    };
+    return api;
+  };
+  return {
+    GestureDetector: ({ children }: { children: React.ReactNode }) =>
+      React.createElement(View, null, children),
+    Gesture: { Pinch: chain },
+  };
+});
+
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 47, bottom: 34, left: 0, right: 0 }),
 }));

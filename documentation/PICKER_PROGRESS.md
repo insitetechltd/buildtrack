@@ -16,7 +16,7 @@
 
 ## Status
 
-**NOW:** Accept no longer exports full-res (JS). Draw/upload cap 1920 needs native `exportCappedJpeg` (new TF). HQ thumbs + zoom + tile grip parked. TF237 first-paint PASS; TF239 was 2× thumb experiment.
+**NOW:** Accept no longer exports full-res (JS). Draw/upload cap 1920 needs native `exportCappedJpeg` (TF240). Warm/ID first-batch is **90** (was 30) so more tiles paint before full `openLibrary`/expand. HQ thumbs + zoom + tile grip parked. TF237 first-paint PASS; TF239 was 2× thumb experiment.
 
 HUD `1st 12` is the **previous overlay** in the same JS process, not the current open. **`up` is not upload.** Full legend: `docs/superpowers/analysis/2026-08-30-photokit-first-paint-journey.md`.
 

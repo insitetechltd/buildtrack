@@ -23,7 +23,10 @@ import {
 } from "@/modules/mediaLibrary/libraryAlbumConstants";
 import { useLibraryAlbumPicker } from "@/modules/mediaLibrary/useLibraryAlbumPicker";
 import { markLibraryPickerMetadata } from "@/utils/libraryPickerTiming";
-import { librarySkeletonTileCount } from "@/utils/libraryPickerPerf";
+import {
+  isLibraryPickerTimingHudEnabled,
+  librarySkeletonTileCount,
+} from "@/utils/libraryPickerPerf";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { prepareCaptureSessionAccept } from "./cameraDraftPinQueue";
 import { useCaptureSessionStore } from "./sessionDraftStore";
@@ -343,7 +346,7 @@ export function HybridLibraryPickerScreen() {
         />
       )}
 
-      <LibraryPickerTimingHud />
+      {isLibraryPickerTimingHudEnabled() ? <LibraryPickerTimingHud /> : null}
 
       <LibraryAlbumPickerModal
         visible={albumPicker.albumPickerOpen}

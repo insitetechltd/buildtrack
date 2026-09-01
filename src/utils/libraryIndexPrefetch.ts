@@ -91,7 +91,7 @@ export function prefetchPhotokitLibraryIndex(
         if (
           albumKey == null &&
           persisted &&
-          persisted.length > 0 &&
+          persisted.length >= LIBRARY_PICKER_2B_FIRST_BATCH &&
           isPhotokitLibraryWithIdsAvailable()
         ) {
           const preview = await openPhotokitLibraryWithIds(persisted);

@@ -29,4 +29,12 @@ describe("libraryPreviewIds", () => {
       JSON.stringify(["x", "y"]),
     );
   });
+
+  it("caps persist at LIBRARY_PICKER_2B_FIRST_BATCH", async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `id${i}`);
+    await persistPhotokitPreviewIds(ids);
+    expect(peekPhotokitPreviewIds()).toHaveLength(90);
+    expect(peekPhotokitPreviewIds()?.[0]).toBe("id0");
+    expect(peekPhotokitPreviewIds()?.[89]).toBe("id89");
+  });
 });

@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import {
   getLibraryPickerPath,
-  LIBRARY_PICKER_TIMING_HUD,
+  isLibraryPickerTimingHudEnabled,
 } from "@/utils/libraryPickerPerf";
 import { isPhotokitThumbsAvailable } from "./PhotokitThumbView";
 import {
@@ -11,12 +11,13 @@ import {
   subscribeLibraryPickerTiming,
 } from "@/utils/libraryPickerTiming";
 
-/** Dev/TF overlay — not a product control. pointerEvents none. */
+/** Metro/debug overlay — muted on production compiles. pointerEvents none. */
 export function LibraryPickerTimingHud() {
   const [text, setText] = useState("");
+  const enabled = isLibraryPickerTimingHudEnabled();
 
   useEffect(() => {
-    if (!LIBRARY_PICKER_TIMING_HUD) {
+    if (!enabled) {
       return;
     }
     return subscribeLibraryPickerTiming((snap) => {
@@ -25,9 +26,9 @@ export function LibraryPickerTimingHud() {
         : "image";
       setText(`${formatLibraryPickerTimingHud(snap)}\npath ${path}`);
     });
-  }, []);
+  }, [enabled]);
 
-  if (!LIBRARY_PICKER_TIMING_HUD || !text) {
+  if (!enabled || !text) {
     return null;
   }
 

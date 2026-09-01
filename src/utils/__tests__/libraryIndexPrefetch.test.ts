@@ -15,7 +15,7 @@ import {
 } from "../libraryPickerTiming";
 
 const mockOpen = jest.fn(async () => ({ token: 2, count: 100 }));
-const mockOpenLimited = jest.fn(async () => ({ token: 5, count: 30 }));
+const mockOpenLimited = jest.fn(async () => ({ token: 5, count: 90 }));
 const mockOpenWithIds = jest.fn(async () => ({ token: 8, count: 12 }));
 const mockExpand = jest.fn(async () => ({ token: 5, count: 50000 }));
 const mockIdAt = jest.fn((token: number, index: number) => `id${index}`);
@@ -44,7 +44,7 @@ jest.mock("@/utils/libraryPreviewIds", () => ({
 }));
 
 jest.mock("@/utils/libraryPickerPerf", () => ({
-  LIBRARY_PICKER_2B_FIRST_BATCH: 30,
+  LIBRARY_PICKER_2B_FIRST_BATCH: 90,
   LIBRARY_FIRST_PHOTO_BUDGET_MS: 3000,
   isLibraryPickerNative2b: () => mockIs2b(),
 }));
@@ -57,7 +57,7 @@ describe("libraryIndexPrefetch", () => {
     mockIs2b.mockReturnValue(false);
     mockIs2bApi.mockReturnValue(true);
     mockOpen.mockResolvedValue({ token: 2, count: 100 });
-    mockOpenLimited.mockResolvedValue({ token: 5, count: 30 });
+    mockOpenLimited.mockResolvedValue({ token: 5, count: 90 });
     mockOpenWithIds.mockResolvedValue({ token: 8, count: 12 });
     mockPeekIds.mockReturnValue(null);
     mockHydrateIds.mockResolvedValue(null);
@@ -86,23 +86,34 @@ describe("libraryIndexPrefetch", () => {
   it("native2b returns limited session without expanding", async () => {
     mockIs2b.mockReturnValue(true);
     const limited = await prefetchPhotokitLibraryIndex(null);
-    expect(limited).toEqual({ token: 5, count: 30 });
-    expect(mockOpenLimited).toHaveBeenCalledWith(null, 30);
+    expect(limited).toEqual({ token: 5, count: 90 });
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90);
     expect(mockOpen).not.toHaveBeenCalled();
 
     await new Promise((r) => setTimeout(r, 0));
     await Promise.resolve();
     expect(mockExpand).not.toHaveBeenCalled();
-    expect(peekPhotokitLibraryIndex(null)).toEqual({ token: 5, count: 30 });
+    expect(peekPhotokitLibraryIndex(null)).toEqual({ token: 5, count: 90 });
     expect(mockPersistIds).toHaveBeenCalled();
   });
 
-  it("native2b opens persisted ids without Recents limited fetch", async () => {
+  it("native2b re-seeds limited batch when persisted ids are short", async () => {
     mockIs2b.mockReturnValue(true);
     mockPeekIds.mockReturnValue(["p0", "p1"]);
+    const limited = await prefetchPhotokitLibraryIndex(null);
+    expect(mockOpenWithIds).not.toHaveBeenCalled();
+    expect(mockOpenLimited).toHaveBeenCalledWith(null, 90);
+    expect(limited).toEqual({ token: 5, count: 90 });
+  });
+
+  it("native2b opens persisted ids without Recents limited fetch when batch is full", async () => {
+    mockIs2b.mockReturnValue(true);
+    const ids = Array.from({ length: 90 }, (_, i) => `p${i}`);
+    mockPeekIds.mockReturnValue(ids);
+    mockOpenWithIds.mockResolvedValue({ token: 8, count: 90 });
     const preview = await prefetchPhotokitLibraryIndex(null);
-    expect(preview).toEqual({ token: 8, count: 12 });
-    expect(mockOpenWithIds).toHaveBeenCalledWith(["p0", "p1"]);
+    expect(preview).toEqual({ token: 8, count: 90 });
+    expect(mockOpenWithIds).toHaveBeenCalledWith(ids);
     expect(mockOpenLimited).not.toHaveBeenCalled();
   });
 
@@ -151,9 +162,9 @@ describe("libraryIndexPrefetch", () => {
     mockIs2b.mockReturnValue(true);
     await prefetchPhotokitLibraryIndex(null);
     const onExpanded = jest.fn();
-    requestPhotokitLibraryExpandIfScrolled(null, 5, 18, 30, false, onExpanded);
+    requestPhotokitLibraryExpandIfScrolled(null, 5, 18, 90, false, onExpanded);
     expect(mockExpand).not.toHaveBeenCalled();
-    requestPhotokitLibraryExpandIfScrolled(null, 5, 28, 30, true, onExpanded);
+    requestPhotokitLibraryExpandIfScrolled(null, 5, 88, 90, true, onExpanded);
     await Promise.resolve();
     await Promise.resolve();
     expect(mockExpand).toHaveBeenCalledWith(5);

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image as ExpoImage } from "expo-image";
 import {
   View,
@@ -9,6 +9,8 @@ import {
   Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { CameraView } from "expo-camera";
 import * as MediaLibrary from "expo-media-library";
 import { Ionicons } from "@expo/vector-icons";
@@ -26,6 +28,11 @@ import { probeCameraAvailable } from "./cameraAvailability";
 import { enqueueCameraDraftPin } from "./cameraDraftPinQueue";
 import { useCaptureSessionHost } from "./CaptureSessionHostContext";
 import { useCaptureSessionStore } from "./sessionDraftStore";
+import {
+  cameraZoomAfterPinch,
+  cameraZoomPreset,
+  isCameraZoom1x,
+} from "./cameraZoom";
 
 function newSessionId(): string {
   return `cam_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -42,6 +49,9 @@ export function CaptureSessionCameraScreen() {
   const [libraryThumbUri, setLibraryThumbUri] = useState<string | null>(null);
   const [cameraNativeError, setCameraNativeError] = useState<string | null>(null);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
+  const [zoom, setZoom] = useState(0);
+  const zoomRef = useRef(0);
+  const pinchStartRef = useRef(0);
 
   const photos = useCaptureSessionStore((s) => s.photos);
   const selectAllSessionCamera = useCaptureSessionStore(
@@ -180,6 +190,31 @@ export function CaptureSessionCameraScreen() {
     setPermission(next);
   }, []);
 
+  const applyZoom = useCallback((next: number) => {
+    zoomRef.current = next;
+    setZoom(next);
+  }, []);
+
+  const beginPinchZoom = useCallback(() => {
+    pinchStartRef.current = zoomRef.current;
+  }, []);
+
+  const updatePinchZoom = useCallback((scale: number) => {
+    applyZoom(cameraZoomAfterPinch(pinchStartRef.current, scale));
+  }, [applyZoom]);
+
+  const pinchZoom = useMemo(
+    () =>
+      Gesture.Pinch()
+        .onBegin(() => {
+          runOnJS(beginPinchZoom)();
+        })
+        .onUpdate((event) => {
+          runOnJS(updatePinchZoom)(event.scale);
+        }),
+    [beginPinchZoom, updatePinchZoom],
+  );
+
   if (cameraNativeError || cameraUnavailable) {
     return (
       <View
@@ -255,6 +290,7 @@ export function CaptureSessionCameraScreen() {
         style={StyleSheet.absoluteFill}
         facing="back"
         mode="picture"
+        zoom={zoom}
         onMountError={(event) => {
           const message =
             event?.message ||
@@ -264,6 +300,22 @@ export function CaptureSessionCameraScreen() {
           skipToLibraryOnce();
         }}
       />
+      ) : null}
+
+      {cameraReady ? (
+        <GestureDetector gesture={pinchZoom}>
+          <View
+            testID="capture-session__zoom_surface"
+            collapsable={false}
+            style={[
+              styles.zoomSurface,
+              {
+                top: insets.top + 56,
+                bottom: insets.bottom + 156,
+              },
+            ]}
+          />
+        </GestureDetector>
       ) : null}
 
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
@@ -290,7 +342,7 @@ export function CaptureSessionCameraScreen() {
       </View>
 
       {sessionCount > 0 ? (
-        <View style={[styles.sessionStrip, { bottom: insets.bottom + 110 }]}>
+        <View style={[styles.sessionStrip, { bottom: insets.bottom + 156 }]}>
           {photos
             .filter((p) => p.source === "camera")
             .slice(-6)
@@ -305,6 +357,56 @@ export function CaptureSessionCameraScreen() {
                 style={styles.sessionThumb}
               />
             ))}
+        </View>
+      ) : null}
+
+      {cameraReady ? (
+        <View
+          style={[styles.zoomPills, { bottom: insets.bottom + 100 }]}
+          pointerEvents="box-none"
+        >
+          <Pressable
+            testID="capture-session__zoom_1x"
+            onPress={() => applyZoom(cameraZoomPreset("1x"))}
+            disabled={isCapturing}
+            style={[
+              styles.zoomPill,
+              isCameraZoom1x(zoom) && styles.zoomPillActive,
+              isCapturing && styles.shutterDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom 1x"
+          >
+            <Text
+              style={[
+                styles.zoomPillText,
+                isCameraZoom1x(zoom) && styles.zoomPillTextActive,
+              ]}
+            >
+              1×
+            </Text>
+          </Pressable>
+          <Pressable
+            testID="capture-session__zoom_2x"
+            onPress={() => applyZoom(cameraZoomPreset("2x"))}
+            disabled={isCapturing}
+            style={[
+              styles.zoomPill,
+              !isCameraZoom1x(zoom) && styles.zoomPillActive,
+              isCapturing && styles.shutterDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Zoom 2x"
+          >
+            <Text
+              style={[
+                styles.zoomPillText,
+                !isCameraZoom1x(zoom) && styles.zoomPillTextActive,
+              ]}
+            >
+              2×
+            </Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -399,6 +501,44 @@ const styles = StyleSheet.create({
   },
   cancelLinkText: {
     color: "#aaa",
+  },
+  zoomSurface: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 1,
+  },
+  zoomPills: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 10,
+    zIndex: 2,
+  },
+  zoomPill: {
+    minWidth: 52,
+    height: 44,
+    paddingHorizontal: 14,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  zoomPillActive: {
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderColor: "#fff",
+  },
+  zoomPillText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  zoomPillTextActive: {
+    color: "#111",
   },
   topBar: {
     position: "absolute",

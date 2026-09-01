@@ -177,7 +177,7 @@ export async function openPhotokitLibraryLimited(
   });
 }
 
-/** Fast path: persisted local IDs. Not exclusive — 30 ids must not wait behind expand. */
+/** Fast path: persisted local IDs. Not exclusive — ID-open must not wait behind expand. */
 export async function openPhotokitLibraryWithIds(
   ids: string[],
 ): Promise<PhotokitLibrarySession | null> {

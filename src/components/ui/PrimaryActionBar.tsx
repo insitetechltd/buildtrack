@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, Text, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Keyboard, Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { cn } from "@/utils/cn";
@@ -17,11 +17,14 @@ interface PrimaryActionBarProps {
   secondaryTestID?: string;
   /** Destructive primary (e.g. reject) — red instead of blue. */
   destructive?: boolean;
+  /** Marks the primary action as the form-focus target (Tab/next from last field). */
+  primarySelected?: boolean;
 }
 
 /**
  * Sticky form footer. Owns bottom safe-area inset once via useSafeAreaInsets.
- * Parent SafeAreaView should omit `bottom` edge when this bar is absolute.
+ * Parent SafeAreaView should omit `bottom` so this bar is the single inset owner.
+ * Pass `absolute={false}` when the bar is inside KeyboardAvoidingView (Create Task).
  */
 export default function PrimaryActionBar({
   primaryLabel,
@@ -34,10 +37,27 @@ export default function PrimaryActionBar({
   primaryTestID,
   secondaryTestID,
   destructive = false,
+  primarySelected = false,
 }: PrimaryActionBarProps) {
   const insets = useSafeAreaInsets();
   const showSecondaryAction = Boolean(secondaryLabel && onSecondaryPress);
-  const bottomPad = Math.max(insets.bottom, 12);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  // In-flow bars sit above the keyboard via KeyboardAvoidingView; keep the home-indicator
+  // inset only when the keyboard is closed so the bar does not float 34px above IME.
+  const bottomPad =
+    !absolute && keyboardVisible ? 12 : Math.max(insets.bottom, 12);
 
   return (
     <View
@@ -63,6 +83,10 @@ export default function PrimaryActionBar({
         <Pressable
           testID={primaryTestID}
           accessibilityRole="button"
+          accessibilityState={{
+            disabled: isPrimaryDisabled,
+            selected: primarySelected,
+          }}
           onPress={onPrimaryPress}
           disabled={isPrimaryDisabled}
           className={cn(

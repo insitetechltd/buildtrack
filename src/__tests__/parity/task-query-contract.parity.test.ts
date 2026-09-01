@@ -153,7 +153,7 @@ describe("task-query-contract parity (A5)", () => {
       path.join(root, "apps/owner/src/screens/tenant/TaskListPane.tsx"),
       "utf8",
     );
-    expect(store).toMatch(/taskEffectiveStatus\(/);
+    expect(store).toMatch(/resolveClientTaskStatus\(/);
     expect(store).not.toMatch(/current_status \|\| ['"]new['"]/);
     expect(edge).toMatch(/taskEffectiveStatus\(/);
     expect(edge).toMatch(/sanitizeTaskSearchTitle\(/);

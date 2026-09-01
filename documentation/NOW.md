@@ -10,7 +10,8 @@
 
 **This session — public commercial leftovers (not a new binary):**
 
-- App Store **243** (v1.1.3) already on ASC. Internal TF **242** on DEV.
+- **Bug (shipping PROD TF RC):** self-assigned / Accept-doesn’t-stick. Dual-write `status`+`current_status`; hide Accept for self-assign / `acceptedBy`. Jest 103 PASS. **243 does not include this.** Next binary is production-profile TF RC (autoIncrement past 243).
+- App Store **243** (v1.1.3) already on ASC. **TF RC 243** was added to **Chu Wo** + Beta App Review; Internal **Team (Expo)** already had it. Daily Internal TF **242** is DEV-backend.
 - Honest GitHub Pages + legal + `support@insiteworks.co` (in-app constant; **243 still has Gmail** until the next production build).
 - ASC paste pack: `docs/superpowers/plans/2026-09-01-asc-listing-paste.md` + `docs/assets/store/iphone-67/`.
 - Live Stripe account `acct_1U5aiTDH5K85GHQi`: **0 coupons / 0 promotion codes**. 60-day pilots need a Human GO to create them.

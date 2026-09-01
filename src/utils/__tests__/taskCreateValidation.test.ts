@@ -1,7 +1,9 @@
 import {
   assertValidTaskCreateInput,
   formatTaskCreateValidationError,
+  isTaskAwaitingAssigneeAcceptance,
   normalizeCreateAssigneeIds,
+  resolveClientTaskStatus,
   resolveInitialTaskCreateStatus,
   validateTaskCreateInput,
 } from "../taskCreateValidation";
@@ -64,5 +66,74 @@ describe("taskCreateValidation", () => {
 
   it("resolves new for delegated create", () => {
     expect(resolveInitialTaskCreateStatus("pm-1", ["worker-1"])).toBe("new");
+  });
+
+  it("does not await acceptance for self-assigned tasks still marked new", () => {
+    expect(
+      isTaskAwaitingAssigneeAcceptance({
+        viewerUserId: "pm-1",
+        status: "new",
+        assignedBy: "pm-1",
+        assignedTo: ["pm-1"],
+      }),
+    ).toBe(false);
+  });
+
+  it("does not await acceptance after accept persisted acceptedBy with stale new status", () => {
+    expect(
+      isTaskAwaitingAssigneeAcceptance({
+        viewerUserId: "worker-1",
+        status: "new",
+        assignedBy: "pm-1",
+        assignedTo: ["worker-1"],
+        acceptedBy: "worker-1",
+      }),
+    ).toBe(false);
+  });
+
+  it("awaits acceptance for delegated unaccepted tasks", () => {
+    expect(
+      isTaskAwaitingAssigneeAcceptance({
+        viewerUserId: "worker-1",
+        status: "new",
+        assignedBy: "pm-1",
+        assignedTo: ["worker-1"],
+      }),
+    ).toBe(true);
+  });
+
+  it("heals self-assigned rows whose status column stayed at default new", () => {
+    expect(
+      resolveClientTaskStatus({
+        status: "new",
+        current_status: "in_progress",
+        assigned_by: "pm-1",
+        assigned_to: ["pm-1"],
+        accepted_by: "pm-1",
+      }),
+    ).toBe("in_progress");
+  });
+
+  it("heals accepted rows whose status column stayed at default new", () => {
+    expect(
+      resolveClientTaskStatus({
+        status: "new",
+        current_status: "in_progress",
+        assigned_by: "pm-1",
+        assigned_to: ["worker-1"],
+        accepted_by: "worker-1",
+      }),
+    ).toBe("in_progress");
+  });
+
+  it("keeps delegated unaccepted rows as new", () => {
+    expect(
+      resolveClientTaskStatus({
+        status: "new",
+        current_status: "new",
+        assigned_by: "pm-1",
+        assigned_to: ["worker-1"],
+      }),
+    ).toBe("new");
   });
 });

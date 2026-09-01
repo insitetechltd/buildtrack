@@ -49,19 +49,15 @@ import type {
 import type { Task, TaskActivity, TaskStatus } from '../../types/buildtrack';
 import type { StatusSemanticToken } from '../contracts/primitives';
 import { isCompletedLifecycleStatus } from '../../utils/taskLifecycleStatus';
+import {
+  isPreAcceptanceTaskStatus,
+  isTaskAwaitingAssigneeAcceptance,
+  resolveClientTaskStatus,
+} from '../../utils/taskCreateValidation';
 
 export interface UseTaskDetailViewAdapterProps {
   taskId: string;
   subTaskId?: string;
-}
-
-function isPreAcceptanceTaskStatus(status: TaskStatus): boolean {
-  return (
-    status === 'new' ||
-    status === 'not_started' ||
-    status === 'assigned' ||
-    status === 'received'
-  );
 }
 
 function isApprovedTaskStatus(status: TaskStatus): boolean {
@@ -647,36 +643,50 @@ export function useTaskDetailViewAdapter({
     primaryAssigneeId: task.primaryAssigneeId,
     delegatedUserIds: task.delegatedUserIds || [],
   });
+  const displayStatus = resolveClientTaskStatus({
+    status: task.status,
+    assigned_by: task.assignedBy,
+    assigned_to: assignedTo,
+    primary_assignee_id: task.primaryAssigneeId,
+    accepted_by: task.acceptedBy,
+    accepted: task.accepted,
+  });
   const isAssignedToMe = Array.isArray(assignedTo) && assignedTo.some((id) => String(id) === String(user.id));
   const isTaskCreator = String(task.assignedBy) === String(user.id);
   const actorAssigneeRole = resolveAssigneeRoleFromUser(user);
   const canEditDelegation = canEditTaskDelegation({
     actorUserId: user.id,
     taskAssignedBy: task.assignedBy,
-    taskStatus: task.status,
+    taskStatus: displayStatus,
   });
   const isCriticalThisWeek = hasCriticalThisWeekTag(task.tags);
-  const isAwaitingAcceptance = isAssignedToMe && isPreAcceptanceTaskStatus(task.status);
+  const isAwaitingAcceptance = isTaskAwaitingAssigneeAcceptance({
+    viewerUserId: user.id,
+    status: displayStatus,
+    assignedBy: task.assignedBy,
+    assignedTo,
+    acceptedBy: task.acceptedBy,
+  });
   const isReviewerApprovalState =
-    isTaskCreator && task.status === 'submitted_for_review' && task.completionPercentage === 100;
+    isTaskCreator && displayStatus === 'submitted_for_review' && task.completionPercentage === 100;
   const isContributorReviewState =
     isAssignedToMe &&
     !isTaskCreator &&
     task.completionPercentage === 100 &&
-    task.status !== 'submitted_for_review' &&
-    task.status !== 'declined' &&
-    task.status !== 'cancelled' &&
-    !isApprovedTaskStatus(task.status) &&
-    !isPreAcceptanceTaskStatus(task.status);
+    displayStatus !== 'submitted_for_review' &&
+    displayStatus !== 'declined' &&
+    displayStatus !== 'cancelled' &&
+    !isApprovedTaskStatus(displayStatus) &&
+    !isPreAcceptanceTaskStatus(displayStatus);
   const isContributorUpdateLocked =
     isAssignedToMe &&
     !isTaskCreator &&
-    (task.status === 'submitted_for_review' || isApprovedTaskStatus(task.status));
-  const isActiveWorkState = isActiveWorkTaskStatus(task.status) && !isContributorReviewState;
+    (displayStatus === 'submitted_for_review' || isApprovedTaskStatus(displayStatus));
+  const isActiveWorkState = isActiveWorkTaskStatus(displayStatus) && !isContributorReviewState;
   const canArchiveTask =
     !isViewingSubTask &&
     !task.archivedAt &&
-    isCompletedLifecycleStatus(task.status) &&
+    isCompletedLifecycleStatus(displayStatus) &&
     (isAssignedToMe || isTaskCreator);
 
   const getStatusToken = (status: TaskStatus): StatusSemanticToken => {
@@ -880,7 +890,7 @@ export function useTaskDetailViewAdapter({
     containerId: task.containerId,
     subContainerId: task.subContainerId,
     tagLabels: getTaskTags(task.tags),
-    statusLabel: getStatusLabel(task.status),
+    statusLabel: getStatusLabel(displayStatus),
     categoryLabel: humanizeToken(task.category || 'general'),
     completionLabel: `${task.completionPercentage}% complete`,
     dueDateLabel: task.dueDate ? dateFormatter.formatDateShort(task.dueDate) : undefined,
@@ -957,7 +967,7 @@ export function useTaskDetailViewAdapter({
     density: 'standard',
     structuralState: 'stale',
     title: task.title,
-    statusLabel: getStatusLabel(task.status),
+    statusLabel: getStatusLabel(displayStatus),
     categoryLabel: humanizeToken(task.category || 'general'),
     projectLabel: task.projectId || 'Unknown Project',
     completionLabel: `${task.completionPercentage}% complete`,
@@ -1177,7 +1187,7 @@ export function useTaskDetailViewAdapter({
       header: {
         taskId: task.id,
         title: t.tasks.taskDetails,
-        statusLabel: getStatusLabel(task.status),
+        statusLabel: getStatusLabel(displayStatus),
         projectName: task.projectId || 'Unknown Project',
         assigneeSummary: assignees.map((a) => a.name).join(', ') || 'Unassigned',
       },

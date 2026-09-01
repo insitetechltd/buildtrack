@@ -32,6 +32,7 @@ export function buildSupabaseTaskInsertPayload(
     priority: taskData.priority,
     category: taskData.category,
     due_date: taskData.dueDate,
+    status: initialStatus,
     current_status: initialStatus,
     completion_percentage: 0,
     assigned_to: taskData.assignedTo,

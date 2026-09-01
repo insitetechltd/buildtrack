@@ -18,6 +18,7 @@ import { Task, SubTask, TaskUpdate, TaskStatus, Priority, TaskReadStatus, Billin
 import { isCompletedLifecycleStatus } from "../utils/taskLifecycleStatus";
 import {
   assertValidTaskCreateInput,
+  resolveClientTaskStatus,
   resolveInitialTaskCreateStatus,
 } from "../utils/taskCreateValidation";
 import { assertValidTaskUpdate } from "../utils/taskUpdateValidation";
@@ -38,7 +39,6 @@ import {
   normalizeProjectLocationLabel,
   normalizeTaskActivityCompatibility,
 } from "./taskNormalization";
-import { taskEffectiveStatus } from "./taskQueryPredicates";
 
 export type { QueryMeta } from "../api/supabase";
 export type { TaskDerivedState, TaskPreview } from "./taskDerivedState";
@@ -534,7 +534,7 @@ export const useTaskStore = create<TaskStore>()(
                   priority: task.priority,
                   category: task.category,
                   dueDate: task.due_date,
-                  status: taskEffectiveStatus(task) as TaskStatus,
+                  status: resolveClientTaskStatus(task),
                   completionPercentage: task.completion_percentage,
                   assignedTo: normalizedAssignedTo,
                   primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
@@ -707,7 +707,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: task.priority,
               category: task.category,
               dueDate: task.due_date,
-              status: taskEffectiveStatus(task) as TaskStatus,
+              status: resolveClientTaskStatus(task) as TaskStatus,
               completionPercentage: task.completion_percentage,
               assignedTo: normalizedAssignedTo,
               primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
@@ -824,7 +824,7 @@ export const useTaskStore = create<TaskStore>()(
                 priority: task.priority,
                 category: task.category,
                 dueDate: task.due_date,
-                status: taskEffectiveStatus(task) as TaskStatus,
+                status: resolveClientTaskStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
@@ -950,7 +950,7 @@ export const useTaskStore = create<TaskStore>()(
                 priority: task.priority,
                 category: task.category,
                 dueDate: task.due_date,
-                status: taskEffectiveStatus(task) as TaskStatus,
+                status: resolveClientTaskStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
@@ -1125,7 +1125,7 @@ export const useTaskStore = create<TaskStore>()(
             priority: taskData.priority,
             category: taskData.category,
             dueDate: taskData.due_date,
-            status: taskEffectiveStatus(taskData) as TaskStatus,
+            status: resolveClientTaskStatus(taskData) as TaskStatus,
             completionPercentage: taskData.completion_percentage,
             assignedTo: normalizedAssignedTo,
             primaryAssigneeId: taskData.primary_assignee_id ? String(taskData.primary_assignee_id) : undefined,
@@ -1446,7 +1446,7 @@ export const useTaskStore = create<TaskStore>()(
             priority: data.priority,
             category: data.category,
             dueDate: data.due_date,
-            status: taskEffectiveStatus(data) as TaskStatus,
+            status: resolveClientTaskStatus(data) as TaskStatus,
             completionPercentage: data.completion_percentage,
             assignedTo: data.assigned_to,
             primaryAssigneeId: data.primary_assignee_id ? String(data.primary_assignee_id) : undefined,
@@ -1746,6 +1746,7 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.attachments) updateData.attachments = cleanUpdates.attachments;
           // Legacy accepted field - map to status if needed
           if ('accepted' in cleanUpdates && cleanUpdates.accepted === true && !cleanUpdates.status) {
+            updateData.status = 'in_progress';
             updateData.current_status = 'in_progress';
             updateData.accepted = true;
           } else if ('accepted' in cleanUpdates && cleanUpdates.accepted === false) {
@@ -1760,8 +1761,12 @@ export const useTaskStore = create<TaskStore>()(
           if (cleanUpdates.acceptedAt !== undefined) updateData.accepted_at = cleanUpdates.acceptedAt || null;
           // Handle declineReason: can be set to clear it (undefined) or set a new value
           if ('declineReason' in cleanUpdates) updateData.decline_reason = cleanUpdates.declineReason || null;
-          // Unified status field
-          if (cleanUpdates.status) updateData.current_status = cleanUpdates.status;
+          // Unified status field — write both columns. Reads prefer `status`
+          // (TASK_EFFECTIVE_STATUS); historic updates only set current_status.
+          if (cleanUpdates.status) {
+            updateData.status = cleanUpdates.status;
+            updateData.current_status = cleanUpdates.status;
+          }
           if (cleanUpdates.completionPercentage !== undefined) updateData.completion_percentage = cleanUpdates.completionPercentage;
           if (cleanUpdates.starredByUsers !== undefined) updateData.starred_by_users = cleanUpdates.starredByUsers;
           // Legacy status fields (for backward compatibility with database)
@@ -2794,6 +2799,7 @@ export const useTaskStore = create<TaskStore>()(
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           const taskUpdateData: any = {
             completion_percentage: update.completionPercentage,
+            status: update.status,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
@@ -2941,6 +2947,7 @@ export const useTaskStore = create<TaskStore>()(
           // Note: Tasks at 100% are NOT automatically submitted for review - user must submit manually
           const subTaskUpdateData: any = {
             completion_percentage: update.completionPercentage,
+            status: update.status,
             current_status: update.status,
             updated_at: new Date().toISOString(),
           };
@@ -3089,6 +3096,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
+              status: initialStatus,
               current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
@@ -3219,7 +3227,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              status: taskEffectiveStatus(data) as TaskStatus,
+              status: resolveClientTaskStatus(data) as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
@@ -3317,6 +3325,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: subTaskData.priority,
               category: subTaskData.category,
               due_date: subTaskData.dueDate,
+              status: initialStatus,
               current_status: initialStatus,
               completion_percentage: 0,
               assigned_to: subTaskData.assignedTo,
@@ -3445,7 +3454,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              status: taskEffectiveStatus(data) as TaskStatus,
+              status: resolveClientTaskStatus(data) as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,

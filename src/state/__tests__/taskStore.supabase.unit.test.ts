@@ -214,6 +214,70 @@ describe('taskStore.supabase unit tests', () => {
     });
   });
 
+  it('maps self-assigned tasks with default status new to in_progress on fetchTasks', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-self-assigned',
+      status: 'new',
+      current_status: 'in_progress',
+      assigned_to: [managerId],
+      assigned_by: managerId,
+      accepted_by: managerId,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks[0]).toMatchObject({
+      id: 'task-self-assigned',
+      status: 'in_progress',
+    });
+  });
+
+  it('maps accepted tasks with stale status new to in_progress on fetchTasks', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-accepted-stale-status',
+      status: 'new',
+      current_status: 'in_progress',
+      assigned_to: [workerId],
+      assigned_by: managerId,
+      accepted_by: workerId,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks[0]).toMatchObject({
+      id: 'task-accepted-stale-status',
+      status: 'in_progress',
+    });
+  });
+
   it('preserves hydrated activities when a slim list refetch reconciles', async () => {
     const taskRow = createTaskRow();
     const hydratedActivity = {
@@ -534,6 +598,8 @@ describe('taskStore.supabase unit tests', () => {
     const firstInsertedTaskPayload = taskInsert.mock.calls[0]?.[0];
     expect(firstInsertedTaskPayload).toEqual(
       expect.objectContaining({
+        status: 'new',
+        current_status: 'new',
         primary_assignee_id: workerId,
         delegated_user_ids: ['worker-789'],
         container_id: 'container-123',
@@ -682,6 +748,7 @@ describe('taskStore.supabase unit tests', () => {
 
     expect(updateMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        status: 'new',
         current_status: 'new',
         accepted: false,
         accepted_at: null,

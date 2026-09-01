@@ -1,4 +1,5 @@
 import type { TaskStatus } from "@/types/buildtrack";
+import { taskEffectiveStatus } from "../state/taskQueryPredicates";
 
 export type TaskCreateValidationInput = {
   title?: string;
@@ -81,14 +82,94 @@ export function assertValidTaskCreateInput(
   }
 }
 
+export function isCreatorAmongAssignees(
+  assignedBy: string | null | undefined,
+  assignedTo: string[] | undefined,
+): boolean {
+  const originator = typeof assignedBy === "string" ? assignedBy.trim() : "";
+  if (!originator) {
+    return false;
+  }
+  return normalizeCreateAssigneeIds(assignedTo).some((id) => id === originator);
+}
+
+export function isPreAcceptanceTaskStatus(status: string): boolean {
+  return (
+    status === "new" ||
+    status === "not_started" ||
+    status === "assigned" ||
+    status === "received"
+  );
+}
+
+/** Assignee still needs to accept — not self-assigned, and not already accepted. */
+export function isTaskAwaitingAssigneeAcceptance(input: {
+  viewerUserId: string;
+  status: string;
+  assignedBy?: string | null;
+  assignedTo?: string[] | undefined;
+  acceptedBy?: string | null;
+}): boolean {
+  const viewer = String(input.viewerUserId ?? "").trim();
+  if (!viewer) {
+    return false;
+  }
+  const assignees = normalizeCreateAssigneeIds(input.assignedTo);
+  if (!assignees.some((id) => id === viewer)) {
+    return false;
+  }
+  if (!isPreAcceptanceTaskStatus(input.status)) {
+    return false;
+  }
+  if (isCreatorAmongAssignees(input.assignedBy, assignees)) {
+    return false;
+  }
+  if (input.acceptedBy) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * App mapping for task rows. HQ TASK_EFFECTIVE_STATUS still prefers `status`.
+ * Historic writes only set `current_status`, so `status` stays the default `new`.
+ * Treat self-assigned and already-accepted rows as in_progress so Accept does not return.
+ */
+export function resolveClientTaskStatus(row: {
+  status?: string | null;
+  current_status?: string | null;
+  assigned_by?: string | null;
+  assigned_to?: unknown;
+  primary_assignee_id?: string | null;
+  accepted_by?: string | null;
+  accepted?: boolean | null;
+}): TaskStatus {
+  const effective = taskEffectiveStatus(row) as TaskStatus;
+  if (!isPreAcceptanceTaskStatus(effective)) {
+    return effective;
+  }
+  if (row.accepted_by || row.accepted === true) {
+    return "in_progress";
+  }
+  const assignees = normalizeCreateAssigneeIds(
+    Array.isArray(row.assigned_to)
+      ? row.assigned_to.map((id) => String(id))
+      : undefined,
+  );
+  const primary = row.primary_assignee_id ? String(row.primary_assignee_id) : "";
+  if (primary && !assignees.includes(primary)) {
+    assignees.push(primary);
+  }
+  if (isCreatorAmongAssignees(row.assigned_by, assignees)) {
+    return "in_progress";
+  }
+  return effective;
+}
+
 /** Self-assigned create → in_progress; delegated → new. Requires valid assignees. */
 export function resolveInitialTaskCreateStatus(
   assignedBy: string,
   assignedTo: string[] | undefined,
 ): TaskStatus {
-  const assignees = normalizeCreateAssigneeIds(assignedTo);
-  const originator = assignedBy.trim();
-  const isCreatorAssigned =
-    originator.length > 0 && assignees.some((id) => id === originator);
-  return isCreatorAssigned ? "in_progress" : "new";
+  return isCreatorAmongAssignees(assignedBy, assignedTo) ? "in_progress" : "new";
 }

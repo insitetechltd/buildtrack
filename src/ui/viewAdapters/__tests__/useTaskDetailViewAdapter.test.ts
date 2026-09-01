@@ -386,6 +386,109 @@ describe("useTaskDetailViewAdapter", () => {
     ]);
   });
 
+  it("does not offer accept/decline for a self-assigned task still marked new", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "user-1",
+          dueDate: new Date().toISOString(),
+          status: "new",
+          priority: "medium",
+          category: "general",
+          description: "",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId) ?? []).not.toContain(
+      "accept_task",
+    );
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId) ?? []).not.toContain(
+      "decline_task",
+    );
+  });
+
+  it("does not offer accept/decline when acceptedBy is set but status stayed new", () => {
+    const { useTaskStore } = require("@/state/taskStore.supabase");
+
+    useTaskStore.mockReturnValue({
+      tasks: [
+        {
+          id: "task-parent",
+          title: "Parent Task",
+          projectId: "project-1",
+          assignedTo: ["user-1"],
+          assignedBy: "manager-1",
+          acceptedBy: "user-1",
+          dueDate: new Date().toISOString(),
+          status: "new",
+          priority: "medium",
+          category: "general",
+          description: "",
+          attachments: [],
+          tags: [],
+          updates: [],
+          activities: [],
+          completionPercentage: 0,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+      fetchTaskById: jest.fn().mockResolvedValue(undefined),
+      acceptTask: jest.fn(),
+      declineTask: jest.fn(),
+      submitTaskForReview: jest.fn(),
+      acceptTaskCompletion: jest.fn(),
+      acceptSubTaskCompletion: jest.fn(),
+      submitSubTaskForReview: jest.fn(),
+      acceptSubTask: jest.fn(),
+      declineSubTask: jest.fn(),
+      cancelTask: jest.fn(),
+      updateTask: mockUpdateTask,
+    });
+
+    const { result } = renderHook(() =>
+      useTaskDetailViewAdapter({
+        taskId: "task-parent",
+      }),
+    );
+
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId) ?? []).not.toContain(
+      "accept_task",
+    );
+    expect(result.current.output.quickActions?.actions.map((item) => item.actionId) ?? []).not.toContain(
+      "decline_task",
+    );
+  });
+
   it("returns explicit task-detail redesign groups for the visual work-thread surface", () => {
     const { result } = renderHook(() =>
       useTaskDetailViewAdapter({

@@ -564,6 +564,7 @@ describe('taskStore.supabase workflow tests', () => {
 
     expect(taskInsert).toHaveBeenCalledWith(
       expect.objectContaining({
+        status: 'in_progress',
         current_status: 'in_progress',
         accepted: true,
       }),

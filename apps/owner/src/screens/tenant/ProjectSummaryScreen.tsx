@@ -199,9 +199,17 @@ export default function ProjectSummaryScreen({ navigation, route }: Props) {
             <DestRow
               icon="layers-outline"
               label="Tasks"
-              value={`${detail.taskTotal} · ships next release`}
+              value={`${detail.taskTotal}`}
               testID="owner-tenant-project-summary__stat_tasks"
-              disabled
+              onPress={() =>
+                navigateTenant(navigation, "EntityList", {
+                  entity: "tasks",
+                  companyId,
+                  companyName,
+                  projectId,
+                  projectName,
+                })
+              }
             />
             <DestRow
               icon="business-outline"

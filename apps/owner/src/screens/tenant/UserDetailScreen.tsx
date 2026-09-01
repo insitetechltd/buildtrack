@@ -16,6 +16,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
+  fetchTaskList,
   fetchUserDetail,
   OwnerTenantError,
   type UserDetail,
@@ -105,18 +106,21 @@ export default function UserDetailScreen({ navigation, route }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [taskCount, setTaskCount] = useState<number | null>(null);
 
   const load = useCallback(
     async (opts?: { soft?: boolean }) => {
       if (!opts?.soft) setLoading(true);
       setError(null);
       try {
-        const [d, sess] = await Promise.all([
+        const [d, sess, tasks] = await Promise.all([
           fetchUserDetail(supabase, userId, companyId),
           fetchUserSessionDebug(supabase, userId).catch(() => null),
+          fetchTaskList(supabase, { companyId, userId, limit: 1 }).catch(() => null),
         ]);
         setDetail(d);
         setSession(sess);
+        setTaskCount(tasks?.total ?? 0);
       } catch (err) {
         setDetail(null);
         setError(err instanceof OwnerTenantError ? err.message : "Could not load user");
@@ -324,9 +328,17 @@ export default function UserDetailScreen({ navigation, route }: Props) {
             <DestRow
               icon="layers-outline"
               label="Tasks"
-              value="Ships next release"
+              value={taskCount == null ? "…" : `${taskCount}`}
               testID="owner-tenant-user-detail__stat_tasks"
-              disabled
+              onPress={() =>
+                navigateTenant(navigation, "EntityList", {
+                  entity: "tasks",
+                  companyId: resolvedCompanyId,
+                  companyName: resolvedCompanyName,
+                  userId,
+                  userName,
+                })
+              }
             />
             <DestRow
               icon="business-outline"

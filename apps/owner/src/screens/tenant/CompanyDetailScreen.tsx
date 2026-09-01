@@ -142,6 +142,7 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
             active={segment}
             projectCount={detail.stats.projects}
             userCount={detail.stats.users}
+            taskCount={detail.stats.tasks}
             onSelect={onSelectSegment}
           />
           {segment === "overview" ? overviewContent : null}
@@ -162,9 +163,12 @@ export default function CompanyDetailScreen({ navigation, route }: Props) {
             />
           ) : null}
           {segment === "tasks" ? (
-            <ScrollView contentContainerStyle={s.scroll} key="tasks">
-              <CompanyTasksPane />
-            </ScrollView>
+            <CompanyTasksPane
+              key="tasks"
+              companyId={companyId}
+              companyName={companyName}
+              navigation={navigation}
+            />
           ) : null}
         </>
       ) : null}

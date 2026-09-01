@@ -38,7 +38,7 @@ export default function TenantHubScreen({ navigation }: Props) {
         <View style={s.banner}>
           <Text style={s.bannerText}>
             Company-first drill-down. Open a company, then use Overview · Projects · Users ·
-            Tasks on the company file. Task lists ship in the next release.
+            Tasks on the company file.
           </Text>
         </View>
         <Pressable

@@ -38,6 +38,7 @@ import {
   normalizeProjectLocationLabel,
   normalizeTaskActivityCompatibility,
 } from "./taskNormalization";
+import { taskEffectiveStatus } from "./taskQueryPredicates";
 
 export type { QueryMeta } from "../api/supabase";
 export type { TaskDerivedState, TaskPreview } from "./taskDerivedState";
@@ -64,6 +65,52 @@ export interface ProjectContainerRecord {
 
 const TASK_FRESH_MS = 15_000;
 const TASK_TTL_MS = 60_000;
+
+function isMissingTaskMetadataColumnError(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "42703" || /does not exist|42703|PGRST204/i.test(error.message ?? "");
+}
+
+/** Contract TASK_LISTABLE + TASK_ASSIGNED_TO_USER — documentation/owner-task-query-contract.md §4.1–4.2 */
+async function fetchListableTasksAssignedToUser(
+  client: NonNullable<typeof supabase>,
+  userId: string,
+): Promise<{ data: Record<string, unknown>[] | null; error: { message?: string; code?: string } | null }> {
+  type TaskQuery = ReturnType<typeof client.from>;
+  const lifecycle = (query: TaskQuery) =>
+    query
+      .is("cancelled_at", null)
+      .is("archived_at", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+  const assignedRes = await lifecycle(
+    client.from("tasks").select("*").contains("assigned_to", [userId]),
+  );
+  if (assignedRes.error) {
+    return { data: null, error: assignedRes.error };
+  }
+
+  const primaryRes = await lifecycle(
+    client.from("tasks").select("*").eq("primary_assignee_id", userId),
+  );
+  if (primaryRes.error) {
+    if (isMissingTaskMetadataColumnError(primaryRes.error)) {
+      return { data: assignedRes.data ?? [], error: null };
+    }
+    return { data: null, error: primaryRes.error };
+  }
+
+  const byId = new Map<string, Record<string, unknown>>();
+  for (const row of [...(assignedRes.data ?? []), ...(primaryRes.data ?? [])]) {
+    byId.set(String((row as { id: string }).id), row as Record<string, unknown>);
+  }
+  const merged = [...byId.values()].sort(
+    (a, b) =>
+      new Date(String(b.created_at)).getTime() - new Date(String(a.created_at)).getTime(),
+  );
+  return { data: merged, error: null };
+}
 
 function taskSnapshotsMatch(left: Task, right: Task): boolean {
   const leftActivityTail = left.activities?.[left.activities.length - 1]?.id;
@@ -487,7 +534,7 @@ export const useTaskStore = create<TaskStore>()(
                   priority: task.priority,
                   category: task.category,
                   dueDate: task.due_date,
-                  status: (task.current_status || 'new') as TaskStatus,
+                  status: taskEffectiveStatus(task) as TaskStatus,
                   completionPercentage: task.completion_percentage,
                   assignedTo: normalizedAssignedTo,
                   primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
@@ -660,7 +707,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: task.priority,
               category: task.category,
               dueDate: task.due_date,
-              status: (task.current_status || 'new') as TaskStatus,
+              status: taskEffectiveStatus(task) as TaskStatus,
               completionPercentage: task.completion_percentage,
               assignedTo: normalizedAssignedTo,
               primaryAssigneeId: task.primary_assignee_id ? String(task.primary_assignee_id) : undefined,
@@ -777,7 +824,7 @@ export const useTaskStore = create<TaskStore>()(
                 priority: task.priority,
                 category: task.category,
                 dueDate: task.due_date,
-                status: (task.current_status || 'new') as TaskStatus,
+                status: taskEffectiveStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
@@ -882,14 +929,7 @@ export const useTaskStore = create<TaskStore>()(
           const result = await runSingleFlightRequest(
             resourceKey,
             async () => {
-              const { data, error } = await supabaseClient
-                .from('tasks')
-                .select('*')
-                .contains('assigned_to', [userId])
-                .is('cancelled_at', null)
-                .is('archived_at', null)
-                .is('deleted_at', null)
-                .order('created_at', { ascending: false });
+              const { data, error } = await fetchListableTasksAssignedToUser(supabaseClient, userId);
 
               if (error) throw error;
 
@@ -910,7 +950,7 @@ export const useTaskStore = create<TaskStore>()(
                 priority: task.priority,
                 category: task.category,
                 dueDate: task.due_date,
-                status: (task.current_status || 'new') as TaskStatus,
+                status: taskEffectiveStatus(task) as TaskStatus,
                 completionPercentage: task.completion_percentage,
                 assignedTo: Array.isArray(task.assigned_to)
                   ? task.assigned_to.map((assigneeId: unknown) => String(assigneeId))
@@ -1085,7 +1125,7 @@ export const useTaskStore = create<TaskStore>()(
             priority: taskData.priority,
             category: taskData.category,
             dueDate: taskData.due_date,
-            status: (taskData.current_status || 'new') as TaskStatus,
+            status: taskEffectiveStatus(taskData) as TaskStatus,
             completionPercentage: taskData.completion_percentage,
             assignedTo: normalizedAssignedTo,
             primaryAssigneeId: taskData.primary_assignee_id ? String(taskData.primary_assignee_id) : undefined,
@@ -1406,7 +1446,7 @@ export const useTaskStore = create<TaskStore>()(
             priority: data.priority,
             category: data.category,
             dueDate: data.due_date,
-            status: (data.current_status || 'new') as TaskStatus,
+            status: taskEffectiveStatus(data) as TaskStatus,
             completionPercentage: data.completion_percentage,
             assignedTo: data.assigned_to,
             primaryAssigneeId: data.primary_assignee_id ? String(data.primary_assignee_id) : undefined,
@@ -3179,7 +3219,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              status: (data.current_status || 'new') as TaskStatus,
+              status: taskEffectiveStatus(data) as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,
@@ -3405,7 +3445,7 @@ export const useTaskStore = create<TaskStore>()(
               priority: data.priority,
               category: data.category,
               dueDate: data.due_date,
-              status: (data.current_status || 'new') as TaskStatus,
+              status: taskEffectiveStatus(data) as TaskStatus,
               completionPercentage: data.completion_percentage,
               assignedTo: data.assigned_to || [],
               assignedBy: data.assigned_by,

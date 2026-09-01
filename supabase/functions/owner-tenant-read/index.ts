@@ -3,6 +3,11 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { isCallerPlatformOwner } from "../_shared/ownerAllowlist.ts";
+import {
+  sanitizeTaskSearchTitle,
+  taskEffectiveStatus,
+  postgrestEffectiveStatusFilter,
+} from "./taskQueryPredicates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,7 +38,9 @@ type TenantAction =
   | "listProjectMembers"
   | "listUsers"
   | "listAllUsers"
-  | "getUser";
+  | "getUser"
+  | "listTasks"
+  | "getTask";
 
 type CompanyUserRow = {
   id: string;
@@ -62,6 +69,8 @@ function parseAction(raw: unknown): TenantAction | null {
     "listUsers",
     "listAllUsers",
     "getUser",
+    "listTasks",
+    "getTask",
   ];
   return typeof raw === "string" && actions.includes(raw as TenantAction)
     ? (raw as TenantAction)
@@ -86,6 +95,60 @@ function isMissingColumnError(error: { message?: string; code?: string } | null)
   if (!error) return false;
   return error.code === "42703" ||
     /does not exist|42703|PGRST204/i.test(error.message ?? "");
+}
+
+function isMissingTableError(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === "PGRST205" ||
+    /schema cache|could not find the table|42P01/i.test(error.message ?? "");
+}
+
+function isMissingSchemaError(error: { message?: string; code?: string } | null): boolean {
+  return isMissingColumnError(error) || isMissingTableError(error);
+}
+
+type TaskQueryBuilder = ReturnType<ReturnType<typeof createClient>["from"]>;
+
+/** Contract §4.1 TASK_LISTABLE — documentation/owner-task-query-contract.md */
+function applyTaskListable(q: TaskQueryBuilder): TaskQueryBuilder {
+  return q
+    .is("deleted_at", null)
+    .is("archived_at", null)
+    .is("cancelled_at", null);
+}
+
+async function countListableTasksForProjects(
+  admin: ReturnType<typeof createClient>,
+  projectIds: string[],
+): Promise<number> {
+  if (projectIds.length === 0) return 0;
+  const res = await applyTaskListable(
+    admin
+      .from("tasks")
+      .select("id", { count: "exact", head: true })
+      .in("project_id", projectIds),
+  );
+  if (res.error) throw res.error;
+  return res.count ?? 0;
+}
+
+async function countListableTasksByProjectId(
+  admin: ReturnType<typeof createClient>,
+  projectIds: string[],
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  for (const pid of projectIds) counts.set(pid, 0);
+  if (projectIds.length === 0) return counts;
+
+  const res = await applyTaskListable(
+    admin.from("tasks").select("project_id").in("project_id", projectIds),
+  );
+  if (res.error) throw res.error;
+  for (const row of res.data ?? []) {
+    const pid = (row as { project_id: string }).project_id;
+    counts.set(pid, (counts.get(pid) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function displayRole(user: CompanyUserRow): string {
@@ -457,15 +520,7 @@ async function handleGetCompany(
     .select("id")
     .eq("company_id", companyId);
   const projectIds = (companyProjects ?? []).map((p) => (p as { id: string }).id);
-  let taskCount = 0;
-  if (projectIds.length > 0) {
-    const taskRes = await admin
-      .from("tasks")
-      .select("id", { count: "exact", head: true })
-      .in("project_id", projectIds);
-    if (taskRes.error) throw taskRes.error;
-    taskCount = taskRes.count ?? 0;
-  }
+  const taskCount = await countListableTasksForProjects(admin, projectIds);
 
   const stats = {
     projects: projectRes.count ?? 0,
@@ -522,20 +577,7 @@ async function handleListProjects(
   if (error) throw error;
   const rows = projects ?? [];
   const pids = rows.map((p) => (p as { id: string }).id);
-  const taskCounts = new Map<string, number>();
-  for (const pid of pids) taskCounts.set(pid, 0);
-
-  if (pids.length > 0) {
-    const { data: tasks, error: taskError } = await admin
-      .from("tasks")
-      .select("project_id")
-      .in("project_id", pids);
-    if (taskError) throw taskError;
-    for (const t of tasks ?? []) {
-      const pid = (t as { project_id: string }).project_id;
-      taskCounts.set(pid, (taskCounts.get(pid) ?? 0) + 1);
-    }
-  }
+  const taskCounts = await countListableTasksByProjectId(admin, pids);
 
   const memberCounts = await countMembersByProjectIds(admin, pids);
 
@@ -616,19 +658,7 @@ async function handleListAllProjects(
   }
 
   const pids = rows.map((p) => (p as { id: string }).id);
-  const taskCounts = new Map<string, number>();
-  for (const pid of pids) taskCounts.set(pid, 0);
-  if (pids.length > 0) {
-    const { data: tasks, error: taskError } = await admin
-      .from("tasks")
-      .select("project_id")
-      .in("project_id", pids);
-    if (taskError) throw taskError;
-    for (const t of tasks ?? []) {
-      const pid = (t as { project_id: string }).project_id;
-      taskCounts.set(pid, (taskCounts.get(pid) ?? 0) + 1);
-    }
-  }
+  const taskCounts = await countListableTasksByProjectId(admin, pids);
 
   const memberCounts = await countMembersByProjectIds(admin, pids);
 
@@ -691,17 +721,20 @@ async function handleGetProject(
     return jsonResponse({ error: "forbidden" }, 403);
   }
 
-  const { data: tasks, error: taskError } = await admin
-    .from("tasks")
-    .select("status")
-    .eq("project_id", projectId);
-
-  if (taskError) throw taskError;
+  let taskRes = await applyTaskListable(
+    admin.from("tasks").select("status, current_status").eq("project_id", projectId),
+  );
+  if (taskRes.error && isMissingColumnError(taskRes.error)) {
+    taskRes = await applyTaskListable(
+      admin.from("tasks").select("status").eq("project_id", projectId),
+    );
+  }
+  if (taskRes.error) throw taskRes.error;
 
   const tasksByStatus: Record<string, number> = {};
   for (const status of TASK_STATUSES) tasksByStatus[status] = 0;
-  for (const t of tasks ?? []) {
-    const s = (t as { status: string }).status;
+  for (const t of taskRes.data ?? []) {
+    const s = taskEffectiveStatus(t as { status?: string | null; current_status?: string | null });
     if (s in tasksByStatus) tasksByStatus[s] += 1;
   }
 
@@ -1157,6 +1190,596 @@ async function handleListAllUsers(
   });
 }
 
+async function companyProjectIds(
+  admin: ReturnType<typeof createClient>,
+  companyId: string,
+): Promise<string[]> {
+  const { data, error } = await admin
+    .from("projects")
+    .select("id")
+    .eq("company_id", companyId);
+  if (error) throw error;
+  return (data ?? []).map((p) => (p as { id: string }).id);
+}
+
+async function assertProjectInCompany(
+  admin: ReturnType<typeof createClient>,
+  projectId: string,
+  companyId: string,
+): Promise<boolean> {
+  const { data, error } = await admin
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (error) throw error;
+  return Boolean(data);
+}
+
+type TaskRelationRole = "assigner" | "assignee" | "delegate";
+
+type TaskListRow = {
+  id: string;
+  title: string;
+  status: string | null;
+  current_status?: string | null;
+  priority: string;
+  project_id: string;
+  primary_assignee_id: string | null;
+  completion_percentage: number;
+  updated_at: string;
+  created_at: string;
+};
+
+type StatusFilterMode = "effective" | "status-column";
+
+function mapTaskListItem(
+  row: TaskListRow,
+  projectById: Map<string, { id: string; name: string }>,
+  assigneeById: Map<string, string>,
+  relationRoles?: TaskRelationRole[],
+) {
+  const project = projectById.get(row.project_id);
+  const assigneeId = row.primary_assignee_id?.trim() || null;
+  return {
+    id: row.id,
+    title: row.title,
+    status: taskEffectiveStatus(row),
+    priority: row.priority,
+    projectId: row.project_id,
+    projectName: project?.name ?? "Unknown",
+    primaryAssigneeId: assigneeId,
+    primaryAssigneeName: assigneeId ? assigneeById.get(assigneeId) ?? null : null,
+    completionPercentage: row.completion_percentage ?? 0,
+    updatedAt: row.updated_at,
+    createdAt: row.created_at,
+    relationRoles: relationRoles && relationRoles.length > 0 ? relationRoles : undefined,
+  };
+}
+
+function addRelationRole(
+  rolesById: Map<string, Set<TaskRelationRole>>,
+  taskId: string,
+  role: TaskRelationRole,
+) {
+  const set = rolesById.get(taskId) ?? new Set<TaskRelationRole>();
+  set.add(role);
+  rolesById.set(taskId, set);
+}
+
+const TASK_LIST_SELECT_LIVE =
+  "id, title, status, current_status, priority, project_id, primary_assignee_id, completion_percentage, updated_at, created_at";
+const TASK_LIST_SELECT_FALLBACK =
+  "id, title, status, current_status, priority, project_id, completion_percentage, updated_at, created_at";
+const TASK_LIST_SELECT_MIN =
+  "id, title, status, priority, project_id, completion_percentage, updated_at, created_at";
+
+type TaskListQuery = TaskQueryBuilder;
+
+function applyTaskListScope(
+  q: TaskListQuery,
+  projectIds: string[],
+  statusFilter: string | null,
+  query: string,
+  statusMode: StatusFilterMode = "effective",
+): TaskListQuery {
+  let scoped = applyTaskListable(q.in("project_id", projectIds));
+  if (statusFilter) {
+    if (statusMode === "effective") {
+      scoped = scoped.or(postgrestEffectiveStatusFilter(statusFilter));
+    } else {
+      scoped = scoped.eq("status", statusFilter);
+    }
+  }
+  if (query) scoped = scoped.ilike("title", `%${query}%`);
+  return scoped;
+}
+
+function mergeTaskListRows(rows: TaskListRow[]): TaskListRow[] {
+  const byId = new Map<string, TaskListRow>();
+  for (const row of rows) byId.set(row.id, row);
+  return [...byId.values()].sort(
+    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+  );
+}
+
+function formatErrorDetail(err: unknown): string {
+  if (err instanceof Error && err.message.trim()) return err.message;
+  if (err && typeof err === "object") {
+    const row = err as Record<string, unknown>;
+    if ("message" in row) {
+      const message = formatErrorDetail(row.message);
+      if (message !== "Unknown error") return message;
+    }
+    if ("details" in row) {
+      const details = formatErrorDetail(row.details);
+      if (details !== "Unknown error") return details;
+    }
+    if ("hint" in row && typeof row.hint === "string" && row.hint.trim()) {
+      return row.hint;
+    }
+    try {
+      return JSON.stringify(err);
+    } catch {
+      return "Unknown error";
+    }
+  }
+  if (typeof err === "string" && err.trim()) return err.trim();
+  return String(err);
+}
+
+/** HQ admin SoT: TASK_RELATED_TO_USER — assigner ∪ assignee ∪ delegate. */
+async function fetchUserScopedTaskRows(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+  projectIds: string[],
+  statusFilter: string | null,
+  query: string,
+  select: string = TASK_LIST_SELECT_LIVE,
+  statusMode: StatusFilterMode = "effective",
+): Promise<{ rows: TaskListRow[]; rolesById: Map<string, Set<TaskRelationRole>> }> {
+  const collected: TaskListRow[] = [];
+  const rolesById = new Map<string, Set<TaskRelationRole>>();
+
+  const pushRows = (rows: unknown[] | null, role: TaskRelationRole) => {
+    for (const raw of rows ?? []) {
+      const row = raw as TaskListRow;
+      collected.push(row);
+      addRelationRole(rolesById, row.id, role);
+    }
+  };
+
+  let assignedRes = await applyTaskListScope(
+    admin.from("tasks").select(select),
+    projectIds,
+    statusFilter,
+    query,
+    statusMode,
+  ).contains("assigned_to", [userId]);
+
+  if (assignedRes.error && isMissingSchemaError(assignedRes.error)) {
+    assignedRes = { data: [], error: null };
+  } else if (assignedRes.error) {
+    throw assignedRes.error;
+  } else {
+    pushRows(assignedRes.data, "assignee");
+  }
+
+  let primaryRes = await applyTaskListScope(
+    admin.from("tasks").select(select),
+    projectIds,
+    statusFilter,
+    query,
+    statusMode,
+  ).eq("primary_assignee_id", userId);
+  if (primaryRes.error && isMissingColumnError(primaryRes.error)) {
+    primaryRes = { data: [], error: null };
+  } else if (primaryRes.error) {
+    throw primaryRes.error;
+  } else {
+    pushRows(primaryRes.data, "assignee");
+  }
+
+  let assignerRes = await applyTaskListScope(
+    admin.from("tasks").select(select),
+    projectIds,
+    statusFilter,
+    query,
+    statusMode,
+  ).eq("assigned_by", userId);
+  if (assignerRes.error) throw assignerRes.error;
+  pushRows(assignerRes.data, "assigner");
+
+  let delegateRes = await applyTaskListScope(
+    admin.from("tasks").select(select),
+    projectIds,
+    statusFilter,
+    query,
+    statusMode,
+  ).contains("delegated_user_ids", [userId]);
+  if (delegateRes.error && isMissingSchemaError(delegateRes.error)) {
+    delegateRes = { data: [], error: null };
+  } else if (delegateRes.error) {
+    throw delegateRes.error;
+  } else {
+    pushRows(delegateRes.data, "delegate");
+  }
+
+  return { rows: mergeTaskListRows(collected), rolesById };
+}
+
+function asMissingColumnError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  return isMissingColumnError(err as { message?: string; code?: string });
+}
+
+async function enrichTaskListRows(
+  admin: ReturnType<typeof createClient>,
+  rows: TaskListRow[],
+  rolesById?: Map<string, Set<TaskRelationRole>>,
+) {
+  const pids = [...new Set(rows.map((t) => t.project_id))];
+  const projectById = new Map<string, { id: string; name: string }>();
+  if (pids.length > 0) {
+    const { data: projects, error: projectError } = await admin
+      .from("projects")
+      .select("id, name")
+      .in("id", pids);
+    if (projectError) throw projectError;
+    for (const p of projects ?? []) {
+      const row = p as { id: string; name: string };
+      projectById.set(row.id, row);
+    }
+  }
+
+  const assigneeIds = [
+    ...new Set(
+      rows
+        .map((t) => t.primary_assignee_id?.trim())
+        .filter(Boolean) as string[],
+    ),
+  ];
+  const assigneeById = new Map<string, string>();
+  if (assigneeIds.length > 0) {
+    const { data: users, error: usersError } = await admin
+      .from("users")
+      .select("id, name")
+      .in("id", assigneeIds);
+    if (usersError) throw usersError;
+    for (const u of users ?? []) {
+      const row = u as { id: string; name: string };
+      assigneeById.set(row.id, row.name);
+    }
+  }
+
+  return rows.map((row) => {
+    const roles = rolesById?.get(row.id);
+    return mapTaskListItem(
+      row,
+      projectById,
+      assigneeById,
+      roles ? [...roles] : undefined,
+    );
+  });
+}
+
+async function handleListTasks(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+) {
+  const companyId = parseUuid(body.companyId);
+  if (!companyId) return jsonResponse({ error: "invalid_company_id" }, 400);
+
+  const projectId = body.projectId != null ? parseUuid(body.projectId) : null;
+  if (body.projectId != null && !projectId) {
+    return jsonResponse({ error: "invalid_project_id" }, 400);
+  }
+  const userId = body.userId != null ? parseUuid(body.userId) : null;
+  if (body.userId != null && !userId) {
+    return jsonResponse({ error: "invalid_user_id" }, 400);
+  }
+
+  const limit = clampInt(body.limit, 50, 100);
+  const offset = clampInt(body.offset, 0, 10_000);
+  const query = sanitizeTaskSearchTitle(body.query);
+  const statusFilter =
+    typeof body.status === "string" && TASK_STATUSES.includes(body.status as typeof TASK_STATUSES[number])
+      ? body.status
+      : null;
+
+  let projectIds = await companyProjectIds(admin, companyId);
+  if (projectIds.length === 0) {
+    return jsonResponse({ tasks: [], total: 0, limit, offset, truncated: false });
+  }
+
+  if (projectId) {
+    const ok = await assertProjectInCompany(admin, projectId, companyId);
+    if (!ok) return jsonResponse({ error: "forbidden" }, 403);
+    projectIds = [projectId];
+  }
+
+  if (userId) {
+    const { data: userRow, error: userErr } = await admin
+      .from("users")
+      .select("id")
+      .eq("id", userId)
+      .eq("company_id", companyId)
+      .maybeSingle();
+    if (userErr) throw userErr;
+    if (!userRow) return jsonResponse({ error: "forbidden" }, 403);
+
+    let scoped: { rows: TaskListRow[]; rolesById: Map<string, Set<TaskRelationRole>> } | null = null;
+    const userAttempts: Array<{ select: string; statusMode: StatusFilterMode }> = [
+      { select: TASK_LIST_SELECT_LIVE, statusMode: "effective" },
+      { select: TASK_LIST_SELECT_FALLBACK, statusMode: "effective" },
+      { select: TASK_LIST_SELECT_MIN, statusMode: "status-column" },
+    ];
+    let lastUserErr: unknown = null;
+    for (const attempt of userAttempts) {
+      try {
+        scoped = await fetchUserScopedTaskRows(
+          admin,
+          userId,
+          projectIds,
+          statusFilter,
+          query,
+          attempt.select,
+          attempt.statusMode,
+        );
+        lastUserErr = null;
+        break;
+      } catch (err) {
+        lastUserErr = err;
+        if (!asMissingColumnError(err)) throw err;
+      }
+    }
+    if (!scoped) throw lastUserErr ?? new Error("listTasks user scope failed");
+
+    const { rows: scopedRows, rolesById } = scoped;
+    const total = scopedRows.length;
+    const page = scopedRows.slice(offset, offset + limit);
+    const tasks = await enrichTaskListRows(admin, page, rolesById);
+    return jsonResponse({
+      tasks,
+      total,
+      limit,
+      offset,
+      truncated: total > offset + page.length,
+    });
+  }
+
+  let q = applyTaskListScope(
+    admin
+      .from("tasks")
+      .select(TASK_LIST_SELECT_LIVE, { count: "exact" }),
+    projectIds,
+    statusFilter,
+    query,
+    "effective",
+  )
+    .order("updated_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  let { data: tasks, error, count } = await q;
+  if (error && isMissingColumnError(error)) {
+    const retry = await applyTaskListScope(
+      admin
+        .from("tasks")
+        .select(TASK_LIST_SELECT_FALLBACK, { count: "exact" }),
+      projectIds,
+      statusFilter,
+      query,
+      "effective",
+    )
+      .order("updated_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    tasks = retry.data?.map((row) => ({
+      ...(row as Record<string, unknown>),
+      primary_assignee_id: null,
+    })) ?? null;
+    error = retry.error;
+    count = retry.count;
+  }
+  if (error && isMissingColumnError(error)) {
+    const retry = await applyTaskListScope(
+      admin
+        .from("tasks")
+        .select(TASK_LIST_SELECT_MIN, { count: "exact" }),
+      projectIds,
+      statusFilter,
+      query,
+      "status-column",
+    )
+      .order("updated_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    tasks = retry.data?.map((row) => ({
+      ...(row as Record<string, unknown>),
+      primary_assignee_id: null,
+    })) ?? null;
+    error = retry.error;
+    count = retry.count;
+  }
+  if (error) throw error;
+
+  const rows = (tasks ?? []) as TaskListRow[];
+  const enriched = await enrichTaskListRows(admin, rows);
+
+  return jsonResponse({
+    tasks: enriched,
+    total: count ?? rows.length,
+    limit,
+    offset,
+    truncated: (count ?? 0) > offset + rows.length,
+  });
+}
+
+async function handleGetTask(
+  admin: ReturnType<typeof createClient>,
+  body: Record<string, unknown>,
+) {
+  const taskId = parseUuid(body.taskId);
+  const companyId = parseUuid(body.companyId);
+  if (!taskId) return jsonResponse({ error: "invalid_task_id" }, 400);
+  if (!companyId) return jsonResponse({ error: "invalid_company_id" }, 400);
+
+  const taskSelectLive =
+    "id, project_id, title, description, status, current_status, priority, category, task_reference, due_date, completion_percentage, primary_assignee_id, assigned_to, location_on_site, tags, created_at, updated_at, assigned_by, accepted_by, reviewed_by";
+  const taskSelectFallback =
+    "id, project_id, title, description, status, current_status, priority, category, task_reference, due_date, completion_percentage, assigned_to, location_on_site, tags, created_at, updated_at, assigned_by, accepted_by, reviewed_by";
+  const taskSelectMin =
+    "id, project_id, title, description, status, priority, category, task_reference, due_date, completion_percentage, assigned_to, location_on_site, tags, created_at, updated_at, assigned_by, accepted_by, reviewed_by";
+
+  let taskRes = await admin.from("tasks").select(taskSelectLive).eq("id", taskId).maybeSingle();
+  if (taskRes.error && isMissingColumnError(taskRes.error)) {
+    taskRes = await admin.from("tasks").select(taskSelectFallback).eq("id", taskId).maybeSingle();
+  }
+  if (taskRes.error && isMissingColumnError(taskRes.error)) {
+    taskRes = await admin.from("tasks").select(taskSelectMin).eq("id", taskId).maybeSingle();
+  }
+  if (taskRes.error) throw taskRes.error;
+  if (!taskRes.data) return jsonResponse({ error: "not_found" }, 404);
+
+  const task = taskRes.data as {
+    id: string;
+    project_id: string;
+    title: string;
+    description: string;
+    status: string | null;
+    current_status?: string | null;
+    priority: string;
+    category: string | null;
+    task_reference: string | null;
+    due_date: string | null;
+    completion_percentage: number;
+    primary_assignee_id?: string | null;
+    assigned_to?: string[] | null;
+    location_on_site: string | null;
+    tags: string[] | null;
+    created_at: string;
+    updated_at: string;
+    assigned_by: string | null;
+    accepted_by: string | null;
+    reviewed_by: string | null;
+  };
+
+  const { data: project, error: projectError } = await admin
+    .from("projects")
+    .select("id, name, status, company_id")
+    .eq("id", task.project_id)
+    .maybeSingle();
+  if (projectError) throw projectError;
+  if (!project) return jsonResponse({ error: "not_found" }, 404);
+  if ((project as { company_id: string }).company_id !== companyId) {
+    return jsonResponse({ error: "forbidden" }, 403);
+  }
+
+  const userIds = [
+    task.primary_assignee_id,
+    task.assigned_by,
+    task.accepted_by,
+    task.reviewed_by,
+  ].filter(Boolean) as string[];
+  const nameByUserId = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: users, error: usersError } = await admin
+      .from("users")
+      .select("id, name")
+      .in("id", userIds);
+    if (usersError) throw usersError;
+    for (const u of users ?? []) {
+      const row = u as { id: string; name: string };
+      nameByUserId.set(row.id, row.name);
+    }
+  }
+
+  const assigneeCount = Array.isArray(task.assigned_to)
+    ? task.assigned_to.filter(Boolean).length
+    : task.primary_assignee_id
+      ? 1
+      : 0;
+
+  const { data: activities, error: actError } = await admin
+    .from("task_activities")
+    .select("id, activity_type, timestamp, description, completion_percentage, user_id")
+    .eq("task_id", taskId)
+    .order("timestamp", { ascending: false })
+    .limit(8);
+  if (actError) throw actError;
+
+  const activityUserIds = [
+    ...new Set(
+      (activities ?? [])
+        .map((a) => (a as { user_id?: string }).user_id)
+        .filter(Boolean) as string[],
+    ),
+  ];
+  if (activityUserIds.length > 0) {
+    const { data: actUsers, error: actUsersError } = await admin
+      .from("users")
+      .select("id, name")
+      .in("id", activityUserIds);
+    if (actUsersError) throw actUsersError;
+    for (const u of actUsers ?? []) {
+      const row = u as { id: string; name: string };
+      nameByUserId.set(row.id, row.name);
+    }
+  }
+
+  const p = project as { id: string; name: string; status: string; company_id: string };
+  const primaryId = task.primary_assignee_id?.trim() || null;
+
+  return jsonResponse({
+    task: {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: taskEffectiveStatus(task),
+      priority: task.priority,
+      category: task.category,
+      taskReference: task.task_reference,
+      dueDate: task.due_date,
+      completionPercentage: task.completion_percentage ?? 0,
+      locationOnSite: task.location_on_site,
+      tags: task.tags ?? [],
+      createdAt: task.created_at,
+      updatedAt: task.updated_at,
+      projectId: p.id,
+      projectName: p.name,
+      projectStatus: p.status,
+      companyId: p.company_id,
+      primaryAssigneeId: primaryId,
+      primaryAssigneeName: primaryId ? nameByUserId.get(primaryId) ?? null : null,
+      assignedById: task.assigned_by,
+      assignedByName: task.assigned_by ? nameByUserId.get(task.assigned_by) ?? null : null,
+      acceptedById: task.accepted_by,
+      acceptedByName: task.accepted_by ? nameByUserId.get(task.accepted_by) ?? null : null,
+      reviewedById: task.reviewed_by,
+      reviewedByName: task.reviewed_by ? nameByUserId.get(task.reviewed_by) ?? null : null,
+      assigneeCount,
+    },
+    recentActivities: (activities ?? []).map((row) => {
+      const a = row as {
+        id: string;
+        activity_type: string;
+        timestamp: string;
+        description: string | null;
+        completion_percentage: number | null;
+        user_id: string;
+      };
+      return {
+        id: a.id,
+        activityType: a.activity_type,
+        timestamp: a.timestamp,
+        description: a.description,
+        completionPercentage: a.completion_percentage,
+        userId: a.user_id,
+        userName: nameByUserId.get(a.user_id) ?? "Unknown",
+      };
+    }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -1223,11 +1846,15 @@ Deno.serve(async (req) => {
         return await handleListAllUsers(adminClient, body as Record<string, unknown>);
       case "getUser":
         return await handleGetUser(adminClient, body as Record<string, unknown>);
+      case "listTasks":
+        return await handleListTasks(adminClient, body as Record<string, unknown>);
+      case "getTask":
+        return await handleGetTask(adminClient, body as Record<string, unknown>);
       default:
         return jsonResponse({ error: "invalid_action" }, 400);
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = formatErrorDetail(err);
     console.error("owner-tenant-read", message);
     return jsonResponse({ error: "internal_error", detail: message }, 500);
   }

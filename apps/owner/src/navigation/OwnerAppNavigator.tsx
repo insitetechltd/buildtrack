@@ -19,6 +19,9 @@ import TenantHubScreen from "../screens/tenant/TenantHubScreen";
 import UserAssignmentsScreen from "../screens/tenant/UserAssignmentsScreen";
 import UserDetailScreen from "../screens/tenant/UserDetailScreen";
 import UserSearchScreen from "../screens/tenant/UserSearchScreen";
+import EntityListScreen from "../screens/tenant/EntityListScreen";
+import TaskDetailScreen from "../screens/tenant/TaskDetailScreen";
+import type { EntityListParams } from "../lib/fetchOwnerTenantRead";
 import { buildOwnerStackScreenOptions } from "./nativeStackOptions";
 
 export type OwnerStackParamList = {
@@ -62,6 +65,13 @@ export type OwnerStackParamList = {
     companyName: string;
     userId: string;
     userName: string;
+  };
+  EntityList: EntityListParams;
+  TaskDetail: {
+    companyId: string;
+    companyName: string;
+    taskId: string;
+    taskTitle: string;
   };
 };
 
@@ -109,6 +119,8 @@ export default function OwnerAppNavigator({ onSignOut }: Props) {
         <Stack.Screen name="CreateUser" component={CreateUserScreen} />
         <Stack.Screen name="UserDetail" component={UserDetailScreen} />
         <Stack.Screen name="UserAssignments" component={UserAssignmentsScreen} />
+        <Stack.Screen name="EntityList" component={EntityListScreen} />
+        <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

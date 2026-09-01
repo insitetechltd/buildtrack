@@ -49,7 +49,7 @@
     "test:confidence": "npm run test:regression && npm run test:e2e:journeys",
     "test:simulation": "USE_REAL_SUPABASE=1 jest src/__tests__/simulation",
     "test:simulation:ui": "jest src/__tests__/simulation --testPathIgnorePatterns=\"\\\\.supabase\\\\.test\\\\.\"",
-    "test:parity:unit": "jest src/__tests__/parity/harness/__tests__ src/__tests__/parity/adapters/__tests__",
+    "test:parity:unit": "jest src/__tests__/parity/harness/__tests__ src/__tests__/parity/adapters/__tests__ src/__tests__/parity/task-query-contract.parity.test.ts",
     "test:parity:old": "PARITY_TARGET=old USE_REAL_SUPABASE=1 jest src/__tests__/parity/scenarios --runInBand",
     "test:parity:new": "PARITY_TARGET=new USE_REAL_SUPABASE=1 jest src/__tests__/parity/scenarios --runInBand",
     "test:parity": "npm run test:parity:unit",

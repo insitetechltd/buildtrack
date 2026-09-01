@@ -108,7 +108,9 @@ async function simulateGetCompany(companyId) {
   const pids = (projects ?? []).map((p) => p.id);
   if (pids.length > 0) {
     const inList = pids.join(",");
-    const tasks = await rest(`tasks?project_id=in.(${inList})&select=id`);
+    const tasks = await rest(
+      `tasks?project_id=in.(${inList})&deleted_at=is.null&archived_at=is.null&cancelled_at=is.null&select=id`,
+    );
     if (tasks.status >= 400) {
       fail("getCompany.tasks", `${tasks.status}`);
       return false;
@@ -244,6 +246,122 @@ async function edgeSmoke(ownerJwt) {
         fail("edge.getProject", `${getProjectRes.status} ${getProjectBody.detail ?? getProjectBody.error ?? ""}`);
       } else {
         pass("edge.getProject");
+        const listTasksProjectRes = await fetch(`${url}/functions/v1/owner-tenant-read`, {
+          method: "POST",
+          headers: {
+            apikey: anon,
+            Authorization: `Bearer ${ownerJwt}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "listTasks",
+            companyId,
+            projectId,
+            limit: 500,
+            offset: 0,
+          }),
+        });
+        const listTasksProjectBody = await listTasksProjectRes.json().catch(() => ({}));
+        const expectedTotal = getProjectBody.taskTotal ?? 0;
+        const listTotal = listTasksProjectBody.total ?? 0;
+        if (
+          !listTasksProjectRes.ok ||
+          !Array.isArray(listTasksProjectBody.tasks) ||
+          listTotal !== expectedTotal
+        ) {
+          fail(
+            "edge.listTasks.projectTotalParity",
+            `${listTasksProjectRes.status} getProject=${expectedTotal} listTasks=${listTotal}`,
+          );
+        } else {
+          pass(`edge.listTasks.projectTotalParity (${listTotal})`);
+        }
+
+        for (const status of ["in_progress", "new"]) {
+          const statusRes = await fetch(`${url}/functions/v1/owner-tenant-read`, {
+            method: "POST",
+            headers: {
+              apikey: anon,
+              Authorization: `Bearer ${ownerJwt}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "listTasks",
+              companyId,
+              projectId,
+              status,
+              limit: 50,
+              offset: 0,
+            }),
+          });
+          const statusBody = await statusRes.json().catch(() => ({}));
+          if (!statusRes.ok || typeof statusBody.total !== "number") {
+            fail(
+              `edge.listTasks.statusFilter.${status}`,
+              `${statusRes.status} ${statusBody.detail ?? statusBody.error ?? ""}`,
+            );
+          } else {
+            pass(`edge.listTasks.statusFilter.${status} (total=${statusBody.total})`);
+          }
+        }
+      }
+
+      const listTasksRes = await fetch(`${url}/functions/v1/owner-tenant-read`, {
+        method: "POST",
+        headers: {
+          apikey: anon,
+          Authorization: `Bearer ${ownerJwt}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "listTasks", companyId, limit: 5 }),
+      });
+      const listTasksBody = await listTasksRes.json().catch(() => ({}));
+      if (!listTasksRes.ok || !Array.isArray(listTasksBody.tasks)) {
+        fail(
+          "edge.listTasks",
+          `${listTasksRes.status} ${listTasksBody.detail ?? listTasksBody.error ?? ""}`,
+        );
+      } else {
+        pass(`edge.listTasks (${listTasksBody.tasks.length} rows)`);
+        const listTasksUserRes = await fetch(`${url}/functions/v1/owner-tenant-read`, {
+          method: "POST",
+          headers: {
+            apikey: anon,
+            Authorization: `Bearer ${ownerJwt}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "listTasks", companyId, userId, limit: 5 }),
+        });
+        const listTasksUserBody = await listTasksUserRes.json().catch(() => ({}));
+        if (!listTasksUserRes.ok || !Array.isArray(listTasksUserBody.tasks)) {
+          fail(
+            "edge.listTasks.user",
+            `${listTasksUserRes.status} ${listTasksUserBody.detail ?? listTasksUserBody.error ?? ""}`,
+          );
+        } else {
+          pass(`edge.listTasks.user (${listTasksUserBody.tasks.length} rows)`);
+        }
+        if (listTasksBody.tasks[0]?.id) {
+          const taskId = listTasksBody.tasks[0].id;
+          const getTaskRes = await fetch(`${url}/functions/v1/owner-tenant-read`, {
+            method: "POST",
+            headers: {
+              apikey: anon,
+              Authorization: `Bearer ${ownerJwt}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ action: "getTask", taskId, companyId }),
+          });
+          const getTaskBody = await getTaskRes.json().catch(() => ({}));
+          if (!getTaskRes.ok || !getTaskBody.task?.id) {
+            fail(
+              "edge.getTask",
+              `${getTaskRes.status} ${getTaskBody.detail ?? getTaskBody.error ?? ""}`,
+            );
+          } else {
+            pass("edge.getTask");
+          }
+        }
       }
     }
   }

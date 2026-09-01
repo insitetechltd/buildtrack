@@ -6,9 +6,12 @@ import {
   parseProjectDetail,
   parseProjectListResult,
   parseProjectMembersResult,
+  parseTaskDetail,
+  parseTaskListResult,
   parseUserDetail,
   parseUserListResult,
   OwnerTenantError,
+  formatErrorDetail,
   mapOwnerTenantHttpError,
 } from "../fetchOwnerTenantRead";
 import { formatSeatUsageLine, tasksByStatusToHistogram } from "../ownerEntitlementView";
@@ -102,6 +105,108 @@ describe("parseProjectDetail", () => {
     });
     expect(detail.tasksByStatus.new).toBe(2);
     expect(detail.taskTotal).toBe(3);
+  });
+});
+
+describe("parseTaskListResult", () => {
+  it("parses task rows", () => {
+    const result = parseTaskListResult({
+      tasks: [
+        {
+          id: "t1",
+          title: "Fix leak",
+          status: "in_progress",
+          priority: "high",
+          projectId: "p1",
+          projectName: "Tower",
+          primaryAssigneeId: "u1",
+          primaryAssigneeName: "Pat",
+          completionPercentage: 40,
+          updatedAt: "2026-01-02",
+          createdAt: "2026-01-01",
+        },
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+      truncated: false,
+    });
+    expect(result.tasks[0].title).toBe("Fix leak");
+    expect(result.total).toBe(1);
+  });
+
+  it("parses relationRoles for HQ user-scoped lists", () => {
+    const result = parseTaskListResult({
+      tasks: [
+        {
+          id: "t1",
+          title: "Fix leak",
+          status: "in_progress",
+          priority: "high",
+          projectId: "p1",
+          projectName: "Tower",
+          primaryAssigneeId: null,
+          primaryAssigneeName: null,
+          completionPercentage: 0,
+          updatedAt: "2026-01-02",
+          createdAt: "2026-01-01",
+          relationRoles: ["assigner", "assignee", "bogus"],
+        },
+      ],
+      total: 1,
+      limit: 50,
+      offset: 0,
+      truncated: false,
+    });
+    expect(result.tasks[0].relationRoles).toEqual(["assigner", "assignee"]);
+  });
+});
+
+describe("parseTaskDetail", () => {
+  it("parses task detail and activities", () => {
+    const detail = parseTaskDetail({
+      task: {
+        id: "t1",
+        title: "Fix leak",
+        description: "Basement",
+        status: "in_progress",
+        priority: "high",
+        category: null,
+        taskReference: null,
+        dueDate: null,
+        completionPercentage: 40,
+        locationOnSite: "B1",
+        tags: ["plumbing"],
+        createdAt: "2026-01-01",
+        updatedAt: "2026-01-02",
+        projectId: "p1",
+        projectName: "Tower",
+        projectStatus: "active",
+        companyId: "c1",
+        primaryAssigneeId: "u1",
+        primaryAssigneeName: "Pat",
+        assignedById: null,
+        assignedByName: null,
+        acceptedById: null,
+        acceptedByName: null,
+        reviewedById: null,
+        reviewedByName: null,
+        assigneeCount: 1,
+      },
+      recentActivities: [
+        {
+          id: "a1",
+          activityType: "progress_update",
+          timestamp: "2026-01-02T00:00:00Z",
+          description: "40%",
+          completionPercentage: 40,
+          userId: "u1",
+          userName: "Pat",
+        },
+      ],
+    });
+    expect(detail.task.title).toBe("Fix leak");
+    expect(detail.recentActivities).toHaveLength(1);
   });
 });
 
@@ -253,6 +358,29 @@ describe("parseUserDetail", () => {
 describe("mapOwnerTenantHttpError", () => {
   it("maps forbidden", () => {
     expect(mapOwnerTenantHttpError(403, { error: "forbidden" }).code).toBe("forbidden");
+  });
+
+  it("stringifies object detail from edge", () => {
+    const err = mapOwnerTenantHttpError(500, {
+      error: "internal_error",
+      detail: { message: "Could not embed task_assignments" },
+    });
+    expect(err.message).toContain("task_assignments");
+  });
+});
+
+describe("formatErrorDetail", () => {
+  it("unwraps nested invoke error objects", () => {
+    expect(
+      formatErrorDetail({
+        error: "internal_error",
+        detail: "URI too long",
+      }),
+    ).toBe("URI too long");
+  });
+
+  it("rejects object Object placeholder", () => {
+    expect(formatErrorDetail("[object Object]")).toBeNull();
   });
 });
 

@@ -9,7 +9,9 @@ export type TenantAction =
   | "listProjectMembers"
   | "listUsers"
   | "listAllUsers"
-  | "getUser";
+  | "getUser"
+  | "listTasks"
+  | "getTask";
 
 export type OwnerTenantErrorCode =
   | "not_authenticated"
@@ -18,6 +20,7 @@ export type OwnerTenantErrorCode =
   | "invalid_company_id"
   | "invalid_project_id"
   | "invalid_user_id"
+  | "invalid_task_id"
   | "not_found"
   | "server_misconfigured"
   | "internal_error"
@@ -25,12 +28,58 @@ export type OwnerTenantErrorCode =
   | "bad_response"
   | "not_configured";
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/** Coerce API / Supabase error payloads into human-readable text. */
+export function formatErrorDetail(value: unknown): string | null {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 && trimmed !== "[object Object]" ? trimmed : null;
+  }
+  if (value instanceof Error) {
+    return formatErrorDetail(value.message);
+  }
+  if (isRecord(value)) {
+    if ("detail" in value) {
+      const detail = formatErrorDetail(value.detail);
+      if (detail) return detail;
+    }
+    if ("message" in value) {
+      const message = formatErrorDetail(value.message);
+      if (message) return message;
+    }
+    if ("error" in value) {
+      const error = formatErrorDetail(value.error);
+      if (error) return error;
+    }
+    if ("details" in value) {
+      const details = formatErrorDetail(value.details);
+      if (details) return details;
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function ownerTenantErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof OwnerTenantError) {
+    return formatErrorDetail(err.message) ?? fallback;
+  }
+  return formatErrorDetail(err) ?? fallback;
+}
+
 export class OwnerTenantError extends Error {
   readonly code: OwnerTenantErrorCode;
   readonly status?: number;
 
-  constructor(code: OwnerTenantErrorCode, message: string, status?: number) {
-    super(message);
+  constructor(code: OwnerTenantErrorCode, message: unknown, status?: number) {
+    super(formatErrorDetail(message) ?? "Request failed");
     this.name = "OwnerTenantError";
     this.code = code;
     this.status = status;
@@ -212,9 +261,83 @@ export type UserDetail = {
   }[];
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+export type TaskRelationRole = "assigner" | "assignee" | "delegate";
+
+export type TaskListItem = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  projectId: string;
+  projectName: string;
+  primaryAssigneeId: string | null;
+  primaryAssigneeName: string | null;
+  completionPercentage: number;
+  updatedAt: string;
+  createdAt: string;
+  /** Present on HQ user-scoped lists (TASK_RELATED_TO_USER). */
+  relationRoles?: TaskRelationRole[];
+};
+
+export type TaskListResult = {
+  tasks: TaskListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+  truncated: boolean;
+};
+
+export type TaskActivityItem = {
+  id: string;
+  activityType: string;
+  timestamp: string;
+  description: string | null;
+  completionPercentage: number | null;
+  userId: string;
+  userName: string;
+};
+
+export type TaskDetail = {
+  task: {
+    id: string;
+    title: string;
+    description: string;
+    status: string;
+    priority: string;
+    category: string | null;
+    taskReference: string | null;
+    dueDate: string | null;
+    completionPercentage: number;
+    locationOnSite: string | null;
+    tags: string[];
+    createdAt: string;
+    updatedAt: string;
+    projectId: string;
+    projectName: string;
+    projectStatus: string;
+    companyId: string;
+    primaryAssigneeId: string | null;
+    primaryAssigneeName: string | null;
+    assignedById: string | null;
+    assignedByName: string | null;
+    acceptedById: string | null;
+    acceptedByName: string | null;
+    reviewedById: string | null;
+    reviewedByName: string | null;
+    assigneeCount: number;
+  };
+  recentActivities: TaskActivityItem[];
+};
+
+export type EntityListParams = {
+  entity: "tasks";
+  companyId: string;
+  companyName: string;
+  projectId?: string;
+  projectName?: string;
+  userId?: string;
+  userName?: string;
+};
 
 function asString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -593,6 +716,117 @@ export function parseUserDetail(payload: unknown): UserDetail {
   };
 }
 
+export function parseTaskListResult(payload: unknown): TaskListResult {
+  if (!isRecord(payload) || !Array.isArray(payload.tasks)) {
+    throw new OwnerTenantError("bad_response", "Task list invalid");
+  }
+  const tasks = payload.tasks.map((row, i) => {
+    if (!isRecord(row)) {
+      throw new OwnerTenantError("bad_response", `Task row ${i} invalid`);
+    }
+    const id = asString(row.id);
+    const title = asString(row.title);
+    const projectId = asString(row.projectId);
+    if (!id || !title || !projectId) {
+      throw new OwnerTenantError("bad_response", `Task row ${i} missing fields`);
+    }
+    return {
+      id,
+      title,
+      status: asString(row.status) ?? "new",
+      priority: asString(row.priority) ?? "medium",
+      projectId,
+      projectName: asString(row.projectName) ?? "Unknown",
+      primaryAssigneeId: asString(row.primaryAssigneeId),
+      primaryAssigneeName: asString(row.primaryAssigneeName),
+      completionPercentage: asNumber(row.completionPercentage) ?? 0,
+      updatedAt: asString(row.updatedAt) ?? "",
+      createdAt: asString(row.createdAt) ?? "",
+      relationRoles: Array.isArray(row.relationRoles)
+        ? row.relationRoles.filter(
+            (role): role is TaskRelationRole =>
+              role === "assigner" || role === "assignee" || role === "delegate",
+          )
+        : undefined,
+    };
+  });
+  return {
+    tasks,
+    total: asNumber(payload.total) ?? tasks.length,
+    limit: asNumber(payload.limit) ?? 50,
+    offset: asNumber(payload.offset) ?? 0,
+    truncated: asBool(payload.truncated),
+  };
+}
+
+export function parseTaskDetail(payload: unknown): TaskDetail {
+  if (!isRecord(payload) || !isRecord(payload.task)) {
+    throw new OwnerTenantError("bad_response", "Task detail invalid");
+  }
+  const t = payload.task;
+  const id = asString(t.id);
+  const title = asString(t.title);
+  const projectId = asString(t.projectId);
+  const companyId = asString(t.companyId);
+  if (!id || !title || !projectId || !companyId) {
+    throw new OwnerTenantError("bad_response", "Task detail missing fields");
+  }
+  const recentActivities = Array.isArray(payload.recentActivities)
+    ? payload.recentActivities.map((row, i) => {
+        if (!isRecord(row)) {
+          throw new OwnerTenantError("bad_response", `Activity ${i} invalid`);
+        }
+        const actId = asString(row.id);
+        const userId = asString(row.userId);
+        if (!actId || !userId) {
+          throw new OwnerTenantError("bad_response", `Activity ${i} missing fields`);
+        }
+        return {
+          id: actId,
+          activityType: asString(row.activityType) ?? "metadata_edit",
+          timestamp: asString(row.timestamp) ?? "",
+          description: asString(row.description),
+          completionPercentage: asNumber(row.completionPercentage),
+          userId,
+          userName: asString(row.userName) ?? "Unknown",
+        };
+      })
+    : [];
+  return {
+    task: {
+      id,
+      title,
+      description: asString(t.description) ?? "",
+      status: asString(t.status) ?? "new",
+      priority: asString(t.priority) ?? "medium",
+      category: asString(t.category),
+      taskReference: asString(t.taskReference),
+      dueDate: asString(t.dueDate),
+      completionPercentage: asNumber(t.completionPercentage) ?? 0,
+      locationOnSite: asString(t.locationOnSite),
+      tags: Array.isArray(t.tags)
+        ? t.tags.filter((tag): tag is string => typeof tag === "string")
+        : [],
+      createdAt: asString(t.createdAt) ?? "",
+      updatedAt: asString(t.updatedAt) ?? "",
+      projectId,
+      projectName: asString(t.projectName) ?? "Unknown",
+      projectStatus: asString(t.projectStatus) ?? "",
+      companyId,
+      primaryAssigneeId: asString(t.primaryAssigneeId),
+      primaryAssigneeName: asString(t.primaryAssigneeName),
+      assignedById: asString(t.assignedById),
+      assignedByName: asString(t.assignedByName),
+      acceptedById: asString(t.acceptedById),
+      acceptedByName: asString(t.acceptedByName),
+      reviewedById: asString(t.reviewedById),
+      reviewedByName: asString(t.reviewedByName),
+      assigneeCount: asNumber(t.assigneeCount) ?? 0,
+    },
+    recentActivities,
+  };
+}
+
 export function mapOwnerTenantHttpError(
   status: number,
   body: unknown,
@@ -611,9 +845,10 @@ export function mapOwnerTenantHttpError(
   if (status === 400 || code === "invalid_action") {
     return new OwnerTenantError("invalid_action", "Invalid request", 400);
   }
+  const detail = formatErrorDetail(body);
   return new OwnerTenantError(
     "internal_error",
-    `Request failed (${status})`,
+    detail ?? `Request failed (${status})`,
     status,
   );
 }
@@ -645,7 +880,14 @@ async function invokeTenant<T>(
         if (mapped instanceof OwnerTenantError) throw mapped;
       }
     }
-    throw new OwnerTenantError("network", error.message || "Network error");
+    const message =
+      formatErrorDetail(error.message) ??
+      formatErrorDetail(error) ??
+      "Network error";
+    throw new OwnerTenantError("network", message);
+  }
+  if (isRecord(data) && typeof data.error === "string" && data.tasks == null) {
+    throw mapOwnerTenantHttpError(500, data);
   }
   return parse(data);
 }
@@ -791,5 +1033,51 @@ export async function fetchUserDetail(
     client,
     { action: "getUser", userId, companyId },
     parseUserDetail,
+  );
+}
+
+export async function fetchTaskList(
+  client: InvokeClient | null,
+  opts: {
+    companyId: string;
+    projectId?: string;
+    userId?: string;
+    query?: string;
+    status?: string;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<TaskListResult> {
+  if (!client) {
+    throw new OwnerTenantError("not_configured", "Supabase not configured");
+  }
+  return invokeTenant(
+    client,
+    {
+      action: "listTasks",
+      companyId: opts.companyId,
+      projectId: opts.projectId,
+      userId: opts.userId,
+      query: opts.query ?? "",
+      status: opts.status,
+      limit: opts.limit ?? 50,
+      offset: opts.offset ?? 0,
+    },
+    parseTaskListResult,
+  );
+}
+
+export async function fetchTaskDetail(
+  client: InvokeClient | null,
+  taskId: string,
+  companyId: string,
+): Promise<TaskDetail> {
+  if (!client) {
+    throw new OwnerTenantError("not_configured", "Supabase not configured");
+  }
+  return invokeTenant(
+    client,
+    { action: "getTask", taskId, companyId },
+    parseTaskDetail,
   );
 }

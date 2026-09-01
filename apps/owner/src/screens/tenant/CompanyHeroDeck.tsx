@@ -105,6 +105,14 @@ export default function CompanyHeroDeck({
           </View>
         </View>
       ) : null}
+
+      {compactFocus === "tasks" && !showBothBars ? (
+        <View style={s.deckHeroBarRow}>
+          <View style={s.deckHeroBarLabel}>
+            <Text style={s.deckHeroBarLabelText}>{detail.stats.tasks} tasks</Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }

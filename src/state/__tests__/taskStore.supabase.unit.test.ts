@@ -185,6 +185,35 @@ describe('taskStore.supabase unit tests', () => {
     expect(result.current.tasks[0]).toBe(firstRef);
   });
 
+  it('maps TASK_EFFECTIVE_STATUS so status wins over stale current_status on fetchTasks', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-effective-status',
+      status: 'in_progress',
+      current_status: 'new',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [taskRow], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    await act(async () => {
+      await result.current.fetchTasks(true);
+    });
+
+    expect(result.current.tasks[0]).toMatchObject({
+      id: 'task-effective-status',
+      status: 'in_progress',
+    });
+  });
+
   it('preserves hydrated activities when a slim list refetch reconciles', async () => {
     const taskRow = createTaskRow();
     const hydratedActivity = {
@@ -1178,6 +1207,41 @@ describe('taskStore.supabase unit tests', () => {
     expect(result.current.taskFetchTimestamps['subtask-123']).toEqual(expect.any(Number));
   });
 
+  it('maps TASK_EFFECTIVE_STATUS so status wins over stale current_status on fetchTaskById', async () => {
+    const taskRow = createTaskRow({
+      id: 'task-status-wins',
+      status: 'in_progress',
+      current_status: 'new',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          is: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: taskRow, error: null }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    let fetchedTask: Task | null = null;
+    await act(async () => {
+      fetchedTask = await result.current.fetchTaskById('task-status-wins', true);
+    });
+
+    expect(fetchedTask).toMatchObject({ id: 'task-status-wins', status: 'in_progress' });
+  });
+
 
   it('normalizes legacy assignedTo arrays into redesign primary and delegated assignees', async () => {
     const taskRow = createTaskRow({
@@ -1644,11 +1708,24 @@ describe('taskStore.supabase unit tests', () => {
 
     mockFrom.mockImplementation((table: string) => {
       if (table === 'tasks') {
+        let assigneeMode: "assigned" | "primary" | null = null;
         return {
           select: jest.fn().mockReturnThis(),
-          contains: jest.fn().mockReturnThis(),
+          contains: jest.fn(function (this: unknown) {
+            assigneeMode = "assigned";
+            return this;
+          }),
+          eq: jest.fn(function (this: unknown, field: string) {
+            if (field === "primary_assignee_id") assigneeMode = "primary";
+            return this;
+          }),
           is: jest.fn().mockReturnThis(),
-          order: jest.fn().mockResolvedValue({ data: [userTaskRow], error: null }),
+          order: jest.fn(function () {
+            if (assigneeMode === "primary") {
+              return Promise.resolve({ data: [], error: null });
+            }
+            return Promise.resolve({ data: [userTaskRow], error: null });
+          }),
         };
       }
 
@@ -1673,6 +1750,110 @@ describe('taskStore.supabase unit tests', () => {
       id: 'task-user-1',
       assignedTo: ['7', workerId],
       assignedBy: '88',
+    });
+  });
+
+  it('fetchTasksByUser includes tasks where user is primary assignee but not in assigned_to', async () => {
+    const primaryOnlyRow = createTaskRow({
+      id: 'task-primary-only',
+      assigned_to: [],
+      primary_assignee_id: workerId,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        let assigneeMode: "assigned" | "primary" | null = null;
+        return {
+          select: jest.fn().mockReturnThis(),
+          contains: jest.fn(function (this: unknown) {
+            assigneeMode = "assigned";
+            return this;
+          }),
+          eq: jest.fn(function (this: unknown, field: string) {
+            if (field === "primary_assignee_id") assigneeMode = "primary";
+            return this;
+          }),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn(function () {
+            if (assigneeMode === "primary") {
+              return Promise.resolve({ data: [primaryOnlyRow], error: null });
+            }
+            return Promise.resolve({ data: [], error: null });
+          }),
+        };
+      }
+
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+
+    await act(async () => {
+      await result.current.fetchTasksByUser(workerId, true);
+    });
+
+    expect(result.current.tasks.map((task) => task.id)).toContain('task-primary-only');
+    expect(result.current.tasks.find((task) => task.id === 'task-primary-only')).toMatchObject({
+      primaryAssigneeId: workerId,
+      assignedTo: [],
+    });
+  });
+
+  it('maps TASK_EFFECTIVE_STATUS so status wins over stale current_status on fetchTasksByUser', async () => {
+    const row = createTaskRow({
+      id: 'task-user-effective',
+      assigned_to: [workerId],
+      status: 'in_progress',
+      current_status: 'new',
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'tasks') {
+        let assigneeMode: "assigned" | "primary" | null = null;
+        return {
+          select: jest.fn().mockReturnThis(),
+          contains: jest.fn(function (this: unknown) {
+            assigneeMode = "assigned";
+            return this;
+          }),
+          eq: jest.fn(function (this: unknown, field: string) {
+            if (field === "primary_assignee_id") assigneeMode = "primary";
+            return this;
+          }),
+          is: jest.fn().mockReturnThis(),
+          order: jest.fn(function () {
+            if (assigneeMode === "assigned") {
+              return Promise.resolve({ data: [row], error: null });
+            }
+            return Promise.resolve({ data: [], error: null });
+          }),
+        };
+      }
+      if (table === 'task_activities') {
+        return {
+          select: jest.fn().mockReturnThis(),
+          in: jest.fn().mockReturnThis(),
+          order: jest.fn().mockResolvedValue({ data: [], error: null }),
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    });
+
+    const { result } = renderHook(() => useTaskStore());
+    await act(async () => {
+      await result.current.fetchTasksByUser(workerId, true);
+    });
+
+    expect(result.current.tasks.find((task) => task.id === 'task-user-effective')).toMatchObject({
+      status: 'in_progress',
     });
   });
 

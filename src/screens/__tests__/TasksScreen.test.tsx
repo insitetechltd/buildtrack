@@ -512,7 +512,7 @@ describe("TasksScreen", () => {
       <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
-    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-[#E7F4F8]");
+    expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("bg-canvas");
     expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pt-1");
     expect(screen.getByTestId("tasks-screen__search_section").props.className).toContain("pb-1");
     expect(screen.getByTestId("tasks-screen__filters_button")).toBeTruthy();
@@ -581,7 +581,8 @@ describe("TasksScreen", () => {
     fireEvent.press(screen.getByTestId("tasks-filters-sheet__apply"));
     expect(within(screen.getByTestId("tasks-screen__filters_badge")).getByText("1")).toBeTruthy();
 
-    fireEvent.press(screen.getByTestId("tasks-screen__header_reset_filters"));
+    fireEvent.changeText(screen.getByTestId("text-field:tasks-search__input"), "");
+    fireEvent.press(screen.getByTestId("tasks-screen__chip_remove_status"));
     expect(screen.getByTestId("tasks-screen__row_task-1")).toBeTruthy();
     expect(screen.getByTestId("tasks-screen__row_task-2")).toBeTruthy();
     expect(screen.queryByTestId("tasks-screen__filters_badge")).toBeNull();
@@ -591,7 +592,7 @@ describe("TasksScreen", () => {
     expect(screen.getByTestId("tasks-screen__row_wrapper_task-2").props.className).toContain("ml-6");
   });
 
-  it("shows archive on right swipe, update on left swipe, and renders icon-only row actions", async () => {
+  it("shows dynamic single action on left swipe (archive for completed tasks, update for active tasks) and renders aligned icon-only row actions", async () => {
     const onNavigateToCreateTask = jest.fn();
     const onNavigateToUpdateProgress = jest.fn();
     const mockedModule = require("@/ui/viewAdapters/useTasksViewAdapter");
@@ -603,8 +604,8 @@ describe("TasksScreen", () => {
           taskId: "task-1",
           title: "Install guardrails",
           cardPresentation: "thumbnail",
-          statusToken: "task_new",
-          statusLabel: "New",
+          statusToken: "task_in_progress",
+          statusLabel: "In Progress",
           responsibilityToken: "OTHER_OPEN",
           priorityLabel: "High",
           assigneeSummary: "Sam",
@@ -616,16 +617,36 @@ describe("TasksScreen", () => {
           contextLine: "North Tower",
           latestUpdateLabel: "Due: 2026-07-10",
           canShowTaskUpdateAction: true,
+          canShowArchiveAction: false,
+        } as any,
+        {
+          id: "row-2",
+          taskId: "task-2",
+          title: "Approved task",
+          cardPresentation: "thumbnail",
+          statusToken: "task_approved",
+          statusLabel: "Approved",
+          responsibilityToken: "OTHER_OPEN",
+          priorityLabel: "Normal",
+          assigneeSummary: "Sam",
+          projectName: "North Tower",
+          isOverdue: false,
+          attachmentUris: [],
+          density: "compact",
+          structuralState: "stale",
+          contextLine: "North Tower",
+          latestUpdateLabel: "Due: 2026-07-10",
+          canShowTaskUpdateAction: false,
           canShowArchiveAction: true,
         } as any,
       ],
       scalarMetrics: {
-        totalVisibleTaskCount: 1,
+        totalVisibleTaskCount: 2,
         overdueVisibleTaskCount: 0,
-        selectedProjectTaskCount: 1,
+        selectedProjectTaskCount: 2,
         hasActiveFilters: false,
       },
-      resultSummaryLabel: "1 task",
+      resultSummaryLabel: "2 tasks",
     });
 
     const screen = render(
@@ -636,41 +657,26 @@ describe("TasksScreen", () => {
       />,
     );
 
-    expect(
-      within(screen.getByTestId("tasks-screen__row_task-1:swipeable__left-actions")).getByTestId(
-        "tasks-screen__row_task-1:archive-action",
-      ),
-    ).toBeTruthy();
+    // Dynamic swipe left for active task-1: shows update action in right-actions
     expect(
       within(screen.getByTestId("tasks-screen__row_task-1:swipeable__right-actions")).getByTestId(
         "tasks-screen__row_task-1:update-action",
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Task Update")).toBeNull();
-    expect(screen.queryByText("Archive")).toBeNull();
-    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action-icon")).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-1:swipeable__left-actions")).toBeNull();
     expect(screen.getByTestId("tasks-screen__row_task-1:update-action-icon")).toBeTruthy();
     expect(
-      screen.getByTestId("tasks-screen__row_task-1:swipeable__overshoot-left").children.join(""),
-    ).toBe("false");
-    expect(
-      screen.getByTestId("tasks-screen__row_task-1:swipeable__overshoot-right").children.join(""),
-    ).toBe("false");
-    expect(
-      screen.getByTestId("tasks-screen__row_task-1:archive-action-wrapper").props.className,
-    ).toContain("w-[60px]");
+      screen.getByTestId("tasks-screen__row_task-1:update-action-wrapper").props.className,
+    ).toContain("h-full");
     expect(
       screen.getByTestId("tasks-screen__row_task-1:update-action-wrapper").props.className,
     ).toContain("w-[60px]");
-    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action").props.className).toContain(
-      "w-[72px]",
+    expect(screen.getByTestId("tasks-screen__row_task-1:update-action").props.className).toContain(
+      "h-full",
     );
     expect(screen.getByTestId("tasks-screen__row_task-1:update-action").props.className).toContain(
       "w-[72px]",
     );
-    expect(screen.getByTestId("tasks-screen__row_task-1:archive-action-icon-offset")).toHaveStyle({
-      transform: [{ translateX: -5 }],
-    });
     expect(screen.getByTestId("tasks-screen__row_task-1:update-action-icon-offset")).toHaveStyle({
       transform: [{ translateX: 5 }],
     });
@@ -679,14 +685,38 @@ describe("TasksScreen", () => {
     expect(onNavigateToUpdateProgress).toHaveBeenCalledWith("task-1");
     expect(onNavigateToCreateTask).not.toHaveBeenCalled();
 
-    fireEvent.press(screen.getByTestId("tasks-screen__row_task-1:archive-action"));
+    // Dynamic swipe left for completed task-2: shows archive action in right-actions
+    expect(
+      within(screen.getByTestId("tasks-screen__row_task-2:swipeable__right-actions")).getByTestId(
+        "tasks-screen__row_task-2:archive-action",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByTestId("tasks-screen__row_task-2:swipeable__left-actions")).toBeNull();
+    expect(screen.getByTestId("tasks-screen__row_task-2:archive-action-icon")).toBeTruthy();
+    expect(
+      screen.getByTestId("tasks-screen__row_task-2:archive-action-wrapper").props.className,
+    ).toContain("h-full");
+    expect(
+      screen.getByTestId("tasks-screen__row_task-2:archive-action-wrapper").props.className,
+    ).toContain("w-[60px]");
+    expect(screen.getByTestId("tasks-screen__row_task-2:archive-action").props.className).toContain(
+      "h-full",
+    );
+    expect(screen.getByTestId("tasks-screen__row_task-2:archive-action").props.className).toContain(
+      "w-[72px]",
+    );
+    expect(screen.getByTestId("tasks-screen__row_task-2:archive-action-icon-offset")).toHaveStyle({
+      transform: [{ translateX: 5 }],
+    });
+
+    fireEvent.press(screen.getByTestId("tasks-screen__row_task-2:archive-action"));
     expect(screen.getByTestId("tasks-screen__archive-confirm")).toBeTruthy();
 
     const actions = mockedModule.__getTasksScreenActions();
     fireEvent.press(screen.getByTestId("tasks-screen__archive-confirm-archive"));
 
     await waitFor(() => {
-      expect(actions.archiveTask).toHaveBeenCalledWith("task-1");
+      expect(actions.archiveTask).toHaveBeenCalledWith("task-2");
     });
   });
 

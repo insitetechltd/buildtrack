@@ -1,0 +1,41 @@
+# Re-login as Joe so company_admin role is picked up, then capture Company management.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "capture-session__cancel"
+    optional: true
+- runFlow: _logout.yaml
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "joe@insite.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 45000
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 2000
+- extendedWaitUntil:
+    visible:
+      id: "profile-menu-company_admin"
+    timeout: 12000
+- tapOn:
+    id: "profile-menu-company_admin"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: "mkt-05-company"

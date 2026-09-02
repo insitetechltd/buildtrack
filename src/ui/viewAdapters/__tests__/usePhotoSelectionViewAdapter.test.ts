@@ -207,6 +207,72 @@ describe("usePhotoSelectionViewAdapter batch-review features", () => {
     expect(result.current.output.photos[0].isAnnotated).toBe(true);
   });
 
+  it("handlePrepareEditSource exports a capped file without marking the photo edited", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          {
+            uri: "ph://keep",
+            fileName: "keep.jpg",
+            isAnnotated: false,
+            mediaLibraryAssetId: "keep",
+          },
+        ],
+      } as any),
+    );
+
+    let prepared: string | null = null;
+    await act(async () => {
+      prepared = await result.current.handlePrepareEditSource(0);
+    });
+
+    expect(prepared).toBe("file://capped.jpg");
+    expect(mockEnsureCappedLocalPhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: "ph://keep", mediaLibraryAssetId: "keep" }),
+    );
+    expect(result.current.output.photos[0].isAnnotated).toBe(false);
+    expect(result.current.output.photos[0].annotatedUri).toBeUndefined();
+  });
+
+  it("handleApplyDraw exports a capped file before bake when the row is still ph://", async () => {
+    const { result } = renderHook(() =>
+      usePhotoSelectionViewAdapter({
+        ...baseProps,
+        initialPhotos: [
+          {
+            uri: "ph://keep",
+            fileName: "keep.jpg",
+            isAnnotated: false,
+            mediaLibraryAssetId: "keep",
+          },
+        ],
+      } as any),
+    );
+
+    const strokes = [
+      {
+        color: "#ef4444",
+        width: 8,
+        points: [
+          { x: 1, y: 1 },
+          { x: 20, y: 30 },
+        ],
+      },
+    ];
+
+    await act(async () => {
+      const applied = await result.current.handleApplyDraw(0, strokes);
+      expect(applied).toBe(true);
+    });
+
+    expect(mockEnsureCappedLocalPhoto).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: "ph://keep", mediaLibraryAssetId: "keep" }),
+    );
+    expect(mockBakeStrokesOntoPhoto).toHaveBeenCalledWith("file://capped.jpg", strokes);
+    expect(result.current.output.photos[0].annotatedUri).toBe("pinned:file://drawn.jpg");
+  });
+
   it("handleResetEdits clears annotatedUri back to original", async () => {
     const { result } = renderHook(() =>
       usePhotoSelectionViewAdapter({

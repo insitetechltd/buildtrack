@@ -2,9 +2,48 @@ import {
   defaultCropRectInImageLayout,
   getContainedImageLayout,
   mapCropRectToSourcePixels,
+  resolveImageDimensions,
 } from "../photoPreviewEdit";
+import { Image } from "react-native";
+import * as ImageManipulator from "expo-image-manipulator";
+
+jest.mock("react-native", () => ({
+  Image: {
+    getSize: jest.fn(),
+  },
+}));
+
+jest.mock("expo-image-manipulator", () => ({
+  manipulateAsync: jest.fn(),
+  SaveFormat: { JPEG: "jpeg" },
+}));
 
 describe("photoPreviewEdit", () => {
+  describe("resolveImageDimensions", () => {
+    it("resolves dimensions via Image.getSize for standard URIs", async () => {
+      (Image.getSize as jest.Mock).mockImplementation((_uri, onSuccess) => {
+        onSuccess(1200, 800);
+      });
+
+      const size = await resolveImageDimensions("file:///photo.jpg");
+      expect(size).toEqual({ width: 1200, height: 800 });
+    });
+
+    it("falls back to ImageManipulator when Image.getSize fails (e.g. ph:// on iOS)", async () => {
+      (Image.getSize as jest.Mock).mockImplementation((_uri, _onSuccess, onError) => {
+        onError(new Error("Cannot load ph:// URI"));
+      });
+      (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({
+        width: 1920,
+        height: 1080,
+      });
+
+      const size = await resolveImageDimensions("ph://asset-123");
+      expect(size).toEqual({ width: 1920, height: 1080 });
+      expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith("ph://asset-123", [], {});
+    });
+  });
+
   describe("getContainedImageLayout", () => {
     it("letterboxes a wide image in a square container", () => {
       const layout = getContainedImageLayout(200, 200, 400, 200);

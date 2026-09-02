@@ -3,6 +3,7 @@ import {
   NavigationContainer,
   CommonActions,
   getFocusedRouteNameFromRoute,
+  useNavigationState,
   type LinkingOptions,
 } from "@react-navigation/native";
 
@@ -76,7 +77,9 @@ import {
   buildPhotoShortcutCreateTaskParams,
   resolveTaskDetailCameraTabParams,
   resolveTaskDetailUpdateShortcut,
+  resolveTasksListCreateShortcut,
   shouldReturnToCreateTaskShortcut,
+  type RouteStateLike,
 } from "./photoShortcutRoutes";
 import { resolveStandaloneTaskAction } from "./taskActionRouting";
 import {
@@ -404,6 +407,37 @@ function CenterCameraTabButton({
         {/* Omit default tab children so RN does not paint a second camera glyph. */}
       </View>
     </View>
+  );
+}
+
+function RootCenterFabButton(props: BottomTabBarButtonProps) {
+  const tabState = useNavigationState((state) => state as unknown as RouteStateLike);
+  const updateShortcut = resolveTaskDetailUpdateShortcut(tabState);
+  const isTaskDetailUpdate = Boolean(updateShortcut);
+  const isTasksListCreate = resolveTasksListCreateShortcut(tabState);
+  const showCreatePlus = isTaskDetailUpdate || isTasksListCreate;
+
+  return (
+    <CenterCameraTabButton
+      {...props}
+      disabled={Boolean(props.disabled)}
+      affordance={isTaskDetailUpdate ? "update" : "camera"}
+      accessibilityLabel={
+        isTaskDetailUpdate
+          ? "Start task update"
+          : isTasksListCreate
+            ? "Create task"
+            : props.accessibilityLabel ?? "Camera"
+      }
+      icon={
+        <Ionicons
+          testID="root-tab__camera_icon"
+          name={showCreatePlus ? "add" : "camera"}
+          size={showCreatePlus ? 36 : 28}
+          color="#ffffff"
+        />
+      }
+    />
   );
 }
 
@@ -1302,6 +1336,8 @@ function CreateTaskScreenWrapper({
     updateTargetSubTaskId,
     uploadedPhotoUrls,
     selectedPhotos,
+    clearForm,
+    _timestamp: clearFormTimestamp,
   } = route.params || {};
   const clearDraftPayloads = React.useCallback(() => {
     navigation.setParams({
@@ -1344,6 +1380,8 @@ function CreateTaskScreenWrapper({
       updateTargetSubTaskId={updateTargetSubTaskId}
       uploadedPhotoUrls={uploadedPhotoUrls as string[] | undefined}
       selectedPhotos={selectedPhotos}
+      clearForm={clearForm}
+      clearFormTimestamp={clearFormTimestamp}
       onClearDraftPayloads={clearDraftPayloads}
       onNavigateToProfile={() => navigateToRootProfile(navigation)}
       onNavigateToProjectPicker={(allowBack?: boolean) => {
@@ -1739,7 +1777,7 @@ function CaptureSessionScreenWrapper({
       }}
       onComplete={(photos) => {
         if (isAddPhotos && params && typeof params === "object") {
-          navigation.navigate("PhotoSelection", {
+          (navigation.navigate as any)("PhotoSelection", {
             taskId: params.taskId,
             subTaskId: params.subTaskId,
             companyId: params.companyId,
@@ -1762,7 +1800,7 @@ function CaptureSessionScreenWrapper({
           });
           return;
         }
-        navigation.navigate("PhotoSelection", {
+        (navigation.navigate as any)("PhotoSelection", {
           initialPhotos: photos,
           uploadImmediately: false,
           captureFirstFlow: true,
@@ -2230,9 +2268,9 @@ function MainTabs() {
               event,
               navigation: {
                 getState: () =>
-                  navigation.getState() as Parameters<
-                    typeof resolveTaskDetailCameraTabParams
-                  >[0],
+                  typeof navigation.getState === "function"
+                    ? (navigation.getState() as any)
+                    : undefined,
                 navigate: (screen, params) =>
                   (navigation.navigate as (screen: string, params?: unknown) => void)(
                     screen,
@@ -2242,40 +2280,13 @@ function MainTabs() {
             });
           },
         })}
-        options={({ route, navigation }) => {
-          const updateShortcut = resolveTaskDetailUpdateShortcut(
-            typeof navigation?.getState === "function"
-              ? (navigation.getState() as Parameters<
-                  typeof resolveTaskDetailUpdateShortcut
-                >[0])
-              : undefined,
-          );
-          const isTaskDetailUpdate = Boolean(updateShortcut);
+        options={({ route }) => {
           return {
           tabBarLabel: "",
           tabBarShowLabel: false,
           tabBarActiveTintColor: "#ffffff",
           tabBarInactiveTintColor: "#ffffff",
-          tabBarButton: (props) => (
-            <CenterCameraTabButton
-              {...props}
-              disabled={Boolean(props.disabled)}
-              affordance={isTaskDetailUpdate ? "update" : "camera"}
-              accessibilityLabel={
-                isTaskDetailUpdate
-                  ? "Start task update"
-                  : props.accessibilityLabel ?? "Camera"
-              }
-              icon={
-                <Ionicons
-                  testID="root-tab__camera_icon"
-                  name={isTaskDetailUpdate ? "add" : "camera"}
-                  size={isTaskDetailUpdate ? 36 : 28}
-                  color="#ffffff"
-                />
-              }
-            />
-          ),
+          tabBarButton: (props) => <RootCenterFabButton {...props} />,
           tabBarStyle: buildRootTabBarStyleForRoute(
             getFocusedRouteNameFromRoute(route),
             "CreateTaskMain",

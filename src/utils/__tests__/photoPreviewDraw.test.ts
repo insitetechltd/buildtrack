@@ -33,21 +33,32 @@ describe("photoPreviewDraw", () => {
     });
   });
 
-  it("appends only strokes with at least two points", () => {
-    const stroke: DrawStroke = {
+  it("appends valid strokes including single-tap dots", () => {
+    const emptyStroke: DrawStroke = {
+      color: "#ef4444",
+      width: 8,
+      points: [],
+    };
+    expect(appendStroke([], emptyStroke)).toEqual([]);
+
+    const singlePointDot: DrawStroke = {
       color: "#ef4444",
       width: 8,
       points: [{ x: 1, y: 1 }],
     };
-    expect(appendStroke([], stroke)).toEqual([]);
-    const valid: DrawStroke = {
-      ...stroke,
+    expect(appendStroke([], singlePointDot)).toEqual([singlePointDot]);
+
+    const multiPointStroke: DrawStroke = {
+      ...singlePointDot,
       points: [
         { x: 1, y: 1 },
         { x: 2, y: 2 },
       ],
     };
-    expect(appendStroke([], valid)).toEqual([valid]);
+    expect(appendStroke([singlePointDot], multiPointStroke)).toEqual([
+      singlePointDot,
+      multiPointStroke,
+    ]);
   });
 
   it("undoes the last stroke without mutating earlier ones", () => {

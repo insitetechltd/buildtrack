@@ -1,0 +1,204 @@
+# App Store / marketing frames as joe@insite.com (DEV).
+# Identity switch: logout then login. Do not use John boot or Project A picker.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+    permissions:
+      photos: allow
+      medialibrary: allow
+      camera: allow
+      notifications: deny
+- runFlow: _dismiss-blocking-overlays.yaml
+- tapOn:
+    id: "profile-language__close"
+    optional: true
+- runFlow:
+    when:
+      visible: "確定要登出？"
+    commands:
+      - tapOn: "登出"
+      - extendedWaitUntil:
+          visible:
+            id: "login-submit"
+          timeout: 45000
+- runFlow:
+    when:
+      visible: "Are you sure you want to logout?"
+    commands:
+      - tapOn:
+          text: "Logout"
+          index: 1
+      - extendedWaitUntil:
+          visible:
+            id: "login-submit"
+          timeout: 45000
+- runFlow:
+    when:
+      notVisible:
+        id: "login-submit"
+    commands:
+      - tapOn:
+          id: "app-screen-header__profile-trigger"
+      - extendedWaitUntil:
+          visible:
+            id: "profile-menu-logout"
+          timeout: 12000
+      - tapOn:
+          id: "profile-menu-logout"
+      - runFlow:
+          when:
+            visible: "確定要登出？"
+          commands:
+            - tapOn: "登出"
+      - runFlow:
+          when:
+            visible: "Are you sure you want to logout?"
+          commands:
+            - tapOn:
+                text: "Logout"
+                index: 1
+      - extendedWaitUntil:
+          visible:
+            id: "login-submit"
+          timeout: 45000
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "^login-emailOrPhone$"
+- eraseText
+- inputText: "joe@insite.com"
+- tapOn:
+    id: "^login-password$"
+- eraseText
+- inputText: "password123"
+- tapOn:
+    id: "login-submit"
+- runFlow:
+    when:
+      visible: "Save Password?"
+    commands:
+      - tapOn: "Not Now"
+- tapOn:
+    text: "Not Now"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "root-tab__camera_icon_surface"
+    timeout: 45000
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- runFlow:
+    when:
+      visible: "揀選項目"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "profile-menu-profile_settings"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    id: "profile-menu-language"
+- waitForAnimationToEnd:
+    timeout: 2500
+- runFlow:
+    when:
+      visible:
+        id: "profile-language:en"
+    commands:
+      - tapOn:
+          id: "profile-language:en"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible: "Reload Now"
+    commands:
+      - tapOn: "Reload Now"
+- runFlow:
+    when:
+      visible: "立即重新載入"
+    commands:
+      - tapOn: "立即重新載入"
+- runFlow:
+    when:
+      visible:
+        id: "profile-language__close"
+    commands:
+      - tapOn:
+          id: "profile-language__close"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "app-screen-header__back"
+    optional: true
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "dashboard-screen__root"
+    timeout: 45000
+- swipe:
+    start: "50%, 26%"
+    end: "50%, 78%"
+    duration: 1200
+- waitForAnimationToEnd:
+    timeout: 8000
+- takeScreenshot: "mkt-01-activity"
+- tapOn: "Ship away scaffolding"
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 25000
+- takeScreenshot: "mkt-04-task-thread"
+- swipe:
+    start: "50%, 72%"
+    end: "50%, 28%"
+    duration: 700
+- waitForAnimationToEnd:
+    timeout: 1500
+- takeScreenshot: "mkt-04b-task-review"
+- tapOn:
+    id: "app-screen-header__back"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- takeScreenshot: "mkt-03-tasks"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "profile-menu-company_admin"
+    commands:
+      - tapOn:
+          id: "profile-menu-company_admin"
+      - waitForAnimationToEnd:
+          timeout: 4000
+      - takeScreenshot: "mkt-05-company"
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: "mkt-02-create-or-capture"
+- tapOn:
+    id: "capture-session__cancel"
+    optional: true

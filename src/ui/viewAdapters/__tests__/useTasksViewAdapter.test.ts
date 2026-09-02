@@ -368,10 +368,11 @@ describe("useTasksViewAdapter", () => {
       canShowArchiveAction: false,
     });
     expect(approvedRow).toMatchObject({
-      canShowTaskUpdateAction: true,
+      canShowTaskUpdateAction: false,
       canShowArchiveAction: true,
     });
     expect(createdApprovedRow).toMatchObject({
+      canShowTaskUpdateAction: false,
       canShowArchiveAction: true,
     });
     expect(childRow).toMatchObject({

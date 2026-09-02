@@ -114,6 +114,7 @@ export function shouldHideRootSideTabsForTabState(
 
 export function shouldHideTabBarOnCreateTaskRoute(routeName?: string) {
   return (
+    routeName === "CreateTask" ||
     routeName === "CreateTaskMain" ||
     routeName === "UpdateProgress" ||
     routeName === "PhotoSelection" ||

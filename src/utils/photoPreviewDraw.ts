@@ -15,7 +15,7 @@ export type DrawColor = (typeof DRAW_COLORS)[number];
 /** Visible pen width on the contain-fit preview (device px). */
 export const DRAW_SCREEN_STROKE_WIDTH = 4;
 
-const MIN_POINTS = 2;
+const MIN_POINTS = 1;
 
 export function isPointInsideImageLayout(
   screenX: number,

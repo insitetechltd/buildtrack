@@ -13,6 +13,7 @@ import {
   defaultCropRectInImageLayout,
   getContainedImageLayout,
   mapCropRectToSourcePixels,
+  resolveImageDimensions,
   type Rect,
   type SourceCrop,
 } from "../../utils/photoPreviewEdit";
@@ -54,16 +55,20 @@ export function CropOverlay({
     setSourceSize(null);
     setCrop(null);
     setLoadError(false);
-    Image.getSize(
-      uri,
-      (width, height) => {
-        if (cancelled) return;
-        setSourceSize({ width, height });
-      },
-      () => {
-        if (!cancelled) setLoadError(true);
-      },
-    );
+
+    resolveImageDimensions(uri)
+      .then((size) => {
+        if (!cancelled) {
+          setSourceSize(size);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn("[CropOverlay] Failed to get image size for", uri, error);
+          setLoadError(true);
+        }
+      });
+
     return () => {
       cancelled = true;
     };

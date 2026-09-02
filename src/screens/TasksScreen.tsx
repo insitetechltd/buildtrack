@@ -44,7 +44,7 @@ function SwipeActionButton({
     <View
       testID={`${testID}-wrapper`}
       className={cn(
-        "w-[60px] justify-center",
+        "h-full w-[60px] justify-center",
         align === "left" ? "items-start" : "items-end",
       )}
     >
@@ -52,7 +52,7 @@ function SwipeActionButton({
         testID={testID}
         onPress={onPress}
         className={cn(
-          "h-24 w-[72px] items-center justify-center rounded-2xl",
+          "h-full w-[72px] items-center justify-center rounded-2xl",
           tone === "destructive" ? "bg-[#B42318]" : "bg-[#08576E]",
         )}
       >
@@ -241,17 +241,6 @@ export default function TasksScreen(props: TasksScreenProps) {
             visibility.showDeveloperSettingsShortcut ? props.onNavigateToDeveloperSettings : undefined
           }
           className="border-b-0 bg-[#08576E] pb-2"
-          rightSlot={
-            visibility.showResetFiltersShortcut ? (
-              <Pressable
-                testID="tasks-screen__header_reset_filters"
-                onPress={actions.resetFilters}
-                className="h-10 w-10 items-center justify-center rounded-full bg-[#0D6E87]"
-              >
-                <Ionicons name="refresh-outline" size={20} color="#F8FCFF" />
-              </Pressable>
-            ) : null
-          }
         />
         <View
           testID="tasks-screen__search_section"
@@ -370,21 +359,18 @@ export default function TasksScreen(props: TasksScreenProps) {
                   onSwipeableCloseStartDrag={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableWillOpen={() => setTaskSwipeBlockState(row.taskId, "active")}
                   onSwipeableClose={() => setTaskSwipeBlockState(row.taskId, "dismissed")}
-                  renderLeftActions={
+                  renderRightActions={
                     row.canShowArchiveAction
                       ? () => (
                           <SwipeActionButton
                             testID={`tasks-screen__row_${row.taskId}:archive-action`}
                             icon="archive-outline"
-                            align="left"
+                            align="right"
                             tone="destructive"
                             onPress={() => handleArchivePress(row.taskId)}
                           />
                         )
-                      : undefined
-                  }
-                  renderRightActions={
-                    row.canShowTaskUpdateAction
+                      : row.canShowTaskUpdateAction
                       ? () => (
                           <SwipeActionButton
                             testID={`tasks-screen__row_${row.taskId}:update-action`}

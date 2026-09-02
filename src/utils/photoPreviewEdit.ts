@@ -1,3 +1,6 @@
+import { Image } from "react-native";
+import * as ImageManipulator from "expo-image-manipulator";
+
 /**
  * Pure geometry helpers for in-preview crop (contain-fit → source pixels).
  */
@@ -15,6 +18,54 @@ export type SourceCrop = {
   width: number;
   height: number;
 };
+
+/**
+ * Resolve dimensions for any image URI (file://, ph://, content://, https://).
+ * Tries React Native Image.getSize first, and falls back to ImageManipulator.
+ */
+export async function resolveImageDimensions(
+  uri: string,
+): Promise<{ width: number; height: number }> {
+  if (!uri) {
+    throw new Error("No URI provided for image dimension resolution");
+  }
+
+  // 1. Try Image.getSize first (fast for file://, http://, and bundled assets)
+  try {
+    const size = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+      Image.getSize(
+        uri,
+        (width, height) => {
+          if (width > 0 && height > 0) {
+            resolve({ width, height });
+          } else {
+            reject(new Error(`Invalid dimensions ${width}x${height}`));
+          }
+        },
+        (error) => reject(error),
+      );
+    });
+    return size;
+  } catch {
+    // Fall back to ImageManipulator if Image.getSize fails (e.g. ph:// on iOS)
+  }
+
+  // 2. Try ImageManipulator.manipulateAsync without actions
+  try {
+    const result = await ImageManipulator.manipulateAsync(uri, [], {});
+    if (result.width > 0 && result.height > 0) {
+      return { width: result.width, height: result.height };
+    }
+  } catch (error) {
+    throw new Error(
+      `Could not resolve image dimensions for ${uri}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+
+  throw new Error(`Invalid dimensions for ${uri}`);
+}
 
 /** Layout of an image drawn with contentFit="contain" inside a container. */
 export function getContainedImageLayout(

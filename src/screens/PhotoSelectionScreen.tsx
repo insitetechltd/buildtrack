@@ -73,6 +73,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
   const [drawMode, setDrawMode] = useState(false);
   const [drawColor, setDrawColor] = useState<DrawColor>(DRAW_COLORS[0]);
   const [drawStrokes, setDrawStrokes] = useState<DrawStroke[]>([]);
+  const [editSourceUri, setEditSourceUri] = useState<string | null>(null);
   const [previewImageSize, setPreviewImageSize] = useState({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
@@ -84,6 +85,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
     handlePhotoPress,
     handleRotatePhoto,
     handleApplyCrop,
+    handlePrepareEditSource,
     handleApplyDraw,
     handleResetEdits,
     handleRemovePhoto,
@@ -108,7 +110,10 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
 
   const enlargedPhoto = enlargedPhotoIndex !== null ? photos[enlargedPhotoIndex] : null;
   const previewUri =
-    enlargedPhoto?.annotatedUri || enlargedPhoto?.uri || undefined;
+    enlargedPhoto?.annotatedUri ||
+    editSourceUri ||
+    enlargedPhoto?.uri ||
+    undefined;
 
   const selectedTaskTitle =
     tasksForPicker.find((t) => t.id === selectedTaskId)?.title ?? null;
@@ -123,6 +128,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
     setCropMode(false);
     setDrawMode(false);
     setDrawStrokes([]);
+    setEditSourceUri(null);
     handlePhotoPress(index);
   };
 
@@ -131,12 +137,28 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
     setCropMode(false);
     setDrawMode(false);
     setDrawStrokes([]);
+    setEditSourceUri(null);
     setEnlargedPhotoIndex(null);
   };
 
   const exitDrawMode = () => {
     setDrawMode(false);
     setDrawStrokes([]);
+  };
+
+  const prepareOverlaySource = async (): Promise<boolean> => {
+    if (enlargedPhotoIndex === null) return false;
+    if (enlargedPhoto?.annotatedUri?.startsWith("file://")) {
+      setEditSourceUri(enlargedPhoto.annotatedUri);
+      return true;
+    }
+    if (editSourceUri?.startsWith("file://")) {
+      return true;
+    }
+    const uri = await handlePrepareEditSource(enlargedPhotoIndex);
+    if (!uri) return false;
+    setEditSourceUri(uri);
+    return true;
   };
 
   // Step 2: full-screen edit (rotate / crop / reset) — replaces selection until Done/X
@@ -201,7 +223,18 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
             >
               <Pressable
                 testID="photo-selection__preview_close"
-                onPress={closeEditScreen}
+                onPress={async () => {
+                  if (drawMode && drawStrokes.length > 0 && enlargedPhotoIndex !== null) {
+                    const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
+                    if (applied) {
+                      setEditSourceUri(null);
+                      closeEditScreen();
+                    }
+                    return;
+                  }
+                  closeEditScreen();
+                }}
+                disabled={isEditingPhoto}
                 className="h-11 w-11 items-center justify-center rounded-full bg-black/55"
                 accessibilityRole="button"
                 accessibilityLabel="Back to selection"
@@ -217,11 +250,25 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
 
               <Pressable
                 testID="photo-selection__preview_confirm"
-                onPress={closeEditScreen}
-                disabled={cropMode || drawMode}
+                onPress={async () => {
+                  if (drawMode) {
+                    if (drawStrokes.length === 0) {
+                      closeEditScreen();
+                      return;
+                    }
+                    const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
+                    if (applied) {
+                      setEditSourceUri(null);
+                      closeEditScreen();
+                    }
+                    return;
+                  }
+                  closeEditScreen();
+                }}
+                disabled={isEditingPhoto || cropMode}
                 className={cn(
                   "h-11 w-11 items-center justify-center rounded-full",
-                  cropMode || drawMode ? "bg-gray-600" : "bg-zinc-700",
+                  isEditingPhoto || cropMode ? "bg-gray-600" : "bg-zinc-700",
                 )}
                 accessibilityRole="button"
                 accessibilityLabel="Done editing photo"
@@ -244,17 +291,33 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               drawColor={drawColor}
               canUndoDraw={drawStrokes.length > 0}
               onRotate={() => handleRotatePhoto(enlargedPhotoIndex)}
-              onToggleCrop={() => {
+              onToggleCrop={async () => {
                 setDrawMode(false);
                 setDrawStrokes([]);
-                setCropMode((value) => !value);
+                if (cropMode) {
+                  setCropMode(false);
+                  return;
+                }
+                const ready = await prepareOverlaySource();
+                if (!ready) return;
+                setCropMode(true);
               }}
-              onToggleDraw={() => {
+              onToggleDraw={async () => {
                 if (drawMode) {
+                  if (drawStrokes.length > 0 && enlargedPhotoIndex !== null) {
+                    const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
+                    if (applied) {
+                      setEditSourceUri(null);
+                      exitDrawMode();
+                    }
+                    return;
+                  }
                   exitDrawMode();
                   return;
                 }
                 setCropMode(false);
+                const ready = await prepareOverlaySource();
+                if (!ready) return;
                 setDrawMode(true);
               }}
               onSelectDrawColor={setDrawColor}
@@ -262,6 +325,7 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
               onDoneDraw={async () => {
                 const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
                 if (applied) {
+                  setEditSourceUri(null);
                   exitDrawMode();
                 }
               }}
@@ -289,7 +353,14 @@ export default function PhotoSelectionScreen(props: PhotoSelectionScreenProps) {
                   <Pressable
                     key={photo.id || `preview-thumb-${index}`}
                     testID={`photo-selection__preview_thumb_${index}`}
-                    onPress={() => openEditScreen(index)}
+                    onPress={async () => {
+                      if (index === enlargedPhotoIndex) return;
+                      if (drawMode && drawStrokes.length > 0 && enlargedPhotoIndex !== null) {
+                        const applied = await handleApplyDraw(enlargedPhotoIndex, drawStrokes);
+                        if (!applied) return;
+                      }
+                      openEditScreen(index);
+                    }}
                     className={cn(
                       "rounded-lg overflow-hidden border-2",
                       index === enlargedPhotoIndex ? "border-blue-500" : "border-transparent",

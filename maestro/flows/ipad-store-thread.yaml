@@ -1,0 +1,21 @@
+# Resume on Tasks (Joe) and open the scaffolding thread for the iPad 13" store set.
+appId: com.buildtrack.app.local
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "root-tab__tasks_pressable"
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 20000
+- tapOn:
+    id: "tasks-screen__row_.*:title-pressable"
+    index: 2
+
+- extendedWaitUntil:
+    visible:
+      id: "task-detail__header_title"
+    timeout: 25000
+- takeScreenshot: "ipad-04-task-thread"

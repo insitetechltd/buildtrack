@@ -9,7 +9,7 @@ import { pinDraftMedia } from '../../utils/draftMediaCache';
 import { ensureCappedLocalPhoto } from '../../utils/ensureCappedLocalPhoto';
 import type { SourceCrop } from '../../utils/photoPreviewEdit';
 import { bakeStrokesOntoPhoto } from '../../utils/bakePhotoDraw';
-import type { DrawStroke } from '../../utils/photoPreviewDraw';
+import { isValidStroke, type DrawStroke } from '../../utils/photoPreviewDraw';
 import type { SelectedPhoto } from '../../utils/usePhotoSelection';
 import type {
   MiniPickerTask,
@@ -85,6 +85,7 @@ export function usePhotoSelectionViewAdapter({
   handlePhotoPress: (index: number) => void;
   handleRotatePhoto: (index: number) => Promise<void>;
   handleApplyCrop: (index: number, crop: SourceCrop) => Promise<void>;
+  handlePrepareEditSource: (index: number) => Promise<string | null>;
   handleApplyDraw: (index: number, strokes: DrawStroke[]) => Promise<boolean>;
   handleResetEdits: (index: number) => void;
   handleRemovePhoto: (index: number) => void;
@@ -240,6 +241,23 @@ export function usePhotoSelectionViewAdapter({
     return ensureCappedLocalPhoto(photo);
   };
 
+  /** Export a local JPEG for overlay sizing without marking the photo edited. */
+  const handlePrepareEditSource = async (index: number): Promise<string | null> => {
+    const photo = selectedPhotos[index];
+    if (!photo) return null;
+
+    try {
+      setIsEditingPhoto(true);
+      return await sourceUriForEdit(photo);
+    } catch (error: any) {
+      console.error("❌ [PhotoSelection] Prepare edit source failed:", error);
+      Alert.alert("Error", error.message || "Failed to prepare photo for editing.");
+      return null;
+    } finally {
+      setIsEditingPhoto(false);
+    }
+  };
+
   const commitEditedUri = async (index: number, resultUri: string) => {
     const fileName = `edited_${Date.now()}.jpg`;
     const finalUri = resultUri.startsWith('file://')
@@ -314,23 +332,25 @@ export function usePhotoSelectionViewAdapter({
   const handleApplyDraw = async (index: number, strokes: DrawStroke[]): Promise<boolean> => {
     const photo = selectedPhotos[index];
     if (!photo) return false;
-    if (!strokes.length) {
+    const validStrokes = strokes.filter(isValidStroke);
+    if (!validStrokes.length) {
       Alert.alert('Nothing to apply', 'Draw at least one stroke before tapping Done.');
       return false;
     }
 
     try {
       setIsEditingPhoto(true);
+      const sourceUri = await sourceUriForEdit(photo);
       const bakedUri = await bakeStrokesOntoPhoto(
-        await sourceUriForEdit(photo),
-        strokes,
+        sourceUri,
+        validStrokes,
       );
       await commitEditedUri(index, bakedUri);
       return true;
     } catch (error: any) {
       console.error('❌ [PhotoSelection] Draw bake failed:', error);
       Alert.alert(
-        'Error',
+        'Drawing Save Failed',
         error?.message || 'Failed to apply drawing. Rebuild the app if Skia is missing.',
       );
       return false;
@@ -687,6 +707,7 @@ export function usePhotoSelectionViewAdapter({
     handlePhotoPress,
     handleRotatePhoto,
     handleApplyCrop,
+    handlePrepareEditSource,
     handleApplyDraw,
     handleResetEdits,
     handleRemovePhoto,

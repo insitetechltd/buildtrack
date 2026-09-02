@@ -33,11 +33,25 @@ describe("taskAttachmentKey", () => {
           annotatedUri: "file:///edited.jpg",
         }),
       ),
-    ).toBe("uri:file:///edited.jpg");
+    ).toBe("uri:file:///raw.jpg");
   });
 });
 
 describe("mergeUniqueAttachments", () => {
+  it("prefers the incoming draft when the same camera photo was edited", () => {
+    const original = photo({
+      uri: "file:///cam.jpg",
+      fileName: "cam.jpg",
+    });
+    const edited = photo({
+      uri: "file:///cam.jpg",
+      fileName: "cam.jpg",
+      isAnnotated: true,
+      annotatedUri: "file:///cam-edited.jpg",
+    });
+
+    expect(mergeUniqueAttachments([original], [edited])).toEqual([edited]);
+  });
   it("appends new photos without duplicating prior ones", () => {
     const a = photo({
       uri: "file:///a.jpg",

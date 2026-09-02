@@ -352,6 +352,7 @@ export default function ProfileScreen({
             <ModalHandle />
             <View className="flex-row items-center border-b border-gray-200 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark">
               <Pressable
+                testID="profile-language__close"
                 onPress={actions.closeLanguagePicker}
                 className="mr-4 h-10 w-10 items-center justify-center"
               >
@@ -365,6 +366,7 @@ export default function ProfileScreen({
               {output.languagePicker.options.map((option) => (
                 <Pressable
                   key={option.id}
+                  testID={option.id}
                   onPress={() => actions.handleLanguageSelection(option.language)}
                   className="flex-row items-center border-b border-gray-100 bg-white px-6 py-4 dark:border-[#1E3A44] dark:bg-surface-dark"
                 >

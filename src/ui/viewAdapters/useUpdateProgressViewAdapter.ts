@@ -8,6 +8,7 @@ import { useTranslation } from "../../utils/useTranslation";
 import { TaskStatus } from "../../types/buildtrack";
 import { uploadFileWithVerification } from "../../api/fileUploadService";
 import { ensureCappedLocalPhoto } from "../../utils/ensureCappedLocalPhoto";
+import { mergeUniqueAttachments } from "../../utils/mergeTaskAttachments";
 import { returnToTaskDetailAfterUpdateProgress } from "../../navigation/photoFlowNavigation";
 import { navigateToAddPhotosCaptureSession } from "../../navigation/captureFirstCameraFlow";
 import type { 
@@ -72,55 +73,40 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
   }, [task?.completionPercentage]);
 
   useEffect(() => {
+    if (props.selectedPhotos && Array.isArray(props.selectedPhotos) && props.selectedPhotos.length > 0) {
+      setPhotoObjects(prev => mergeUniqueAttachments(prev, props.selectedPhotos!) as SelectedPhoto[]);
+    }
+  }, [props.selectedPhotos]);
+
+  useEffect(() => {
+    if (props.uploadedPhotoUrls && Array.isArray(props.uploadedPhotoUrls) && props.uploadedPhotoUrls.length > 0) {
+      setPhotos(prev => {
+        const existingUrls = new Set(prev);
+        const newUrls = props.uploadedPhotoUrls!.filter(url => !existingUrls.has(url));
+        return newUrls.length > 0 ? [...prev, ...newUrls] : prev;
+      });
+    }
+  }, [props.uploadedPhotoUrls]);
+
+  useEffect(() => {
     const params = (route.params || {}) as UpdateProgressScreenParams;
     if (params?.selectedPhotos && Array.isArray(params.selectedPhotos) && params.selectedPhotos.length > 0) {
-      setPhotoObjects(prev => {
-        const existingUris = new Set(prev.map(p => p.uri));
-        const newPhotos = params.selectedPhotos!.filter(photo => !existingUris.has(photo.uri));
-        return newPhotos.length > 0 ? [...prev, ...newPhotos] : prev;
-      });
+      setPhotoObjects(prev => mergeUniqueAttachments(prev, params.selectedPhotos!) as SelectedPhoto[]);
       navigation.setParams({ selectedPhotos: undefined });
     }
   }, [(route.params as UpdateProgressScreenParams)?.selectedPhotos, navigation]);
 
-  useFocusEffect(
-    useCallback(() => {
-      if (props.selectedPhotos && Array.isArray(props.selectedPhotos) && props.selectedPhotos.length > 0) {
-        setPhotoObjects(prev => {
-          const existingUris = new Set(prev.map(p => p.uri));
-          const newPhotos = props.selectedPhotos!.filter(photo => !existingUris.has(photo.uri));
-          return newPhotos.length > 0 ? [...prev, ...newPhotos] : prev;
-        });
-      }
-      
-      const params = route.params as UpdateProgressScreenParams;
-      if (params?.selectedPhotos && Array.isArray(params.selectedPhotos) && params.selectedPhotos.length > 0) {
-        setPhotoObjects(prev => {
-          const existingUris = new Set(prev.map(p => p.uri));
-          const newPhotos = params.selectedPhotos!.filter(photo => !existingUris.has(photo.uri));
-          return newPhotos.length > 0 ? [...prev, ...newPhotos] : prev;
-        });
-        navigation.setParams({ selectedPhotos: undefined });
-      }
-      
-      if (props.uploadedPhotoUrls && Array.isArray(props.uploadedPhotoUrls) && props.uploadedPhotoUrls.length > 0) {
-        setPhotos(prev => {
-          const existingUrls = new Set(prev);
-          const newUrls = props.uploadedPhotoUrls!.filter(url => !existingUrls.has(url));
-          return newUrls.length > 0 ? [...prev, ...newUrls] : prev;
-        });
-      }
-      
-      if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
-        setPhotos(prev => {
-          const existingUrls = new Set(prev);
-          const newUrls = params.uploadedPhotoUrls!.filter(url => !existingUrls.has(url));
-          return newUrls.length > 0 ? [...prev, ...newUrls] : prev;
-        });
-        navigation.setParams({ uploadedPhotoUrls: undefined });
-      }
-    }, [props.selectedPhotos, props.uploadedPhotoUrls, route.params, navigation])
-  );
+  useEffect(() => {
+    const params = (route.params || {}) as UpdateProgressScreenParams;
+    if (params?.uploadedPhotoUrls && Array.isArray(params.uploadedPhotoUrls) && params.uploadedPhotoUrls.length > 0) {
+      setPhotos(prev => {
+        const existingUrls = new Set(prev);
+        const newUrls = params.uploadedPhotoUrls!.filter(url => !existingUrls.has(url));
+        return newUrls.length > 0 ? [...prev, ...newUrls] : prev;
+      });
+      navigation.setParams({ uploadedPhotoUrls: undefined });
+    }
+  }, [(route.params as UpdateProgressScreenParams)?.uploadedPhotoUrls, navigation]);
 
   const handleAddPhotos = (_source?: "camera" | "library") => {
     if (!user || !task) return;
@@ -282,6 +268,7 @@ export function useUpdateProgressViewAdapter(props: UpdateProgressScreenProps) {
       uri: obj.annotatedUri || obj.uri,
       isUploaded: false,
       isFailed: false,
+      isAnnotated: Boolean(obj.isAnnotated || obj.annotatedUri),
       density: 'standard' as const,
       structuralState: 'loading' as const,
       onRemove: () => setPhotoObjects(prev => prev.filter((_, index) => index !== i)),

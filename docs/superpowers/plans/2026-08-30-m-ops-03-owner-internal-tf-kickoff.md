@@ -44,9 +44,8 @@ EAS project ID: `d82603e8-9bcf-4f6f-942a-404ac825a4de`
 
 ```bash
 cd apps/owner
-eas build --profile internal --platform ios --non-interactive
-# After ASC App ID is in eas.json:
-eas submit --profile internal --platform ios --latest --non-interactive
+./build-and-submit.sh ios
+# Same law as Taskr: profile `dev` → EAS `preview` → DEV. Never App Store.
 ```
 
 No Beta App Review for Internal TF. Builds expire ~90 days — re-upload.

@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
+import { fireEvent, render, waitFor } from "@testing-library/react-native";
 
 import PhotoSelectionScreen from "@/screens/PhotoSelectionScreen";
 
@@ -128,6 +128,7 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
   const mockHandleRotatePhoto = jest.fn();
   const mockHandleApplyCrop = jest.fn();
   const mockHandleApplyDraw = jest.fn();
+  const mockHandlePrepareEditSource = jest.fn(async () => "file://capped.jpg");
   const mockHandleResetEdits = jest.fn();
   const mockHandleAddPhotos = jest.fn();
   const mockHandleRemovePhoto = jest.fn();
@@ -170,6 +171,8 @@ function buildAdapterOutput(overrides: Record<string, any> = {}) {
     handlePhotoPress: overrides.handlePhotoPress ?? mockHandlePhotoPress,
     handleRotatePhoto: overrides.handleRotatePhoto ?? mockHandleRotatePhoto,
     handleApplyCrop: overrides.handleApplyCrop ?? mockHandleApplyCrop,
+    handlePrepareEditSource:
+      overrides.handlePrepareEditSource ?? mockHandlePrepareEditSource,
     handleApplyDraw: overrides.handleApplyDraw ?? mockHandleApplyDraw,
     handleResetEdits: overrides.handleResetEdits ?? mockHandleResetEdits,
     handleRemovePhoto: overrides.handleRemovePhoto ?? mockHandleRemovePhoto,
@@ -294,7 +297,7 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(adapter.handleUploadPhotos).toHaveBeenCalledTimes(1);
   });
 
-  it("hosts rotate/crop/draw/reset on edit modal and done returns to selection without finishing", () => {
+  it("hosts rotate/crop/draw/reset on edit modal and done returns to selection without finishing", async () => {
     const photos = [
       { id: "p1", uri: "file://p1", caption: "", isAnnotated: false },
       { id: "p2", uri: "file://p2", caption: "", isAnnotated: true, annotatedUri: "file://p2-a" },
@@ -325,7 +328,10 @@ describe("PhotoSelectionScreen batch review", () => {
     expect(adapter.handleRotatePhoto).toHaveBeenCalledWith(0);
 
     fireEvent.press(screen.getByTestId("photo-selection__tool_draw"));
-    expect(screen.getByTestId("photo-selection__draw_overlay")).toBeTruthy();
+    await waitFor(() => {
+      expect(adapter.handlePrepareEditSource).toHaveBeenCalledWith(0);
+      expect(screen.getByTestId("photo-selection__draw_overlay")).toBeTruthy();
+    });
     expect(screen.getByTestId("photo-selection__tool_draw_undo")).toBeTruthy();
     expect(screen.getByTestId("photo-selection__tool_draw_done")).toBeTruthy();
 

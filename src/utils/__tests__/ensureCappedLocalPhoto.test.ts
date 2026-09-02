@@ -56,6 +56,24 @@ describe("ensureCappedLocalPhoto", () => {
     expect(pinDraftMedia).toHaveBeenCalledTimes(1);
   });
 
+  it("returns annotated file:// even when the asset cache holds the original", async () => {
+    (exportPhotokitCappedJpeg as jest.Mock).mockResolvedValue("file://native.jpg");
+    const original = {
+      uri: "ph://keep",
+      fileName: "keep.jpg",
+      mediaLibraryAssetId: "keep",
+    };
+    await expect(ensureCappedLocalPhoto(original)).resolves.toBe("pinned:file://native.jpg");
+
+    await expect(
+      ensureCappedLocalPhoto({
+        ...original,
+        annotatedUri: "file://drawn.jpg",
+      }),
+    ).resolves.toBe("file://drawn.jpg");
+    expect(exportPhotokitCappedJpeg).toHaveBeenCalledTimes(1);
+  });
+
   it("falls back to getAssetInfo + compress when native export misses", async () => {
     (exportPhotokitCappedJpeg as jest.Mock).mockResolvedValue(null);
     (resolveLibraryLocalUri as jest.Mock).mockResolvedValue("file://original.jpg");

@@ -4,6 +4,11 @@ import { Dimensions } from "react-native";
 
 jest.mock("@react-navigation/native", () => ({
   getFocusedRouteNameFromRoute: () => undefined,
+  useNavigationState: (selector: (state: { index: number; routes: Array<{ name: string }> }) => unknown) =>
+    selector({
+      index: 0,
+      routes: [{ name: "Activity" }, { name: "Camera" }, { name: "Tasks" }],
+    }),
   createNavigationContainerRef: () => ({
     isReady: () => false,
     navigate: jest.fn(),
@@ -310,6 +315,7 @@ describe("AppNavigator bottom-tab spacing", () => {
   });
 
   it("hides the root tab bar on Create Task, Update Progress, Select Photos, and in-app library routes", () => {
+    expect(shouldHideTabBarOnCreateTaskRoute("CreateTask")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("CreateTaskMain")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("UpdateProgress")).toBe(true);
     expect(shouldHideTabBarOnCreateTaskRoute("PhotoSelection")).toBe(true);

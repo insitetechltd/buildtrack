@@ -2,13 +2,13 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import {
+  bakedProductionEnvironment,
+  resolvePersistedDatabaseConfig,
+  type DatabaseEnvironment,
+} from "./databaseConfigResolve";
 
-export interface DatabaseEnvironment {
-  name: string;
-  url: string;
-  anonKey: string;
-  description?: string;
-}
+export type { DatabaseEnvironment } from "./databaseConfigResolve";
 
 interface DatabaseConfigState {
   activeEnvironment: string | null;
@@ -142,13 +142,7 @@ export const useDatabaseConfig = create<DatabaseConfigState>()(
     (set, get) => ({
       activeEnvironment: null,
       environments: {
-        // Default production environment (from .env)
-        production: {
-          name: "production",
-          url: process.env.EXPO_PUBLIC_SUPABASE_URL || "",
-          anonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "",
-          description: "Production database",
-        },
+        production: bakedProductionEnvironment(),
       },
       supabaseClient: null,
 
@@ -265,8 +259,33 @@ export const useDatabaseConfig = create<DatabaseConfigState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         activeEnvironment: state.activeEnvironment,
-        environments: state.environments,
+        environments: Object.fromEntries(
+          Object.entries(state.environments).filter(([name]) => name !== "production"),
+        ),
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as
+          | {
+              activeEnvironment?: string | null;
+              environments?: Record<string, DatabaseEnvironment>;
+            }
+          | undefined;
+        const resolved = resolvePersistedDatabaseConfig(
+          persisted
+            ? {
+                activeEnvironment: persisted.activeEnvironment ?? null,
+                environments: persisted.environments ?? {},
+              }
+            : undefined,
+          bakedProductionEnvironment(),
+          { allowCustomEndpoints: __DEV__ },
+        );
+        return {
+          ...currentState,
+          activeEnvironment: resolved.activeEnvironment,
+          environments: resolved.environments,
+        };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) {
           console.log("🔄 DatabaseConfig rehydrated");

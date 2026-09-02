@@ -1,7 +1,7 @@
 import { CommonActions, StackActions } from "@react-navigation/native";
 import { exitUpdateProgressScreen, type PhotoFlowStackNav } from "./photoFlowNavigation";
 import { promptCaptureFirstSource } from "./captureFirstCameraFlow";
-import { resolveTaskDetailUpdateShortcut } from "./photoShortcutRoutes";
+import { resolveTaskDetailUpdateShortcut, resolveTasksListCreateShortcut } from "./photoShortcutRoutes";
 import {
   navigateToCreateTaskRoute,
   type CreateTaskRouteNavigation,
@@ -92,7 +92,7 @@ export function handleCameraTabPress({
   navigation: {
     getState: () => {
       index?: number;
-      routes?: Array<{ name?: string; state?: unknown }>;
+      routes?: Array<{ name?: string; state?: any }>;
     };
     navigate: (screen: string, params?: unknown) => void;
   };
@@ -105,6 +105,18 @@ export function handleCameraTabPress({
     navigation.navigate(updateShortcut.tabName, {
       screen: "UpdateProgress",
       params: updateShortcut.params,
+    });
+    return;
+  }
+  if (resolveTasksListCreateShortcut(tabState)) {
+    // Tasks list: + opens the create-task form (camera stays on Activity).
+    navigation.navigate("Tasks", {
+      screen: "CreateTask",
+      params: {
+        sourceScreen: "tasks",
+        clearForm: true,
+        _timestamp: Date.now(),
+      },
     });
     return;
   }

@@ -513,6 +513,7 @@ export interface UpdateProgressPhotoModel extends PrimitiveReadyItemBase {
   uri: string;
   isUploaded: boolean;
   isFailed: boolean;
+  isAnnotated?: boolean;
   errorMessage?: string;
   onRemove: () => void;
   onRetry?: () => void;

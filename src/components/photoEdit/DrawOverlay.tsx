@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Svg, { Polyline } from "react-native-svg";
+import Svg, { Circle, Polyline } from "react-native-svg";
 import { runOnJS } from "react-native-reanimated";
 
-import { getContainedImageLayout } from "../../utils/photoPreviewEdit";
+import { getContainedImageLayout, resolveImageDimensions } from "../../utils/photoPreviewEdit";
 import {
   DRAW_COLORS,
   DRAW_SCREEN_STROKE_WIDTH,
@@ -49,19 +49,20 @@ export function DrawOverlay({
     setLoadError(false);
     activePointsRef.current = [];
     setActivePoints([]);
-    Image.getSize(
-      uri,
-      (width, height) => {
+
+    resolveImageDimensions(uri)
+      .then((size) => {
         if (!cancelled) {
-          setSourceSize({ width, height });
+          setSourceSize(size);
         }
-      },
-      () => {
+      })
+      .catch((error) => {
         if (!cancelled) {
+          console.warn("[DrawOverlay] Failed to get image size for", uri, error);
           setLoadError(true);
         }
-      },
-    );
+      });
+
     return () => {
       cancelled = true;
     };
@@ -118,7 +119,7 @@ export function DrawOverlay({
     setActivePoints([]);
     // Commit outside any setState updater — calling parent setState from an
     // updater triggers "Cannot update PhotoSelectionScreen while rendering DrawOverlay".
-    if (!disabled && points.length >= 2) {
+    if (!disabled && points.length >= 1) {
       onCommitStroke({
         color,
         width: sourceStrokeWidth,
@@ -146,37 +147,58 @@ export function DrawOverlay({
 
   const screenStrokes = useMemo(() => {
     if (!imageLayout || !sourceSize) {
-      return [] as Array<{ color: string; width: number; points: string }>;
+      return [] as Array<{
+        color: string;
+        width: number;
+        points: string;
+        dot?: { x: number; y: number; r: number };
+      }>;
     }
-    const toScreen = (stroke: DrawStroke) => ({
-      color: stroke.color,
-      width: DRAW_SCREEN_STROKE_WIDTH,
-      points: pointsToSvgPolyline(
-        stroke.points.map((point) =>
-          mapSourcePointToScreen(
-            point,
-            imageLayout,
-            sourceSize.width,
-            sourceSize.height,
-          ),
+    const toScreen = (stroke: DrawStroke) => {
+      const screenPts = stroke.points.map((point) =>
+        mapSourcePointToScreen(
+          point,
+          imageLayout,
+          sourceSize.width,
+          sourceSize.height,
         ),
-      ),
-    });
+      );
+      return {
+        color: stroke.color,
+        width: DRAW_SCREEN_STROKE_WIDTH,
+        points: pointsToSvgPolyline(screenPts),
+        dot:
+          screenPts.length === 1
+            ? {
+                x: screenPts[0].x,
+                y: screenPts[0].y,
+                r: DRAW_SCREEN_STROKE_WIDTH / 2,
+              }
+            : undefined,
+      };
+    };
     const committed = strokes.map(toScreen);
     if (activePoints.length > 0) {
+      const activeScreenPts = activePoints.map((point) =>
+        mapSourcePointToScreen(
+          point,
+          imageLayout,
+          sourceSize.width,
+          sourceSize.height,
+        ),
+      );
       committed.push({
         color,
         width: DRAW_SCREEN_STROKE_WIDTH,
-        points: pointsToSvgPolyline(
-          activePoints.map((point) =>
-            mapSourcePointToScreen(
-              point,
-              imageLayout,
-              sourceSize.width,
-              sourceSize.height,
-            ),
-          ),
-        ),
+        points: pointsToSvgPolyline(activeScreenPts),
+        dot:
+          activeScreenPts.length === 1
+            ? {
+                x: activeScreenPts[0].x,
+                y: activeScreenPts[0].y,
+                r: DRAW_SCREEN_STROKE_WIDTH / 2,
+              }
+            : undefined,
       });
     }
     return committed;
@@ -196,7 +218,16 @@ export function DrawOverlay({
   }
 
   if (loadError || !imageLayout) {
-    return null;
+    return (
+      <View
+        testID="photo-selection__draw_overlay"
+        style={StyleSheet.absoluteFill}
+        className="items-center justify-center bg-black/70"
+        pointerEvents="none"
+      >
+        <Text className="text-white text-center px-6">Could not load image size</Text>
+      </View>
+    );
   }
 
   return (
@@ -207,17 +238,27 @@ export function DrawOverlay({
         collapsable={false}
       >
         <Svg width={containerWidth} height={containerHeight} style={StyleSheet.absoluteFill}>
-          {screenStrokes.map((stroke, index) => (
-            <Polyline
-              key={`stroke-${index}`}
-              points={stroke.points}
-              fill="none"
-              stroke={stroke.color}
-              strokeWidth={stroke.width}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
+          {screenStrokes.map((stroke, index) =>
+            stroke.dot ? (
+              <Circle
+                key={`stroke-${index}`}
+                cx={stroke.dot.x}
+                cy={stroke.dot.y}
+                r={stroke.dot.r}
+                fill={stroke.color}
+              />
+            ) : (
+              <Polyline
+                key={`stroke-${index}`}
+                points={stroke.points}
+                fill="none"
+                stroke={stroke.color}
+                strokeWidth={stroke.width}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ),
+          )}
         </Svg>
       </View>
     </GestureDetector>

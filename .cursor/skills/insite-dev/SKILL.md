@@ -25,6 +25,7 @@ Portable cycle changes → `~/.cursor/skills/solo-dev-harness/SOP.md` + `templat
 7. Jargon: `documentation/CURSOR_DEV_HARNESS.md` § Terminology (smoke, suite, RC, week-rank R#, Wave 2)
 8. **Before Maestro:** SOP §10 — `npm run maestro:locks` (or sim-lock + resource-lock status); check NOW for sim/user/project locks; claim free UDIDs and runtime resources; dual-user RC → `npm run test:e2e:maestro:dual-user` (17 Pro Max + iPhone 16 when free)
 9. **If the task is ROADMAP / Wave 2 / AI / DMS / drawings / cost / owner console / Save Draft / multi-company membership:** read `docs/superpowers/analysis/2026-08-19-roadmap-clarification.md` **before** proposing sequence changes. That file is the 2026-08-19 lock (plus dated addenda); append addenda when the user revisits. Multi-company product SoT: `documentation/multi-company-project-membership.md`.
+10. **If the task is App Store listing, landing, outreach, or store screenshots copy:** read and update `documentation/MARKETING.md` first so public claims match shipped features.
 
 ## Session teardown
 
@@ -64,11 +65,12 @@ For non-trivial / user-visible / shared-primitive work, follow `.cursor/rules/mu
 
 ## Maestro preflight (mandatory before flow claims)
 
-1. Suppress LogBox debugger banners as a family (red + gray) if either is ignored
-2. Assert unique landing testIDs (not headers that appear on every screen)
-3. Bottom-tab nav via tab testIDs — never rely on root `- back`
-4. Use `run-local.sh [opts] test …` flag order only (`--reinstall-driver` after `test`)
-5. After every run, visually read screenshot PNGs — `rc=0` alone is insufficient
+1. **Metro first:** Always boot Metro and wait for HTTP 200 / pre-warmed bundle *before* booting simulators and launching the app (prevents "Could not connect to development server" redbox).
+2. Suppress LogBox debugger banners as a family (red + gray) if either is ignored
+3. Assert unique landing testIDs (not headers that appear on every screen)
+4. Bottom-tab nav via tab testIDs — never rely on root `- back`
+5. Use `run-local.sh [opts] test …` flag order only (`--reinstall-driver` after `test`)
+6. After every run, visually read screenshot PNGs — `rc=0` alone is insufficient
 
 ## Concurrent development (Orchestrator / Maestro)
 

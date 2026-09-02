@@ -1,5 +1,8 @@
 import { resolveStandaloneTaskAction } from "../taskActionRouting";
-import { resolveTaskDetailUpdateShortcut } from "../photoShortcutRoutes";
+import {
+  resolveTaskDetailUpdateShortcut,
+  resolveTasksListCreateShortcut,
+} from "../photoShortcutRoutes";
 
 describe("taskActionRouting", () => {
   it("routes photos/update to UpdateProgress", () => {
@@ -73,5 +76,70 @@ describe("resolveTaskDetailUpdateShortcut", () => {
         sourceScreen: "tasks",
       }),
     });
+  });
+});
+
+describe("resolveTasksListCreateShortcut", () => {
+  it("resolves the Tasks list as a create-task FAB", () => {
+    expect(
+      resolveTasksListCreateShortcut({
+        index: 2,
+        routes: [
+          { name: "Activity" },
+          { name: "Camera" },
+          {
+            name: "Tasks",
+            state: {
+              index: 0,
+              routes: [{ name: "TasksList" }],
+            },
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("treats a Tasks tab with no nested state as the list", () => {
+    expect(
+      resolveTasksListCreateShortcut({
+        index: 2,
+        routes: [{ name: "Activity" }, { name: "Camera" }, { name: "Tasks" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not resolve Activity or Task Detail", () => {
+    expect(
+      resolveTasksListCreateShortcut({
+        index: 0,
+        routes: [
+          {
+            name: "Activity",
+            state: { index: 0, routes: [{ name: "DashboardMain" }] },
+          },
+          { name: "Camera" },
+          { name: "Tasks" },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      resolveTasksListCreateShortcut({
+        index: 2,
+        routes: [
+          { name: "Activity" },
+          { name: "Camera" },
+          {
+            name: "Tasks",
+            state: {
+              index: 1,
+              routes: [
+                { name: "TasksList" },
+                { name: "TaskDetail", params: { taskId: "task-9" } },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toBe(false);
   });
 });

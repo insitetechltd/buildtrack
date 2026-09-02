@@ -870,8 +870,7 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       const level = getIndentationLevel(task);
       const isTopLevelTask = !task.parentTaskId;
       const isArchivedTask = Boolean(task.archivedAt);
-      const canShowTaskUpdateAction =
-        isTopLevelTask && !isArchivedTask && task.status !== "cancelled";
+      const isCompleted = isCompletedLifecycleStatus(task.status);
       const assignedIds = mergeAssignedToIds({
         assignedTo: task.assignedTo || [],
         primaryAssigneeId: task.primaryAssigneeId,
@@ -882,8 +881,14 @@ export function useTasksViewAdapter(props?: TasksViewAdapterProps): TasksViewAda
       const canShowArchiveAction =
         isTopLevelTask &&
         !isArchivedTask &&
-        isCompletedLifecycleStatus(task.status) &&
+        isCompleted &&
         (isAssignedToMe || isTaskCreator);
+      const canShowTaskUpdateAction =
+        isTopLevelTask &&
+        !isArchivedTask &&
+        task.status !== "cancelled" &&
+        !isCompleted &&
+        task.status !== "submitted_for_review";
       const queue = resolveQueue(task) ?? "my_queue";
       const bucket = resolveBucketForTask(task) ?? "new";
       const project = projectStore.getProjectById(task.projectId);

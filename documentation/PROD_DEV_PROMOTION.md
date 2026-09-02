@@ -60,7 +60,9 @@ eas env:list --environment production
 
 Local `.env` stays **DEV + sk_test/pk_test** for Metro / sim. In-flight TestFlight builds keep whatever was baked at build time; **next** `dev` build picks up EAS `preview` → DEV + test Stripe.
 
-**Daily TF:** `./build-and-submit.sh ios` (or `ios dev`). **App Store / PROD:** `./build-and-submit.sh ios production true` (confirm required). Profile `production-local` was renamed to `dev`.
+**Daily TF (Taskr):** `./build-and-submit.sh ios` (or `ios dev`). **App Store / PROD (Taskr only):** `./build-and-submit.sh ios production true` (confirm required). Profile `production-local` was renamed to `dev`.
+
+**Daily TF (HQ):** `cd apps/owner && ./build-and-submit.sh ios` — same `dev` → EAS `preview` → DEV. HQ has **no** `production` / App Store profile.
 
 ---
 

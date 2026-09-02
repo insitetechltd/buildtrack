@@ -101,4 +101,40 @@ describe('useUpdateProgressViewAdapter', () => {
 
     expect(result.current.output.form.completionPercentage).toBe(50);
   });
+
+  it('merges selected photos and updates when an existing photo is re-annotated', () => {
+    const initialPhoto = {
+      uri: 'ph://photo-1',
+      fileName: 'photo-1.jpg',
+      mediaLibraryAssetId: 'photo-1',
+    };
+
+    const { result, rerender } = renderHook(
+      (props: any) => useUpdateProgressViewAdapter(props),
+      {
+        initialProps: {
+          selectedPhotos: [initialPhoto],
+        },
+      },
+    );
+
+    expect(result.current.output.photos).toHaveLength(1);
+    expect(result.current.output.photos[0].uri).toBe('ph://photo-1');
+
+    const editedPhoto = {
+      uri: 'ph://photo-1',
+      fileName: 'photo-1.jpg',
+      mediaLibraryAssetId: 'photo-1',
+      isAnnotated: true,
+      annotatedUri: 'file:///annotated-1.jpg',
+    };
+
+    rerender({
+      selectedPhotos: [editedPhoto],
+    });
+
+    expect(result.current.output.photos).toHaveLength(1);
+    expect(result.current.output.photos[0].uri).toBe('file:///annotated-1.jpg');
+    expect(result.current.output.photos[0].isAnnotated).toBe(true);
+  });
 });

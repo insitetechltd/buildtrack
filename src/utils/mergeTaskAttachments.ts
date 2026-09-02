@@ -10,8 +10,7 @@ export function taskAttachmentKey(attachment: TaskAttachment): string {
   if (attachment.mediaLibraryAssetId) {
     return `ml:${attachment.mediaLibraryAssetId}`;
   }
-  const uri = attachment.annotatedUri || attachment.uri;
-  return `uri:${uri}`;
+  return `uri:${attachment.uri}`;
 }
 
 /**
@@ -49,6 +48,13 @@ export function mergeUniqueAttachments(
     }
     result.push(item);
     used.add(key);
+  }
+
+  if (
+    result.length === existing.length &&
+    result.every((item, idx) => item === existing[idx])
+  ) {
+    return existing;
   }
 
   return result;

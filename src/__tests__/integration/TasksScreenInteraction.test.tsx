@@ -185,26 +185,25 @@ describe("TasksScreen Interactions", () => {
 
     fireEvent.press(getByTestId("tasks-screen__filters_button"));
     fireEvent.press(getByTestId("tasks-screen__chip_remove_queue"));
-    fireEvent.press(getByTestId("tasks-screen__header_reset_filters"));
+    expect(queryByTestId("tasks-screen__header_reset_filters")).toBeNull();
 
     expect(getByTestId("tasks-screen__task_list")).toBeTruthy();
     expect(mockOpenFiltersSheet).toHaveBeenCalledTimes(1);
     expect(mockRemoveAppliedFilterChip).toHaveBeenCalledWith("queue");
-    expect(mockResetFilters).toHaveBeenCalledTimes(1);
     expect(queryByText("Mine")).toBeNull();
     expect(queryByText("Bucket")).toBeNull();
     expect(queryByText("Sort by")).toBeNull();
   });
 
-  it("wires Tasks pull-to-refresh to a forced triggerRefresh and keeps header reset-filters", async () => {
-    const { getByTestId } = render(
+  it("wires Tasks pull-to-refresh to a forced triggerRefresh without header reload button", async () => {
+    const { getByTestId, queryByTestId } = render(
       <TasksScreen onNavigateToTaskDetail={jest.fn()} onNavigateToCreateTask={jest.fn()} />,
     );
 
     const list = getByTestId("tasks-screen__task_list");
     expect(list.props.refreshControl).toBeTruthy();
     expect(list.props.refreshControl.props.refreshing).toBe(false);
-    expect(getByTestId("tasks-screen__header_reset_filters")).toBeTruthy();
+    expect(queryByTestId("tasks-screen__header_reset_filters")).toBeNull();
 
     await act(async () => {
       await list.props.refreshControl.props.onRefresh();

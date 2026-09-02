@@ -31,20 +31,13 @@ function loadSkiaModule(): {
   StrokeCap: any;
   StrokeJoin: any;
 } {
-  // Prefer soft presence checks, but still attempt require — TurboModule apps
-  // may expose Skia only after the package initializes.
-  if (!hasSkiaNativeModule()) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require("@shopify/react-native-skia");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`${SKIA_REBUILD_HINT}. Details: ${message}`);
-    }
-  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require("@shopify/react-native-skia");
+    const skia = require("@shopify/react-native-skia");
+    if (!skia?.Skia) {
+      throw new Error("Skia object is missing in module");
+    }
+    return skia;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`${SKIA_REBUILD_HINT}. Details: ${message}`);
@@ -110,16 +103,30 @@ export async function bakeStrokesOntoPhoto(
   paint.setStrokeJoin(StrokeJoin.Round);
   paint.setAntiAlias(true);
 
+  const fillPaint = Skia.Paint();
+  fillPaint.setStyle(PaintStyle.Fill);
+  fillPaint.setAntiAlias(true);
+
   for (const stroke of validStrokes) {
-    paint.setColor(Skia.Color(stroke.color));
-    paint.setStrokeWidth(stroke.width);
-    const path = Skia.Path.Make();
-    const [first, ...rest] = stroke.points;
-    path.moveTo(first.x, first.y);
-    for (const point of rest) {
-      path.lineTo(point.x, point.y);
+    if (stroke.points.length === 1) {
+      fillPaint.setColor(Skia.Color(stroke.color));
+      canvas.drawCircle(
+        stroke.points[0].x,
+        stroke.points[0].y,
+        Math.max(1, stroke.width / 2),
+        fillPaint,
+      );
+    } else {
+      paint.setColor(Skia.Color(stroke.color));
+      paint.setStrokeWidth(stroke.width);
+      const path = Skia.Path.Make();
+      const [first, ...rest] = stroke.points;
+      path.moveTo(first.x, first.y);
+      for (const point of rest) {
+        path.lineTo(point.x, point.y);
+      }
+      canvas.drawPath(path, paint);
     }
-    canvas.drawPath(path, paint);
   }
 
   surface.flush();

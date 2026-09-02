@@ -21,7 +21,7 @@ This document is the **single consolidated description** of the mobile app as im
 
 **iOS:** bundle id `com.buildtrack.app.local`, `buildNumber` **137**, deployment target **16.0**, tablet support enabled.
 
-**Android:** package `com.buildtrack.app`, `minSdkVersion` **24**, `targetSdkVersion` / `compileSdkVersion` **35**, edge-to-edge enabled.
+**Android:** package `com.buildtrack.app`, `minSdkVersion` **24**, `targetSdkVersion` / `compileSdkVersion` **36**, edge-to-edge enabled.
 
 **Over-the-air updates:** `runtimeVersion` **1.0.0**, updates URL points at the Expo project (`u.expo.dev/...`). Native changes require a new store build; JS/asset changes can ship via EAS Update when compatible with the runtime.
 

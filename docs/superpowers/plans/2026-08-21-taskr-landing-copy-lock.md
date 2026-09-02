@@ -1,5 +1,7 @@
 # Taskr landing — marketing copy lock (2026-08-21)
 
+**Superseded for public claims.** Canonical copy (including HKD pricing and App Store description) is [`documentation/MARKETING.md`](../../../documentation/MARKETING.md). USD prices in this file are **stale**. Keep only as Glass v3 art history.
+
 **Process:** Separate copy exercise **before** Glass v3 art execution.  
 **Creative critique:** photo-centric · capture / review / approve · traceable accountability · organized · on time · on budget (evidence-only).  
 **Legal:** Insite Works Limited · App: Taskr

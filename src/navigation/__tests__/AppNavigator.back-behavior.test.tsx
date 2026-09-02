@@ -15,6 +15,11 @@ jest.mock("@react-navigation/native", () => ({
     }),
   },
   getFocusedRouteNameFromRoute: () => undefined,
+  useNavigationState: (selector: (state: { index: number; routes: Array<{ name: string }> }) => unknown) =>
+    selector({
+      index: 0,
+      routes: [{ name: "Activity" }, { name: "Camera" }, { name: "Tasks" }],
+    }),
   createNavigationContainerRef: () => ({
     isReady: () => false,
     navigate: jest.fn(),
@@ -210,6 +215,10 @@ jest.mock("../../utils/RealtimeSyncManager", () => ({
   RealtimeSyncManager: () => null,
 }));
 
+jest.mock("../../utils/libraryCapturePrefetch", () => ({
+  startLibraryCapturePrefetch: jest.fn(),
+}));
+
 jest.mock("../../screens/LoginScreen", () => "LoginScreen");
 jest.mock("../../screens/SetPasswordScreen", () => "SetPasswordScreen");
 jest.mock("../../screens/CreateTaskScreen", () => "CreateTaskScreen");
@@ -263,7 +272,7 @@ describe("AppNavigator back helpers", () => {
     ).toEqual(["Activity", "Camera", "Tasks"]);
     expect(
       screen.getAllByTestId("mock-tab-label").map((node) => node.props.children),
-    ).toEqual(["Activity", "Camera", "Tasks"]);
+    ).toEqual(["Activity", "", "Tasks"]);
     expect(screen.queryByText("Profile")).toBeNull();
   });
 
@@ -509,6 +518,41 @@ describe("AppNavigator back helpers", () => {
     expect(preventDefault).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith("Camera", {
       screen: "CaptureSession",
+    });
+  });
+
+  it("opens Create Task when the center FAB is pressed on the Tasks list", () => {
+    const navigate = jest.fn();
+    const preventDefault = jest.fn();
+
+    handleCameraTabPress({
+      event: { preventDefault },
+      navigation: {
+        getState: () => ({
+          index: 2,
+          routes: [
+            { name: "Activity" },
+            { name: "Camera" },
+            {
+              name: "Tasks",
+              state: {
+                index: 0,
+                routes: [{ name: "TasksList" }],
+              },
+            },
+          ],
+        }),
+        navigate,
+      },
+    } as any);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith("Tasks", {
+      screen: "CreateTask",
+      params: expect.objectContaining({
+        sourceScreen: "tasks",
+        clearForm: true,
+      }),
     });
   });
 

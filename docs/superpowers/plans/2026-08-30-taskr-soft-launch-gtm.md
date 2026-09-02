@@ -6,6 +6,8 @@
 
 **Companion canvas (open beside chat):** `~/.cursor/projects/Volumes-KooDrive-InsiteApp/canvases/taskr-soft-launch-gtm.canvas.tsx`
 
+**Public listing copy (canonical, living):** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md). Update that file when features ship. This GTM file is strategy + 2026-08-30 audit; do not treat §6 paste as SoT.
+
 ---
 
 ## 1. Verdict
@@ -134,6 +136,8 @@ Week 6–8  Convert pilots to paying Starter; 1 lighthouse quote; CITF check sta
 
 ## 6. App Store — current vs rewrite
 
+**Canonical listing (living):** [`documentation/MARKETING.md`](../../../documentation/MARKETING.md). Update that file on each marketing pass. The paste blocks in §6.3–6.4 below are **2026-08-30 snapshots** and must not be edited as SoT.
+
 ### 6.1 Current description (live) — mark every defect
 
 > Insite Trackr is a construction workflow management tool. There are many parties involved in any construction project. Trackr helps to record, organize and execute all the challenges in every construction project. From the owner, to the architect, to the consultants, to the contractors, Trackr makes sure every details, every changes, every specifications reaches to the relevant parties by ensuring accountability with complete audit trails on every issues recorded in our system. Trackr is here to deliver an stress-free construction workflow.
@@ -183,43 +187,38 @@ Construction software by the industry. Snap, assign, prove, approve. Company-own
 construction,jobsite,punch,snag,handoff,rework,evidence,contractor,inspection,defect,field,quality,PM,site
 ```
 
-**Description:**
+**Description** (2026-09-02 refine of founder draft; simpler than the first GTM write):
 
 ```text
-Taskr is construction software by the industry: a field app for the photo → task → review loop. Built by people who work in construction, for the people who run the job — not one profession’s tool. For company admins, PMs, and crews who already take site photos — and then lose them in WhatsApp.
+Taskr is construction software by the industry. It turns site photos into assigned work with a clear owner, photo proof, and an approve-or-send-back trail.
 
 WHAT YOU DO
-• Capture the condition on site with the camera or library.
-• Turn that photo into an assigned task with a clear title and owner.
-• Crews update with new photo evidence.
-• PMs approve the work or send it back. The thread shows who did what, when, and with which photos.
+• Capture the condition with the camera or library.
+• Turn the photo into a task with an owner.
+• Crews update with new photos.
+• PMs approve or send it back. The thread shows who did what, when, and with which photo.
 
 WHO IT IS FOR
-Company admins create the company and invite seats. PMs assign and review. Crews capture and close assigned work. Everyone stays inside the right project — not a pile of mixed jobs.
+Company admins, PMs, and crews in the same company. Records stay with the company and in the right project — not a WhatsApp group.
 
 WHAT IT IS NOT
-Taskr is not a variation-order system, cost ledger, drawing register, BIM platform, or multi-company project OS. It is photo-backed task evidence so handoffs and cost conversations can point at what actually happened on site.
+Not a drawing register, cost ledger, BIM tool, or a way for the owner, architect, and consultants to join as their own companies. It is photo-backed task evidence for daily site work.
 
-HOW COMPANIES START
-There is no public “join any company” signup. An admin creates the company in the app, invites people with a secure link, and opens the project. Then the crew starts capturing work.
+HOW TO START
+No public signup. An admin creates the company, invites people with a secure link, and opens the project.
 
-PRICING (Hong Kong)
-Billed to the company in HKD.
+PRICING (Hong Kong, HKD)
 • Starter — HK$160 / month — 3 projects, 1 PM + 5 workers
 • Pro — HK$400 / month — 12 projects, 3 PM + 15 workers
 • Extra worker HK$20 / month · Extra PM HK$100 / month
-Pilot access is by invitation (promo code). Standard checkout is a paid company plan.
+Pilot access is by invitation (promo code).
 
 SUPPORT
 Insite Works Limited · support@insiteworks.co
 Privacy and terms: https://insitetechltd.github.io/buildtrack/
 ```
 
-**What’s New (for the version that replaces 1.0):**
-
-```text
-Taskr 1.1 is the commercial field loop: faster photo capture, company plans in Hong Kong dollars, and a clearer assign → update → approve trail. If you used the earlier Insite Trackr listing, this is the same app — renamed and rebuilt around site photos as proof of work.
-```
+**What’s New (for 1.1.3):** see `documentation/MARKETING.md` (do not fork). Dropped “faster photo capture.”
 
 **App Review notes (outline; do not paste passwords into git):**
 

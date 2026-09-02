@@ -19,6 +19,7 @@ const mockMakeImageFromEncoded = jest.fn(() => ({
 }));
 const mockDrawImage = jest.fn();
 const mockDrawPath = jest.fn();
+const mockDrawCircle = jest.fn();
 const mockFlush = jest.fn();
 const mockEncodeToBase64 = jest.fn(() => "BAKED_JPEG");
 const mockMakeImageSnapshot = jest.fn(() => ({
@@ -27,6 +28,7 @@ const mockMakeImageSnapshot = jest.fn(() => ({
 const mockGetCanvas = jest.fn(() => ({
   drawImage: mockDrawImage,
   drawPath: mockDrawPath,
+  drawCircle: mockDrawCircle,
 }));
 const mockMakeOffscreen = jest.fn(() => ({
   getCanvas: mockGetCanvas,
@@ -113,6 +115,21 @@ describe("bakeStrokesOntoPhoto", () => {
       "BAKED_JPEG",
       expect.stringMatching(/^draw_\d+\.jpg$/),
     );
+    expect(out).toBe("file://draft_draw.jpg");
+  });
+
+  it("bakes single-point dots using canvas.drawCircle", async () => {
+    const dotStroke = [
+      {
+        color: "#f59e0b",
+        width: 10,
+        points: [{ x: 50, y: 50 }],
+      },
+    ];
+
+    const out = await bakeStrokesOntoPhoto("file://photo.jpg", dotStroke);
+
+    expect(mockDrawCircle).toHaveBeenCalledWith(50, 50, 5, expect.anything());
     expect(out).toBe("file://draft_draw.jpg");
   });
 

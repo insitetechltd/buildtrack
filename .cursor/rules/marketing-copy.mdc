@@ -1,0 +1,22 @@
+---
+description: Taskr public marketing, App Store listing, landing, and outreach copy
+globs:
+  - documentation/MARKETING.md
+  - docs/index.html
+  - docs/legal/**
+  - docs/support.html
+  - docs/superpowers/plans/*gtm*
+  - docs/superpowers/plans/*listing*
+  - docs/superpowers/plans/*landing-copy*
+  - docs/assets/store/**
+---
+
+# Marketing copy
+
+Canonical public claims: `documentation/MARKETING.md`.
+
+When revisiting App Store metadata, the marketing site, store screenshots captions, or outreach copy:
+
+1. Read `documentation/MARKETING.md`.
+2. Update **Sell this** / **Do not claim** and the listing description so they match **shipped** features (not ROADMAP hopes).
+3. Copy into dated paste packs or HTML. Do not fork a second description.

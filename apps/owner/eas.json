@@ -15,23 +15,13 @@
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
       }
     },
-    "internal": {
+    "dev": {
       "autoIncrement": true,
       "distribution": "store",
       "environment": "preview",
       "ios": {
-        "credentialsSource": "remote"
-      },
-      "env": {
-        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
-      }
-    },
-    "internal-local": {
-      "extends": "internal",
-      "distribution": "store",
-      "environment": "preview",
-      "ios": {
         "credentialsSource": "remote",
+        "cocoapods": "1.16.1",
         "autoIncrement": true
       },
       "env": {
@@ -39,9 +29,23 @@
         "COCOAPODS_DISABLE_STATS": "true",
         "EXPO_SKIP_NATIVE_DEPENDENCIES_VERSION_CHECK": "1"
       }
+    },
+    "internal": {
+      "extends": "dev"
+    },
+    "internal-local": {
+      "extends": "dev"
     }
   },
   "submit": {
+    "dev": {
+      "ios": {
+        "ascAppId": "6806629041",
+        "ascApiKeyIssuerId": "169799ef-c185-49f3-8c48-7d82e7ba7683",
+        "ascApiKeyId": "57D87U9MQ2",
+        "ascApiKeyPath": "/Volumes/KooDrive/Users/tristan/.appstoreconnect/private_keys/AuthKey_57D87U9MQ2.p8"
+      }
+    },
     "internal": {
       "ios": {
         "ascAppId": "6806629041",

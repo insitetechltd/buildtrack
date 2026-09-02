@@ -10,12 +10,13 @@ let cached: MediaLibraryPermissionSnapshot | null = null;
 let inFlightCheck: Promise<MediaLibraryPermissionSnapshot> | null = null;
 
 function snapshotFrom(
-  result: MediaLibrary.PermissionResponse,
+  result?: MediaLibrary.PermissionResponse | null,
 ): MediaLibraryPermissionSnapshot {
+  const granted = Boolean(result?.granted);
   return {
-    granted: result.granted,
-    canAskAgain: result.canAskAgain !== false,
-    status: result.status ?? (result.granted ? "granted" : "denied"),
+    granted,
+    canAskAgain: result?.canAskAgain !== false,
+    status: result?.status ?? (granted ? "granted" : "denied"),
   };
 }
 

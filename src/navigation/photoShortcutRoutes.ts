@@ -6,15 +6,15 @@ import type {
   UpdateProgressParams,
 } from "./navigationTypes";
 
-type RouteStateLike = {
+export type RouteStateLike = {
   index?: number;
   routes?: RouteLike[];
 };
 
-type RouteLike = {
+export type RouteLike = {
   name?: string;
-  params?: Record<string, unknown>;
-  state?: RouteStateLike;
+  params?: Record<string, unknown> | object;
+  state?: any;
 };
 
 export function shouldReturnToCreateTaskShortcut({
@@ -134,6 +134,25 @@ export function resolveTaskDetailUpdateShortcut(
       sourceSubTaskId: taskDetailParams.subTaskId,
     },
   };
+}
+
+export function resolveTasksListCreateShortcut(tabState?: RouteStateLike): boolean {
+  if (resolveTaskDetailUpdateShortcut(tabState)) {
+    return false;
+  }
+
+  const activeTabIndex = getActiveIndex(tabState);
+  const activeTabName =
+    activeTabIndex === undefined ? undefined : tabState?.routes?.[activeTabIndex]?.name;
+  if (activeTabName !== "Tasks") {
+    return false;
+  }
+
+  const nestedActiveRoute = getActiveRoute(
+    activeTabIndex === undefined ? undefined : tabState?.routes?.[activeTabIndex]?.state,
+  );
+
+  return !nestedActiveRoute?.name || nestedActiveRoute.name === "TasksList";
 }
 
 /** @deprecated Prefer resolveTaskDetailUpdateShortcut (C3). Kept for compatibility shims. */

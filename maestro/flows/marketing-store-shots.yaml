@@ -1,0 +1,81 @@
+# Store frames on whatever project John has (Insite Office). English if the language row is visible.
+appId: com.buildtrack.app.local
+---
+- runFlow: create-task-photo/_boot.yaml
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- runFlow:
+    when:
+      visible: "揀選項目"
+    commands:
+      - tapOn:
+          id: "app-screen-header__back"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "profile-menu:language"
+    commands:
+      - tapOn:
+          id: "profile-menu:language"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible: "English"
+    commands:
+      - tapOn: "English"
+- tapOn:
+    id: "root-tab__activity"
+    optional: true
+- swipe:
+    start: 50%, 28%
+    end: 50%, 72%
+    duration: 700
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "mkt-01-activity"
+- tapOn:
+    id: "root-tab__camera_icon_surface"
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: "mkt-02-create-or-capture"
+- tapOn:
+    id: "root-tab__tasks_pressable"
+- extendedWaitUntil:
+    visible:
+      id: "tasks-screen__root"
+    timeout: 30000
+- takeScreenshot: "mkt-03-tasks"
+- runFlow:
+    when:
+      visible:
+        id: "tasks-screen__task_title_.*"
+    commands:
+      - tapOn:
+          id: "tasks-screen__task_title_.*"
+          index: 0
+      - extendedWaitUntil:
+          visible:
+            id: "task-detail__header_title"
+          timeout: 25000
+      - takeScreenshot: "mkt-04-task-thread"
+- tapOn:
+    id: "app-screen-header__profile-trigger"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- runFlow:
+    when:
+      visible:
+        id: "profile-menu-company_admin"
+    commands:
+      - tapOn:
+          id: "profile-menu-company_admin"
+      - waitForAnimationToEnd:
+          timeout: 4000
+      - takeScreenshot: "mkt-05-company"

@@ -127,6 +127,7 @@ These are the primary human-readable references for current implementation-align
 - [role-permission-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/role-permission-matrix.md)
 - [EXPIRED_SURFACES_INVENTORY.md](file:///Volumes/KooDrive/Insite%20App/documentation/EXPIRED_SURFACES_INVENTORY.md)
 - [multi-company-project-membership.md](file:///Volumes/KooDrive/Insite%20App/documentation/multi-company-project-membership.md)
+- [MARKETING.md](file:///Volumes/KooDrive/Insite%20App/documentation/MARKETING.md)
 - [m-fnd-04-ui-migration-wave-matrix.md](file:///Volumes/KooDrive/Insite%20App/documentation/m-fnd-04-ui-migration-wave-matrix.md)
 
 ### 4. Canonical Operational Documentation
